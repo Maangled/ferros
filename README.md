@@ -86,6 +86,19 @@ Source code for the kernel, bootloader, and services will be organized by subsys
 
 ---
 
+## Interactive Prototypes
+
+These self-contained HTML documents serve as both design targets and milestone visualizations for the FERROS platform. Open them locally in any browser — no server or external dependencies required.
+
+| File | Description |
+|------|-------------|
+| [`docs/ferros-showcase.html`](./docs/ferros-showcase.html) | Public showcase website — a "ferros.dev" landing page with interactive architecture diagram, phase roadmap, boot sequence animation, and contributor guide |
+| [`docs/agent-command-center.html`](./docs/agent-command-center.html) | Web-based agent coordination platform — replaces Discord integration from botgen-rust; combines chat, agent governance, live operations console, Kanban project board, and IoT home integration |
+| [`docs/home-hud-dashboard.html`](./docs/home-hud-dashboard.html) | FERROS Home HUD Dashboard — the primary kiosk/screen interface for a FERROS-powered home; real-time clock, schedule panel, device controls, agent activity feed, and consent queue |
+| [`docs/schedule-ledger.html`](./docs/schedule-ledger.html) | Personal Schedule Ledger — newspaper-themed interactive schedule editor with My Feed viewer, 5-step editor wizard, visual map (year/week/day views), and localStorage persistence |
+
+---
+
 ## Documentation
 
 - [`docs/architecture-overview.md`](./docs/architecture-overview.md) — System architecture reference

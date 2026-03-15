@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>FERROS Home HUD Dashboard</title>
+<style>
+:root {
+  --bg-base:        #0a0c10;
+  --bg-panel:       #111520;
+  --bg-card:        #161b28;
+  --bg-card-alt:    #1a2035;
+  --bg-highlight:   #1e2840;
+  --border-dim:     #1e2a3a;
+  --border-accent:  #2a3f5f;
+  --border-bright:  #3a5a8f;
+  --text-primary:   #e8edf5;
+  --text-secondary: #8fa0b8;
+  --text-dim:       #5a6a80;
+  --text-code:      #7eb8e8;
+  --accent-blue:    #4a90d9;
+  --accent-cyan:    #2dd4bf;
+  --accent-green:   #34d399;
+  --accent-amber:   #f59e0b;
+  --accent-red:     #f87171;
+  --accent-purple:  #a78bfa;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ─── SCAN LINE OVERLAY ─────────────────────────────── */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.06) 2px,
+    rgba(0,0,0,0.06) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ─── LAYOUT ────────────────────────────────────────── */
+#hud {
+  display: grid;
+  grid-template-rows: 56px 1fr 1fr;
+  grid-template-columns: 320px 1fr 300px;
+  gap: 6px;
+  padding: 6px;
+  height: 100vh;
+  width: 100%;
+}
+
+/* ─── TOP STATUS BAR ───────────────────────────────── */
+#status-bar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-accent);
+  border-radius: 4px;
+  padding: 0 18px;
+  position: relative;
+  overflow: hidden;
+}
+#status-bar::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan), var(--accent-purple));
+  animation: scanbar 3s linear infinite;
+}
+@keyframes scanbar {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.bar-left { display: flex; align-items: center; gap: 18px; }
+.ferros-logo {
+  font-size: 18px; font-weight: bold; letter-spacing: 3px;
+  color: var(--accent-cyan);
+  text-shadow: 0 0 12px var(--accent-cyan);
+}
+.ferros-logo span { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; }
+.greeting { color: var(--text-secondary); font-size: 12px; }
+.greeting strong { color: var(--accent-amber); }
+
+.bar-center { text-align: center; }
+#clock {
+  font-size: 26px; letter-spacing: 4px;
+  color: var(--text-primary);
+  text-shadow: 0 0 8px var(--accent-blue);
+}
+#date-str { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; }
+
+.bar-right { display: flex; gap: 18px; align-items: center; }
+.sys-metric {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.sys-metric-label { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+.sys-metric-val { font-size: 13px; color: var(--accent-cyan); font-weight: bold; }
+.sys-metric-bar {
+  width: 60px; height: 4px; background: var(--border-dim);
+  border-radius: 2px; overflow: hidden;
+}
+.sys-metric-fill {
+  height: 100%; background: var(--accent-cyan);
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+.sys-metric-fill.amber { background: var(--accent-amber); }
+.sys-metric-fill.red   { background: var(--accent-red); }
+
+/* ─── PANELS ────────────────────────────────────────── */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.panel:hover { border-color: var(--border-accent); }
+
+.panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-dim);
+  flex-shrink: 0;
+}
+.panel-title {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-secondary);
+  display: flex; align-items: center; gap: 6px;
+}
+.panel-title::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 6px var(--accent-cyan);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.panel-body { flex: 1; overflow: hidden; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+/* ─── SCHEDULE PANEL ─────────────────────────────────── */
+#schedule-panel { grid-column: 1; grid-row: 2; }
+
+.timeline-block {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 3px;
+  border-left: 3px solid transparent;
+  background: var(--bg-card);
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+.timeline-block.active {
+  background: var(--bg-highlight);
+  box-shadow: inset 0 0 12px rgba(74,144,217,0.1);
+}
+.timeline-block.stream-a { border-color: var(--accent-cyan); }
+.timeline-block.stream-b { border-color: var(--accent-purple); }
+.timeline-block.stream-c { border-color: var(--accent-green); }
+
+.tb-time { font-size: 10px; color: var(--text-dim); width: 42px; flex-shrink: 0; }
+.tb-info { flex: 1; }
+.tb-name { font-size: 12px; color: var(--text-primary); }
+.tb-sub  { font-size: 10px; color: var(--text-secondary); }
+.stream-badge {
+  font-size: 9px; padding: 1px 5px; border-radius: 2px;
+  font-weight: bold; letter-spacing: 1px;
+}
+.badge-a { background: rgba(45,212,191,0.15); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); }
+.badge-b { background: rgba(167,139,250,0.15); color: var(--accent-purple); border: 1px solid var(--accent-purple); }
+.badge-c { background: rgba(52,211,153,0.15); color: var(--accent-green); border: 1px solid var(--accent-green); }
+
+#countdown-display {
+  text-align: center; padding: 6px;
+  background: var(--bg-card-alt); border-radius: 3px;
+  border: 1px solid var(--border-accent);
+  flex-shrink: 0;
+}
+.countdown-label { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; }
+#countdown-val { font-size: 18px; color: var(--accent-amber); letter-spacing: 3px; text-shadow: 0 0 8px var(--accent-amber); }
+
+.checklist-title { font-size: 9px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; flex-shrink: 0; }
+.checklist { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+.check-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; border-radius: 2px;
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: background 0.2s;
+  user-select: none;
+}
+.check-item:hover { background: var(--bg-card-alt); }
+.check-item input[type=checkbox] { accent-color: var(--accent-cyan); cursor: pointer; }
+.check-item label { font-size: 11px; color: var(--text-secondary); cursor: pointer; flex: 1; }
+.check-item.done label { text-decoration: line-through; color: var(--text-dim); }
+
+/* ─── DEVICE CONTROL PANEL ────────────────────────────── */
+#device-panel { grid-column: 2; grid-row: 2; }
+
+.device-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.camera-feed {
+  background: var(--bg-base);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  aspect-ratio: 16/9;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.camera-feed::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(74,144,217,0.03) 0%, transparent 60%);
+}
+.cam-icon { font-size: 20px; color: var(--text-dim); }
+.cam-label { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+.cam-status-dot {
+  position: absolute; top: 6px; right: 6px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+.cam-status-dot.offline { background: var(--accent-red); box-shadow: 0 0 6px var(--accent-red); animation: none; }
+
+.controls-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 6px; flex-shrink: 0;
+}
+.ctrl-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px; padding: 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer; transition: all 0.2s ease;
+  user-select: none;
+}
+.ctrl-card:hover { border-color: var(--border-accent); background: var(--bg-highlight); }
+.ctrl-card.active { border-color: var(--accent-cyan); box-shadow: 0 0 8px rgba(45,212,191,0.2); }
+.ctrl-icon { font-size: 18px; }
+.ctrl-label { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+.ctrl-val { font-size: 12px; color: var(--accent-cyan); font-weight: bold; }
+.ctrl-status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+.dot-green  { background: var(--accent-green);  box-shadow: 0 0 5px var(--accent-green); }
+.dot-amber  { background: var(--accent-amber); box-shadow: 0 0 5px var(--accent-amber); }
+.dot-red    { background: var(--accent-red);   box-shadow: 0 0 5px var(--accent-red); }
+.dot-blue   { background: var(--accent-blue);  box-shadow: 0 0 5px var(--accent-blue); }
+
+.thermostat-controls { display: flex; gap: 4px; }
+.thermo-btn {
+  background: var(--border-accent); border: none; color: var(--text-primary);
+  width: 18px; height: 18px; border-radius: 2px; cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.thermo-btn:hover { background: var(--accent-blue); }
+
+/* ─── AGENT FEED PANEL ────────────────────────────────── */
+#agent-panel { grid-column: 3; grid-row: 2 / 4; }
+
+.feed-controls { display: flex; gap: 6px; }
+.feed-btn {
+  font-size: 9px; padding: 2px 8px; border-radius: 2px;
+  border: 1px solid var(--border-accent);
+  background: transparent; color: var(--text-secondary);
+  cursor: pointer; font-family: var(--font-mono);
+  letter-spacing: 1px; text-transform: uppercase;
+  transition: all 0.2s;
+}
+.feed-btn:hover, .feed-btn.active { background: var(--bg-highlight); color: var(--text-primary); border-color: var(--accent-blue); }
+
+#agent-feed {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+}
+#agent-feed::-webkit-scrollbar { width: 4px; }
+#agent-feed::-webkit-scrollbar-track { background: var(--bg-base); }
+#agent-feed::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 2px; }
+
+.feed-entry {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px; padding: 6px 8px;
+  animation: slideIn 0.4s ease-out;
+  flex-shrink: 0;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.fe-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 3px; }
+.fe-time { font-size: 9px; color: var(--text-dim); }
+.fe-badges { display: flex; gap: 3px; align-items: center; }
+.consent-badge {
+  font-size: 8px; padding: 1px 5px; border-radius: 2px; font-weight: bold;
+}
+.badge-approved { background: rgba(52,211,153,0.15); color: var(--accent-green); border: 1px solid var(--accent-green); }
+.badge-pending  { background: rgba(245,158,11,0.15);  color: var(--accent-amber); border: 1px solid var(--accent-amber); }
+.fe-agent { font-size: 11px; color: var(--accent-blue); font-weight: bold; }
+.fe-action { font-size: 10px; color: var(--text-secondary); margin-top: 1px; }
+
+/* ─── CONSENT QUEUE PANEL ─────────────────────────────── */
+#consent-panel { grid-column: 1; grid-row: 3; }
+
+.consent-request {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-accent);
+  border-radius: 3px; padding: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+  flex-shrink: 0;
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+.consent-request.approved {
+  border-color: var(--accent-green);
+  background: rgba(52,211,153,0.05);
+  animation: fadeOut 0.5s ease forwards 0.3s;
+}
+.consent-request.denied {
+  border-color: var(--accent-red);
+  background: rgba(248,113,113,0.05);
+  animation: fadeOut 0.5s ease forwards 0.3s;
+}
+@keyframes fadeOut {
+  to { opacity: 0; transform: translateX(-10px); max-height: 0; padding: 0; margin: 0; border: none; }
+}
+.cr-header { display: flex; align-items: center; justify-content: space-between; }
+.cr-agent { font-size: 11px; color: var(--accent-purple); font-weight: bold; }
+.cr-priority { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; }
+.cr-body { font-size: 11px; color: var(--text-secondary); line-height: 1.4; }
+.cr-meta { display: flex; gap: 8px; }
+.cr-tag { font-size: 9px; color: var(--text-dim); }
+.cr-actions { display: flex; gap: 6px; }
+.allow-btn, .deny-btn {
+  flex: 1; padding: 4px 0; border-radius: 2px;
+  border: none; cursor: pointer; font-family: var(--font-mono);
+  font-size: 10px; font-weight: bold; letter-spacing: 1px;
+  text-transform: uppercase; transition: all 0.2s;
+}
+.allow-btn { background: rgba(52,211,153,0.15); color: var(--accent-green); border: 1px solid var(--accent-green); }
+.allow-btn:hover { background: rgba(52,211,153,0.3); }
+.deny-btn  { background: rgba(248,113,113,0.1);  color: var(--accent-red);   border: 1px solid var(--accent-red); }
+.deny-btn:hover  { background: rgba(248,113,113,0.25); }
+
+.history-log {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.history-log::-webkit-scrollbar { width: 3px; }
+.history-log::-webkit-scrollbar-thumb { background: var(--border-dim); }
+.hist-entry {
+  font-size: 10px; color: var(--text-dim); padding: 2px 4px;
+  border-left: 2px solid var(--border-dim);
+}
+.hist-entry.allow { border-color: var(--accent-green); color: var(--accent-green); }
+.hist-entry.deny  { border-color: var(--accent-red);   color: var(--accent-red); }
+
+/* ─── PROJECT CARDS PANEL ─────────────────────────────── */
+#projects-panel { grid-column: 2; grid-row: 3; }
+
+.projects-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 6px; flex: 1;
+}
+.project-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px; padding: 10px;
+  display: flex; flex-direction: column; gap: 6px;
+  transition: all 0.2s; cursor: pointer;
+  position: relative; overflow: hidden;
+}
+.project-card:hover { border-color: var(--border-bright); background: var(--bg-highlight); }
+.project-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--accent-blue); opacity: 0.6;
+}
+.project-card.stream-a::before { background: var(--accent-cyan); }
+.project-card.stream-b::before { background: var(--accent-purple); }
+.project-card.stream-c::before { background: var(--accent-green); }
+
+.pc-header { display: flex; align-items: center; justify-content: space-between; }
+.pc-name { font-size: 12px; color: var(--text-primary); font-weight: bold; }
+.pc-progress-wrap { }
+.pc-progress-label { display: flex; justify-content: space-between; margin-bottom: 3px; }
+.pc-progress-label span { font-size: 9px; color: var(--text-dim); }
+.pc-progress-bar {
+  height: 4px; background: var(--border-dim); border-radius: 2px; overflow: hidden;
+}
+.pc-progress-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+  transition: width 1s ease;
+}
+.pc-meta { font-size: 9px; color: var(--text-dim); }
+.pc-footer { display: flex; justify-content: flex-end; }
+.open-btn {
+  font-size: 9px; padding: 2px 8px; border-radius: 2px;
+  border: 1px solid var(--border-accent); background: transparent;
+  color: var(--text-secondary); cursor: pointer; font-family: var(--font-mono);
+  letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s;
+}
+.open-btn:hover { background: var(--bg-highlight); color: var(--text-primary); border-color: var(--accent-blue); }
+
+/* ─── SYSTEM HEALTH PANEL ──────────────────────────────── */
+#health-panel { grid-column: 3; grid-row: 3; }
+/* handled by agent panel spanning rows 2-3 */
+
+/* Arc Gauge */
+.gauge-container {
+  display: flex; justify-content: center; padding: 4px 0; flex-shrink: 0;
+}
+.gauge-wrap { position: relative; width: 90px; height: 50px; overflow: hidden; }
+.gauge-svg { width: 90px; height: 90px; position: absolute; top: 0; left: 0; transform: rotate(180deg); }
+.gauge-track { fill: none; stroke: var(--border-dim); stroke-width: 8; }
+.gauge-fill {
+  fill: none; stroke: var(--accent-cyan); stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 141.37; stroke-dashoffset: 70.69;
+  transition: stroke-dashoffset 0.8s ease;
+}
+.gauge-val {
+  position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+  font-size: 14px; font-weight: bold; color: var(--accent-cyan);
+  text-shadow: 0 0 6px var(--accent-cyan);
+}
+.gauge-label {
+  position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
+  font-size: 8px; color: var(--text-dim); letter-spacing: 1px; white-space: nowrap;
+}
+
+.health-row {
+  display: flex; flex-direction: column; gap: 3px; flex-shrink: 0;
+}
+.health-row-label { display: flex; justify-content: space-between; }
+.health-row-label span { font-size: 10px; color: var(--text-dim); }
+.health-row-label .val { color: var(--text-secondary); }
+.health-bar { height: 5px; background: var(--border-dim); border-radius: 3px; overflow: hidden; }
+.health-fill {
+  height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+  transition: width 0.8s ease;
+}
+.health-fill.warn { background: linear-gradient(90deg, var(--accent-amber), #f59e0b); }
+.health-fill.crit { background: linear-gradient(90deg, var(--accent-red), #f87171); }
+
+.net-activity {
+  background: var(--bg-card); border: 1px solid var(--border-dim);
+  border-radius: 3px; padding: 6px; flex-shrink: 0;
+}
+.net-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+.net-label { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; }
+.net-val { font-size: 11px; color: var(--accent-blue); }
+
+.cluster-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 6px; background: var(--bg-card); border-radius: 3px; flex-shrink: 0;
+}
+.cluster-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); animation: pulse 2s ease-in-out infinite; }
+.cluster-info { font-size: 10px; color: var(--text-secondary); }
+
+.integrity-row { font-size: 9px; color: var(--text-dim); text-align: right; flex-shrink: 0; }
+
+/* ─── SCROLLBAR GLOBAL ────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 2px; }
+
+/* ─── RESPONSIVE 4K ───────────────────────────────────── */
+@media (min-width: 3000px) {
+  html, body { font-size: 20px; }
+  #clock { font-size: 40px !important; }
+}
+</style>
+</head>
+<body>
+<div id="hud">
+
+  <!-- ═══ TOP STATUS BAR ═══════════════════════════════════════════ -->
+  <div id="status-bar">
+    <div class="bar-left">
+      <div class="ferros-logo">FERROS<br><span>HOME HUD v1.0</span></div>
+      <div class="greeting">Welcome back, <strong id="greeting-text">Commander</strong></div>
+    </div>
+    <div class="bar-center">
+      <div id="clock">00:00:00</div>
+      <div id="date-str">LOADING…</div>
+    </div>
+    <div class="bar-right">
+      <div class="sys-metric">
+        <div class="sys-metric-label">CPU</div>
+        <div class="sys-metric-val" id="cpu-val">0%</div>
+        <div class="sys-metric-bar"><div class="sys-metric-fill" id="cpu-bar" style="width:0%"></div></div>
+      </div>
+      <div class="sys-metric">
+        <div class="sys-metric-label">MEM</div>
+        <div class="sys-metric-val" id="mem-val">0%</div>
+        <div class="sys-metric-bar"><div class="sys-metric-fill" id="mem-bar" style="width:0%"></div></div>
+      </div>
+      <div class="sys-metric">
+        <div class="sys-metric-label">NET</div>
+        <div class="sys-metric-val" id="net-val">0 KB/s</div>
+        <div class="sys-metric-bar"><div class="sys-metric-fill" id="net-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCHEDULE PANEL ═══════════════════════════════════════════ -->
+  <div id="schedule-panel" class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Schedule · Today</div>
+      <span style="font-size:9px;color:var(--text-dim);letter-spacing:1px" id="today-label"></span>
+    </div>
+    <div class="panel-body">
+      <!-- Timeline -->
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0" id="timeline">
+        <div class="timeline-block stream-a" data-start="6" data-end="8">
+          <div class="tb-time">06:00</div>
+          <div class="tb-info">
+            <div class="tb-name">Morning Sync</div>
+            <div class="tb-sub">Review overnight agent actions</div>
+          </div>
+          <span class="stream-badge badge-a">A</span>
+        </div>
+        <div class="timeline-block stream-c" data-start="9" data-end="12">
+          <div class="tb-time">09:00</div>
+          <div class="tb-info">
+            <div class="tb-name">Deep Work · FERROS Kernel</div>
+            <div class="tb-sub">Core infra / agent scheduler</div>
+          </div>
+          <span class="stream-badge badge-c">C</span>
+        </div>
+        <div class="timeline-block stream-b" data-start="13" data-end="15">
+          <div class="tb-time">13:00</div>
+          <div class="tb-info">
+            <div class="tb-name">Agent Platform Sprint</div>
+            <div class="tb-sub">BuildAgent + consent hooks</div>
+          </div>
+          <span class="stream-badge badge-b">B</span>
+        </div>
+        <div class="timeline-block stream-a" data-start="15" data-end="17">
+          <div class="tb-time">15:00</div>
+          <div class="tb-info">
+            <div class="tb-name">Review &amp; Comms</div>
+            <div class="tb-sub">Triage + reply queue</div>
+          </div>
+          <span class="stream-badge badge-a">A</span>
+        </div>
+        <div class="timeline-block stream-c" data-start="17" data-end="19">
+          <div class="tb-time">17:00</div>
+          <div class="tb-info">
+            <div class="tb-name">Home Systems Check</div>
+            <div class="tb-sub">HUD review + device status</div>
+          </div>
+          <span class="stream-badge badge-c">C</span>
+        </div>
+      </div>
+
+      <!-- Countdown -->
+      <div id="countdown-display">
+        <div class="countdown-label">CURRENT BLOCK ENDS IN</div>
+        <div id="countdown-val">--:--</div>
+        <div id="nextup-label" style="font-size:9px;color:var(--text-dim);margin-top:2px">Next: —</div>
+      </div>
+
+      <!-- Checklist -->
+      <div class="checklist-title">Protocol Checklist</div>
+      <div class="checklist" id="checklist">
+        <div class="check-item" id="ci1">
+          <input type="checkbox" id="c1"><label for="c1">Review overnight agent logs</label>
+        </div>
+        <div class="check-item" id="ci2">
+          <input type="checkbox" id="c2"><label for="c2">Approve pending consents</label>
+        </div>
+        <div class="check-item" id="ci3">
+          <input type="checkbox" id="c3"><label for="c3">Sync schedule with calendar</label>
+        </div>
+        <div class="check-item" id="ci4">
+          <input type="checkbox" id="c4"><label for="c4">Run integrity check</label>
+        </div>
+        <div class="check-item" id="ci5">
+          <input type="checkbox" id="c5"><label for="c5">Update project progress</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DEVICE CONTROL PANEL ══════════════════════════════════════ -->
+  <div id="device-panel" class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Device Control</div>
+      <span style="font-size:9px;color:var(--accent-green)">● 4 CAMS ONLINE</span>
+    </div>
+    <div class="panel-body">
+      <!-- Camera feeds -->
+      <div class="device-grid">
+        <div class="camera-feed">
+          <div class="cam-status-dot"></div>
+          <div class="cam-icon">📷</div>
+          <div class="cam-label">Front Door</div>
+        </div>
+        <div class="camera-feed">
+          <div class="cam-status-dot"></div>
+          <div class="cam-icon">📷</div>
+          <div class="cam-label">Back Yard</div>
+        </div>
+        <div class="camera-feed">
+          <div class="cam-status-dot"></div>
+          <div class="cam-icon">📷</div>
+          <div class="cam-label">Driveway</div>
+        </div>
+        <div class="camera-feed">
+          <div class="cam-status-dot"></div>
+          <div class="cam-icon">📷</div>
+          <div class="cam-label">Interior</div>
+        </div>
+      </div>
+
+      <!-- Quick controls -->
+      <div class="controls-row">
+        <div class="ctrl-card active" id="lights-ctrl" onclick="toggleCtrl(this,'LIGHTS','💡','ON','OFF')">
+          <div class="ctrl-icon">💡</div>
+          <div class="ctrl-label">Lights</div>
+          <div class="ctrl-val" id="lights-val">ON</div>
+          <div class="ctrl-status-dot dot-green" id="lights-dot"></div>
+        </div>
+        <div class="ctrl-card active" id="thermo-ctrl">
+          <div class="ctrl-icon">🌡️</div>
+          <div class="ctrl-label">Thermostat</div>
+          <div class="ctrl-val" id="thermo-val">72°F</div>
+          <div class="thermostat-controls">
+            <button class="thermo-btn" onclick="changeThermo(-1)">−</button>
+            <button class="thermo-btn" onclick="changeThermo(1)">+</button>
+          </div>
+        </div>
+        <div class="ctrl-card active" id="lock-ctrl" onclick="toggleCtrl(this,'LOCK','🔒','LOCKED','UNLOCKED')">
+          <div class="ctrl-icon">🔒</div>
+          <div class="ctrl-label">Door Lock</div>
+          <div class="ctrl-val" id="lock-val">LOCKED</div>
+          <div class="ctrl-status-dot dot-green" id="lock-dot"></div>
+        </div>
+        <div class="ctrl-card" id="alarm-ctrl" onclick="toggleCtrl(this,'ALARM','🚨','ARMED','DISARMED')">
+          <div class="ctrl-icon">🚨</div>
+          <div class="ctrl-label">Alarm</div>
+          <div class="ctrl-val" id="alarm-val">DISARMED</div>
+          <div class="ctrl-status-dot dot-amber" id="alarm-dot"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ AGENT ACTIVITY FEED ═══════════════════════════════════════ -->
+  <div id="agent-panel" class="panel" style="grid-column:3;grid-row:2/4">
+    <div class="panel-header">
+      <div class="panel-title">Agent Feed</div>
+      <div class="feed-controls">
+        <button class="feed-btn" id="pause-btn" onclick="toggleFeedPause()">Pause</button>
+        <button class="feed-btn" onclick="reviewFeed()">Review</button>
+      </div>
+    </div>
+    <div class="panel-body" style="padding:6px 8px">
+      <div id="agent-feed"></div>
+    </div>
+  </div>
+
+  <!-- ═══ CONSENT QUEUE ════════════════════════════════════════════ -->
+  <div id="consent-panel" class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Consent Queue</div>
+      <span style="font-size:9px;color:var(--accent-amber)" id="consent-count">3 PENDING</span>
+    </div>
+    <div class="panel-body">
+      <div id="consent-requests" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+
+        <div class="consent-request" id="cr1">
+          <div class="cr-header">
+            <span class="cr-agent">BuildAgent</span>
+            <span class="cr-priority">PRIORITY · NORMAL</span>
+          </div>
+          <div class="cr-body">Allow <strong>BuildAgent</strong> to access the <em>ferros/kernel</em> repository for <strong>2 hours</strong>.</div>
+          <div class="cr-meta">
+            <span class="cr-tag">⏱ Expires in 12 min</span>
+            <span class="stream-badge badge-c">C</span>
+          </div>
+          <div class="cr-actions">
+            <button class="allow-btn" onclick="consentAction('cr1','allow')">✓ Allow</button>
+            <button class="deny-btn"  onclick="consentAction('cr1','deny')">✕ Deny</button>
+          </div>
+        </div>
+
+        <div class="consent-request" id="cr2">
+          <div class="cr-header">
+            <span class="cr-agent">ScheduleAgent</span>
+            <span class="cr-priority">PRIORITY · LOW</span>
+          </div>
+          <div class="cr-body">Allow <strong>ScheduleAgent</strong> to modify <em>schedule-ledger</em> and send one calendar invite.</div>
+          <div class="cr-meta">
+            <span class="cr-tag">⏱ Expires in 28 min</span>
+            <span class="stream-badge badge-a">A</span>
+          </div>
+          <div class="cr-actions">
+            <button class="allow-btn" onclick="consentAction('cr2','allow')">✓ Allow</button>
+            <button class="deny-btn"  onclick="consentAction('cr2','deny')">✕ Deny</button>
+          </div>
+        </div>
+
+        <div class="consent-request" id="cr3">
+          <div class="cr-header">
+            <span class="cr-agent">MonitorAgent</span>
+            <span class="cr-priority">PRIORITY · HIGH</span>
+          </div>
+          <div class="cr-body">Allow <strong>MonitorAgent</strong> to read system metrics and push alert to dashboard.</div>
+          <div class="cr-meta">
+            <span class="cr-tag">⏱ Expires in 5 min</span>
+            <span class="stream-badge badge-b">B</span>
+          </div>
+          <div class="cr-actions">
+            <button class="allow-btn" onclick="consentAction('cr3','allow')">✓ Allow</button>
+            <button class="deny-btn"  onclick="consentAction('cr3','deny')">✕ Deny</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- History log -->
+      <div style="font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-top:4px;flex-shrink:0">History</div>
+      <div class="history-log" id="consent-history"></div>
+    </div>
+  </div>
+
+  <!-- ═══ PROJECTS PANEL ═══════════════════════════════════════════ -->
+  <div id="projects-panel" class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Projects</div>
+      <span style="font-size:9px;color:var(--text-dim)">4 ACTIVE</span>
+    </div>
+    <div class="panel-body" style="padding:8px">
+      <div class="projects-grid">
+
+        <div class="project-card stream-c">
+          <div class="pc-header">
+            <span class="pc-name">FERROS Kernel</span>
+            <span class="stream-badge badge-c">C</span>
+          </div>
+          <div class="pc-progress-wrap">
+            <div class="pc-progress-label"><span>Progress</span><span>62%</span></div>
+            <div class="pc-progress-bar"><div class="pc-progress-fill" style="width:62%"></div></div>
+          </div>
+          <div class="pc-meta">⏱ 2h ago · agent-scheduler branch</div>
+          <div class="pc-footer"><button class="open-btn">Open →</button></div>
+        </div>
+
+        <div class="project-card stream-b">
+          <div class="pc-header">
+            <span class="pc-name">Agent Platform</span>
+            <span class="stream-badge badge-b">B</span>
+          </div>
+          <div class="pc-progress-wrap">
+            <div class="pc-progress-label"><span>Progress</span><span>45%</span></div>
+            <div class="pc-progress-bar"><div class="pc-progress-fill" style="width:45%;background:linear-gradient(90deg,var(--accent-purple),var(--accent-blue))"></div></div>
+          </div>
+          <div class="pc-meta">⏱ 5h ago · consent-hooks branch</div>
+          <div class="pc-footer"><button class="open-btn">Open →</button></div>
+        </div>
+
+        <div class="project-card stream-a">
+          <div class="pc-header">
+            <span class="pc-name">Home HUD</span>
+            <span class="stream-badge badge-a">A</span>
+          </div>
+          <div class="pc-progress-wrap">
+            <div class="pc-progress-label"><span>Progress</span><span>78%</span></div>
+            <div class="pc-progress-bar"><div class="pc-progress-fill" style="width:78%;background:linear-gradient(90deg,var(--accent-cyan),#2dd4bf)"></div></div>
+          </div>
+          <div class="pc-meta">⏱ 30 min ago · layout-v2</div>
+          <div class="pc-footer"><button class="open-btn">Open →</button></div>
+        </div>
+
+        <div class="project-card stream-a">
+          <div class="pc-header">
+            <span class="pc-name">Schedule Ledger</span>
+            <span class="stream-badge badge-a">A</span>
+          </div>
+          <div class="pc-progress-wrap">
+            <div class="pc-progress-label"><span>Progress</span><span>31%</span></div>
+            <div class="pc-progress-bar"><div class="pc-progress-fill" style="width:31%;background:linear-gradient(90deg,var(--accent-cyan),#2dd4bf)"></div></div>
+          </div>
+          <div class="pc-meta">⏱ 1d ago · schema-draft</div>
+          <div class="pc-footer"><button class="open-btn">Open →</button></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- System Health is handled inside agent-panel column; 
+       we inject it separately as last column row 3 isn't occupied (agent spans 2/4) 
+       Actually agent panel spans rows 2 and 3. 
+       Let's use grid-column:3 grid-row:3 but agent-panel already covers that.
+       We need to restructure: agent = col3 rows 2-3, health = bottom.
+       The layout has agent spanning rows 2-3 so there's no room for health in col3.
+       We'll integrate system health as an extra section in the agent panel footer,
+       OR change layout so health panel lives in row 3 col 3 and agent only in row 2 col 3.
+       Let's change agent to row 2 only and add health panel row 3 col 3.
+  -->
+
+</div><!-- end #hud -->
+
+<!-- Health panel injected via JS / actually we'll just create it here properly -->
+<!-- We need to fix the grid: agent spans row2 col3, health spans row3 col3 -->
+<!-- The style says agent-panel: grid-column:3; grid-row:2/4. We need to change that. -->
+
+<script>
+// ─── CLOCK & GREETING ─────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d = now;
+  document.getElementById('date-str').textContent =
+    `${days[d.getDay()].toUpperCase()}  ${String(d.getDate()).padStart(2,'0')} ${months[d.getMonth()].toUpperCase()} ${d.getFullYear()}`;
+  document.getElementById('today-label').textContent =
+    `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+
+  const hr = now.getHours();
+  let greet = 'Good morning';
+  if (hr >= 12 && hr < 17) greet = 'Good afternoon';
+  else if (hr >= 17) greet = 'Good evening';
+  document.getElementById('greeting-text').textContent = `${greet}, Commander`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── SYSTEM METRICS ────────────────────────────────────────────────────
+let sysMetrics = { cpu: 38, mem: 54, net: 72 };
+
+function fluctuate(val, min, max, delta) {
+  return Math.min(max, Math.max(min, val + (Math.random() - 0.5) * delta * 2));
+}
+
+function updateMetrics() {
+  sysMetrics.cpu = fluctuate(sysMetrics.cpu, 8, 95, 8);
+  sysMetrics.mem = fluctuate(sysMetrics.mem, 30, 88, 5);
+  sysMetrics.net = fluctuate(sysMetrics.net, 5, 100, 15);
+
+  const cpuPct = Math.round(sysMetrics.cpu);
+  const memPct = Math.round(sysMetrics.mem);
+  const netPct = Math.round(sysMetrics.net);
+
+  document.getElementById('cpu-val').textContent = cpuPct + '%';
+  document.getElementById('mem-val').textContent = memPct + '%';
+  document.getElementById('net-val').textContent = Math.round(sysMetrics.net * 12.3) + ' KB/s';
+
+  const cpuBar = document.getElementById('cpu-bar');
+  cpuBar.style.width = cpuPct + '%';
+  cpuBar.className = 'sys-metric-fill' + (cpuPct > 85 ? ' red' : cpuPct > 65 ? ' amber' : '');
+
+  const memBar = document.getElementById('mem-bar');
+  memBar.style.width = memPct + '%';
+  memBar.className = 'sys-metric-fill' + (memPct > 85 ? ' red' : memPct > 65 ? ' amber' : '');
+
+  const netBar = document.getElementById('net-bar');
+  netBar.style.width = netPct + '%';
+
+  // Health panel gauges
+  updateHealthPanel(cpuPct, memPct, netPct);
+}
+setInterval(updateMetrics, 3000);
+updateMetrics();
+
+// ─── HEALTH PANEL ──────────────────────────────────────────────────────
+function updateHealthPanel(cpu, mem, net) {
+  // Arc gauge (circumference of r=22.5 semicircle ≈ 141.37 / 2 for half = 70.685)
+  // stroke-dasharray = 141.37 (full circle for r=22.5), half = 70.69
+  const circum = 141.37;
+  const gf = document.getElementById('gauge-fill');
+  if (gf) {
+    const offset = circum / 2 * (1 - cpu / 100) + circum / 2;
+    gf.style.strokeDashoffset = offset;
+    document.getElementById('gauge-cpu-val').textContent = cpu + '%';
+  }
+
+  const memFill = document.getElementById('health-mem-fill');
+  if (memFill) {
+    memFill.style.width = mem + '%';
+    memFill.className = 'health-fill' + (mem > 85 ? ' crit' : mem > 65 ? ' warn' : '');
+    document.getElementById('health-mem-val').textContent = mem + '%';
+  }
+
+  const storagePct = 67;
+  const storageFill = document.getElementById('health-storage-fill');
+  if (storageFill) storageFill.style.width = storagePct + '%';
+
+  const netKb = Math.round(net * 12.3);
+  const netEl = document.getElementById('health-net-val');
+  if (netEl) netEl.textContent = netKb + ' KB/s ↑  ' + Math.round(netKb * 0.6) + ' KB/s ↓';
+}
+
+// ─── SCHEDULE COUNTDOWN ────────────────────────────────────────────────
+function updateSchedule() {
+  const now = new Date();
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+  const blocks = document.querySelectorAll('.timeline-block');
+  let activeBlock = null, nextBlock = null;
+
+  blocks.forEach((b, i) => {
+    const start = parseFloat(b.dataset.start);
+    const end   = parseFloat(b.dataset.end);
+    b.classList.remove('active');
+    if (currentHour >= start && currentHour < end) {
+      activeBlock = { el: b, end };
+      if (i + 1 < blocks.length) nextBlock = blocks[i + 1];
+    }
+  });
+
+  if (activeBlock) {
+    activeBlock.el.classList.add('active');
+    const remaining = (activeBlock.end * 60) - (now.getHours() * 60 + now.getMinutes());
+    const h = Math.floor(remaining / 60);
+    const m = remaining % 60;
+    document.getElementById('countdown-val').textContent =
+      (h > 0 ? h + 'h ' : '') + m + 'm';
+    const nb = nextBlock ? nextBlock.querySelector('.tb-name').textContent : 'End of day';
+    document.getElementById('nextup-label').textContent = 'Next: ' + nb;
+  } else {
+    document.getElementById('countdown-val').textContent = '–';
+    document.getElementById('nextup-label').textContent = 'No active block';
+  }
+}
+setInterval(updateSchedule, 60000);
+updateSchedule();
+
+// ─── CHECKLIST ─────────────────────────────────────────────────────────
+document.querySelectorAll('.check-item input').forEach(cb => {
+  cb.addEventListener('change', () => {
+    cb.closest('.check-item').classList.toggle('done', cb.checked);
+  });
+});
+
+// ─── DEVICE CONTROLS ──────────────────────────────────────────────────
+let thermoVal = 72;
+function changeThermo(delta) {
+  thermoVal += delta;
+  document.getElementById('thermo-val').textContent = thermoVal + '°F';
+}
+
+function toggleCtrl(card, id, icon, onLabel, offLabel) {
+  const isActive = card.classList.toggle('active');
+  const valEl = card.querySelector('.ctrl-val');
+  const dotEl = card.querySelector('.ctrl-status-dot');
+  valEl.textContent = isActive ? onLabel : offLabel;
+  dotEl.className = 'ctrl-status-dot ' + (isActive ? 'dot-green' : 'dot-amber');
+}
+
+// ─── AGENT FEED ────────────────────────────────────────────────────────
+const agents = ['BuildAgent','ScheduleAgent','MonitorAgent','DeployAgent','SyncAgent','AlertAgent'];
+const actions = [
+  'Cloned repository ferros/kernel',
+  'Updated schedule-ledger entry #42',
+  'Read system metrics snapshot',
+  'Pushed build artifacts to staging',
+  'Synced consent log to ledger',
+  'Sent integrity check report',
+  'Fetched remote calendar events',
+  'Wrote build manifest v1.3',
+  'Scanned codebase for drift',
+  'Executed test suite (127 passed)',
+];
+const streams = ['A','B','C'];
+let feedPaused = false;
+
+function tsNow() {
+  const n = new Date();
+  return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;
+}
+
+function addFeedEntry() {
+  if (feedPaused) return;
+  const agent  = agents[Math.floor(Math.random() * agents.length)];
+  const action = actions[Math.floor(Math.random() * actions.length)];
+  const stream = streams[Math.floor(Math.random() * streams.length)];
+  const approved = Math.random() > 0.25;
+
+  const feed = document.getElementById('agent-feed');
+  const entry = document.createElement('div');
+  entry.className = 'feed-entry';
+  entry.innerHTML = `
+    <div class="fe-top">
+      <span class="fe-time">${tsNow()}</span>
+      <div class="fe-badges">
+        <span class="stream-badge badge-${stream.toLowerCase()}">${stream}</span>
+        <span class="consent-badge ${approved ? 'badge-approved' : 'badge-pending'}">${approved ? '✓ Approved' : '⚠ Pending'}</span>
+      </div>
+    </div>
+    <div class="fe-agent">${agent}</div>
+    <div class="fe-action">${action}</div>
+  `;
+  feed.insertBefore(entry, feed.firstChild);
+
+  // Keep max 30 entries
+  while (feed.children.length > 30) feed.removeChild(feed.lastChild);
+}
+
+// Seed initial entries
+for (let i = 0; i < 6; i++) addFeedEntry();
+setInterval(addFeedEntry, 8000);
+
+function toggleFeedPause() {
+  feedPaused = !feedPaused;
+  const btn = document.getElementById('pause-btn');
+  btn.textContent = feedPaused ? 'Resume' : 'Pause';
+  btn.classList.toggle('active', feedPaused);
+}
+
+function reviewFeed() {
+  alert('Opening Agent Action Review — full audit log would load here.');
+}
+
+// ─── CONSENT QUEUE ─────────────────────────────────────────────────────
+let pendingCount = 3;
+
+function consentAction(id, action) {
+  const el = document.getElementById(id);
+  if (!el || el.classList.contains('approved') || el.classList.contains('denied')) return;
+
+  const agentName = el.querySelector('.cr-agent').textContent;
+  const ts = tsNow();
+  el.classList.add(action === 'allow' ? 'approved' : 'denied');
+
+  pendingCount = Math.max(0, pendingCount - 1);
+  document.getElementById('consent-count').textContent =
+    pendingCount + (pendingCount === 1 ? ' PENDING' : ' PENDING');
+
+  // Add to history log
+  const hist = document.getElementById('consent-history');
+  const entry = document.createElement('div');
+  entry.className = 'hist-entry ' + (action === 'allow' ? 'allow' : 'deny');
+  entry.textContent = `${ts}  ${action === 'allow' ? '✓ Allowed' : '✕ Denied'}  ${agentName}`;
+  hist.insertBefore(entry, hist.firstChild);
+
+  // Persist to localStorage
+  try {
+    const key = 'ferros_consent_history';
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    existing.unshift({ ts, agent: agentName, action });
+    localStorage.setItem(key, JSON.stringify(existing.slice(0, 50)));
+  } catch(e) {}
+
+  // Remove element after animation
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 900);
+}
+
+// Load consent history from localStorage
+function loadConsentHistory() {
+  try {
+    const key = 'ferros_consent_history';
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    const hist = document.getElementById('consent-history');
+    existing.slice(0, 8).forEach(item => {
+      const entry = document.createElement('div');
+      entry.className = 'hist-entry ' + (item.action === 'allow' ? 'allow' : 'deny');
+      entry.textContent = `${item.ts}  ${item.action === 'allow' ? '✓ Allowed' : '✕ Denied'}  ${item.agent}`;
+      hist.appendChild(entry);
+    });
+  } catch(e) {}
+}
+loadConsentHistory();
+
+// ─── INJECT HEALTH PANEL ───────────────────────────────────────────────
+// Fix agent panel to only span row 2, then create health panel for row 3
+(function injectHealthPanel() {
+  const agentPanel = document.getElementById('agent-panel');
+  agentPanel.style.gridRow = '2';
+
+  const hud = document.getElementById('hud');
+  const hp = document.createElement('div');
+  hp.id = 'health-panel';
+  hp.className = 'panel';
+  hp.style.gridColumn = '3';
+  hp.style.gridRow = '3';
+  hp.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-title">System Health</div>
+      <span style="font-size:9px;color:var(--accent-green)">● NOMINAL</span>
+    </div>
+    <div class="panel-body">
+      <div class="gauge-container">
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 90 90">
+            <circle class="gauge-track" cx="45" cy="45" r="22.5" stroke-dasharray="141.37" stroke-dashoffset="70.69"/>
+            <circle class="gauge-fill" id="gauge-fill" cx="45" cy="45" r="22.5"/>
+          </svg>
+          <div class="gauge-val" id="gauge-cpu-val">–</div>
+          <div class="gauge-label">CPU</div>
+        </div>
+      </div>
+
+      <div class="health-row">
+        <div class="health-row-label">
+          <span>Memory</span>
+          <span class="val" id="health-mem-val">–</span>
+        </div>
+        <div class="health-bar"><div class="health-fill" id="health-mem-fill" style="width:0%"></div></div>
+      </div>
+
+      <div class="health-row">
+        <div class="health-row-label">
+          <span>Storage</span>
+          <span class="val">67%  (892 GB / 1.3 TB)</span>
+        </div>
+        <div class="health-bar"><div class="health-fill warn" id="health-storage-fill" style="width:67%"></div></div>
+      </div>
+
+      <div class="net-activity">
+        <div class="net-row">
+          <span class="net-label">Network</span>
+          <span class="net-val" id="health-net-val">– KB/s</span>
+        </div>
+        <div class="net-row" style="margin-bottom:0">
+          <span class="net-label">Interface</span>
+          <span style="font-size:10px;color:var(--text-dim)">eth0 · 1 Gbps</span>
+        </div>
+      </div>
+
+      <div class="cluster-row">
+        <div class="cluster-dot"></div>
+        <div class="cluster-info">1 node online · ferros-home</div>
+      </div>
+
+      <div class="integrity-row" id="integrity-ts">Last integrity check: —</div>
+    </div>
+  `;
+  hud.appendChild(hp);
+
+  // Integrity check timestamp
+  const intTs = localStorage.getItem('ferros_integrity_check');
+  if (intTs) {
+    document.getElementById('integrity-ts').textContent = 'Last integrity check: ' + intTs;
+  } else {
+    const now = new Date().toLocaleString();
+    localStorage.setItem('ferros_integrity_check', now);
+    document.getElementById('integrity-ts').textContent = 'Last integrity check: ' + now;
+  }
+})();
+
+// Force initial health update after panel injection
+setTimeout(() => {
+  updateMetrics();
+}, 100);
+</script>
+</body>
+</html>

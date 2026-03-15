@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS — Agent Command Center</title>
+<style>
+/* ─── CSS Variables ─────────────────────────────────────────────────────── */
+:root {
+  --bg-base:        #0a0c10;
+  --bg-panel:       #111520;
+  --bg-card:        #161b28;
+  --bg-card-alt:    #1a2035;
+  --bg-highlight:   #1e2840;
+  --border-dim:     #1e2a3a;
+  --border-accent:  #2a3f5f;
+  --border-bright:  #3a5a8f;
+  --text-primary:   #e8edf5;
+  --text-secondary: #8fa0b8;
+  --text-dim:       #5a6a80;
+  --text-code:      #7eb8e8;
+  --accent-blue:    #4a90d9;
+  --accent-cyan:    #2dd4bf;
+  --accent-green:   #34d399;
+  --accent-amber:   #f59e0b;
+  --accent-red:     #f87171;
+  --accent-purple:  #a78bfa;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+
+/* ─── Reset & Base ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+}
+button { cursor: pointer; border: none; background: none; color: inherit; font: inherit; }
+input, textarea, select { font: inherit; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-accent); border-radius: 4px; padding: 6px 10px; outline: none; }
+input:focus, textarea:focus, select:focus { border-color: var(--accent-blue); }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 4px; }
+
+/* ─── Animated Pulse ────────────────────────────────────────────────────── */
+@keyframes pulse {
+  0%,100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+  50%      { opacity: .8; box-shadow: 0 0 0 3px transparent; }
+}
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+@keyframes scrollUp { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.pulse-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+.dot-online  { background: var(--accent-green); color: var(--accent-green); }
+.dot-working { background: var(--accent-amber); color: var(--accent-amber); }
+.dot-idle    { background: var(--text-dim);      color: var(--text-dim); animation: none; }
+.dot-error   { background: var(--accent-red);    color: var(--accent-red); }
+.dot-offline { background: #444; color: #444; animation: none; }
+
+/* ─── Top Navigation Bar ────────────────────────────────────────────────── */
+#topbar {
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  height: 44px;
+  flex-shrink: 0;
+  padding: 0 12px;
+  gap: 8px;
+  z-index: 100;
+}
+#topbar .logo {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--accent-cyan);
+  letter-spacing: 2px;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+#topbar .logo span { color: var(--text-dim); font-size: 11px; }
+.nav-tabs { display: flex; gap: 2px; flex: 1; }
+.nav-tab {
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.nav-tab:hover { color: var(--text-primary); background: var(--bg-highlight); }
+.nav-tab.active {
+  color: var(--text-primary);
+  background: var(--bg-highlight);
+  border-color: var(--border-accent);
+}
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.kbd-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+.icon-btn {
+  width: 30px; height: 30px;
+  border-radius: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  transition: all .15s;
+}
+.icon-btn:hover { border-color: var(--border-accent); color: var(--text-primary); }
+
+/* ─── Main Layout ───────────────────────────────────────────────────────── */
+#workspace {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── Left Sidebar ──────────────────────────────────────────────────────── */
+#left-sidebar {
+  width: 220px;
+  min-width: 160px;
+  max-width: 320px;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-dim);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width .2s;
+  flex-shrink: 0;
+  resize: horizontal;
+}
+#left-sidebar.collapsed { width: 0; min-width: 0; }
+.sidebar-section { padding: 12px 0 4px; }
+.sidebar-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.sidebar-section-header button {
+  font-size: 14px; color: var(--text-dim); line-height: 1;
+}
+.sidebar-section-header button:hover { color: var(--text-primary); }
+.channel-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  margin: 1px 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 12px;
+  transition: all .12s;
+}
+.channel-item:hover { background: var(--bg-highlight); color: var(--text-primary); }
+.channel-item.active { background: var(--bg-highlight); color: var(--text-primary); }
+.channel-item .ch-icon { color: var(--text-dim); font-size: 13px; }
+.channel-item .ch-badge {
+  margin-left: auto;
+  background: var(--accent-red);
+  color: #fff;
+  font-size: 9px;
+  border-radius: 8px;
+  padding: 1px 5px;
+  min-width: 16px;
+  text-align: center;
+}
+.sidebar-scroll { overflow-y: auto; flex: 1; }
+#sidebar-toggle {
+  position: absolute;
+  left: 214px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  width: 18px; height: 36px;
+  border-radius: 0 4px 4px 0;
+  color: var(--text-dim);
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: left .2s;
+}
+
+/* ─── Content Area ──────────────────────────────────────────────────────── */
+#main-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ─── Right Sidebar ─────────────────────────────────────────────────────── */
+#right-sidebar {
+  width: 240px;
+  min-width: 180px;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-dim);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.right-sidebar-header {
+  padding: 10px 14px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-dim);
+}
+.agent-roster-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-dim);
+  cursor: pointer;
+  transition: background .12s;
+}
+.agent-roster-item:hover { background: var(--bg-highlight); }
+.agent-avatar {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: var(--bg-card-alt);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-dim);
+}
+.agent-info { flex: 1; min-width: 0; }
+.agent-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent-task { font-size: 10px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status-dot-wrap { flex-shrink: 0; }
+
+/* ─── Tab Panels ────────────────────────────────────────────────────────── */
+.tab-panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+.tab-panel.active { display: flex; }
+
+/* ─── Communications ────────────────────────────────────────────────────── */
+#tab-comms { flex-direction: row; }
+.chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chat-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-dim);
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+.chat-channel-name { font-weight: 700; font-size: 14px; }
+.chat-channel-desc { color: var(--text-dim); font-size: 11px; }
+.messages-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.msg-group { margin-bottom: 12px; animation: fadeIn .2s ease; }
+.msg-header {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 2px;
+}
+.msg-author { font-weight: 700; font-size: 13px; }
+.msg-author.human    { color: var(--accent-blue); }
+.msg-author.agent    { color: var(--accent-cyan); }
+.msg-author.build    { color: var(--accent-amber); }
+.msg-author.home     { color: var(--accent-green); }
+.msg-timestamp { font-size: 10px; color: var(--text-dim); }
+.bot-badge {
+  font-size: 9px;
+  background: var(--accent-cyan);
+  color: var(--bg-base);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+.msg-bubble {
+  background: var(--bg-card);
+  border-radius: 4px;
+  padding: 7px 12px;
+  max-width: 680px;
+  line-height: 1.5;
+  font-size: 12px;
+}
+.msg-bubble.agent-msg {
+  border-left: 3px solid var(--accent-cyan);
+  background: var(--bg-card-alt);
+}
+.msg-bubble.build-msg  { border-left: 3px solid var(--accent-amber); background: var(--bg-card-alt); }
+.msg-bubble.home-msg   { border-left: 3px solid var(--accent-green);  background: var(--bg-card-alt); }
+.msg-bubble pre { font-family: var(--font-mono); font-size: 11px; color: var(--text-code); background: var(--bg-base); padding: 6px 10px; border-radius: 4px; margin-top: 4px; overflow-x: auto; }
+.msg-thread {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--accent-blue);
+  cursor: pointer;
+}
+.msg-thread:hover { text-decoration: underline; }
+.chat-input-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-dim);
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+.chat-input-bar input {
+  flex: 1;
+  background: var(--bg-base);
+  border: 1px solid var(--border-accent);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.send-btn {
+  background: var(--accent-blue);
+  color: #fff;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background .15s;
+}
+.send-btn:hover { background: #357abf; }
+
+/* ─── Agent Dashboard ───────────────────────────────────────────────────── */
+#tab-agents { flex-direction: column; overflow: hidden; }
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+.agent-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all .15s;
+  position: relative;
+}
+.agent-card:hover { border-color: var(--border-bright); background: var(--bg-card-alt); transform: translateY(-1px); }
+.agent-card.selected { border-color: var(--accent-blue); }
+.agent-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.agent-card-avatar {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--bg-base);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  border: 1px solid var(--border-accent);
+}
+.agent-card-name { font-weight: 700; font-size: 14px; }
+.agent-card-status { font-size: 11px; color: var(--text-secondary); }
+.agent-card-task {
+  font-size: 11px; color: var(--text-secondary);
+  border-left: 2px solid var(--border-accent);
+  padding-left: 8px;
+  margin-bottom: 8px;
+}
+.agent-uptime { font-size: 10px; color: var(--text-dim); margin-bottom: 8px; }
+.capability-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.cap-badge {
+  font-size: 9px;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-weight: 600;
+  letter-spacing: .3px;
+}
+.cap-blue   { background: rgba(74,144,217,.2); color: var(--accent-blue); border: 1px solid rgba(74,144,217,.3); }
+.cap-cyan   { background: rgba(45,212,191,.2); color: var(--accent-cyan); border: 1px solid rgba(45,212,191,.3); }
+.cap-green  { background: rgba(52,211,153,.2); color: var(--accent-green); border: 1px solid rgba(52,211,153,.3); }
+.cap-amber  { background: rgba(245,158,11,.2);  color: var(--accent-amber); border: 1px solid rgba(245,158,11,.3); }
+.cap-purple { background: rgba(167,139,250,.2); color: var(--accent-purple); border: 1px solid rgba(167,139,250,.3); }
+.cap-red    { background: rgba(248,113,113,.2); color: var(--accent-red);   border: 1px solid rgba(248,113,113,.3); }
+
+.agents-bottom { display: flex; gap: 12px; padding: 0 16px 16px; }
+.agent-detail-panel {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 200px;
+}
+.governance-panel {
+  width: 300px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 14px;
+}
+.panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.perm-request {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.perm-request-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.perm-agent { font-size: 11px; font-weight: 700; color: var(--accent-cyan); }
+.perm-scope { font-size: 11px; color: var(--text-secondary); }
+.perm-actions { display: flex; gap: 4px; margin-top: 8px; }
+.btn-approve { background: rgba(52,211,153,.2); color: var(--accent-green); border: 1px solid rgba(52,211,153,.4); border-radius: 4px; padding: 3px 10px; font-size: 11px; font-weight: 600; transition: all .12s; }
+.btn-approve:hover { background: rgba(52,211,153,.35); }
+.btn-deny    { background: rgba(248,113,113,.15); color: var(--accent-red);   border: 1px solid rgba(248,113,113,.3); border-radius: 4px; padding: 3px 10px; font-size: 11px; font-weight: 600; transition: all .12s; }
+.btn-deny:hover { background: rgba(248,113,113,.3); }
+.resource-bar-wrap { margin-bottom: 10px; }
+.resource-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-bottom: 3px; }
+.resource-bar-bg { background: var(--bg-base); border-radius: 4px; height: 6px; overflow: hidden; }
+.resource-bar-fill { height: 100%; border-radius: 4px; transition: width .5s; }
+.task-history-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--text-secondary);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-dim);
+}
+.task-history-item .th-icon { font-size: 12px; }
+
+/* ─── Operations ────────────────────────────────────────────────────────── */
+#tab-ops { flex-direction: row; overflow: hidden; }
+.ops-left { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 14px; gap: 12px; }
+.ops-right { width: 300px; display: flex; flex-direction: column; border-left: 1px solid var(--border-dim); padding: 14px; gap: 12px; overflow-y: auto; }
+.stream-panel {
+  background: #000;
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  height: 180px;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.stream-overlay {
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,0,.02) 2px, rgba(0,255,0,.02) 4px);
+  pointer-events: none;
+}
+.live-badge {
+  position: absolute; top: 10px; left: 10px;
+  background: var(--accent-red); color: #fff;
+  font-size: 10px; font-weight: 800;
+  border-radius: 4px; padding: 2px 7px;
+  letter-spacing: 1px;
+  animation: blink 1.5s infinite;
+  display: none;
+}
+.live-badge.active { display: block; }
+.stream-idle-text { color: var(--text-dim); font-family: var(--font-mono); font-size: 12px; }
+.go-live-btn {
+  background: var(--accent-red);
+  color: #fff;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all .15s;
+}
+.go-live-btn:hover { background: #e05555; }
+.go-live-btn.live { background: var(--text-dim); }
+.console-panel {
+  flex: 1;
+  background: var(--bg-base);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  min-height: 0;
+}
+.console-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-dim);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+.console-dot { width: 10px; height: 10px; border-radius: 50%; }
+.console-scroll { flex: 1; overflow-y: auto; padding: 10px; }
+.console-line { line-height: 1.6; }
+.cl-success { color: var(--accent-green); }
+.cl-error   { color: var(--accent-red); }
+.cl-warn    { color: var(--accent-amber); }
+.cl-info    { color: var(--text-code); }
+.cl-dim     { color: var(--text-dim); }
+
+.deployment-item {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.deploy-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.deploy-env { font-weight: 700; font-size: 12px; }
+.deploy-status { font-size: 11px; border-radius: 4px; padding: 2px 7px; font-weight: 600; }
+.ds-success { background: rgba(52,211,153,.2); color: var(--accent-green); }
+.ds-pending { background: rgba(245,158,11,.2);  color: var(--accent-amber); }
+.ds-failed  { background: rgba(248,113,113,.2); color: var(--accent-red); }
+.deploy-meta { font-size: 10px; color: var(--text-dim); line-height: 1.7; font-family: var(--font-mono); }
+.deploy-meta .tx { color: var(--accent-purple); }
+
+/* ─── Projects / Kanban ─────────────────────────────────────────────────── */
+#tab-projects { flex-direction: column; overflow: hidden; }
+.kanban-toolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-dim);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+.kanban-board {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+}
+.kanban-col {
+  min-width: 230px;
+  width: 230px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.kanban-col-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-dim);
+  flex-shrink: 0;
+}
+.kanban-col-title { font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.col-count { background: var(--bg-highlight); color: var(--text-secondary); font-size: 10px; border-radius: 10px; padding: 1px 7px; }
+.kanban-cards { overflow-y: auto; flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.kanban-col.drag-over { background: var(--bg-highlight); border-color: var(--accent-blue); }
+.task-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: grab;
+  transition: all .15s;
+  user-select: none;
+}
+.task-card:hover { border-color: var(--border-bright); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+.task-card.dragging { opacity: .4; }
+.task-card-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
+.task-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.priority-badge { font-size: 9px; border-radius: 3px; padding: 2px 5px; font-weight: 700; }
+.prio-high   { background: rgba(248,113,113,.2); color: var(--accent-red); }
+.prio-medium { background: rgba(245,158,11,.2);  color: var(--accent-amber); }
+.prio-low    { background: rgba(52,211,153,.15); color: var(--accent-green); }
+.assignee-chip {
+  font-size: 9px; background: var(--bg-base);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px; padding: 1px 7px;
+  color: var(--text-secondary);
+}
+.bounty-chip {
+  font-size: 9px; background: rgba(167,139,250,.15);
+  color: var(--accent-purple); border: 1px solid rgba(167,139,250,.3);
+  border-radius: 10px; padding: 1px 7px; font-family: var(--font-mono);
+}
+
+/* ─── Home Integration ──────────────────────────────────────────────────── */
+#tab-home { flex-direction: column; overflow: hidden; }
+.home-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-dim);
+  font-size: 13px; font-weight: 700;
+  background: var(--bg-panel);
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+}
+.home-scroll { flex: 1; overflow-y: auto; padding: 14px 16px; }
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.device-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 14px;
+  transition: all .15s;
+}
+.device-card:hover { border-color: var(--border-bright); }
+.device-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.device-icon { font-size: 24px; }
+.device-name { font-weight: 700; font-size: 13px; }
+.device-type { font-size: 10px; color: var(--text-dim); }
+.device-status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.device-last-seen { font-size: 10px; color: var(--text-dim); }
+.device-action-btn {
+  background: var(--bg-highlight);
+  border: 1px solid var(--border-accent);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  font-size: 11px;
+  transition: all .12s;
+  width: 100%;
+}
+.device-action-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+.health-section { margin-top: 8px; }
+.health-bar-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
+.health-bar-bg { background: var(--bg-base); border-radius: 3px; height: 5px; overflow: hidden; margin-bottom: 5px; }
+.health-bar-fill { height: 100%; border-radius: 3px; }
+
+/* ─── Modals ────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(3px);
+  z-index: 1000;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; animation: fadeIn .15s ease; }
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-radius: 10px;
+  padding: 24px;
+  width: 480px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.modal-close { margin-left: auto; color: var(--text-dim); font-size: 18px; }
+.modal-close:hover { color: var(--text-primary); }
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+.form-group select, .form-group input { width: 100%; }
+.checkbox-group { display: flex; flex-direction: column; gap: 6px; }
+.checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; }
+.checkbox-item input { width: auto; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.btn-primary { background: var(--accent-blue); color: #fff; border-radius: 6px; padding: 8px 18px; font-weight: 600; font-size: 12px; transition: background .15s; }
+.btn-primary:hover { background: #357abf; }
+.btn-secondary { background: var(--bg-highlight); border: 1px solid var(--border-accent); color: var(--text-secondary); border-radius: 6px; padding: 8px 18px; font-size: 12px; transition: all .15s; }
+.btn-secondary:hover { color: var(--text-primary); }
+
+/* Command Palette */
+#cmd-palette { width: 560px; }
+.cmd-input-wrap { margin-bottom: 14px; }
+.cmd-input-wrap input { width: 100%; font-size: 14px; padding: 10px 14px; }
+.cmd-list { display: flex; flex-direction: column; gap: 2px; }
+.cmd-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: all .1s;
+}
+.cmd-item:hover { background: var(--bg-highlight); color: var(--text-primary); }
+.cmd-item .cmd-key { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); border: 1px solid var(--border-dim); border-radius: 3px; padding: 1px 5px; margin-left: auto; }
+.cmd-item .cmd-icon { font-size: 14px; color: var(--accent-blue); }
+
+/* Deploy modal spinner */
+.spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; }
+
+/* Notification toast */
+#toast-container {
+  position: fixed; bottom: 20px; right: 20px;
+  z-index: 2000; display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 12px;
+  min-width: 220px;
+  animation: fadeIn .2s ease;
+  display: flex; align-items: center; gap: 8px;
+}
+.toast.success { border-color: var(--accent-green); }
+.toast.error   { border-color: var(--accent-red); }
+.toast.info    { border-color: var(--accent-blue); }
+
+/* Deploy btn */
+.deploy-agent-btn {
+  background: var(--accent-purple);
+  color: var(--bg-base);
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 12px;
+  transition: all .15s;
+  margin-left: auto;
+}
+.deploy-agent-btn:hover { background: #8b6fe8; }
+
+/* Ops header */
+.section-header-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+</style>
+</head>
+<body>
+
+<!-- ── Toast Container ─────────────────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- ── Top Navigation Bar ──────────────────────────────────────────────── -->
+<div id="topbar">
+  <div class="logo">FERROS<span> ACC</span></div>
+  <nav class="nav-tabs" id="nav-tabs">
+    <button class="nav-tab active" data-tab="comms">💬 Communications</button>
+    <button class="nav-tab" data-tab="agents">🤖 Agents</button>
+    <button class="nav-tab" data-tab="ops">📡 Operations</button>
+    <button class="nav-tab" data-tab="projects">📋 Projects</button>
+    <button class="nav-tab" data-tab="home">🏠 Home Integration</button>
+  </nav>
+  <div class="topbar-actions">
+    <span class="kbd-hint">Ctrl+K</span>
+    <button class="icon-btn" title="Notifications" onclick="showToast('No new notifications','info')">🔔</button>
+    <button class="icon-btn" title="Settings">⚙️</button>
+    <div class="agent-avatar" style="width:30px;height:30px;font-size:14px;border-radius:50%;">👤</div>
+  </div>
+</div>
+
+<!-- ── Workspace ───────────────────────────────────────────────────────── -->
+<div id="workspace">
+
+  <!-- Left Sidebar -->
+  <div id="left-sidebar">
+    <div class="sidebar-scroll">
+
+      <!-- Channels section (comms tab) -->
+      <div class="sidebar-section" id="channels-section">
+        <div class="sidebar-section-header">
+          <span>Channels</span>
+          <button onclick="showToast('Channel creation coming soon','info')">+</button>
+        </div>
+        <div id="channel-list"></div>
+      </div>
+
+      <!-- Agent quick list -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header"><span>Active Agents</span></div>
+        <div id="sidebar-agent-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div id="main-content">
+
+    <!-- ── Tab 1: Communications ─────────────────────────────────────── -->
+    <div class="tab-panel active" id="tab-comms">
+      <div class="chat-area">
+        <div class="chat-header">
+          <span style="font-size:16px">#</span>
+          <div>
+            <div class="chat-channel-name" id="active-channel-name">general</div>
+            <div class="chat-channel-desc" id="active-channel-desc">Team-wide coordination</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button class="icon-btn" title="Search messages">🔍</button>
+            <button class="icon-btn" title="Pin messages">📌</button>
+          </div>
+        </div>
+        <div class="messages-scroll" id="messages-scroll"></div>
+        <div class="chat-input-bar">
+          <button class="icon-btn">📎</button>
+          <input type="text" id="chat-input" placeholder="Message #general…" />
+          <button class="send-btn" id="send-btn">Send ↵</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab 2: Agents ─────────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-agents">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border-dim);flex-shrink:0;background:var(--bg-panel);">
+        <span style="font-weight:700;">Agent Dashboard</span>
+        <button class="deploy-agent-btn" onclick="openDeployModal()">+ Deploy Agent</button>
+      </div>
+      <div class="agents-grid" id="agents-grid"></div>
+      <div class="agents-bottom" id="agents-bottom">
+        <div class="agent-detail-panel" id="agent-detail-panel">
+          <div class="panel-title">📊 Agent Details</div>
+          <div style="color:var(--text-dim);font-size:12px;">Select an agent card to view details.</div>
+        </div>
+        <div class="governance-panel">
+          <div class="panel-title">🔒 Permission Queue</div>
+          <div id="perm-queue"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab 3: Operations ─────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-ops">
+      <div class="ops-left">
+        <div class="section-header-bar">
+          <span style="font-weight:700;font-size:13px;">📡 Live Stream</span>
+          <button class="go-live-btn" id="go-live-btn" onclick="toggleLive()">▶ Go Live</button>
+        </div>
+        <div class="stream-panel" id="stream-panel">
+          <div class="stream-overlay"></div>
+          <div class="live-badge" id="live-badge">● LIVE</div>
+          <div class="stream-idle-text" id="stream-idle-text">[ Stream Offline — Click "Go Live" to begin ]</div>
+        </div>
+        <div class="console-panel">
+          <div class="console-header">
+            <div class="console-dot" style="background:#f87171;"></div>
+            <div class="console-dot" style="background:#f59e0b;"></div>
+            <div class="console-dot" style="background:#34d399;"></div>
+            <span style="margin-left:8px;font-size:11px;color:var(--text-dim);">build-console — ferros/main</span>
+            <button style="margin-left:auto;color:var(--text-dim);font-size:11px;" onclick="clearConsole()">Clear</button>
+          </div>
+          <div class="console-scroll" id="build-console"></div>
+        </div>
+      </div>
+      <div class="ops-right">
+        <div class="panel-title">🚀 Recent Deployments</div>
+        <div id="deployment-list"></div>
+      </div>
+    </div>
+
+    <!-- ── Tab 4: Projects / Kanban ──────────────────────────────────── -->
+    <div class="tab-panel" id="tab-projects">
+      <div class="kanban-toolbar">
+        <span style="font-weight:700;">📋 FERROS Project Board</span>
+        <button class="icon-btn" style="margin-left:auto;" title="Filter">🔽</button>
+        <button class="deploy-agent-btn" style="background:var(--accent-blue);" onclick="showToast('New card creation coming soon','info')">+ Add Card</button>
+      </div>
+      <div class="kanban-board" id="kanban-board"></div>
+    </div>
+
+    <!-- ── Tab 5: Home Integration ───────────────────────────────────── -->
+    <div class="tab-panel" id="tab-home">
+      <div class="home-header">
+        🏠 Home Integration
+        <span style="color:var(--text-dim);font-size:11px;font-weight:400;">All systems nominal</span>
+        <button class="deploy-agent-btn" style="margin-left:auto;background:var(--accent-green);font-size:11px;padding:5px 12px;" onclick="showToast('Refreshing device states…','info')">⟳ Refresh All</button>
+      </div>
+      <div class="home-scroll">
+        <div class="device-grid" id="device-grid"></div>
+        <div class="panel-title" style="margin-bottom:10px;">📊 Device Health Overview</div>
+        <div id="health-chart" style="display:flex;flex-direction:column;gap:8px;max-width:600px;"></div>
+      </div>
+    </div>
+
+  </div><!-- /#main-content -->
+
+  <!-- Right Sidebar: Agent Roster -->
+  <div id="right-sidebar">
+    <div class="right-sidebar-header">Online Now</div>
+    <div id="agent-roster" style="overflow-y:auto;flex:1;"></div>
+  </div>
+
+</div><!-- /#workspace -->
+
+<!-- ── Deploy Agent Modal ──────────────────────────────────────────────── -->
+<div class="modal-overlay" id="deploy-modal">
+  <div class="modal">
+    <div class="modal-title">
+      🚀 Deploy New Agent
+      <button class="modal-close" onclick="closeModal('deploy-modal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Agent Type</label>
+      <select id="deploy-type">
+        <option>BuildAgent</option>
+        <option>HomeAgent</option>
+        <option>MonitorAgent</option>
+        <option>DeployAgent</option>
+        <option>ReviewAgent</option>
+        <option>TestAgent</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Target Environment</label>
+      <select id="deploy-env">
+        <option>Production</option>
+        <option>Staging</option>
+        <option>Development</option>
+        <option>Edge (Jetson)</option>
+        <option>Edge (Raspberry Pi)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Capabilities</label>
+      <div class="checkbox-group">
+        <label class="checkbox-item"><input type="checkbox" checked> Read repository</label>
+        <label class="checkbox-item"><input type="checkbox" checked> Post messages</label>
+        <label class="checkbox-item"><input type="checkbox"> Execute builds</label>
+        <label class="checkbox-item"><input type="checkbox"> Deploy to environment</label>
+        <label class="checkbox-item"><input type="checkbox"> Access home devices</label>
+        <label class="checkbox-item"><input type="checkbox"> Blockchain write access</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Agent Label (optional)</label>
+      <input type="text" placeholder="e.g. BuildAgent-staging-01">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('deploy-modal')">Cancel</button>
+      <button class="btn-primary" id="deploy-submit-btn" onclick="submitDeploy()">Deploy Agent</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Command Palette Modal ───────────────────────────────────────────── -->
+<div class="modal-overlay" id="cmd-modal">
+  <div class="modal" id="cmd-palette">
+    <div class="modal-title">
+      ⌨️ Command Palette
+      <button class="modal-close" onclick="closeModal('cmd-modal')">✕</button>
+    </div>
+    <div class="cmd-input-wrap">
+      <input type="text" id="cmd-search" placeholder="Type a command or search…" oninput="filterCommands(this.value)" />
+    </div>
+    <div class="cmd-list" id="cmd-list"></div>
+  </div>
+</div>
+
+<!-- ── Script ──────────────────────────────────────────────────────────── -->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA STORE — swap these arrays/objects with real API calls
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CHANNELS = [
+  { id: 'general',      icon: '#', desc: 'Team-wide coordination',         unread: 0 },
+  { id: 'ferros-dev',   icon: '#', desc: 'FERROS OS development',           unread: 3 },
+  { id: 'botgen-rust',  icon: '#', desc: 'Rust bot generation pipeline',    unread: 1 },
+  { id: 'agent-logs',   icon: '📋',desc: 'Automated agent output',          unread: 7 },
+  { id: 'builds',       icon: '🔨',desc: 'CI/CD build notifications',       unread: 0 },
+  { id: 'deployments',  icon: '🚀',desc: 'Deployment events & rollbacks',   unread: 2 },
+  { id: 'home-systems', icon: '🏠',desc: 'HomeAgent device events',         unread: 0 },
+];
+
+const MESSAGES = {
+  general: [
+    { id:1, author:'Alex',        type:'human',   time:'09:12',  text:'Morning everyone. Starting the ferros kernel module refactor today. Anyone have eyes on the memory allocator PR?' },
+    { id:2, author:'FERROS-Bot',  type:'agent',   time:'09:12',  text:'Good morning, Alex. PR #214 has been open for 18 hours. Last CI run: ✅ 312/312 tests passing. Two reviewers assigned.', thread:'2 replies' },
+    { id:3, author:'Alex',        type:'human',   time:'09:14',  text:'Perfect. Let\'s also queue a nightly build for the RISC-V target tonight.' },
+    { id:4, author:'BuildAgent',  type:'build',   time:'09:15',  text:'Nightly build for `ferros/riscv64` scheduled at 02:00 UTC.\n<pre>target: riscv64-unknown-none-elf\nprofile: release\nfeatures: [smp, virtio-net]</pre>', thread:'View build plan' },
+    { id:5, author:'Alex',        type:'human',   time:'10:02',  text:'HomeAgent — what\'s the temp in the server room right now?' },
+    { id:6, author:'HomeAgent',   type:'home',    time:'10:02',  text:'Server room: 21.4°C / 70.5°F. Humidity: 42%. Rack UPS battery: 97%. All thresholds nominal.' },
+    { id:7, author:'FERROS-Bot',  type:'agent',   time:'10:45',  text:'⚠️ Dependency audit complete on `botgen-rust`. Found 1 advisory: `serde_json` < 1.0.96 has a potential DoS vector. Recommend upgrading to 1.0.115.' },
+    { id:8, author:'Alex',        type:'human',   time:'10:47',  text:'Thanks — open a PR for that upgrade and tag it as security.' },
+    { id:9, author:'BuildAgent',  type:'build',   time:'10:48',  text:'PR #217 opened: "chore(deps): upgrade serde_json to 1.0.115". Labeled: `security`, `dependencies`. CI triggered.', thread:'Open PR' },
+    { id:10,author:'FERROS-Bot',  type:'agent',   time:'11:30',  text:'📦 New botgen-rust release candidate `v0.4.0-rc.2` is ready for sign-off. Changelog highlights:\n<pre>- Discord integration removed (replaced by ACC)\n- Async runtime upgraded to Tokio 1.38\n- WebSocket reconnect logic hardened\n- 14 new agent primitives added</pre>', thread:'4 replies' },
+  ],
+  'ferros-dev': [
+    { id:1, author:'Alex',       type:'human', time:'08:30', text:'Pushing the new IPC ring-buffer implementation. Benchmarks show 2.3× throughput vs the old approach.' },
+    { id:2, author:'FERROS-Bot', type:'agent', time:'08:30', text:'Benchmark delta recorded. Storing result in perf-db under `ipc/ring-buffer/v2`. Alert set if regression >5% on next run.' },
+  ],
+  'botgen-rust': [
+    { id:1, author:'BuildAgent', type:'build', time:'07:55', text:'`cargo clippy` run on botgen-rust/main: 0 errors, 3 warnings (non-blocking).\n<pre>warning: unused import: `std::sync::Arc`\nwarning: redundant clone in handlers/dispatch.rs:88\nwarning: consider using `&str` instead of `String` in fn signature</pre>' },
+  ],
+  'agent-logs': [],
+  'builds': [],
+  'deployments': [
+    { id:1, author:'BuildAgent', type:'build', time:'06:00', text:'✅ Deployment `ferros-staging-v0.3.9` succeeded. 0 errors. TX: 0x4f9c…a1b2', thread:'View deployment' },
+  ],
+  'home-systems': [
+    { id:1, author:'HomeAgent', type:'home', time:'05:00', text:'🌙 Nightly home health check: All 7 devices responding. Front-door lock: secured. Thermostat: 68°F (night mode). Jetson: idle (0.3 W).' },
+  ],
+};
+
+const AGENTS = [
+  {
+    id: 'ferros-bot',
+    name: 'FERROS-Bot',
+    emoji: '🤖',
+    status: 'online',
+    task: 'Monitoring PRs & CI pipelines',
+    uptime: '14d 6h 22m',
+    caps: [
+      { label:'GitHub', cls:'cap-blue' }, { label:'CI/CD', cls:'cap-cyan' },
+      { label:'Alerts', cls:'cap-amber' }, { label:'Search', cls:'cap-purple' }
+    ],
+    taskHistory: [
+      { icon:'✅', text:'Dependency audit — serde_json', time:'10:47' },
+      { icon:'✅', text:'PR #214 review summary', time:'09:12' },
+      { icon:'✅', text:'Weekly digest posted', time:'Sun 08:00' },
+      { icon:'⚠️', text:'Rate-limit hit (GitHub API)', time:'Sat 22:11' },
+    ],
+    resources: { cpu: 4, mem: 18, net: 11 },
+  },
+  {
+    id: 'build-agent',
+    name: 'BuildAgent',
+    emoji: '🔨',
+    status: 'working',
+    task: 'cargo build --release (riscv64)',
+    uptime: '3d 11h 05m',
+    caps: [
+      { label:'Rust', cls:'cap-amber' }, { label:'Docker', cls:'cap-blue' },
+      { label:'Artifacts', cls:'cap-green' }, { label:'Notifications', cls:'cap-purple' }
+    ],
+    taskHistory: [
+      { icon:'⏳', text:'cargo build riscv64 release', time:'10:48' },
+      { icon:'✅', text:'PR #217 CI — serde_json bump', time:'10:48' },
+      { icon:'✅', text:'Nightly build ferros/x86_64', time:'02:00' },
+      { icon:'❌', text:'ARM cross-compile OOM (fixed)', time:'Yesterday' },
+    ],
+    resources: { cpu: 78, mem: 62, net: 34 },
+  },
+  {
+    id: 'home-agent',
+    name: 'HomeAgent',
+    emoji: '🏠',
+    status: 'online',
+    task: 'Polling 7 IoT devices',
+    uptime: '30d 0h 00m',
+    caps: [
+      { label:'MQTT', cls:'cap-green' }, { label:'Jetson', cls:'cap-cyan' },
+      { label:'RPi', cls:'cap-blue' }, { label:'Locks', cls:'cap-red' }
+    ],
+    taskHistory: [
+      { icon:'✅', text:'Thermostat set to night mode', time:'22:00' },
+      { icon:'✅', text:'Front door locked (auto)', time:'21:58' },
+      { icon:'ℹ️', text:'Motion: backyard camera', time:'21:30' },
+      { icon:'✅', text:'Nightly health check', time:'05:00' },
+    ],
+    resources: { cpu: 9, mem: 22, net: 5 },
+  },
+  {
+    id: 'monitor-agent',
+    name: 'MonitorAgent',
+    emoji: '📊',
+    status: 'idle',
+    task: 'Awaiting threshold breach',
+    uptime: '7d 2h 14m',
+    caps: [
+      { label:'Metrics', cls:'cap-purple' }, { label:'Alerts', cls:'cap-amber' },
+      { label:'Logs', cls:'cap-blue' }
+    ],
+    taskHistory: [
+      { icon:'✅', text:'CPU alert cleared', time:'Yesterday' },
+      { icon:'✅', text:'Disk usage report', time:'Yesterday' },
+    ],
+    resources: { cpu: 2, mem: 8, net: 2 },
+  },
+  {
+    id: 'deploy-agent',
+    name: 'DeployAgent',
+    emoji: '🚀',
+    status: 'online',
+    task: 'Watching release queue',
+    uptime: '5d 18h 49m',
+    caps: [
+      { label:'K8s', cls:'cap-blue' }, { label:'Helm', cls:'cap-cyan' },
+      { label:'Rollback', cls:'cap-red' }, { label:'Blockchain', cls:'cap-purple' }
+    ],
+    taskHistory: [
+      { icon:'✅', text:'ferros-staging v0.3.9 deployed', time:'06:00' },
+      { icon:'✅', text:'DB migration applied', time:'05:55' },
+      { icon:'✅', text:'TX 0x4f9c…a1b2 confirmed', time:'06:02' },
+    ],
+    resources: { cpu: 6, mem: 30, net: 15 },
+  },
+  {
+    id: 'review-agent',
+    name: 'ReviewAgent',
+    emoji: '🔍',
+    status: 'error',
+    task: 'Auth token expired — needs renewal',
+    uptime: '0d 0h 14m',
+    caps: [
+      { label:'Code Review', cls:'cap-purple' }, { label:'GitHub', cls:'cap-blue' }
+    ],
+    taskHistory: [
+      { icon:'❌', text:'Token expired during PR scan', time:'11:02' },
+      { icon:'✅', text:'PR #213 review posted', time:'10:55' },
+    ],
+    resources: { cpu: 0, mem: 5, net: 0 },
+  },
+];
+
+const PERM_REQUESTS = [
+  { agent:'BuildAgent',  scope:'Execute shell commands in /build/artifacts/', risk:'medium', id:'pr1' },
+  { agent:'DeployAgent', scope:'Write blockchain tx (gas limit: 0.002 ETH)',  risk:'high',   id:'pr2' },
+  { agent:'HomeAgent',   scope:'Unlock front door for 60 seconds',           risk:'high',   id:'pr3' },
+];
+
+const DEPLOYMENTS = [
+  {
+    env:'ferros-staging',  ver:'v0.3.9',   status:'success', time:'Today 06:02',
+    commit:'a4f91bc', branch:'main',
+    tx:'0x4f9ca1b2e88f231d…7a3c',
+  },
+  {
+    env:'ferros-prod',     ver:'v0.3.8',   status:'success', time:'Yesterday 03:10',
+    commit:'d81c4ee', branch:'release/0.3',
+    tx:'0x91bd23ff44c1…8e7d',
+  },
+  {
+    env:'botgen-staging',  ver:'v0.4.0-rc.2', status:'pending', time:'Today 10:50',
+    commit:'f7a02cd', branch:'feat/acc-integration',
+    tx:'pending…',
+  },
+];
+
+const KANBAN_TASKS = [
+  { id:'t1',  col:'backlog',     title:'Port Discord gateway to native WebSocket server',       assignee:'FERROS-Bot',  prio:'high',   bounty:'0.05 ETH' },
+  { id:'t2',  col:'backlog',     title:'Write ADR for blockchain tx signing flow',              assignee:'Alex',        prio:'medium', bounty:null },
+  { id:'t3',  col:'backlog',     title:'Jetson CUDA kernel for model inference',                assignee:'BuildAgent',  prio:'low',    bounty:'0.02 ETH' },
+  { id:'t4',  col:'in-progress', title:'Integrate ACC WebSocket into botgen-rust',             assignee:'Alex',        prio:'high',   bounty:'0.08 ETH' },
+  { id:'t5',  col:'in-progress', title:'FERROS IPC ring-buffer v2 — benchmarking',             assignee:'Alex',        prio:'high',   bounty:null },
+  { id:'t6',  col:'in-progress', title:'serde_json security bump PR #217',                     assignee:'BuildAgent',  prio:'high',   bounty:null },
+  { id:'t7',  col:'in-progress', title:'HomeAgent MQTT reconnect hardening',                   assignee:'HomeAgent',   prio:'medium', bounty:null },
+  { id:'t8',  col:'testing',     title:'Nightly RISC-V cross-compile pipeline',                assignee:'BuildAgent',  prio:'medium', bounty:null },
+  { id:'t9',  col:'testing',     title:'ReviewAgent token rotation automation',                assignee:'ReviewAgent', prio:'high',   bounty:null },
+  { id:'t10', col:'testing',     title:'Command palette keyboard navigation',                  assignee:'Alex',        prio:'low',    bounty:null },
+  { id:'t11', col:'deployed',    title:'ferros-staging v0.3.9 rollout',                        assignee:'DeployAgent', prio:'medium', bounty:null },
+  { id:'t12', col:'deployed',    title:'botgen-rust v0.3.8 — production release',              assignee:'DeployAgent', prio:'high',   bounty:'0.03 ETH' },
+];
+
+const DEVICES = [
+  { id:'front-door-cam', name:'Front Door Cam',  icon:'📷', type:'Camera',      status:'online', lastSeen:'Just now',  action:'View Feed' },
+  { id:'backyard-cam',   name:'Backyard Cam',    icon:'📷', type:'Camera',      status:'online', lastSeen:'2 min ago', action:'View Feed' },
+  { id:'thermostat',     name:'Thermostat',      icon:'🌡️', type:'Climate',     status:'online', lastSeen:'Just now',  action:'Adjust' },
+  { id:'lights-main',   name:'Main Lights',     icon:'💡', type:'Smart Light', status:'online', lastSeen:'Just now',  action:'Toggle' },
+  { id:'front-lock',    name:'Front Door Lock', icon:'🔒', type:'Lock',        status:'online', lastSeen:'Just now',  action:'Lock/Unlock' },
+  { id:'jetson',        name:'Jetson AGX Orin', icon:'🖥️', type:'Edge Compute',status:'idle',   lastSeen:'5 min ago', action:'Wake' },
+  { id:'rpi4',          name:'Raspberry Pi 4',  icon:'🍓', type:'Edge Compute',status:'working',lastSeen:'Just now',  action:'SSH' },
+];
+
+const COMMANDS = [
+  { icon:'💬', label:'Switch to Communications',   key:'Alt+1', action: () => switchTab('comms') },
+  { icon:'🤖', label:'Switch to Agents',           key:'Alt+2', action: () => switchTab('agents') },
+  { icon:'📡', label:'Switch to Operations',       key:'Alt+3', action: () => switchTab('ops') },
+  { icon:'📋', label:'Switch to Projects',         key:'Alt+4', action: () => switchTab('projects') },
+  { icon:'🏠', label:'Switch to Home Integration', key:'Alt+5', action: () => switchTab('home') },
+  { icon:'🚀', label:'Deploy New Agent',           key:'Ctrl+D', action: openDeployModal },
+  { icon:'🔄', label:'Refresh device states',     key:'—',      action: () => showToast('Devices refreshed','info') },
+  { icon:'🌙', label:'Toggle sidebar',             key:'Ctrl+\\', action: toggleSidebar },
+  { icon:'🔍', label:'Focus message search',       key:'Ctrl+F', action: () => { closeModal('cmd-modal'); document.getElementById('chat-input').focus(); } },
+  { icon:'❓', label:'Open documentation',         key:'F1',     action: () => showToast('Docs: /docs/architecture-overview.md','info') },
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════════════════════ */
+// ─── Tuneable constants ────────────────────────────────────────────────────
+const BOT_REPLY_PROBABILITY  = 0.6;   // chance a sent message gets a bot reply
+const MIN_BOT_REPLY_DELAY_MS = 900;   // minimum simulated typing delay (ms)
+const MAX_BOT_REPLY_DELAY_MS = 800;   // jitter added on top of the minimum (ms)
+const MAX_CONSOLE_LINES      = 80;    // lines kept in the build console before culling
+const TOAST_TITLE_MAX_LEN    = 30;    // chars of a task title shown in drag-drop toast
+const MAX_AGENT_NUMBER       = 99;    // upper bound for auto-generated agent ID suffix
+
+let activeTab     = localStorage.getItem('acc-tab') || 'comms';
+let activeChannel = 'general';
+let selectedAgent = null;
+let isLive        = false;
+let dragSource    = null;
+let buildInterval = null;
+let buildLines    = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderChannels();
+  renderSidebarAgents();
+  renderAgentRoster();
+  renderMessages();
+  renderAgentCards();
+  renderPermQueue();
+  renderDeployments();
+  renderKanban();
+  renderDevices();
+  renderBuildConsole();
+  switchTab(activeTab, true);
+
+  // Chat shortcuts
+  document.getElementById('chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMessage();
+  });
+  document.getElementById('send-btn').addEventListener('click', sendMessage);
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openCmdPalette(); }
+    if (e.key === 'Escape') { document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open')); }
+  });
+
+  // Start live build console scroll
+  startBuildConsole();
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB NAVIGATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+function switchTab(id, silent) {
+  activeTab = id;
+  if (!silent) localStorage.setItem('acc-tab', id);
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + id));
+}
+
+document.getElementById('nav-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.nav-tab');
+  if (btn) switchTab(btn.dataset.tab);
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderChannels() {
+  const el = document.getElementById('channel-list');
+  el.innerHTML = CHANNELS.map(ch => `
+    <div class="channel-item ${ch.id === activeChannel ? 'active' : ''}" onclick="selectChannel('${ch.id}')">
+      <span class="ch-icon">${ch.icon}</span>
+      <span>${ch.id}</span>
+      ${ch.unread ? `<span class="ch-badge">${ch.unread}</span>` : ''}
+    </div>
+  `).join('');
+}
+
+function selectChannel(id) {
+  activeChannel = id;
+  const ch = CHANNELS.find(c => c.id === id);
+  document.getElementById('active-channel-name').textContent = id;
+  document.getElementById('active-channel-desc').textContent = ch ? ch.desc : '';
+  document.getElementById('chat-input').placeholder = `Message #${id}…`;
+  renderChannels();
+  renderMessages();
+  // Clear unread
+  if (ch) ch.unread = 0;
+}
+
+function renderSidebarAgents() {
+  const el = document.getElementById('sidebar-agent-list');
+  el.innerHTML = AGENTS.map(a => `
+    <div class="channel-item" onclick="switchTab('agents')">
+      <span class="pulse-dot dot-${a.status}"></span>
+      <span>${a.name}</span>
+    </div>
+  `).join('');
+}
+
+function toggleSidebar() {
+  document.getElementById('left-sidebar').classList.toggle('collapsed');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RIGHT SIDEBAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderAgentRoster() {
+  const el = document.getElementById('agent-roster');
+  el.innerHTML = AGENTS.map(a => `
+    <div class="agent-roster-item" onclick="switchTab('agents')">
+      <div class="agent-avatar">${a.emoji}</div>
+      <div class="agent-info">
+        <div class="agent-name">${a.name}</div>
+        <div class="agent-task">${a.task}</div>
+      </div>
+      <div class="status-dot-wrap">
+        <span class="pulse-dot dot-${a.status}" title="${a.status}"></span>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMMUNICATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderMessages() {
+  const el = document.getElementById('messages-scroll');
+  const msgs = MESSAGES[activeChannel] || [];
+  if (!msgs.length) { el.innerHTML = `<div style="color:var(--text-dim);font-size:12px;padding:20px;">No messages in #${activeChannel} yet.</div>`; return; }
+  el.innerHTML = msgs.map(m => {
+    const bubbleCls = m.type === 'human' ? '' : m.type === 'build' ? 'build-msg' : m.type === 'home' ? 'home-msg' : 'agent-msg';
+    const authorCls = m.type === 'human' ? 'human' : m.type === 'build' ? 'build' : m.type === 'home' ? 'home' : 'agent';
+    const badge     = m.type !== 'human' ? `<span class="bot-badge">BOT</span>` : '';
+    const thread    = m.thread ? `<div class="msg-thread">↩ ${m.thread}</div>` : '';
+    return `
+      <div class="msg-group">
+        <div class="msg-header">
+          <span class="msg-author ${authorCls}">${m.author}</span>
+          ${badge}
+          <span class="msg-timestamp">${m.time}</span>
+        </div>
+        <div class="msg-bubble ${bubbleCls}">${m.text.replace(/\n/g,'<br>')}${thread}</div>
+      </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const txt   = input.value.trim();
+  if (!txt) return;
+  const msgs = MESSAGES[activeChannel];
+  const now  = new Date();
+  const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  msgs.push({ id: Date.now(), author:'Alex', type:'human', time, text: txt });
+  input.value = '';
+  renderMessages();
+
+  // Simulate bot reply after short delay
+  if (Math.random() > (1 - BOT_REPLY_PROBABILITY)) {
+    setTimeout(() => {
+      const replies = [
+        'Acknowledged. Processing request.',
+        'Logged. I\'ll monitor that and alert you if anything changes.',
+        'On it. Estimated completion: 2 min.',
+        'Confirmed. TX hash will be posted when the operation finalises.',
+        'Task queued. Priority: medium.',
+      ];
+      msgs.push({ id: Date.now()+1, author:'FERROS-Bot', type:'agent', time, text: replies[Math.floor(Math.random()*replies.length)] });
+      renderMessages();
+    }, MIN_BOT_REPLY_DELAY_MS + Math.random() * MAX_BOT_REPLY_DELAY_MS);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AGENT DASHBOARD
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderAgentCards() {
+  const el = document.getElementById('agents-grid');
+  el.innerHTML = AGENTS.map(a => `
+    <div class="agent-card ${selectedAgent === a.id ? 'selected' : ''}" onclick="selectAgent('${a.id}')">
+      <div class="agent-card-header">
+        <div class="agent-card-avatar">${a.emoji}</div>
+        <div>
+          <div class="agent-card-name">${a.name}</div>
+          <div class="agent-card-status" style="display:flex;align-items:center;gap:5px;">
+            <span class="pulse-dot dot-${a.status}"></span> ${a.status}
+          </div>
+        </div>
+      </div>
+      <div class="agent-card-task">${a.task}</div>
+      <div class="agent-uptime">⏱ Uptime: ${a.uptime}</div>
+      <div class="capability-badges">
+        ${a.caps.map(c => `<span class="cap-badge ${c.cls}">${c.label}</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectAgent(id) {
+  selectedAgent = id;
+  const a = AGENTS.find(x => x.id === id);
+  renderAgentCards();
+  if (!a) return;
+  const panel = document.getElementById('agent-detail-panel');
+  const barColor = (v) => v > 70 ? 'var(--accent-red)' : v > 40 ? 'var(--accent-amber)' : 'var(--accent-green)';
+  panel.innerHTML = `
+    <div class="panel-title">${a.emoji} ${a.name} — Details</div>
+    <div style="display:flex;gap:20px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:2px;">STATUS</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;">
+          <span class="pulse-dot dot-${a.status}"></span>${a.status.toUpperCase()}
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:2px;">UPTIME</div>
+        <div style="font-size:12px;font-family:var(--font-mono);">${a.uptime}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div class="panel-title" style="margin-bottom:8px;">📈 Resource Usage</div>
+      ${['cpu','mem','net'].map(k => `
+        <div class="resource-bar-wrap">
+          <div class="resource-bar-label"><span>${k.toUpperCase()}</span><span>${a.resources[k]}%</span></div>
+          <div class="resource-bar-bg"><div class="resource-bar-fill" style="width:${a.resources[k]}%;background:${barColor(a.resources[k])};"></div></div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="panel-title" style="margin-bottom:6px;">📜 Task History</div>
+    ${a.taskHistory.map(h => `
+      <div class="task-history-item">
+        <span class="th-icon">${h.icon}</span>
+        <span style="flex:1;">${h.text}</span>
+        <span style="color:var(--text-dim);font-size:10px;">${h.time}</span>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderPermQueue() {
+  const el = document.getElementById('perm-queue');
+  el.innerHTML = PERM_REQUESTS.map(r => `
+    <div class="perm-request" id="perm-${r.id}">
+      <div class="perm-request-header">
+        <span class="perm-agent">${r.agent}</span>
+        <span class="cap-badge ${r.risk==='high'?'cap-red':'cap-amber'}">${r.risk}</span>
+      </div>
+      <div class="perm-scope" style="font-size:11px;">${r.scope}</div>
+      <div class="perm-actions">
+        <button class="btn-approve" onclick="handlePerm('${r.id}','approve')">✓ Approve</button>
+        <button class="btn-deny"    onclick="handlePerm('${r.id}','deny')">✕ Deny</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function handlePerm(id, action) {
+  const el = document.getElementById('perm-' + id);
+  if (el) {
+    el.style.opacity = '0.4';
+    el.style.pointerEvents = 'none';
+    const label = el.querySelector('.perm-agent').textContent;
+    showToast(`${action === 'approve' ? '✅' : '❌'} ${label}: permission ${action}d`, action === 'approve' ? 'success' : 'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OPERATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+const BUILD_OUTPUT = [
+  { cls:'cl-info',    text:'$ cargo build --release --target riscv64-unknown-none-elf' },
+  { cls:'cl-dim',     text:'   Compiling ferros-hal v0.3.9' },
+  { cls:'cl-dim',     text:'   Compiling ferros-ipc v0.3.9' },
+  { cls:'cl-dim',     text:'   Compiling ferros-sched v0.3.9' },
+  { cls:'cl-dim',     text:'   Compiling ferros-net v0.3.9' },
+  { cls:'cl-warn',    text:'warning: ferros_net::dhcp — DHCPv6 not yet implemented' },
+  { cls:'cl-dim',     text:'   Compiling ferros-fs v0.3.9' },
+  { cls:'cl-dim',     text:'   Compiling ferros-virtio v0.3.9' },
+  { cls:'cl-dim',     text:'   Compiling ferros-userland v0.3.9' },
+  { cls:'cl-success', text:'    Finished release [optimized] target(s) in 43.21s' },
+  { cls:'cl-info',    text:'$ cargo test --release' },
+  { cls:'cl-dim',     text:'   running 312 tests' },
+  { cls:'cl-success', text:'test result: ok. 312 passed; 0 failed; 0 ignored; 0 measured' },
+  { cls:'cl-info',    text:'$ size target/riscv64-unknown-none-elf/release/ferros' },
+  { cls:'cl-dim',     text:'   text: 482,116 B   data: 4,096 B   bss: 131,072 B' },
+  { cls:'cl-success', text:'✓ Build artefacts uploaded to s3://ferros-artefacts/riscv64/v0.3.9/' },
+  { cls:'cl-success', text:'✓ TX broadcasted: 0x9a3f…b12e (artefact hash on-chain)' },
+];
+
+let consoleLine = 0;
+function startBuildConsole() {
+  const el = document.getElementById('build-console');
+  buildInterval = setInterval(() => {
+    if (consoleLine >= BUILD_OUTPUT.length) { consoleLine = 0; }
+    const ln = BUILD_OUTPUT[consoleLine++];
+    const div = document.createElement('div');
+    div.className = 'console-line ' + ln.cls;
+    div.textContent = ln.text;
+    el.appendChild(div);
+    if (el.children.length > MAX_CONSOLE_LINES) el.removeChild(el.firstChild);
+    el.scrollTop = el.scrollHeight;
+  }, 700);
+}
+
+function renderBuildConsole() {
+  const el = document.getElementById('build-console');
+  el.innerHTML = BUILD_OUTPUT.slice(0, 6).map(ln =>
+    `<div class="console-line ${ln.cls}">${ln.text}</div>`
+  ).join('');
+}
+
+function clearConsole() {
+  document.getElementById('build-console').innerHTML = '';
+  showToast('Console cleared','info');
+}
+
+function toggleLive() {
+  isLive = !isLive;
+  const btn   = document.getElementById('go-live-btn');
+  const badge = document.getElementById('live-badge');
+  const idle  = document.getElementById('stream-idle-text');
+  const panel = document.getElementById('stream-panel');
+  if (isLive) {
+    btn.textContent = '⏹ Stop';
+    btn.classList.add('live');
+    badge.classList.add('active');
+    idle.style.display = 'none';
+    panel.style.background = '#0a1a0a';
+    showToast('🔴 Stream is now LIVE','info');
+  } else {
+    btn.textContent = '▶ Go Live';
+    btn.classList.remove('live');
+    badge.classList.remove('active');
+    idle.style.display = 'block';
+    panel.style.background = '#000';
+    showToast('Stream ended','info');
+  }
+}
+
+function renderDeployments() {
+  const el = document.getElementById('deployment-list');
+  el.innerHTML = DEPLOYMENTS.map(d => `
+    <div class="deployment-item" style="margin-bottom:10px;">
+      <div class="deploy-header">
+        <span class="deploy-env">${d.env}</span>
+        <span class="deploy-status ds-${d.status}">${d.status.toUpperCase()}</span>
+      </div>
+      <div class="deploy-meta">
+        <div>📦 ${d.ver} — <span style="font-family:var(--font-mono);">${d.branch}</span></div>
+        <div>🔖 ${d.commit} · ${d.time}</div>
+        <div class="tx">⛓ TX: ${d.tx}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KANBAN
+   ═══════════════════════════════════════════════════════════════════════════ */
+const COLS = [
+  { id:'backlog',     label:'Backlog',     color:'var(--text-dim)' },
+  { id:'in-progress', label:'In Progress', color:'var(--accent-amber)' },
+  { id:'testing',     label:'Testing',     color:'var(--accent-blue)' },
+  { id:'deployed',    label:'Deployed',    color:'var(--accent-green)' },
+];
+
+function renderKanban() {
+  const board = document.getElementById('kanban-board');
+  board.innerHTML = COLS.map(col => {
+    const tasks = KANBAN_TASKS.filter(t => t.col === col.id);
+    return `
+      <div class="kanban-col" id="col-${col.id}"
+           ondragover="onDragOver(event,'${col.id}')"
+           ondrop="onDrop(event,'${col.id}')"
+           ondragleave="onDragLeave(event,'${col.id}')">
+        <div class="kanban-col-header">
+          <div class="kanban-col-title">
+            <span style="color:${col.color};">●</span> ${col.label}
+            <span class="col-count">${tasks.length}</span>
+          </div>
+        </div>
+        <div class="kanban-cards" id="cards-${col.id}">
+          ${tasks.map(renderCard).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderCard(t) {
+  const prioCls = { high:'prio-high', medium:'prio-medium', low:'prio-low' }[t.prio];
+  return `
+    <div class="task-card" draggable="true" id="card-${t.id}"
+         ondragstart="onDragStart(event,'${t.id}')">
+      <div class="task-card-title">${t.title}</div>
+      <div class="task-card-meta">
+        <span class="priority-badge ${prioCls}">${t.prio.toUpperCase()}</span>
+        <span class="assignee-chip">@${t.assignee}</span>
+        ${t.bounty ? `<span class="bounty-chip">💰 ${t.bounty}</span>` : ''}
+      </div>
+    </div>`;
+}
+
+function onDragStart(e, id) {
+  dragSource = id;
+  e.dataTransfer.effectAllowed = 'move';
+  // Defer the visual dim by one tick so the browser can capture the undimmed
+  // drag ghost image before we apply the reduced-opacity class.
+  setTimeout(() => { const el = document.getElementById('card-'+id); if(el) el.classList.add('dragging'); }, 0);
+}
+
+function onDragOver(e, colId) {
+  e.preventDefault();
+  document.getElementById('col-'+colId).classList.add('drag-over');
+}
+
+function onDragLeave(e, colId) {
+  document.getElementById('col-'+colId).classList.remove('drag-over');
+}
+
+function onDrop(e, colId) {
+  e.preventDefault();
+  document.getElementById('col-'+colId).classList.remove('drag-over');
+  if (!dragSource) return;
+  const task = KANBAN_TASKS.find(t => t.id === dragSource);
+  if (task && task.col !== colId) {
+    task.col = colId;
+    renderKanban();
+    showToast(`Moved "${task.title.slice(0, TOAST_TITLE_MAX_LEN)}…" to ${COLS.find(c=>c.id===colId).label}`, 'success');
+  }
+  dragSource = null;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOME INTEGRATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderDevices() {
+  const grid = document.getElementById('device-grid');
+  grid.innerHTML = DEVICES.map(d => `
+    <div class="device-card">
+      <div class="device-header">
+        <div class="device-icon">${d.icon}</div>
+        <div>
+          <div class="device-name">${d.name}</div>
+          <div class="device-type">${d.type}</div>
+        </div>
+      </div>
+      <div class="device-status-row">
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;">
+          <span class="pulse-dot dot-${d.status}"></span> ${d.status}
+        </span>
+        <span class="device-last-seen">${d.lastSeen}</span>
+      </div>
+      <button class="device-action-btn" onclick="deviceAction('${d.id}','${d.action}')">${d.action}</button>
+    </div>
+  `).join('');
+
+  // Health chart
+  const chart = document.getElementById('health-chart');
+  chart.innerHTML = DEVICES.map(d => {
+    const pct = d.status === 'online' ? 95 : d.status === 'working' ? 80 : d.status === 'idle' ? 45 : 10;
+    const col = pct > 70 ? 'var(--accent-green)' : pct > 40 ? 'var(--accent-amber)' : 'var(--accent-red)';
+    return `
+      <div>
+        <div class="health-bar-label"><span>${d.name}</span><span>${pct}%</span></div>
+        <div class="health-bar-bg"><div class="health-bar-fill" style="width:${pct}%;background:${col};"></div></div>
+      </div>`;
+  }).join('');
+}
+
+function deviceAction(id, action) {
+  showToast(`${action} → ${id}`, 'info');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DEPLOY MODAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+function openDeployModal() { openModal('deploy-modal'); }
+
+function submitDeploy() {
+  const btn  = document.getElementById('deploy-submit-btn');
+  const type = document.getElementById('deploy-type').value;
+  const env  = document.getElementById('deploy-env').value;
+  btn.innerHTML = '<span class="spinner"></span> Deploying…';
+  btn.disabled  = true;
+  setTimeout(() => {
+    btn.innerHTML = 'Deploy Agent';
+    btn.disabled  = false;
+    closeModal('deploy-modal');
+    const newAgent = {
+      id:    `${type.toLowerCase()}-${Date.now()}`,
+      name:  `${type}-${Math.floor(Math.random() * MAX_AGENT_NUMBER)}`,
+      emoji: '🆕', status: 'online',
+      task:  `Initializing on ${env}`,
+      uptime:'0d 0h 0m',
+      caps:  [{ label: env, cls:'cap-blue' }],
+      taskHistory: [{ icon:'✅', text:`Deployed to ${env}`, time:'Just now' }],
+      resources: { cpu: 1, mem: 5, net: 1 },
+    };
+    AGENTS.push(newAgent);
+    renderAgentCards();
+    renderAgentRoster();
+    renderSidebarAgents();
+    showToast(`✅ ${newAgent.name} deployed to ${env}`, 'success');
+  }, 1800);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMMAND PALETTE
+   ═══════════════════════════════════════════════════════════════════════════ */
+function openCmdPalette() {
+  openModal('cmd-modal');
+  const inp = document.getElementById('cmd-search');
+  inp.value = '';
+  filterCommands('');
+  setTimeout(() => inp.focus(), 50);
+}
+
+function filterCommands(q) {
+  const list = document.getElementById('cmd-list');
+  const filtered = q ? COMMANDS.filter(c => c.label.toLowerCase().includes(q.toLowerCase())) : COMMANDS;
+  list.innerHTML = filtered.map((c,i) => `
+    <div class="cmd-item" onclick="runCmd(${COMMANDS.indexOf(c)})">
+      <span class="cmd-icon">${c.icon}</span>
+      <span>${c.label}</span>
+      <span class="cmd-key">${c.key}</span>
+    </div>
+  `).join('');
+}
+
+function runCmd(idx) {
+  closeModal('cmd-modal');
+  COMMANDS[idx].action();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODALS
+   ═══════════════════════════════════════════════════════════════════════════ */
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOAST NOTIFICATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  toast.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity .4s';
+    setTimeout(() => toast.remove(), 400);
+  }, 3200);
+}
+</script>
+</body>
+</html>

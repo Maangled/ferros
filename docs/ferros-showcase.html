@@ -1,0 +1,2242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FERROS — Foundational Embedded Rust Runtime Operating System</title>
+<style>
+:root {
+  --bg-base:        #0a0c10;
+  --bg-panel:       #111520;
+  --bg-card:        #161b28;
+  --bg-card-alt:    #1a2035;
+  --bg-highlight:   #1e2840;
+  --border-dim:     #1e2a3a;
+  --border-accent:  #2a3f5f;
+  --border-bright:  #3a5a8f;
+  --text-primary:   #e8edf5;
+  --text-secondary: #8fa0b8;
+  --text-dim:       #5a6a80;
+  --text-code:      #7eb8e8;
+  --accent-blue:    #4a90d9;
+  --accent-cyan:    #2dd4bf;
+  --accent-green:   #34d399;
+  --accent-amber:   #f59e0b;
+  --accent-red:     #f87171;
+  --accent-purple:  #a78bfa;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── SCROLLBAR ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 3px; }
+
+/* ── NAV ────────────────────────────────────────────────────────── */
+#nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  background: rgba(10, 12, 16, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-dim);
+  padding: 0 2rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: box-shadow 0.3s;
+}
+
+#nav.scrolled { box-shadow: 0 2px 24px rgba(0,0,0,0.6); }
+
+.nav-brand {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--accent-cyan);
+  letter-spacing: 0.12em;
+  text-decoration: none;
+}
+
+.nav-brand span { color: var(--accent-blue); }
+
+.nav-links {
+  display: flex;
+  gap: 0.1rem;
+  list-style: none;
+  flex-wrap: nowrap;
+}
+
+.nav-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.78rem;
+  padding: 6px 9px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  transition: color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--accent-cyan);
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.nav-hamburger {
+  display: none;
+  background: none;
+  border: 1px solid var(--border-accent);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+/* ── HERO ───────────────────────────────────────────────────────── */
+#hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 2rem 4rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(74,144,217,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74,144,217,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+.hero-bg-glow {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(ellipse, rgba(74,144,217,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-title {
+  font-family: var(--font-mono);
+  font-size: clamp(3.5rem, 12vw, 9rem);
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 50%, var(--accent-purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: titlePulse 4s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes titlePulse {
+  0%, 100% { filter: brightness(1); }
+  50%       { filter: brightness(1.15) drop-shadow(0 0 32px rgba(74,144,217,0.4)); }
+}
+
+.hero-subtitle {
+  font-family: var(--font-mono);
+  font-size: clamp(0.7rem, 1.8vw, 0.9rem);
+  color: var(--text-dim);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  margin-top: 0.4rem;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-tagline {
+  max-width: 680px;
+  font-size: clamp(0.95rem, 2vw, 1.15rem);
+  color: var(--text-secondary);
+  margin: 1.8rem auto 2.4rem;
+  line-height: 1.7;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-tagline strong {
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.hero-cta {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.75rem 1.6rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  border: none;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  letter-spacing: 0.03em;
+}
+
+.btn:hover { transform: translateY(-2px); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+  color: #0a0c10;
+  box-shadow: 0 4px 20px rgba(74,144,217,0.35);
+}
+
+.btn-primary:hover { box-shadow: 0 6px 28px rgba(74,144,217,0.5); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-bright);
+}
+
+.btn-ghost:hover {
+  background: var(--bg-highlight);
+  border-color: var(--accent-blue);
+  color: var(--accent-cyan);
+}
+
+/* ── ARCHITECTURE RINGS ─────────────────────────────────────────── */
+.hero-arch-viz {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  margin: 2.8rem auto 0;
+  z-index: 1;
+}
+
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring-label {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.ring-1 { width: 56px;  height: 56px;  border-color: var(--accent-red);    animation: spin 18s linear infinite reverse; }
+.ring-2 { width: 96px;  height: 96px;  border-color: var(--accent-amber);   animation: spin 26s linear infinite; }
+.ring-3 { width: 136px; height: 136px; border-color: var(--accent-green);   animation: spin 34s linear infinite reverse; }
+.ring-4 { width: 176px; height: 176px; border-color: var(--accent-cyan);    animation: spin 44s linear infinite; }
+.ring-5 { width: 216px; height: 216px; border-color: var(--accent-blue);    animation: spin 54s linear infinite reverse; }
+.ring-6 { width: 256px; height: 256px; border-color: var(--accent-purple);  animation: spin 66s linear infinite; }
+
+.ring::after {
+  content: '';
+  position: absolute;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  top: -3px; left: 50%;
+  transform: translateX(-50%);
+}
+
+.ring-1::after { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+.ring-2::after { background: var(--accent-amber); box-shadow: 0 0 8px var(--accent-amber); }
+.ring-3::after { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+.ring-4::after { background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); }
+.ring-5::after { background: var(--accent-blue); box-shadow: 0 0 8px var(--accent-blue); }
+.ring-6::after { background: var(--accent-purple); box-shadow: 0 0 8px var(--accent-purple); }
+
+.ring-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-cyan), var(--accent-blue));
+  box-shadow: 0 0 24px var(--accent-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  z-index: 2;
+}
+
+@keyframes spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.ring-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 1.2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.ring-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.ring-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── SECTION COMMON ─────────────────────────────────────────────── */
+section {
+  padding: 5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+section.full-width {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin-bottom: 0.6rem;
+}
+
+.section-title {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.8rem;
+}
+
+.section-desc {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  max-width: 600px;
+  margin-bottom: 3rem;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--border-dim);
+  margin: 0;
+}
+
+/* ── FEATURES ───────────────────────────────────────────────────── */
+#features { background: var(--bg-panel); max-width: none; padding: 5rem 2rem; }
+#features > .inner { max-width: 1200px; margin: 0 auto; }
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.4rem;
+}
+
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 1.8rem;
+  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--card-accent, var(--accent-blue)), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.feature-card:hover {
+  border-color: var(--border-bright);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.feature-card:hover::before { opacity: 1; }
+
+.feature-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.feature-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.feature-card p {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.feature-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 3px;
+  margin-top: 0.8rem;
+  background: rgba(74,144,217,0.12);
+  color: var(--accent-blue);
+  border: 1px solid rgba(74,144,217,0.2);
+  letter-spacing: 0.06em;
+}
+
+/* ── ARCHITECTURE DIAGRAM ───────────────────────────────────────── */
+#architecture { }
+
+.arch-container {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 2rem;
+  align-items: start;
+}
+
+.arch-layers { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.arch-layer {
+  border-radius: 8px;
+  border: 1px solid var(--border-dim);
+  padding: 1rem 1.4rem;
+  cursor: pointer;
+  transition: all 0.22s;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.arch-layer::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--layer-color, var(--accent-blue));
+  opacity: 0.4;
+  transition: opacity 0.22s;
+}
+
+.arch-layer:hover { border-color: var(--border-accent); background: var(--bg-card-alt); }
+.arch-layer:hover::before { opacity: 1; }
+
+.arch-layer.active {
+  border-color: var(--layer-color, var(--accent-blue));
+  background: var(--bg-highlight);
+  box-shadow: 0 0 20px rgba(0,0,0,0.3),
+              inset 0 0 40px rgba(74,144,217,0.03);
+}
+
+.arch-layer.active::before { opacity: 1; width: 4px; }
+
+.arch-layer-icon { font-size: 1.4rem; flex-shrink: 0; }
+
+.arch-layer-info { flex: 1; }
+
+.arch-layer-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+
+.arch-layer-sub {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+
+.arch-layer-badge {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.arch-detail-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 1.6rem;
+  position: sticky;
+  top: 72px;
+  min-height: 280px;
+  transition: border-color 0.3s;
+}
+
+.arch-detail-panel.lit { border-color: var(--panel-color, var(--accent-blue)); }
+
+.arch-detail-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.arch-detail-body {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.arch-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.arch-chip {
+  background: var(--bg-highlight);
+  border: 1px solid var(--border-accent);
+  border-radius: 4px;
+  padding: 3px 9px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-code);
+}
+
+/* ── ROADMAP ────────────────────────────────────────────────────── */
+#roadmap { background: var(--bg-panel); max-width: none; padding: 5rem 2rem; }
+#roadmap > .inner { max-width: 1200px; margin: 0 auto; }
+
+.roadmap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.2rem;
+}
+
+.roadmap-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 1.5rem;
+  transition: border-color 0.25s;
+}
+
+.roadmap-card:hover { border-color: var(--border-accent); }
+
+.roadmap-card.active-phase { border-color: var(--accent-green); }
+
+.roadmap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+
+.roadmap-phase {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.roadmap-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.status-dot.active {
+  background: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 4px var(--accent-green); }
+  50%       { box-shadow: 0 0 12px var(--accent-green), 0 0 24px rgba(52,211,153,0.3); }
+}
+
+.roadmap-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.3rem;
+}
+
+.roadmap-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.55;
+}
+
+.progress-bar-wrap {
+  background: var(--bg-highlight);
+  border-radius: 4px;
+  height: 5px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--bar-color, var(--accent-blue));
+  transition: width 1.2s ease;
+  width: 0;
+}
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-top: 0.4rem;
+}
+
+/* ── GET STARTED ────────────────────────────────────────────────── */
+#get-started { }
+
+.get-started-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.4rem;
+}
+
+.gs-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 1.8rem;
+  transition: border-color 0.25s;
+}
+
+.gs-card:hover { border-color: var(--border-accent); }
+
+.gs-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.code-block {
+  background: var(--bg-base);
+  border: 1px solid var(--border-accent);
+  border-radius: 6px;
+  padding: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-code);
+  position: relative;
+  overflow-x: auto;
+  line-height: 1.7;
+}
+
+.code-block .comment { color: var(--text-dim); }
+.code-block .keyword { color: var(--accent-purple); }
+.code-block .string  { color: var(--accent-green); }
+.code-block .cmd     { color: var(--accent-cyan); }
+
+.copy-btn {
+  position: absolute;
+  top: 0.5rem; right: 0.5rem;
+  background: var(--bg-highlight);
+  border: 1px solid var(--border-accent);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.copy-btn:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); }
+.copy-btn.copied { color: var(--accent-green); border-color: var(--accent-green); }
+
+.compat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.compat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.8rem;
+  background: var(--bg-base);
+  border-radius: 5px;
+  border: 1px solid var(--border-dim);
+  font-size: 0.83rem;
+}
+
+.compat-badge {
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.badge-green  { background: rgba(52,211,153,0.12); color: var(--accent-green);  border: 1px solid rgba(52,211,153,0.25); }
+.badge-amber  { background: rgba(245,158,11,0.12);  color: var(--accent-amber);  border: 1px solid rgba(245,158,11,0.25); }
+.badge-blue   { background: rgba(74,144,217,0.12);  color: var(--accent-blue);   border: 1px solid rgba(74,144,217,0.25); }
+
+/* ── CONTRIBUTORS ───────────────────────────────────────────────── */
+#contributors { background: var(--bg-panel); max-width: none; padding: 5rem 2rem; }
+#contributors > .inner { max-width: 1200px; margin: 0 auto; }
+
+.contrib-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+}
+
+.contrib-steps { display: flex; flex-direction: column; gap: 1.2rem; }
+
+.contrib-step {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.step-num {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  color: #0a0c10;
+}
+
+.step-content h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+}
+
+.step-content p {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.step-content code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-code);
+  background: var(--bg-base);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-dim);
+}
+
+.module-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.module-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-left: 3px solid var(--module-color, var(--accent-blue));
+  border-radius: 6px;
+  padding: 0.8rem 1rem;
+  transition: border-color 0.2s;
+}
+
+.module-item:hover { border-color: var(--border-bright); }
+
+.module-name {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text-code);
+  margin-bottom: 0.2rem;
+}
+
+.module-desc {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.needed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.needed-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 1.2rem;
+}
+
+.needed-card .icon { font-size: 1.4rem; margin-bottom: 0.5rem; display: block; }
+.needed-card h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.3rem; }
+.needed-card p { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.55; }
+
+/* ── DEPLOY ─────────────────────────────────────────────────────── */
+#deploy { }
+
+.deploy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.4rem;
+}
+
+.deploy-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 1.8rem;
+  transition: border-color 0.25s, transform 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+
+.deploy-card:hover {
+  border-color: var(--border-bright);
+  transform: translateY(-3px);
+}
+
+.deploy-icon { font-size: 2.2rem; margin-bottom: 0.8rem; display: block; }
+
+.deploy-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.deploy-card p {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.deploy-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.spec-tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--bg-highlight);
+  color: var(--text-dim);
+  border: 1px solid var(--border-dim);
+}
+
+/* ── DEMO TERMINAL ──────────────────────────────────────────────── */
+#demo { background: var(--bg-panel); max-width: none; padding: 5rem 2rem; }
+#demo > .inner { max-width: 900px; margin: 0 auto; }
+
+.terminal-wrap {
+  background: #040608;
+  border: 1px solid var(--border-accent);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(74,144,217,0.08);
+}
+
+.terminal-bar {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-dim);
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.term-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+}
+
+.term-dot-red    { background: #ff5f57; }
+.term-dot-amber  { background: #febc2e; }
+.term-dot-green  { background: #28c840; }
+
+.terminal-title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.terminal-body {
+  padding: 1.4rem 1.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.75;
+  min-height: 320px;
+  color: var(--text-secondary);
+  overflow-y: auto;
+  max-height: 420px;
+}
+
+#boot-output { }
+
+.boot-line { display: block; animation: fadeInLine 0.15s ease; }
+
+@keyframes fadeInLine {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.boot-ok     { color: var(--accent-green); }
+.boot-info   { color: var(--accent-cyan); }
+.boot-warn   { color: var(--accent-amber); }
+.boot-dim    { color: var(--text-dim); }
+.boot-bright { color: var(--text-primary); font-weight: bold; }
+.boot-err    { color: var(--accent-red); }
+.boot-cursor { display: inline-block; width: 8px; height: 1em; background: var(--accent-cyan); vertical-align: text-bottom; animation: blink 0.9s step-end infinite; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; } 50% { opacity: 0; }
+}
+
+.terminal-footer {
+  border-top: 1px solid var(--border-dim);
+  padding: 0.7rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+}
+
+#replay-btn {
+  background: transparent;
+  border: 1px solid var(--border-accent);
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 5px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+#replay-btn:hover { background: rgba(45,212,191,0.08); border-color: var(--accent-cyan); }
+
+.term-status {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* ── COMMUNITY ──────────────────────────────────────────────────── */
+#community { }
+
+.community-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.2rem;
+}
+
+.community-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 1.5rem;
+  text-align: center;
+  text-decoration: none;
+  display: block;
+  transition: border-color 0.25s, transform 0.25s;
+}
+
+.community-card:hover {
+  border-color: var(--border-bright);
+  transform: translateY(-3px);
+}
+
+.community-card .icon { font-size: 2rem; margin-bottom: 0.7rem; display: block; }
+.community-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--text-primary); }
+.community-card p  { font-size: 0.8rem; color: var(--text-secondary); }
+
+/* ── FOOTER ─────────────────────────────────────────────────────── */
+footer {
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-dim);
+  padding: 3rem 2rem 2rem;
+}
+
+.footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.footer-top {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+}
+
+.footer-brand .nav-brand { font-size: 1.4rem; display: inline-block; margin-bottom: 0.7rem; }
+
+.footer-brand p {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 280px;
+}
+
+.footer-col h4 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: 0.8rem;
+}
+
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 0.45rem; }
+
+.footer-col a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.2s;
+}
+
+.footer-col a:hover { color: var(--accent-cyan); }
+
+.footer-bottom {
+  border-top: 1px solid var(--border-dim);
+  padding-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.footer-bottom p {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.footer-bottom a { color: var(--accent-blue); text-decoration: none; }
+.footer-bottom a:hover { color: var(--accent-cyan); }
+
+.footer-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.fbadge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 3px 9px;
+  border-radius: 3px;
+  border: 1px solid var(--border-accent);
+  color: var(--text-secondary);
+}
+
+/* ── RESPONSIVE ─────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .arch-container { grid-template-columns: 1fr; }
+  .arch-detail-panel { position: static; }
+  .contrib-layout { grid-template-columns: 1fr; }
+  .footer-top { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 680px) {
+  .nav-links { display: none; }
+  .nav-hamburger { display: block; }
+  .nav-links.open {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 56px; left: 0; right: 0;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border-dim);
+    padding: 1rem;
+    gap: 0.3rem;
+    z-index: 999;
+  }
+  .hero-arch-viz { width: 200px; height: 200px; }
+  .ring-1 { width: 40px;  height: 40px; }
+  .ring-2 { width: 68px;  height: 68px; }
+  .ring-3 { width: 96px;  height: 96px; }
+  .ring-4 { width: 124px; height: 124px; }
+  .ring-5 { width: 152px; height: 152px; }
+  .ring-6 { width: 180px; height: 180px; }
+  .ring-center { width: 26px; height: 26px; font-size: 0.75rem; }
+  .footer-top { grid-template-columns: 1fr; }
+  .footer-bottom { flex-direction: column; align-items: flex-start; }
+}
+
+/* ── UTILS ──────────────────────────────────────────────────────── */
+.text-cyan   { color: var(--accent-cyan); }
+.text-green  { color: var(--accent-green); }
+.text-amber  { color: var(--accent-amber); }
+.text-purple { color: var(--accent-purple); }
+.text-red    { color: var(--accent-red); }
+.text-blue   { color: var(--accent-blue); }
+</style>
+</head>
+<body>
+
+<!-- ── NAVIGATION ─────────────────────────────────────────────────────────── -->
+<nav id="nav">
+  <a class="nav-brand" href="#hero">FER<span>R</span>OS</a>
+  <ul class="nav-links" id="nav-links">
+    <li><a href="#hero">Home</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#get-started">Get&nbsp;Started</a></li>
+    <li><a href="#contributors">Contributors</a></li>
+    <li><a href="#deploy">Deploy</a></li>
+    <li><a href="#demo">Demo</a></li>
+    <li><a href="#community">Community</a></li>
+  </ul>
+  <button class="nav-hamburger" id="hamburger" aria-label="Menu">☰</button>
+</nav>
+
+<!-- ── HERO ───────────────────────────────────────────────────────────────── -->
+<section id="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-bg-glow"></div>
+
+  <div class="hero-title">FERROS</div>
+  <div class="hero-subtitle">Foundational Embedded Rust Runtime Operating System</div>
+
+  <p class="hero-tagline">
+    <strong>Memory safe.</strong> Consent first. <strong>Locally sovereign.</strong>
+    Distributed by design. <strong>Agent-ready.</strong><br>
+    A microkernel operating system written in Rust for the post-cloud era —
+    where your hardware runs your rules.
+  </p>
+
+  <div class="hero-cta">
+    <a class="btn btn-primary" href="../ferros-blueprint.html">View Blueprint →</a>
+    <a class="btn btn-ghost" href="#get-started">Read Docs →</a>
+  </div>
+
+  <!-- Concentric ring visualization -->
+  <div class="hero-arch-viz" aria-hidden="true">
+    <div class="ring ring-6"></div>
+    <div class="ring ring-5"></div>
+    <div class="ring ring-4"></div>
+    <div class="ring ring-3"></div>
+    <div class="ring ring-2"></div>
+    <div class="ring ring-1"></div>
+    <div class="ring-center">⚙</div>
+  </div>
+
+  <div class="ring-legend">
+    <span class="ring-legend-item"><span class="ring-dot" style="background:var(--accent-red)"></span>Hardware</span>
+    <span class="ring-legend-item"><span class="ring-dot" style="background:var(--accent-amber)"></span>Bootloader</span>
+    <span class="ring-legend-item"><span class="ring-dot" style="background:var(--accent-green)"></span>Microkernel</span>
+    <span class="ring-legend-item"><span class="ring-dot" style="background:var(--accent-cyan)"></span>Services</span>
+    <span class="ring-legend-item"><span class="ring-dot" style="background:var(--accent-blue)"></span>Consent&nbsp;Engine</span>
+    <span class="ring-legend-item"><span class="ring-dot" style="background:var(--accent-purple)"></span>Applications</span>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── FEATURES ───────────────────────────────────────────────────────────── -->
+<section id="features">
+  <div class="inner">
+    <div class="section-label">// core primitives</div>
+    <h2 class="section-title">Built Different, By Design</h2>
+    <p class="section-desc">
+      Every component of FERROS was designed from scratch with safety, sovereignty,
+      and human consent as non-negotiable first principles.
+    </p>
+
+    <div class="feature-grid">
+
+      <div class="feature-card" style="--card-accent: var(--accent-purple)">
+        <span class="feature-icon">🦀</span>
+        <h3>Rust-Native Kernel</h3>
+        <p>
+          Zero unsafe code in the critical path. The entire microkernel is written
+          in safe Rust with compile-time memory guarantees, eliminating entire
+          classes of CVEs before the CPU even boots.
+        </p>
+        <span class="feature-tag">no_std + alloc</span>
+      </div>
+
+      <div class="feature-card" style="--card-accent: var(--accent-cyan)">
+        <span class="feature-icon">🔐</span>
+        <h3>Consent Engine</h3>
+        <p>
+          Fine-grained capability tokens govern every inter-process communication.
+          Users and local processes grant, revoke, and audit permissions in real-time
+          — no ambient authority anywhere in the system.
+        </p>
+        <span class="feature-tag">capability tokens</span>
+      </div>
+
+      <div class="feature-card" style="--card-accent: var(--accent-green)">
+        <span class="feature-icon">🌐</span>
+        <h3>HTML Renderer</h3>
+        <p>
+          A lightweight, sandboxed HTML/CSS renderer runs directly in userspace,
+          enabling rich local UIs without a browser engine. No V8, no Electron —
+          just pixels from your own hardware.
+        </p>
+        <span class="feature-tag">sandboxed userspace</span>
+      </div>
+
+      <div class="feature-card" style="--card-accent: var(--accent-amber)">
+        <span class="feature-icon">🛡️</span>
+        <h3>Capability-Based Security</h3>
+        <p>
+          Every resource — files, sockets, devices — is accessed through an
+          unforgeable capability handle. Object-capability model enforced by
+          the kernel ABI; no privilege escalation path exists.
+        </p>
+        <span class="feature-tag">object-capability model</span>
+      </div>
+
+      <div class="feature-card" style="--card-accent: var(--accent-blue)">
+        <span class="feature-icon">🔄</span>
+        <h3>Local-First Sync</h3>
+        <p>
+          CRDTs and append-only logs power peer-to-peer state synchronisation
+          without a central server. Your data lives on your hardware and replicates
+          on your terms, over any transport.
+        </p>
+        <span class="feature-tag">CRDT · append-only</span>
+      </div>
+
+      <div class="feature-card" style="--card-accent: var(--accent-red)">
+        <span class="feature-icon">🤖</span>
+        <h3>Agent Hosting</h3>
+        <p>
+          Run autonomous AI agents in isolated capability-sandboxed processes.
+          Each agent declares its required capabilities at launch; the Consent
+          Engine approves, limits, and monitors in real time.
+        </p>
+        <span class="feature-tag">isolated agent sandbox</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── ARCHITECTURE ────────────────────────────────────────────────────────── -->
+<section id="architecture">
+  <div class="section-label">// system design</div>
+  <h2 class="section-title">Layered Architecture</h2>
+  <p class="section-desc">
+    Click any layer to explore its responsibilities, interfaces, and design rationale.
+  </p>
+
+  <div class="arch-container">
+    <div class="arch-layers" id="arch-layers">
+
+      <div class="arch-layer" style="--layer-color: var(--accent-red)"
+           data-layer="0"
+           data-title="Hardware Abstraction"
+           data-icon="🔩"
+           data-color="var(--accent-red)"
+           data-body="The hardware layer is where FERROS meets bare metal. Platform-specific board-support packages (BSPs) expose a uniform HAL interface. Peripheral access is gated through capability handles rather than raw memory-mapped I/O, preventing rogue drivers from corrupting the address space."
+           data-tags="BSP,HAL,MMIO,Interrupts,DMA,GPIO">
+        <span class="arch-layer-icon">🔩</span>
+        <div class="arch-layer-info">
+          <div class="arch-layer-name">Hardware</div>
+          <div class="arch-layer-sub">BSP · HAL · Peripheral drivers</div>
+        </div>
+        <span class="arch-layer-badge" style="color:var(--accent-red);border-color:var(--accent-red);background:rgba(248,113,113,0.08)">bare metal</span>
+      </div>
+
+      <div class="arch-layer" style="--layer-color: var(--accent-amber)"
+           data-layer="1"
+           data-title="Bootloader"
+           data-icon="🚀"
+           data-color="var(--accent-amber)"
+           data-body="A minimal Rust bootloader initialises DRAM, sets up page tables, validates the signed kernel image via a hardware root-of-trust chain, then jumps to the microkernel entry point. Supports UEFI on x86_64 and U-Boot on ARM targets. Measured boot values are stored in a TPM PCR for remote attestation."
+           data-tags="UEFI,U-Boot,Secure Boot,TPM,Page Tables,ELF Loader">
+        <span class="arch-layer-icon">🚀</span>
+        <div class="arch-layer-info">
+          <div class="arch-layer-name">Bootloader</div>
+          <div class="arch-layer-sub">UEFI · U-Boot · Measured boot</div>
+        </div>
+        <span class="arch-layer-badge" style="color:var(--accent-amber);border-color:var(--accent-amber);background:rgba(245,158,11,0.08)">trusted</span>
+      </div>
+
+      <div class="arch-layer" style="--layer-color: var(--accent-green)"
+           data-layer="2"
+           data-title="Microkernel"
+           data-icon="⚙️"
+           data-color="var(--accent-green)"
+           data-body="The FERROS microkernel keeps only scheduling, IPC, and memory management in Ring 0. All device drivers run in isolated Ring 3 processes. The kernel ABI is a small set of typed syscalls; there is no monolithic syscall table. The entire kernel fits in under 64 KiB of code."
+           data-tags="Scheduling,IPC,VMM,Syscalls,Ring-0,&lt;64KB">
+        <span class="arch-layer-icon">⚙️</span>
+        <div class="arch-layer-info">
+          <div class="arch-layer-name">Microkernel</div>
+          <div class="arch-layer-sub">Scheduler · IPC · Memory manager</div>
+        </div>
+        <span class="arch-layer-badge" style="color:var(--accent-green);border-color:var(--accent-green);background:rgba(52,211,153,0.08)">&lt;64KB</span>
+      </div>
+
+      <div class="arch-layer" style="--layer-color: var(--accent-cyan)"
+           data-layer="3"
+           data-title="System Services"
+           data-icon="🧩"
+           data-color="var(--accent-cyan)"
+           data-body="System services — VFS, network stack, display server, audio mixer — run as separate userspace processes communicating via typed IPC channels. A service registry allows capability-guarded discovery. Any service can be stopped, restarted, or replaced without rebooting the kernel."
+           data-tags="VFS,Network,Display,Audio,IPC Channels,Service Registry">
+        <span class="arch-layer-icon">🧩</span>
+        <div class="arch-layer-info">
+          <div class="arch-layer-name">Services</div>
+          <div class="arch-layer-sub">VFS · Network · Display · Audio</div>
+        </div>
+        <span class="arch-layer-badge" style="color:var(--accent-cyan);border-color:var(--accent-cyan);background:rgba(45,212,191,0.08)">userspace</span>
+      </div>
+
+      <div class="arch-layer" style="--layer-color: var(--accent-blue)"
+           data-layer="4"
+           data-title="Consent Engine"
+           data-icon="🔐"
+           data-color="var(--accent-blue)"
+           data-body="The Consent Engine is a policy-enforcement daemon that sits between applications and system resources. It evaluates capability requests against user-defined policies stored in a local append-only ledger. Policies are expressed in a declarative DSL and hot-reloadable without process restart."
+           data-tags="Capability Tokens,Policy DSL,Audit Log,Hot-Reload,RBAC+,Zero Trust">
+        <span class="arch-layer-icon">🔐</span>
+        <div class="arch-layer-info">
+          <div class="arch-layer-name">Consent Engine</div>
+          <div class="arch-layer-sub">Capability tokens · Policy DSL · Audit</div>
+        </div>
+        <span class="arch-layer-badge" style="color:var(--accent-blue);border-color:var(--accent-blue);background:rgba(74,144,217,0.08)">policy</span>
+      </div>
+
+      <div class="arch-layer" style="--layer-color: var(--accent-purple)"
+           data-layer="5"
+           data-title="HTML Renderer"
+           data-icon="🌐"
+           data-color="var(--accent-purple)"
+           data-body="A purpose-built HTML5 + CSS3 layout engine renders application UIs in an isolated framebuffer process. JavaScript is intentionally absent — interactivity is driven by the host application via a reactive data-binding protocol. Enables rich dashboards with a minimal attack surface."
+           data-tags="HTML5,CSS3,Flexbox,Grid,Framebuffer,No-JS,Reactive Bindings">
+        <span class="arch-layer-icon">🌐</span>
+        <div class="arch-layer-info">
+          <div class="arch-layer-name">HTML Renderer</div>
+          <div class="arch-layer-sub">HTML5 · CSS3 · Framebuffer output</div>
+        </div>
+        <span class="arch-layer-badge" style="color:var(--accent-purple);border-color:var(--accent-purple);background:rgba(167,139,250,0.08)">no-JS</span>
+      </div>
+
+      <div class="arch-layer" style="--layer-color: var(--text-primary)"
+           data-layer="6"
+           data-title="Applications"
+           data-icon="📦"
+           data-color="var(--text-primary)"
+           data-body="User-facing applications are sandboxed Wasm or native ELF binaries. Each declares a capability manifest at install time; the Consent Engine approves it before execution begins. Apps communicate through strongly-typed IPC channels and can never access hardware directly."
+           data-tags="Wasm,ELF,Capability Manifest,IPC,App Store,Sandboxed">
+        <span class="arch-layer-icon">📦</span>
+        <div class="arch-layer-info">
+          <div class="arch-layer-name">Applications</div>
+          <div class="arch-layer-sub">Wasm · ELF · Capability manifests</div>
+        </div>
+        <span class="arch-layer-badge" style="color:var(--text-secondary);border-color:var(--border-accent);background:rgba(232,237,245,0.04)">sandboxed</span>
+      </div>
+
+    </div>
+
+    <!-- Detail panel -->
+    <div class="arch-detail-panel" id="arch-detail-panel">
+      <div class="arch-detail-title" id="arch-detail-title">
+        <span id="arch-detail-icon">🔩</span>
+        <span id="arch-detail-name">Select a Layer</span>
+      </div>
+      <p class="arch-detail-body" id="arch-detail-body">
+        Click any layer on the left to explore its responsibilities, implementation
+        details, and design decisions within the FERROS architecture.
+      </p>
+      <div class="arch-detail-tags" id="arch-detail-tags"></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── ROADMAP ─────────────────────────────────────────────────────────────── -->
+<section id="roadmap">
+  <div class="inner">
+    <div class="section-label">// development phases</div>
+    <h2 class="section-title">Project Roadmap</h2>
+    <p class="section-desc">
+      FERROS is in active early development. Each phase builds on the previous,
+      shipping a working system before extending it.
+    </p>
+
+    <div class="roadmap-grid">
+
+      <div class="roadmap-card active-phase">
+        <div class="roadmap-header">
+          <span class="roadmap-phase">Phase 0</span>
+          <span class="roadmap-status">
+            <span class="status-dot active"></span> Active
+          </span>
+        </div>
+        <div class="roadmap-title">Render the Board</div>
+        <div class="roadmap-desc">Boot on QEMU, draw to framebuffer, establish the BSP skeleton, and publish the blueprint document.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="--bar-color: var(--accent-green)" data-target="25"></div></div>
+        <div class="progress-label"><span>In Progress</span><span>25%</span></div>
+      </div>
+
+      <div class="roadmap-card">
+        <div class="roadmap-header">
+          <span class="roadmap-phase">Phase 1</span>
+          <span class="roadmap-status"><span class="status-dot"></span> Planned</span>
+        </div>
+        <div class="roadmap-title">Microkernel Core</div>
+        <div class="roadmap-desc">Preemptive scheduler, memory allocator, typed IPC channels, and the initial capability table implementation.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="--bar-color: var(--accent-blue)" data-target="0"></div></div>
+        <div class="progress-label"><span>Planned</span><span>0%</span></div>
+      </div>
+
+      <div class="roadmap-card">
+        <div class="roadmap-header">
+          <span class="roadmap-phase">Phase 2</span>
+          <span class="roadmap-status"><span class="status-dot"></span> Planned</span>
+        </div>
+        <div class="roadmap-title">Userspace &amp; VFS</div>
+        <div class="roadmap-desc">First userspace process, virtual filesystem, block device drivers, and a minimal shell over serial.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="--bar-color: var(--accent-blue)" data-target="0"></div></div>
+        <div class="progress-label"><span>Planned</span><span>0%</span></div>
+      </div>
+
+      <div class="roadmap-card">
+        <div class="roadmap-header">
+          <span class="roadmap-phase">Phase 3</span>
+          <span class="roadmap-status"><span class="status-dot"></span> Planned</span>
+        </div>
+        <div class="roadmap-title">Consent Engine v1</div>
+        <div class="roadmap-desc">Capability token issuance, policy DSL parser, audit log daemon, and the consent grant/revoke UI primitives.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="--bar-color: var(--accent-blue)" data-target="0"></div></div>
+        <div class="progress-label"><span>Planned</span><span>0%</span></div>
+      </div>
+
+      <div class="roadmap-card">
+        <div class="roadmap-header">
+          <span class="roadmap-phase">Phase 4</span>
+          <span class="roadmap-status"><span class="status-dot"></span> Future</span>
+        </div>
+        <div class="roadmap-title">Network Stack</div>
+        <div class="roadmap-desc">TCP/IP userspace stack via smoltcp, DNS resolver, TLS via rustls, and the local-first CRDT sync protocol.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="--bar-color: var(--accent-purple)" data-target="0"></div></div>
+        <div class="progress-label"><span>Future</span><span>0%</span></div>
+      </div>
+
+      <div class="roadmap-card">
+        <div class="roadmap-header">
+          <span class="roadmap-phase">Phase 5</span>
+          <span class="roadmap-status"><span class="status-dot"></span> Future</span>
+        </div>
+        <div class="roadmap-title">HTML Renderer</div>
+        <div class="roadmap-desc">Layout engine, CSS box model, framebuffer compositor, reactive data-binding protocol, and the system UI shell.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="--bar-color: var(--accent-purple)" data-target="0"></div></div>
+        <div class="progress-label"><span>Future</span><span>0%</span></div>
+      </div>
+
+      <div class="roadmap-card">
+        <div class="roadmap-header">
+          <span class="roadmap-phase">Phase 6</span>
+          <span class="roadmap-status"><span class="status-dot"></span> Future</span>
+        </div>
+        <div class="roadmap-title">Agent Hosting</div>
+        <div class="roadmap-desc">Wasm runtime integration, agent capability manifest schema, real-time monitoring dashboard, and the agent app store.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="--bar-color: var(--accent-purple)" data-target="0"></div></div>
+        <div class="progress-label"><span>Future</span><span>0%</span></div>
+      </div>
+
+      <div class="roadmap-card">
+        <div class="roadmap-header">
+          <span class="roadmap-phase">Phase 7</span>
+          <span class="roadmap-status"><span class="status-dot"></span> Future</span>
+        </div>
+        <div class="roadmap-title">Federated Distribution</div>
+        <div class="roadmap-desc">Peer discovery, federated identity (DID), distributed package registry, and hardware security key integration.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="--bar-color: var(--accent-purple)" data-target="0"></div></div>
+        <div class="progress-label"><span>Future</span><span>0%</span></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── GET STARTED ─────────────────────────────────────────────────────────── -->
+<section id="get-started">
+  <div class="section-label">// quick start</div>
+  <h2 class="section-title">Get Started</h2>
+  <p class="section-desc">
+    FERROS is in early development. Build from source, run in QEMU, and
+    join the effort.
+  </p>
+
+  <div class="get-started-grid">
+
+    <!-- Download -->
+    <div class="gs-card">
+      <h3>⬇️ Download</h3>
+      <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1rem;line-height:1.6">
+        Pre-built images are not yet available for public download. Follow the repository
+        for nightly build announcements, or build from source below.
+      </p>
+      <div class="compat-list">
+        <div class="compat-item">
+          <span>x86_64 QEMU image</span>
+          <span class="compat-badge badge-amber">coming soon</span>
+        </div>
+        <div class="compat-item">
+          <span>ARM64 QEMU image</span>
+          <span class="compat-badge badge-amber">coming soon</span>
+        </div>
+        <div class="compat-item">
+          <span>Raspberry Pi 4 image</span>
+          <span class="compat-badge badge-amber">planned</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Build from Source -->
+    <div class="gs-card">
+      <h3>🔧 Build from Source</h3>
+      <div class="code-block" id="build-snippet">
+        <button class="copy-btn" onclick="copyCode('build-snippet', this)">copy</button>
+<span class="comment"># Prerequisites: Rust nightly + QEMU</span>
+<span class="cmd">curl --proto '=https' --tlsv1.2 -sSf \
+  https://sh.rustup.rs | sh</span>
+<span class="cmd">rustup default nightly</span>
+<span class="cmd">rustup target add x86_64-unknown-none</span>
+<span class="comment"># Clone and build</span>
+<span class="cmd">git clone https://github.com/your-org/ferros</span>
+<span class="cmd">cd ferros</span>
+<span class="cmd">cargo build --release \
+  --target x86_64-unknown-none</span>
+<span class="comment"># Launch in QEMU</span>
+<span class="cmd">make qemu-x86</span></div>
+    </div>
+
+    <!-- Hardware Compatibility -->
+    <div class="gs-card">
+      <h3>🖥️ Hardware Compatibility</h3>
+      <div class="compat-list">
+        <div class="compat-item">
+          <span>QEMU (x86_64)</span>
+          <span class="compat-badge badge-green">works</span>
+        </div>
+        <div class="compat-item">
+          <span>QEMU (ARM64 / virt)</span>
+          <span class="compat-badge badge-green">works</span>
+        </div>
+        <div class="compat-item">
+          <span>Raspberry Pi 4B</span>
+          <span class="compat-badge badge-amber">partial</span>
+        </div>
+        <div class="compat-item">
+          <span>x86_64 bare metal</span>
+          <span class="compat-badge badge-amber">experimental</span>
+        </div>
+        <div class="compat-item">
+          <span>RISC-V (HiFive)</span>
+          <span class="compat-badge badge-blue">planned</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── CONTRIBUTORS ────────────────────────────────────────────────────────── -->
+<section id="contributors">
+  <div class="inner">
+    <div class="section-label">// open source</div>
+    <h2 class="section-title">For Contributors</h2>
+    <p class="section-desc">
+      FERROS is a community project. Every discipline is needed — OS engineers,
+      Rust developers, hardware hackers, UX designers, and technical writers.
+    </p>
+
+    <div class="contrib-layout">
+
+      <!-- Steps -->
+      <div>
+        <div class="contrib-steps">
+
+          <div class="contrib-step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h4>Read the Blueprint</h4>
+              <p>
+                Start with <a href="../ferros-blueprint.html" style="color:var(--accent-cyan)">ferros-blueprint.html</a> —
+                it defines the system philosophy, component boundaries, and open questions.
+                Understanding the why before the how saves everyone time.
+              </p>
+            </div>
+          </div>
+
+          <div class="contrib-step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h4>Set Up the Toolchain</h4>
+              <p>
+                Install Rust nightly with <code>rustup default nightly</code>,
+                add the <code>x86_64-unknown-none</code> target, and install
+                QEMU. Run <code>make check</code> to verify the environment.
+              </p>
+            </div>
+          </div>
+
+          <div class="contrib-step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h4>Pick a Module</h4>
+              <p>
+                Check the issue tracker for <code>good-first-issue</code> tags.
+                Each module has a <code>DESIGN.md</code> describing its interface
+                contracts and what help is currently needed.
+              </p>
+            </div>
+          </div>
+
+          <div class="contrib-step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <h4>Open a Draft PR Early</h4>
+              <p>
+                Don't wait for perfection. Open a draft PR as soon as you have
+                a working skeleton. The team reviews architecture before
+                implementation to avoid wasted effort.
+              </p>
+            </div>
+          </div>
+
+          <div class="contrib-step">
+            <div class="step-num">5</div>
+            <div class="step-content">
+              <h4>Join the Community</h4>
+              <p>
+                Real-time discussion happens in the project Matrix room.
+                Design RFCs are published as GitHub Discussions and remain
+                open for comment for at least two weeks before merging.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Module list -->
+      <div>
+        <div style="font-size:0.85rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.8rem;">Module Boundaries</div>
+        <div class="module-list">
+
+          <div class="module-item" style="--module-color: var(--accent-red)">
+            <div class="module-name">ferros-bsp</div>
+            <div class="module-desc">Board-support packages for each target platform.</div>
+          </div>
+
+          <div class="module-item" style="--module-color: var(--accent-amber)">
+            <div class="module-name">ferros-boot</div>
+            <div class="module-desc">Bootloader stage: UEFI, U-Boot, secure-boot chain.</div>
+          </div>
+
+          <div class="module-item" style="--module-color: var(--accent-green)">
+            <div class="module-name">ferros-kernel</div>
+            <div class="module-desc">Microkernel: scheduler, IPC, VMM. Ring-0 only.</div>
+          </div>
+
+          <div class="module-item" style="--module-color: var(--accent-cyan)">
+            <div class="module-name">ferros-services</div>
+            <div class="module-desc">Userspace daemons: VFS, network, display, audio.</div>
+          </div>
+
+          <div class="module-item" style="--module-color: var(--accent-blue)">
+            <div class="module-name">ferros-consent</div>
+            <div class="module-desc">Capability enforcement, policy DSL, audit log.</div>
+          </div>
+
+          <div class="module-item" style="--module-color: var(--accent-purple)">
+            <div class="module-name">ferros-render</div>
+            <div class="module-desc">HTML/CSS layout engine and framebuffer compositor.</div>
+          </div>
+
+          <div class="module-item" style="--module-color: var(--text-secondary)">
+            <div class="module-name">ferros-agent</div>
+            <div class="module-desc">Wasm runtime and agent capability sandbox.</div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- What's needed now -->
+    <div style="margin-top:3rem">
+      <div class="section-label">// most wanted</div>
+      <h3 style="font-size:1.2rem;font-weight:700;margin-bottom:1rem;color:var(--text-primary)">What's Needed Right Now</h3>
+      <div class="needed-grid">
+
+        <div class="needed-card">
+          <span class="icon">⚙️</span>
+          <h4>Rust OS Engineers</h4>
+          <p>Experience with <code style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-code)">no_std</code>, embedded Rust, or prior microkernel work. RISC-V and ARM experience a bonus.</p>
+        </div>
+
+        <div class="needed-card">
+          <span class="icon">🖼️</span>
+          <h4>Layout Engine Dev</h4>
+          <p>CSS box model, flexbox / grid implementation, text shaping. Familiarity with existing engines like Servo or Stylo helpful.</p>
+        </div>
+
+        <div class="needed-card">
+          <span class="icon">📝</span>
+          <h4>Technical Writers</h4>
+          <p>Architecture docs, API references, and tutorial content. The project needs clear writing as much as code.</p>
+        </div>
+
+        <div class="needed-card">
+          <span class="icon">🧪</span>
+          <h4>Testing Infrastructure</h4>
+          <p>CI pipelines for cross-compilation targets, QEMU integration tests, and kernel fuzzing harnesses.</p>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── DEPLOY ──────────────────────────────────────────────────────────────── -->
+<section id="deploy">
+  <div class="section-label">// deployment targets</div>
+  <h2 class="section-title">Where FERROS Runs</h2>
+  <p class="section-desc">
+    Designed for the edges of the network — from the device in your pocket
+    to the server in your home rack.
+  </p>
+
+  <div class="deploy-grid">
+
+    <div class="deploy-card">
+      <span class="deploy-icon">🏠</span>
+      <h3>Smart-Home HUD</h3>
+      <p>
+        Run FERROS on a wall-mounted display. The HTML renderer drives a local
+        dashboard of sensor data, schedules, and controls — no cloud account needed,
+        no subscription, no telemetry.
+      </p>
+      <div class="deploy-specs">
+        <span class="spec-tag">Raspberry Pi 4</span>
+        <span class="spec-tag">HDMI output</span>
+        <span class="spec-tag">touch input</span>
+        <span class="spec-tag">local-only</span>
+      </div>
+    </div>
+
+    <div class="deploy-card">
+      <span class="deploy-icon">🔗</span>
+      <h3>P2P Coordination Node</h3>
+      <p>
+        Deploy lightweight FERROS nodes that sync state over local network or
+        Bluetooth without a central broker. CRDT logs ensure eventual consistency
+        even when devices go offline for days.
+      </p>
+      <div class="deploy-specs">
+        <span class="spec-tag">CRDT sync</span>
+        <span class="spec-tag">mesh networking</span>
+        <span class="spec-tag">offline-first</span>
+        <span class="spec-tag">low power</span>
+      </div>
+    </div>
+
+    <div class="deploy-card">
+      <span class="deploy-icon">🌐</span>
+      <h3>Federated Nodes</h3>
+      <p>
+        Multiple FERROS instances federate via DIDs and mutual capability grants.
+        Share compute, storage, and services across a trusted group without any
+        centralised infrastructure or third-party identity provider.
+      </p>
+      <div class="deploy-specs">
+        <span class="spec-tag">DID identity</span>
+        <span class="spec-tag">federated auth</span>
+        <span class="spec-tag">shared VFS</span>
+        <span class="spec-tag">encrypted</span>
+      </div>
+    </div>
+
+    <div class="deploy-card">
+      <span class="deploy-icon">🤖</span>
+      <h3>AI Agent Hosting</h3>
+      <p>
+        Give AI agents a sandboxed home. Each agent gets a capability manifest,
+        a resource budget, and a monitoring dashboard. Revoke access instantly
+        if behaviour deviates from policy — no kernel patch required.
+      </p>
+      <div class="deploy-specs">
+        <span class="spec-tag">Wasm sandbox</span>
+        <span class="spec-tag">resource budgets</span>
+        <span class="spec-tag">live monitoring</span>
+        <span class="spec-tag">instant revoke</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── DEMO TERMINAL ───────────────────────────────────────────────────────── -->
+<section id="demo">
+  <div class="inner">
+    <div class="section-label">// live demo</div>
+    <h2 class="section-title">FERROS Boot Sequence</h2>
+    <p class="section-desc">
+      A simulated FERROS boot on an x86_64 QEMU target.
+    </p>
+
+    <div class="terminal-wrap">
+      <div class="terminal-bar">
+        <span class="term-dot term-dot-red"></span>
+        <span class="term-dot term-dot-amber"></span>
+        <span class="term-dot term-dot-green"></span>
+        <span class="terminal-title">ferros — QEMU x86_64-virt — 80×24</span>
+      </div>
+      <div class="terminal-body">
+        <div id="boot-output"></div>
+      </div>
+      <div class="terminal-footer">
+        <button id="replay-btn" onclick="startBoot(true)">⟳ Replay</button>
+        <span class="term-status" id="term-status">Initialising…</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── COMMUNITY ───────────────────────────────────────────────────────────── -->
+<section id="community">
+  <div class="section-label">// get involved</div>
+  <h2 class="section-title">Community</h2>
+  <p class="section-desc">
+    FERROS is built in the open. Every conversation, decision, and debate
+    happens where anyone can read and participate.
+  </p>
+
+  <div class="community-grid">
+
+    <a class="community-card" href="#community">
+      <span class="icon">🐙</span>
+      <h3>GitHub</h3>
+      <p>Source code, issues, pull requests, and release notes.</p>
+    </a>
+
+    <a class="community-card" href="#community">
+      <span class="icon">💬</span>
+      <h3>Matrix</h3>
+      <p>Real-time chat for contributors and early adopters.</p>
+    </a>
+
+    <a class="community-card" href="#community">
+      <span class="icon">📣</span>
+      <h3>Discussions</h3>
+      <p>RFC proposals, design debates, and community Q&amp;A.</p>
+    </a>
+
+    <a class="community-card" href="#community">
+      <span class="icon">📰</span>
+      <h3>Newsletter</h3>
+      <p>Monthly development updates, phase reports, and event announcements.</p>
+    </a>
+
+  </div>
+</section>
+
+<!-- ── FOOTER ──────────────────────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+
+      <div class="footer-brand">
+        <a class="nav-brand" href="#hero">FER<span>R</span>OS</a>
+        <p>
+          Foundational Embedded Rust Runtime Operating System.<br>
+          Memory safe, consent first, locally sovereign.
+          Built in the open under the MIT license.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Project</h4>
+        <ul>
+          <li><a href="../ferros-blueprint.html">Architecture Blueprint</a></li>
+          <li><a href="#roadmap">Roadmap</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#deploy">Deployment</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Docs</h4>
+        <ul>
+          <li><a href="#get-started">Quick Start</a></li>
+          <li><a href="#contributors">Contributing</a></li>
+          <li><a href="#architecture">Architecture</a></li>
+          <li><a href="#demo">Boot Demo</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Community</h4>
+        <ul>
+          <li><a href="#community">GitHub</a></li>
+          <li><a href="#community">Matrix Chat</a></li>
+          <li><a href="#community">Discussions</a></li>
+          <li><a href="#community">Newsletter</a></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="footer-bottom">
+      <p>
+        © 2025 FERROS Project Contributors —
+        Released under the <a href="#community">MIT License</a> —
+        <a href="../ferros-blueprint.html">Architecture Doc</a>
+      </p>
+      <div class="footer-badges">
+        <span class="fbadge">MIT</span>
+        <span class="fbadge">Rust Nightly</span>
+        <span class="fbadge">no_std</span>
+        <span class="fbadge">Phase 0</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ── JAVASCRIPT ──────────────────────────────────────────────────────────── -->
+<script>
+/* ── NAV: scroll highlight + sticky shadow ─────────────────────── */
+(function () {
+  const nav       = document.getElementById('nav');
+  const links     = document.querySelectorAll('.nav-links a');
+  const hamburger = document.getElementById('hamburger');
+  const navLinks  = document.getElementById('nav-links');
+  const sections  = Array.from(document.querySelectorAll('section[id], footer[id]'));
+
+  hamburger.addEventListener('click', () => {
+    navLinks.classList.toggle('open');
+  });
+
+  // Close mobile nav on link click
+  navLinks.addEventListener('click', e => {
+    if (e.target.tagName === 'A') navLinks.classList.remove('open');
+  });
+
+  function updateNav() {
+    const scrollY = window.scrollY;
+
+    nav.classList.toggle('scrolled', scrollY > 10);
+
+    // Find which section is in view
+    let current = '';
+    sections.forEach(sec => {
+      if (scrollY >= sec.offsetTop - 80) current = sec.id;
+    });
+
+    links.forEach(a => {
+      const href = a.getAttribute('href').replace('#', '');
+      a.classList.toggle('active', href === current);
+    });
+  }
+
+  window.addEventListener('scroll', updateNav, { passive: true });
+  updateNav();
+})();
+
+/* ── ARCHITECTURE LAYER INTERACTION ───────────────────────────── */
+(function () {
+  const layers    = document.querySelectorAll('.arch-layer');
+  const panel     = document.getElementById('arch-detail-panel');
+  const titleEl   = document.getElementById('arch-detail-name');
+  const iconEl    = document.getElementById('arch-detail-icon');
+  const bodyEl    = document.getElementById('arch-detail-body');
+  const tagsEl    = document.getElementById('arch-detail-tags');
+
+  layers.forEach(layer => {
+    layer.addEventListener('click', () => {
+      layers.forEach(l => l.classList.remove('active'));
+      layer.classList.add('active');
+
+      const color = layer.dataset.color || 'var(--accent-blue)';
+      panel.style.setProperty('--panel-color', color);
+      panel.classList.add('lit');
+
+      iconEl.textContent  = layer.dataset.icon  || '⚙';
+      titleEl.textContent = layer.dataset.title || 'Layer';
+      bodyEl.textContent  = layer.dataset.body  || '';
+
+      tagsEl.innerHTML = '';
+      (layer.dataset.tags || '').split(',').forEach(t => {
+        if (!t.trim()) return;
+        const chip = document.createElement('span');
+        chip.className   = 'arch-chip';
+        chip.textContent = t.trim();
+        tagsEl.appendChild(chip);
+      });
+    });
+  });
+
+  // Activate first layer on load
+  if (layers.length) layers[0].click();
+})();
+
+/* ── ROADMAP: animate progress bars on scroll ─────────────────── */
+(function () {
+  const bars = document.querySelectorAll('.progress-bar-fill');
+
+  function animateBars() {
+    bars.forEach(bar => {
+      const rect = bar.getBoundingClientRect();
+      if (rect.top < window.innerHeight && !bar.dataset.animated) {
+        bar.dataset.animated = '1';
+        bar.style.width = (bar.dataset.target || 0) + '%';
+      }
+    });
+  }
+
+  window.addEventListener('scroll', animateBars, { passive: true });
+  animateBars();
+})();
+
+/* ── COPY-TO-CLIPBOARD ─────────────────────────────────────────── */
+function copyCode(blockId, btn) {
+  const block = document.getElementById(blockId);
+  const text  = block.innerText.replace(/^copy\n?/i, '').trim();
+
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch(() => {
+    btn.textContent = 'error';
+    setTimeout(() => { btn.textContent = 'copy'; }, 1500);
+  });
+}
+
+/* ── BOOT ANIMATION ────────────────────────────────────────────── */
+const BOOT_LINES = [
+  { cls: 'boot-dim',    text: '' },
+  { cls: 'boot-bright', text: '  ███████╗███████╗██████╗ ██████╗  ██████╗ ███████╗' },
+  { cls: 'boot-bright', text: '  ██╔════╝██╔════╝██╔══██╗██╔══██╗██╔═══██╗██╔════╝' },
+  { cls: 'boot-bright', text: '  █████╗  █████╗  ██████╔╝██████╔╝██║   ██║███████╗' },
+  { cls: 'boot-bright', text: '  ██╔══╝  ██╔══╝  ██╔══██╗██╔══██╗██║   ██║╚════██║' },
+  { cls: 'boot-bright', text: '  ██║     ███████╗██║  ██║██║  ██║╚██████╔╝███████║' },
+  { cls: 'boot-dim',    text: '  ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝' },
+  { cls: 'boot-dim',    text: '' },
+  { cls: 'boot-info',   text: '  Foundational Embedded Rust Runtime Operating System' },
+  { cls: 'boot-dim',    text: '  v0.1.0-alpha  |  x86_64-unknown-none  |  Phase 0' },
+  { cls: 'boot-dim',    text: '─────────────────────────────────────────────────────' },
+  { cls: 'boot-dim',    text: '' },
+  { cls: 'boot-info',   text: '[BOOT] EFI stub handoff complete' },
+  { cls: 'boot-ok',     text: '[ OK ] Verified kernel image signature (SHA-256)' },
+  { cls: 'boot-ok',     text: '[ OK ] Page tables initialised  (4-level, 48-bit VA)' },
+  { cls: 'boot-ok',     text: '[ OK ] GDT / IDT installed' },
+  { cls: 'boot-ok',     text: '[ OK ] APIC configured  (BSP lapic_id=0)' },
+  { cls: 'boot-info',   text: '[INFO] Detected 2048 MiB RAM across 3 NUMA regions' },
+  { cls: 'boot-ok',     text: '[ OK ] Physical memory allocator online' },
+  { cls: 'boot-ok',     text: '[ OK ] Kernel heap initialised  (16 MiB)' },
+  { cls: 'boot-dim',    text: '' },
+  { cls: 'boot-info',   text: '[KERN] Microkernel v0.1.0-alpha starting…' },
+  { cls: 'boot-ok',     text: '[ OK ] Scheduler: round-robin  (tick=4ms)' },
+  { cls: 'boot-ok',     text: '[ OK ] IPC endpoint table online  (1024 slots)' },
+  { cls: 'boot-ok',     text: '[ OK ] Capability table initialised  (root cap granted)' },
+  { cls: 'boot-ok',     text: '[ OK ] Userspace process 0 (init) spawned  [pid=1]' },
+  { cls: 'boot-dim',    text: '' },
+  { cls: 'boot-info',   text: '[SERV] Launching system services…' },
+  { cls: 'boot-ok',     text: '[ OK ] ferros-vfs   mounted  /  (ramfs)   [pid=2]' },
+  { cls: 'boot-ok',     text: '[ OK ] ferros-net   bound    lo0           [pid=3]' },
+  { cls: 'boot-ok',     text: '[ OK ] ferros-disp  ready    1024×768 fb  [pid=4]' },
+  { cls: 'boot-warn',   text: '[WARN] ferros-audio: no HDA device found, using null sink' },
+  { cls: 'boot-dim',    text: '' },
+  { cls: 'boot-info',   text: '[CONS] Consent Engine starting…' },
+  { cls: 'boot-ok',     text: '[ OK ] Policy DSL loaded  (default-permissive)' },
+  { cls: 'boot-ok',     text: '[ OK ] Capability token issuer online' },
+  { cls: 'boot-ok',     text: '[ OK ] Audit log opened  /var/log/consent.log' },
+  { cls: 'boot-dim',    text: '' },
+  { cls: 'boot-info',   text: '[REND] HTML Renderer starting…' },
+  { cls: 'boot-ok',     text: '[ OK ] CSS engine initialised (box model + flexbox)' },
+  { cls: 'boot-ok',     text: '[ OK ] Framebuffer compositor ready' },
+  { cls: 'boot-ok',     text: '[ OK ] Reactive binding protocol listening on ipc:render' },
+  { cls: 'boot-dim',    text: '' },
+  { cls: 'boot-info',   text: '[AGNT] Agent Host runtime starting…' },
+  { cls: 'boot-ok',     text: '[ OK ] Wasm runtime (wasmtime 16.0) online' },
+  { cls: 'boot-ok',     text: '[ OK ] Agent sandbox ready  (max 4 concurrent agents)' },
+  { cls: 'boot-dim',    text: '' },
+  { cls: 'boot-ok',     text: '[ OK ] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' },
+  { cls: 'boot-ok',     text: '[ OK ]   FERROS is up.  All systems nominal.' },
+  { cls: 'boot-ok',     text: '[ OK ] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' },
+  { cls: 'boot-dim',    text: '' },
+  { cls: 'boot-info',   text: 'ferros login: ' },
+];
+
+let bootTimer   = null;
+let bootRunning = false;
+
+function startBoot(force) {
+  if (bootRunning && !force) return;
+
+  if (bootTimer) { clearInterval(bootTimer); bootTimer = null; }
+  bootRunning = false;
+
+  const output   = document.getElementById('boot-output');
+  const statusEl = document.getElementById('term-status');
+
+  output.innerHTML = '';
+  statusEl.textContent = 'Booting…';
+
+  let i = 0;
+
+  bootRunning = true;
+  bootTimer   = setInterval(() => {
+    if (i >= BOOT_LINES.length) {
+      clearInterval(bootTimer);
+      bootTimer   = null;
+      bootRunning = false;
+
+      // Add blinking cursor at last line
+      const cur = document.createElement('span');
+      cur.className = 'boot-cursor';
+      output.lastChild && output.lastChild.appendChild(cur);
+
+      statusEl.textContent = 'Boot complete — 0 errors';
+      return;
+    }
+
+    const line = BOOT_LINES[i++];
+    const span = document.createElement('span');
+    span.className   = 'boot-line ' + (line.cls || '');
+    span.textContent = line.text;
+    output.appendChild(span);
+    output.appendChild(document.createTextNode('\n'));
+
+    // Autoscroll
+    const body = output.closest('.terminal-body');
+    body.scrollTop = body.scrollHeight;
+  }, 90);
+}
+
+// Auto-start when demo section scrolls into view
+(function () {
+  const demoSection = document.getElementById('demo');
+  let started = false;
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && !started) {
+        started = true;
+        startBoot(false);
+      }
+    });
+  }, { threshold: 0.2 });
+
+  observer.observe(demoSection);
+})();
+</script>
+</body>
+</html>

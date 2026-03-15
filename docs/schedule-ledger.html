@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Personal Schedule Ledger — FERROS</title>
+<style>
+:root {
+  --bg: #f5f1e8;
+  --bg2: #ede8dc;
+  --bg3: #e2dcd0;
+  --text: #1a1208;
+  --text2: #4a3f2f;
+  --text3: #7a6f5f;
+  --border: #c8bfaa;
+  --accent-a: #0891b2;
+  --accent-b: #7c3aed;
+  --accent-c: #059669;
+  --shadow: rgba(0,0,0,0.08);
+  --ink: #1a1208;
+}
+[data-theme="dark"] {
+  --bg: #1a1612;
+  --bg2: #252018;
+  --bg3: #302a22;
+  --text: #e8e0d0;
+  --text2: #b8a890;
+  --text3: #7a6f5f;
+  --border: #3a3028;
+  --shadow: rgba(0,0,0,0.3);
+  --ink: #e8e0d0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5; transition: background 0.2s, color 0.2s; }
+h1,h2,h3,h4 { font-family: Georgia, 'Times New Roman', serif; }
+
+/* MASTHEAD */
+.masthead { background: var(--bg); border-bottom: 3px double var(--border); padding: 12px 20px 8px; text-align: center; position: relative; }
+.masthead-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text3); margin-bottom: 4px; font-style: italic; }
+.masthead h1 { font-size: clamp(22px, 5vw, 42px); letter-spacing: 1px; color: var(--ink); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px 0; margin: 4px 0; }
+.masthead-sub { font-size: 11px; color: var(--text3); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px; }
+.theme-btn { background: none; border: 1px solid var(--border); color: var(--text2); padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
+.theme-btn:hover { background: var(--bg3); }
+
+/* TABS */
+.tabs { display: flex; border-bottom: 2px solid var(--border); background: var(--bg2); padding: 0 20px; }
+.tab-btn { padding: 10px 20px; border: none; background: none; cursor: pointer; font-family: Georgia, serif; font-size: 14px; color: var(--text2); border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+.tab-btn.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: bold; }
+.tab-btn:hover:not(.active) { color: var(--text); background: var(--bg3); }
+.tab-pane { display: none; padding: 20px; max-width: 1100px; margin: 0 auto; }
+.tab-pane.active { display: block; }
+
+/* MY FEED */
+.edition-tags { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.etag { background: var(--bg3); border: 1px solid var(--border); padding: 3px 10px; border-radius: 2px; font-size: 12px; color: var(--text2); font-style: italic; }
+.feed-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+@media(max-width:700px){ .feed-layout { grid-template-columns: 1fr; } }
+.lead-story { border: 2px solid var(--border); padding: 16px; background: var(--bg); }
+.lead-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 10px; }
+.lead-headline { font-size: clamp(18px, 3vw, 28px); font-family: Georgia, serif; line-height: 1.2; margin-bottom: 8px; cursor: pointer; }
+.lead-headline:hover { text-decoration: underline; }
+.lead-meta { font-size: 12px; color: var(--text3); margin-bottom: 12px; }
+.stream-badge { display: inline-block; padding: 2px 8px; border-radius: 2px; font-size: 11px; font-weight: bold; color: #fff; margin-right: 6px; }
+.stream-a { background: var(--accent-a); }
+.stream-b { background: var(--accent-b); }
+.stream-c { background: var(--accent-c); }
+.lead-body { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 14px; }
+.next-btn { background: var(--ink); color: var(--bg); border: none; padding: 8px 18px; cursor: pointer; font-family: Georgia, serif; font-size: 13px; }
+.next-btn:hover { opacity: 0.85; }
+
+.headlines-section { margin-top: 20px; }
+.section-rule { border: none; border-top: 3px double var(--border); margin: 12px 0; }
+.section-title { font-family: Georgia, serif; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; color: var(--text2); margin-bottom: 10px; }
+.protocol-group { margin-bottom: 16px; }
+.protocol-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); border-left: 3px solid var(--border); padding-left: 8px; margin-bottom: 8px; }
+.headline-item { padding: 6px 0; border-bottom: 1px dotted var(--border); cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.headline-item:hover .hl-title { text-decoration: underline; }
+.hl-check { width: 14px; height: 14px; border: 1px solid var(--border); border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+.hl-check.done { background: var(--accent-c); border-color: var(--accent-c); color: #fff; }
+.hl-title { font-family: Georgia, serif; font-size: 14px; flex: 1; }
+.hl-title.done { text-decoration: line-through; color: var(--text3); }
+.hl-mins { font-size: 11px; color: var(--text3); }
+
+/* MOMENTUM CHART */
+.momentum { margin-top: 20px; }
+.momentum-bars { display: flex; gap: 6px; align-items: flex-end; height: 60px; margin-top: 8px; }
+.m-day { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
+.m-bar-wrap { height: 50px; display: flex; align-items: flex-end; width: 100%; }
+.m-bar { width: 100%; border-radius: 2px 2px 0 0; background: var(--accent-a); min-height: 2px; transition: height 0.3s; }
+.m-label { font-size: 10px; color: var(--text3); }
+
+/* SIDEBAR */
+.sidebar { display: flex; flex-direction: column; gap: 14px; }
+.sidebar-card { border: 1px solid var(--border); padding: 12px; background: var(--bg); }
+.sidebar-card h4 { font-family: Georgia, serif; font-size: 13px; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+.stat-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; border-bottom: 1px dotted var(--border); }
+.stat-val { font-weight: bold; font-family: Georgia, serif; }
+.upcoming-item { padding: 5px 0; border-bottom: 1px dotted var(--border); font-size: 13px; }
+.upcoming-item:last-child { border-bottom: none; }
+.up-protocol { font-size: 11px; color: var(--text3); }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--bg); border: 2px solid var(--border); max-width: 520px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px; position: relative; }
+.modal-close { position: absolute; top: 12px; right: 14px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text2); }
+.modal h2 { font-family: Georgia, serif; font-size: 22px; margin-bottom: 6px; line-height: 1.2; }
+.modal-meta { font-size: 12px; color: var(--text3); margin-bottom: 14px; }
+.modal-body { font-size: 14px; color: var(--text2); line-height: 1.7; margin-bottom: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+.modal-detail { margin-bottom: 8px; }
+.modal-detail label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); display: block; margin-bottom: 2px; }
+.complete-btn { width: 100%; padding: 10px; border: 2px solid var(--accent-c); background: none; color: var(--accent-c); font-family: Georgia, serif; font-size: 15px; cursor: pointer; margin-top: 10px; }
+.complete-btn.done { background: var(--accent-c); color: #fff; }
+.complete-btn:hover { opacity: 0.8; }
+
+/* EDITOR */
+.wizard-steps { display: flex; gap: 0; margin-bottom: 20px; border: 1px solid var(--border); overflow: hidden; }
+.wstep { flex: 1; padding: 8px 4px; text-align: center; font-size: 12px; cursor: pointer; border-right: 1px solid var(--border); background: var(--bg2); color: var(--text2); }
+.wstep:last-child { border-right: none; }
+.wstep.active { background: var(--ink); color: var(--bg); font-weight: bold; }
+.wstep.done { background: var(--accent-c); color: #fff; }
+.wstep:hover:not(.active) { background: var(--bg3); }
+.step-pane { display: none; }
+.step-pane.active { display: block; }
+.step-header { font-family: Georgia, serif; font-size: 20px; border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-bottom: 16px; }
+.step-nav { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+.btn { padding: 8px 18px; border: 1px solid var(--border); background: var(--bg2); cursor: pointer; font-size: 13px; color: var(--text); border-radius: 2px; }
+.btn:hover { background: var(--bg3); }
+.btn-primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn-primary:hover { opacity: 0.85; }
+.btn-danger { color: #dc2626; border-color: #dc2626; }
+.btn-danger:hover { background: #dc2626; color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-group { margin-bottom: 10px; }
+.form-group label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 4px; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 13px; border-radius: 2px; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: 2px solid var(--accent-a); }
+
+.stream-card { border: 1px solid var(--border); padding: 14px; margin-bottom: 12px; background: var(--bg2); border-radius: 2px; }
+.stream-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.stream-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+.project-item { border: 1px solid var(--border); padding: 10px 14px; margin-bottom: 8px; background: var(--bg2); display: flex; gap: 10px; align-items: flex-start; }
+.project-item .item-body { flex: 1; }
+.block-item { border: 1px solid var(--border); padding: 10px 14px; margin-bottom: 8px; background: var(--bg2); display: flex; gap: 10px; align-items: flex-start; }
+.protocol-editor { border: 1px solid var(--border); margin-bottom: 16px; background: var(--bg2); }
+.protocol-header { padding: 10px 14px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid var(--border); background: var(--bg3); }
+.protocol-header .item-body { flex: 1; }
+.protocol-tasks { padding: 10px 14px; }
+.task-editor { border: 1px solid var(--border); padding: 10px; margin-bottom: 8px; background: var(--bg); }
+.task-editor-header { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.task-editor-header input { flex: 1; }
+.days-check { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.day-cb { display: flex; align-items: center; gap: 3px; font-size: 11px; cursor: pointer; }
+.day-cb input { width: 12px; height: 12px; cursor: pointer; }
+.add-task-row { margin-top: 8px; }
+
+/* JSON PREVIEW */
+.json-preview { font-family: monospace; font-size: 12px; width: 100%; height: 400px; background: var(--bg2); color: var(--text); border: 1px solid var(--border); padding: 12px; resize: vertical; }
+.copy-row { display: flex; justify-content: flex-end; margin-top: 8px; gap: 10px; }
+
+/* VISUAL MAP */
+.map-toggles { display: flex; gap: 0; border: 1px solid var(--border); display: inline-flex; margin-bottom: 20px; overflow: hidden; }
+.map-toggle { padding: 7px 18px; border: none; background: var(--bg2); color: var(--text2); cursor: pointer; border-right: 1px solid var(--border); font-size: 13px; }
+.map-toggle:last-child { border-right: none; }
+.map-toggle.active { background: var(--ink); color: var(--bg); font-weight: bold; }
+.map-view { display: none; }
+.map-view.active { display: block; }
+
+/* YEAR VIEW */
+.year-grid { display: flex; gap: 3px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 8px; }
+.week-col { display: flex; flex-direction: column; gap: 3px; }
+.year-dot { width: 12px; height: 12px; border-radius: 2px; }
+.quarter-marker { font-size: 10px; color: var(--text3); text-align: center; padding: 2px 0; }
+.year-legend { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+.legend-dot { width: 12px; height: 12px; border-radius: 2px; }
+
+/* WEEK VIEW */
+.week-grid { display: grid; grid-template-columns: 60px repeat(7, 1fr); border: 1px solid var(--border); }
+.week-header { font-size: 12px; font-weight: bold; text-align: center; padding: 6px 2px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); background: var(--bg2); color: var(--text2); }
+.week-time-col { font-size: 10px; color: var(--text3); padding: 0; }
+.week-day-col { border-right: 1px solid var(--border); position: relative; min-height: 300px; }
+.week-time-slot { height: 20px; border-bottom: 1px dotted var(--border); font-size: 10px; color: var(--text3); padding: 2px 4px; }
+.week-block { position: absolute; left: 1px; right: 1px; border-radius: 2px; font-size: 10px; color: #fff; padding: 2px 4px; overflow: hidden; cursor: default; }
+
+/* DAY VIEW */
+.day-selector { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.day-sel-btn { padding: 5px 12px; border: 1px solid var(--border); background: var(--bg2); cursor: pointer; font-size: 12px; color: var(--text2); border-radius: 2px; }
+.day-sel-btn.active { background: var(--ink); color: var(--bg); }
+.day-timeline { display: grid; grid-template-columns: 50px 1fr; gap: 0; border: 1px solid var(--border); }
+.timeline-hour { height: 40px; border-bottom: 1px solid var(--border); font-size: 10px; color: var(--text3); padding: 2px 4px; display: flex; align-items: flex-start; background: var(--bg2); }
+.timeline-slot { height: 40px; border-bottom: 1px dotted var(--border); position: relative; }
+.timeline-block { position: absolute; left: 2px; right: 2px; border-radius: 2px; font-size: 11px; color: #fff; padding: 2px 6px; overflow: hidden; z-index: 1; }
+
+/* PRINT */
+@media print {
+  .tabs, .masthead-top, .theme-btn, .modal-overlay { display: none !important; }
+  .tab-pane { display: block !important; }
+  body { background: #fff; color: #000; }
+  .masthead { border-bottom: 2px solid #000; }
+}
+</style>
+</head>
+<body>
+
+<!-- MASTHEAD -->
+<div class="masthead">
+  <div class="masthead-top">
+    <span id="edition-date">Loading...</span>
+    <button class="theme-btn" onclick="toggleTheme()">☀/☾ Mode</button>
+    <span id="issue-num">Issue #1</span>
+  </div>
+  <h1>The Personal Schedule Ledger</h1>
+  <div class="masthead-sub">FERROS Coordination System · Established 2025 · AI & Human Task Federation</div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('feed')">📰 My Feed</button>
+  <button class="tab-btn" onclick="switchTab('editor')">✏️ Editor</button>
+  <button class="tab-btn" onclick="switchTab('map')">🗺 Visual Map</button>
+</div>
+
+<!-- TAB: MY FEED -->
+<div id="tab-feed" class="tab-pane active">
+  <div class="edition-tags" id="edition-tags"></div>
+  <div class="feed-layout">
+    <div>
+      <div class="lead-story" id="lead-story"></div>
+      <hr class="section-rule">
+      <div class="headlines-section">
+        <div class="section-title">Today's Protocols</div>
+        <div id="headlines-list"></div>
+      </div>
+      <hr class="section-rule">
+      <div class="momentum">
+        <div class="section-title">7-Day Momentum</div>
+        <div class="momentum-bars" id="momentum-bars"></div>
+      </div>
+    </div>
+    <div class="sidebar">
+      <div class="sidebar-card">
+        <h4>Quick Stats</h4>
+        <div id="quick-stats"></div>
+      </div>
+      <div class="sidebar-card">
+        <h4>Upcoming</h4>
+        <div id="upcoming-tasks"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: EDITOR -->
+<div id="tab-editor" class="tab-pane">
+  <div class="wizard-steps" id="wizard-steps"></div>
+  <div id="editor-steps"></div>
+</div>
+
+<!-- TAB: VISUAL MAP -->
+<div id="tab-map" class="tab-pane">
+  <div class="map-toggles">
+    <button class="map-toggle active" onclick="switchMap('year')">Year View</button>
+    <button class="map-toggle" onclick="switchMap('week')">Week View</button>
+    <button class="map-toggle" onclick="switchMap('day')">Day View</button>
+  </div>
+  <div id="map-year" class="map-view active"></div>
+  <div id="map-week" class="map-view"></div>
+  <div id="map-day" class="map-view"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-inner">
+    <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+// ─── DEFAULT DATA ────────────────────────────────────────────────────────────
+const DEFAULT_DATA = {
+  streams: [
+    {id:'A', name:'Governance & AI Backbone', weight:40, hours:12, color:'#0891b2'},
+    {id:'B', name:'Home Interaction Layer', weight:35, hours:10.5, color:'#7c3aed'},
+    {id:'C', name:'Physical & Home Systems', weight:25, hours:7.5, color:'#059669'}
+  ],
+  projects: [
+    {id:'p1', name:'FERROS Development', streamId:'A', priority:'high', goal:'Build core AI coordination framework'},
+    {id:'p2', name:'Agent Platform', streamId:'A', priority:'high', goal:'Deploy and tune agent pipelines'},
+    {id:'p3', name:'Home Automation', streamId:'B', priority:'medium', goal:'Streamline home systems'},
+    {id:'p4', name:'Schedule System', streamId:'B', priority:'medium', goal:'Coordinate human+AI schedules'},
+    {id:'p5', name:'Physical Health', streamId:'C', priority:'high', goal:'Maintain daily health protocols'}
+  ],
+  blocks: [
+    {id:'b1', name:'Morning Deep Work', days:['Mon','Tue','Wed','Thu','Fri'], startTime:'09:00', endTime:'12:00', streamId:'A'},
+    {id:'b2', name:'Afternoon Operations', days:['Mon','Tue','Wed','Thu','Fri'], startTime:'13:00', endTime:'15:00', streamId:'B'},
+    {id:'b3', name:'Evening Review', days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], startTime:'20:00', endTime:'21:00', streamId:'A'},
+    {id:'b4', name:'Weekend Build', days:['Sat','Sun'], startTime:'10:00', endTime:'14:00', streamId:'C'}
+  ],
+  protocols: [
+    {id:'pr1', name:'Morning Hygiene', streamId:'C', days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], tasks:[
+      {id:'t1', title:'Brush Teeth', details:'Use alternating toothpaste each session for variety', minutes:2, days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], behaviorNotes:'Alternate fluoride/charcoal toothpaste'},
+      {id:'t2', title:'Floss', details:'Full floss between all teeth', minutes:3, days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], behaviorNotes:''},
+      {id:'t3', title:'Saline Spray', details:'Nasal rinse protocol; honey-saline variation on Tue/Thu', minutes:1, days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], behaviorNotes:'Honey-saline on Tue/Thu'}
+    ]},
+    {id:'pr2', name:'Feed Tuning', streamId:'A', days:['Mon','Wed','Fri'], tasks:[
+      {id:'t4', title:'Review Agent Logs', details:'Check all agent output logs for anomalies or flags', minutes:10, days:['Mon','Wed','Fri'], behaviorNotes:''},
+      {id:'t5', title:'Update Task Weights', details:'Rebalance stream weights based on completion data', minutes:15, days:['Mon','Wed','Fri'], behaviorNotes:''},
+      {id:'t6', title:'Review Completions', details:'Audit prior session completions and update ledger', minutes:5, days:['Mon','Wed','Fri'], behaviorNotes:''}
+    ]},
+    {id:'pr3', name:'Evening Review', streamId:'A', days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], tasks:[
+      {id:'t7', title:'Log Day Completions', details:'Record all completed tasks in the ledger', minutes:5, days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], behaviorNotes:''},
+      {id:'t8', title:'Plan Tomorrow Blocks', details:'Set up blocks and priorities for the next day', minutes:10, days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], behaviorNotes:''}
+    ]}
+  ]
+};
+
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+let scheduleData = JSON.parse(localStorage.getItem('ferros_schedule') || 'null') || JSON.parse(JSON.stringify(DEFAULT_DATA));
+let completions = JSON.parse(localStorage.getItem('ferros_completions') || '{}');
+let currentEditorStep = 0;
+let currentMapView = 'year';
+let currentDayView = 'Mon';
+
+function save() {
+  localStorage.setItem('ferros_schedule', JSON.stringify(scheduleData));
+  localStorage.setItem('ferros_completions', JSON.stringify(completions));
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0,10);
+}
+function todayDay() {
+  return DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay()-1];
+}
+function isCompleted(taskId) {
+  return !!(completions[todayKey()+':'+taskId]);
+}
+function toggleComplete(taskId) {
+  const k = todayKey()+':'+taskId;
+  if(completions[k]) delete completions[k]; else completions[k] = true;
+  save();
+}
+function getStream(id) { return scheduleData.streams.find(s=>s.id===id); }
+function streamColor(sid) { const s = getStream(sid); return s ? s.color : '#888'; }
+function streamBadge(sid) {
+  const s = getStream(sid);
+  if(!s) return '';
+  return `<span class="stream-badge" style="background:${s.color}">${s.id}: ${s.name}</span>`;
+}
+
+// ─── THEME ───────────────────────────────────────────────────────────────────
+(function initTheme(){
+  const t = localStorage.getItem('ferros_theme') || 'light';
+  if(t==='dark') document.documentElement.setAttribute('data-theme','dark');
+})();
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  if(cur==='dark'){ document.documentElement.removeAttribute('data-theme'); localStorage.setItem('ferros_theme','light'); }
+  else { document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('ferros_theme','dark'); }
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.textContent.toLowerCase().includes(name.slice(0,3))) b.classList.add('active'); });
+  if(name==='feed') renderFeed();
+  if(name==='editor') renderEditor();
+  if(name==='map') renderMap();
+}
+
+// ─── MASTHEAD DATES ──────────────────────────────────────────────────────────
+(function(){
+  const d = new Date();
+  const opts = {weekday:'long',year:'numeric',month:'long',day:'numeric'};
+  document.getElementById('edition-date').textContent = d.toLocaleDateString('en-US',opts);
+  const start = new Date(d.getFullYear(),0,1);
+  const week = Math.ceil(((d-start)/86400000+start.getDay()+1)/7);
+  document.getElementById('issue-num').textContent = `Vol. ${d.getFullYear()} · Issue #${week}`;
+})();
+
+// ─── MY FEED ─────────────────────────────────────────────────────────────────
+function getTodayTasks(){
+  const day = todayDay();
+  const tasks = [];
+  scheduleData.protocols.forEach(proto=>{
+    if(!proto.days.includes(day)) return;
+    proto.tasks.forEach(t=>{
+      if(t.days.includes(day)) tasks.push({...t, protocolId:proto.id, protocolName:proto.name, streamId:proto.streamId});
+    });
+  });
+  return tasks;
+}
+
+function renderFeed(){
+  const tasks = getTodayTasks();
+  const done = tasks.filter(t=>isCompleted(t.id)).length;
+  const total = tasks.length;
+  const allTotal = scheduleData.protocols.reduce((a,p)=>a+p.tasks.length,0);
+  document.getElementById('edition-tags').innerHTML = [
+    `<span class="etag">${allTotal} tasks total</span>`,
+    `<span class="etag">${done} completed today</span>`,
+    `<span class="etag">${total-done} remaining today</span>`,
+    `<span class="etag">Stream A: ${scheduleData.streams[0].weight}% · B: ${scheduleData.streams[1].weight}% · C: ${scheduleData.streams[2].weight}%</span>`
+  ].join('');
+
+  // Lead story
+  const next = tasks.find(t=>!isCompleted(t.id)) || tasks[0];
+  if(next){
+    const stream = getStream(next.streamId);
+    const proto = scheduleData.protocols.find(p=>p.id===next.protocolId);
+    document.getElementById('lead-story').innerHTML = `
+      <div class="lead-label">✦ Lead Story — Next Task</div>
+      <div class="lead-headline" onclick="openModal('${next.id}')">${next.title}</div>
+      <div class="lead-meta">${streamBadge(next.streamId)} Protocol: ${next.protocolName} · ${next.minutes} min</div>
+      <div class="lead-body">${next.details || 'No additional details.'} ${next.behaviorNotes ? '<em>'+next.behaviorNotes+'</em>' : ''}</div>
+      <button class="next-btn" onclick="openModal('${next.id}')">Open Task →</button>
+    `;
+  } else {
+    document.getElementById('lead-story').innerHTML = `<div class="lead-label">✦ All Clear</div><div class="lead-headline">All tasks completed for today!</div>`;
+  }
+
+  // Headlines
+  const groups = {};
+  tasks.forEach(t=>{
+    if(!groups[t.protocolName]) groups[t.protocolName]={streamId:t.streamId, tasks:[]};
+    groups[t.protocolName].tasks.push(t);
+  });
+  let html = '';
+  Object.entries(groups).forEach(([pname, g])=>{
+    const s = getStream(g.streamId);
+    html += `<div class="protocol-group">
+      <div class="protocol-label" style="border-left-color:${s?s.color:'#888'}">${pname}</div>`;
+    g.tasks.forEach(t=>{
+      const done = isCompleted(t.id);
+      html += `<div class="headline-item" onclick="openModal('${t.id}')">
+        <div class="hl-check ${done?'done':''}">${done?'✓':''}</div>
+        <div class="hl-title ${done?'done':''}">${t.title}</div>
+        <div class="hl-mins">${t.minutes}m</div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  document.getElementById('headlines-list').innerHTML = html || '<p style="color:var(--text3);font-style:italic">No protocols scheduled for today.</p>';
+
+  // Momentum
+  renderMomentum();
+
+  // Quick stats
+  const streams = scheduleData.streams.map(s=>`<div class="stat-row"><span>${s.name}</span><span class="stat-val">${s.weight}%</span></div>`).join('');
+  document.getElementById('quick-stats').innerHTML = streams + `<div class="stat-row"><span>Today's tasks</span><span class="stat-val">${done}/${total}</span></div>`;
+
+  // Upcoming
+  let upHtml = '';
+  const upcoming = tasks.filter(t=>!isCompleted(t.id)).slice(0,5);
+  upcoming.forEach(t=>{
+    const s = getStream(t.streamId);
+    upHtml += `<div class="upcoming-item" onclick="openModal('${t.id}')" style="cursor:pointer">
+      <div style="font-size:13px">${t.title} <span style="color:${s?s.color:'#888'};font-size:11px">▸</span></div>
+      <div class="up-protocol">${t.protocolName} · ${t.minutes}m</div>
+    </div>`;
+  });
+  document.getElementById('upcoming-tasks').innerHTML = upHtml || '<div style="color:var(--text3);font-style:italic;font-size:13px">All caught up!</div>';
+}
+
+function renderMomentum(){
+  const days7 = [];
+  for(let i=6;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    days7.push(d);
+  }
+  let html = '';
+  const allTasks = scheduleData.protocols.flatMap(p=>p.tasks.map(t=>t.id));
+  days7.forEach(d=>{
+    const key = d.toISOString().slice(0,10);
+    const dayName = DAYS[d.getDay()===0?6:d.getDay()-1];
+    let comp=0, total=0;
+    scheduleData.protocols.forEach(proto=>{
+      if(!proto.days.includes(dayName)) return;
+      proto.tasks.forEach(t=>{
+        if(t.days.includes(dayName)){ total++; if(completions[key+':'+t.id]) comp++; }
+      });
+    });
+    const pct = total>0 ? Math.round((comp/total)*100) : 0;
+    const height = Math.max(4, pct/2);
+    html += `<div class="m-day">
+      <div class="m-bar-wrap"><div class="m-bar" style="height:${height}px;background:${pct>70?'#059669':pct>40?'#0891b2':'#7c3aed'}"></div></div>
+      <div class="m-label">${dayName.slice(0,2)}</div>
+    </div>`;
+  });
+  document.getElementById('momentum-bars').innerHTML = html;
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+function openModal(taskId){
+  let task=null, proto=null;
+  scheduleData.protocols.forEach(p=>{ const t=p.tasks.find(t=>t.id===taskId); if(t){task=t;proto=p;} });
+  if(!task) return;
+  const stream = getStream(proto.streamId);
+  const done = isCompleted(task.id);
+  document.getElementById('modal-content').innerHTML = `
+    <h2>${task.title}</h2>
+    <div class="modal-meta">${streamBadge(proto.streamId)} ${proto.name} · ${task.minutes} minutes</div>
+    <div class="modal-body">
+      <div class="modal-detail"><label>Details</label>${task.details||'No details provided.'}</div>
+      ${task.behaviorNotes?`<div class="modal-detail"><label>Behavior Notes</label>${task.behaviorNotes}</div>`:''}
+      <div class="modal-detail"><label>Scheduled Days</label>${task.days.join(', ')}</div>
+      <div class="modal-detail"><label>Estimated Time</label>${task.minutes} minutes</div>
+    </div>
+    <button class="complete-btn ${done?'done':''}" id="modal-complete-btn" onclick="modalToggleComplete('${task.id}')">
+      ${done?'✓ Completed — Click to Undo':'Mark as Complete'}
+    </button>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function modalToggleComplete(id){
+  toggleComplete(id);
+  const done = isCompleted(id);
+  const btn = document.getElementById('modal-complete-btn');
+  if(btn){ btn.textContent = done?'✓ Completed — Click to Undo':'Mark as Complete'; btn.className='complete-btn'+(done?' done':''); }
+  renderFeed();
+}
+function closeModal(e){ if(e.target===document.getElementById('modal-overlay')) closeModalDirect(); }
+function closeModalDirect(){ document.getElementById('modal-overlay').classList.remove('open'); }
+
+// ─── EDITOR ──────────────────────────────────────────────────────────────────
+const STEP_NAMES = ['Streams','Projects','Blocks','Protocols','JSON Preview'];
+function renderEditor(){
+  // Wizard steps header
+  document.getElementById('wizard-steps').innerHTML = STEP_NAMES.map((n,i)=>`
+    <div class="wstep ${i===currentEditorStep?'active':i<currentEditorStep?'done':''}" onclick="goToStep(${i})">${i+1}. ${n}</div>
+  `).join('');
+  // Step content
+  const steps = ['renderStreams','renderProjects','renderBlocks','renderProtocols','renderJsonPreview'];
+  document.getElementById('editor-steps').innerHTML = STEP_NAMES.map((_,i)=>`<div id="estep-${i}" class="step-pane ${i===currentEditorStep?'active':''}"></div>`).join('');
+  [renderStreams, renderProjects, renderBlocks, renderProtocols, renderJsonPreview][currentEditorStep]();
+}
+function goToStep(i){ currentEditorStep=i; renderEditor(); }
+function stepNav(){ return `<div class="step-nav">
+  ${currentEditorStep>0?`<button class="btn" onclick="goToStep(${currentEditorStep-1})">← Back</button>`:''}
+  ${currentEditorStep<4?`<button class="btn btn-primary" onclick="goToStep(${currentEditorStep+1})">Next →</button>`:''}
+</div>`; }
+
+function renderStreams(){
+  let html = `<div class="step-header">Step 1 — Streams</div>`;
+  scheduleData.streams.forEach((s,i)=>{
+    html += `<div class="stream-card">
+      <div class="stream-card-header">
+        <div class="stream-dot" style="background:${s.color}"></div>
+        <strong>Stream ${s.id}</strong>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Name</label><input value="${s.name}" oninput="scheduleData.streams[${i}].name=this.value;save()"></div>
+        <div class="form-group"><label>Weight %</label><input type="number" min="0" max="100" value="${s.weight}" oninput="scheduleData.streams[${i}].weight=+this.value;save()"></div>
+        <div class="form-group"><label>Hours/Week</label><input type="number" min="0" step="0.5" value="${s.hours}" oninput="scheduleData.streams[${i}].hours=+this.value;save()"></div>
+      </div>
+    </div>`;
+  });
+  html += stepNav();
+  document.getElementById('estep-0').innerHTML = html;
+}
+
+function renderProjects(){
+  let html = `<div class="step-header">Step 2 — Projects</div>`;
+  scheduleData.projects.forEach((p,i)=>{
+    const sOpts = scheduleData.streams.map(s=>`<option value="${s.id}" ${s.id===p.streamId?'selected':''}>${s.id}: ${s.name}</option>`).join('');
+    html += `<div class="project-item">
+      <div class="item-body">
+        <div class="form-row">
+          <div class="form-group"><label>Name</label><input value="${p.name}" oninput="scheduleData.projects[${i}].name=this.value;save()"></div>
+          <div class="form-group"><label>Stream</label><select onchange="scheduleData.projects[${i}].streamId=this.value;save()">${sOpts}</select></div>
+          <div class="form-group"><label>Priority</label>
+            <select onchange="scheduleData.projects[${i}].priority=this.value;save()">
+              ${['high','medium','low'].map(v=>`<option value="${v}" ${v===p.priority?'selected':''}>${v}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Goal</label><input value="${p.goal||''}" oninput="scheduleData.projects[${i}].goal=this.value;save()"></div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="removeProject(${i})">✕</button>
+    </div>`;
+  });
+  html += `<button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="addProject()">+ Add Project</button>`;
+  html += stepNav();
+  document.getElementById('estep-1').innerHTML = html;
+}
+function addProject(){
+  scheduleData.projects.push({id:'p'+Date.now(), name:'New Project', streamId:'A', priority:'medium', goal:''});
+  save(); renderEditor();
+}
+function removeProject(i){ scheduleData.projects.splice(i,1); save(); renderEditor(); }
+
+function renderBlocks(){
+  let html = `<div class="step-header">Step 3 — Time Blocks</div>`;
+  scheduleData.blocks.forEach((b,i)=>{
+    const sOpts = scheduleData.streams.map(s=>`<option value="${s.id}" ${s.id===b.streamId?'selected':''}>${s.id}: ${s.name}</option>`).join('');
+    const dayChecks = DAYS.map(d=>`<label class="day-cb"><input type="checkbox" ${b.days.includes(d)?'checked':''} onchange="toggleBlockDay(${i},'${d}',this.checked)"> ${d}</label>`).join('');
+    html += `<div class="block-item">
+      <div class="item-body">
+        <div class="form-row">
+          <div class="form-group"><label>Name</label><input value="${b.name}" oninput="scheduleData.blocks[${i}].name=this.value;save()"></div>
+          <div class="form-group"><label>Start</label><input type="time" value="${b.startTime}" oninput="scheduleData.blocks[${i}].startTime=this.value;save()"></div>
+          <div class="form-group"><label>End</label><input type="time" value="${b.endTime}" oninput="scheduleData.blocks[${i}].endTime=this.value;save()"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Stream</label><select onchange="scheduleData.blocks[${i}].streamId=this.value;save()">${sOpts}</select></div>
+          <div class="form-group" style="grid-column:span 2"><label>Days</label><div class="days-check">${dayChecks}</div></div>
+        </div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="removeBlock(${i})">✕</button>
+    </div>`;
+  });
+  html += `<button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="addBlock()">+ Add Block</button>`;
+  html += stepNav();
+  document.getElementById('estep-2').innerHTML = html;
+}
+function toggleBlockDay(i,d,checked){ if(checked&&!scheduleData.blocks[i].days.includes(d)) scheduleData.blocks[i].days.push(d); else if(!checked) scheduleData.blocks[i].days=scheduleData.blocks[i].days.filter(x=>x!==d); save(); }
+function addBlock(){ scheduleData.blocks.push({id:'b'+Date.now(), name:'New Block', days:[], startTime:'09:00', endTime:'10:00', streamId:'A'}); save(); renderEditor(); }
+function removeBlock(i){ scheduleData.blocks.splice(i,1); save(); renderEditor(); }
+
+function renderProtocols(){
+  let html = `<div class="step-header">Step 4 — Protocols</div>`;
+  scheduleData.protocols.forEach((proto,pi)=>{
+    const sOpts = scheduleData.streams.map(s=>`<option value="${s.id}" ${s.id===proto.streamId?'selected':''}>${s.id}: ${s.name}</option>`).join('');
+    const protodays = DAYS.map(d=>`<label class="day-cb"><input type="checkbox" ${proto.days.includes(d)?'checked':''} onchange="toggleProtoDay(${pi},'${d}',this.checked)"> ${d}</label>`).join('');
+    let tasksHtml = '';
+    proto.tasks.forEach((t,ti)=>{
+      const taskDays = DAYS.map(d=>`<label class="day-cb"><input type="checkbox" ${t.days.includes(d)?'checked':''} onchange="toggleTaskDay(${pi},${ti},'${d}',this.checked)"> ${d}</label>`).join('');
+      tasksHtml += `<div class="task-editor">
+        <div class="task-editor-header">
+          <input value="${t.title}" placeholder="Task title" oninput="scheduleData.protocols[${pi}].tasks[${ti}].title=this.value;save()" style="flex:1;padding:5px 8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px">
+          <input type="number" min="1" value="${t.minutes}" style="width:60px;padding:5px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px" oninput="scheduleData.protocols[${pi}].tasks[${ti}].minutes=+this.value;save()">
+          <span style="font-size:11px;color:var(--text3)">min</span>
+          <button class="btn btn-danger btn-sm" onclick="removeTask(${pi},${ti})">✕</button>
+        </div>
+        <div class="form-group"><label>Details/Notes</label><input value="${t.details||''}" oninput="scheduleData.protocols[${pi}].tasks[${ti}].details=this.value;save()"></div>
+        <div class="form-group"><label>Behavior Notes</label><input value="${t.behaviorNotes||''}" oninput="scheduleData.protocols[${pi}].tasks[${ti}].behaviorNotes=this.value;save()"></div>
+        <div class="form-group"><label>Days</label><div class="days-check">${taskDays}</div></div>
+      </div>`;
+    });
+    html += `<div class="protocol-editor">
+      <div class="protocol-header">
+        <div class="item-body">
+          <div class="form-row">
+            <div class="form-group"><label>Protocol Name</label><input value="${proto.name}" oninput="scheduleData.protocols[${pi}].name=this.value;save()"></div>
+            <div class="form-group"><label>Stream</label><select onchange="scheduleData.protocols[${pi}].streamId=this.value;save()">${sOpts}</select></div>
+          </div>
+          <div class="form-group"><label>Days Active</label><div class="days-check">${protodays}</div></div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="removeProtocol(${pi})">✕</button>
+      </div>
+      <div class="protocol-tasks">
+        ${tasksHtml}
+        <div class="add-task-row"><button class="btn btn-sm" onclick="addTask(${pi})">+ Add Task</button></div>
+      </div>
+    </div>`;
+  });
+  html += `<button class="btn btn-primary btn-sm" onclick="addProtocol()">+ Add Protocol</button>`;
+  html += stepNav();
+  document.getElementById('estep-3').innerHTML = html;
+}
+function toggleProtoDay(pi,d,checked){ if(checked&&!scheduleData.protocols[pi].days.includes(d)) scheduleData.protocols[pi].days.push(d); else if(!checked) scheduleData.protocols[pi].days=scheduleData.protocols[pi].days.filter(x=>x!==d); save(); }
+function toggleTaskDay(pi,ti,d,checked){ if(checked&&!scheduleData.protocols[pi].tasks[ti].days.includes(d)) scheduleData.protocols[pi].tasks[ti].days.push(d); else if(!checked) scheduleData.protocols[pi].tasks[ti].days=scheduleData.protocols[pi].tasks[ti].days.filter(x=>x!==d); save(); }
+function addTask(pi){ scheduleData.protocols[pi].tasks.push({id:'t'+Date.now(), title:'New Task', details:'', minutes:5, days:[...DAYS], behaviorNotes:''}); save(); renderEditor(); }
+function removeTask(pi,ti){ scheduleData.protocols[pi].tasks.splice(ti,1); save(); renderEditor(); }
+function addProtocol(){ scheduleData.protocols.push({id:'pr'+Date.now(), name:'New Protocol', streamId:'A', days:[], tasks:[]}); save(); renderEditor(); }
+function removeProtocol(pi){ scheduleData.protocols.splice(pi,1); save(); renderEditor(); }
+
+function renderJsonPreview(){
+  const json = JSON.stringify(scheduleData, null, 2);
+  document.getElementById('estep-4').innerHTML = `
+    <div class="step-header">Step 5 — JSON Preview</div>
+    <div class="copy-row">
+      <button class="btn btn-primary btn-sm" onclick="copyJson()">📋 Copy JSON</button>
+      <button class="btn btn-danger btn-sm" onclick="resetData()">↺ Reset to Defaults</button>
+    </div>
+    <textarea class="json-preview" readonly>${json}</textarea>
+    ${stepNav()}
+  `;
+}
+function copyJson(){
+  navigator.clipboard.writeText(JSON.stringify(scheduleData, null, 2)).then(()=>alert('JSON copied to clipboard!')).catch(()=>alert('Copy failed. Please select and copy manually.'));
+}
+function resetData(){
+  if(confirm('Reset all schedule data to defaults?')){ scheduleData=JSON.parse(JSON.stringify(DEFAULT_DATA)); save(); renderEditor(); }
+}
+
+// ─── VISUAL MAP ──────────────────────────────────────────────────────────────
+function switchMap(v){
+  currentMapView = v;
+  document.querySelectorAll('.map-toggle').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.map-view').forEach(p=>p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('map-'+v).classList.add('active');
+  if(v==='year') renderYearView();
+  if(v==='week') renderWeekView();
+  if(v==='day') renderDayView();
+}
+
+function getDominantStream(weekIdx){
+  const start = new Date(new Date().getFullYear(),0,1+(weekIdx*7));
+  const counts = {};
+  scheduleData.blocks.forEach(b=>{
+    counts[b.streamId] = (counts[b.streamId]||0) + b.days.length;
+  });
+  let max='', maxv=0;
+  Object.entries(counts).forEach(([k,v])=>{ if(v>maxv){max=k;maxv=v;} });
+  return max;
+}
+
+function renderYearView(){
+  const el = document.getElementById('map-year');
+  const quarters = [0,13,26,39];
+  const qLabels = ['Q1','Q2','Q3','Q4'];
+  let html = `<h3 style="font-family:Georgia,serif;margin-bottom:12px">Year Overview — ${new Date().getFullYear()}</h3>
+  <div class="year-grid">`;
+  for(let w=0;w<52;w++){
+    const qIdx = quarters.indexOf(w);
+    if(qIdx>=0) html += `<div class="week-col"><div class="quarter-marker" style="writing-mode:initial;font-size:9px">${qLabels[qIdx]}</div></div>`;
+    const dom = getDominantStream(w);
+    const color = dom ? streamColor(dom) : 'var(--bg3)';
+    const today = new Date();
+    const weekStart = new Date(today.getFullYear(),0,1+(w*7));
+    html += `<div class="week-col">`;
+    for(let d=0;d<7;d++){
+      const dd = new Date(weekStart); dd.setDate(dd.getDate()+d);
+      const isToday = dd.toDateString()===today.toDateString();
+      html += `<div class="year-dot" title="Week ${w+1}, Day ${d+1}" style="background:${color};opacity:${isToday?1:0.7};outline:${isToday?'2px solid #fff':'none'}"></div>`;
+    }
+    html += `</div>`;
+  }
+  html += `</div>`;
+  html += `<div class="year-legend">`;
+  scheduleData.streams.forEach(s=>{ html += `<div class="legend-item"><div class="legend-dot" style="background:${s.color}"></div>${s.id}: ${s.name}</div>`; });
+  html += `<div class="legend-item"><div class="legend-dot" style="background:var(--bg3)"></div>No blocks</div>`;
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function timeToMinutes(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
+
+function renderWeekView(){
+  const el = document.getElementById('map-week');
+  let html = `<h3 style="font-family:Georgia,serif;margin-bottom:12px">Week Schedule</h3>
+  <div class="week-grid">
+    <div class="week-header">Time</div>`;
+  DAYS.forEach(d=>{ html += `<div class="week-header">${d}</div>`; });
+  // Time rows
+  html += `<div class="week-time-col">`;
+  for(let h=6;h<23;h++) html += `<div class="week-time-slot">${h}:00</div>`;
+  html += `</div>`;
+  DAYS.forEach(day=>{
+    const dayBlocks = scheduleData.blocks.filter(b=>b.days.includes(day));
+    html += `<div class="week-day-col" style="height:${17*20}px">`;
+    dayBlocks.forEach(b=>{
+      const start = timeToMinutes(b.startTime);
+      const end = timeToMinutes(b.endTime);
+      const top = ((start - 360) / 60) * 20;
+      const height = ((end - start) / 60) * 20;
+      if(top<0||height<=0) return;
+      const color = streamColor(b.streamId);
+      html += `<div class="week-block" title="${b.name}" style="top:${top}px;height:${Math.max(height,14)}px;background:${color}">${b.name}</div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function renderDayView(){
+  const el = document.getElementById('map-day');
+  let html = `<h3 style="font-family:Georgia,serif;margin-bottom:12px">Day Schedule</h3>
+  <div class="day-selector">`;
+  DAYS.forEach(d=>{ html += `<button class="day-sel-btn ${d===currentDayView?'active':''}" onclick="selectDay('${d}')">${d}</button>`; });
+  html += `</div><div class="day-timeline">`;
+  for(let h=0;h<24;h++){
+    const hStr = String(h).padStart(2,'0')+':00';
+    const blocks = scheduleData.blocks.filter(b=>b.days.includes(currentDayView)&&timeToMinutes(b.startTime)<=h*60&&timeToMinutes(b.endTime)>h*60);
+    html += `<div class="timeline-hour">${hStr}</div><div class="timeline-slot">`;
+    blocks.forEach(b=>{
+      const color = streamColor(b.streamId);
+      html += `<div class="timeline-block" style="background:${color}">${b.name} (${b.startTime}–${b.endTime})</div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+  el.innerHTML = html;
+}
+function selectDay(d){ currentDayView=d; renderDayView(); }
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderFeed();
+</script>
+</body>
+</html>
