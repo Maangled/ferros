@@ -79,6 +79,14 @@ ferros/
 ├── ferros-blueprint.html   # Founding architecture board (Phase 0 test case)
 ├── README.md               # This file
 ├── docs/                   # Architecture specs, ADRs, threat models, governance
+│   ├── ferros-showcase.html       # Public showcase / landing page prototype
+│   ├── agent-command-center.html  # Agent governance and ops console prototype
+│   ├── home-hud-dashboard.html    # Home kiosk HUD prototype
+│   ├── schedule-ledger.html       # Personal schedule ledger prototype
+│   ├── personal-profile.html      # RPG-style personal progression dashboard
+│   ├── deployment-roadmap.html    # 7-home cluster deployment roadmap
+│   ├── architecture-overview.md   # System architecture reference
+│   └── adr/                       # Architecture Decision Records
 └── LICENSE
 ```
 
@@ -96,6 +104,8 @@ These self-contained HTML documents serve as both design targets and milestone v
 | [`docs/agent-command-center.html`](./docs/agent-command-center.html) | Web-based agent coordination platform — replaces Discord integration from botgen-rust; combines chat, agent governance, live operations console, Kanban project board, and IoT home integration |
 | [`docs/home-hud-dashboard.html`](./docs/home-hud-dashboard.html) | FERROS Home HUD Dashboard — the primary kiosk/screen interface for a FERROS-powered home; real-time clock, schedule panel, device controls, agent activity feed, and consent queue |
 | [`docs/schedule-ledger.html`](./docs/schedule-ledger.html) | Personal Schedule Ledger — newspaper-themed interactive schedule editor with My Feed viewer, 5-step editor wizard, visual map (year/week/day views), and localStorage persistence |
+| [`docs/personal-profile.html`](./docs/personal-profile.html) | RPG-style personal progression dashboard with skill trees, achievements, XP tracking, and ADA-conscious assistance levels (Guided → Director) |
+| [`docs/deployment-roadmap.html`](./docs/deployment-roadmap.html) | Technical deployment roadmap with concrete timelines, hardware plans, Gantt chart, interactive cost calculator, and risk register for the 7-home cluster |
 
 ---
 
