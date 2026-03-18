@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FERROS — Personal Progression Profile</title>
+  <style>
+    /* =====================================================================
+       FERROS PERSONAL PROGRESSION PROFILE
+       RPG-style readout of learning, habits, skills, and achievements.
+       Standalone, no external dependencies.
+    ===================================================================== */
+
+    :root {
+      --bg-base:        #0a0c10;
+      --bg-panel:       #111520;
+      --bg-card:        #161b28;
+      --bg-card-alt:    #1a2035;
+      --bg-highlight:   #1e2840;
+      --border-dim:     #1e2a3a;
+      --border-accent:  #2a3f5f;
+      --border-bright:  #3a5a8f;
+      --text-primary:   #e8edf5;
+      --text-secondary: #8fa0b8;
+      --text-dim:       #5a6a80;
+      --text-code:      #7eb8e8;
+      --accent-blue:    #4a90d9;
+      --accent-cyan:    #2dd4bf;
+      --accent-green:   #34d399;
+      --accent-amber:   #f59e0b;
+      --accent-red:     #f87171;
+      --accent-purple:  #a78bfa;
+      --accent-pink:    #f472b6;
+      --accent-orange:  #fb923c;
+      --gradient-header: linear-gradient(135deg, #0d1b35 0%, #0a1525 50%, #091020 100%);
+      --gradient-card:   linear-gradient(145deg, #161b28 0%, #111520 100%);
+      --gradient-accent: linear-gradient(90deg, #4a90d9 0%, #2dd4bf 100%);
+      --shadow-panel:  0 4px 24px rgba(0, 0, 0, 0.6);
+      --shadow-card:   0 2px 12px rgba(0, 0, 0, 0.4);
+      --shadow-glow:   0 0 12px rgba(74, 144, 217, 0.35);
+      --radius-panel:  12px;
+      --radius-card:   8px;
+      --font-mono: 'Courier New', Courier, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      padding-bottom: 64px;
+    }
+
+    /* ---- Assistance Level Overrides ---- */
+    body.level-1 { font-size: 18px; }
+    body.level-1 .multi-panel { display: block; }
+    body.level-1 .panel-section { display: none; }
+    body.level-1 .panel-section.active-panel { display: block; }
+    body.level-1 .panel-nav { display: flex; }
+    body.level-1 .dense-only { display: none !important; }
+    body.level-1 .stat-detail { display: none; }
+    body.level-1 .complete-btn { font-size: 1.4rem; padding: 18px 36px; width: 100%; }
+    body.level-1 h2 { font-size: 2rem; }
+    body.level-1 h3 { font-size: 1.5rem; }
+
+    body.level-2 .panel-nav { display: none; }
+    body.level-2 .dense-only { display: none !important; }
+    body.level-2 .panel-section { display: block; }
+
+    body.level-3 .panel-nav { display: none; }
+    body.level-3 .panel-section { display: block; }
+
+    body.level-4 .panel-nav { display: none; }
+    body.level-4 .panel-section { display: block; }
+    body.level-4 .admin-panel { display: block !important; }
+
+    .admin-panel { display: none; }
+    .panel-nav { display: none; }
+
+    /* ---- Typography ---- */
+    h1, h2, h3, h4 { line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
+    h1 { font-size: 2.2rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.15rem; }
+    h4 { font-size: 0.95rem; font-weight: 600; }
+    p { margin-bottom: 0.75rem; }
+    p:last-child { margin-bottom: 0; }
+    a { color: var(--accent-blue); text-decoration: none; }
+    a:hover { color: var(--accent-cyan); text-decoration: underline; }
+
+    /* ---- Layout ---- */
+    .site-header {
+      background: var(--gradient-header);
+      border-bottom: 1px solid var(--border-accent);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .site-header .logo { display: flex; align-items: center; gap: 12px; }
+    .site-header .logo-mark {
+      font-family: var(--font-mono);
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--accent-cyan);
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px rgba(45, 212, 191, 0.5);
+    }
+    .site-header .logo-sub { color: var(--text-secondary); font-size: 0.85rem; }
+    .nav-back { font-size: 0.85rem; color: var(--text-secondary); }
+    .nav-back a { color: var(--accent-blue); }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+
+    /* ---- Assistance Level Selector ---- */
+    .assistance-bar {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-dim);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .assistance-bar label { font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+    .assistance-levels { display: flex; gap: 8px; flex-wrap: wrap; }
+    .assist-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      transition: all 0.2s;
+    }
+    .assist-btn:hover { border-color: var(--border-bright); color: var(--text-primary); }
+    .assist-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; box-shadow: var(--shadow-glow); }
+    .assist-desc { font-size: 0.8rem; color: var(--text-dim); font-style: italic; flex: 1; min-width: 200px; }
+
+    /* ---- Panel navigation (Level 1) ---- */
+    .panel-nav-bar {
+      display: none;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-dim);
+      padding: 8px 24px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    body.level-1 .panel-nav-bar { display: flex; }
+    .panel-nav-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 7px 16px;
+      transition: all 0.2s;
+    }
+    .panel-nav-btn:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+    .panel-nav-btn.active { background: rgba(74,144,217,0.2); border-color: var(--accent-blue); color: var(--accent-cyan); }
+
+    /* ---- XP Notification Toast ---- */
+    #xp-toast {
+      position: fixed;
+      top: 80px;
+      right: 24px;
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .xp-toast-item {
+      background: linear-gradient(135deg, #1a2840, #0d1a30);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 0.9rem;
+      color: var(--accent-cyan);
+      font-weight: 700;
+      box-shadow: 0 0 20px rgba(45,212,191,0.3);
+      animation: toastSlide 0.3s ease-out;
+    }
+    @keyframes toastSlide {
+      from { opacity: 0; transform: translateX(40px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ---- Main Grid ---- */
+    .main-layout {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .main-layout { grid-template-columns: 1fr; }
+      body.level-1 .main-layout,
+      body.level-2 .main-layout,
+      body.level-3 .main-layout,
+      body.level-4 .main-layout { grid-template-columns: 1fr; }
+    }
+    body.level-1 .main-layout { grid-template-columns: 1fr; }
+    body.level-2 .main-layout { grid-template-columns: 320px 1fr; }
+
+    .right-col { display: flex; flex-direction: column; gap: 20px; }
+
+    /* ---- Panels / Cards ---- */
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+      box-shadow: var(--shadow-panel);
+    }
+    .panel-header {
+      background: linear-gradient(90deg, rgba(74,144,217,0.1), transparent);
+      border-bottom: 1px solid var(--border-accent);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .panel-header h2, .panel-header h3 { font-size: 1rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+    .panel-body { padding: 20px; }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-card);
+      padding: 14px;
+      margin-bottom: 12px;
+      transition: border-color 0.2s;
+    }
+    .card:last-child { margin-bottom: 0; }
+    .card:hover { border-color: var(--border-accent); }
+    .card.highlight { border-color: var(--border-bright); background: var(--bg-card-alt); }
+
+    /* ---- Badge / Tag ---- */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(74,144,217,0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(74,144,217,0.3);
+    }
+    .badge.green  { background: rgba(52,211,153,0.15); color: var(--accent-green); border-color: rgba(52,211,153,0.3); }
+    .badge.amber  { background: rgba(245,158,11,0.15);  color: var(--accent-amber);  border-color: rgba(245,158,11,0.3); }
+    .badge.purple { background: rgba(167,139,250,0.15); color: var(--accent-purple); border-color: rgba(167,139,250,0.3); }
+    .badge.red    { background: rgba(248,113,113,0.15); color: var(--accent-red);    border-color: rgba(248,113,113,0.3); }
+    .badge.cyan   { background: rgba(45,212,191,0.15);  color: var(--accent-cyan);   border-color: rgba(45,212,191,0.3); }
+    .badge.pink   { background: rgba(244,114,182,0.15); color: var(--accent-pink);   border-color: rgba(244,114,182,0.3); }
+    .badge.orange { background: rgba(251,146,60,0.15);  color: var(--accent-orange); border-color: rgba(251,146,60,0.3); }
+
+    /* ---- XP Bar ---- */
+    .xp-bar-wrap { margin: 6px 0; }
+    .xp-bar-label { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 4px; }
+    .xp-bar-track {
+      height: 8px;
+      background: var(--bg-highlight);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid var(--border-dim);
+    }
+    .xp-bar-track.thick { height: 14px; border-radius: 7px; }
+    .xp-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--gradient-accent);
+      transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: 0 0 8px rgba(74,144,217,0.5);
+    }
+    .xp-bar-fill.green  { background: linear-gradient(90deg, #34d399, #10b981); box-shadow: 0 0 8px rgba(52,211,153,0.5); }
+    .xp-bar-fill.amber  { background: linear-gradient(90deg, #f59e0b, #d97706); box-shadow: 0 0 8px rgba(245,158,11,0.5); }
+    .xp-bar-fill.purple { background: linear-gradient(90deg, #a78bfa, #7c3aed); box-shadow: 0 0 8px rgba(167,139,250,0.5); }
+    .xp-bar-fill.pink   { background: linear-gradient(90deg, #f472b6, #ec4899); box-shadow: 0 0 8px rgba(244,114,182,0.5); }
+    .xp-bar-fill.cyan   { background: linear-gradient(90deg, #2dd4bf, #0891b2); box-shadow: 0 0 8px rgba(45,212,191,0.5); }
+    .xp-bar-fill.orange { background: linear-gradient(90deg, #fb923c, #ea580c); box-shadow: 0 0 8px rgba(251,146,60,0.5); }
+
+    /* ---- Level Badge ---- */
+    .level-circle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1a2840, #0d1a30);
+      border: 2px solid var(--accent-blue);
+      font-weight: 900;
+      font-size: 1rem;
+      color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(74,144,217,0.4);
+      flex-shrink: 0;
+    }
+    .level-circle.large { width: 56px; height: 56px; font-size: 1.5rem; }
+    .level-circle.sm    { width: 26px; height: 26px; font-size: 0.78rem; }
+
+    /* ---- Character Sheet ---- */
+    .avatar-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid var(--border-dim);
+    }
+    .avatar-placeholder {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1a2840, #0d1a30);
+      border: 3px solid var(--accent-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      box-shadow: 0 0 20px rgba(74,144,217,0.4);
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .avatar-level-badge {
+      position: absolute;
+      bottom: -4px;
+      right: -4px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      border: 2px solid var(--bg-base);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.78rem;
+      font-weight: 900;
+      color: #fff;
+    }
+    .char-name { font-size: 1.3rem; font-weight: 800; margin-bottom: 2px; }
+    .char-class { color: var(--accent-cyan); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+    .char-title { color: var(--text-dim); font-size: 0.8rem; font-style: italic; margin-top: 4px; }
+    .char-meta {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .char-meta-item { text-align: center; }
+    .char-meta-item .val { font-size: 1.1rem; font-weight: 800; color: var(--accent-cyan); }
+    .char-meta-item .lbl { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ---- Stats ---- */
+    .stat-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-dim);
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-icon { font-size: 1.3rem; width: 28px; text-align: center; flex-shrink: 0; }
+    .stat-info { flex: 1; min-width: 0; }
+    .stat-name { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+    .stat-sub  { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+    .stat-xp   { font-size: 0.72rem; color: var(--text-secondary); text-align: right; white-space: nowrap; flex-shrink: 0; }
+
+    /* ---- Radar Chart (Canvas) ---- */
+    #radar-canvas { display: block; margin: 0 auto; max-width: 100%; }
+
+    /* ---- Skill Tree ---- */
+    .stream-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 0 20px 0;
+      border-bottom: 1px solid var(--border-dim);
+      overflow-x: auto;
+    }
+    .stream-tab {
+      padding: 10px 16px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: all 0.2s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    .stream-tab:hover { color: var(--text-primary); }
+    .stream-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
+
+    .stream-content { display: none; padding: 16px 20px; }
+    .stream-content.active { display: block; }
+
+    .skill-chain {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .skill-node {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-card);
+      padding: 10px 14px;
+      min-width: 120px;
+      flex-shrink: 0;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .skill-node.unlocked { border-color: var(--accent-blue); background: var(--bg-card-alt); }
+    .skill-node.mastered { border-color: var(--accent-cyan); box-shadow: 0 0 8px rgba(45,212,191,0.25); }
+    .skill-node.locked   { opacity: 0.45; filter: grayscale(0.6); }
+    .skill-node-name { font-size: 0.8rem; font-weight: 700; margin-bottom: 4px; }
+    .skill-node-lvl  { font-size: 0.72rem; color: var(--text-dim); }
+    .skill-arrow {
+      color: var(--border-bright);
+      font-size: 1.1rem;
+      padding: 0 4px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    /* ---- Achievements ---- */
+    .achievement-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 12px;
+    }
+    .achievement-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-card);
+      padding: 14px 10px;
+      text-align: center;
+      transition: all 0.2s;
+      cursor: default;
+    }
+    .achievement-item.unlocked {
+      border-color: var(--accent-amber);
+      background: linear-gradient(145deg, #1e1a10, #161b28);
+      box-shadow: 0 0 12px rgba(245,158,11,0.2);
+    }
+    .achievement-item.locked { opacity: 0.4; filter: grayscale(0.8); }
+    .achievement-icon { font-size: 2rem; margin-bottom: 6px; display: block; }
+    .achievement-name { font-size: 0.75rem; font-weight: 700; margin-bottom: 4px; color: var(--text-primary); }
+    .achievement-desc { font-size: 0.68rem; color: var(--text-dim); line-height: 1.4; }
+    .achievement-xp   { font-size: 0.7rem; color: var(--accent-amber); font-weight: 700; margin-top: 6px; }
+    .achievement-date { font-size: 0.65rem; color: var(--text-dim); margin-top: 4px; font-style: italic; }
+
+    /* ---- Activity Log ---- */
+    .log-filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .log-filter {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: 4px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      transition: all 0.2s;
+    }
+    .log-filter:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+    .log-filter.active { background: rgba(74,144,217,0.15); border-color: var(--accent-blue); color: var(--accent-blue); }
+
+    .log-entry {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-dim);
+      align-items: flex-start;
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .log-icon { font-size: 1.1rem; width: 24px; flex-shrink: 0; margin-top: 2px; }
+    .log-info { flex: 1; min-width: 0; }
+    .log-title { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
+    .log-meta  { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+    .log-xp    { font-size: 0.82rem; font-weight: 700; color: var(--accent-green); white-space: nowrap; flex-shrink: 0; }
+    .log-date  { font-size: 0.7rem; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; }
+
+    /* ---- Credentials ---- */
+    .credential-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-card);
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .credential-card.earned {
+      border-color: var(--accent-green);
+      background: linear-gradient(145deg, #0e1e18, #161b28);
+      box-shadow: 0 0 10px rgba(52,211,153,0.15);
+    }
+    .credential-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .credential-name { font-size: 0.95rem; font-weight: 700; }
+    .credential-checklist { list-style: none; padding: 0; }
+    .credential-checklist li {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border-dim);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .credential-checklist li:last-child { border-bottom: none; }
+    .credential-checklist li.done { color: var(--accent-green); }
+    .credential-checklist .check { font-size: 0.8rem; }
+    .credential-meta { font-size: 0.72rem; color: var(--text-dim); margin-top: 8px; font-family: var(--font-mono); }
+
+    /* ---- Report Card ---- */
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .report-cell {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-card);
+      padding: 12px;
+      text-align: center;
+    }
+    .report-cell .attr { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .report-cell .this-week { font-size: 1.6rem; font-weight: 900; color: var(--accent-cyan); }
+    .report-cell .delta { font-size: 0.8rem; margin-top: 2px; }
+    .report-cell .delta.up   { color: var(--accent-green); }
+    .report-cell .delta.down { color: var(--accent-red); }
+    .report-cell .delta.flat { color: var(--text-dim); }
+
+    /* ---- Admin panel ---- */
+    .admin-tag {
+      font-size: 0.7rem;
+      color: var(--accent-red);
+      border: 1px solid var(--accent-red);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .user-management-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .user-management-table th, .user-management-table td {
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-dim);
+    }
+    .user-management-table th { color: var(--text-dim); font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
+
+    /* ---- Complete button (Level 1) ---- */
+    .complete-btn {
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      padding: 14px 28px;
+      transition: all 0.2s;
+      margin-top: 16px;
+      box-shadow: 0 0 20px rgba(74,144,217,0.4);
+      text-transform: uppercase;
+    }
+    .complete-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 24px rgba(74,144,217,0.6); }
+    .complete-btn:active { transform: translateY(0); }
+
+    /* ---- Divider ---- */
+    .divider { border: none; border-top: 1px solid var(--border-dim); margin: 16px 0; }
+
+    /* ---- Sound placeholder ---- */
+    .sound-cue {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      background: rgba(167,139,250,0.08);
+      border: 1px solid rgba(167,139,250,0.2);
+      border-radius: 4px;
+      padding: 2px 7px;
+    }
+
+    /* ---- Footer ---- */
+    .site-footer {
+      margin-top: 48px;
+      border-top: 1px solid var(--border-dim);
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+    .site-footer a { color: var(--text-secondary); }
+  </style>
+</head>
+<body class="level-3" id="profile-body">
+
+<!-- XP Toast Container -->
+<div id="xp-toast" aria-live="polite"></div>
+
+<!-- Header -->
+<header class="site-header">
+  <div class="logo">
+    <span class="logo-mark">FERROS</span>
+    <div>
+      <div style="font-weight:700;font-size:1rem;">Personal Progression Profile</div>
+      <div class="logo-sub">RPG-style learning &amp; habit dashboard</div>
+    </div>
+  </div>
+  <nav class="nav-back">
+    <a href="../ferros-blueprint.html">← Blueprint</a> &nbsp;|&nbsp;
+    <a href="./agent-command-center.html">Agent Center</a> &nbsp;|&nbsp;
+    <a href="./schedule-ledger.html">Schedule Ledger</a>
+  </nav>
+</header>
+
+<!-- Assistance Level Bar -->
+<div class="assistance-bar">
+  <label>Assistance Level:</label>
+  <div class="assistance-levels">
+    <button class="assist-btn" data-level="1" onclick="setAssistLevel(1)">1 — Guided</button>
+    <button class="assist-btn" data-level="2" onclick="setAssistLevel(2)">2 — Supported</button>
+    <button class="assist-btn active" data-level="3" onclick="setAssistLevel(3)">3 — Independent</button>
+    <button class="assist-btn" data-level="4" onclick="setAssistLevel(4)">4 — Director</button>
+  </div>
+  <span class="assist-desc" id="assist-desc">Dense multi-column layout, all panels expanded, full skill detail.</span>
+</div>
+
+<!-- Level 1 Panel Navigation -->
+<div class="panel-nav-bar" id="panel-nav">
+  <button class="panel-nav-btn active" onclick="showPanel('character')">🧙 Character</button>
+  <button class="panel-nav-btn" onclick="showPanel('stats')">⚡ Stats</button>
+  <button class="panel-nav-btn" onclick="showPanel('skills')">🌲 Skills</button>
+  <button class="panel-nav-btn" onclick="showPanel('achievements')">🏆 Achievements</button>
+  <button class="panel-nav-btn" onclick="showPanel('journal')">📜 Journal</button>
+  <button class="panel-nav-btn" onclick="showPanel('credentials')">🎓 Credentials</button>
+  <button class="panel-nav-btn" onclick="showPanel('report')">📊 Report</button>
+</div>
+
+<!-- Main Content -->
+<div class="container">
+  <div class="main-layout">
+
+    <!-- ══════════════════════════════════════════════════════
+         LEFT COLUMN — Character Sheet
+    ══════════════════════════════════════════════════════ -->
+    <aside>
+
+      <!-- Character Sheet -->
+      <div class="panel panel-section" id="panel-character">
+        <!-- Avatar -->
+        <div class="avatar-area">
+          <div class="avatar-placeholder" id="avatar-display">
+            🧙
+            <div class="avatar-level-badge" id="char-level-badge">12</div>
+          </div>
+          <div class="char-name" id="char-name">Maangled</div>
+          <div class="char-class" id="char-class">⚙️ Architect</div>
+          <div class="char-title" id="char-title">"Journeyman Coder"</div>
+          <div class="char-meta">
+            <div class="char-meta-item">
+              <div class="val" id="char-streak">14</div>
+              <div class="lbl">Day Streak 🔥</div>
+            </div>
+            <div class="char-meta-item">
+              <div class="val" id="char-total-xp">8,420</div>
+              <div class="lbl">Total XP</div>
+            </div>
+            <div class="char-meta-item">
+              <div class="val" id="char-joined">2025</div>
+              <div class="lbl">Joined</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Overall XP -->
+        <div class="panel-body" style="padding-top:12px;padding-bottom:12px;">
+          <div class="xp-bar-wrap">
+            <div class="xp-bar-label">
+              <span>Level 12 → 13</span>
+              <span id="overall-xp-label">8,420 / 9,000 XP</span>
+            </div>
+            <div class="xp-bar-track thick">
+              <div class="xp-bar-fill" id="overall-xp-bar" style="width:93.6%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider" style="margin:0;" />
+
+        <!-- Class / Title Editor -->
+        <div class="panel-body" style="padding-top:12px;">
+          <div style="margin-bottom:10px;">
+            <label style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;">Class</label>
+            <select id="class-select" onchange="updateClass()" style="width:100%;margin-top:4px;background:var(--bg-card);border:1px solid var(--border-accent);border-radius:6px;color:var(--text-primary);padding:6px 10px;font-size:0.85rem;">
+              <option value="⚙️ Architect">⚙️ Architect</option>
+              <option value="🛠️ Engineer">🛠️ Engineer</option>
+              <option value="🛡️ Guardian">🛡️ Guardian</option>
+              <option value="📚 Scholar">📚 Scholar</option>
+              <option value="⚡ Conductor">⚡ Conductor</option>
+              <option value="🌐 Navigator">🌐 Navigator</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:10px;" class="dense-only">
+            <label style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;">Display Name</label>
+            <input id="name-input" type="text" value="Maangled" oninput="updateName()" style="width:100%;margin-top:4px;background:var(--bg-card);border:1px solid var(--border-accent);border-radius:6px;color:var(--text-primary);padding:6px 10px;font-size:0.85rem;" />
+          </div>
+
+          <button class="complete-btn" onclick="earnXP('Craft', 50, 'Manual task completed')">✅ Complete Task</button>
+          <div style="margin-top:8px;text-align:center;">
+            <span class="sound-cue">🔊 Audio cue placeholder</span>
+          </div>
+        </div>
+      </div><!-- /panel-character -->
+
+    </aside>
+
+    <!-- ══════════════════════════════════════════════════════
+         RIGHT COLUMN
+    ══════════════════════════════════════════════════════ -->
+    <div class="right-col">
+
+      <!-- ── Stats / Attributes ── -->
+      <div class="panel panel-section" id="panel-stats">
+        <div class="panel-header">
+          <h2>⚡ Attributes &amp; Stats</h2>
+          <span class="badge">6 Core</span>
+        </div>
+        <div class="panel-body">
+          <div style="display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start;">
+            <div id="stats-list"><!-- populated by JS --></div>
+            <div style="flex-shrink:0;" class="dense-only">
+              <canvas id="radar-canvas" width="220" height="220" title="Attribute radar chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Skill Tree ── -->
+      <div class="panel panel-section" id="panel-skills">
+        <div class="panel-header">
+          <h2>🌲 Skill Tree</h2>
+          <span class="badge purple">3 Streams</span>
+        </div>
+        <div class="stream-tabs">
+          <button class="stream-tab active" onclick="switchStream('A',this)">A — Governance &amp; AI</button>
+          <button class="stream-tab" onclick="switchStream('B',this)">B — Interfaces</button>
+          <button class="stream-tab" onclick="switchStream('C',this)">C — Physical Systems</button>
+        </div>
+        <div id="skill-tree-container"><!-- populated by JS --></div>
+      </div>
+
+      <!-- ── Achievement Wall ── -->
+      <div class="panel panel-section" id="panel-achievements">
+        <div class="panel-header">
+          <h2>🏆 Achievement Wall</h2>
+          <span id="achievement-count" class="badge amber">0 / 0 Earned</span>
+        </div>
+        <div class="panel-body">
+          <div class="achievement-grid" id="achievement-grid"><!-- populated by JS --></div>
+        </div>
+      </div>
+
+      <!-- ── Learning Journal ── -->
+      <div class="panel panel-section" id="panel-journal">
+        <div class="panel-header">
+          <h2>📜 Learning Journal</h2>
+          <span class="badge green">Activity Log</span>
+        </div>
+        <div class="panel-body">
+          <div class="log-filters" id="log-filters">
+            <button class="log-filter active" onclick="filterLog('all',this)">All</button>
+            <button class="log-filter" onclick="filterLog('Discipline',this)">💪 Discipline</button>
+            <button class="log-filter" onclick="filterLog('Knowledge',this)">📖 Knowledge</button>
+            <button class="log-filter" onclick="filterLog('Craft',this)">🛠️ Craft</button>
+            <button class="log-filter" onclick="filterLog('Governance',this)">⚖️ Governance</button>
+            <button class="log-filter" onclick="filterLog('Wellness',this)">🌿 Wellness</button>
+            <button class="log-filter" onclick="filterLog('Community',this)">🤝 Community</button>
+          </div>
+          <div id="activity-log"><!-- populated by JS --></div>
+        </div>
+      </div>
+
+      <!-- ── Credentials ── -->
+      <div class="panel panel-section" id="panel-credentials">
+        <div class="panel-header">
+          <h2>🎓 Credentials &amp; Degrees</h2>
+          <span class="badge cyan">Credits System</span>
+        </div>
+        <div class="panel-body" id="credentials-container"><!-- populated by JS --></div>
+      </div>
+
+      <!-- ── Weekly Report Card ── -->
+      <div class="panel panel-section" id="panel-report">
+        <div class="panel-header">
+          <h2>📊 Weekly Report Card</h2>
+          <span class="badge" id="report-week">Week of Mar 9</span>
+        </div>
+        <div class="panel-body" id="report-container"><!-- populated by JS --></div>
+      </div>
+
+      <!-- ══ ADMIN PANEL (Level 4 only) ══ -->
+      <div class="panel admin-panel" id="panel-admin">
+        <div class="panel-header">
+          <h2>🔐 Director Console</h2>
+          <span class="admin-tag">LEVEL 4 ONLY</span>
+        </div>
+        <div class="panel-body">
+          <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px;">
+            Manage other users' feeds, assign tasks to agents, create protocols for others, and view analytics across multiple accounts.
+          </p>
+          <table class="user-management-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Level</th>
+                <th>Streak</th>
+                <th>Today's Tasks</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>🧒 Alex</td>
+                <td><span class="level-circle sm">5</span></td>
+                <td>3 days</td>
+                <td>2 / 4 done</td>
+                <td><span class="badge green">On Track</span></td>
+              </tr>
+              <tr>
+                <td>👩 Jordan</td>
+                <td><span class="level-circle sm">9</span></td>
+                <td>21 days</td>
+                <td>5 / 5 done</td>
+                <td><span class="badge cyan">Complete</span></td>
+              </tr>
+              <tr>
+                <td>🧓 Pat</td>
+                <td><span class="level-circle sm">3</span></td>
+                <td>1 day</td>
+                <td>0 / 3 done</td>
+                <td><span class="badge amber">Needs Reminder</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button onclick="earnXP('Governance',75,'Assigned tasks to agents')" style="background:var(--bg-card);border:1px solid var(--accent-purple);border-radius:6px;color:var(--accent-purple);cursor:pointer;font-size:0.82rem;font-weight:700;padding:8px 16px;">📤 Assign Tasks</button>
+            <button onclick="earnXP('Governance',50,'Reviewed agent permissions')" style="background:var(--bg-card);border:1px solid var(--accent-blue);border-radius:6px;color:var(--accent-blue);cursor:pointer;font-size:0.82rem;font-weight:700;padding:8px 16px;">🔑 Review Permissions</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /right-col -->
+  </div><!-- /main-layout -->
+</div><!-- /container -->
+
+<footer class="site-footer">
+  FERROS Personal Progression Profile &mdash; Seed data pre-populated. All progress saved to <code>localStorage</code>.
+  &nbsp;|&nbsp; <a href="./deployment-roadmap.html">Deployment Roadmap →</a>
+  &nbsp;|&nbsp; <a href="../ferros-blueprint.html">← Blueprint</a>
+</footer>
+
+<script>
+/* =====================================================================
+   FERROS Personal Progression — Data + Logic
+   All state stored in localStorage. No external dependencies.
+===================================================================== */
+
+// ─── Seed Profile Data ────────────────────────────────────────────────
+const DEFAULT_PROFILE = {
+  name: "Maangled",
+  classChoice: "⚙️ Architect",
+  joinedYear: 2025,
+  streak: 14,
+  totalXP: 8420,
+  overallLevel: 12,
+  assistLevel: 3,
+  attributes: {
+    Discipline: { level: 7, xp: 3200, xpNext: 3500, color: "amber",  icon: "💪" },
+    Knowledge:  { level: 9, xp: 4800, xpNext: 5200, color: "blue",   icon: "📖" },
+    Craft:      { level: 8, xp: 4200, xpNext: 4600, color: "cyan",   icon: "🛠️" },
+    Governance: { level: 5, xp: 2100, xpNext: 2500, color: "purple", icon: "⚖️" },
+    Wellness:   { level: 4, xp: 1500, xpNext: 1800, color: "green",  icon: "🌿" },
+    Community:  { level: 3, xp:  900, xpNext: 1200, color: "pink",   icon: "🤝" }
+  }
+};
+
+const SKILL_TREES = {
+  A: [
+    { name: "Rust Basics",          level: 10, state: "mastered" },
+    { name: "Cargo Workspace",      level: 8,  state: "unlocked" },
+    { name: "Agent Architecture",   level: 5,  state: "unlocked" },
+    { name: "Smart Contract Design",level: 2,  state: "unlocked" },
+    { name: "Governance Protocol",  level: 0,  state: "locked"   }
+  ],
+  B: [
+    { name: "HTML/CSS",             level: 10, state: "mastered" },
+    { name: "Dashboard Design",     level: 9,  state: "mastered" },
+    { name: "HUD Layout",           level: 7,  state: "unlocked" },
+    { name: "Camera Integration",   level: 2,  state: "unlocked" },
+    { name: "Whiteboard AI",        level: 0,  state: "locked"   }
+  ],
+  C: [
+    { name: "Home Maintenance",     level: 6,  state: "unlocked" },
+    { name: "Network Setup",        level: 5,  state: "unlocked" },
+    { name: "Cluster Admin",        level: 2,  state: "unlocked" },
+    { name: "Hardware Assembly",    level: 0,  state: "locked"   },
+    { name: "Architecture Design",  level: 0,  state: "locked"   }
+  ]
+};
+
+const ACHIEVEMENTS = [
+  { id:"first-boot",   icon:"🔌", name:"First Boot",        desc:"Complete your first protocol task",    xp:50,  cat:"Milestones", req:"Complete 1 task",                  unlocked:true,  date:"2025-03-01" },
+  { id:"week-warrior", icon:"📅", name:"Week Warrior",      desc:"7-day completion streak",              xp:150, cat:"Streaks",    req:"7 consecutive days",                unlocked:true,  date:"2025-03-08" },
+  { id:"iron-month",   icon:"🏋️", name:"Iron Month",        desc:"30-day completion streak",             xp:500, cat:"Streaks",    req:"30 consecutive days",               unlocked:false, date:null },
+  { id:"code-smith",   icon:"⚒️", name:"Code Smith",        desc:"Reach Craft level 5",                  xp:200, cat:"Skills",     req:"Craft level 5",                     unlocked:true,  date:"2025-02-20" },
+  { id:"gov-council",  icon:"⚖️", name:"Governance Council",desc:"Review 10 agent permission requests",  xp:250, cat:"Skills",     req:"10 permission reviews",             unlocked:false, date:null },
+  { id:"home-sentinel",icon:"🏠", name:"Home Sentinel",     desc:"All IoT devices online 7 days",        xp:300, cat:"Special",    req:"7 days full uptime",                unlocked:false, date:null },
+  { id:"scholar",      icon:"🎓", name:"Scholar",           desc:"Complete 50 learning tasks",           xp:300, cat:"Skills",     req:"50 learning tasks",                 unlocked:true,  date:"2025-03-10" },
+  { id:"com-anchor",   icon:"🤝", name:"Community Anchor",  desc:"Help 5 users through bounties",        xp:400, cat:"Community",  req:"5 bounty completions",              unlocked:false, date:null },
+  { id:"phase0",       icon:"🚀", name:"Phase 0",           desc:"Contribute to FERROS Phase 0",         xp:500, cat:"Special",    req:"Phase 0 contribution",              unlocked:true,  date:"2025-01-15" },
+  { id:"full-stack",   icon:"🌐", name:"Full Stack",        desc:"Level 3+ in all 6 attributes",         xp:750, cat:"Milestones", req:"All attributes ≥ level 3",          unlocked:true,  date:"2025-03-12" },
+  { id:"rust-wizard",  icon:"🦀", name:"Rust Wizard",       desc:"Reach Knowledge level 10",             xp:600, cat:"Skills",     req:"Knowledge level 10",               unlocked:false, date:null },
+  { id:"streak-50",    icon:"🔥", name:"Inferno",           desc:"50-day completion streak",             xp:1000,cat:"Streaks",    req:"50 consecutive days",              unlocked:false, date:null }
+];
+
+const ACTIVITY_LOG_SEED = [
+  { date:"2026-03-15", icon:"🛠️", title:"Implemented agent auth module",     attr:"Craft",      xp:80,  source:"Stream A Task" },
+  { date:"2026-03-15", icon:"📖", title:"Read: FERROS Architecture Overview", attr:"Knowledge",  xp:40,  source:"Article" },
+  { date:"2026-03-14", icon:"💪", title:"Morning fitness protocol complete",  attr:"Discipline", xp:30,  source:"Schedule" },
+  { date:"2026-03-14", icon:"⚖️", title:"Reviewed 3 agent permissions",      attr:"Governance", xp:60,  source:"Agent Center" },
+  { date:"2026-03-14", icon:"🌿", title:"Nutrition log completed",            attr:"Wellness",   xp:25,  source:"Schedule" },
+  { date:"2026-03-13", icon:"🛠️", title:"Fixed dashboard layout bug",        attr:"Craft",      xp:55,  source:"Stream B Task" },
+  { date:"2026-03-13", icon:"🤝", title:"Helped Alex with Rust basics",       attr:"Community",  xp:70,  source:"Bounty" },
+  { date:"2026-03-12", icon:"📖", title:"Read: Smart Contract Patterns",      attr:"Knowledge",  xp:45,  source:"Article" },
+  { date:"2026-03-12", icon:"💪", title:"Evening walk protocol complete",     attr:"Discipline", xp:20,  source:"Schedule" },
+  { date:"2026-03-11", icon:"🛠️", title:"Set up PoE network switch",         attr:"Craft",      xp:90,  source:"Stream C Task" }
+];
+
+const CREDENTIALS = [
+  {
+    name: "FERROS Fundamentals Certificate",
+    earned: false,
+    credits: 12,
+    creditsRequired: 15,
+    hash: null,
+    requirements: [
+      { text: "Complete Stream A skills Level 1–3", done: true },
+      { text: "Complete Stream B skills Level 1–3", done: true },
+      { text: "Complete Stream C skills Level 1–3", done: false }
+    ]
+  },
+  {
+    name: "Home Systems Associate",
+    earned: false,
+    credits: 5,
+    creditsRequired: 15,
+    hash: null,
+    requirements: [
+      { text: "Complete Stream C Level 1–5 skills", done: false },
+      { text: "Cluster Admin skill ≥ level 5", done: false },
+      { text: "Home Sentinel achievement", done: false }
+    ]
+  },
+  {
+    name: "Agent Governance Practitioner",
+    earned: false,
+    credits: 9,
+    creditsRequired: 20,
+    hash: null,
+    requirements: [
+      { text: "Governance skill tree through Level 7", done: false },
+      { text: "Governance attribute ≥ level 7", done: false },
+      { text: "Reviewed 25+ agent permission requests", done: false }
+    ]
+  },
+  {
+    name: "FERROS Systems Architect",
+    earned: false,
+    credits: 18,
+    creditsRequired: 50,
+    hash: null,
+    requirements: [
+      { text: "Level 8+ in all streams", done: false },
+      { text: "All 6 attributes ≥ level 8", done: false },
+      { text: "Agent Governance Practitioner credential", done: false },
+      { text: "Home Systems Associate credential", done: false }
+    ]
+  }
+];
+
+const WEEKLY_DATA = {
+  thisWeek:  { Discipline:120, Knowledge:185, Craft:240, Governance:90, Wellness:70, Community:110 },
+  lastWeek:  { Discipline:80,  Knowledge:200, Craft:180, Governance:60, Wellness:90, Community:50  },
+  targetPct: { Discipline:15,  Knowledge:25,  Craft:30,  Governance:15, Wellness:10, Community:5   }
+};
+
+// ─── State ────────────────────────────────────────────────────────────
+let profile = JSON.parse(localStorage.getItem("ferros_profile")) || JSON.parse(JSON.stringify(DEFAULT_PROFILE));
+let activityLog = JSON.parse(localStorage.getItem("ferros_log") || "null") || [...ACTIVITY_LOG_SEED];
+let currentFilter = "all";
+let currentStream = "A";
+
+// ─── Persistence ─────────────────────────────────────────────────────
+function saveProfile() {
+  localStorage.setItem("ferros_profile", JSON.stringify(profile));
+  localStorage.setItem("ferros_log", JSON.stringify(activityLog));
+}
+
+// ─── Assistance Level ─────────────────────────────────────────────────
+const ASSIST_DESCS = {
+  1: "Guided Mode — One panel at a time, large buttons, simplified stats. For strong structure and routines.",
+  2: "Supported Mode — All panels visible, gentle reminders, moderate detail. For habit builders.",
+  3: "Dense multi-column layout, all panels expanded, full skill detail.",
+  4: "Director Mode — Everything from Level 3 plus admin console, analytics, and user management."
+};
+
+function setAssistLevel(n) {
+  profile.assistLevel = n;
+  saveProfile();
+  const body = document.getElementById("profile-body");
+  body.className = "level-" + n;
+  document.querySelectorAll(".assist-btn").forEach(b => b.classList.toggle("active", +b.dataset.level === n));
+  document.getElementById("assist-desc").textContent = ASSIST_DESCS[n];
+  // Re-draw radar only in levels 3/4
+  if (n >= 3) drawRadar();
+  // Show first panel for level 1
+  if (n === 1) showPanel("character");
+}
+
+// ─── Panel Navigation (Level 1) ──────────────────────────────────────
+function showPanel(id) {
+  document.querySelectorAll(".panel-section").forEach(p => p.classList.remove("active-panel"));
+  document.querySelectorAll(".panel-nav-btn").forEach(b => b.classList.remove("active"));
+  const target = document.getElementById("panel-" + id);
+  if (target) target.classList.add("active-panel");
+  const btn = document.querySelector(`.panel-nav-btn[onclick="showPanel('${id}')"]`);
+  if (btn) btn.classList.add("active");
+}
+
+// ─── XP & Level ──────────────────────────────────────────────────────
+function earnXP(attr, amount, source) {
+  if (!profile.attributes[attr]) return;
+  const a = profile.attributes[attr];
+  a.xp += amount;
+  profile.totalXP += amount;
+
+  // Level up attribute
+  while (a.xp >= a.xpNext) {
+    a.xp -= a.xpNext;
+    a.level++;
+    a.xpNext = Math.round(a.xpNext * 1.3);
+    showToast(`⬆️ ${attr} leveled up! Now Level ${a.level}`);
+  }
+
+  // Overall level
+  profile.overallLevel = Math.floor(Math.sqrt(profile.totalXP / 60));
+
+  // Log entry
+  const icons = { Discipline:"💪", Knowledge:"📖", Craft:"🛠️", Governance:"⚖️", Wellness:"🌿", Community:"🤝" };
+  activityLog.unshift({
+    date: new Date().toISOString().slice(0,10),
+    icon: icons[attr] || "✨",
+    title: source,
+    attr,
+    xp: amount,
+    source: "Manual"
+  });
+  if (activityLog.length > 100) activityLog.pop();
+
+  saveProfile();
+  showToast(`+${amount} XP  ·  ${attr}`);
+  renderAll();
+  checkAchievements();
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const container = document.getElementById("xp-toast");
+  container.style.display = "flex";
+  const el = document.createElement("div");
+  el.className = "xp-toast-item";
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { el.remove(); if (!container.children.length) container.style.display = "none"; }, 3000);
+}
+
+// ─── Character Sheet ─────────────────────────────────────────────────
+function renderCharacter() {
+  document.getElementById("char-name").textContent = profile.name;
+  document.getElementById("char-class").textContent = profile.classChoice;
+  document.getElementById("char-level-badge").textContent = profile.overallLevel;
+  document.getElementById("char-streak").textContent = profile.streak;
+  document.getElementById("char-total-xp").textContent = profile.totalXP.toLocaleString();
+  document.getElementById("char-joined").textContent = profile.joinedYear;
+  document.getElementById("class-select").value = profile.classChoice;
+  if (document.getElementById("name-input")) document.getElementById("name-input").value = profile.name;
+
+  const titles = {
+    1:"Apprentice",3:"Novice Builder",5:"Apprentice Coder",7:"Builder",
+    10:"Journeyman Coder",15:"Craftsman",20:"Master of Routines",25:"Architect-Prime"
+  };
+  let title = "Apprentice";
+  for (const [lvl, t] of Object.entries(titles)) { if (profile.overallLevel >= +lvl) title = t; }
+  document.getElementById("char-title").textContent = `"${title}"`;
+
+  // Overall XP bar
+  const pct = Math.min(100, (profile.totalXP % 1000) / 10);
+  document.getElementById("overall-xp-bar").style.width = pct + "%";
+  document.getElementById("overall-xp-label").textContent =
+    `${profile.totalXP.toLocaleString()} / ${(Math.ceil(profile.totalXP/1000)*1000).toLocaleString()} XP`;
+}
+
+function updateClass() {
+  profile.classChoice = document.getElementById("class-select").value;
+  saveProfile();
+  renderCharacter();
+}
+function updateName() {
+  const v = document.getElementById("name-input");
+  if (v) { profile.name = v.value || "Hero"; saveProfile(); renderCharacter(); }
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────
+function renderStats() {
+  const list = document.getElementById("stats-list");
+  const subs = {
+    Discipline: "Protocol tasks, hygiene, fitness, maintenance",
+    Knowledge:  "Articles, learning tasks, research sessions",
+    Craft:      "Coding, building, creating, hands-on work",
+    Governance: "Agent management, permissions, decisions",
+    Wellness:   "Health, fitness, nutrition protocols",
+    Community:  "Helping others, bounties, teaching"
+  };
+  list.innerHTML = Object.entries(profile.attributes).map(([name, a]) => {
+    const pct = Math.min(100, Math.round(a.xp / a.xpNext * 100));
+    return `
+      <div class="stat-row">
+        <span class="stat-icon">${a.icon}</span>
+        <div class="stat-info">
+          <div class="stat-name">
+            ${name}
+            <span class="level-circle sm">${a.level}</span>
+            <span class="badge ${a.color}">${pct}%</span>
+          </div>
+          <div class="stat-sub stat-detail">${subs[name]}</div>
+          <div class="xp-bar-wrap" style="margin-top:6px;">
+            <div class="xp-bar-track">
+              <div class="xp-bar-fill ${a.color}" style="width:${pct}%;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="stat-xp">${a.xp.toLocaleString()} / ${a.xpNext.toLocaleString()} XP</div>
+      </div>`;
+  }).join("");
+  drawRadar();
+}
+
+// ─── Radar Chart ─────────────────────────────────────────────────────
+function drawRadar() {
+  const canvas = document.getElementById("radar-canvas");
+  if (!canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const r = Math.min(cx, cy) - 28;
+  const attrs = Object.values(profile.attributes);
+  const N = attrs.length;
+  const maxLevel = 10;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background rings
+  for (let ring = 1; ring <= 5; ring++) {
+    const rr = (r * ring) / 5;
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const angle = (Math.PI * 2 * i) / N - Math.PI / 2;
+      const x = cx + rr * Math.cos(angle);
+      const y = cy + rr * Math.sin(angle);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = "rgba(42,63,95,0.6)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Spokes
+  for (let i = 0; i < N; i++) {
+    const angle = (Math.PI * 2 * i) / N - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+    ctx.strokeStyle = "rgba(42,63,95,0.5)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Fill polygon
+  ctx.beginPath();
+  attrs.forEach((a, i) => {
+    const angle = (Math.PI * 2 * i) / N - Math.PI / 2;
+    const val = Math.min(a.level, maxLevel) / maxLevel;
+    const x = cx + r * val * Math.cos(angle);
+    const y = cy + r * val * Math.sin(angle);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = "rgba(74,144,217,0.18)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(74,144,217,0.8)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Dots + labels
+  attrs.forEach((a, i) => {
+    const angle = (Math.PI * 2 * i) / N - Math.PI / 2;
+    const val = Math.min(a.level, maxLevel) / maxLevel;
+    const dx = cx + r * val * Math.cos(angle);
+    const dy = cy + r * val * Math.sin(angle);
+    ctx.beginPath();
+    ctx.arc(dx, dy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = "#4a90d9";
+    ctx.fill();
+
+    const lx = cx + (r + 18) * Math.cos(angle);
+    const ly = cy + (r + 18) * Math.sin(angle);
+    ctx.font = "bold 10px sans-serif";
+    ctx.fillStyle = "#8fa0b8";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(a.icon, lx, ly);
+  });
+}
+
+// ─── Skill Tree ───────────────────────────────────────────────────────
+function renderSkillTree(stream) {
+  const container = document.getElementById("skill-tree-container");
+  const skills = SKILL_TREES[stream];
+  const streamNames = { A: "Governance & AI Backbone", B: "Home Interaction Layer", C: "Physical & Home Systems" };
+  let html = `<div class="stream-content active" style="padding:16px 20px;">`;
+  html += `<div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:14px;font-style:italic;">Stream ${stream}: ${streamNames[stream]}</div>`;
+  html += `<div class="skill-chain">`;
+  skills.forEach((sk, idx) => {
+    const pct = Math.round(sk.level / 10 * 100);
+    html += `<div class="skill-node ${sk.state}">
+      <div class="skill-node-name">${sk.name}</div>
+      <div class="skill-node-lvl">Lv ${sk.level}/10</div>
+      <div class="xp-bar-wrap" style="margin-top:4px;">
+        <div class="xp-bar-track" style="height:4px;">
+          <div class="xp-bar-fill" style="width:${pct}%;"></div>
+        </div>
+      </div>
+    </div>`;
+    if (idx < skills.length - 1) html += `<span class="skill-arrow">→</span>`;
+  });
+  html += `</div></div>`;
+  container.innerHTML = html;
+}
+
+function switchStream(s, btn) {
+  currentStream = s;
+  document.querySelectorAll(".stream-tab").forEach(t => t.classList.remove("active"));
+  btn.classList.add("active");
+  renderSkillTree(s);
+}
+
+// ─── Achievements ─────────────────────────────────────────────────────
+let _checkingAchievements = false;
+function checkAchievements() {
+  if (_checkingAchievements) return;
+  _checkingAchievements = true;
+  ACHIEVEMENTS.forEach(a => {
+    if (a.id === "full-stack") {
+      const allThree = Object.values(profile.attributes).every(attr => attr.level >= 3);
+      if (allThree && !a.unlocked) {
+        a.unlocked = true;
+        a.date = new Date().toISOString().slice(0,10);
+        showToast("🏆 Achievement: " + a.name);
+        earnXP("Community", a.xp, "Achievement: " + a.name);
+      }
+    }
+    if (a.id === "code-smith" && profile.attributes.Craft.level >= 5 && !a.unlocked) {
+      a.unlocked = true;
+      a.date = new Date().toISOString().slice(0,10);
+      showToast("🏆 Achievement: " + a.name);
+    }
+  });
+  _checkingAchievements = false;
+  renderAchievements();
+}
+
+function renderAchievements() {
+  const grid = document.getElementById("achievement-grid");
+  const unlocked = ACHIEVEMENTS.filter(a => a.unlocked).length;
+  document.getElementById("achievement-count").textContent = `${unlocked} / ${ACHIEVEMENTS.length} Earned`;
+  grid.innerHTML = ACHIEVEMENTS.map(a => `
+    <div class="achievement-item ${a.unlocked ? "unlocked" : "locked"}" title="${a.desc}">
+      <span class="achievement-icon">${a.icon}</span>
+      <div class="achievement-name">${a.name}</div>
+      <div class="achievement-desc">${a.unlocked ? a.desc : a.req}</div>
+      <div class="achievement-xp">+${a.xp} XP</div>
+      ${a.unlocked && a.date ? `<div class="achievement-date">${a.date}</div>` : ""}
+    </div>`).join("");
+}
+
+// ─── Activity Log ─────────────────────────────────────────────────────
+function filterLog(attr, btn) {
+  currentFilter = attr;
+  document.querySelectorAll(".log-filter").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderLog();
+}
+
+function renderLog() {
+  const log = document.getElementById("activity-log");
+  const entries = currentFilter === "all"
+    ? activityLog
+    : activityLog.filter(e => e.attr === currentFilter);
+  log.innerHTML = entries.slice(0, 20).map(e => `
+    <div class="log-entry">
+      <span class="log-icon">${e.icon}</span>
+      <div class="log-info">
+        <div class="log-title">${e.title}</div>
+        <div class="log-meta">${e.attr} · ${e.source}</div>
+      </div>
+      <div class="log-xp">+${e.xp} XP</div>
+      <div class="log-date">${e.date}</div>
+    </div>`).join("") || `<div style="color:var(--text-dim);font-size:0.85rem;padding:12px 0;">No entries for this filter.</div>`;
+}
+
+// ─── Credentials ──────────────────────────────────────────────────────
+function renderCredentials() {
+  const container = document.getElementById("credentials-container");
+  container.innerHTML = CREDENTIALS.map(c => `
+    <div class="credential-card ${c.earned ? "earned" : ""}">
+      <div class="credential-header">
+        <span class="credential-name">${c.earned ? "🎓 " : "🔒 "}${c.name}</span>
+        <span class="badge ${c.earned ? "green" : ""}">
+          ${c.credits} / ${c.creditsRequired} credits
+        </span>
+      </div>
+      <ul class="credential-checklist">
+        ${c.requirements.map(r => `
+          <li class="${r.done ? "done" : ""}">
+            <span class="check">${r.done ? "✅" : "⬜"}</span>
+            ${r.text}
+          </li>`).join("")}
+      </ul>
+      ${c.earned ? `<div class="credential-meta">Verification hash: ${c.hash || "pending"}</div>` : ""}
+    </div>`).join("");
+}
+
+// ─── Weekly Report Card ───────────────────────────────────────────────
+function renderReport() {
+  const container = document.getElementById("report-container");
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay());
+  document.getElementById("report-week").textContent = "Week of " + weekStart.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+
+  const attrEntries = Object.entries(WEEKLY_DATA.thisWeek);
+  const icons = { Discipline:"💪", Knowledge:"📖", Craft:"🛠️", Governance:"⚖️", Wellness:"🌿", Community:"🤝" };
+
+  // Find focus recommendation (biggest gap from target)
+  let focusAttr = "Wellness";
+  let maxGap = -Infinity;
+  const totalThis = attrEntries.reduce((s,[,v])=>s+v,0);
+  attrEntries.forEach(([attr, val]) => {
+    const actual = (val / totalThis) * 100;
+    const target = WEEKLY_DATA.targetPct[attr];
+    if (target - actual > maxGap) { maxGap = target - actual; focusAttr = attr; }
+  });
+
+  let html = `<div class="report-grid">`;
+  attrEntries.forEach(([attr, val]) => {
+    const prev = WEEKLY_DATA.lastWeek[attr];
+    const delta = val - prev;
+    const deltaStr = delta > 0 ? `▲ +${delta}` : delta < 0 ? `▼ ${delta}` : "— same";
+    const deltaClass = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+    html += `<div class="report-cell">
+      <div class="attr">${icons[attr]} ${attr}</div>
+      <div class="this-week">${val}</div>
+      <div class="delta ${deltaClass}">${deltaStr} XP vs last week</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // Focus recommendation
+  html += `<div class="card">
+    <div style="font-size:0.8rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">🎯 Focus Recommendation</div>
+    <div style="font-size:0.9rem;color:var(--text-primary);font-weight:600;">${icons[focusAttr]} ${focusAttr} needs attention this week.</div>
+    <div style="font-size:0.78rem;color:var(--text-dim);margin-top:4px;">Currently ${Math.round(WEEKLY_DATA.thisWeek[focusAttr]/totalThis*100)}% of XP vs ${WEEKLY_DATA.targetPct[focusAttr]}% target allocation.</div>
+  </div>`;
+
+  // Streak risk
+  const daysToRisk = 7 - (profile.streak % 7);
+  html += `<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+    <div>
+      <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:4px;">🔥 Streak Status</div>
+      <div style="font-size:1.1rem;font-weight:800;color:var(--accent-amber);">${profile.streak} days</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:0.78rem;color:var(--text-dim);">Complete today's tasks to maintain streak.</div>
+      <div style="font-size:0.78rem;color:var(--accent-red);margin-top:2px;">⚠️ ${daysToRisk} day(s) until milestone</div>
+    </div>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+// ─── Render All ───────────────────────────────────────────────────────
+function renderAll() {
+  renderCharacter();
+  renderStats();
+  renderSkillTree(currentStream);
+  renderAchievements();
+  renderLog();
+  renderCredentials();
+  renderReport();
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────
+(function init() {
+  setAssistLevel(profile.assistLevel || 3);
+  renderAll();
+})();
+</script>
+</body>
+</html>
