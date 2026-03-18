@@ -308,12 +308,12 @@
       <div class="field-group">
         <span class="field-label">Choose Your Avatar</span>
         <div class="avatar-grid">
-          <button class="avatar-btn" onclick="selectAvatar('\u{1F9D9}')" id="av-wizard">&#129497;</button>
-          <button class="avatar-btn selected" onclick="selectAvatar('\u{1F6E1}')" id="av-shield">&#128737;</button>
-          <button class="avatar-btn" onclick="selectAvatar('\u{2694}')" id="av-sword">&#9876;</button>
-          <button class="avatar-btn" onclick="selectAvatar('\u{1F31F}')" id="av-star">&#127775;</button>
-          <button class="avatar-btn" onclick="selectAvatar('\u{1F525}')" id="av-fire">&#128293;</button>
-          <button class="avatar-btn" onclick="selectAvatar('\u{1F981}')" id="av-lion">&#129409;</button>
+          <button class="avatar-btn" onclick="selectAvatar('wizard')" id="av-wizard">&#129497;</button>
+          <button class="avatar-btn selected" onclick="selectAvatar('shield')" id="av-shield">&#128737;</button>
+          <button class="avatar-btn" onclick="selectAvatar('sword')" id="av-sword">&#9876;</button>
+          <button class="avatar-btn" onclick="selectAvatar('star')" id="av-star">&#127775;</button>
+          <button class="avatar-btn" onclick="selectAvatar('fire')" id="av-fire">&#128293;</button>
+          <button class="avatar-btn" onclick="selectAvatar('lion')" id="av-lion">&#129409;</button>
         </div>
       </div>
       <div class="field-group">
@@ -565,10 +565,23 @@
       return false;
     }
 
+    async function computeHash(data){
+      if(window.crypto&&window.crypto.subtle){
+        const subtle=window.crypto.subtle;
+        const enc=new TextEncoder().encode(data);
+        const buf=await subtle.digest('SHA-256',enc);
+        return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+      }
+      // Fallback: djb2-based hash for file:// protocol where crypto.subtle is unavailable
+      let h=5381;
+      // >>>0 converts to unsigned 32-bit int to keep hash positive after XOR
+      for(let i=0;i<data.length;i++){h=((h<<5)+h)^data.charCodeAt(i);h=h>>>0;}
+      return 'local-'+h.toString(16).padStart(8,'0');
+    }
     async function sealTask(taskId,taskData,previousSeal){
-      const payload=JSON.stringify({taskId,data:taskData,previousSeal:previousSeal||'genesis',timestamp:new Date().toISOString(),nonce:crypto.getRandomValues(new Uint32Array(1))[0]});
-      const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(payload));
-      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+      const nonce=(window.crypto&&window.crypto.getRandomValues)?crypto.getRandomValues(new Uint32Array(1))[0]:Math.floor(Math.random()*0xFFFFFFFF);
+      const payload=JSON.stringify({taskId,data:taskData,previousSeal:previousSeal||'genesis',timestamp:new Date().toISOString(),nonce});
+      return computeHash(payload);
     }
     async function addSeal(taskId,taskData){
       const prev=sealChain.length>0?sealChain[sealChain.length-1].seal:null;
@@ -596,8 +609,9 @@
     }
 
     function showStage(n){
-      for(let i=0;i<=3;i++){const e=$('stage-'+i);if(e)e.style.display=(i===n)?'':'none'}
-      const vp=$('verification-panel');if(vp)vp.style.display=n>0?'':'none';
+      const disp={0:'flex',1:'flex',2:'flex',3:'block'};
+      for(let i=0;i<=3;i++){const e=$('stage-'+i);if(e)e.style.display=(i===n)?disp[i]:'none'}
+      const vp=$('verification-panel');if(vp)vp.style.display=n>0?'flex':'none';
       if(n>0){const se=$('stage-'+n);if(se)se.classList.add('stage-visible')}
       if(n===2)showProtoForLevel(profile.meta.assistanceLevel);
     }
