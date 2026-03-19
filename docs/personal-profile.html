@@ -104,6 +104,14 @@
     .assist-card .assist-name{font-weight:700;color:var(--text-primary);font-size:.95rem}
     .assist-card .assist-desc{font-size:.78rem;color:var(--text-secondary);margin-top:4px;line-height:1.4}
     .assist-card.selected .assist-name{color:var(--accent-cyan)}
+    /* Locked assist card */
+    .assist-card.locked{opacity:.45;filter:grayscale(60%);cursor:not-allowed}
+    .assist-card.locked:hover{border-color:var(--border-dim)}
+    .assist-lock-text{font-size:.7rem;color:var(--text-dim);font-family:var(--font-mono);margin-top:6px;line-height:1.3}
+    .assist-unlock-badge{font-size:.68rem;color:var(--accent-green);font-family:var(--font-mono);margin-top:6px}
+    /* Tooltip flash */
+    .assist-lock-tooltip{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:5px;color:var(--accent-amber);font-size:.75rem;margin-top:4px;padding:4px 10px;animation:tooltipFadeOut 2.5s ease-out forwards}
+    @keyframes tooltipFadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}
     .begin-btn{width:100%;background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1.1rem;font-weight:700;letter-spacing:.05em;padding:16px 32px;transition:all .2s;box-shadow:0 0 20px rgba(45,212,191,.2)}
     .begin-btn:hover{transform:translateY(-2px);box-shadow:0 4px 24px rgba(45,212,191,.4)}
     .begin-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
@@ -451,22 +459,26 @@
             <div class="assist-name">&#129517; Guided</div>
             <div class="assist-desc">Step-by-step instructions, large buttons, one panel at a time</div>
           </div>
-          <div class="assist-card" id="al-2" onclick="selectAssistLevel(2)">
+          <div class="assist-card locked" id="al-2" onclick="showLockedLevelTooltip(2, this)">
             <div class="assist-num">Level 2</div>
             <div class="assist-name">&#129309; Supported</div>
             <div class="assist-desc">Two-column layout, tab navigation, moderate detail</div>
+            <div class="assist-lock-text" id="al-2-lock">&#128274; Unlocks at 5 seals completed</div>
           </div>
-          <div class="assist-card" id="al-3" onclick="selectAssistLevel(3)">
+          <div class="assist-card locked" id="al-3" onclick="showLockedLevelTooltip(3, this)">
             <div class="assist-num">Level 3</div>
             <div class="assist-name">&#9889; Independent</div>
             <div class="assist-desc">Dense grid, all panels visible, keyboard navigation hints</div>
+            <div class="assist-lock-text" id="al-3-lock">&#128274; Unlocks at 1000 total XP</div>
           </div>
-          <div class="assist-card" id="al-4" onclick="selectAssistLevel(4)">
+          <div class="assist-card locked" id="al-4" onclick="showLockedLevelTooltip(4, this)">
             <div class="assist-num">Level 4</div>
             <div class="assist-name">&#127919; Director</div>
             <div class="assist-desc">Full dashboard + admin panel with agent task assignment</div>
+            <div class="assist-lock-text" id="al-4-lock">&#128274; Unlocks at 20 seals completed</div>
           </div>
         </div>
+        <div id="assist-tooltip-container" style="min-height:28px;margin-bottom:8px"></div>
         <button class="begin-btn" id="begin-btn" onclick="completeStage0()">Begin Setup &#8594;</button>
       </div>
     </div>
@@ -796,6 +808,7 @@
       selectedAssistLevel=profile.meta.assistanceLevel||1;
       document.body.className='level-'+selectedAssistLevel;
       showStage(profile.meta.stage);
+      applyLevelLocks();
       if(profile.meta.stage===3)renderDashboard();
       updateVerificationPanel();
     }
@@ -812,7 +825,44 @@
       const s=$('proto-l'+lvl);if(s)s.style.display='';
     }
 
+    // Unlock thresholds for genesis level selector
+    const LEVEL_UNLOCK={
+      2:{label:'Unlocks at 5 seals completed',check:function(p){return p.meta.sealCount>=5}},
+      3:{label:'Unlocks at 1000 total XP',check:function(p){return Object.values(p.attributes).reduce(function(sum,a){return sum+(a.xp||0)+((a.level-1)*(a.xpToNext||100))},0)>=1000}},
+      4:{label:'Unlocks at 20 seals completed',check:function(p){return p.meta.sealCount>=20}}
+    };
+    function applyLevelLocks(){
+      var storedProfile=null;
+      try{var s=localStorage.getItem('ferros_profile');if(s)storedProfile=JSON.parse(s)}catch(e){console.warn('applyLevelLocks: could not read stored profile',e)}
+      [2,3,4].forEach(function(n){
+        var card=$('al-'+n);var lockText=$('al-'+n+'-lock');
+        if(!card)return;
+        var unlocked=storedProfile&&LEVEL_UNLOCK[n]&&LEVEL_UNLOCK[n].check(storedProfile);
+        if(unlocked){
+          card.classList.remove('locked');
+          card.onclick=function(){selectAssistLevel(n)};
+          if(lockText){lockText.className='assist-unlock-badge';lockText.textContent='✓ Unlocked'}
+        }else{
+          card.classList.add('locked');
+          card.onclick=function(){showLockedLevelTooltip(n,card)};
+        }
+      });
+    }
+    function showLockedLevelTooltip(level,cardEl){
+      var container=$('assist-tooltip-container');
+      if(!container)return;
+      container.innerHTML='';
+      var tip=document.createElement('div');
+      tip.className='assist-lock-tooltip';
+      tip.textContent='⚠️ '+(LEVEL_UNLOCK[level]?LEVEL_UNLOCK[level].label:'Locked');
+      container.appendChild(tip);
+      // 100ms grace period after the 2.5s CSS animation completes before DOM removal
+      setTimeout(function(){if(container.contains(tip))tip.remove()},2600);
+    }
     function selectAssistLevel(n){
+      // Guard: don't allow selecting locked levels
+      const card=$('al-'+n);
+      if(card&&card.classList.contains('locked')){showLockedLevelTooltip(n,card);return}
       selectedAssistLevel=n;
       for(let i=1;i<=4;i++){const e=$('al-'+i);if(e)e.classList.toggle('selected',i===n)}
     }
