@@ -251,6 +251,13 @@
     #session-banner{background:rgba(245,158,11,.12);border-bottom:2px solid var(--accent-amber);color:var(--accent-amber);display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:.88rem;font-weight:600;padding:10px 24px;position:sticky;top:0;z-index:9998}
     .banner-btn{background:var(--bg-card);border:1px solid var(--accent-amber);border-radius:6px;color:var(--accent-amber);cursor:pointer;font-size:.82rem;font-weight:700;padding:5px 14px;transition:all .2s}
     .banner-btn:hover{background:rgba(245,158,11,.15)}
+    /* Welcome Back Banner */
+    #welcome-back-banner{background:rgba(52,211,153,.1);border-bottom:2px solid var(--accent-green);color:var(--accent-green);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:.9rem;font-weight:600;padding:10px 24px;position:sticky;top:0;z-index:9997}
+    .wb-actions{display:flex;gap:8px;align-items:center}
+    .wb-btn{background:var(--bg-card);border:1px solid var(--accent-green);border-radius:6px;color:var(--accent-green);cursor:pointer;font-size:.8rem;font-weight:700;padding:4px 12px;transition:all .2s}
+    .wb-btn:hover{background:rgba(52,211,153,.15)}
+    .wb-btn.danger{border-color:var(--accent-red);color:var(--accent-red)}
+    .wb-btn.danger:hover{background:rgba(248,113,113,.15)}
     /* Trade Dialog */
     .trade-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
     .trade-window{background:var(--bg-panel);border:2px solid var(--accent-cyan);border-radius:var(--radius-panel);box-shadow:0 0 40px rgba(45,212,191,.2),var(--shadow-panel);max-width:700px;padding:32px;width:95%;animation:tradeGlow 2s ease-in-out infinite alternate}
@@ -598,6 +605,13 @@
 
   <!-- STAGE 3: MAIN DASHBOARD -->
   <div id="stage-3">
+    <div id="welcome-back-banner" style="display:none">
+      <span id="welcome-back-text">&#128126; Welcome back, <strong id="welcome-back-name">Commander</strong>! Your chain is intact.</span>
+      <div class="wb-actions">
+        <button class="wb-btn" onclick="document.getElementById('welcome-back-banner').style.display='none'">&#10005; Dismiss</button>
+        <button class="wb-btn danger" onclick="confirmReset()">&#9888; Reset Profile</button>
+      </div>
+    </div>
     <header class="dash-header">
       <div class="logo-wrap">
         <div class="logo-mark">FERROS</div>
@@ -802,15 +816,32 @@
     function showCharSealConfirm(onConfirm){const o=$('char-seal-overlay');if(o)o.style.display='flex';const btn=$('seal-confirm-btn');if(btn)btn.onclick=function(){closeCharSealConfirm();onConfirm()}}
     function closeCharSealConfirm(){const o=$('char-seal-overlay');if(o)o.style.display='none'}
 
+    function showWelcomeBack(){
+      const banner=$('welcome-back-banner');
+      const nameEl=$('welcome-back-name');
+      if(!banner)return;
+      if(nameEl&&profile.identity&&profile.identity.name)nameEl.textContent=profile.identity.name;
+      banner.style.display='flex';
+      setTimeout(()=>{banner.style.display='none'},8000);
+    }
+
     async function init(){
       const exists=loadProfile();
-      if(!exists){profile=deepClone(defaultProfile);sealChain=[]}
-      selectedAssistLevel=profile.meta.assistanceLevel||1;
+      selectedAssistLevel=(exists?profile.meta.assistanceLevel:null)||1;
       document.body.className='level-'+selectedAssistLevel;
-      showStage(profile.meta.stage);
-      applyLevelLocks();
-      if(profile.meta.stage===3)renderDashboard();
-      updateVerificationPanel();
+      if(exists&&profile.meta&&profile.meta.stage===3){
+        showStage(3);renderDashboard();showWelcomeBack();updateVerificationPanel();
+        if(typeof applyLevelLocks==='function')applyLevelLocks();
+      }else if(exists&&profile.meta&&profile.meta.stage>0){
+        showStage(profile.meta.stage);
+        if(typeof applyLevelLocks==='function')applyLevelLocks();
+        updateVerificationPanel();
+      }else{
+        if(!exists){profile=deepClone(defaultProfile);sealChain=[]}
+        showStage(0);
+        if(typeof applyLevelLocks==='function')applyLevelLocks();
+      }
+      if(sessionMode){const b=$('session-banner');if(b)b.style.display='flex'}
     }
 
     function showStage(n){
@@ -1078,7 +1109,7 @@
     function showSettingsModal(){
       const lvl=profile.meta.assistanceLevel;
       const opts=[{n:1,l:'&#129517; Guided',d:'Step-by-step, large buttons'},{n:2,l:'&#129309; Supported',d:'Two-column, tabs'},{n:3,l:'&#9889; Independent',d:'Dense grid, all panels'},{n:4,l:'&#127919; Director',d:'Full dashboard + admin'}];
-      showModal('&#9881;&#65039; Assistance Level','<p>Choose how the dashboard is displayed. Changes are logged.</p><div class="settings-assist-grid">'+opts.map(o=>'<button class="settings-assist-btn '+(o.n===lvl?'selected':'')+'" onclick="changeAssistLevel('+o.n+');closeModal()"><div>'+o.l+'</div><div style="font-size:.75rem;color:var(--text-dim);font-weight:400;margin-top:2px">'+o.d+'</div></button>').join('')+'</div>');
+      showModal('&#9881;&#65039; Assistance Level','<p>Choose how the dashboard is displayed. Changes are logged.</p><div class="settings-assist-grid">'+opts.map(o=>'<button class="settings-assist-btn '+(o.n===lvl?'selected':'')+'" onclick="changeAssistLevel('+o.n+');closeModal()"><div>'+o.l+'</div><div style="font-size:.75rem;color:var(--text-dim);font-weight:400;margin-top:2px">'+o.d+'</div></button>').join('')+'</div>'+'<hr class="divider"><div class="section-title" style="color:var(--accent-red)">&#9888; Danger Zone</div><p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:12px;">This will permanently erase your profile and all progress from this browser.</p><button onclick="confirmReset();closeModal();" style="background:rgba(248,113,113,.1);border:1px solid var(--accent-red);border-radius:6px;color:var(--accent-red);cursor:pointer;font-size:.85rem;font-weight:700;padding:8px 20px;transition:all .2s;" onmouseover="this.style.background=\'rgba(248,113,113,.2)\'" onmouseout="this.style.background=\'rgba(248,113,113,.1)\'">&#128465; Clear All Data &amp; Restart</button>');
     }
     async function changeAssistLevel(n){
       if(n===profile.meta.assistanceLevel)return;
