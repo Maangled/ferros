@@ -294,6 +294,12 @@
     .seal-btn-cancel{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:10px 22px;transition:all .2s}
     .seal-btn-cancel:hover{border-color:var(--border-bright);color:var(--text-primary)}
     @media(max-width:600px){.trade-cols{grid-template-columns:1fr}.trade-col:first-child{border-right:none;border-bottom:1px solid var(--border-accent)}}
+    /* Portability Panel */
+    .portability-note{background:rgba(90,106,128,.08);border:1px dashed var(--border-dim);border-radius:6px;color:var(--text-dim);font-size:.78rem;font-style:italic;line-height:1.65;margin-top:10px;padding:10px 14px}
+    .portability-coming-soon{border:1px dashed var(--border-dim);border-radius:8px;opacity:.6;padding:16px}
+    .portability-export-btn{background:var(--bg-card);border:1px solid var(--border-accent);border-radius:7px;color:var(--accent-cyan);cursor:pointer;font-size:.88rem;font-weight:700;padding:8px 18px;transition:all .2s}
+    .portability-export-btn:hover{background:rgba(45,212,191,.1)}
+    #import-file-input{margin-bottom:10px;cursor:pointer;color:var(--text-secondary)}
   </style>
 </head>
 <body>
@@ -631,11 +637,12 @@
       <button class="pnav-btn" onclick="showPanel('achievements')">&#127942; Achievements</button>
       <button class="pnav-btn" onclick="showPanel('journal')">&#128221; Journal</button>
       <button class="pnav-btn" onclick="showPanel('credentials')">&#127891; Credentials</button>
+      <button class="pnav-btn" onclick="showPanel('portability')">&#128230; Portability</button>
     </div>
     <div class="dash-grid">
       <div class="left-col">
         <div class="panel panel-section" id="ps-character">
-          <div class="panel-header"><h3>&#128100; Character Sheet</h3><span class="badge cyan" id="char-stage-badge">Active</span></div>
+          <div class="panel-header"><h3>&#128100; Character Sheet</h3><span class="badge cyan" id="char-stage-badge">Active</span><span class="badge amber" id="seal-broken-badge" style="display:none">&#9888; Seal Broken</span></div>
           <div class="panel-body">
             <div class="char-avatar-row">
               <div class="char-avatar" id="char-avatar-display">&#128737;</div>
@@ -688,6 +695,27 @@
               <button class="add-btn" onclick="addJournalEntry()">+ Add</button>
             </div>
             <div id="journal-entries"></div>
+          </div>
+        </div>
+        <div class="panel panel-section" id="ps-portability">
+          <div class="panel-header"><h3>&#128230; Portability</h3></div>
+          <div class="panel-body">
+            <div class="section-title">Export</div>
+            <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:10px">Downloads your full profile including seal chain, achievements, XP, and settings.</p>
+            <button class="portability-export-btn" onclick="exportProfile()">&#128190; Export Profile</button>
+            <div class="portability-note">&#128161; Save to a USB drive to carry your profile between computers. Your data is yours.</div>
+            <hr class="divider">
+            <div class="section-title">Import</div>
+            <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:10px">Select a previously exported FERROS profile JSON file.</p>
+            <label class="field-label" for="import-file-input">&#128194; Import Profile</label>
+            <input type="file" id="import-file-input" accept=".json" class="field-input" />
+            <button class="portability-export-btn" style="margin-top:10px" onclick="handleImportClick()">Import</button>
+            <hr class="divider">
+            <div class="portability-coming-soon">
+              <div style="font-size:.88rem;font-weight:700;color:var(--text-dim);margin-bottom:6px">&#128302; Coming Soon: FERROS Node Sync</div>
+              <p style="font-size:.78rem;color:var(--text-dim);margin-bottom:10px">Sync your profile to a FERROS node for cross-device persistence. Requires FERROS native infrastructure.</p>
+              <button style="opacity:.4;cursor:not-allowed;background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-dim);font-size:.82rem;padding:6px 14px" disabled>&#128279; Sync to Node</button>
+            </div>
           </div>
         </div>
         <div class="panel panel-section" id="ps-credentials">
@@ -754,8 +782,8 @@
     };
 
     let profile=null, sealChain=[], selectedAssistLevel=1, selectedAvatar='shield', selectedClass='Architect', selectedStream='A';
-    let sessionMode=false,_tradeAcceptCb=null;
-    const panelOrder=['character','attributes','skills','achievements','journal','credentials'];
+    let sessionMode=false,_tradeAcceptCb=null,_pendingImportData=null;
+    const panelOrder=['character','attributes','skills','achievements','journal','portability','credentials'];
 
     function deepClone(o){return JSON.parse(JSON.stringify(o))}
     function $(id){return document.getElementById(id)}
@@ -1009,6 +1037,7 @@
       setText('char-seals-display',p.meta.sealCount);
       setText('char-streak-display',p.identity.streakDays+' days');
       setText('char-joined-display',p.identity.joinedDate?new Date(p.identity.joinedDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—');
+      const sb=$('seal-broken-badge');if(sb)sb.style.display=p.meta.sealBroken?'inline-flex':'none';
     }
     function renderAttributes(){
       const body=$('attributes-body');if(!body)return;
@@ -1090,8 +1119,45 @@
     }
     function anchorToLedger(){showModal('\u2693 Anchor to Ledger','<p>This action would submit your seal chain to a public blockchain ledger for permanent immutable record.</p><p><strong>Current seal:</strong> <code style="font-family:monospace;color:var(--accent-cyan);word-break:break-all">'+( profile.meta.currentSeal||'(none)')+'</code></p><p style="margin-top:12px">This feature is a placeholder pending ledger integration.</p>')}
     function exportProfile(){
-      const blob=new Blob([JSON.stringify({profile,sealChain,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
-      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ferros-profile-'+Date.now()+'.json';a.click();URL.revokeObjectURL(url);
+      const rawName=(profile.identity&&profile.identity.name)?profile.identity.name:'';
+      const safeName=rawName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'unknown';
+      const date=new Date().toISOString().slice(0,10);
+      const blob=new Blob([JSON.stringify({profile,sealChain,exportedAt:new Date().toISOString(),ferrosVersion:'1.0'},null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ferros-profile-'+safeName+'-'+date+'.json';a.click();URL.revokeObjectURL(url);
+    }
+    function handleImportClick(){
+      const input=$('import-file-input');
+      if(!input||!input.files||!input.files.length){showModal('&#9888; No File Selected','<p>Please select a FERROS profile JSON file to import.</p>');return}
+      importProfile(input.files[0]);
+    }
+    function importProfile(file){
+      const reader=new FileReader();
+      reader.onload=function(e){
+        let data;
+        try{data=JSON.parse(e.target.result)}catch(err){showModal('&#10060; Invalid File','<p>Not a valid JSON file.</p>');return}
+        if(!data||!data.profile||!data.sealChain||!data.profile.meta||!data.profile.identity){showModal('&#10060; Invalid Structure','<p>This doesn\'t look like a FERROS profile — required fields are missing.</p>');return}
+        const chainResult=verifyChain(data.sealChain);
+        if(!chainResult.valid)data.profile.meta.sealBroken=true;
+        _pendingImportData=data;
+        if(localStorage.getItem('ferros_profile')){
+          let warnHtml='<p>&#9888; This will overwrite your current profile. This cannot be undone.</p>';
+          if(!chainResult.valid)warnHtml+='<p style="color:var(--accent-amber);margin-top:8px">&#9888; Imported seal chain has integrity issues. Profile will be tagged with a seal broken warning.</p>';
+          warnHtml+='<div style="display:flex;gap:10px;margin-top:16px"><button onclick="confirmImport()" style="background:rgba(52,211,153,.1);border:1px solid var(--accent-green);border-radius:6px;color:var(--accent-green);cursor:pointer;font-weight:700;padding:8px 18px">&#10003; Import Anyway</button><button onclick="closeModal()" style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:8px 18px">&#10060; Cancel</button></div>';
+          showModal('&#9888; Overwrite Profile?',warnHtml);
+        }else{confirmImport()}
+      };
+      reader.readAsText(file);
+    }
+    function confirmImport(){
+      if(!_pendingImportData)return;
+      const data=_pendingImportData;_pendingImportData=null;
+      closeModal();
+      profile=data.profile;
+      sealChain=data.sealChain;
+      saveProfile();
+      renderDashboard();updateVerificationPanel();
+      showXPToast('&#128230;','Profile imported successfully!');
+      showStage(3);
     }
     function confirmReset(){showModal('&#128465; Reset Profile','<p>This will permanently delete your profile and all progress. This action cannot be undone.</p><div style="display:flex;gap:10px;margin-top:16px"><button onclick="doReset()" style="background:#f87171;border:none;border-radius:6px;color:#fff;cursor:pointer;font-weight:700;padding:8px 18px">Yes, Reset Everything</button><button class="modal-close" onclick="closeModal()" style="margin-top:0">Cancel</button></div>')}
     function doReset(){localStorage.removeItem('ferros_profile');localStorage.removeItem('ferros_seal_chain');location.reload()}
