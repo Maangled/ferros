@@ -300,6 +300,37 @@
     .portability-export-btn{background:var(--bg-card);border:1px solid var(--border-accent);border-radius:7px;color:var(--accent-cyan);cursor:pointer;font-size:.88rem;font-weight:700;padding:8px 18px;transition:all .2s}
     .portability-export-btn:hover{background:rgba(45,212,191,.1)}
     #import-file-input{margin-bottom:10px;cursor:pointer;color:var(--text-secondary)}
+    /* Alias Entry Section */
+    .alias-entry-section{text-align:center;max-width:620px;width:100%;margin-top:16px}
+    .alias-entry-divider{font-size:.78rem;color:var(--text-dim);letter-spacing:.08em;margin-bottom:12px}
+    .alias-entry-btn{background:transparent;border:1px solid var(--accent-purple);border-radius:8px;color:var(--accent-purple);cursor:pointer;font-size:.95rem;font-weight:700;padding:10px 24px;transition:all .2s}
+    .alias-entry-btn:hover{background:rgba(167,139,250,.1);box-shadow:0 0 12px rgba(167,139,250,.2)}
+    .alias-entry-hint{color:var(--text-dim);font-size:.78rem;font-style:italic;margin-top:10px}
+    /* Alias Banner */
+    #alias-banner{background:rgba(167,139,250,.12);border-bottom:2px solid var(--accent-purple);color:var(--accent-purple);display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:.88rem;font-weight:600;padding:10px 24px;position:sticky;top:0;z-index:9999}
+    .alias-btn{border-color:var(--accent-purple)!important;color:var(--accent-purple)!important}
+    .alias-btn:hover{background:rgba(167,139,250,.15)!important}
+    /* Alias Gallery Overlay */
+    .alias-gallery-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:10000;display:flex;flex-direction:column;backdrop-filter:blur(6px);overflow-y:auto}
+    .alias-gallery-inner{max-width:900px;width:100%;margin:0 auto;padding:40px 24px}
+    .alias-gallery-title{font-family:var(--font-mono);font-size:1.6rem;font-weight:900;color:var(--accent-cyan);letter-spacing:2px;margin-bottom:8px;text-align:center}
+    .alias-gallery-sub{color:var(--text-secondary);font-size:.88rem;line-height:1.5;max-width:540px;margin:0 auto 16px;text-align:center}
+    .alias-gallery-back{background:transparent;border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:.85rem;padding:7px 16px;transition:all .2s;display:block;margin:0 auto 24px}
+    .alias-gallery-back:hover{border-color:var(--accent-blue);color:var(--text-primary)}
+    .alias-search-row{margin-bottom:16px}
+    .alias-search-hint{color:var(--accent-cyan);font-size:.8rem;margin-top:6px;cursor:pointer;font-weight:600;text-decoration:underline}
+    .alias-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+    .alias-card{background:var(--bg-panel);border:1px solid var(--border-accent);border-radius:var(--radius-card);padding:18px;text-align:center;transition:all .2s}
+    .alias-card:hover{border-color:var(--accent-purple);box-shadow:0 0 16px rgba(167,139,250,.15)}
+    .alias-card-icon{font-size:2.2rem;margin-bottom:8px}
+    .alias-card-name{font-size:.95rem;font-weight:700;color:var(--text-primary);margin-bottom:4px}
+    .alias-card-class{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.05em;background:rgba(45,212,191,.12);color:var(--accent-cyan);border:1px solid rgba(45,212,191,.25);border-radius:4px;padding:2px 8px;margin-bottom:6px}
+    .alias-card-tagline{font-size:.75rem;color:var(--text-dim);font-style:italic;line-height:1.4;margin-bottom:8px}
+    .alias-card-attr{font-size:.68rem;color:var(--accent-amber);margin-bottom:10px;font-family:var(--font-mono)}
+    .alias-use-btn{background:transparent;border:1px solid var(--accent-purple);border-radius:6px;color:var(--accent-purple);cursor:pointer;font-size:.8rem;font-weight:700;padding:6px 14px;transition:all .2s;width:100%}
+    .alias-use-btn:hover{background:rgba(167,139,250,.12)}
+    /* Alias Mode: hide complex panels */
+    body.alias-mode #ps-skills,body.alias-mode #ps-credentials,body.alias-mode #ps-admin,body.alias-mode #ps-radar,body.alias-mode #ps-portability{display:none!important}
   </style>
 </head>
 <body>
@@ -310,6 +341,13 @@
   <div id="session-banner" style="display:none">
     ⚠️ Session mode — progress will not be saved.
     <button class="banner-btn" onclick="showTradeDialog(() => acceptStorageFromSession())">Accept Storage</button>
+  </div>
+
+  <!-- Alias Banner -->
+  <div id="alias-banner" style="display:none">
+    <span id="alias-banner-text">🎭 Alias Mode</span>
+    <button class="banner-btn alias-btn" onclick="downloadAliasLog()">💾 Download Log</button>
+    <button class="banner-btn alias-btn" onclick="exitAliasMode()">✕ Exit Alias</button>
   </div>
 
   <!-- Trade Dialog -->
@@ -493,6 +531,13 @@
         </div>
         <div id="assist-tooltip-container" style="min-height:28px;margin-bottom:8px"></div>
         <button class="begin-btn" id="begin-btn" onclick="completeStage0()">Begin Setup &#8594;</button>
+      </div>
+
+      <!-- Alias Mode Entry -->
+      <div class="alias-entry-section">
+        <div class="alias-entry-divider">— or log without creating a profile —</div>
+        <button class="alias-entry-btn" onclick="openAliasGallery()">🎭 Use an Alias</button>
+        <div class="alias-entry-hint">Borrow a public profile to log activity. Download a portable log when you're done. No account required.</div>
       </div>
     </div>
   </div>
@@ -747,6 +792,20 @@
     </div>
   </div>
 
+  <!-- Alias Gallery Overlay -->
+  <div id="alias-gallery-overlay" class="alias-gallery-overlay" style="display:none">
+    <div class="alias-gallery-inner">
+      <div class="alias-gallery-title">🎭 Alias Gallery</div>
+      <div class="alias-gallery-sub">Borrow a public profile to start logging. Your activity will be attributed to this alias until you claim it.</div>
+      <button class="alias-gallery-back" onclick="closeAliasGallery()">← Back to Genesis</button>
+      <div class="alias-search-row">
+        <input class="field-input" id="alias-search-input" type="text" placeholder="Search aliases or enter alias code..." oninput="filterAliasCards(this.value)" />
+        <div id="alias-code-hint" class="alias-search-hint" style="display:none"></div>
+      </div>
+      <div class="alias-card-grid" id="alias-card-grid"></div>
+    </div>
+  </div>
+
   <script>
     const AVATARS = ['wizard','shield','sword','star','fire','lion'];
     const AVATAR_EMOJI = {'wizard':'\u{1F9D9}','shield':'\u{1F6E1}\uFE0F','sword':'\u2694\uFE0F','star':'\u{1F31F}','fire':'\u{1F525}','lion':'\u{1F981}'};
@@ -782,7 +841,8 @@
     };
 
     let profile=null, sealChain=[], selectedAssistLevel=1, selectedAvatar='shield', selectedClass='Architect', selectedStream='A';
-    let sessionMode=false,_tradeAcceptCb=null,_pendingImportData=null;
+    let sessionMode=false,aliasMode=false,aliasProfile=null,aliasJournal=[],_aliasSessionStart=null;
+    let _tradeAcceptCb=null,_pendingImportData=null;
     const panelOrder=['character','attributes','skills','achievements','journal','portability','credentials'];
 
     function deepClone(o){return JSON.parse(JSON.stringify(o))}
@@ -791,7 +851,7 @@
     function setHTML(id,v){const e=$(id);if(e)e.innerHTML=v}
 
     function saveProfile(){
-      if(sessionMode)return;
+      if(sessionMode||aliasMode)return;
       profile.meta.lastModified=new Date().toISOString();
       profile.sealChain=sealChain;
       localStorage.setItem('ferros_profile',JSON.stringify(profile));
@@ -839,7 +899,10 @@
     function showTradeDialog(onAccept){_tradeAcceptCb=onAccept;const o=$('trade-overlay');if(o)o.style.display='flex'}
     function closeTradeDialog(){const o=$('trade-overlay');if(o)o.style.display='none'}
     function acceptTrade(){sessionMode=false;closeTradeDialog();if(_tradeAcceptCb){const cb=_tradeAcceptCb;_tradeAcceptCb=null;cb()}}
-    function enterSessionMode(){sessionMode=true;closeTradeDialog();const b=$('session-banner');if(b)b.style.display='flex'}
+    function enterSessionMode(){
+      if(aliasMode){aliasMode=false;aliasProfile=null;aliasJournal=[];_aliasSessionStart=null;document.body.classList.remove('alias-mode');const ab=$('alias-banner');if(ab)ab.style.display='none';}
+      sessionMode=true;closeTradeDialog();const b=$('session-banner');if(b)b.style.display='flex'
+    }
     function acceptStorageFromSession(){sessionMode=false;const b=$('session-banner');if(b)b.style.display='none';saveProfile()}
     function showCharSealConfirm(onConfirm){const o=$('char-seal-overlay');if(o)o.style.display='flex';const btn=$('seal-confirm-btn');if(btn)btn.onclick=function(){closeCharSealConfirm();onConfirm()}}
     function closeCharSealConfirm(){const o=$('char-seal-overlay');if(o)o.style.display='none'}
@@ -1062,15 +1125,23 @@
     }
     function renderJournal(){
       const c=$('journal-entries');if(!c)return;
-      const entries=profile.journal||[];
-      if(!entries.length){c.innerHTML='<p class="text-dim" style="font-size:.85rem">No journal entries yet.</p>';return}
-      c.innerHTML=[...entries].reverse().map(e=>'<div class="journal-entry"><div class="journal-ts">'+new Date(e.ts).toLocaleString()+'</div><div class="journal-text">'+esc(e.text)+'</div></div>').join('');
+      const entries=(aliasMode?aliasJournal:(profile.journal||[]));
+      if(!entries.length){c.innerHTML='<p class="text-dim" style="font-size:.85rem">No '+(aliasMode?'activity':'journal')+' entries yet.</p>';return}
+      const aliasTag=aliasMode?(' <span style="color:var(--accent-amber);font-size:.68rem">[alias: '+esc(aliasProfile.id)+']</span>'):'';
+      c.innerHTML=[...entries].reverse().map(e=>'<div class="journal-entry"><div class="journal-ts">'+new Date(e.ts).toLocaleString()+aliasTag+'</div><div class="journal-text">'+esc(e.text)+'</div></div>').join('');
     }
     function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
     function addJournalEntry(){
       const inp=$('journal-input');const txt=inp?inp.value.trim():'';if(!txt)return;
-      profile.journal.push({ts:new Date().toISOString(),text:txt});
-      if(inp)inp.value='';saveProfile();renderJournal();
+      if(aliasMode){
+        aliasJournal.push({ts:new Date().toISOString(),text:txt});
+        if(inp)inp.value='';
+        const cnt=$('alias-log-count');if(cnt)cnt.textContent=aliasJournal.length;
+        renderJournal();
+      }else{
+        profile.journal.push({ts:new Date().toISOString(),text:txt});
+        if(inp)inp.value='';saveProfile();renderJournal();
+      }
     }
     function drawRadarChart(){
       const canvas=$('radar-canvas');if(!canvas||!canvas.getContext)return;
@@ -1196,6 +1267,115 @@
     function showModal(title,bodyHtml){$('modal-title').textContent=title;$('modal-body').innerHTML=bodyHtml;$('modal-overlay').style.display='flex'}
     function closeModal(){$('modal-overlay').style.display='none'}
     function closeModalOnBg(e){if(e.target===$('modal-overlay'))closeModal()}
+
+    // ── Alias System ──────────────────────────────────────────────────────────
+    const ALIAS_PROFILES=[
+      {id:'tesla',      name:'Nikola Tesla',          icon:'⚡',  aliasClass:'Engineer',  tagline:'Worked obsessively. Slept rarely. Changed everything.'},
+      {id:'kahlo',      name:'Frida Kahlo',            icon:'🎨',  aliasClass:'Artisan',   tagline:'Pain became pigment. Every canvas, a self-portrait.'},
+      {id:'curie',      name:'Marie Curie',            icon:'☢️',  aliasClass:'Scholar',   tagline:'Two Nobel Prizes. Zero shortcuts.'},
+      {id:'aurelius',   name:'Marcus Aurelius',        icon:'🏛️',  aliasClass:'Guardian',  tagline:'Rule an empire. Master yourself first.'},
+      {id:'fry',        name:'Philip J. Fry',          icon:'📺',  aliasClass:'Guided',    tagline:'Slept 1000 years. Still figuring it out.'},
+      {id:'nightingale',name:'Florence Nightingale',   icon:'🕯️',  aliasClass:'Healer',    tagline:'Data-driven compassion before it had a name.'},
+      {id:'lovelace',   name:'Ada Lovelace',           icon:'🔢',  aliasClass:'Architect', tagline:'Wrote the first algorithm. The machine wasn\'t built yet.'},
+      {id:'malone',     name:'Sam Malone',             icon:'🍺',  aliasClass:'Community', tagline:'Everyone knows your name. That\'s the whole point.'}
+    ];
+    function openAliasGallery(){
+      renderAliasCards(ALIAS_PROFILES);
+      const o=$('alias-gallery-overlay');if(o)o.style.display='flex';
+      const inp=$('alias-search-input');if(inp)inp.value='';
+      const hint=$('alias-code-hint');if(hint)hint.style.display='none';
+    }
+    function closeAliasGallery(){const o=$('alias-gallery-overlay');if(o)o.style.display='none'}
+    function renderAliasCards(aliases){
+      const grid=$('alias-card-grid');if(!grid)return;
+      grid.innerHTML=aliases.map(a=>'<div class="alias-card"><div class="alias-card-icon">'+a.icon+'</div><div class="alias-card-name">'+esc(a.name)+'</div><div class="alias-card-class">'+esc(a.aliasClass)+'</div><div class="alias-card-tagline">'+esc(a.tagline)+'</div><div class="alias-card-attr">[alias: unlinked]</div><button class="alias-use-btn" onclick="useAlias(\''+a.id+'\')">Use this Alias \u2192</button></div>').join('');
+    }
+    function filterAliasCards(q){
+      q=q.trim();
+      const hint=$('alias-code-hint');
+      if(q.length>=8&&/^[a-zA-Z0-9_-]+$/.test(q)){
+        if(hint){hint.style.display='';hint.textContent='Use code: '+q;hint.onclick=function(){useAliasCode(q)}}
+      }else{
+        if(hint)hint.style.display='none';
+      }
+      const lq=q.toLowerCase();
+      const filtered=q?ALIAS_PROFILES.filter(a=>a.name.toLowerCase().includes(lq)||a.aliasClass.toLowerCase().includes(lq)):ALIAS_PROFILES;
+      renderAliasCards(filtered);
+    }
+    function useAliasCode(code){
+      const sanitized=code.replace(/[^a-zA-Z0-9_-]/g,'').slice(0,32);
+      _enterAliasMode({id:sanitized,name:'Custom Alias',icon:'🎭',aliasClass:'Guided',tagline:'Custom alias via code.'});
+    }
+    function useAlias(id){const a=ALIAS_PROFILES.find(x=>x.id===id);if(a)_enterAliasMode(a)}
+    function _enterAliasMode(alias){
+      closeAliasGallery();
+      aliasMode=true;
+      aliasProfile={id:alias.id,name:alias.name,icon:alias.icon,class:alias.aliasClass,tagline:alias.tagline};
+      aliasJournal=[];
+      sessionMode=false;
+      _aliasSessionStart=new Date().toISOString();
+      document.body.classList.add('alias-mode');
+      const banner=$('alias-banner');
+      if(banner){
+        banner.style.display='flex';
+        const txt=$('alias-banner-text');
+        if(txt)txt.textContent='🎭 Alias Mode — logging as '+alias.icon+' '+alias.name+' · [alias: unlinked]';
+      }
+      if(!profile||!profile.meta)profile=deepClone(defaultProfile);
+      showStage(3);
+      renderAliasDashboard();
+    }
+    function renderAliasDashboard(){
+      setHTML('char-avatar-display',aliasProfile.icon);
+      setText('char-name-display',aliasProfile.name);
+      setText('char-class-display',aliasProfile.class);
+      setText('char-title-display','[alias: unlinked]');
+      const statsRow=document.querySelector('#ps-character .char-stats-row');
+      if(statsRow)statsRow.innerHTML='<div class="char-stat"><div class="stat-label">Logs</div><div class="stat-value" id="alias-log-count">0</div></div><div class="char-stat"><div class="stat-label">Session</div><div class="stat-value" style="color:var(--accent-green)">Active</div></div>';
+      const achGrid=$('achievement-grid');
+      if(achGrid)achGrid.innerHTML='<p style="font-size:.82rem;color:var(--text-dim);font-style:italic;padding:8px 0">Achievements require a full profile. Download your log to claim these later.</p>';
+      const achBadge=$('ach-count-badge');if(achBadge)achBadge.style.display='none';
+      const jpHeader=document.querySelector('#ps-journal .panel-header h3');
+      if(jpHeader)jpHeader.textContent='📝 Activity Log';
+      const addBtn=document.querySelector('#ps-journal .add-btn');
+      if(addBtn)addBtn.textContent='+ Log Activity';
+      const sub=$('dash-user-sub');
+      if(sub)sub.textContent=aliasProfile.icon+' '+aliasProfile.name+' · '+aliasProfile.class+' [alias]';
+      renderJournal();
+    }
+    function downloadAliasLog(){
+      const now=new Date().toISOString();
+      const date=now.slice(0,10);
+      const log={
+        ferrosVersion:'1.0',logType:'alias-session',
+        alias:{id:aliasProfile.id,name:aliasProfile.name,icon:aliasProfile.icon,class:aliasProfile.class,attribution:'unlinked'},
+        sessionStart:_aliasSessionStart,sessionEnd:now,
+        entries:aliasJournal.map(e=>({ts:e.ts,text:e.text,type:'activity'})),
+        entryCount:aliasJournal.length,
+        claimInstructions:'Import this file on your home FERROS instance to claim these logs and merge them into your profile. Unlinked until claimed.'
+      };
+      const blob=new Blob([JSON.stringify(log,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ferros-alias-log-'+aliasProfile.id+'-'+date+'.json';a.click();URL.revokeObjectURL(url);
+    }
+    function exitAliasMode(){
+      if(aliasJournal.length>0){
+        const n=aliasJournal.length;
+        const html='<p>&#9888;&#65039; You have '+n+' unsaved log '+(n===1?'entry':'entries')+'. Download your log before exiting, or they will be lost.</p><div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button onclick="downloadAliasLog();_doExitAlias()" style="background:rgba(167,139,250,.12);border:1px solid var(--accent-purple);border-radius:6px;color:var(--accent-purple);cursor:pointer;font-weight:700;padding:8px 18px">&#128190; Download &amp; Exit</button><button onclick="_doExitAlias()" style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.3);border-radius:6px;color:var(--accent-red);cursor:pointer;padding:8px 18px">&#10060; Exit Without Saving</button></div>';
+        showModal('&#9888;&#65039; Unsaved Log Entries',html);
+      }else{_doExitAlias()}
+    }
+    function _doExitAlias(){
+      closeModal();
+      aliasMode=false;aliasProfile=null;aliasJournal=[];_aliasSessionStart=null;
+      document.body.classList.remove('alias-mode');
+      const banner=$('alias-banner');if(banner)banner.style.display='none';
+      const jpHeader=document.querySelector('#ps-journal .panel-header h3');if(jpHeader)jpHeader.innerHTML='&#128221; Journal';
+      const addBtn=document.querySelector('#ps-journal .add-btn');if(addBtn)addBtn.textContent='+ Add';
+      showStage(0);
+    }
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape'){const go=$('alias-gallery-overlay');if(go&&go.style.display!=='none')closeAliasGallery()}
+    });
     window.addEventListener('DOMContentLoaded',init);
   </script>
 </body>
