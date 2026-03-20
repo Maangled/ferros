@@ -327,6 +327,8 @@
     .journal-entry.claim-event{background:rgba(167,139,250,.08);border-left:2px solid var(--accent-purple);font-weight:600;padding-left:10px}
     .journal-entry.claimed-alias{border-left:1px solid rgba(167,139,250,.3);padding-left:24px}
     .journal-entry.claimed-alias.seal-broken .journal-text::before{content:'⚠️ ';color:var(--accent-amber)}
+    .journal-entry.claimed-recovery{border-left:1px solid rgba(245,158,11,.4);padding-left:24px}
+    .journal-entry.claimed-recovery.seal-broken .journal-text::before{content:'⚠️ ';color:var(--accent-amber)}
     /* Alias Entry Section */
     .alias-entry-section{text-align:center;max-width:620px;width:100%;margin-top:16px}
     .alias-entry-divider{font-size:.78rem;color:var(--text-dim);letter-spacing:.08em;margin-bottom:12px}
@@ -416,6 +418,42 @@
     .gallery-detail-alias-btn:hover{background:rgba(167,139,250,.12)}
     .gallery-detail-return-btn{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:.88rem;padding:8px 18px;transition:all .2s}
     .gallery-detail-return-btn:hover{border-color:var(--border-bright);color:var(--text-primary)}
+    /* Recovery Entry Section */
+    .recovery-entry-section{text-align:center;max-width:620px;width:100%;margin-top:12px}
+    .recovery-entry-divider{font-size:.78rem;color:var(--text-dim);letter-spacing:.08em;margin-bottom:12px}
+    .recovery-entry-btn{background:transparent;border:2px solid var(--accent-amber);border-radius:8px;color:var(--accent-amber);cursor:pointer;font-size:1rem;font-weight:700;padding:11px 28px;transition:all .2s}
+    .recovery-entry-btn:hover{background:rgba(245,158,11,.1);box-shadow:0 0 14px rgba(245,158,11,.2)}
+    .recovery-entry-hint{color:var(--text-dim);font-size:.78rem;font-style:italic;margin-top:10px}
+    /* Recovery Banner */
+    #recovery-banner{background:rgba(245,158,11,.12);border-bottom:2px solid var(--accent-amber);color:var(--accent-amber);display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:.88rem;font-weight:600;padding:10px 24px;position:sticky;top:0;z-index:9000}
+    .recovery-btn{border-color:var(--accent-amber)!important;color:var(--accent-amber)!important}
+    .recovery-btn:hover{background:rgba(245,158,11,.15)!important}
+    /* Recovery Panel Overlay */
+    .recovery-panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:10000;display:flex;flex-direction:column;backdrop-filter:blur(6px);overflow-y:auto}
+    .recovery-panel-inner{max-width:820px;width:100%;margin:0 auto;padding:40px 24px}
+    .recovery-panel-title{font-family:var(--font-mono);font-size:1.4rem;font-weight:900;color:var(--accent-amber);letter-spacing:2px;margin-bottom:8px;text-align:center}
+    .recovery-panel-sub{color:var(--text-secondary);font-size:.88rem;line-height:1.5;max-width:540px;margin:0 auto 16px;text-align:center}
+    .recovery-panel-back{background:transparent;border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:.85rem;padding:7px 16px;transition:all .2s;display:block;margin:0 auto 24px}
+    .recovery-panel-back:hover{border-color:var(--accent-amber);color:var(--accent-amber)}
+    .recovery-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
+    .recovery-col{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:var(--radius-card);padding:16px;font-size:.82rem;color:var(--text-secondary);line-height:1.65}
+    .recovery-col-header{font-size:.8rem;font-weight:700;letter-spacing:.08em;margin-bottom:10px}
+    .recovery-import-section{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:var(--radius-card);padding:20px;margin-bottom:16px}
+    .recovery-file-label{display:block;font-size:.82rem;font-weight:600;color:var(--text-secondary);margin-bottom:10px}
+    #recovery-file-input{margin-bottom:12px;cursor:pointer;color:var(--text-secondary);display:block}
+    .recovery-load-btn{background:transparent;border:1px solid var(--accent-amber);border-radius:7px;color:var(--accent-amber);cursor:pointer;font-size:.9rem;font-weight:700;padding:9px 22px;transition:all .2s}
+    .recovery-load-btn:hover{background:rgba(245,158,11,.12);box-shadow:0 0 14px rgba(245,158,11,.2)}
+    .recovery-panel-footer{text-align:center;color:var(--text-dim);font-size:.78rem;font-style:italic;margin-top:12px}
+    #recovery-integrity-warning{color:var(--accent-amber);font-size:.82rem;margin-top:8px;display:none}
+    /* Recovery Mode: hide/dim panels not needed in constrained session */
+    body.recovery-mode #ps-skills{opacity:.4;pointer-events:none}
+    body.recovery-mode #ps-credentials{opacity:.4;pointer-events:none}
+    body.recovery-mode #ps-admin{display:none}
+    body.recovery-mode #ps-portability .port-import-section{display:none}
+    body.recovery-mode #ps-portability .port-claim-section{display:none}
+    /* Recovery verification badge */
+    .verify-status.recovery{background:rgba(245,158,11,.15);color:var(--accent-amber);border:1px solid rgba(245,158,11,.3)}
+    @media(max-width:600px){.recovery-cols{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -433,6 +471,13 @@
     <span id="alias-banner-text">🎭 Alias Mode</span>
     <button class="banner-btn alias-btn" onclick="downloadAliasLog()">💾 Download Log</button>
     <button class="banner-btn alias-btn" onclick="exitAliasMode()">✕ Exit Alias</button>
+  </div>
+
+  <!-- Recovery Banner -->
+  <div id="recovery-banner" style="display:none">
+    <span id="recovery-banner-text">🔑 Recovery Mode</span>
+    <button class="banner-btn recovery-btn" onclick="downloadRecoveryLog()">💾 Download Log</button>
+    <button class="banner-btn recovery-btn" onclick="exitRecoveryMode()">✕ Exit Recovery</button>
   </div>
 
   <!-- Trade Dialog -->
@@ -633,6 +678,13 @@
         <div class="alias-entry-divider">— or log without creating a profile —</div>
         <button class="alias-entry-btn" onclick="openAliasGallery()">🎭 Use an Alias</button>
         <div class="alias-entry-hint">Borrow a public profile to log activity. Download a portable log when you're done. No account required.</div>
+      </div>
+
+      <!-- Recovery Entry -->
+      <div class="recovery-entry-section">
+        <div class="recovery-entry-divider">— or recover your profile on this device —</div>
+        <button class="recovery-entry-btn" onclick="openRecoveryPanel()">🔑 Recover Profile</button>
+        <div class="recovery-entry-hint">Load your exported profile to log activity away from home. Your data stays on your device.</div>
       </div>
     </div>
   </div>
@@ -943,6 +995,37 @@
     </div>
   </div>
 
+  <!-- Recovery Panel Overlay -->
+  <div id="recovery-panel-overlay" class="recovery-panel-overlay" style="display:none">
+    <div class="recovery-panel-inner">
+      <button class="recovery-panel-back" onclick="closeRecoveryPanel()">← Back</button>
+      <div class="recovery-panel-title">🔑 Profile Recovery</div>
+      <div class="recovery-panel-sub">Load your exported FERROS profile to log activity on this device. Nothing is saved to this machine's storage.</div>
+      <div class="recovery-cols">
+        <div class="recovery-col">
+          <div class="recovery-col-header" style="color:var(--accent-green)">✅ What recovery does</div>
+          Loads your real profile<br>
+          Lets you log activity<br>
+          Signs logs under YOUR genesis key<br>
+          Downloads a .ferros-log you can claim at home
+        </div>
+        <div class="recovery-col">
+          <div class="recovery-col-header" style="color:var(--accent-red)">❌ What it doesn't do</div>
+          Doesn't write to this computer's localStorage<br>
+          Doesn't expose your private data permanently<br>
+          Doesn't log you in permanently on this device
+        </div>
+      </div>
+      <div class="recovery-import-section">
+        <label class="recovery-file-label">📂 Load your profile backup (.json)</label>
+        <input type="file" id="recovery-file-input" accept=".json" />
+        <div id="recovery-integrity-warning"></div>
+        <button class="recovery-load-btn" onclick="loadRecoveryProfile()">🔑 Load &amp; Enter Recovery Mode</button>
+      </div>
+      <div class="recovery-panel-footer">💡 Don't have a backup? Export your profile from your home machine via Dashboard → Portability → Export Profile, then save the file to a USB drive.</div>
+    </div>
+  </div>
+
   <script>
     const AVATARS = ['wizard','shield','sword','star','fire','lion'];
     const AVATAR_EMOJI = {'wizard':'\u{1F9D9}','shield':'\u{1F6E1}\uFE0F','sword':'\u2694\uFE0F','star':'\u{1F31F}','fire':'\u{1F525}','lion':'\u{1F981}'};
@@ -979,7 +1062,8 @@
 
     let profile=null, sealChain=[], selectedAssistLevel=1, selectedAvatar='shield', selectedClass='Architect', selectedStream='A';
     let sessionMode=false,aliasMode=false,aliasProfile=null,aliasJournal=[],_aliasSessionStart=null;
-    let _tradeAcceptCb=null,_pendingImportData=null,_pendingAliasClaimData=null;
+    let recoveryMode=false,recoveryProfile=null,recoverySealChain=[],recoveryJournal=[],_recoverySessionStart=null,recoveryHasIntegrityWarning=false;
+    let _tradeAcceptCb=null,_pendingImportData=null,_pendingAliasClaimData=null,_pendingRecoveryData=null;
     let selectedTemplate=null;
     const panelOrder=['character','attributes','skills','achievements','journal','portability','credentials'];
 
@@ -989,7 +1073,7 @@
     function setHTML(id,v){const e=$(id);if(e)e.innerHTML=v}
 
     function saveProfile(){
-      if(sessionMode||aliasMode)return;
+      if(sessionMode||aliasMode||recoveryMode)return;
       profile.meta.lastModified=new Date().toISOString();
       profile.sealChain=sealChain;
       localStorage.setItem('ferros_profile',JSON.stringify(profile));
@@ -1372,9 +1456,10 @@
     }
     function renderJournal(){
       const c=$('journal-entries');if(!c)return;
-      const entries=(aliasMode?aliasJournal:(profile.journal||[]));
-      if(!entries.length){c.innerHTML='<p class="text-dim" style="font-size:.85rem">No '+(aliasMode?'activity':'journal')+' entries yet.</p>';return}
+      const entries=(recoveryMode?recoveryJournal:(aliasMode?aliasJournal:(profile.journal||[])));
+      if(!entries.length){c.innerHTML='<p class="text-dim" style="font-size:.85rem">No '+(recoveryMode?'recovery log':aliasMode?'activity':'journal')+' entries yet.</p>';return}
       const aliasTag=aliasMode?(' <span style="color:var(--accent-amber);font-size:.68rem">[alias: '+esc(aliasProfile.id)+']</span>'):'';
+      const recoveryTag=recoveryMode?' <span style="color:var(--accent-amber);font-size:.68rem">[recovery]</span>':'';
       c.innerHTML=[...entries].reverse().map(e=>{
         if(e.type==='claim-event'){
           const aliasBadge=' <span style="color:var(--accent-purple);font-size:.72rem">[alias: '+esc(e.aliasName||e.aliasId||'')+']</span>';
@@ -1385,13 +1470,24 @@
           const brokenClass=e.sealBroken?' seal-broken':'';
           return '<div class="journal-entry claimed-alias'+brokenClass+'"><div class="journal-ts">'+new Date(e.ts).toLocaleString()+aliasBadge+'</div><div class="journal-text">'+esc(e.text)+'</div></div>';
         }
-        return '<div class="journal-entry"><div class="journal-ts">'+new Date(e.ts).toLocaleString()+aliasTag+'</div><div class="journal-text">'+esc(e.text)+'</div></div>';
+        if(e.type==='claimed-recovery'){
+          const recoveryBadge=' <span style="color:var(--accent-amber);font-size:.68rem">[recovery]</span>';
+          const brokenClass=e.sealBroken?' seal-broken':'';
+          return '<div class="journal-entry claimed-recovery'+brokenClass+'"><div class="journal-ts">'+new Date(e.ts).toLocaleString()+recoveryBadge+'</div><div class="journal-text">'+esc(e.text)+'</div></div>';
+        }
+        const tag=recoveryMode?recoveryTag:aliasTag;
+        return '<div class="journal-entry"><div class="journal-ts">'+new Date(e.ts).toLocaleString()+tag+'</div><div class="journal-text">'+esc(e.text)+'</div></div>';
       }).join('');
     }
     function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
     function addJournalEntry(){
       const inp=$('journal-input');const txt=inp?inp.value.trim():'';if(!txt)return;
-      if(aliasMode){
+      if(recoveryMode){
+        recoveryJournal.push({ts:new Date().toISOString(),text:txt});
+        if(inp)inp.value='';
+        const cnt=$('recovery-log-count');if(cnt)cnt.textContent=recoveryJournal.length;
+        renderJournal();
+      }else if(aliasMode){
         aliasJournal.push({ts:new Date().toISOString(),text:txt});
         if(inp)inp.value='';
         const cnt=$('alias-log-count');if(cnt)cnt.textContent=aliasJournal.length;
@@ -1434,12 +1530,18 @@
       document.querySelectorAll('.pnav-btn').forEach((b,i)=>b.classList.toggle('active',panelOrder[i]===id));
     }
     function updateVerificationPanel(){
-      const r=verifyChain(sealChain);
+      const chain=recoveryMode?recoverySealChain:sealChain;
+      const r=verifyChain(chain);
       const s=$('chain-status');
-      if(s){s.className='verify-status '+(r.valid?'ok':'err');s.textContent=r.valid?'\u2713 Chain Intact':'\u26A0 Chain broken at seal #'+r.brokenAt}
-      setText('seal-count',sealChain.length);
-      setText('genesis-short',profile.meta.genesisHash?profile.meta.genesisHash.slice(0,8)+'...':'\u2014');
-      setText('current-short',profile.meta.currentSeal?profile.meta.currentSeal.slice(0,8)+'...':'\u2014');
+      if(recoveryMode){
+        if(s){s.className='verify-status recovery';s.textContent='\uD83D\uDD11 Recovery Mode'}
+      }else{
+        if(s){s.className='verify-status '+(r.valid?'ok':'err');s.textContent=r.valid?'\u2713 Chain Intact':'\u26A0 Chain broken at seal #'+r.brokenAt}
+      }
+      const prof=recoveryMode?recoveryProfile:profile;
+      setText('seal-count',chain.length);
+      setText('genesis-short',prof&&prof.meta&&prof.meta.genesisHash?prof.meta.genesisHash.slice(0,8)+'...':'\u2014');
+      setText('current-short',prof&&prof.meta&&prof.meta.currentSeal?prof.meta.currentSeal.slice(0,8)+'...':'\u2014');
     }
     async function runVerifyChain(){
       const r=verifyChain(sealChain);
@@ -1637,59 +1739,98 @@
     async function processAliasLogClaim(text){
       let data;
       try{data=JSON.parse(text)}catch(err){showModal('&#10060; Invalid File','<p>&#10060; Invalid file — not a valid JSON file.</p>');return}
-      if(!data||data.logType!=='alias-session'||!data.alias||!data.alias.id||!data.alias.name||!Array.isArray(data.entries)){
-        showModal('&#10060; Invalid Alias Log','<p>&#10060; Invalid alias log — this doesn\'t look like a FERROS alias log file.</p>');return
+      const isRecovery=data&&data.logType==='recovery-session';
+      const isAlias=data&&data.logType==='alias-session';
+      if(!data||(!isAlias&&!isRecovery)||!Array.isArray(data.entries)){
+        showModal('&#10060; Invalid Log File','<p>&#10060; Invalid log — this doesn\'t look like a FERROS alias or recovery log file.</p>');return
+      }
+      if(isAlias&&(!data.alias||!data.alias.id||!data.alias.name)){
+        showModal('&#10060; Invalid Alias Log','<p>&#10060; Invalid alias log — missing alias identity fields.</p>');return
+      }
+      if(isRecovery&&(!data.profile||!data.profile.genesisHash)){
+        showModal('&#10060; Invalid Recovery Log','<p>&#10060; Invalid recovery log — missing profile identity fields.</p>');return
       }
       const sessionKey=data.sessionStart||'';
-      const claimKey=data.alias.id+'-'+sessionKey;
+      const logId=isRecovery?(data.profile.genesisHash+'-'+sessionKey):(data.alias.id+'-'+sessionKey);
       const journal=profile.journal||[];
-      if(journal.some(j=>j.claimId===claimKey)){
-        showModal('&#9888; Already Claimed','<p>&#9888;&#65039; This alias log has already been claimed into your profile.</p>');return
+      if(journal.some(j=>j.claimId===logId)){
+        showModal('&#9888; Already Claimed','<p>&#9888;&#65039; This log has already been claimed into your profile.</p>');return
       }
       const sealsOk=await verifyAliasLogSeals(data.entries);
       const hasIntegrityWarning=!sealsOk;
       const n=data.entries.length;
       const xpGain=n*15;
-      let bodyHtml='<p>This will merge <strong>'+n+'</strong> log '+(n===1?'entry':'entries')+' from your alias session as "<strong>'+esc(data.alias.name)+'</strong>" into your profile.</p>';
-      bodyHtml+='<p>Each claimed entry will be attributed to you and added to your journal.</p>';
-      bodyHtml+='<p>You\'ll earn <strong>'+xpGain+' XP</strong> for claimed entries.</p>';
-      if(hasIntegrityWarning)bodyHtml+='<p style="color:var(--accent-amber)">&#9888;&#65039; Note: Some entries have seal integrity issues but can still be claimed.</p>';
-      bodyHtml+='<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button onclick="confirmAliasClaim(_pendingAliasClaimData,'+hasIntegrityWarning+')" style="background:rgba(52,211,153,.1);border:1px solid var(--accent-green);border-radius:6px;color:var(--accent-green);cursor:pointer;font-weight:700;padding:8px 18px">&#9989; Claim Entries</button><button onclick="closeModal()" style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:8px 18px">&#10060; Cancel</button></div>';
-      _pendingAliasClaimData=data;
-      showModal('&#128206; Claim Alias Log \u2014 '+esc(data.alias.name),bodyHtml);
+      let bodyHtml;
+      if(isRecovery){
+        bodyHtml='<p>This will merge <strong>'+n+'</strong> recovery log '+(n===1?'entry':'entries')+' into your profile. These were logged by YOU on a foreign device.</p>';
+        bodyHtml+='<p>You\'ll earn <strong>'+xpGain+' XP</strong> for claimed entries.</p>';
+        if(hasIntegrityWarning)bodyHtml+='<p style="color:var(--accent-amber)">&#9888;&#65039; Note: Some entries have seal integrity issues but can still be claimed.</p>';
+        bodyHtml+='<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button onclick="confirmAliasClaim(_pendingAliasClaimData,'+hasIntegrityWarning+')" style="background:rgba(52,211,153,.1);border:1px solid var(--accent-green);border-radius:6px;color:var(--accent-green);cursor:pointer;font-weight:700;padding:8px 18px">&#9989; Claim Entries</button><button onclick="closeModal()" style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:8px 18px">&#10060; Cancel</button></div>';
+        _pendingAliasClaimData=data;
+        showModal('&#128273; Claim Recovery Log \u2014 '+esc(data.profile.id||'Recovery'),bodyHtml);
+      }else{
+        bodyHtml='<p>This will merge <strong>'+n+'</strong> log '+(n===1?'entry':'entries')+' from your alias session as "<strong>'+esc(data.alias.name)+'</strong>" into your profile.</p>';
+        bodyHtml+='<p>Each claimed entry will be attributed to you and added to your journal.</p>';
+        bodyHtml+='<p>You\'ll earn <strong>'+xpGain+' XP</strong> for claimed entries.</p>';
+        if(hasIntegrityWarning)bodyHtml+='<p style="color:var(--accent-amber)">&#9888;&#65039; Note: Some entries have seal integrity issues but can still be claimed.</p>';
+        bodyHtml+='<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button onclick="confirmAliasClaim(_pendingAliasClaimData,'+hasIntegrityWarning+')" style="background:rgba(52,211,153,.1);border:1px solid var(--accent-green);border-radius:6px;color:var(--accent-green);cursor:pointer;font-weight:700;padding:8px 18px">&#9989; Claim Entries</button><button onclick="closeModal()" style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:8px 18px">&#10060; Cancel</button></div>';
+        _pendingAliasClaimData=data;
+        showModal('&#128206; Claim Alias Log \u2014 '+esc(data.alias.name),bodyHtml);
+      }
     }
     function _finishAliasClaim(data,hasIntegrityWarning,claimId,xpGain,now){
+      const isRecovery=data.logType==='recovery-session';
       profile.meta.claimedAliasSessions=profile.meta.claimedAliasSessions||[];
       profile.meta.claimedAliasSessions.push(claimId);
       if(data.entries.length>0){
         profile.achievements=profile.achievements||[];
-        if(!profile.achievements.find(function(a){return a.id==='claimed-alias'})){
-          profile.achievements.push({id:'claimed-alias',name:'&#128206; Alias Claimed',earnedAt:now});
+        if(isRecovery){
+          if(!profile.achievements.find(function(a){return a.id==='claimed-recovery'})){
+            profile.achievements.push({id:'claimed-recovery',name:'&#128273; Recovery Claimed',earnedAt:now});
+          }
+        }else{
+          if(!profile.achievements.find(function(a){return a.id==='claimed-alias'})){
+            profile.achievements.push({id:'claimed-alias',name:'&#128206; Alias Claimed',earnedAt:now});
+          }
         }
       }
       saveProfile();
       renderDashboard();updateVerificationPanel();renderJournal();renderClaimedSessionsList();
       closeModal();
       _pendingAliasClaimData=null;
-      showModal('&#128206; Alias Log Claimed','<p>&#128206; Alias log claimed! '+data.entries.length+' '+(data.entries.length===1?'entry':'entries')+' merged into your profile.</p><p style="color:var(--accent-cyan);font-weight:700">+'+xpGain+' XP \u2014 Alias logs claimed!</p>');
+      if(isRecovery){
+        showModal('&#128273; Recovery Log Claimed','<p>&#128273; Recovery log claimed! '+data.entries.length+' '+(data.entries.length===1?'entry':'entries')+' merged into your profile.</p><p style="color:var(--accent-cyan);font-weight:700">+'+xpGain+' XP \u2014 Recovery log claimed!</p>');
+      }else{
+        showModal('&#128206; Alias Log Claimed','<p>&#128206; Alias log claimed! '+data.entries.length+' '+(data.entries.length===1?'entry':'entries')+' merged into your profile.</p><p style="color:var(--accent-cyan);font-weight:700">+'+xpGain+' XP \u2014 Alias logs claimed!</p>');
+      }
     }
     function confirmAliasClaim(data,hasIntegrityWarning){
-      const claimId=data.alias.id+'-'+(data.sessionStart||'');
+      const isRecovery=data.logType==='recovery-session';
+      const claimId=isRecovery?(data.profile.genesisHash+'-'+(data.sessionStart||'')):(data.alias.id+'-'+(data.sessionStart||''));
       const now=new Date().toISOString();
       const genesisHash=(profile.meta&&profile.meta.genesisHash)||null;
-      const mergedEntries=data.entries.map(function(entry){
-        return{ts:entry.ts||now,text:entry.text,type:'claimed-alias',aliasId:data.alias.id,aliasName:data.alias.name,linkedTo:genesisHash,claimId:claimId,sealBroken:!!hasIntegrityWarning};
-      });
-      const summaryEntry={ts:now,text:'&#128206; Claimed '+data.entries.length+' log '+(data.entries.length===1?'entry':'entries')+' from alias session as "'+data.alias.name+'" ('+data.alias.id+').'+(hasIntegrityWarning?' &#9888;&#65039; Some entries had integrity warnings.':''),type:'claim-event',aliasId:data.alias.id,aliasName:data.alias.name,claimId:claimId};
+      let summaryEntry,mergedEntries;
+      if(isRecovery){
+        mergedEntries=data.entries.map(function(entry){
+          return{ts:entry.ts||now,text:entry.text,type:'claimed-recovery',linkedTo:genesisHash,claimId:claimId,sealBroken:!!hasIntegrityWarning};
+        });
+        const sessionDate=data.sessionStart?new Date(data.sessionStart).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+        summaryEntry={ts:now,text:'&#128273; Claimed '+data.entries.length+' recovery log '+(data.entries.length===1?'entry':'entries')+' from session on '+sessionDate+'.'+(hasIntegrityWarning?' &#9888;&#65039; Some entries had integrity warnings.':''),type:'claim-event',aliasId:'recovery',aliasName:data.profile.id||'Recovery',claimId:claimId};
+      }else{
+        mergedEntries=data.entries.map(function(entry){
+          return{ts:entry.ts||now,text:entry.text,type:'claimed-alias',aliasId:data.alias.id,aliasName:data.alias.name,linkedTo:genesisHash,claimId:claimId,sealBroken:!!hasIntegrityWarning};
+        });
+        summaryEntry={ts:now,text:'&#128206; Claimed '+data.entries.length+' log '+(data.entries.length===1?'entry':'entries')+' from alias session as "'+data.alias.name+'" ('+data.alias.id+').'+(hasIntegrityWarning?' &#9888;&#65039; Some entries had integrity warnings.':''),type:'claim-event',aliasId:data.alias.id,aliasName:data.alias.name,claimId:claimId};
+      }
       profile.journal=[summaryEntry].concat(mergedEntries).concat(profile.journal);
       const xpGain=data.entries.length*15;
       profile.meta.xp=(profile.meta.xp||0)+xpGain;
-      const hashInput=JSON.stringify({type:'alias-claim',claimId:claimId,aliasId:data.alias.id,count:data.entries.length,ts:now});
+      const hashInput=JSON.stringify({type:isRecovery?'recovery-claim':'alias-claim',claimId:claimId,count:data.entries.length,ts:now});
       computeHash(hashInput).then(function(hash){
-        sealChain.push({type:'alias-claim',claimId:claimId,aliasId:data.alias.id,count:data.entries.length,hash:hash,ts:now});
+        sealChain.push({type:isRecovery?'recovery-claim':'alias-claim',claimId:claimId,count:data.entries.length,hash:hash,ts:now});
         _finishAliasClaim(data,hasIntegrityWarning,claimId,xpGain,now);
       }).catch(function(){
-        sealChain.push({type:'alias-claim',claimId:claimId,aliasId:data.alias.id,count:data.entries.length,hash:'hash-error',ts:now});
+        sealChain.push({type:isRecovery?'recovery-claim':'alias-claim',claimId:claimId,count:data.entries.length,hash:'hash-error',ts:now});
         _finishAliasClaim(data,hasIntegrityWarning,claimId,xpGain,now);
       });
     }
@@ -1723,7 +1864,144 @@
       const addBtn=document.querySelector('#ps-journal .add-btn');if(addBtn)addBtn.textContent='+ Add';
       showStage(0);
     }
-    // ── Profile Gallery ───────────────────────────────────────────────────────
+    function _doExitAlias(){
+      closeModal();
+      aliasMode=false;aliasProfile=null;aliasJournal=[];_aliasSessionStart=null;
+      document.body.classList.remove('alias-mode');
+      const banner=$('alias-banner');if(banner)banner.style.display='none';
+      const jpHeader=document.querySelector('#ps-journal .panel-header h3');if(jpHeader)jpHeader.innerHTML='&#128221; Journal';
+      const addBtn=document.querySelector('#ps-journal .add-btn');if(addBtn)addBtn.textContent='+ Add';
+      showStage(0);
+    }
+    // ── Recovery Mode ─────────────────────────────────────────────────────────
+    function openRecoveryPanel(){
+      if(localStorage.getItem('ferros_profile')){
+        showModal('\u2139\uFE0F Profile Already Loaded','<p>A profile is already loaded on this device. Use Dashboard \u2192 Portability to export/import instead.</p>');return;
+      }
+      if(aliasMode){
+        showModal('\u26A0\uFE0F Exit Alias Mode First','<p>Exit alias mode before entering recovery mode.</p>');return;
+      }
+      const o=$('recovery-panel-overlay');if(o)o.style.display='flex';
+      const w=$('recovery-integrity-warning');if(w){w.style.display='none';w.textContent=''}
+    }
+    function closeRecoveryPanel(){
+      const o=$('recovery-panel-overlay');if(o)o.style.display='none';
+      const fi=$('recovery-file-input');if(fi)fi.value='';
+      const w=$('recovery-integrity-warning');if(w){w.style.display='none';w.textContent=''}
+    }
+    function loadRecoveryProfile(){
+      const input=$('recovery-file-input');
+      if(!input||!input.files||!input.files.length){showXPToast('\u26A0\uFE0F','Select your profile backup file first.');return}
+      const file=input.files[0];
+      const reader=new FileReader();
+      reader.onload=function(ev){processRecoveryLoad(ev.target.result)};
+      reader.readAsText(file);
+    }
+    async function processRecoveryLoad(text){
+      let data;
+      try{data=JSON.parse(text)}catch(err){showModal('\u274C Invalid File','<p>\u274C Invalid file \u2014 not a valid JSON file.</p>');return}
+      if(!data||!data.profile||!data.sealChain||!data.profile.meta||!data.profile.identity||!data.profile.meta.genesisHash){
+        showModal('\u274C Invalid Backup','<p>\u274C This doesn\'t look like a FERROS profile backup.</p>');return
+      }
+      recoveryHasIntegrityWarning=false;
+      const chainResult=verifyChain(data.sealChain);
+      if(!chainResult.valid){
+        const w=$('recovery-integrity-warning');
+        if(w){w.style.display='';w.textContent='\u26A0\uFE0F Seal chain has integrity issues \u2014 you can still proceed, but some data may be incomplete.'}
+        recoveryHasIntegrityWarning=true;
+      }
+      const p=data.profile;
+      const n=data.sealChain.length;
+      const lvl=p.meta&&p.meta.assistanceLevel?p.meta.assistanceLevel:'?';
+      const xp=p.meta&&p.meta.xp?p.meta.xp:0;
+      const journalCount=(p.journal&&p.journal.length)||0;
+      const name=p.identity&&p.identity.name?p.identity.name:'Unknown';
+      let bodyHtml='<p>You\'re about to load <strong>'+esc(name)+'</strong>\'s profile in recovery mode.</p>';
+      bodyHtml+='<ul style="margin:12px 0;padding-left:20px;font-size:.88rem;color:var(--text-secondary)">';
+      bodyHtml+='<li>'+n+' seal '+(n===1?'entry':'entries')+' in chain</li>';
+      bodyHtml+='<li>Level '+lvl+', '+xp+' XP</li>';
+      bodyHtml+='<li>'+journalCount+' journal '+(journalCount===1?'entry':'entries')+'</li>';
+      bodyHtml+='</ul>';
+      bodyHtml+='<p style="font-size:.82rem;color:var(--text-dim)">Nothing will be written to this computer\'s storage. All activity you log will be saved to a .ferros-log file for claiming on your home machine.</p>';
+      if(recoveryHasIntegrityWarning)bodyHtml+='<p style="color:var(--accent-amber)">\u26A0\uFE0F Seal chain has integrity issues.</p>';
+      bodyHtml+='<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">'
+        +'<button onclick="enterRecoveryMode(_pendingRecoveryData,'+recoveryHasIntegrityWarning+')" style="background:rgba(245,158,11,.12);border:1px solid var(--accent-amber);border-radius:6px;color:var(--accent-amber);cursor:pointer;font-weight:700;padding:8px 18px">\u2705 Enter Recovery Mode</button>'
+        +'<button onclick="closeModal()" style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:8px 18px">\u274C Cancel</button>'
+        +'</div>';
+      _pendingRecoveryData=data;
+      showModal('\uD83D\uDD11 Enter Recovery Mode \u2014 '+esc(name),bodyHtml);
+    }
+    function enterRecoveryMode(data,hasIntegrityWarning){
+      closeRecoveryPanel();
+      closeModal();
+      if(sessionMode){sessionMode=false;const sb=$('session-banner');if(sb)sb.style.display='none'}
+      if(aliasMode){_doExitAlias();aliasMode=false}
+      recoveryMode=true;
+      recoveryProfile=data.profile;
+      recoverySealChain=data.sealChain||[];
+      recoveryJournal=[];
+      _recoverySessionStart=new Date().toISOString();
+      recoveryHasIntegrityWarning=!!hasIntegrityWarning;
+      document.body.classList.add('recovery-mode');
+      const rb=$('recovery-banner');
+      if(rb){
+        rb.style.display='flex';
+        const rt=$('recovery-banner-text');
+        const n=recoveryProfile.identity&&recoveryProfile.identity.name?recoveryProfile.identity.name:'';
+        if(rt)rt.textContent='\uD83D\uDD11 Recovery Mode \u2014 '+n+(hasIntegrityWarning?' \u26A0\uFE0F integrity warning':'');
+      }
+      profile=recoveryProfile;
+      sealChain=recoverySealChain;
+      renderDashboard();
+      updateVerificationPanel();
+      showStage(3);
+      showXPToast('\uD83D\uDD11','Recovery mode active \u2014 log your activity, then download your log.');
+    }
+    async function downloadRecoveryLog(){
+      if(!recoveryJournal.length){showXPToast('\u26A0\uFE0F','No activity logged yet \u2014 nothing to download.');return}
+      const now=new Date().toISOString();
+      const date=now.slice(0,10);
+      const rawName=(recoveryProfile&&recoveryProfile.identity&&recoveryProfile.identity.name)?recoveryProfile.identity.name:'';
+      const safeName=rawName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'recovery';
+      const genesisHash=(recoveryProfile&&recoveryProfile.meta&&recoveryProfile.meta.genesisHash)||'';
+      const entries=await Promise.all(recoveryJournal.map(async function(e){
+        const content=JSON.stringify({ts:e.ts,text:e.text,type:e.type||'activity'});
+        const seal=await computeHash(content);
+        return{ts:e.ts,text:e.text,type:'activity',seal:seal};
+      }));
+      const log={
+        ferrosVersion:'1.0',
+        logType:'recovery-session',
+        profile:{id:rawName,genesisHash:genesisHash,attribution:'self'},
+        sessionStart:_recoverySessionStart,
+        sessionEnd:now,
+        entries:entries,
+        claimInstructions:'Import this file on your home FERROS instance via Dashboard \u2192 Portability \u2192 Claim Recovery Log to merge these entries into your profile.'
+      };
+      const blob=new Blob([JSON.stringify(log,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ferros-recovery-'+safeName+'-'+date+'.json';a.click();URL.revokeObjectURL(url);
+    }
+    function exitRecoveryMode(){
+      if(recoveryJournal.length>0){
+        const n=recoveryJournal.length;
+        const html='<p>You have <strong>'+n+'</strong> unsaved log '+(n===1?'entry':'entries')+'. Download your recovery log before exiting to preserve them.</p>'
+          +'<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">'
+          +'<button onclick="downloadRecoveryLog();_doExitRecovery()" style="background:rgba(245,158,11,.12);border:1px solid var(--accent-amber);border-radius:6px;color:var(--accent-amber);cursor:pointer;font-weight:700;padding:8px 18px">\uD83D\uDCBE Download &amp; Exit</button>'
+          +'<button onclick="_doExitRecovery()" style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.3);border-radius:6px;color:var(--accent-red);cursor:pointer;padding:8px 18px">\u2715 Exit Without Saving</button>'
+          +'<button onclick="closeModal()" style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:8px 18px">\u2190 Keep Logging</button>'
+          +'</div>';
+        showModal('\u26A0\uFE0F Exit Recovery Mode',html);
+      }else{_doExitRecovery()}
+    }
+    function _doExitRecovery(){
+      recoveryMode=false;recoveryProfile=null;recoverySealChain=[];recoveryJournal=[];_recoverySessionStart=null;recoveryHasIntegrityWarning=false;
+      document.body.classList.remove('recovery-mode');
+      const rb=$('recovery-banner');if(rb)rb.style.display='none';
+      loadProfile();
+      closeModal();
+      showStage(0);
+    }
+    // ── End Recovery Mode ─────────────────────────────────────────────────────
     const TEMPLATE_PROFILES=[
       {id:'tesla',name:'Nikola Tesla',icon:'⚡',aliasClass:'Engineer',tagline:'Worked obsessively. Slept rarely. Changed everything.',stream:'A',archetype:'deep-work-nocturnal',
         templateSchedule:{blocks:[
@@ -1900,7 +2178,7 @@
     }
 
     document.addEventListener('keydown',function(e){
-      if(e.key==='Escape'){const go=$('alias-gallery-overlay');if(go&&go.style.display!=='none')closeAliasGallery();const pg=$('profile-gallery-overlay');if(pg&&pg.style.display!=='none')closeProfileGallery()}
+      if(e.key==='Escape'){const go=$('alias-gallery-overlay');if(go&&go.style.display!=='none')closeAliasGallery();const pg=$('profile-gallery-overlay');if(pg&&pg.style.display!=='none')closeProfileGallery();const rp=$('recovery-panel-overlay');if(rp&&rp.style.display!=='none')closeRecoveryPanel()}
     });
     window.addEventListener('DOMContentLoaded',init);
   </script>
