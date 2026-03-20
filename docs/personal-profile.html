@@ -320,6 +320,13 @@
     .portability-export-btn{background:var(--bg-card);border:1px solid var(--border-accent);border-radius:7px;color:var(--accent-cyan);cursor:pointer;font-size:.88rem;font-weight:700;padding:8px 18px;transition:all .2s}
     .portability-export-btn:hover{background:rgba(45,212,191,.1)}
     #import-file-input{margin-bottom:10px;cursor:pointer;color:var(--text-secondary)}
+    #claim-log-input{margin-bottom:10px;cursor:pointer;color:var(--text-secondary)}
+    .claim-section-title{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:8px}
+    .claimed-sessions-list{margin-top:12px}
+    .claimed-session-item{font-size:.78rem;color:var(--text-dim);padding:4px 0;border-bottom:1px solid var(--border-dim)}
+    .journal-entry.claim-event{background:rgba(167,139,250,.08);border-left:2px solid var(--accent-purple);font-weight:600;padding-left:10px}
+    .journal-entry.claimed-alias{border-left:1px solid rgba(167,139,250,.3);padding-left:24px}
+    .journal-entry.claimed-alias.seal-broken .journal-text::before{content:'⚠️ ';color:var(--accent-amber)}
     /* Alias Entry Section */
     .alias-entry-section{text-align:center;max-width:620px;width:100%;margin-top:16px}
     .alias-entry-divider{font-size:.78rem;color:var(--text-dim);letter-spacing:.08em;margin-bottom:12px}
@@ -863,6 +870,13 @@
             <input type="file" id="import-file-input" accept=".json" class="field-input" />
             <button class="portability-export-btn" style="margin-top:10px" onclick="handleImportClick()">Import</button>
             <hr class="divider">
+            <div class="claim-section-title">&#128206; Claim Alias Log</div>
+            <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:10px">Did you log activity under an alias on another device? Import that .ferros-log file here to claim those entries and merge them into your profile.</p>
+            <label class="field-label" for="claim-log-input">&#128194; Select .ferros-log file</label>
+            <input type="file" id="claim-log-input" accept=".json,.ferros-log" class="field-input" />
+            <button class="portability-export-btn" style="margin-top:10px" onclick="claimAliasLog()">&#128206; Claim Log</button>
+            <div id="claimed-sessions-list" class="claimed-sessions-list"></div>
+            <hr class="divider">
             <div class="portability-coming-soon">
               <div style="font-size:.88rem;font-weight:700;color:var(--text-dim);margin-bottom:6px">&#128302; Coming Soon: FERROS Node Sync</div>
               <p style="font-size:.78rem;color:var(--text-dim);margin-bottom:10px">Sync your profile to a FERROS node for cross-device persistence. Requires FERROS native infrastructure.</p>
@@ -965,7 +979,7 @@
 
     let profile=null, sealChain=[], selectedAssistLevel=1, selectedAvatar='shield', selectedClass='Architect', selectedStream='A';
     let sessionMode=false,aliasMode=false,aliasProfile=null,aliasJournal=[],_aliasSessionStart=null;
-    let _tradeAcceptCb=null,_pendingImportData=null;
+    let _tradeAcceptCb=null,_pendingImportData=null,_pendingAliasClaimData=null;
     let selectedTemplate=null;
     const panelOrder=['character','attributes','skills','achievements','journal','portability','credentials'];
 
@@ -1318,7 +1332,7 @@
 
     function renderDashboard(){
       document.body.className='level-'+profile.meta.assistanceLevel;
-      updateCharacterSheet();renderAttributes();renderSkillTrees();renderAchievements();renderJournal();drawRadarChart();
+      updateCharacterSheet();renderAttributes();renderSkillTrees();renderAchievements();renderJournal();drawRadarChart();renderClaimedSessionsList();
       const sub=$('dash-user-sub');if(sub)sub.textContent=profile.identity.name+' · '+profile.identity.class;
       if(profile.meta.assistanceLevel===1)showPanel('character');
       checkAchievements();
@@ -1361,7 +1375,18 @@
       const entries=(aliasMode?aliasJournal:(profile.journal||[]));
       if(!entries.length){c.innerHTML='<p class="text-dim" style="font-size:.85rem">No '+(aliasMode?'activity':'journal')+' entries yet.</p>';return}
       const aliasTag=aliasMode?(' <span style="color:var(--accent-amber);font-size:.68rem">[alias: '+esc(aliasProfile.id)+']</span>'):'';
-      c.innerHTML=[...entries].reverse().map(e=>'<div class="journal-entry"><div class="journal-ts">'+new Date(e.ts).toLocaleString()+aliasTag+'</div><div class="journal-text">'+esc(e.text)+'</div></div>').join('');
+      c.innerHTML=[...entries].reverse().map(e=>{
+        if(e.type==='claim-event'){
+          const aliasBadge=' <span style="color:var(--accent-purple);font-size:.72rem">[alias: '+esc(e.aliasName||e.aliasId||'')+']</span>';
+          return '<div class="journal-entry claim-event"><div class="journal-ts">'+new Date(e.ts).toLocaleString()+aliasBadge+'</div><div class="journal-text">'+esc(e.text)+'</div></div>';
+        }
+        if(e.type==='claimed-alias'){
+          const aliasBadge=' <span style="color:var(--accent-amber);font-size:.68rem">[alias: '+esc(e.aliasId||'')+']</span>';
+          const brokenClass=e.sealBroken?' seal-broken':'';
+          return '<div class="journal-entry claimed-alias'+brokenClass+'"><div class="journal-ts">'+new Date(e.ts).toLocaleString()+aliasBadge+'</div><div class="journal-text">'+esc(e.text)+'</div></div>';
+        }
+        return '<div class="journal-entry"><div class="journal-ts">'+new Date(e.ts).toLocaleString()+aliasTag+'</div><div class="journal-text">'+esc(e.text)+'</div></div>';
+      }).join('');
     }
     function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
     function addJournalEntry(){
@@ -1590,6 +1615,98 @@
       const blob=new Blob([JSON.stringify(log,null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ferros-alias-log-'+aliasProfile.id+'-'+date+'.json';a.click();URL.revokeObjectURL(url);
     }
+    // ── Alias Log Claim Flow ─────────────────────────────────────────────────
+    function claimAliasLog(){
+      const input=$('claim-log-input');
+      if(!input||!input.files||!input.files.length){showModal('&#9888; No File','<p>&#9888;&#65039; Select a .ferros-log file first.</p>');return}
+      if(!profile||!profile.identity||!profile.meta){showModal('&#10060; No Profile','<p>&#10060; No profile found — complete setup first before claiming alias logs.</p>');return}
+      const file=input.files[0];
+      const reader=new FileReader();
+      reader.onload=function(ev){processAliasLogClaim(ev.target.result)};
+      reader.readAsText(file);
+    }
+    async function verifyAliasLogSeals(entries){
+      for(let i=0;i<entries.length;i++){
+        const e=entries[i];
+        if(!e.seal)continue;
+        const expected=await computeHash(JSON.stringify({ts:e.ts,text:e.text,type:e.type||'activity'}));
+        if(expected!==e.seal){return false}
+      }
+      return true;
+    }
+    async function processAliasLogClaim(text){
+      let data;
+      try{data=JSON.parse(text)}catch(err){showModal('&#10060; Invalid File','<p>&#10060; Invalid file — not a valid JSON file.</p>');return}
+      if(!data||data.logType!=='alias-session'||!data.alias||!data.alias.id||!data.alias.name||!Array.isArray(data.entries)){
+        showModal('&#10060; Invalid Alias Log','<p>&#10060; Invalid alias log — this doesn\'t look like a FERROS alias log file.</p>');return
+      }
+      const sessionKey=data.sessionStart||'';
+      const claimKey=data.alias.id+'-'+sessionKey;
+      const journal=profile.journal||[];
+      if(journal.some(j=>j.claimId===claimKey)){
+        showModal('&#9888; Already Claimed','<p>&#9888;&#65039; This alias log has already been claimed into your profile.</p>');return
+      }
+      const sealsOk=await verifyAliasLogSeals(data.entries);
+      const hasIntegrityWarning=!sealsOk;
+      const n=data.entries.length;
+      const xpGain=n*15;
+      let bodyHtml='<p>This will merge <strong>'+n+'</strong> log '+(n===1?'entry':'entries')+' from your alias session as "<strong>'+esc(data.alias.name)+'</strong>" into your profile.</p>';
+      bodyHtml+='<p>Each claimed entry will be attributed to you and added to your journal.</p>';
+      bodyHtml+='<p>You\'ll earn <strong>'+xpGain+' XP</strong> for claimed entries.</p>';
+      if(hasIntegrityWarning)bodyHtml+='<p style="color:var(--accent-amber)">&#9888;&#65039; Note: Some entries have seal integrity issues but can still be claimed.</p>';
+      bodyHtml+='<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button onclick="confirmAliasClaim(_pendingAliasClaimData,'+hasIntegrityWarning+')" style="background:rgba(52,211,153,.1);border:1px solid var(--accent-green);border-radius:6px;color:var(--accent-green);cursor:pointer;font-weight:700;padding:8px 18px">&#9989; Claim Entries</button><button onclick="closeModal()" style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:8px 18px">&#10060; Cancel</button></div>';
+      _pendingAliasClaimData=data;
+      showModal('&#128206; Claim Alias Log \u2014 '+esc(data.alias.name),bodyHtml);
+    }
+    function _finishAliasClaim(data,hasIntegrityWarning,claimId,xpGain,now){
+      profile.meta.claimedAliasSessions=profile.meta.claimedAliasSessions||[];
+      profile.meta.claimedAliasSessions.push(claimId);
+      if(data.entries.length>0){
+        profile.achievements=profile.achievements||[];
+        if(!profile.achievements.find(function(a){return a.id==='claimed-alias'})){
+          profile.achievements.push({id:'claimed-alias',name:'&#128206; Alias Claimed',earnedAt:now});
+        }
+      }
+      saveProfile();
+      renderDashboard();updateVerificationPanel();renderJournal();renderClaimedSessionsList();
+      closeModal();
+      _pendingAliasClaimData=null;
+      showModal('&#128206; Alias Log Claimed','<p>&#128206; Alias log claimed! '+data.entries.length+' '+(data.entries.length===1?'entry':'entries')+' merged into your profile.</p><p style="color:var(--accent-cyan);font-weight:700">+'+xpGain+' XP \u2014 Alias logs claimed!</p>');
+    }
+    function confirmAliasClaim(data,hasIntegrityWarning){
+      const claimId=data.alias.id+'-'+(data.sessionStart||'');
+      const now=new Date().toISOString();
+      const genesisHash=(profile.meta&&profile.meta.genesisHash)||null;
+      const mergedEntries=data.entries.map(function(entry){
+        return{ts:entry.ts||now,text:entry.text,type:'claimed-alias',aliasId:data.alias.id,aliasName:data.alias.name,linkedTo:genesisHash,claimId:claimId,sealBroken:!!hasIntegrityWarning};
+      });
+      const summaryEntry={ts:now,text:'&#128206; Claimed '+data.entries.length+' log '+(data.entries.length===1?'entry':'entries')+' from alias session as "'+data.alias.name+'" ('+data.alias.id+').'+(hasIntegrityWarning?' &#9888;&#65039; Some entries had integrity warnings.':''),type:'claim-event',aliasId:data.alias.id,aliasName:data.alias.name,claimId:claimId};
+      profile.journal=[summaryEntry].concat(mergedEntries).concat(profile.journal);
+      const xpGain=data.entries.length*15;
+      profile.meta.xp=(profile.meta.xp||0)+xpGain;
+      const hashInput=JSON.stringify({type:'alias-claim',claimId:claimId,aliasId:data.alias.id,count:data.entries.length,ts:now});
+      computeHash(hashInput).then(function(hash){
+        sealChain.push({type:'alias-claim',claimId:claimId,aliasId:data.alias.id,count:data.entries.length,hash:hash,ts:now});
+        _finishAliasClaim(data,hasIntegrityWarning,claimId,xpGain,now);
+      }).catch(function(){
+        sealChain.push({type:'alias-claim',claimId:claimId,aliasId:data.alias.id,count:data.entries.length,hash:'hash-error',ts:now});
+        _finishAliasClaim(data,hasIntegrityWarning,claimId,xpGain,now);
+      });
+    }
+    function renderClaimedSessionsList(){
+      const el=$('claimed-sessions-list');if(!el)return;
+      if(!profile||!profile.meta||!profile.meta.claimedAliasSessions||!profile.meta.claimedAliasSessions.length){
+        el.innerHTML='<p style="font-size:.78rem;color:var(--text-dim)">No alias logs claimed yet.</p>';return;
+      }
+      const journal=profile.journal||[];
+      el.innerHTML='<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:4px">Previously Claimed</div>'+profile.meta.claimedAliasSessions.map(function(cid){
+        const ev=journal.find(function(j){return j.type==='claim-event'&&j.claimId===cid});
+        const name=ev?ev.aliasName:cid;
+        const date=ev?new Date(ev.ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+        return '<div class="claimed-session-item">&#128206; '+esc(name)+(date?' \u2014 '+date:'')+'</div>';
+      }).join('');
+    }
+    // ── End Alias Log Claim Flow ─────────────────────────────────────────────
     function exitAliasMode(){
       if(aliasJournal.length>0){
         const n=aliasJournal.length;
