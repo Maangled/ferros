@@ -169,22 +169,7 @@
     .rocket-anim-el{position:fixed;font-size:2rem;pointer-events:none;z-index:99999;filter:drop-shadow(0 0 8px rgba(45,212,191,.9)) drop-shadow(0 0 18px rgba(255,215,0,.6))}
     /* Firework particles */
     .fw-container{position:fixed;pointer-events:none;z-index:9998;width:0;height:0}
-    @keyframes fwP1{0%{transform:translate(0,0);opacity:1}100%{transform:translate(0px,-300px);opacity:0}}
-    @keyframes fwP2{0%{transform:translate(0,0);opacity:1}100%{transform:translate(107px,-259px);opacity:0}}
-    @keyframes fwP3{0%{transform:translate(0,0);opacity:1}100%{transform:translate(226px,-226px);opacity:0}}
-    @keyframes fwP4{0%{transform:translate(0,0);opacity:1}100%{transform:translate(240px,-100px);opacity:0}}
-    @keyframes fwP5{0%{transform:translate(0,0);opacity:1}100%{transform:translate(300px,0px);opacity:0}}
-    @keyframes fwP6{0%{transform:translate(0,0);opacity:1}100%{transform:translate(259px,107px);opacity:0}}
-    @keyframes fwP7{0%{transform:translate(0,0);opacity:1}100%{transform:translate(226px,226px);opacity:0}}
-    @keyframes fwP8{0%{transform:translate(0,0);opacity:1}100%{transform:translate(100px,240px);opacity:0}}
-    @keyframes fwP9{0%{transform:translate(0,0);opacity:1}100%{transform:translate(0px,300px);opacity:0}}
-    @keyframes fwP10{0%{transform:translate(0,0);opacity:1}100%{transform:translate(-107px,259px);opacity:0}}
-    @keyframes fwP11{0%{transform:translate(0,0);opacity:1}100%{transform:translate(-226px,226px);opacity:0}}
-    @keyframes fwP12{0%{transform:translate(0,0);opacity:1}100%{transform:translate(-240px,100px);opacity:0}}
-    @keyframes fwP13{0%{transform:translate(0,0);opacity:1}100%{transform:translate(-300px,0px);opacity:0}}
-    @keyframes fwP14{0%{transform:translate(0,0);opacity:1}100%{transform:translate(-259px,-107px);opacity:0}}
-    @keyframes fwP15{0%{transform:translate(0,0);opacity:1}100%{transform:translate(-226px,-226px);opacity:0}}
-    @keyframes fwP16{0%{transform:translate(0,0);opacity:1}100%{transform:translate(-100px,-240px);opacity:0}}
+    @keyframes fireworkParticle{0%{transform:translate(0,0) scale(1);opacity:1}50%{opacity:.85}100%{transform:translate(var(--fw-dx),var(--fw-dy)) scale(0);opacity:0}}
     /* Setup screens */
     .setup-screen{min-height:100vh;display:flex;flex-direction:column}
     .setup-header{background:var(--gradient-header);border-bottom:1px solid var(--border-accent);padding:14px 24px;display:flex;align-items:center;gap:16px}
@@ -2601,26 +2586,36 @@
       var rect=card.getBoundingClientRect();
       var cx=rect.left+rect.width/2;
       var cy=rect.top+rect.height/2;
-      var colors=['#f59e0b','#fbbf24','#ffd700','#2dd4bf','#ffffff','#fb923c','#4af4ff','#e8edf5'];
-      var sizes=[5,7,6,8,5,7,6,8,5,7,6,8,5,7,6,8];
-      var container=document.createElement('div');
-      container.className='fw-container';
-      container.style.cssText='position:fixed;left:'+cx+'px;top:'+cy+'px;pointer-events:none;z-index:9998;width:0;height:0';
-      for(var i=0;i<16;i++){
-        var p=document.createElement('div');
-        var sz=sizes[i];
-        var color=colors[i%colors.length];
-        var delay=(i*0.05).toFixed(2)+'s';
-        var dur=(1.4+(i%3)*0.15).toFixed(2)+'s';
-        p.style.cssText='position:absolute;border-radius:50%;pointer-events:none;'
-          +'width:'+sz+'px;height:'+sz+'px;'
-          +'left:'+(-Math.floor(sz/2))+'px;top:'+(-Math.floor(sz/2))+'px;'
-          +'background:'+color+';box-shadow:0 0 4px '+color+';'
-          +'animation:fwP'+(i+1)+' '+dur+' ease-out '+delay+' forwards;opacity:0';
-        container.appendChild(p);
+      var colors=['#f59e0b','#fbbf24','#ffd700','#2dd4bf','#ffffff','#fb923c','#4af4ff','#e8edf5','#34d399','#a78bfa'];
+      function burst(ox,oy,count,delay){
+        setTimeout(function(){
+          var container=document.createElement('div');
+          container.style.cssText='position:fixed;left:'+ox+'px;top:'+oy+'px;pointer-events:none;z-index:9998;width:0;height:0';
+          for(var i=0;i<count;i++){
+            var p=document.createElement('div');
+            var sz=3+Math.floor(Math.random()*6);
+            var color=colors[Math.floor(Math.random()*colors.length)];
+            var angle=(i/count)*2*Math.PI+(Math.random()-0.5)*0.8;
+            var dist=150+Math.random()*350;
+            var fdx=Math.round(Math.cos(angle)*dist);
+            var fdy=Math.round(Math.sin(angle)*dist);
+            var dur=(1.2+Math.random()*0.6).toFixed(2)+'s';
+            var pd=(Math.random()*0.15).toFixed(2)+'s';
+            p.style.cssText='position:absolute;border-radius:50%;pointer-events:none;'
+              +'width:'+sz+'px;height:'+sz+'px;'
+              +'left:'+(-Math.floor(sz/2))+'px;top:'+(-Math.floor(sz/2))+'px;'
+              +'background:'+color+';box-shadow:0 0 5px '+color+',0 0 10px '+color+';'
+              +'--fw-dx:'+fdx+'px;--fw-dy:'+fdy+'px;'
+              +'animation:fireworkParticle '+dur+' ease-out '+pd+' forwards;opacity:0';
+            container.appendChild(p);
+          }
+          document.body.appendChild(container);
+          setTimeout(function(){container.remove();},2600);
+        },delay);
       }
-      document.body.appendChild(container);
-      setTimeout(function(){container.remove();},2300);
+      burst(cx,cy,22,0);
+      burst(cx+(Math.random()<0.5?1:-1)*(40+Math.random()*60),cy+(Math.random()<0.5?1:-1)*(30+Math.random()*50),18,320);
+      burst(cx+(Math.random()<0.5?1:-1)*(30+Math.random()*50),cy+(Math.random()<0.5?1:-1)*(40+Math.random()*40),20,640);
     }
 
     document.addEventListener('keydown',function(e){
