@@ -548,7 +548,7 @@
     <header class="site-header" style="justify-content:center">
       <div class="logo-wrap" style="flex-direction:column;text-align:center;gap:4px">
         <div class="logo-mark">FERROS</div>
-        <div class="logo-sub">Federated Experiential Resilience &amp; Operational System</div>
+        <div class="logo-sub">Foundational Embedded Rust Runtime Operating System</div>
       </div>
     </header>
     <div class="genesis-hero">
@@ -575,6 +575,8 @@
             <span class="genesis-ach-icon">&#127968;</span>
             <div class="genesis-ach-name">Home Commander</div>
             <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
+            <!-- TODO: ARCHITECTURE — Home Dashboard integration point: Connect to docs/home-hud-dashboard.html -->
+            <!-- TODO: ARCHITECTURE — Device Control integration point: Smart home device management -->
             <div class="genesis-ach-desc">Set up your home dashboard</div>
           </div>
           <div class="genesis-ach-card">
@@ -821,6 +823,7 @@
   </div>
 
   <!-- STAGE 3: MAIN DASHBOARD -->
+  <!-- TODO: ARCHITECTURE — Profile section: Extract to standalone profile app -->
   <div id="stage-3">
     <div id="welcome-back-banner" style="display:none">
       <span id="welcome-back-text">&#128126; Welcome back, <strong id="welcome-back-name">Commander</strong>! Your chain is intact.</span>
@@ -837,7 +840,9 @@
       <nav class="header-nav">
         <a href="../ferros-blueprint.html">&#8592; Blueprint</a>
         <a href="./schedule-ledger.html">Schedule Ledger</a>
+        <!-- TODO: ARCHITECTURE — Schedule Ledger integration point: Connect to docs/schedule-ledger.html -->
         <a href="./agent-command-center.html">Agent Center</a>
+        <!-- TODO: ARCHITECTURE — Agent Command Center integration point: Connect to docs/agent-command-center.html -->
         <button class="icon-btn" onclick="showSettingsModal()" title="Settings">&#9881;&#65039;</button>
       </nav>
     </header>
@@ -930,6 +935,7 @@
             <div id="claimed-sessions-list" class="claimed-sessions-list"></div>
             <hr class="divider">
             <div class="portability-coming-soon">
+              <!-- TODO: ARCHITECTURE — Rust Backend: Replace browser localStorage with Rust-based persistent storage -->
               <div style="font-size:.88rem;font-weight:700;color:var(--text-dim);margin-bottom:6px">&#128302; Coming Soon: FERROS Node Sync</div>
               <p style="font-size:.78rem;color:var(--text-dim);margin-bottom:10px">Sync your profile to a FERROS node for cross-device persistence. Requires FERROS native infrastructure.</p>
               <button style="opacity:.4;cursor:not-allowed;background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-dim);font-size:.82rem;padding:6px 14px" disabled>&#128279; Sync to Node</button>
@@ -1023,6 +1029,7 @@
         <button class="recovery-load-btn" onclick="loadRecoveryProfile()">🔑 Load &amp; Enter Recovery Mode</button>
       </div>
       <div class="recovery-panel-footer">💡 Don't have a backup? Export your profile from your home machine via Dashboard → Portability → Export Profile, then save the file to a USB drive.</div>
+      <div class="recovery-panel-footer" style="margin-top:8px;color:var(--text-dim)">☁️ FERROS Cloud sync coming soon</div>
     </div>
   </div>
 
