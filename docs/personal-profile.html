@@ -112,9 +112,59 @@
     /* Tooltip flash */
     .assist-lock-tooltip{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:5px;color:var(--accent-amber);font-size:.75rem;margin-top:4px;padding:4px 10px;animation:tooltipFadeOut 2.5s ease-out forwards}
     @keyframes tooltipFadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}
-    .begin-btn{width:100%;background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1.1rem;font-weight:700;letter-spacing:.05em;padding:16px 32px;transition:all .2s;box-shadow:0 0 20px rgba(45,212,191,.2)}
+    @keyframes beginPulse{0%,100%{box-shadow:0 0 20px rgba(45,212,191,.2)}50%{box-shadow:0 0 40px rgba(45,212,191,.65),0 0 64px rgba(74,144,217,.3);filter:brightness(1.12)}}
+    .begin-btn{width:100%;background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1.1rem;font-weight:700;letter-spacing:.05em;padding:16px 32px;transition:all .2s;box-shadow:0 0 20px rgba(45,212,191,.2);animation:beginPulse 2.4s ease-in-out 8s infinite}
     .begin-btn:hover{transform:translateY(-2px);box-shadow:0 4px 24px rgba(45,212,191,.4)}
-    .begin-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .begin-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;animation:none}
+    /* Android Companion */
+    @keyframes androidBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+    .hero-android-row{display:flex;align-items:flex-start;gap:20px;max-width:900px;width:100%;margin-bottom:32px}
+    .hero-android-row .genesis-hero-banner{flex:1;max-width:none;margin-bottom:0}
+    .android-companion{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:86px;padding-top:8px;position:relative}
+    .android-figure{display:flex;flex-direction:column;align-items:center;animation:androidBob 3s ease-in-out infinite;position:relative}
+    .android-head{width:38px;height:28px;background:var(--bg-card);border:2px solid var(--accent-cyan);border-radius:50% 50% 38% 38%;position:relative;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px rgba(45,212,191,.2)}
+    .android-antenna{width:2px;height:10px;background:var(--accent-cyan);position:absolute;top:-12px;left:50%;transform:translateX(-50%)}
+    .android-antenna::after{content:'';width:6px;height:6px;border:1.5px solid var(--accent-cyan);border-radius:50%;background:rgba(45,212,191,.4);position:absolute;top:-7px;left:-2px;box-shadow:0 0 4px var(--accent-cyan)}
+    .android-eye{width:7px;height:7px;background:var(--accent-cyan);border-radius:50%;position:absolute;top:9px;box-shadow:0 0 5px var(--accent-cyan)}
+    .android-eye.left{left:7px}.android-eye.right{right:7px}
+    .android-body{width:34px;height:38px;background:var(--bg-card);border:2px solid var(--accent-cyan);border-radius:5px;position:relative;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px rgba(45,212,191,.15);margin-top:2px}
+    .android-arm{width:8px;height:22px;background:var(--bg-card);border:1.5px solid var(--accent-cyan);border-radius:4px;position:absolute;top:6px}
+    .android-arm.left{left:-12px;transform:rotate(-6deg)}.android-arm.right{right:-12px;transform:rotate(6deg)}
+    .android-chest-dot{width:8px;height:8px;background:var(--accent-cyan);border-radius:50%;opacity:.7;box-shadow:0 0 5px var(--accent-cyan)}
+    .android-legs{display:flex;gap:4px;margin-top:2px}
+    .android-leg{width:11px;height:14px;background:var(--bg-card);border:1.5px solid var(--accent-cyan);border-radius:0 0 4px 4px}
+    .speech-bubble-wrap{position:relative;width:190px;height:52px;margin-bottom:10px;flex-shrink:0}
+    .speech-bubble{background:var(--bg-panel);border:1px solid var(--accent-cyan);border-radius:10px;color:var(--accent-cyan);font-size:.7rem;font-weight:600;padding:7px 10px;position:absolute;top:0;left:0;width:100%;box-shadow:0 0 8px rgba(45,212,191,.12);line-height:1.4;opacity:0}
+    .speech-bubble::after{content:'';position:absolute;bottom:-7px;left:14px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--accent-cyan)}
+    @keyframes bCycle1{0%,5%{opacity:1}27%{opacity:1}33%{opacity:0}95%{opacity:0}100%{opacity:1}}
+    @keyframes bCycle2{0%,33%{opacity:0}38%{opacity:1}60%{opacity:1}66%{opacity:0}100%{opacity:0}}
+    @keyframes bCycle3{0%,66%{opacity:0}72%{opacity:1}93%{opacity:1}99%{opacity:0}100%{opacity:0}}
+    .speech-b1{animation:bCycle1 12s ease-in-out infinite}
+    .speech-b2{animation:bCycle2 12s ease-in-out infinite}
+    .speech-b3{animation:bCycle3 12s ease-in-out infinite}
+    @media(max-width:700px){.hero-android-row{flex-direction:column;align-items:center}.hero-android-row .genesis-hero-banner{width:100%}.android-companion{width:100%;flex-direction:row;justify-content:center;gap:12px;padding-top:0}.speech-bubble-wrap{height:40px}.android-figure{flex-direction:row;gap:4px;align-items:flex-end}.android-legs{margin-top:0}}
+    /* Achievement Hover Diagrams */
+    .genesis-ach-card{cursor:pointer}
+    .genesis-ach-card:hover .ach-hover-diagram{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+    .ach-hover-diagram{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(8px);width:220px;background:var(--bg-panel);border:1px solid var(--border-accent);border-radius:10px;padding:14px;font-size:.73rem;color:var(--text-secondary);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;box-shadow:var(--shadow-panel),0 0 20px rgba(0,0,0,.4)}
+    .ach-hover-diagram::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid var(--border-accent)}
+    .ach-flow-title{font-weight:700;color:var(--text-primary);margin-bottom:8px;font-size:.78rem;display:flex;align-items:center;gap:6px}
+    .ach-flow-step{display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;line-height:1.35}
+    .ach-flow-arrow{color:var(--accent-cyan);flex-shrink:0;font-size:.7rem;margin-top:1px}
+    .ach-sp-badge{display:inline-flex;align-items:center;gap:3px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:4px;color:var(--accent-amber);font-size:.68rem;font-weight:700;padding:2px 7px;margin-top:6px;letter-spacing:.03em}
+    .ach-diagram-link-btn{display:block;width:100%;margin-top:8px;background:rgba(45,212,191,.08);border:1px solid var(--accent-cyan);border-radius:6px;color:var(--accent-cyan);cursor:pointer;font-size:.72rem;font-weight:700;padding:5px 10px;text-align:center;transition:all .2s;text-decoration:none}
+    .ach-diagram-link-btn:hover{background:rgba(45,212,191,.18);box-shadow:0 0 8px rgba(45,212,191,.2)}
+    .genesis-ach-sp{font-size:.68rem;font-weight:700;color:var(--accent-amber);font-family:var(--font-mono);margin-top:4px}
+    /* Genesis Pioneer Unlock */
+    @keyframes pioneerUnlock{0%{transform:scale(.95);border-color:var(--border-dim);box-shadow:none;opacity:.75;filter:grayscale(30%)}40%{transform:scale(1.06);border-color:gold;box-shadow:0 0 28px rgba(255,215,0,.55),0 0 56px rgba(255,215,0,.2);opacity:1;filter:none}100%{transform:scale(1);border-color:var(--accent-amber);box-shadow:0 0 14px rgba(245,158,11,.3);opacity:1;filter:none}}
+    @keyframes goldShimmer{0%{background-position:200% center}100%{background-position:-200% center}}
+    .genesis-ach-card.pioneer-unlocked{animation:pioneerUnlock 1.6s ease-out forwards;border-color:var(--accent-amber)!important;opacity:1!important;filter:none!important;background:rgba(245,158,11,.05)!important}
+    .genesis-ach-card.pioneer-unlocked .genesis-ach-icon{text-shadow:0 0 14px rgba(255,215,0,.9)}
+    .genesis-ach-card.pioneer-unlocked .genesis-ach-name{background:linear-gradient(90deg,var(--accent-amber),#fbbf24,var(--accent-amber));background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:goldShimmer 2.5s linear infinite}
+    .genesis-ach-card.pioneer-unlocked .genesis-ach-lock{display:none}
+    /* SP Float Animation */
+    @keyframes spFloat{0%{opacity:0;transform:translateY(0) scale(.8)}10%{opacity:1;transform:translateY(-4px) scale(1)}75%{opacity:1;transform:translateY(-48px) scale(1.1)}100%{opacity:0;transform:translateY(-70px) scale(.9)}}
+    .sp-float-el{position:fixed;font-size:1.15rem;font-weight:900;color:var(--accent-amber);pointer-events:none;z-index:9999;text-shadow:0 0 12px rgba(245,158,11,.7),0 0 4px #000;animation:spFloat 2.2s ease-out forwards;white-space:nowrap}
     /* Setup screens */
     .setup-screen{min-height:100vh;display:flex;flex-direction:column}
     .setup-header{background:var(--gradient-header);border-bottom:1px solid var(--border-accent);padding:14px 24px;display:flex;align-items:center;gap:16px}
@@ -555,14 +605,41 @@
       <div class="genesis-logo">FERROS</div>
       <div class="genesis-tagline">Personal Progression System &mdash; Genesis Block</div>
 
-      <!-- Hero Banner -->
-      <div class="genesis-hero-banner">
-        <div class="genesis-hero-tagline">Level up your life. Track your growth. Earn real skills.</div>
-        <div class="genesis-hero-hook">Start at Level 1. Complete quests. Unlock your full dashboard.</div>
-        <div class="genesis-feature-pills">
-          <span class="feature-pill">&#9935; Cryptographic Seals</span>
-          <span class="feature-pill">&#127942; Achievement System</span>
-          <span class="feature-pill">&#128274; 100% Local &mdash; No Servers</span>
+      <!-- Hero Banner + Android Companion Row -->
+      <div class="hero-android-row">
+        <!-- Hero Banner -->
+        <div class="genesis-hero-banner">
+          <div class="genesis-hero-tagline">Level up your life. Track your growth. Earn real skills.</div>
+          <div class="genesis-hero-hook">Start at Level 1. Complete quests. Unlock your full dashboard.</div>
+          <div class="genesis-feature-pills">
+            <span class="feature-pill">&#9935; Cryptographic Seals</span>
+            <span class="feature-pill">&#127942; Achievement System</span>
+            <span class="feature-pill">&#128274; 100% Local &mdash; No Servers</span>
+          </div>
+        </div>
+        <!-- Android Onboarding Companion -->
+        <div class="android-companion" aria-label="Onboarding assistant">
+          <div class="speech-bubble-wrap">
+            <div class="speech-bubble speech-b1">&#128075; Welcome to FERROS!</div>
+            <div class="speech-bubble speech-b2">Take your time... &#10024;</div>
+            <div class="speech-bubble speech-b3">Press Begin when ready &#8594;</div>
+          </div>
+          <div class="android-figure">
+            <div class="android-head">
+              <div class="android-antenna"></div>
+              <div class="android-eye left"></div>
+              <div class="android-eye right"></div>
+            </div>
+            <div class="android-body">
+              <div class="android-arm left"></div>
+              <div class="android-arm right"></div>
+              <div class="android-chest-dot"></div>
+            </div>
+            <div class="android-legs">
+              <div class="android-leg left"></div>
+              <div class="android-leg right"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -570,69 +647,141 @@
       <div class="genesis-ach-section">
         <div class="genesis-ach-section-title">&#127942; Achievements to Unlock</div>
         <div class="genesis-ach-grid">
+          <!-- Genesis Pioneer — auto-unlocks on page load -->
+          <div class="genesis-ach-card" id="ach-genesis-pioneer">
+            <span class="genesis-ach-lock">&#128274;</span>
+            <span class="genesis-ach-icon">&#128640;</span>
+            <div class="genesis-ach-name">Genesis Pioneer</div>
+            <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
+            <div class="genesis-ach-sp">+25 SP</div>
+            <div class="genesis-ach-desc">Start your journey in FERROS</div>
+            <div class="ach-hover-diagram">
+              <div class="ach-flow-title">&#128640; How to earn</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Open the FERROS genesis page</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Choose your assistance level</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Press <strong>Begin Setup</strong></div>
+              <div><span class="ach-sp-badge">&#127942; +25 SP on unlock</span></div>
+            </div>
+          </div>
+          <!-- Discover Profiles — links to profile gallery -->
+          <div class="genesis-ach-card" id="ach-discover-profiles">
+            <span class="genesis-ach-lock">&#128274;</span>
+            <span class="genesis-ach-icon">&#127758;</span>
+            <div class="genesis-ach-name">Discover Profiles</div>
+            <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
+            <div class="genesis-ach-sp">+15 SP</div>
+            <div class="genesis-ach-desc">Browse the featured profile gallery</div>
+            <div class="ach-hover-diagram">
+              <div class="ach-flow-title">&#127758; How to earn</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Scroll to the Featured Profiles section</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Browse at least one profile archetype</div>
+              <div><span class="ach-sp-badge">&#127942; +15 SP on unlock</span></div>
+              <button class="ach-diagram-link-btn" onclick="document.getElementById('gallery-preview-section').scrollIntoView({behavior:'smooth'})">&#128270; Browse Profiles &darr;</button>
+            </div>
+          </div>
+          <!-- Home Commander -->
           <div class="genesis-ach-card">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#127968;</span>
             <div class="genesis-ach-name">Home Commander</div>
             <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
+            <div class="genesis-ach-sp">+30 SP</div>
+            <div class="genesis-ach-desc">Set up your home dashboard</div>
             <!-- TODO: ARCHITECTURE — Home Dashboard integration point: Connect to docs/home-hud-dashboard.html -->
             <!-- TODO: ARCHITECTURE — Device Control integration point: Smart home device management -->
-            <div class="genesis-ach-desc">Set up your home dashboard</div>
+            <div class="ach-hover-diagram">
+              <div class="ach-flow-title">&#127968; How to earn</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Complete character creation (Stage 1)</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Link your Home Hub dashboard</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Configure at least one device</div>
+              <div><span class="ach-sp-badge">&#127942; +30 SP on unlock</span></div>
+            </div>
           </div>
+          <!-- Skill Forester -->
           <div class="genesis-ach-card">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#127794;</span>
             <div class="genesis-ach-name">Skill Forester</div>
             <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
+            <div class="genesis-ach-sp">+20 SP</div>
             <div class="genesis-ach-desc">Plant your first skill tree</div>
+            <div class="ach-hover-diagram">
+              <div class="ach-flow-title">&#127794; How to earn</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Reach the dashboard (Stage 3)</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Open the Skills panel</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Level up any skill node once</div>
+              <div><span class="ach-sp-badge">&#127942; +20 SP on unlock</span></div>
+            </div>
           </div>
+          <!-- Stat Sage -->
           <div class="genesis-ach-card">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#128202;</span>
             <div class="genesis-ach-name">Stat Sage</div>
             <div class="genesis-ach-stars">&#9733;&#9733;&#9734;</div>
+            <div class="genesis-ach-sp">+25 SP</div>
             <div class="genesis-ach-desc">Track a habit for 7 days</div>
+            <div class="ach-hover-diagram">
+              <div class="ach-flow-title">&#128202; How to earn</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Complete a daily protocol</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Repeat for 7 consecutive days</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Your streak is sealed each day</div>
+              <div><span class="ach-sp-badge">&#127942; +25 SP on unlock</span></div>
+            </div>
           </div>
+          <!-- Agent Handler -->
           <div class="genesis-ach-card">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#129302;</span>
             <div class="genesis-ach-name">Agent Handler</div>
             <div class="genesis-ach-stars">&#9733;&#9733;&#9733;</div>
+            <div class="genesis-ach-sp">+40 SP</div>
             <div class="genesis-ach-desc">Deploy your first AI agent</div>
+            <div class="ach-hover-diagram">
+              <div class="ach-flow-title">&#129302; How to earn</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Reach Level 4 (Director)</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Open the Admin panel</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Assign your first agent task</div>
+              <div><span class="ach-sp-badge">&#127942; +40 SP on unlock</span></div>
+            </div>
           </div>
+          <!-- Protocol Master -->
           <div class="genesis-ach-card">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#128220;</span>
             <div class="genesis-ach-name">Protocol Master</div>
             <div class="genesis-ach-stars">&#9733;&#9733;&#9734;</div>
+            <div class="genesis-ach-sp">+30 SP</div>
             <div class="genesis-ach-desc">Complete 10 protocols</div>
+            <div class="ach-hover-diagram">
+              <div class="ach-flow-title">&#128220; How to earn</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Complete your first protocol seal</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Keep sealing — reach 10 total seals</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Each seal is cryptographically locked</div>
+              <div><span class="ach-sp-badge">&#127942; +30 SP on unlock</span></div>
+            </div>
           </div>
+          <!-- Iron Month -->
           <div class="genesis-ach-card">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#128293;</span>
             <div class="genesis-ach-name">Iron Month</div>
             <div class="genesis-ach-stars">&#9733;&#9733;&#9733;</div>
+            <div class="genesis-ach-sp">+50 SP</div>
             <div class="genesis-ach-desc">30-day streak</div>
-          </div>
-          <div class="genesis-ach-card">
-            <span class="genesis-ach-lock">&#128274;</span>
-            <span class="genesis-ach-icon">&#128214;</span>
-            <div class="genesis-ach-name">FERROS Scholar</div>
-            <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
-            <div class="genesis-ach-desc">Read all architecture docs</div>
-          </div>
-          <div class="genesis-ach-card">
-            <span class="genesis-ach-lock">&#128274;</span>
-            <span class="genesis-ach-icon">&#9935;</span>
-            <div class="genesis-ach-name">Chain Anchor</div>
-            <div class="genesis-ach-stars">&#9733;&#9733;&#9733;</div>
-            <div class="genesis-ach-desc">First blockchain-verified action</div>
+            <div class="ach-hover-diagram">
+              <div class="ach-flow-title">&#128293; How to earn</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Complete at least one protocol daily</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Build a 30-day unbroken streak</div>
+              <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Every day is sealed on the chain</div>
+              <div><span class="ach-sp-badge">&#127942; +50 SP on unlock</span></div>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Featured Profiles Preview Section -->
-      <div class="gallery-preview-section">
+      <div class="gallery-preview-section" id="gallery-preview-section">
         <div class="gallery-preview-title">🌐 Featured Profiles</div>
         <div class="gallery-preview-subtitle">See how others structure their day. Browse archetypes for inspiration.</div>
         <div class="gallery-carousel" id="gallery-carousel">
@@ -1150,6 +1299,23 @@
       setTimeout(()=>{banner.style.display='none'},8000);
     }
 
+    function showSPFloat(amount,sourceEl){
+      const el=document.createElement('div');el.className='sp-float-el';
+      el.textContent='+'+amount+' SP';
+      if(sourceEl){const r=sourceEl.getBoundingClientRect();el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top+window.scrollY-8)+'px';el.style.transform='translateX(-50%)'}
+      else{el.style.left='50%';el.style.top='40%';el.style.transform='translateX(-50%)'}
+      document.body.appendChild(el);
+      setTimeout(function(){el.remove()},2400);
+    }
+    function triggerGenesisPioneer(){
+      const card=$('ach-genesis-pioneer');if(!card)return;
+      setTimeout(function(){
+        card.classList.add('pioneer-unlocked');
+        showSPFloat(25,card);
+        showXPToast('&#128640;','Genesis Pioneer \u2014 +25 SP!');
+      },1800);
+    }
+
     async function init(){
       const exists=loadProfile();
       selectedAssistLevel=(exists?profile.meta.assistanceLevel:null)||1;
@@ -1166,6 +1332,7 @@
         showStage(0);
         if(typeof applyLevelLocks==='function')applyLevelLocks();
         renderGalleryCarousel();
+        triggerGenesisPioneer();
       }
       if(sessionMode){const b=$('session-banner');if(b)b.style.display='flex'}
     }
