@@ -524,8 +524,12 @@
     /* Recovery verification badge */
     .verify-status.recovery{background:rgba(245,158,11,.15);color:var(--accent-amber);border:1px solid rgba(245,158,11,.3)}
     @media(max-width:600px){.recovery-cols{grid-template-columns:1fr}}
-    /* Scroll Gating — Stage 0 first visit */
+    /* Scroll Gating — Stage 0 first visit.
+       body overflow is hidden to prevent free scrolling past Stage 0,
+       but #stage-0 must be able to scroll internally so the Begin button
+       is always reachable regardless of viewport height or content length. */
     body.scroll-gated{overflow:hidden;height:100vh}
+    body.scroll-gated #stage-0{max-height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
     /* Featured Profiles — Newspaper-style comparison */
     .featured-profiles-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:4px}
     @media(max-width:700px){.featured-profiles-grid{grid-template-columns:1fr}}
