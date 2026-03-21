@@ -1065,7 +1065,7 @@
     let recoveryMode=false,recoveryProfile=null,recoverySealChain=[],recoveryJournal=[],_recoverySessionStart=null,recoveryHasIntegrityWarning=false;
     let _tradeAcceptCb=null,_pendingImportData=null,_pendingAliasClaimData=null,_pendingRecoveryData=null;
     let selectedTemplate=null;
-    // FIX: panelOrder must match the HTML nav button order (credentials before portability)
+    // FIX: order must match HTML nav button DOM order (credentials before portability)
     const panelOrder=['character','attributes','skills','achievements','journal','credentials','portability'];
 
     function deepClone(o){return JSON.parse(JSON.stringify(o))}
@@ -1122,13 +1122,13 @@
     function showTradeDialog(onAccept){_tradeAcceptCb=onAccept;const o=$('trade-overlay');if(o)o.style.display='flex'}
     function closeTradeDialog(){const o=$('trade-overlay');if(o)o.style.display='none'}
     function acceptTrade(){sessionMode=false;closeTradeDialog();if(_tradeAcceptCb){const cb=_tradeAcceptCb;_tradeAcceptCb=null;cb()}}
-    // FIX: enterSessionMode must advance to Stage 1 after declining — otherwise the user is stranded on Stage 0
-    async function enterSessionMode(){
+    function enterSessionMode(){
       if(aliasMode){aliasMode=false;aliasProfile=null;aliasJournal=[];_aliasSessionStart=null;document.body.classList.remove('alias-mode');const ab=$('alias-banner');if(ab)ab.style.display='none';}
+      // FIX: capture whether Stage 0 is active before closing dialog so we can advance the setup flow
+      const onSetupFlow=($('stage-0')&&$('stage-0').style.display!=='none');
       sessionMode=true;closeTradeDialog();const b=$('session-banner');if(b)b.style.display='flex';
-      // FIX: _doCompleteStage0 handles its own errors internally; if it fails the begin-btn is re-enabled
-      // so the user can retry from Stage 0 while still in session mode with the banner visible
-      try{await _doCompleteStage0();}catch(e){console.error('enterSessionMode: stage advance failed',e)}
+      // FIX: still advance through setup flow in session mode — user declined storage but should proceed to Stage 1
+      if(onSetupFlow&&_tradeAcceptCb){const cb=_tradeAcceptCb;_tradeAcceptCb=null;cb();}else{_tradeAcceptCb=null;}
     }
     function acceptStorageFromSession(){sessionMode=false;const b=$('session-banner');if(b)b.style.display='none';saveProfile()}
     function showCharSealConfirm(onConfirm){const o=$('char-seal-overlay');if(o)o.style.display='flex';const btn=$('seal-confirm-btn');if(btn)btn.onclick=function(){closeCharSealConfirm();onConfirm()}}
@@ -1830,12 +1830,13 @@
       profile.journal=[summaryEntry].concat(mergedEntries).concat(profile.journal);
       const xpGain=data.entries.length*15;
       profile.meta.xp=(profile.meta.xp||0)+xpGain;
-      const hashInput=JSON.stringify({type:isRecovery?'recovery-claim':'alias-claim',claimId:claimId,count:data.entries.length,ts:now});
-      computeHash(hashInput).then(function(hash){
-        sealChain.push({type:isRecovery?'recovery-claim':'alias-claim',claimId:claimId,count:data.entries.length,hash:hash,ts:now});
+      // FIX: use addSeal() instead of direct sealChain.push() to maintain chain integrity
+      const claimTaskId=isRecovery?'recovery-claim':'alias-claim';
+      const claimTaskData={claimId:claimId,count:data.entries.length,aliasId:isRecovery?(data.profile&&data.profile.id||'recovery'):data.alias.id};
+      addSeal(claimTaskId,claimTaskData).then(function(){
         _finishAliasClaim(data,hasIntegrityWarning,claimId,xpGain,now);
-      }).catch(function(){
-        sealChain.push({type:isRecovery?'recovery-claim':'alias-claim',claimId:claimId,count:data.entries.length,hash:'hash-error',ts:now});
+      }).catch(function(e){
+        console.error('Failed to add claim seal:',e);
         _finishAliasClaim(data,hasIntegrityWarning,claimId,xpGain,now);
       });
     }
@@ -1860,7 +1861,6 @@
         showModal('&#9888;&#65039; Unsaved Log Entries',html);
       }else{_doExitAlias()}
     }
-    // FIX: removed duplicate _doExitAlias() definition (second was silently overwriting the first)
     function _doExitAlias(){
       closeModal();
       aliasMode=false;aliasProfile=null;aliasJournal=[];_aliasSessionStart=null;
@@ -1868,9 +1868,13 @@
       const banner=$('alias-banner');if(banner)banner.style.display='none';
       const jpHeader=document.querySelector('#ps-journal .panel-header h3');if(jpHeader)jpHeader.innerHTML='&#128221; Journal';
       const addBtn=document.querySelector('#ps-journal .add-btn');if(addBtn)addBtn.textContent='+ Add';
+      // FIX: reset profile and sealChain to defaults if no saved local profile (avoids stale alias data)
+      if(!loadProfile()){profile=deepClone(defaultProfile);sealChain=[];}
       showStage(0);
-      renderGalleryCarousel(); // FIX: ensure carousel is populated when returning to Stage 0
+      // FIX: re-apply level locks and re-render gallery carousel on return to Stage 0
+      applyLevelLocks();renderGalleryCarousel();
     }
+    // FIX: removed duplicate _doExitAlias() definition that silently overwrote the function above
     // ── Recovery Mode ─────────────────────────────────────────────────────────
     function openRecoveryPanel(){
       if(localStorage.getItem('ferros_profile')){
@@ -1995,13 +1999,12 @@
       recoveryMode=false;recoveryProfile=null;recoverySealChain=[];recoveryJournal=[];_recoverySessionStart=null;recoveryHasIntegrityWarning=false;
       document.body.classList.remove('recovery-mode');
       const rb=$('recovery-banner');if(rb)rb.style.display='none';
-      // FIX: capture loadProfile() return value; if no stored profile on this machine, reset profile
-      // and sealChain to clean defaults so stale recovery data doesn't bleed into a new-user flow
-      const exists=loadProfile();
-      if(!exists){profile=deepClone(defaultProfile);sealChain=[]}
+      // FIX: reset to defaultProfile if no saved local profile (avoids stale recovery data in profile variable)
+      if(!loadProfile()){profile=deepClone(defaultProfile);sealChain=[];}
       closeModal();
       showStage(0);
-      renderGalleryCarousel(); // FIX: ensure carousel is populated when returning to Stage 0
+      // FIX: re-apply level locks and re-render gallery carousel on return to Stage 0
+      applyLevelLocks();renderGalleryCarousel();
     }
     // ── End Recovery Mode ─────────────────────────────────────────────────────
     const TEMPLATE_PROFILES=[
