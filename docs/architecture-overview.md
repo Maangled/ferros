@@ -6,7 +6,90 @@
 
 ---
 
-## System Layers
+## Phase 0 — HTML Prototype Layer (Active)
+
+The active development surface for FERROS is a single self-contained HTML file:
+**`docs/personal-profile.html`**. All CSS, all JavaScript, and all HTML are embedded
+in this one file. There is no build tool, no bundler, no framework, and no CDN.
+
+### Prototype Stack
+
+| Layer | Implementation |
+|-------|---------------|
+| Markup | Inline HTML5 |
+| Styles | Embedded CSS (CSS custom properties, dark sci-fi theme) |
+| Logic | Embedded vanilla JS (no frameworks, no imports) |
+| Dependencies | Zero — none, by design |
+| Protocol | `file://` — works when opened directly from disk |
+
+**`file://` compatibility is a hard constraint, not a preference.** See ADR-001 and the
+Bug Log in `docs/AGENT_GUIDE.md` for why this matters.
+
+### Four-Stage Flow
+
+| Stage | Name | Description |
+|-------|------|-------------|
+| 0 | Genesis | Hype page + profile gallery + assist-level selector + Trade Window consent dialog |
+| 1 | Character Creation | Name, avatar, assist level, template schedule picker |
+| 2 | First Protocol | Complete first task, generate genesis seal |
+| 3 | Main Dashboard | Full profile, XP, achievements, journal, portability panel |
+
+Stages are shown one at a time via `showStage(n)`. All `.stage` elements are hidden by
+default in CSS; `showStage()` adds `.stage-visible` to the target. **Do not bypass this
+mechanism.**
+
+### Session Mode Architecture
+
+Four session modes exist (see [ADR-005](./adr/ADR-005-cross-device-identity-and-session-modes.md)).
+They are mutually exclusive:
+
+| Mode | Identity | localStorage | Exit artifact |
+|------|----------|-------------|---------------|
+| Full Profile | Real | ✅ Yes | — |
+| Session Mode | None | ❌ Never | None |
+| Alias Mode | Pseudonymous | ❌ Never | `.ferros-log` |
+| Recovery Mode | Real (own) | ❌ Never | `.ferros-log` |
+
+The `saveProfile()` function is the **single security enforcement point** for all four
+modes. It has a guard at the top (`if (recoveryMode || sessionDeclined) return;`) that
+makes it a no-op for any mode that must not write to localStorage. All four modes flow
+through this function. **Do not remove or bypass this guard.**
+
+### Hash System
+
+The seal chain uses a two-path hashing approach:
+
+1. **`crypto.subtle.digest('SHA-256', ...)`** — primary path, used in browser/server
+   context (`http://` or `https://`)
+2. **djb2 fallback** — used when `crypto.subtle` is unavailable
+
+`crypto.subtle` requires a secure context. **`file://` is not a secure context** in
+Chrome, Edge, and Firefox. The djb2 fallback exists specifically for `file://` usage.
+
+> **This is a known constraint, not a bug.** Do not "fix" it by switching to
+> `crypto.subtle` unconditionally — it will break `file://` usage. Do not remove the
+> djb2 fallback. Do not make `hashData()` synchronous — callers use `await`.
+
+See [ADR-001](./adr/ADR-001-progression-lock-pattern.md) for the full constraint
+documentation.
+
+### localStorage Schema
+
+```
+ferros_profile         → Full profile JSON (identity, meta, attributes, achievements, journal)
+ferros_seal_chain      → Array of seal objects [{taskId, seal, timestamp, previousSeal}]
+ferros_trade_accepted  → "true" | "false" (Trade Window decision, persistent)
+```
+
+`sessionStorage` is used for:
+- `ferros_alias_session` — alias mode state (never in localStorage)
+- `ferros_session_declined` — session mode flag
+
+Recovery mode uses **zero storage** — JS module variables only.
+
+---
+
+
 
 ```
 ┌─────────────────────────────────────────────────────┐

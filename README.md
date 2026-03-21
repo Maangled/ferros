@@ -18,6 +18,38 @@ This document is simultaneously the **specification** and the **Phase 0 conforma
 
 ---
 
+## Current State — Phase 0 Prototype Layer
+
+Phase 0 is an **HTML/JS/CSS prototype layer** — a living specification and gamified personal progression dashboard — running entirely in the browser with zero server requirements, accessible via the `file://` protocol.
+
+**It is not the OS** (that is Phase 1+). It IS:
+- The conformance test specification (the OS must render it natively to pass Phase 0)
+- An early-adopter personal progression tool available right now
+
+**To start:** Open `docs/personal-profile.html` in any modern browser. No installation, no server, no dependencies.
+
+> If you are an AI agent working on this repo, read [`docs/AGENT_GUIDE.md`](./docs/AGENT_GUIDE.md) before touching any code. It contains the bug log, architecture constraints, and role-specific instructions.
+
+### What's Working Right Now (Phase 0)
+
+All of the following are implemented in `docs/personal-profile.html`:
+
+- **Stage 0→1→2→3 onboarding flow** — gamified character creation, consent-first
+- **MMO-style Trade Window** — consent/permission dialog controlling session mode and localStorage access
+- **Genesis hype page** — locked achievement preview cards, feature pills, profile gallery entry point
+- **Level 2–4 progression locks** — XP-gated assist-level unlocks with keyboard bypass fix
+- **Resume banner** — returning user detection via localStorage profile, "Clear data" option
+- **Export/Import profile JSON** — full profile portability panel with JSON download/upload
+- **Alias Mode** — log activity under a borrowed public identity; sessionStorage only, never touches localStorage
+- **Profile Gallery** — browse template profiles (Tesla, Curie, Fry, Aurelius, etc.), preview modal, "Use as Alias"
+- **Template Schedules** — famous/fictional person schedule templates selectable in character creation
+- **Alias Log Claim Flow** — import `.ferros-log` files from alias sessions and merge XP/seals into real profile
+- **Key Recovery / Cross-Device Login** — load a profile backup on any machine, log, export a recovery log
+- **Cryptographic seal chain** — SHA-256 primary with djb2 fallback (required for `file://` protocol where `crypto.subtle` is unavailable)
+- **XP system, attribute tracking, achievement unlocks**
+
+---
+
 ## Primary Deployment Targets
 
 - Secure smart-home HUD kiosks
@@ -76,18 +108,24 @@ This document is simultaneously the **specification** and the **Phase 0 conforma
 
 ```
 ferros/
-├── ferros-blueprint.html   # Founding architecture board (Phase 0 test case)
-├── README.md               # This file
-├── docs/                   # Architecture specs, ADRs, threat models, governance
-│   ├── ferros-showcase.html       # Public showcase / landing page prototype
-│   ├── agent-command-center.html  # Agent governance and ops console prototype
-│   ├── home-hud-dashboard.html    # Home kiosk HUD prototype
-│   ├── schedule-ledger.html       # Personal schedule ledger prototype
-│   ├── personal-profile.html      # RPG-style personal progression dashboard
-│   ├── deployment-roadmap.html    # 7-home cluster deployment roadmap
-│   ├── architecture-overview.md   # System architecture reference
-│   └── adr/                       # Architecture Decision Records
-└── LICENSE
+├── ferros-blueprint.html                  # Founding architecture board (Phase 0 spec)
+├── README.md                              # This file
+└── docs/
+    ├── adr/                               # Architecture Decision Records
+    │   ├── ADR-0001-start-new-do-not-fork.md
+    │   ├── ADR-001-progression-lock-pattern.md
+    │   ├── ADR-002-smart-contract-boundaries.md
+    │   ├── ADR-003-alias-system.md
+    │   ├── ADR-004-template-profile-specification.md
+    │   └── ADR-005-cross-device-identity-and-session-modes.md
+    ├── AGENT_GUIDE.md                     # Agent working guide — read before touching code
+    ├── agent-command-center.html          # Agent task/command management UI
+    ├── architecture-overview.md           # Prose architecture summary
+    ├── deployment-roadmap.html            # Phase roadmap visualization
+    ├── ferros-showcase.html               # Public showcase / landing page
+    ├── home-hud-dashboard.html            # Smart home HUD prototype
+    ├── personal-profile.html              # Personal progression profile (PRIMARY PROTOTYPE)
+    └── schedule-ledger.html               # Schedule/habit ledger prototype
 ```
 
 Source code for the kernel, bootloader, and services will be organized by subsystem as development progresses.
@@ -111,9 +149,19 @@ These self-contained HTML documents serve as both design targets and milestone v
 
 ## Documentation
 
-- [`docs/architecture-overview.md`](./docs/architecture-overview.md) — System architecture reference
+- [`docs/architecture-overview.md`](./docs/architecture-overview.md) — System architecture reference (OS layers + Phase 0 prototype)
+- [`docs/AGENT_GUIDE.md`](./docs/AGENT_GUIDE.md) — Agent working guide: bug log, architecture constraints, anti-patterns
 
-Architecture Decision Records (ADRs) will be added to `docs/adr/` as architectural decisions are made.
+### Architecture Decision Records (ADRs)
+
+| ADR | Title |
+|-----|-------|
+| [ADR-0001](./docs/adr/ADR-0001-start-new-do-not-fork.md) | Start New — Do Not Fork |
+| [ADR-001](./docs/adr/ADR-001-progression-lock-pattern.md) | Progression-Lock Pattern |
+| [ADR-002](./docs/adr/ADR-002-smart-contract-boundaries.md) | Smart Contract Boundaries |
+| [ADR-003](./docs/adr/ADR-003-alias-system.md) | Alias System |
+| [ADR-004](./docs/adr/ADR-004-template-profile-specification.md) | Template Profile Specification |
+| [ADR-005](./docs/adr/ADR-005-cross-device-identity-and-session-modes.md) | Cross-Device Identity & Session Modes |
 
 ---
 

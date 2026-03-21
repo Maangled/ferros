@@ -52,6 +52,45 @@ async function sealTask(taskId, taskData, previousSeal) {
 }
 ```
 
+### Known Implementation Constraint: file:// Protocol
+
+`crypto.subtle` requires a secure context (`https://` or `localhost`). When
+`docs/personal-profile.html` is opened directly from disk via `file://`, the
+Web Crypto API is unavailable in Chrome, Edge, and Firefox.
+
+**The deployed implementation uses a two-path approach:**
+
+1. Attempt `crypto.subtle.digest('SHA-256', ...)` — succeeds in browser/server context
+2. Fall back to djb2 hash — used on `file://` protocol
+
+```javascript
+async function hashData(str) {
+  if (window.crypto && window.crypto.subtle) {
+    try {
+      const encoded = new TextEncoder().encode(str);
+      const buf = await window.crypto.subtle.digest('SHA-256', encoded);
+      return Array.from(new Uint8Array(buf))
+        .map(b => b.toString(16).padStart(2,'0')).join('');
+    } catch(e) { /* fall through */ }
+  }
+  // djb2 fallback
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) + h) + str.charCodeAt(i);
+    h = h & h;
+  }
+  return Math.abs(h).toString(16).padStart(8, '0');
+}
+```
+
+**Agents: DO NOT replace this with unconditional `crypto.subtle`. DO NOT remove the
+djb2 fallback. This is a permanent constraint of the `file://` deployment model.**
+
+The djb2 hash is not cryptographically strong (it is not SHA-256). It is sufficient for
+local tamper-evidence and progression locking. It is **NOT** sufficient for on-chain
+anchoring — when anchoring to a ledger, use the SHA-256 path (which requires a server
+context, not `file://`).
+
 ### Integrity Properties
 - **Forward integrity**: Each seal depends on all previous seals (any tampering breaks the chain)
 - **Local verifiability**: Chain can be verified by re-computing hashes from genesis
