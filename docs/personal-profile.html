@@ -563,9 +563,57 @@
     .gallery-fork-btn:hover{background:rgba(45,212,191,.08)}
     .gallery-detail-fork-btn{background:transparent;border:1px solid var(--accent-cyan);border-radius:6px;color:var(--accent-cyan);cursor:pointer;font-size:.88rem;font-weight:700;padding:8px 18px;transition:all .2s}
     .gallery-detail-fork-btn:hover{background:rgba(45,212,191,.1)}
+    /* ── FERROS Boot Animation ──────────────────────────────────────────── */
+    #boot-screen{position:fixed;inset:0;z-index:99999;background:var(--bg-base);display:none;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;transition:opacity .9s ease}
+    #boot-screen.boot-fade-out{opacity:0;pointer-events:none}
+    #boot-skip-btn{position:absolute;top:16px;right:20px;background:none;border:1px solid rgba(255,255,255,.15);border-radius:6px;color:rgba(255,255,255,.4);font-size:.78rem;padding:4px 12px;cursor:pointer;transition:color .2s,border-color .2s;z-index:1}
+    #boot-skip-btn:hover{color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.4)}
+    .boot-title-wrap{text-align:center;user-select:none}
+    .boot-ferros-title{font-family:var(--font-mono);font-size:clamp(3.5rem,12vw,7rem);font-weight:900;letter-spacing:.25em;color:#2dd4bf;text-shadow:0 0 40px rgba(45,212,191,.55),0 0 80px rgba(45,212,191,.2);position:relative;overflow:hidden;opacity:0;animation:bootTitleIn .9s ease-out .4s forwards}
+    @keyframes bootTitleIn{from{opacity:0;letter-spacing:.6em;transform:scale(1.08)}to{opacity:1;letter-spacing:.25em;transform:scale(1)}}
+    .boot-ferros-title::after{content:'';position:absolute;top:0;bottom:0;left:-100%;width:60%;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.12) 30%,rgba(255,255,255,.55) 50%,rgba(255,255,255,.12) 70%,transparent 100%);transform:skewX(-15deg);animation:bootShine 1.6s ease-in-out 1.3s forwards;pointer-events:none}
+    @keyframes bootShine{from{left:-100%}to{left:150%}}
+    .boot-subtitle-wrap{overflow:hidden;margin-top:14px;opacity:0;animation:bootSubWrapIn .1s ease 2.8s forwards}
+    @keyframes bootSubWrapIn{to{opacity:1}}
+    .boot-subtitle{font-family:var(--font-mono);font-size:clamp(.65rem,1.8vw,.85rem);text-transform:uppercase;color:var(--text-secondary);white-space:nowrap;overflow:hidden;width:0;border-right:2px solid var(--accent-cyan);animation:bootTypeIn 2.4s steps(43,end) 2.9s forwards,bootCursorBlink .65s step-end 2.9s 6 alternate}
+    @keyframes bootTypeIn{to{width:43ch}}
+    @keyframes bootCursorBlink{from,to{border-right-color:transparent}50%{border-right-color:var(--accent-cyan)}}
+    /* Sections hidden during boot — achievements/profiles revealed only after Begin */
+    body.boot-sequence .genesis-ach-section,body.boot-sequence .gallery-preview-section,body.boot-sequence .alias-entry-section,body.boot-sequence .recovery-entry-section{display:none}
+    /* Stage-0 hero elements start transparent for entrance animations */
+    body.boot-sequence .genesis-hero-banner{opacity:0}
+    body.boot-sequence .android-companion{opacity:0}
+    body.boot-sequence .genesis-card{opacity:0}
+    body.boot-sequence .begin-btn{opacity:0;animation:none!important}
+    /* Boot entrance animations (triggered by JS classList after boot screen fades out) */
+    @keyframes bootBannerReveal{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+    @keyframes bootAndroidRise{from{opacity:0;transform:translateY(56px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes bootCardReveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes bootBeginReveal{from{opacity:0}to{opacity:1}}
+    .banner-boot-enter{animation:bootBannerReveal .7s ease-out forwards!important}
+    .android-boot-enter{animation:bootAndroidRise .9s ease-out forwards!important}
+    .card-boot-enter{animation:bootCardReveal .7s ease-out forwards!important}
+    /* Android floor glow — appears during robot entrance */
+    .android-floor-glow{width:70px;height:6px;background:radial-gradient(ellipse at center,rgba(45,212,191,.45) 0%,transparent 70%);border-radius:50%;margin:2px auto 0;opacity:0;transform:scaleX(0);transition:opacity .6s ease,transform .6s ease}
+    .android-companion.boot-glow .android-floor-glow{opacity:1;transform:scaleX(1)}
+    /* Boot speech bubble — shows thesis statement during robot entrance */
+    body.boot-speech .speech-b1,body.boot-speech .speech-b2,body.boot-speech .speech-b3{opacity:0!important;animation:none!important}
+    body.boot-speech .speech-boot{opacity:1!important}
+    .speech-boot{font-size:.65rem!important;line-height:1.45!important;opacity:0;animation:none!important}
+    body.boot-speech .speech-bubble-wrap{height:auto;min-height:52px}
   </style>
 </head>
 <body>
+  <!-- Boot animation overlay — shown only on first visit (new users with no profile) -->
+  <div id="boot-screen" role="status" aria-label="FERROS boot sequence">
+    <button id="boot-skip-btn" onclick="skipBootAnimation()" aria-label="Skip boot animation">Skip &#8250;</button>
+    <div class="boot-title-wrap">
+      <div class="boot-ferros-title">FERROS</div>
+      <div class="boot-subtitle-wrap">
+        <div class="boot-subtitle">Personal Progression System &#8212; Genesis Block</div>
+      </div>
+    </div>
+  </div>
 
   <div id="xp-toast"></div>
 
@@ -682,6 +730,7 @@
             <div class="speech-bubble speech-b1">&#128075; Welcome to FERROS!</div>
             <div class="speech-bubble speech-b2">Take your time... &#10024;</div>
             <div class="speech-bubble speech-b3">Press Begin when ready &#8594;</div>
+            <div class="speech-bubble speech-boot">FERROS is free for you for life &#8212; so long as you take care of me! &#128421;</div>
           </div>
           <div class="android-figure">
             <div class="android-head">
@@ -699,6 +748,7 @@
               <div class="android-leg right"></div>
             </div>
           </div>
+          <div class="android-floor-glow"></div>
         </div>
       </div>
 
@@ -1401,6 +1451,12 @@
         // scrollUnlocked is only ever set to true by unlockScroll(), so this is safe even
         // if init() is called again (e.g. after exitAliasMode returns to Stage 0).
         if(!scrollUnlocked){document.body.classList.add('scroll-gated')}
+        // Boot animation: play cinematic intro for first-time visitors.
+        // Skipped if: user already has a profile (exists=true falls through to Stage 3/N branch),
+        // they explicitly skipped in this session, or they are returning to Stage 0 (exists=true).
+        if(!exists&&!sessionStorage.getItem('ferros_boot_skipped')){
+          runBootAnimation();
+        }
       }
       if(sessionMode){const b=$('session-banner');if(b)b.style.display='flex'}
     }
@@ -2570,6 +2626,92 @@
     document.addEventListener('keydown',function(e){
       if(e.key==='Escape'){const go=$('alias-gallery-overlay');if(go&&go.style.display!=='none')closeAliasGallery();const pg=$('profile-gallery-overlay');if(pg&&pg.style.display!=='none')closeProfileGallery();const rp=$('recovery-panel-overlay');if(rp&&rp.style.display!=='none')closeRecoveryPanel()}
     });
+
+    /* ── FERROS Boot Animation ─────────────────────────────────────────────
+       Cinematic boot sequence for first-time visitors (no existing profile).
+       Returning users (existing localStorage profile) skip this entirely.
+       Architecture: overlay #boot-screen sits above stage-0 during animation;
+       body.boot-sequence hides achievements/profiles until after Begin is clicked.
+       All animations are pure CSS @keyframes with JS setTimeout orchestration.
+       Works on file:// protocol — no external assets or fetch() calls.
+    ─────────────────────────────────────────────────────────────────────── */
+    var _bootComplete=false;
+
+    function _postBootReveal(){
+      _bootComplete=true;
+      // Remove boot-sequence and add all sync animation classes before next paint
+      // (no setTimeout here so there is no intermediate frame with wrong opacity)
+      document.body.classList.remove('boot-sequence');
+      // Set inline opacity:0 on elements that need a delayed entrance to prevent
+      // a flash between class removal and the staggered JS timer below
+      var android=document.querySelector('.android-companion');
+      var btn=$('begin-btn');
+      var card=document.querySelector('.genesis-card');
+      if(android)android.style.opacity='0';
+      if(btn)btn.style.opacity='0';
+      if(card)card.style.opacity='0';
+      // Banner grows in immediately
+      var banner=document.querySelector('.genesis-hero-banner');
+      if(banner)banner.classList.add('banner-boot-enter');
+      // Genesis card slides in shortly after banner
+      setTimeout(function(){
+        if(card){card.style.opacity='';card.classList.add('card-boot-enter');}
+      },300);
+      // Android companion rises from the floor glow line
+      setTimeout(function(){
+        if(android){
+          android.style.opacity='';
+          android.classList.add('android-boot-enter');
+          // Floor glow appears as robot settles
+          setTimeout(function(){
+            if(android)android.classList.add('boot-glow');
+            // Robot says the thesis statement
+            document.body.classList.add('boot-speech');
+          },700);
+        }
+      },500);
+      // Begin button fades in after robot speech
+      setTimeout(function(){
+        if(btn){
+          btn.style.opacity='';
+          // Fade-in then pulse (beginPulse starts 3.2s after reveal)
+          btn.style.animation='bootBeginReveal .7s ease-out forwards,beginPulse 2.4s ease-in-out 3.2s infinite';
+        }
+      },1600);
+    }
+
+    function skipBootAnimation(){
+      if(_bootComplete)return;
+      sessionStorage.setItem('ferros_boot_skipped','1');
+      var bs=$('boot-screen');
+      if(bs){bs.style.transition='opacity .3s ease';bs.style.opacity='0';setTimeout(function(){bs.style.display='none';},350);}
+      _postBootReveal();
+    }
+
+    function runBootAnimation(){
+      var bs=$('boot-screen');
+      if(!bs)return;
+      document.body.classList.add('boot-sequence');
+      bs.style.display='flex';
+      // Animation timeline (approximate, matches CSS animation delays above):
+      // 0.0s  boot screen appears (dark)
+      // 0.4s  FERROS title fades in with letter-spacing expand→contract
+      // 1.3s  shine sweep passes across FERROS (pseudo-element left: -100% → 150%)
+      // 2.8s  subtitle wrapper fades in
+      // 2.9s  typewriter starts (43 chars, steps(43,end), 2.4s duration)
+      // 5.3s  typewriter done; cursor blinks 6 × 0.65s = 3.9s
+      // 6.5s  boot screen begins fade-out (0.9s CSS transition)
+      // 7.5s  boot screen fully gone → stage-0 entrance animations start
+      // 8.0s  android rises + floor glow
+      // 8.7s  robot thesis speech bubble
+      // 9.1s  Begin button fades in
+      // 12.3s Begin button starts pulsing (3.2s after it appeared)
+      setTimeout(function(){bs.classList.add('boot-fade-out');},6500);
+      setTimeout(function(){
+        if(!_bootComplete){bs.style.display='none';_postBootReveal();}
+      },7500);
+    }
+
     window.addEventListener('DOMContentLoaded',init);
   </script>
 </body>
