@@ -504,6 +504,41 @@
     /* Recovery verification badge */
     .verify-status.recovery{background:rgba(245,158,11,.15);color:var(--accent-amber);border:1px solid rgba(245,158,11,.3)}
     @media(max-width:600px){.recovery-cols{grid-template-columns:1fr}}
+    /* Scroll Gating — Stage 0 first visit */
+    body.scroll-gated{overflow:hidden;height:100vh}
+    /* Featured Profiles — Newspaper-style comparison */
+    .featured-profiles-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:4px}
+    @media(max-width:700px){.featured-profiles-grid{grid-template-columns:1fr}}
+    .featured-profile-card{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:10px;padding:16px 14px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:0}
+    .featured-profile-card:hover{border-color:var(--border-accent);transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+    .fp-card-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .fp-card-icon{font-size:1.6rem;flex-shrink:0}
+    .fp-card-name{font-size:.92rem;font-weight:700;color:var(--text-primary)}
+    .fp-card-tagline{font-size:.72rem;color:var(--text-dim);font-style:italic;line-height:1.3;margin-top:1px}
+    .fp-schedule-label{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px}
+    .fp-schedule-blocks{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+    .fp-schedule-row{display:flex;align-items:center;gap:8px;background:var(--bg-panel);border-left:2px solid var(--border-accent);border-radius:4px;padding:4px 8px}
+    .fp-schedule-row.stream-A{border-left-color:var(--accent-blue)}
+    .fp-schedule-row.stream-B{border-left-color:var(--accent-cyan)}
+    .fp-schedule-row.stream-C{border-left-color:var(--accent-green)}
+    .fp-schedule-time{font-family:var(--font-mono);font-size:.65rem;color:var(--text-dim);min-width:38px;flex-shrink:0}
+    .fp-schedule-task{font-size:.72rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .fp-fork-btn{background:transparent;border:1px solid var(--accent-cyan);border-radius:6px;color:var(--accent-cyan);cursor:pointer;font-size:.75rem;font-weight:700;padding:6px 12px;margin-top:auto;transition:all .2s;width:100%;text-align:center}
+    .fp-fork-btn:hover{background:rgba(45,212,191,.08);box-shadow:0 0 8px rgba(45,212,191,.15)}
+    .featured-blank-card{background:var(--bg-card);border:2px dashed var(--border-dim);border-radius:10px;padding:16px 14px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;min-height:200px}
+    .featured-blank-card:hover{border-color:var(--border-accent);transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+    .fp-blank-icon{font-size:2.4rem;color:var(--text-dim)}
+    .fp-blank-title{font-size:.9rem;font-weight:700;color:var(--text-primary)}
+    .fp-blank-desc{font-size:.75rem;color:var(--text-dim);line-height:1.4}
+    .fp-blank-btn{background:transparent;border:1px solid var(--border-accent);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:.75rem;font-weight:700;padding:6px 14px;transition:all .2s;margin-top:8px}
+    .fp-blank-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan)}
+    .gallery-dismiss-btn{background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:.75rem;padding:0 4px;transition:color .2s;margin-left:auto;flex-shrink:0}
+    .gallery-dismiss-btn:hover{color:var(--text-primary)}
+    /* Gallery fork buttons */
+    .gallery-fork-btn{background:transparent;border:1px solid var(--accent-cyan);border-radius:5px;color:var(--accent-cyan);cursor:pointer;font-size:.75rem;font-weight:600;padding:5px 10px;flex:1;transition:all .2s}
+    .gallery-fork-btn:hover{background:rgba(45,212,191,.08)}
+    .gallery-detail-fork-btn{background:transparent;border:1px solid var(--accent-cyan);border-radius:6px;color:var(--accent-cyan);cursor:pointer;font-size:.88rem;font-weight:700;padding:8px 18px;transition:all .2s}
+    .gallery-detail-fork-btn:hover{background:rgba(45,212,191,.1)}
   </style>
 </head>
 <body>
@@ -782,12 +817,16 @@
 
       <!-- Featured Profiles Preview Section -->
       <div class="gallery-preview-section" id="gallery-preview-section">
-        <div class="gallery-preview-title">🌐 Featured Profiles</div>
-        <div class="gallery-preview-subtitle">See how others structure their day. Browse archetypes for inspiration.</div>
-        <div class="gallery-carousel" id="gallery-carousel">
-          <!-- Profile preview cards, rendered by JS -->
+        <div class="gallery-preview-title">🌐 Featured Profiles
+          <button class="gallery-dismiss-btn" onclick="dismissFeaturedProfiles()" title="Skip &amp; explore on your own">✕ Skip</button>
         </div>
-        <button class="gallery-browse-btn" onclick="openProfileGallery()">Browse All Profiles →</button>
+        <div class="gallery-preview-subtitle">See how two legends structured their day — or start fresh. Fork a template to begin, or build your own.</div>
+        <div class="featured-profiles-grid" id="featured-profiles-grid">
+          <!-- Newspaper-style profile cards, rendered by JS -->
+        </div>
+        <div style="text-align:center;margin-top:14px">
+          <button class="gallery-browse-btn" onclick="browseAllProfiles()">Browse All Profiles →</button>
+        </div>
       </div>
 
       <!-- Existing genesis card (preserved) -->
@@ -827,8 +866,8 @@
       <!-- Alias Mode Entry -->
       <div class="alias-entry-section">
         <div class="alias-entry-divider">— or log without creating a profile —</div>
-        <button class="alias-entry-btn" onclick="openAliasGallery()">🎭 Use an Alias</button>
-        <div class="alias-entry-hint">Borrow a public profile to log activity. Download a portable log when you're done. No account required.</div>
+        <button class="alias-entry-btn" onclick="openAliasGallery()">🎭 Browse Profiles</button>
+        <div class="alias-entry-hint">Start with a public template profile. No commitment — just a starting point. Download your log when you're done.</div>
       </div>
 
       <!-- Recovery Entry -->
@@ -1123,8 +1162,8 @@
   <!-- Alias Gallery Overlay -->
   <div id="alias-gallery-overlay" class="alias-gallery-overlay" style="display:none">
     <div class="alias-gallery-inner">
-      <div class="alias-gallery-title">🎭 Alias Gallery</div>
-      <div class="alias-gallery-sub">Borrow a public profile to start logging. Your activity will be attributed to this alias until you claim it.</div>
+      <div class="alias-gallery-title">🎭 Browse Profiles</div>
+      <div class="alias-gallery-sub">Start with a template profile — it's just a starting point, not a commitment. You don't need to keep the name or identity. Add your own vibe and make it yours.</div>
       <button class="alias-gallery-back" onclick="closeAliasGallery()">← Back to Genesis</button>
       <div class="alias-search-row">
         <input class="field-input" id="alias-search-input" type="text" placeholder="Search aliases or enter alias code..." oninput="filterAliasCards(this.value)" />
@@ -1140,7 +1179,7 @@
       <div class="gallery-modal-header">
         <button class="gallery-back-btn" onclick="closeProfileGallery()">← Back</button>
         <div class="gallery-modal-title">🌐 Featured Profiles</div>
-        <div class="gallery-modal-subtitle">Browse archetypes. Preview their day. Start your own journey inspired by theirs.</div>
+        <div class="gallery-modal-subtitle">Browse archetypes. Preview their day. Fork a template to start your own journey.</div>
       </div>
       <div class="gallery-modal-search">
         <input type="text" class="field-input" id="gallery-search-input" placeholder="Search by name, class, or archetype..." oninput="filterGalleryCards()" />
@@ -1221,6 +1260,7 @@
     let recoveryMode=false,recoveryProfile=null,recoverySealChain=[],recoveryJournal=[],_recoverySessionStart=null,recoveryHasIntegrityWarning=false;
     let _tradeAcceptCb=null,_pendingImportData=null,_pendingAliasClaimData=null,_pendingRecoveryData=null;
     let selectedTemplate=null;
+    let scrollUnlocked=false;
     // FIX: order must match HTML nav button DOM order (credentials before portability)
     const panelOrder=['character','attributes','skills','achievements','journal','credentials','portability'];
 
@@ -1332,7 +1372,12 @@
         showStage(0);
         if(typeof applyLevelLocks==='function')applyLevelLocks();
         renderGalleryCarousel();
+        renderFeaturedProfiles();
         triggerGenesisPioneer();
+        // Scroll gating: on first visit, keep focus on featured profiles until user engages.
+        // scrollUnlocked is only ever set to true by unlockScroll(), so this is safe even
+        // if init() is called again (e.g. after exitAliasMode returns to Stage 0).
+        if(!scrollUnlocked){document.body.classList.add('scroll-gated')}
       }
       if(sessionMode){const b=$('session-banner');if(b)b.style.display='flex'}
     }
@@ -1404,6 +1449,7 @@
     }
 
     async function completeStage0(){
+      unlockScroll();
       if(!sessionMode&&localStorage.getItem('ferros_profile')===null){
         showTradeDialog(()=>_doCompleteStage0());
         return;
@@ -1824,7 +1870,7 @@
       const inp=$('alias-search-input');if(inp)inp.value='';
       const hint=$('alias-code-hint');if(hint)hint.style.display='none';
     }
-    function closeAliasGallery(){const o=$('alias-gallery-overlay');if(o)o.style.display='none'}
+    function closeAliasGallery(){const o=$('alias-gallery-overlay');if(o)o.style.display='none';unlockScroll()}
     function renderAliasCards(aliases){
       const grid=$('alias-card-grid');if(!grid)return;
       grid.innerHTML=aliases.map(a=>'<div class="alias-card"><div class="alias-card-icon">'+a.icon+'</div><div class="alias-card-name">'+esc(a.name)+'</div><div class="alias-card-class">'+esc(a.aliasClass)+'</div><div class="alias-card-tagline">'+esc(a.tagline)+'</div><div class="alias-card-attr">[alias: unlinked]</div><button class="alias-use-btn" onclick="useAlias(\''+a.id+'\')">Use this Alias \u2192</button></div>').join('');
@@ -2252,17 +2298,57 @@
     };
 
     function renderGalleryCarousel(){
-      const carousel=$('gallery-carousel');if(!carousel)return;
-      carousel.innerHTML=TEMPLATE_PROFILES.map(p=>{
-        const badgeColor=CLASS_BADGE_COLOR[p.aliasClass]||'cyan';
-        return '<div class="gallery-card" onclick="openProfileGallery(\''+p.id+'\')">'
-          +'<span class="gallery-card-icon">'+p.icon+'</span>'
-          +'<div class="gallery-card-name">'+esc(p.name)+'</div>'
-          +'<span class="badge '+badgeColor+'">'+esc(p.aliasClass)+'</span>'
-          +'<div style="font-size:.68rem;color:var(--text-dim);margin-top:4px">Stream '+esc(p.stream)+'</div>'
-          +'<div class="gallery-card-tagline">'+esc(p.archetype)+'</div>'
+      // Backward-compat wrapper: exitAliasMode() and exitRecoveryMode() both call
+      // renderGalleryCarousel() when returning to Stage 0 after an alias/recovery session.
+      // Those paths need the featured grid refreshed, not the old carousel (now removed).
+      renderFeaturedProfiles();
+    }
+    // Newspaper-style featured profile cards (first 2 profiles + blank "?" card)
+    function renderFeaturedProfiles(){
+      const grid=$('featured-profiles-grid');if(!grid)return;
+      const featured=TEMPLATE_PROFILES.slice(0,2);
+      const profileCards=featured.map(p=>{
+        const blocks=p.templateSchedule.blocks.slice(0,5);
+        const scheduleRows=blocks.map(b=>
+          '<div class="fp-schedule-row stream-'+esc(p.stream)+'">'
+          +'<span class="fp-schedule-time">'+esc(b.time)+'</span>'
+          +'<span class="fp-schedule-task">'+esc(b.label)+'</span>'
+          +'</div>'
+        ).join('');
+        return '<div class="featured-profile-card" onclick="openProfileAndDetail(\''+p.id+'\')">'
+          +'<div class="fp-card-header">'
+          +'<span class="fp-card-icon">'+p.icon+'</span>'
+          +'<div><div class="fp-card-name">'+esc(p.name)+'</div>'
+          +'<div class="fp-card-tagline">'+esc(p.tagline)+'</div></div>'
+          +'</div>'
+          +'<div class="fp-schedule-label">A day in the life</div>'
+          +'<div class="fp-schedule-blocks">'+scheduleRows+'</div>'
+          +'<button class="fp-fork-btn" onclick="event.stopPropagation();startAliasFromGallery(\''+p.id+'\')">🍴 Fork this Profile</button>'
           +'</div>';
       }).join('');
+      const blankCard='<div class="featured-blank-card" onclick="completeStage0()">'
+        +'<div class="fp-blank-icon">?</div>'
+        +'<div class="fp-blank-title">Build Your Own</div>'
+        +'<div class="fp-blank-desc">Start from scratch. Choose your class, stream, and schedule. Make it entirely yours.</div>'
+        +'<button class="fp-blank-btn" onclick="event.stopPropagation();completeStage0()">Start from Scratch →</button>'
+        +'</div>';
+      grid.innerHTML=profileCards+blankCard;
+    }
+    function openProfileAndDetail(profileId){
+      openProfileGallery();
+      // Short delay allows the gallery modal's grid to render before showing the detail view.
+      setTimeout(function(){showProfileDetail(profileId)},50);
+    }
+    function browseAllProfiles(){
+      openProfileGallery();
+      unlockScroll();
+    }
+    function unlockScroll(){
+      if(!scrollUnlocked){scrollUnlocked=true;document.body.classList.remove('scroll-gated')}
+    }
+    function dismissFeaturedProfiles(){
+      const s=$('gallery-preview-section');if(s)s.style.display='none';
+      unlockScroll();
     }
     function openProfileGallery(preselectedId){
       const o=$('profile-gallery-overlay');if(o)o.style.display='flex';
@@ -2277,7 +2363,7 @@
         },50);
       }
     }
-    function closeProfileGallery(){const o=$('profile-gallery-overlay');if(o)o.style.display='none'}
+    function closeProfileGallery(){const o=$('profile-gallery-overlay');if(o)o.style.display='none';unlockScroll()}
     function renderGalleryModalGrid(filterText){
       const grid=$('gallery-modal-grid');if(!grid)return;
       const lf=(filterText||'').toLowerCase().trim();
@@ -2298,7 +2384,7 @@
           +'<div class="gallery-full-card-archetype">⏰ '+esc(p.archetype)+'</div>'
           +'<div class="gallery-full-card-actions">'
           +'<button class="gallery-preview-btn" onclick="showProfileDetail(\''+p.id+'\')">👁 Preview</button>'
-          +'<button class="gallery-alias-btn" onclick="startAliasFromGallery(\''+p.id+'\')">🎭 Use as Alias</button>'
+          +'<button class="gallery-fork-btn" onclick="startAliasFromGallery(\''+p.id+'\')">🍴 Fork this Profile</button>'
           +'</div></div>';
       }).join('');
     }
@@ -2336,7 +2422,7 @@
         +'<div class="gallery-detail-schedule">'+scheduleHtml+'</div>'
         +'<div class="gallery-alias-code-block">alias code: '+esc(p.id)+'-'+esc(djb2short(p.id))+'</div>'
         +'<div class="gallery-detail-actions">'
-        +'<button class="gallery-detail-alias-btn" onclick="startAliasFromGallery(\''+p.id+'\')">🎭 Use as Alias →</button>'
+        +'<button class="gallery-detail-fork-btn" onclick="startAliasFromGallery(\''+p.id+'\')">🍴 Fork this Profile →</button>'
         +'<button class="gallery-detail-return-btn" onclick="hideProfileDetail()">← Back to Gallery</button>'
         +'</div>';
     }
@@ -2350,6 +2436,7 @@
       const grid=$('gallery-modal-grid');if(grid)grid.style.display='';
     }
     function startAliasFromGallery(profileId){
+      unlockScroll();
       closeProfileGallery();
       const found=ALIAS_PROFILES.find(x=>x.id===profileId);
       if(found){_enterAliasMode(found)}
