@@ -825,7 +825,7 @@
           <!-- Newspaper-style profile cards, rendered by JS -->
         </div>
         <div style="text-align:center;margin-top:14px">
-          <button class="gallery-browse-btn" onclick="openProfileGallery();unlockScroll()">Browse All Profiles →</button>
+          <button class="gallery-browse-btn" onclick="browseAllProfiles()">Browse All Profiles →</button>
         </div>
       </div>
 
@@ -1374,7 +1374,9 @@
         renderGalleryCarousel();
         renderFeaturedProfiles();
         triggerGenesisPioneer();
-        // Scroll gating: focus new users on the featured profiles section
+        // Scroll gating: on first visit, keep focus on featured profiles until user engages.
+        // scrollUnlocked is only ever set to true by unlockScroll(), so this is safe even
+        // if init() is called again (e.g. after exitAliasMode returns to Stage 0).
         if(!scrollUnlocked){document.body.classList.add('scroll-gated')}
       }
       if(sessionMode){const b=$('session-banner');if(b)b.style.display='flex'}
@@ -2296,9 +2298,9 @@
     };
 
     function renderGalleryCarousel(){
-      // Kept for backward-compat (called from exitAliasMode/exitRecoveryMode).
-      // On Stage 0 the newspaper-style featured grid is the primary display;
-      // re-render it so the section stays consistent if the user returns.
+      // Backward-compat wrapper: exitAliasMode() and exitRecoveryMode() both call
+      // renderGalleryCarousel() when returning to Stage 0 after an alias/recovery session.
+      // Those paths need the featured grid refreshed, not the old carousel (now removed).
       renderFeaturedProfiles();
     }
     // Newspaper-style featured profile cards (first 2 profiles + blank "?" card)
@@ -2334,7 +2336,12 @@
     }
     function openProfileAndDetail(profileId){
       openProfileGallery();
+      // Short delay allows the gallery modal's grid to render before showing the detail view.
       setTimeout(function(){showProfileDetail(profileId)},50);
+    }
+    function browseAllProfiles(){
+      openProfileGallery();
+      unlockScroll();
     }
     function unlockScroll(){
       if(!scrollUnlocked){scrollUnlocked=true;document.body.classList.remove('scroll-gated')}
