@@ -250,6 +250,8 @@ Understanding this prevents re-implementing things or reverting fixes.
 | #29 | ADR-006: Level Zero Adaptive Onboarding | Architecture doc: Level 0 robot guide, button differentiation, adaptive difficulty philosophy |
 | #30 | [WIP] Implement corrected onboarding flow per ADR-006 | Draft — superseded by PR #31 |
 | #31 | Implement ADR-006 Level Zero onboarding | Remove `beginPulse` from Begin Setup →, Get Started in robot bubble (60s glow), 3 feature pill tooltips, robot phase orchestration (Phase 1→2→3), achievement reveal after Trade Window, locked achievements visual, Discover Profiles second achievement trigger |
+| #32 | Fix onboarding gating + robot in Trade Window | Progressive reveal chain (hero→achievements→profiles→genesis card), scroll gating, Trade Window robot inline with speech bubble, Encrypted & Sealed trade item, hover tooltips on all trade items |
+| #33 | Polish: boot animation, feature pills, achievement flip, profiles | Boot subtitle spacing + typewriter clip fix, feature pill emoji + styled tooltips, 10s deep tooltips, Curious Explorer achievement, Get Started on both robot messages, achievement card flip (CSS 3D), Featured Profiles auto-open first profile |
 
 ---
 
