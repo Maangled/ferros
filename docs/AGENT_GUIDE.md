@@ -163,6 +163,12 @@ Documented bugs, root causes, and their fixes. Check here before fixing anything
 **Root cause:** If alias state were stored in localStorage instead of sessionStorage, it would persist.
 **Prevention:** `ferros_alias_session` MUST use `sessionStorage`, never `localStorage`. Do not move it.
 
+### BUG-007: Begin Setup → Button Incorrectly Pulsing (ADR-006 Violation)
+**Symptom:** The "Begin Setup →" button in the Welcome box glows with `beginPulse` animation, competing visually with the "Get Started" CTA in the robot's speech bubble. This dilutes the adaptive hint signal.
+**Root cause:** PR #23 added `animation:beginPulse 2.4s ease-in-out 8s infinite` to `.begin-btn`. PR #25 then re-applied `beginPulse` in `_postBootReveal()`. ADR-006 requires only "Get Started" to glow (after 60s inactivity).
+**Fixed in:** PR #31
+**Fix:** Removed `animation:beginPulse...` from `.begin-btn` CSS rule. Removed `beginPulse` from `_postBootReveal()` btn animation. The `@keyframes beginPulse` definition is kept — it is reused for the `.gs-glow` class on the Get Started button.
+
 ---
 
 ## What Not To Do (Anti-Patterns)
@@ -228,6 +234,16 @@ Understanding this prevents re-implementing things or reverting fixes.
 | #16 | Alias Log Claim Flow | Import `.ferros-log`, verify seal chain, merge into real profile |
 | #17 | Key Recovery / Cross-Device Login | `recoveryMode` flag, recovery panel on Genesis, recovery session export |
 | #18 | ADR-005 Cross-Device Identity & Session Modes | Architecture doc for all four session modes |
+| #22 | FERROS acronym fix, cloud badge, TODO comments | Fixed "Foundational Embedded Rust Runtime Operating System", cloud sync placeholder badge |
+| #23 | Hero experience, android companion, achievements | Pure CSS android companion, speech bubbles cycling, Genesis Pioneer unlock, achievement hover tooltips |
+| #24 | Profiles revamp, fork reframe, scroll gating | `openProfileAndDetail()` fix, newspaper-style featured profiles, 🍴 Fork this Profile, scroll gating |
+| #25 | Boot animation + Begin button scroll gating fix | Cinematic FERROS boot sequence, scroll gating fix for Stage 0 internal scroll |
+| #26 | Rocket animation + fireworks | `launchRocketAnimation()`, screen-wide fireworks (3-burst cascade, random particle spread) |
+| #27 | Boot animation upgrade | Enhanced boot sequence: android entrance, floor glow, boot-speech thesis statement |
+| #28 | Fireworks upgrade | Triple-burst fireworks cascade, improved `showFireworks()` particle system |
+| #29 | ADR-006: Level Zero Adaptive Onboarding | Architecture doc: Level 0 robot guide, button differentiation, adaptive difficulty philosophy |
+| #30 | [WIP] Implement corrected onboarding flow per ADR-006 | Draft — superseded by PR #31 |
+| #31 | Implement ADR-006 Level Zero onboarding | Remove `beginPulse` from Begin Setup →, Get Started in robot bubble (60s glow), 3 feature pill tooltips, robot phase orchestration (Phase 1→2→3), achievement reveal after Trade Window, locked achievements visual, Discover Profiles second achievement trigger |
 
 ---
 
@@ -236,11 +252,12 @@ Understanding this prevents re-implementing things or reverting fixes.
 These are known upcoming features. Do not implement them without a task assignment.
 
 - **Bug sweep** — systematic review of the full `personal-profile.html` for UI/UX bugs, broken flows, edge cases
-- **ADR-006** — Personal alias keys (account-recovery-style user-generated keys, not template codes)
 - **ADR-007** — Ledger anchoring specification (when and how root hashes go on-chain)
 - **Template expansion** — More professions/archetypes in the gallery (beyond the initial 8)
 - **Achievements audit** — Ensure all defined achievements have trigger logic in the code
 - **Level unlock thresholds** — Currently hardcoded; consider making them configurable
+- **Level 0 at post-onboarding difficulty zones** — Robot reappears at future stopping points (per ADR-006 future path)
+- **AI agent integration** — Robot as live AI assistant powered by Agent Command Center (per ADR-006 future vision)
 
 ---
 
