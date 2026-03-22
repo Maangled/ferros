@@ -169,6 +169,12 @@ Documented bugs, root causes, and their fixes. Check here before fixing anything
 **Fixed in:** PR #31
 **Fix:** Removed `animation:beginPulse...` from `.begin-btn` CSS rule. Removed `beginPulse` from `_postBootReveal()` btn animation. The `@keyframes beginPulse` definition is kept — it is reused for the `.gs-glow` class on the Get Started button.
 
+### BUG-010: Onboarding Content Visible Before Progression (Level Zero Gating Failure)
+**Symptom:** After the boot animation completes, the Achievements section, Featured Profiles section, Alias Entry, Recovery Entry, and Genesis Card ("Welcome to Your Progression System") are all visible immediately. They should be hidden and revealed only as the user completes each step of the unlock chain.
+**Root cause:** The `body.boot-sequence` CSS hid these sections during the boot animation, but once `_postBootReveal()` removed the `boot-sequence` class, all sections became visible. There was no persistent gating mechanism after boot.
+**Fixed in:** PR #32
+**Fix:** Added `.onboarding-locked { display:none!important }` CSS class. Added `onboarding-locked` directly in HTML on `#gallery-preview-section`, `.genesis-card`, `.alias-entry-section`, `.recovery-entry-section`. Added `unlockFeaturedProfiles()` (revealed by Discover Profiles card click or "Browse Profiles ↓" button) and `unlockGenesisCard()` (revealed by Skip button or "Start from Scratch" click). Updated `dismissFeaturedProfiles()` to call `unlockGenesisCard()` instead of hiding the Featured Profiles section — the section stays visible so users can scroll back and fork a profile.
+
 ---
 
 ## What Not To Do (Anti-Patterns)

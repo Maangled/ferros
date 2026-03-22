@@ -630,6 +630,12 @@
     .genesis-ach-card.discover-unlocked{animation:discoverUnlock 1.2s ease-out forwards;border-color:var(--accent-cyan)!important;opacity:1!important;filter:none!important}
     .genesis-ach-card.discover-unlocked .genesis-ach-name{color:var(--accent-cyan)}
     .genesis-ach-card.discover-unlocked .genesis-ach-lock{display:none}
+    /* Progressive onboarding gating — sections hidden until unlocked by progression */
+    .onboarding-locked{display:none!important}
+    /* Trade window robot */
+    .trade-robot{display:flex;flex-direction:column;align-items:center;margin:0 auto 16px}
+    .trade-robot .android-figure{animation:androidBob 3s ease-in-out infinite}
+    .trade-robot-speech{background:var(--bg-card);border:1px solid var(--accent-cyan);border-radius:8px;color:var(--accent-cyan);font-size:.75rem;font-weight:600;padding:6px 12px;margin-bottom:8px;text-align:center;max-width:280px}
   </style>
 </head>
 <body>
@@ -666,16 +672,35 @@
     <button class="banner-btn recovery-btn" onclick="exitRecoveryMode()">✕ Exit Recovery</button>
   </div>
 
-  <!-- Trade Dialog -->
   <div id="trade-overlay" class="trade-overlay" style="display:none">
     <div class="trade-window">
+      <div class="trade-robot">
+        <div class="trade-robot-speech">I need your permission to store data on this device.</div>
+        <div class="android-figure">
+          <div class="android-head">
+            <div class="android-antenna"></div>
+            <div class="android-eye left"></div>
+            <div class="android-eye right"></div>
+          </div>
+          <div class="android-body">
+            <div class="android-arm left"></div>
+            <div class="android-arm right"></div>
+            <div class="android-chest-dot"></div>
+          </div>
+          <div class="android-legs">
+            <div class="android-leg left"></div>
+            <div class="android-leg right"></div>
+          </div>
+        </div>
+      </div>
       <div class="trade-window-header">⚔️ Permission Exchange</div>
       <div class="trade-status">◈ STATUS: AWAITING CONFIRMATION ◈</div>
       <div class="trade-cols">
         <div class="trade-col">
-          <div class="trade-col-header">🖥️ Your Computer</div>
+          <div class="trade-col-header">🤖 FERROS (Your Computer)</div>
           <div class="trade-item"><span class="trade-item-icon">💾</span><div><div class="trade-item-name">localStorage</div><div class="trade-item-desc">~50KB max, browser-local only</div></div></div>
           <div class="trade-item"><span class="trade-item-icon">🖥️</span><div><div class="trade-item-name">This browser only</div><div class="trade-item-desc">Never transmitted anywhere</div></div></div>
+          <div class="trade-item"><span class="trade-item-icon">🔐</span><div><div class="trade-item-name">Integrity-Sealed</div><div class="trade-item-desc">Sealed with cryptographic hashes — tamper-evident and locked to this device</div></div></div>
           <div class="trade-item"><span class="trade-item-icon">🚫</span><div><div class="trade-item-name">No network requests</div><div class="trade-item-desc">Fully offline, zero telemetry</div></div></div>
           <div class="trade-item"><span class="trade-item-icon">🚫</span><div><div class="trade-item-name">No cookies</div><div class="trade-item-desc">Not a single one</div></div></div>
           <div class="trade-item"><span class="trade-item-icon">🚫</span><div><div class="trade-item-name">No tracking</div><div class="trade-item-desc">We don't even have a server</div></div></div>
@@ -689,7 +714,7 @@
           <div class="trade-item"><span class="trade-item-icon">↩️</span><div><div class="trade-item-name">Revocable anytime</div><div class="trade-item-desc">Use "Clear Data" to wipe everything</div></div></div>
         </div>
       </div>
-      <div class="trade-note">Unlike most websites, we're not collecting anything. Your data stays in THIS browser on THIS computer. We're making fun of cookie consent screens because we literally have nothing to consent to.</div>
+      <div class="trade-note">Unlike most websites, we're not collecting anything. Your data stays in THIS browser on THIS computer, sealed with cryptographic hashes that make it tamper-evident. We're making fun of cookie consent screens because we literally have nothing to consent to.</div>
       <div class="trade-btns">
         <button class="trade-btn-accept" onclick="acceptTrade()">✅ Accept Trade</button>
         <button class="trade-btn-decline" onclick="enterSessionMode()">❌ Decline</button>
@@ -840,7 +865,7 @@
             </div>
           </div>
           <!-- Discover Profiles — unlocks on Browse Profiles / Fork Profile / Begin Setup -->
-          <div class="genesis-ach-card ach-discover-available" id="ach-discover-profiles">
+          <div class="genesis-ach-card ach-discover-available" id="ach-discover-profiles" onclick="unlockFeaturedProfiles()">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#127758;</span>
             <div class="genesis-ach-name">Discover Profiles</div>
@@ -852,7 +877,7 @@
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Scroll to the Featured Profiles section</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Browse at least one profile archetype</div>
               <div><span class="ach-sp-badge">&#127942; +15 SP on unlock</span></div>
-              <button class="ach-diagram-link-btn" onclick="document.getElementById('gallery-preview-section').scrollIntoView({behavior:'smooth'})">&#128270; Browse Profiles &darr;</button>
+              <button class="ach-diagram-link-btn" onclick="unlockFeaturedProfiles()">&#128270; Browse Profiles &darr;</button>
             </div>
           </div>
           <!-- Home Commander -->
@@ -957,7 +982,7 @@
       </div>
 
       <!-- Featured Profiles Preview Section -->
-      <div class="gallery-preview-section" id="gallery-preview-section">
+      <div class="gallery-preview-section onboarding-locked" id="gallery-preview-section">
         <div class="gallery-preview-title">🌐 Featured Profiles
           <button class="gallery-dismiss-btn" onclick="dismissFeaturedProfiles()" title="Skip &amp; explore on your own">✕ Skip</button>
         </div>
@@ -971,7 +996,7 @@
       </div>
 
       <!-- Existing genesis card (preserved) -->
-      <div class="genesis-card">
+      <div class="genesis-card onboarding-locked">
         <h2>Welcome to Your Progression System</h2>
         <p>This system tracks your growth through a cryptographic hash chain &mdash; every task you complete creates a sealed record linked to the previous one. Choose your assistance level, then begin your journey.</p>
         <span class="assist-label">Select Your Assistance Level</span>
@@ -1005,14 +1030,14 @@
       </div>
 
       <!-- Alias Mode Entry -->
-      <div class="alias-entry-section">
+      <div class="alias-entry-section onboarding-locked">
         <div class="alias-entry-divider">— or log without creating a profile —</div>
         <button class="alias-entry-btn" onclick="openAliasGallery()">🎭 Browse Profiles</button>
         <div class="alias-entry-hint">Start with a public template profile. No commitment — just a starting point. Download your log when you're done.</div>
       </div>
 
       <!-- Recovery Entry -->
-      <div class="recovery-entry-section">
+      <div class="recovery-entry-section onboarding-locked">
         <div class="recovery-entry-divider">— or recover your profile on this device —</div>
         <button class="recovery-entry-btn" onclick="openRecoveryPanel()">🔑 Recover Profile</button>
         <div class="recovery-entry-hint">Load your exported profile to log activity away from home. Your data stays on your device.</div>
@@ -2487,11 +2512,11 @@
           +'<button class="fp-fork-btn" onclick="event.stopPropagation();startAliasFromGallery(\''+p.id+'\')">🍴 Fork this Profile</button>'
           +'</div>';
       }).join('');
-      const blankCard='<div class="featured-blank-card" onclick="completeStage0()">'
+      const blankCard='<div class="featured-blank-card" onclick="unlockGenesisCard()">'
         +'<div class="fp-blank-icon">?</div>'
         +'<div class="fp-blank-title">Build Your Own</div>'
         +'<div class="fp-blank-desc">Start from scratch. Choose your class, stream, and schedule. Make it entirely yours.</div>'
-        +'<button class="fp-blank-btn" onclick="event.stopPropagation();completeStage0()">Start from Scratch →</button>'
+        +'<button class="fp-blank-btn" onclick="event.stopPropagation();unlockGenesisCard()">Start from Scratch →</button>'
         +'</div>';
       grid.innerHTML=profileCards+blankCard;
     }
@@ -2508,8 +2533,26 @@
     function unlockScroll(){
       if(!scrollUnlocked){scrollUnlocked=true;document.body.classList.remove('scroll-gated')}
     }
+    /* Unlock Featured Profiles section (Step B in unlock chain) */
+    function unlockFeaturedProfiles(){
+      var s=$('gallery-preview-section');
+      if(s)s.classList.remove('onboarding-locked');
+      unlockScroll();
+      unlockDiscoverProfiles();
+      if(s)s.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+    /* Unlock Genesis Card, Alias Entry, Recovery Entry (Step C in unlock chain) */
+    function unlockGenesisCard(){
+      var card=document.querySelector('.genesis-card');
+      var alias=document.querySelector('.alias-entry-section');
+      var recovery=document.querySelector('.recovery-entry-section');
+      if(card)card.classList.remove('onboarding-locked');
+      if(alias)alias.classList.remove('onboarding-locked');
+      if(recovery)recovery.classList.remove('onboarding-locked');
+      if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
+    }
     function dismissFeaturedProfiles(){
-      const s=$('gallery-preview-section');if(s)s.style.display='none';
+      unlockGenesisCard();
       unlockScroll();
     }
     function openProfileGallery(preselectedId){
