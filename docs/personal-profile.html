@@ -83,8 +83,13 @@
     .genesis-ach-section-title{font-size:.85rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:16px;display:flex;align-items:center;gap:10px}
     .genesis-ach-section-title::after{content:'';flex:1;height:1px;background:var(--border-dim)}
     .genesis-ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
-    .genesis-ach-card{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:8px;padding:16px 14px;position:relative;opacity:.75;filter:grayscale(30%);transition:opacity .2s,filter .2s,border-color .2s,box-shadow .2s;cursor:default;text-align:left}
-    .genesis-ach-card:hover{border-color:var(--border-accent);opacity:1;filter:grayscale(0%);box-shadow:0 0 12px rgba(74,144,217,.1)}
+    .genesis-ach-card{background:transparent;border:none;border-radius:8px;padding:0;position:relative;opacity:1;filter:none;transition:transform .6s ease,box-shadow .2s;cursor:pointer;text-align:left;perspective:600px;transform-style:preserve-3d;min-height:155px}
+    .genesis-ach-card.ach-flipped{transform:rotateY(180deg)}
+    /* Front face */
+    .ach-front{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--bg-card);border:1px solid var(--border-dim);border-radius:8px;padding:16px 14px;opacity:.75;filter:grayscale(30%);transition:opacity .2s,filter .2s,border-color .2s,box-shadow .2s;overflow:hidden}
+    .genesis-ach-card:hover .ach-front{border-color:var(--border-accent);opacity:1;filter:grayscale(0%);box-shadow:0 0 12px rgba(74,144,217,.1)}
+    /* Back face */
+    .ach-back{position:absolute;inset:0;transform:rotateY(180deg);backface-visibility:hidden;-webkit-backface-visibility:hidden;background:#111520;border:1px solid var(--border-accent);border-radius:8px;padding:14px;font-size:.73rem;color:var(--text-secondary);overflow-y:auto;box-shadow:var(--shadow-panel),0 0 20px rgba(0,0,0,.6),0 0 0 1px rgba(45,212,191,.08)}
     .genesis-ach-lock{position:absolute;top:8px;right:10px;font-size:.75rem;opacity:.5}
     .genesis-ach-icon{font-size:1.8rem;margin-bottom:8px;display:block}
     .genesis-ach-name{font-size:.85rem;font-weight:700;color:var(--text-primary);margin-bottom:4px}
@@ -144,10 +149,7 @@
     .speech-b3{animation:bCycle3 12s ease-in-out infinite}
     @media(max-width:700px){.hero-android-row{flex-direction:column;align-items:center}.hero-android-row .genesis-hero-banner{width:100%}.android-companion{width:100%;flex-direction:row;justify-content:center;gap:12px;padding-top:0}.speech-bubble-wrap{height:40px}.android-figure{flex-direction:row;gap:4px;align-items:flex-end}.android-legs{margin-top:0}}
     /* Achievement Hover Diagrams */
-    .genesis-ach-card{cursor:pointer}
-    .genesis-ach-card.ach-active .ach-hover-diagram{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
-    .ach-hover-diagram{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(8px);width:220px;background:#111520;border:1px solid var(--border-accent);border-radius:10px;padding:14px;font-size:.73rem;color:var(--text-secondary);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;box-shadow:var(--shadow-panel),0 0 20px rgba(0,0,0,.6),0 0 0 1px rgba(45,212,191,.08)}
-    .ach-hover-diagram::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid var(--border-accent)}
+    /* Achievement card flip — ach-back replaces ach-hover-diagram */
     .ach-flow-title{font-weight:700;color:var(--text-primary);margin-bottom:8px;font-size:.78rem;display:flex;align-items:center;gap:6px}
     .ach-flow-step{display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;line-height:1.35}
     .ach-flow-arrow{color:var(--accent-cyan);flex-shrink:0;font-size:.7rem;margin-top:1px}
@@ -158,7 +160,7 @@
     /* Genesis Pioneer Unlock */
     @keyframes pioneerUnlock{0%{transform:scale(.95);border-color:var(--border-dim);box-shadow:none;opacity:.75;filter:grayscale(30%)}40%{transform:scale(1.06);border-color:gold;box-shadow:0 0 28px rgba(255,215,0,.55),0 0 56px rgba(255,215,0,.2);opacity:1;filter:none}100%{transform:scale(1);border-color:var(--accent-amber);box-shadow:0 0 14px rgba(245,158,11,.3);opacity:1;filter:none}}
     @keyframes goldShimmer{0%{background-position:200% center}100%{background-position:-200% center}}
-    .genesis-ach-card.pioneer-unlocked{animation:pioneerUnlock 1.6s ease-out forwards;border-color:var(--accent-amber)!important;opacity:1!important;filter:none!important;background:rgba(245,158,11,.05)!important}
+    .genesis-ach-card.pioneer-unlocked .ach-front{animation:pioneerUnlock 1.6s ease-out forwards;border-color:var(--accent-amber)!important;opacity:1!important;filter:none!important;background:rgba(245,158,11,.05)!important}
     .genesis-ach-card.pioneer-unlocked .genesis-ach-icon{text-shadow:0 0 14px rgba(255,215,0,.9)}
     .genesis-ach-card.pioneer-unlocked .genesis-ach-name{background:linear-gradient(90deg,var(--accent-amber),#fbbf24,var(--accent-amber));background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:goldShimmer 2.5s linear infinite}
     .genesis-ach-card.pioneer-unlocked .genesis-ach-lock{display:none}
@@ -559,10 +561,10 @@
     @keyframes bootTitleIn{from{opacity:0;letter-spacing:.6em;transform:scale(1.08)}to{opacity:1;letter-spacing:.25em;transform:scale(1)}}
     .boot-ferros-title::after{content:'';position:absolute;top:0;bottom:0;left:-100%;width:60%;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.12) 30%,rgba(255,255,255,.55) 50%,rgba(255,255,255,.12) 70%,transparent 100%);transform:skewX(-15deg);animation:bootShine 1.6s ease-in-out 1.3s forwards;pointer-events:none}
     @keyframes bootShine{from{left:-100%}to{left:150%}}
-    .boot-subtitle-wrap{overflow:hidden;margin-top:14px;opacity:0;animation:bootSubWrapIn .1s ease 2.8s forwards}
+    .boot-subtitle-wrap{overflow:hidden;margin-top:14px;margin-bottom:20px;opacity:0;animation:bootSubWrapIn .1s ease 2.8s forwards}
     @keyframes bootSubWrapIn{to{opacity:1}}
-    .boot-subtitle{font-family:var(--font-mono);font-size:clamp(.65rem,1.8vw,.85rem);text-transform:uppercase;color:var(--text-secondary);white-space:nowrap;overflow:hidden;width:0;border-right:2px solid var(--accent-cyan);animation:bootTypeIn 1.5s steps(43,end) 2.9s forwards,bootCursorBlink .65s step-end 4.4s 5 alternate}
-    @keyframes bootTypeIn{to{width:43ch}}
+    .boot-subtitle{font-family:var(--font-mono);font-size:clamp(.65rem,1.8vw,.85rem);text-transform:uppercase;color:var(--text-secondary);white-space:nowrap;overflow:hidden;width:0;border-right:2px solid var(--accent-cyan);animation:bootTypeIn 1.5s steps(44,end) 2.9s forwards,bootCursorBlink .65s step-end 4.4s 5 alternate}
+    @keyframes bootTypeIn{to{width:calc(43ch + 1.5ch)}}
     @keyframes bootCursorBlink{from,to{border-right-color:transparent}50%{border-right-color:var(--accent-cyan)}}
     /* Sections hidden during boot — achievements/profiles revealed only after Begin */
     body.boot-sequence .genesis-ach-section,body.boot-sequence .gallery-preview-section,body.boot-sequence .alias-entry-section,body.boot-sequence .recovery-entry-section{display:none}
@@ -590,9 +592,15 @@
     /* ── ADR-006: Level Zero Adaptive Onboarding ────────────────────────────── */
     /* Feature pill hover tooltips */
     .feature-pill-wrap{position:relative;display:inline-block}
-    .feature-pill-tooltip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);width:220px;background:var(--bg-panel);border:1px solid var(--accent-cyan);border-radius:8px;padding:10px 12px;font-size:.72rem;color:var(--text-secondary);z-index:150;opacity:0;pointer-events:none;transition:opacity .25s ease;box-shadow:var(--shadow-panel);line-height:1.45;text-align:left}
+    .feature-pill-tooltip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);width:240px;background:var(--bg-panel);border:1px solid var(--accent-cyan);border-radius:8px;padding:10px 12px;font-size:.72rem;color:var(--text-secondary);z-index:150;opacity:0;pointer-events:none;transition:opacity .25s ease;box-shadow:var(--shadow-panel);line-height:1.5;text-align:left}
+    .feature-pill-tooltip strong{color:var(--accent-cyan);font-weight:700}
     .feature-pill-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid var(--accent-cyan)}
     .feature-pill-wrap:hover .feature-pill-tooltip,.feature-pill-wrap.pill-active .feature-pill-tooltip{opacity:1;pointer-events:auto}
+    /* Deep tooltip — appears after 10s hover, persists once unlocked */
+    .pill-deep-tooltip{position:absolute;bottom:calc(100% + 90px);left:50%;transform:translateX(-50%);width:240px;background:rgba(26,32,53,.98);border:1px solid var(--accent-amber);border-radius:8px;padding:10px 12px;font-size:.72rem;color:var(--text-primary);z-index:151;opacity:0;pointer-events:none;transition:opacity .5s ease;box-shadow:0 0 20px rgba(245,158,11,.15),var(--shadow-panel);line-height:1.5;text-align:left}
+    .pill-deep-tooltip strong{color:var(--accent-amber);font-weight:700}
+    .pill-deep-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid var(--accent-amber)}
+    .feature-pill-wrap.deep-tooltip-unlocked .pill-deep-tooltip{opacity:1;pointer-events:auto}
     /* Phase speech bubbles (JS-controlled) */
     .speech-phase-bubble{background:var(--bg-panel);border:1px solid var(--accent-cyan);border-radius:10px;color:var(--accent-cyan);font-size:.68rem;font-weight:600;padding:7px 10px;width:100%;box-shadow:0 0 8px rgba(45,212,191,.12);line-height:1.45;position:relative;display:none}
     .speech-phase-bubble::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--accent-cyan)}
@@ -606,10 +614,10 @@
     /* speech-bubble-wrap: auto height to accommodate phase bubbles */
     .speech-bubble-wrap{min-height:52px;height:auto!important}
     /* Locked achievement visual (stronger greying for non-playable achievements) */
-    .genesis-ach-card.ach-locked-visual{opacity:.38;filter:grayscale(70%)}
-    .genesis-ach-card.ach-locked-visual:hover{opacity:.58;filter:grayscale(50%)}
+    .genesis-ach-card.ach-locked-visual .ach-front{opacity:.38;filter:grayscale(70%)}
+    .genesis-ach-card.ach-locked-visual:hover .ach-front{opacity:.58;filter:grayscale(50%)}
     /* Discover Profiles: visually available as next action */
-    .genesis-ach-card.ach-discover-available{border-color:var(--border-accent);opacity:.9;filter:none}
+    .genesis-ach-card.ach-discover-available .ach-front{border-color:var(--border-accent);opacity:.9;filter:none}
     .genesis-ach-card.ach-discover-available .genesis-ach-lock{display:none}
     /* Achievements section hidden until Get Started accepted */
     .genesis-ach-section.ach-pre-reveal{display:none!important}
@@ -630,7 +638,7 @@
     .ach-companion-row.companion-enter{animation:achCompanionEnter .7s ease-out forwards}
     /* Discover Profiles unlock animation */
     @keyframes discoverUnlock{0%{transform:scale(.95);border-color:var(--border-dim)}40%{transform:scale(1.06);border-color:var(--accent-cyan);box-shadow:0 0 24px rgba(45,212,191,.5)}100%{transform:scale(1);border-color:var(--accent-cyan);box-shadow:0 0 12px rgba(45,212,191,.25)}}
-    .genesis-ach-card.discover-unlocked{animation:discoverUnlock 1.2s ease-out forwards;border-color:var(--accent-cyan)!important;opacity:1!important;filter:none!important}
+    .genesis-ach-card.discover-unlocked .ach-front{animation:discoverUnlock 1.2s ease-out forwards;border-color:var(--accent-cyan)!important;opacity:1!important;filter:none!important}
     .genesis-ach-card.discover-unlocked .genesis-ach-name{color:var(--accent-cyan)}
     .genesis-ach-card.discover-unlocked .genesis-ach-lock{display:none}
     /* Progressive onboarding gating — sections hidden until unlocked by progression */
@@ -851,15 +859,18 @@
           <div class="genesis-feature-pills">
             <div class="feature-pill-wrap" id="pill-wrap-0">
               <span class="feature-pill">&#9935; Cryptographic Seals</span>
-              <div class="feature-pill-tooltip">Every action you log is sealed with a cryptographic hash, creating a tamper-evident chain of your progress. Your history is immutable.</div>
+              <div class="feature-pill-tooltip">&#128274; Every action you log is sealed with a <strong>cryptographic hash</strong>, creating a <strong>tamper-evident chain</strong> of your progress. Your history is immutable — no one can fake your achievements.</div>
+              <div class="pill-deep-tooltip">&#128737;&#65039; Your daily habits earn you reputation. Every achievement is <strong>cryptographically sealed</strong> — your effort becomes undeniable proof.</div>
             </div>
             <div class="feature-pill-wrap" id="pill-wrap-1">
               <span class="feature-pill">&#127942; Achievement System</span>
-              <div class="feature-pill-tooltip">Complete milestones to earn Seal Points (SP). SP unlocks new stages of your profile and higher assistance levels — real progress, measurably yours.</div>
+              <div class="feature-pill-tooltip">&#127942; Complete milestones to earn <strong>Seal Points (SP)</strong>. SP unlocks new stages and higher assistance levels — <strong>real progress, measurably yours</strong>. Like an RPG level-up for your actual life.</div>
+              <div class="pill-deep-tooltip">&#128640; Speedrun your goals — academic achievements, fitness milestones, creative projects. Track them all with the <strong>same system that levels up your favorite characters</strong>.</div>
             </div>
             <div class="feature-pill-wrap" id="pill-wrap-2">
               <span class="feature-pill">&#128274; 100% Local &mdash; No Servers</span>
-              <div class="feature-pill-tooltip">Nothing leaves your device. Your data lives in this browser&rsquo;s localStorage &mdash; no cloud, no tracking, no servers. Works offline and via the file:// protocol.</div>
+              <div class="feature-pill-tooltip">&#128187; <strong>Nothing leaves your device.</strong> Your data lives in this browser&rsquo;s localStorage — <strong>no cloud, no tracking, no servers</strong>. Works offline and on file:// protocol. You own it completely.</div>
+              <div class="pill-deep-tooltip">&#128273; <strong>Back it up YOUR way.</strong> No middleman. No subscription. No one else touching your data. Ever.</div>
             </div>
           </div>
         </div>
@@ -870,12 +881,10 @@
             <div class="speech-bubble speech-b2">Take your time... &#10024;</div>
             <div class="speech-bubble speech-b3">Press Begin when ready &#8594;</div>
             <div class="speech-bubble speech-boot">FERROS is free for you for life &#8212; so long as you take care of me! &#128421;</div>
-            <!-- Phase 1: robot teaches feature pills -->
-            <div class="speech-phase-bubble" id="speech-phase1">&#128072; Hover over each of the icons to see more information</div>
+            <!-- Phase 1: robot teaches feature pills (includes Get Started button) -->
+            <div class="speech-phase-bubble" id="speech-phase1">&#128072; Hover over the icons to learn about FERROS<br/><button class="get-started-btn" onclick="handleGetStarted()">Get Started &#9654;</button></div>
             <!-- Phase 2: Get Started CTA -->
             <div class="speech-phase-bubble" id="speech-phase2">FERROS is free, for you, for life.<br/><button class="get-started-btn" id="get-started-btn" onclick="handleGetStarted()">Get Started &#9654;</button></div>
-            <!-- Phase 3: urge to click (alternates with phase 2 after 60s) -->
-            <div class="speech-phase-bubble" id="speech-phase3">&#128073; Click the button to continue &#8594;</div>
             <!-- Congrats: after Pioneer achievement -->
             <div class="speech-phase-bubble" id="speech-congrats">&#127881; Congrats! You got your first achievement!</div>
           </div>
@@ -906,7 +915,7 @@
           <!-- Achievement companion robot (shown after Genesis Pioneer unlocks) -->
           <div class="ach-companion-row" id="ach-companion-row">
             <div class="android-companion-ach">
-              <div class="speech-phase-bubble phase-active" id="speech-ach-1">&#127942; Click on each achievement to learn how to unlock it!</div>
+              <div class="speech-phase-bubble phase-active" id="speech-ach-1">&#127942; Click each achievement to see what neat things you can unlock!</div>
               <div class="speech-phase-bubble" id="speech-ach-2">&#10024; Nice! Now try clicking &lsquo;Discover Profiles&rsquo; to see what others have built!</div>
               <div class="android-figure">
                 <div class="android-head">
@@ -933,13 +942,15 @@
         <div class="genesis-ach-grid">
           <!-- Genesis Pioneer — unlocks after Get Started → Trade Window acceptance -->
           <div class="genesis-ach-card ach-locked-visual" id="ach-genesis-pioneer" onclick="toggleAchDiagram(this)">
-            <span class="genesis-ach-lock">&#128274;</span>
-            <span class="genesis-ach-icon">&#128640;</span>
-            <div class="genesis-ach-name">Genesis Pioneer</div>
-            <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
-            <div class="genesis-ach-sp">+25 SP</div>
-            <div class="genesis-ach-desc">Start your journey in FERROS</div>
-            <div class="ach-hover-diagram">
+            <div class="ach-front">
+              <span class="genesis-ach-lock">&#128274;</span>
+              <span class="genesis-ach-icon">&#128640;</span>
+              <div class="genesis-ach-name">Genesis Pioneer</div>
+              <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
+              <div class="genesis-ach-sp">+25 SP</div>
+              <div class="genesis-ach-desc">Start your journey in FERROS</div>
+            </div>
+            <div class="ach-back">
               <div class="ach-flow-title">&#128640; How to earn</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Open the FERROS genesis page</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Choose your assistance level</div>
@@ -948,14 +959,16 @@
             </div>
           </div>
           <!-- Discover Profiles — unlocks on Browse Profiles / Fork Profile / Begin Setup -->
-          <div class="genesis-ach-card ach-discover-available" id="ach-discover-profiles" onclick="toggleAchDiagram(this,function(){unlockFeaturedProfiles();})">
-            <span class="genesis-ach-lock">&#128274;</span>
-            <span class="genesis-ach-icon">&#127758;</span>
-            <div class="genesis-ach-name">Discover Profiles</div>
-            <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
-            <div class="genesis-ach-sp">+15 SP</div>
-            <div class="genesis-ach-desc">Browse the featured profile gallery</div>
-            <div class="ach-hover-diagram">
+          <div class="genesis-ach-card ach-discover-available" id="ach-discover-profiles" onclick="toggleDiscoverProfiles(this)">
+            <div class="ach-front">
+              <span class="genesis-ach-lock">&#128274;</span>
+              <span class="genesis-ach-icon">&#127758;</span>
+              <div class="genesis-ach-name">Discover Profiles</div>
+              <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
+              <div class="genesis-ach-sp">+15 SP</div>
+              <div class="genesis-ach-desc">Browse the featured profile gallery</div>
+            </div>
+            <div class="ach-back">
               <div class="ach-flow-title">&#127758; How to earn</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Scroll to the Featured Profiles section</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Browse at least one profile archetype</div>
@@ -965,15 +978,17 @@
           </div>
           <!-- Home Commander -->
           <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
-            <span class="genesis-ach-lock">&#128274;</span>
-            <span class="genesis-ach-icon">&#127968;</span>
-            <div class="genesis-ach-name">Home Commander</div>
-            <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
-            <div class="genesis-ach-sp">+30 SP</div>
-            <div class="genesis-ach-desc">Set up your home dashboard</div>
+            <div class="ach-front">
+              <span class="genesis-ach-lock">&#128274;</span>
+              <span class="genesis-ach-icon">&#127968;</span>
+              <div class="genesis-ach-name">Home Commander</div>
+              <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
+              <div class="genesis-ach-sp">+30 SP</div>
+              <div class="genesis-ach-desc">Set up your home dashboard</div>
+            </div>
             <!-- TODO: ARCHITECTURE — Home Dashboard integration point: Connect to docs/home-hud-dashboard.html -->
             <!-- TODO: ARCHITECTURE — Device Control integration point: Smart home device management -->
-            <div class="ach-hover-diagram">
+            <div class="ach-back">
               <div class="ach-flow-title">&#127968; How to earn</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Complete character creation (Stage 1)</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Link your Home Hub dashboard</div>
@@ -983,13 +998,15 @@
           </div>
           <!-- Skill Forester -->
           <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
-            <span class="genesis-ach-lock">&#128274;</span>
-            <span class="genesis-ach-icon">&#127794;</span>
-            <div class="genesis-ach-name">Skill Forester</div>
-            <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
-            <div class="genesis-ach-sp">+20 SP</div>
-            <div class="genesis-ach-desc">Plant your first skill tree</div>
-            <div class="ach-hover-diagram">
+            <div class="ach-front">
+              <span class="genesis-ach-lock">&#128274;</span>
+              <span class="genesis-ach-icon">&#127794;</span>
+              <div class="genesis-ach-name">Skill Forester</div>
+              <div class="genesis-ach-stars">&#9733;&#9734;&#9734;</div>
+              <div class="genesis-ach-sp">+20 SP</div>
+              <div class="genesis-ach-desc">Plant your first skill tree</div>
+            </div>
+            <div class="ach-back">
               <div class="ach-flow-title">&#127794; How to earn</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Reach the dashboard (Stage 3)</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Open the Skills panel</div>
@@ -999,13 +1016,15 @@
           </div>
           <!-- Stat Sage -->
           <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
-            <span class="genesis-ach-lock">&#128274;</span>
-            <span class="genesis-ach-icon">&#128202;</span>
-            <div class="genesis-ach-name">Stat Sage</div>
-            <div class="genesis-ach-stars">&#9733;&#9733;&#9734;</div>
-            <div class="genesis-ach-sp">+25 SP</div>
-            <div class="genesis-ach-desc">Track a habit for 7 days</div>
-            <div class="ach-hover-diagram">
+            <div class="ach-front">
+              <span class="genesis-ach-lock">&#128274;</span>
+              <span class="genesis-ach-icon">&#128202;</span>
+              <div class="genesis-ach-name">Stat Sage</div>
+              <div class="genesis-ach-stars">&#9733;&#9733;&#9734;</div>
+              <div class="genesis-ach-sp">+25 SP</div>
+              <div class="genesis-ach-desc">Track a habit for 7 days</div>
+            </div>
+            <div class="ach-back">
               <div class="ach-flow-title">&#128202; How to earn</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Complete a daily protocol</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Repeat for 7 consecutive days</div>
@@ -1015,13 +1034,15 @@
           </div>
           <!-- Agent Handler -->
           <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
-            <span class="genesis-ach-lock">&#128274;</span>
-            <span class="genesis-ach-icon">&#129302;</span>
-            <div class="genesis-ach-name">Agent Handler</div>
-            <div class="genesis-ach-stars">&#9733;&#9733;&#9733;</div>
-            <div class="genesis-ach-sp">+40 SP</div>
-            <div class="genesis-ach-desc">Deploy your first AI agent</div>
-            <div class="ach-hover-diagram">
+            <div class="ach-front">
+              <span class="genesis-ach-lock">&#128274;</span>
+              <span class="genesis-ach-icon">&#129302;</span>
+              <div class="genesis-ach-name">Agent Handler</div>
+              <div class="genesis-ach-stars">&#9733;&#9733;&#9733;</div>
+              <div class="genesis-ach-sp">+40 SP</div>
+              <div class="genesis-ach-desc">Deploy your first AI agent</div>
+            </div>
+            <div class="ach-back">
               <div class="ach-flow-title">&#129302; How to earn</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Reach Level 4 (Director)</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Open the Admin panel</div>
@@ -1031,13 +1052,15 @@
           </div>
           <!-- Protocol Master -->
           <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
-            <span class="genesis-ach-lock">&#128274;</span>
-            <span class="genesis-ach-icon">&#128220;</span>
-            <div class="genesis-ach-name">Protocol Master</div>
-            <div class="genesis-ach-stars">&#9733;&#9733;&#9734;</div>
-            <div class="genesis-ach-sp">+30 SP</div>
-            <div class="genesis-ach-desc">Complete 10 protocols</div>
-            <div class="ach-hover-diagram">
+            <div class="ach-front">
+              <span class="genesis-ach-lock">&#128274;</span>
+              <span class="genesis-ach-icon">&#128220;</span>
+              <div class="genesis-ach-name">Protocol Master</div>
+              <div class="genesis-ach-stars">&#9733;&#9733;&#9734;</div>
+              <div class="genesis-ach-sp">+30 SP</div>
+              <div class="genesis-ach-desc">Complete 10 protocols</div>
+            </div>
+            <div class="ach-back">
               <div class="ach-flow-title">&#128220; How to earn</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Complete your first protocol seal</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Keep sealing — reach 10 total seals</div>
@@ -1047,13 +1070,15 @@
           </div>
           <!-- Iron Month -->
           <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
-            <span class="genesis-ach-lock">&#128274;</span>
-            <span class="genesis-ach-icon">&#128293;</span>
-            <div class="genesis-ach-name">Iron Month</div>
-            <div class="genesis-ach-stars">&#9733;&#9733;&#9733;</div>
-            <div class="genesis-ach-sp">+50 SP</div>
-            <div class="genesis-ach-desc">30-day streak</div>
-            <div class="ach-hover-diagram">
+            <div class="ach-front">
+              <span class="genesis-ach-lock">&#128274;</span>
+              <span class="genesis-ach-icon">&#128293;</span>
+              <div class="genesis-ach-name">Iron Month</div>
+              <div class="genesis-ach-stars">&#9733;&#9733;&#9733;</div>
+              <div class="genesis-ach-sp">+50 SP</div>
+              <div class="genesis-ach-desc">30-day streak</div>
+            </div>
+            <div class="ach-back">
               <div class="ach-flow-title">&#128293; How to earn</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Complete at least one protocol daily</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Build a 30-day unbroken streak</div>
@@ -1545,6 +1570,10 @@
     let _inactivityTimer=null;
     let _phase3Timer=null;
     let _achClickCount=0;
+    // Deep tooltip tracking for Curious Explorer achievement
+    var _deepTooltipExplored=[false,false,false];
+    var _deepTooltipTimers=[null,null,null];
+    var _curiousExplorerFired=false;
     // FIX: order must match HTML nav button DOM order (credentials before portability)
     const panelOrder=['character','attributes','skills','achievements','journal','credentials','portability'];
 
@@ -1657,6 +1686,8 @@
         if(typeof applyLevelLocks==='function')applyLevelLocks();
         renderGalleryCarousel();
         renderFeaturedProfiles();
+        // Initialize deep tooltip hover tracking for Curious Explorer achievement
+        initDeepTooltips();
         // Scroll gating: on first visit, keep focus on featured profiles until user engages.
         // scrollUnlocked is only ever set to true by unlockScroll(), so this is safe even
         // if init() is called again (e.g. after exitAliasMode returns to Stage 0).
@@ -2718,10 +2749,20 @@
     /* Unlock Featured Profiles section (Step B in unlock chain) */
     function unlockFeaturedProfiles(){
       var s=$('gallery-preview-section');
-      if(s)s.classList.remove('onboarding-locked');
-      unlockScroll();
-      unlockDiscoverProfiles();
-      if(s)s.scrollIntoView({behavior:'smooth',block:'start'});
+      if(s){
+        var alreadyUnlocked=!s.classList.contains('onboarding-locked');
+        s.classList.remove('onboarding-locked');
+        unlockScroll();
+        unlockDiscoverProfiles();
+        s.scrollIntoView({behavior:'smooth',block:'start'});
+        // Auto-open first profile in preview if section was just unlocked
+        if(!alreadyUnlocked&&TEMPLATE_PROFILES&&TEMPLATE_PROFILES.length>0){
+          setTimeout(function(){openInlinePreview(TEMPLATE_PROFILES[0].id);},400);
+        }
+      }else{
+        unlockScroll();
+        unlockDiscoverProfiles();
+      }
     }
     /* Unlock Genesis Card, Alias Entry, Recovery Entry (Step C in unlock chain) */
     function unlockGenesisCard(){
@@ -2841,22 +2882,49 @@
       else{showXPToast('⚠️','Profile not found: '+profileId)}
     }
 
-    /* ── Achievement click-to-toggle tooltips ─────────────────────────────── */
-    (function(){
-      document.querySelectorAll('.genesis-ach-card').forEach(function(card){
-        card.addEventListener('click',function(e){
-          if(e.target.closest('.ach-hover-diagram'))return;
-          var wasActive=card.classList.contains('ach-active');
-          document.querySelectorAll('.genesis-ach-card.ach-active').forEach(function(c){c.classList.remove('ach-active');});
-          if(!wasActive)card.classList.add('ach-active');
-        });
-      });
-      document.addEventListener('click',function(e){
-        if(!e.target.closest('.genesis-ach-card')){
-          document.querySelectorAll('.genesis-ach-card.ach-active').forEach(function(c){c.classList.remove('ach-active');});
+    /* ── Achievement card flip ─────────────────────────────────────────────── */
+    /* toggleAchDiagram: flip a card open/closed. Only one card flipped at a time. */
+    function toggleAchDiagram(card){
+      var wasFlipped=card.classList.contains('ach-flipped');
+      document.querySelectorAll('.genesis-ach-card.ach-flipped').forEach(function(c){c.classList.remove('ach-flipped');});
+      if(!wasFlipped){
+        card.classList.add('ach-flipped');
+        _achClickCount++;
+        if(_achClickCount>=2){
+          var ach1=$('speech-ach-1');if(ach1)ach1.classList.remove('phase-active');
+          var ach2=$('speech-ach-2');if(ach2)ach2.classList.add('phase-active');
         }
-      });
-    })();
+      }
+    }
+    /* toggleDiscoverProfiles: Discover Profiles card flip → then navigate after 1.5s or second click */
+    var _discoverFlipped=false;
+    var _discoverNavTimer=null;
+    function toggleDiscoverProfiles(card){
+      var wasFlipped=card.classList.contains('ach-flipped');
+      document.querySelectorAll('.genesis-ach-card.ach-flipped').forEach(function(c){c.classList.remove('ach-flipped');});
+      if(!wasFlipped){
+        card.classList.add('ach-flipped');
+        _achClickCount++;
+        if(_achClickCount>=2){
+          var ach1=$('speech-ach-1');if(ach1)ach1.classList.remove('phase-active');
+          var ach2=$('speech-ach-2');if(ach2)ach2.classList.add('phase-active');
+        }
+        if(!_discoverFlipped){
+          // First flip: schedule navigation to Featured Profiles after 1.5s
+          _discoverFlipped=true;
+          _discoverNavTimer=setTimeout(function(){
+            unlockFeaturedProfiles();
+          },1500);
+        }else{
+          // Already flipped once before: navigate immediately
+          if(_discoverNavTimer){clearTimeout(_discoverNavTimer);_discoverNavTimer=null;}
+          unlockFeaturedProfiles();
+        }
+      }else{
+        // Unflipped: cancel scheduled navigation
+        if(_discoverNavTimer){clearTimeout(_discoverNavTimer);_discoverNavTimer=null;}
+      }
+    }
 
     /* ── Rocket launch animation ──────────────────────────────────────────── */
     function launchRocketAnimation(onLanded,sourceEl){
@@ -2964,11 +3032,42 @@
     function showRobotPhase(phaseId){
       document.body.classList.add('robot-phase-active');
       // Hide all phase bubbles first
-      ['speech-phase1','speech-phase2','speech-phase3','speech-congrats'].forEach(function(id){
+      ['speech-phase1','speech-phase2','speech-congrats'].forEach(function(id){
         var el=$(id);if(el)el.classList.remove('phase-active');
       });
       var target=$(phaseId);
       if(target){target.classList.add('phase-active');}
+    }
+
+    /* Deep tooltip: show after 10s hover on a feature pill — persists once unlocked */
+    function initDeepTooltips(){
+      var wraps=document.querySelectorAll('.feature-pill-wrap');
+      wraps.forEach(function(wrap,idx){
+        wrap.addEventListener('mouseenter',function(){
+          if(wrap.classList.contains('deep-tooltip-unlocked'))return;
+          _deepTooltipTimers[idx]=setTimeout(function(){
+            if(!wrap.matches(':hover'))return;
+            wrap.classList.add('deep-tooltip-unlocked');
+            _deepTooltipExplored[idx]=true;
+            _checkCuriousExplorer();
+          },10000);
+        });
+        wrap.addEventListener('mouseleave',function(){
+          if(_deepTooltipTimers[idx]){clearTimeout(_deepTooltipTimers[idx]);_deepTooltipTimers[idx]=null;}
+        });
+      });
+    }
+
+    /* Fire Curious Explorer achievement if all 3 deep tooltips unlocked before Get Started */
+    function _checkCuriousExplorer(){
+      if(_curiousExplorerFired)return;
+      if(_pioneerUnlocked)return; // Already clicked Get Started
+      if(_deepTooltipExplored[0]&&_deepTooltipExplored[1]&&_deepTooltipExplored[2]){
+        _curiousExplorerFired=true;
+        showXPToast('&#128269;','Curious Explorer &mdash; +15 SP!');
+        var mid=document.querySelectorAll('.feature-pill-wrap')[1];
+        if(mid)showSPFloat(15,mid);
+      }
     }
 
     /* Phase 1: robot teaches the three feature pills */
@@ -3012,17 +3111,15 @@
       _inactivityTimer=setTimeout(startRobotPhase3,60000);
     }
 
-    /* Phase 3: alternate between urge message and free-for-life every 8s */
+    /* Phase 3: alternate between "hover over icons" and "free for life" every 8s (both have Get Started button) */
     function startRobotPhase3(){
       if(_pioneerUnlocked)return;
       var _phase3Alt=false;
       function _togglePhase3(){
         if(_pioneerUnlocked){if(_phase3Timer)clearTimeout(_phase3Timer);return;}
         _phase3Alt=!_phase3Alt;
-        var btn=$('get-started-btn');
         if(_phase3Alt){
-          showRobotPhase('speech-phase3');
-          if(btn)btn.classList.add('gs-glow');
+          showRobotPhase('speech-phase1');
         }else{
           showRobotPhase('speech-phase2');
         }
@@ -3035,6 +3132,8 @@
     function handleGetStarted(){
       if(_inactivityTimer){clearTimeout(_inactivityTimer);_inactivityTimer=null;}
       if(_phase3Timer){clearTimeout(_phase3Timer);_phase3Timer=null;}
+      // Cancel any pending deep tooltip timers — Curious Explorer must be earned before Get Started
+      _deepTooltipTimers.forEach(function(t,i){if(t){clearTimeout(t);_deepTooltipTimers[i]=null;}});
       var btn=$('get-started-btn');if(btn)btn.classList.remove('gs-glow');
       if(!_tradeWindowAccepted&&!sessionMode&&localStorage.getItem('ferros_profile')===null){
         showTradeDialog(_onGetStartedAccept);
@@ -3053,8 +3152,8 @@
       if(achSection){
         achSection.scrollIntoView({behavior:'auto',block:'start'});
       }
-      // 3. Get source element for rocket (Get Started button, may be scrolled out of view)
-      var gsBtn=$('get-started-btn');
+      // 3. Get source element for rocket — prefer the visible Get Started button (phase 1 or 2)
+      var gsBtn=document.querySelector('.speech-phase-bubble.phase-active .get-started-btn')||$('get-started-btn');
       // 4. Fire rocket → Pioneer unlocks → fireworks
       setTimeout(function(){
         launchRocketAnimation(function(){
@@ -3082,24 +3181,6 @@
       var phase2=$('speech-phase2');if(phase2)phase2.classList.remove('phase-active');
       var ach1=$('speech-ach-1');if(ach1){ach1.classList.add('phase-active');}
       var ach2=$('speech-ach-2');if(ach2)ach2.classList.remove('phase-active');
-    }
-
-    /* Toggle achievement diagram open/closed — only one open at a time */
-    function toggleAchDiagram(card, extraCb){
-      var wasActive=card.classList.contains('ach-active');
-      // Close all open diagrams
-      document.querySelectorAll('.genesis-ach-card.ach-active').forEach(function(c){c.classList.remove('ach-active');});
-      // Open this one if it wasn't already open
-      if(!wasActive){
-        card.classList.add('ach-active');
-        _achClickCount++;
-        // After 2 clicks, switch robot speech to the next-step prompt
-        if(_achClickCount>=2){
-          var ach1=$('speech-ach-1');if(ach1)ach1.classList.remove('phase-active');
-          var ach2=$('speech-ach-2');if(ach2)ach2.classList.add('phase-active');
-        }
-      }
-      if(extraCb)extraCb();
     }
 
     /* Unlock the Discover Profiles achievement (second achievement chain) */
