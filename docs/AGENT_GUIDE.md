@@ -163,6 +163,28 @@ Documented bugs, root causes, and their fixes. Check here before fixing anything
 **Root cause:** If alias state were stored in localStorage instead of sessionStorage, it would persist.
 **Prevention:** `ferros_alias_session` MUST use `sessionStorage`, never `localStorage`. Do not move it.
 
+### BUG-007: Begin Setup Button Had Wrong Glow Animation
+**Symptom:** "Begin Setup →" button in the genesis card was pulsing with `beginPulse` glow animation, making it appear to be the primary CTA when it is a secondary path.
+**Root cause:** PR #23 added `beginPulse` to `.begin-btn` in CSS (and PR A re-applied it in `_postBootReveal()`). The glow belongs ONLY on the "Get Started" button inside the robot's speech bubble dialog, after ~60 seconds of user inactivity.
+**Fixed in:** PR D (ADR-006 implementation)
+**Fix:** Removed `animation: beginPulse …` from the `.begin-btn` CSS rule. The Begin Setup button is now a static button with no glow. The adaptive glow (`getStartedPulse`) is applied only to `#get-started-btn` inside the robot dialog after a 60-second inactivity timeout.
+**Button differentiation (per ADR-006):**
+- **"Get Started"** → inside robot speech bubble, opens Trade Window, glows after ~60s inactivity
+- **"Begin Setup →"** → in "Welcome to Your Progression System" box, proceeds to Stage 1, **no glow**
+- **"🍴 Fork this Profile"** → on featured profile cards, starts alias mode, **no glow**
+
+### BUG-008: Achievement Tooltips Dismissed Before Clicking Buttons Inside
+**Symptom:** Flowchart/diagram popups on achievement cards dismissed when moving cursor from the card to the popup button inside it, because the `:hover` state was on the card and moving to the popup broke the hover chain.
+**Root cause:** CSS `:hover`-only tooltip pattern: as soon as the pointer left the `.genesis-ach-card` boundary (even to enter the `.ach-hover-diagram` child), the tooltip collapsed.
+**Fixed in:** PR A (click-to-toggle pattern) — click card to toggle `.ach-active` class; click outside to dismiss.
+**Note:** The click-to-toggle pattern is already implemented. Do not revert to `:hover`-only.
+
+### BUG-009: Scroll Gating Clipped Begin Button Below Fold
+**Symptom:** On viewports shorter than the total hero content height, the "Begin Setup →" button was unreachable because `body.scroll-gated { height: 100vh; overflow: hidden }` prevented scrolling past the fold.
+**Root cause:** PR #24's scroll gating used `overflow: hidden` on `body` without allowing internal scroll on `#stage-0`.
+**Fixed in:** PR #26 — `body.scroll-gated #stage-0 { max-height: 100vh; overflow-y: auto }` so the stage can scroll internally while the body is gated.
+**Do not remove** the `#stage-0` internal scroll rule when modifying scroll gating CSS.
+
 ---
 
 ## What Not To Do (Anti-Patterns)

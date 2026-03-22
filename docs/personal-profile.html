@@ -113,7 +113,7 @@
     .assist-lock-tooltip{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:5px;color:var(--accent-amber);font-size:.75rem;margin-top:4px;padding:4px 10px;animation:tooltipFadeOut 2.5s ease-out forwards}
     @keyframes tooltipFadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}
     @keyframes beginPulse{0%,100%{box-shadow:0 0 20px rgba(45,212,191,.2)}50%{box-shadow:0 0 40px rgba(45,212,191,.65),0 0 64px rgba(74,144,217,.3);filter:brightness(1.12)}}
-    .begin-btn{width:100%;background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1.1rem;font-weight:700;letter-spacing:.05em;padding:16px 32px;transition:all .2s;box-shadow:0 0 20px rgba(45,212,191,.2);animation:beginPulse 2.4s ease-in-out 8s infinite}
+    .begin-btn{width:100%;background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1.1rem;font-weight:700;letter-spacing:.05em;padding:16px 32px;transition:all .2s;box-shadow:0 0 20px rgba(45,212,191,.2)}
     .begin-btn:hover{transform:translateY(-2px);box-shadow:0 4px 24px rgba(45,212,191,.4)}
     .begin-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;animation:none}
     /* Android Companion */
@@ -586,6 +586,40 @@
     body.boot-speech .speech-boot{opacity:1!important}
     .speech-boot{font-size:.65rem!important;line-height:1.45!important;opacity:0;animation:none!important}
     body.boot-speech .speech-bubble-wrap{height:auto;min-height:52px}
+    /* Phase speech bubbles — robot onboarding phases 1 & 2 */
+    .speech-phase1,.speech-phase2,.speech-congrats{font-size:.65rem!important;line-height:1.45!important;opacity:0;animation:none!important}
+    body.phase1-speech .speech-b1,body.phase1-speech .speech-b2,body.phase1-speech .speech-b3,body.phase1-speech .speech-boot{opacity:0!important;animation:none!important}
+    body.phase1-speech .speech-phase1{opacity:1!important}
+    body.phase2-speech .speech-b1,body.phase2-speech .speech-b2,body.phase2-speech .speech-b3,body.phase2-speech .speech-boot{opacity:0!important;animation:none!important}
+    body.phase2-speech .speech-phase2{opacity:1!important}
+    body.congrats-speech .speech-b1,body.congrats-speech .speech-b2,body.congrats-speech .speech-b3,body.congrats-speech .speech-boot,body.congrats-speech .speech-phase2{opacity:0!important;animation:none!important}
+    body.congrats-speech .speech-congrats{opacity:1!important}
+    body.phase1-speech .speech-bubble-wrap,body.phase2-speech .speech-bubble-wrap,body.congrats-speech .speech-bubble-wrap{height:auto;min-height:52px}
+    /* Get Started button inside robot dialog */
+    .get-started-btn{display:block;width:calc(100% - 14px);margin:6px 7px 2px;background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:.72rem;font-weight:700;padding:7px 10px;transition:all .2s;text-align:center;letter-spacing:.03em}
+    .get-started-btn:hover{transform:translateY(-1px);box-shadow:0 3px 14px rgba(45,212,191,.4)}
+    .get-started-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;animation:none!important}
+    @keyframes getStartedPulse{0%,100%{box-shadow:0 0 10px rgba(45,212,191,.2)}50%{box-shadow:0 0 28px rgba(45,212,191,.8),0 0 52px rgba(74,144,217,.35);filter:brightness(1.18)}}
+    .get-started-btn.glow{animation:getStartedPulse 2s ease-in-out infinite}
+    /* Feature pill tooltip system */
+    .feature-pill-wrap{position:relative;display:inline-block}
+    .feature-pill-tooltip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);min-width:190px;max-width:230px;background:var(--bg-panel);border:1px solid var(--accent-cyan);border-radius:8px;padding:10px 12px;font-size:.68rem;color:var(--text-secondary);line-height:1.5;z-index:500;opacity:0;pointer-events:none;transition:opacity .25s ease;box-shadow:var(--shadow-panel),0 0 16px rgba(45,212,191,.12);text-align:left}
+    .feature-pill-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--accent-cyan)}
+    .feature-pill-wrap:hover .feature-pill-tooltip,.feature-pill-wrap.pill-active .feature-pill-tooltip{opacity:1;pointer-events:auto}
+    /* Pre-Trade state: achievements and profiles hidden until Get Started → Trade Window accepted */
+    body.pre-trade .genesis-ach-section,body.pre-trade .gallery-preview-section,body.pre-trade .alias-entry-section,body.pre-trade .recovery-entry-section{display:none!important}
+    /* Locked achievements: greyed out but still hoverable/clickable */
+    .genesis-ach-card.ach-locked{opacity:.5;filter:grayscale(40%)}
+    .genesis-ach-card.ach-locked:hover{opacity:.7;filter:grayscale(20%)}
+    /* Robot transition between sections */
+    .android-companion{transition:transform .5s ease}
+    @keyframes robotExitRight{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(150px)}}
+    @keyframes robotEnterLeft{from{opacity:0;transform:translateX(-150px)}to{opacity:1;transform:translateX(0)}}
+    .android-companion.robot-exit-right{animation:robotExitRight .6s ease-in forwards!important;transition:none}
+    .android-companion.robot-enter-left{animation:robotEnterLeft .7s ease-out forwards!important;transition:none}
+    /* Robot excited: faster bob animation */
+    @keyframes androidBobFast{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+    .android-companion.robot-excited .android-figure{animation:androidBobFast .45s ease-in-out infinite!important}
   </style>
 </head>
 <body>
@@ -704,9 +738,18 @@
           <div class="genesis-hero-tagline">Level up your life. Track your growth. Earn real skills.</div>
           <div class="genesis-hero-hook">Start at Level 1. Complete quests. Unlock your full dashboard.</div>
           <div class="genesis-feature-pills">
-            <span class="feature-pill">&#9935; Cryptographic Seals</span>
-            <span class="feature-pill">&#127942; Achievement System</span>
-            <span class="feature-pill">&#128274; 100% Local &mdash; No Servers</span>
+            <div class="feature-pill-wrap" id="pill-seals">
+              <span class="feature-pill">&#9935; Cryptographic Seals</span>
+              <div class="feature-pill-tooltip">Every action you log is sealed with a cryptographic hash, creating a tamper-evident chain of your progress that nobody can alter &mdash; not even you.</div>
+            </div>
+            <div class="feature-pill-wrap" id="pill-achievements">
+              <span class="feature-pill">&#127942; Achievement System</span>
+              <div class="feature-pill-tooltip">Completing milestones earns Seal Points (SP) and unlocks new stages of your FERROS profile, dashboard panels, and assist levels.</div>
+            </div>
+            <div class="feature-pill-wrap" id="pill-local">
+              <span class="feature-pill">&#128274; 100% Local &mdash; No Servers</span>
+              <div class="feature-pill-tooltip">Nothing leaves your device &mdash; your data lives in your browser&apos;s localStorage. Works on file://, no cloud, no tracking, no accounts required.</div>
+            </div>
           </div>
         </div>
         <!-- Android Onboarding Companion -->
@@ -716,6 +759,9 @@
             <div class="speech-bubble speech-b2">Take your time... &#10024;</div>
             <div class="speech-bubble speech-b3">Press Begin when ready &#8594;</div>
             <div class="speech-bubble speech-boot">FERROS is free for you for life &#8212; so long as you take care of me! &#128421;</div>
+            <div class="speech-bubble speech-phase1">Hover over each of the icons to see more information &#128070;</div>
+            <div class="speech-bubble speech-phase2">FERROS is free, for you, for life.<br><button class="get-started-btn" id="get-started-btn" onclick="handleGetStarted()">Get Started &#8594;</button></div>
+            <div class="speech-bubble speech-congrats">Congrats! &#127881; You got your first achievement!</div>
           </div>
           <div class="android-figure">
             <div class="android-head">
@@ -1415,6 +1461,23 @@
       },1800);
     }
 
+    /* Discover Profiles achievement unlock — triggered by Browse Profiles or Begin Setup */
+    var _discoverProfilesUnlocked=false;
+    function _unlockDiscoverProfiles(){
+      if(_discoverProfilesUnlocked)return;
+      if(!_tradeWindowAccepted&&!sessionMode)return; // Genesis Pioneer must come first
+      _discoverProfilesUnlocked=true;
+      var card=$('ach-discover-profiles');
+      if(card){
+        card.classList.remove('ach-locked');
+        setTimeout(function(){
+          card.classList.add('pioneer-unlocked');
+          showSPFloat(15,card);
+          showXPToast('&#127758;','Discover Profiles \u2014 +15 SP!');
+        },400);
+      }
+    }
+
     async function init(){
       const exists=loadProfile();
       selectedAssistLevel=(exists?profile.meta.assistanceLevel:null)||1;
@@ -1514,11 +1577,14 @@
 
     async function completeStage0(){
       unlockScroll();
+      // Trigger Discover Profiles achievement (second achievement in chain)
+      _unlockDiscoverProfiles();
       function doRocketThenStage(){
         const btn=$('begin-btn');if(btn)btn.disabled=true;
         launchRocketAnimation(function(){_doCompleteStage0();});
       }
-      if(!sessionMode&&localStorage.getItem('ferros_profile')===null){
+      // Skip Trade Window if already accepted via Get Started button (ADR-006)
+      if(!sessionMode&&!_tradeWindowAccepted&&localStorage.getItem('ferros_profile')===null){
         showTradeDialog(doRocketThenStage);
         return;
       }
@@ -2394,11 +2460,11 @@
           +'<button class="fp-fork-btn" onclick="event.stopPropagation();startAliasFromGallery(\''+p.id+'\')">🍴 Fork this Profile</button>'
           +'</div>';
       }).join('');
-      const blankCard='<div class="featured-blank-card" onclick="completeStage0()">'
+      const blankCard='<div class="featured-blank-card" onclick="scrollToGenesisCard()">'
         +'<div class="fp-blank-icon">?</div>'
         +'<div class="fp-blank-title">Build Your Own</div>'
         +'<div class="fp-blank-desc">Start from scratch. Choose your class, stream, and schedule. Make it entirely yours.</div>'
-        +'<button class="fp-blank-btn" onclick="event.stopPropagation();completeStage0()">Start from Scratch →</button>'
+        +'<button class="fp-blank-btn" onclick="event.stopPropagation();scrollToGenesisCard()">Start from Scratch &#8594;</button>'
         +'</div>';
       grid.innerHTML=profileCards+blankCard;
     }
@@ -2410,6 +2476,12 @@
     function browseAllProfiles(){
       openProfileGallery();
       unlockScroll();
+      _unlockDiscoverProfiles();
+    }
+    function scrollToGenesisCard(){
+      var card=document.querySelector('.genesis-card');
+      if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
+      _unlockDiscoverProfiles();
     }
     function unlockScroll(){
       if(!scrollUnlocked){scrollUnlocked=true;document.body.classList.remove('scroll-gated')}
@@ -2505,6 +2577,7 @@
     }
     function startAliasFromGallery(profileId){
       unlockScroll();
+      _unlockDiscoverProfiles();
       closeProfileGallery();
       const found=ALIAS_PROFILES.find(x=>x.id===profileId);
       if(found){_enterAliasMode(found)}
@@ -2622,23 +2695,38 @@
       if(e.key==='Escape'){const go=$('alias-gallery-overlay');if(go&&go.style.display!=='none')closeAliasGallery();const pg=$('profile-gallery-overlay');if(pg&&pg.style.display!=='none')closeProfileGallery();const rp=$('recovery-panel-overlay');if(rp&&rp.style.display!=='none')closeRecoveryPanel()}
     });
 
-    /* ── FERROS Boot Animation ─────────────────────────────────────────────
+    /* ── FERROS Boot Animation + Level Zero Onboarding (ADR-006) ─────────────
        Cinematic boot sequence for first-time visitors (no existing profile).
        Returning users (existing localStorage profile) skip this entirely.
        Architecture: overlay #boot-screen sits above stage-0 during animation;
-       body.boot-sequence hides achievements/profiles until after Begin is clicked.
+       body.boot-sequence hides achievements/profiles until boot completes;
+       body.pre-trade keeps achievements/profiles hidden until Trade Window accepted.
        All animations are pure CSS @keyframes with JS setTimeout orchestration.
        Works on file:// protocol — no external assets or fetch() calls.
+
+       Onboarding phase timeline (post-boot):
+         0ms   Banner grows in
+         300ms Genesis card slides in (dimmed until Phase 2)
+         500ms Android rises from floor line
+         1200ms Floor glow + Phase 1 speech: "Hover over each of the icons..."
+         1800ms Pill tour starts: Seal (0ms), Achievement (1600ms), Local (3200ms)
+         6500ms Pill tour ends; android returns to center
+         6800ms Phase 2 speech: "FERROS is free, for you, for life. Click Get Started."
+         7000ms Begin button fades in (no glow — glow belongs on Get Started only)
+         7000ms 60-second inactivity timer starts → Get Started button glows at 67s
     ─────────────────────────────────────────────────────────────────────── */
     var _bootComplete=false;
+    var _tradeWindowAccepted=false;
+    var _inactivityTimer=null;
+    // ADR-006: 60-second inactivity delay before Get Started button starts glowing.
+    // Users have 3 pill tooltips to read — 60s is generous but non-intrusive.
+    var INACTIVITY_GLOW_DELAY_MS=60000;
 
     function _postBootReveal(){
       _bootComplete=true;
-      // Remove boot-sequence and add all sync animation classes before next paint
-      // (no setTimeout here so there is no intermediate frame with wrong opacity)
+      // pre-trade keeps achievements/profiles hidden after boot until Trade Window accepted
+      document.body.classList.add('pre-trade');
       document.body.classList.remove('boot-sequence');
-      // Set inline opacity:0 on elements that need a delayed entrance to prevent
-      // a flash between class removal and the staggered JS timer below
       var android=document.querySelector('.android-companion');
       var btn=$('begin-btn');
       var card=document.querySelector('.genesis-card');
@@ -2648,7 +2736,7 @@
       // Banner grows in immediately
       var banner=document.querySelector('.genesis-hero-banner');
       if(banner)banner.classList.add('banner-boot-enter');
-      // Genesis card slides in shortly after banner
+      // Genesis card slides in shortly after banner (dimly visible as background context)
       setTimeout(function(){
         if(card){card.style.opacity='';card.classList.add('card-boot-enter');}
       },300);
@@ -2657,22 +2745,164 @@
         if(android){
           android.style.opacity='';
           android.classList.add('android-boot-enter');
-          // Floor glow appears as robot settles
           setTimeout(function(){
             if(android)android.classList.add('boot-glow');
-            // Robot says the thesis statement
-            document.body.classList.add('boot-speech');
+            // Phase 1: robot instructs user to hover the feature pills
+            document.body.classList.add('phase1-speech');
           },700);
         }
       },500);
-      // Begin button fades in after robot speech
+      // Pill tour: robot moves toward each pill briefly showing tooltips
+      setTimeout(_runPillTour,1800);
+      // Begin button fades in (no glow — glow belongs on Get Started in dialog only)
       setTimeout(function(){
-        if(btn){
-          btn.style.opacity='';
-          // Fade-in then pulse (beginPulse starts 3.2s after reveal)
-          btn.style.animation='bootBeginReveal .7s ease-out forwards,beginPulse 2.4s ease-in-out 3.2s infinite';
+        if(btn){btn.style.opacity='';btn.style.animation='bootBeginReveal .7s ease-out forwards';}
+      },7000);
+    }
+
+    /* Robot pill tour: highlight each of the 3 feature pill tooltips in sequence */
+    function _runPillTour(){
+      var android=document.querySelector('.android-companion');
+      var pillIds=['pill-seals','pill-achievements','pill-local'];
+      // Small leftward offsets give the visual impression of the robot leaning toward the banner.
+      // The android is to the right of the banner; negative translateX moves it closer to the pills.
+      // Exact values are approximate — they suggest movement, not pixel-perfect hover positions.
+      var offsets=['-40px','-55px','-35px'];
+      var interval=1600; // ms per pill
+      pillIds.forEach(function(id,i){
+        setTimeout(function(){
+          // Hide previous pill tooltip
+          if(i>0){var prev=document.getElementById(pillIds[i-1]);if(prev)prev.classList.remove('pill-active');}
+          var pill=document.getElementById(id);if(pill)pill.classList.add('pill-active');
+          if(android)android.style.transform='translateX('+offsets[i]+')';
+        },i*interval);
+      });
+      // End tour: hide last tooltip, return robot to home
+      setTimeout(function(){
+        var last=document.getElementById(pillIds[pillIds.length-1]);if(last)last.classList.remove('pill-active');
+        if(android)android.style.transform='';
+        // Phase 2: robot presents Get Started CTA
+        setTimeout(_startPhase2,300);
+      },pillIds.length*interval);
+    }
+
+    function _startPhase2(){
+      document.body.classList.remove('phase1-speech');
+      document.body.classList.add('phase2-speech');
+      // Start adaptive difficulty timer: glow Get Started if user inactive for 60s
+      _startInactivityTimer();
+    }
+
+    function _startInactivityTimer(){
+      var events=['click','scroll','touchstart','keydown'];
+      function reset(){
+        clearTimeout(_inactivityTimer);
+        var gsBtn=$('get-started-btn');if(gsBtn)gsBtn.classList.remove('glow');
+        _inactivityTimer=setTimeout(function(){
+          var gsBtn2=$('get-started-btn');if(gsBtn2&&!gsBtn2.disabled)gsBtn2.classList.add('glow');
+        },INACTIVITY_GLOW_DELAY_MS);
+      }
+      events.forEach(function(evt){document.addEventListener(evt,reset,{passive:true});});
+      reset();
+    }
+
+    /* ── Get Started button handler (robot dialog CTA) ─────────────────────
+       Opens the Trade Window. On accept: reveals achievements, fires rocket,
+       transitions robot to excited congrats state.
+       This is the PRIMARY call-to-action for new users (ADR-006 Phase 3).
+    ─────────────────────────────────────────────────────────────────────── */
+    function handleGetStarted(){
+      var gsBtn=$('get-started-btn');
+      if(gsBtn){gsBtn.disabled=true;gsBtn.classList.remove('glow');}
+      clearTimeout(_inactivityTimer);
+      if(sessionMode||_tradeWindowAccepted){
+        _postGetStartedAccepted();
+        return;
+      }
+      showTradeDialog(_postGetStartedAccepted);
+    }
+
+    function _postGetStartedAccepted(){
+      if(!sessionMode)_tradeWindowAccepted=true;
+      unlockScroll();
+      // Reveal achievements and profile sections
+      document.body.classList.remove('pre-trade');
+      // Lock all achievements except Genesis Pioneer (rocket lands there) and Discover Profiles
+      document.querySelectorAll('.genesis-ach-card').forEach(function(card){
+        if(card.id!=='ach-genesis-pioneer'&&card.id!=='ach-discover-profiles'){
+          card.classList.add('ach-locked');
         }
-      },1600);
+      });
+      // Launch rocket from Get Started button to Genesis Pioneer (uses fixed coords, works pre-scroll)
+      _launchRocketFromGetStarted(function(){
+        // After rocket lands: scroll into view then robot transitions
+        var achSection=document.querySelector('.genesis-ach-section');
+        if(achSection)achSection.scrollIntoView({behavior:'smooth',block:'start'});
+        setTimeout(_robotTransitionToAchievements,500);
+      });
+    }
+
+    function _launchRocketFromGetStarted(onLanded){
+      var gsBtn=$('get-started-btn');
+      var pioneerCard=$('ach-genesis-pioneer');
+      if(!gsBtn||!pioneerCard){
+        if(pioneerCard){pioneerCard.classList.add('pioneer-unlocked');showFireworks(pioneerCard);setTimeout(function(){showSPFloat(25,pioneerCard);showXPToast('&#128640;','Genesis Pioneer \u2014 +25 SP!');},800);}
+        setTimeout(function(){if(onLanded)onLanded();},1800);
+        return;
+      }
+      var btnRect=gsBtn.getBoundingClientRect();
+      var cardRect=pioneerCard.getBoundingClientRect();
+      var startX=btnRect.left+btnRect.width/2;
+      var startY=btnRect.top+btnRect.height/2;
+      var endX=cardRect.left+cardRect.width/2;
+      var endY=cardRect.top+cardRect.height/2;
+      var dx=endX-startX;
+      var dy=endY-startY;
+      var peakY=Math.min(dy-200,-260);
+      var p1x=dx*0.08,p1y=peakY*0.55;
+      var p2x=dx*0.38+85,p2y=peakY;
+      var p3x=dx*0.72+45,p3y=peakY*0.48;
+      var p4x=dx*0.9,p4y=dy*0.7;
+      var rocket=document.createElement('div');
+      rocket.className='rocket-anim-el';
+      rocket.textContent='&#128640;';
+      rocket.style.left=startX+'px';
+      rocket.style.top=startY+'px';
+      document.body.appendChild(rocket);
+      var kfName='rocketGs_'+Date.now();
+      var kfStyle=document.createElement('style');
+      kfStyle.textContent='@keyframes '+kfName+'{'
+        +'0%{transform:translate(-50%,-50%) translate(0,0) rotate(-50deg)}'
+        +'20%{transform:translate(-50%,-50%) translate('+p1x+'px,'+p1y+'px) rotate(-85deg)}'
+        +'45%{transform:translate(-50%,-50%) translate('+p2x+'px,'+p2y+'px) rotate(5deg)}'
+        +'70%{transform:translate(-50%,-50%) translate('+p3x+'px,'+p3y+'px) rotate(55deg)}'
+        +'85%{transform:translate(-50%,-50%) translate('+p4x+'px,'+p4y+'px) rotate(78deg)}'
+        +'100%{transform:translate(-50%,-50%) translate('+dx+'px,'+dy+'px) rotate(90deg)}'
+        +'}';
+      document.head.appendChild(kfStyle);
+      rocket.style.animation=kfName+' 1.3s cubic-bezier(.4,0,.2,1) forwards';
+      rocket.addEventListener('animationend',function(){
+        rocket.remove();kfStyle.remove();
+        var card=$('ach-genesis-pioneer');
+        if(card)card.classList.add('pioneer-unlocked');
+        showFireworks(pioneerCard);
+        setTimeout(function(){showSPFloat(25,pioneerCard);showXPToast('&#128640;','Genesis Pioneer \u2014 +25 SP!');},800);
+        setTimeout(function(){if(onLanded)onLanded();},1600);
+      });
+    }
+
+    function _robotTransitionToAchievements(){
+      var android=document.querySelector('.android-companion');
+      if(!android)return;
+      android.classList.add('robot-exit-right');
+      setTimeout(function(){
+        android.classList.remove('robot-exit-right','boot-glow','phase1-speech');
+        android.style.transform='';
+        android.classList.add('robot-enter-left','robot-excited');
+        document.body.classList.remove('phase1-speech','phase2-speech');
+        document.body.classList.add('congrats-speech');
+        setTimeout(function(){android.classList.remove('robot-enter-left');},800);
+      },650);
     }
 
     function skipBootAnimation(){
