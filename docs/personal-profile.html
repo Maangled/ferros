@@ -135,7 +135,7 @@
     .android-leg{width:11px;height:14px;background:var(--bg-card);border:1.5px solid var(--accent-cyan);border-radius:0 0 4px 4px}
     .speech-bubble-wrap{position:relative;width:190px;height:52px;margin-bottom:10px;flex-shrink:0}
     .speech-bubble{background:var(--bg-panel);border:1px solid var(--accent-cyan);border-radius:10px;color:var(--accent-cyan);font-size:.7rem;font-weight:600;padding:7px 10px;position:absolute;top:0;left:0;width:100%;box-shadow:0 0 8px rgba(45,212,191,.12);line-height:1.4;opacity:0}
-    .speech-bubble::after{content:'';position:absolute;bottom:-7px;left:14px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--accent-cyan)}
+    .speech-bubble::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--accent-cyan)}
     @keyframes bCycle1{0%,5%{opacity:1}27%{opacity:1}33%{opacity:0}95%{opacity:0}100%{opacity:1}}
     @keyframes bCycle2{0%,33%{opacity:0}38%{opacity:1}60%{opacity:1}66%{opacity:0}100%{opacity:0}}
     @keyframes bCycle3{0%,66%{opacity:0}72%{opacity:1}93%{opacity:1}99%{opacity:0}100%{opacity:0}}
@@ -146,7 +146,7 @@
     /* Achievement Hover Diagrams */
     .genesis-ach-card{cursor:pointer}
     .genesis-ach-card.ach-active .ach-hover-diagram{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
-    .ach-hover-diagram{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(8px);width:220px;background:var(--bg-panel);border:1px solid var(--border-accent);border-radius:10px;padding:14px;font-size:.73rem;color:var(--text-secondary);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;box-shadow:var(--shadow-panel),0 0 20px rgba(0,0,0,.4)}
+    .ach-hover-diagram{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(8px);width:220px;background:#111520;border:1px solid var(--border-accent);border-radius:10px;padding:14px;font-size:.73rem;color:var(--text-secondary);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;box-shadow:var(--shadow-panel),0 0 20px rgba(0,0,0,.6),0 0 0 1px rgba(45,212,191,.08)}
     .ach-hover-diagram::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid var(--border-accent)}
     .ach-flow-title{font-weight:700;color:var(--text-primary);margin-bottom:8px;font-size:.78rem;display:flex;align-items:center;gap:6px}
     .ach-flow-step{display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;line-height:1.35}
@@ -335,7 +335,7 @@
     .wb-btn.danger:hover{background:rgba(248,113,113,.15)}
     /* Trade Dialog */
     .trade-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
-    .trade-window{background:var(--bg-panel);border:2px solid var(--accent-cyan);border-radius:var(--radius-panel);box-shadow:0 0 40px rgba(45,212,191,.2),var(--shadow-panel);max-width:700px;padding:32px;width:95%;animation:tradeGlow 2s ease-in-out infinite alternate}
+    .trade-window{background:var(--bg-panel);border:2px solid var(--accent-cyan);border-radius:var(--radius-panel);box-shadow:0 0 40px rgba(45,212,191,.2),var(--shadow-panel);max-width:700px;max-height:90vh;overflow-y:auto;padding:32px;width:95%;animation:tradeGlow 2s ease-in-out infinite alternate}
     @keyframes tradeGlow{from{box-shadow:0 0 20px rgba(45,212,191,.15),var(--shadow-panel)}to{box-shadow:0 0 50px rgba(45,212,191,.4),0 0 80px rgba(45,212,191,.1),var(--shadow-panel)}}
     .trade-window-header{color:var(--accent-cyan);font-family:var(--font-mono);font-size:1.15rem;font-weight:900;letter-spacing:3px;margin-bottom:6px;text-align:center;text-shadow:0 0 12px rgba(45,212,191,.5);text-transform:uppercase}
     .trade-status{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:4px;color:var(--accent-amber);display:block;font-family:var(--font-mono);font-size:.7rem;letter-spacing:.15em;margin-bottom:20px;padding:4px 12px;text-align:center;text-transform:uppercase;width:100%}
@@ -346,9 +346,10 @@
     .trade-col-header{border-bottom:1px solid var(--border-dim);font-family:var(--font-mono);font-size:.78rem;font-weight:900;letter-spacing:.1em;margin-bottom:12px;padding-bottom:8px;text-transform:uppercase}
     .trade-col:first-child .trade-col-header{color:var(--accent-blue)}
     .trade-col:last-child .trade-col-header{color:var(--accent-cyan)}
-    .trade-item{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;padding:7px 10px;transition:border-color .2s}
+    .trade-item{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;padding:7px 10px;transition:border-color .2s;position:relative}
     .trade-item:last-child{margin-bottom:0}
     .trade-item:hover{border-color:var(--border-accent)}
+    .trade-item[data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--bg-panel);border:1px solid var(--border-accent);border-radius:6px;color:var(--text-secondary);font-size:.72rem;padding:6px 10px;white-space:normal;width:220px;z-index:100;box-shadow:var(--shadow-panel);pointer-events:none;line-height:1.4}
     .trade-item-icon{flex-shrink:0;font-size:.95rem;margin-top:1px}
     .trade-item-name{color:var(--text-primary);font-size:.8rem;font-weight:700}
     .trade-item-desc{color:var(--text-secondary);font-size:.7rem;margin-top:1px}
@@ -553,14 +554,14 @@
     #boot-screen.boot-fade-out{opacity:0;pointer-events:none}
     #boot-skip-btn{position:absolute;top:16px;right:20px;background:none;border:1px solid rgba(255,255,255,.15);border-radius:6px;color:rgba(255,255,255,.4);font-size:.78rem;padding:4px 12px;cursor:pointer;transition:color .2s,border-color .2s;z-index:1}
     #boot-skip-btn:hover{color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.4)}
-    .boot-title-wrap{text-align:center;user-select:none}
-    .boot-ferros-title{font-family:var(--font-mono);font-size:clamp(3.5rem,12vw,7rem);font-weight:900;letter-spacing:.25em;color:#2dd4bf;text-shadow:0 0 40px rgba(45,212,191,.55),0 0 80px rgba(45,212,191,.2);position:relative;overflow:hidden;opacity:0;animation:bootTitleIn .9s ease-out .4s forwards}
+    .boot-title-wrap{text-align:center;user-select:none;display:flex;flex-direction:column;align-items:center}
+    .boot-ferros-title{font-family:var(--font-mono);font-size:clamp(3.5rem,12vw,7rem);font-weight:900;letter-spacing:.25em;color:#2dd4bf;text-shadow:0 0 40px rgba(45,212,191,.55),0 0 80px rgba(45,212,191,.2);position:relative;overflow:visible;opacity:0;animation:bootTitleIn .9s ease-out .4s forwards}
     @keyframes bootTitleIn{from{opacity:0;letter-spacing:.6em;transform:scale(1.08)}to{opacity:1;letter-spacing:.25em;transform:scale(1)}}
     .boot-ferros-title::after{content:'';position:absolute;top:0;bottom:0;left:-100%;width:60%;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.12) 30%,rgba(255,255,255,.55) 50%,rgba(255,255,255,.12) 70%,transparent 100%);transform:skewX(-15deg);animation:bootShine 1.6s ease-in-out 1.3s forwards;pointer-events:none}
     @keyframes bootShine{from{left:-100%}to{left:150%}}
     .boot-subtitle-wrap{overflow:hidden;margin-top:14px;opacity:0;animation:bootSubWrapIn .1s ease 2.8s forwards}
     @keyframes bootSubWrapIn{to{opacity:1}}
-    .boot-subtitle{font-family:var(--font-mono);font-size:clamp(.65rem,1.8vw,.85rem);text-transform:uppercase;color:var(--text-secondary);white-space:nowrap;overflow:hidden;width:0;border-right:2px solid var(--accent-cyan);animation:bootTypeIn 2.4s steps(43,end) 2.9s forwards,bootCursorBlink .65s step-end 2.9s 6 alternate}
+    .boot-subtitle{font-family:var(--font-mono);font-size:clamp(.65rem,1.8vw,.85rem);text-transform:uppercase;color:var(--text-secondary);white-space:nowrap;overflow:hidden;width:0;border-right:2px solid var(--accent-cyan);animation:bootTypeIn 1.5s steps(43,end) 2.9s forwards,bootCursorBlink .65s step-end 4.4s 5 alternate}
     @keyframes bootTypeIn{to{width:43ch}}
     @keyframes bootCursorBlink{from,to{border-right-color:transparent}50%{border-right-color:var(--accent-cyan)}}
     /* Sections hidden during boot — achievements/profiles revealed only after Begin */
@@ -594,7 +595,7 @@
     .feature-pill-wrap:hover .feature-pill-tooltip,.feature-pill-wrap.pill-active .feature-pill-tooltip{opacity:1;pointer-events:auto}
     /* Phase speech bubbles (JS-controlled) */
     .speech-phase-bubble{background:var(--bg-panel);border:1px solid var(--accent-cyan);border-radius:10px;color:var(--accent-cyan);font-size:.68rem;font-weight:600;padding:7px 10px;width:100%;box-shadow:0 0 8px rgba(45,212,191,.12);line-height:1.45;position:relative;display:none}
-    .speech-phase-bubble::after{content:'';position:absolute;bottom:-7px;left:14px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--accent-cyan)}
+    .speech-phase-bubble::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--accent-cyan)}
     .speech-phase-bubble.phase-active{display:block}
     /* Get Started button inside robot bubble */
     .get-started-btn{display:block;width:100%;margin-top:6px;background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:.72rem;font-weight:700;padding:6px 10px;transition:all .2s;letter-spacing:.03em}
@@ -612,10 +613,12 @@
     .genesis-ach-card.ach-discover-available .genesis-ach-lock{display:none}
     /* Achievements section hidden until Get Started accepted */
     .genesis-ach-section.ach-pre-reveal{display:none!important}
-    /* Achievement companion row (robot celebration) */
-    .ach-companion-row{display:none;align-items:flex-start;gap:12px;margin-bottom:12px;max-width:800px;width:100%}
+    /* Achievement companion row (robot on left side of grid) */
+    .ach-content-row{display:flex;align-items:flex-start;gap:20px;width:100%}
+    .ach-grid-col{flex:1;min-width:0}
+    .ach-companion-row{display:none;flex-direction:column;align-items:center;flex-shrink:0;width:100px;position:sticky;top:80px;align-self:flex-start}
     .ach-companion-row.companion-visible{display:flex}
-    .android-companion-ach{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:90px}
+    .android-companion-ach{display:flex;flex-direction:column;align-items:center;width:100%}
     /* Giddy robot animation */
     @keyframes androidGiddy{0%,100%{transform:translateY(0) rotate(-5deg) scale(1)}50%{transform:translateY(-9px) rotate(5deg) scale(1.05)}}
     .android-companion-ach .android-figure{animation:androidGiddy .5s ease-in-out infinite}
@@ -632,10 +635,56 @@
     .genesis-ach-card.discover-unlocked .genesis-ach-lock{display:none}
     /* Progressive onboarding gating — sections hidden until unlocked by progression */
     .onboarding-locked{display:none!important}
-    /* Trade window robot */
-    .trade-robot{display:flex;flex-direction:column;align-items:center;margin:0 auto 16px}
-    .trade-robot .android-figure{animation:androidBob 3s ease-in-out infinite}
-    .trade-robot-speech{background:var(--bg-card);border:1px solid var(--accent-cyan);border-radius:8px;color:var(--accent-cyan);font-size:.75rem;font-weight:600;padding:6px 12px;margin-bottom:8px;text-align:center;max-width:280px}
+    /* Trade window robot — inline beside header */
+    .trade-header-row{display:flex;align-items:center;gap:16px;margin-bottom:6px}
+    .trade-robot-inline{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+    .trade-robot-inline .android-figure{animation:androidBob 3s ease-in-out infinite;transform-origin:bottom center;zoom:.7}
+    .trade-robot-inline .android-floor-glow{opacity:1;transform:scaleX(1);margin-top:2px}
+    .trade-header-text{flex:1}
+    .trade-robot-speech-wrap{margin-bottom:10px;text-align:center}
+    .trade-robot-speech{background:var(--bg-card);border:1px solid var(--accent-cyan);border-radius:8px;color:var(--accent-cyan);font-size:.75rem;font-weight:600;padding:6px 12px;display:inline-block;max-width:100%;position:relative}
+    .trade-robot-speech::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--accent-cyan)}
+    /* Genesis Card unlock animation */
+    /* Temporary class applied by unlockGenesisCard() then removed via animationend listener */
+    @keyframes genesisUnlock{0%{transform:scale(.95);opacity:.4;box-shadow:none}50%{transform:scale(1.02);box-shadow:0 0 30px rgba(45,212,191,.4)}100%{transform:scale(1);opacity:1;box-shadow:var(--shadow-panel)}}
+    .genesis-card-unlocking{animation:genesisUnlock .8s ease-out forwards}
+    @keyframes assistCardPulse{0%,100%{border-color:var(--border-dim)}50%{border-color:var(--accent-cyan);box-shadow:0 0 14px rgba(45,212,191,.4)}}
+    .assist-card-pulse{animation:assistCardPulse .6s ease-in-out 3}
+    /* Gallery inline preview panel */
+    .gallery-inline-preview{background:var(--bg-panel);border:1px solid var(--border-accent);border-radius:var(--radius-panel);padding:20px;margin-bottom:16px;box-shadow:var(--shadow-panel);animation:stageFadeIn .3s ease-out}
+    .gallery-preview-row{display:flex;align-items:flex-start;gap:16px}
+    .gallery-preview-robot-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:90px}
+    .gallery-preview-robot-wrap .speech-phase-bubble{width:120px;font-size:.62rem;line-height:1.35;word-break:break-word}
+    .gallery-preview-content{flex:1;min-width:0}
+    .gallery-preview-profile-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    .gallery-preview-icon{font-size:2rem;flex-shrink:0}
+    .gallery-preview-name{font-size:1.1rem;font-weight:700;color:var(--text-primary)}
+    .gallery-preview-class{font-size:.75rem;color:var(--accent-cyan);font-weight:600;margin-top:2px}
+    .gallery-preview-tagline{font-size:.8rem;color:var(--text-dim);font-style:italic;margin-bottom:10px}
+    .gallery-preview-schedule-title{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px}
+    .gallery-preview-blocks{display:flex;flex-direction:column;gap:3px;margin-bottom:12px;max-height:130px;overflow-y:auto}
+    .gallery-preview-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .gallery-preview-use-btn{background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:.78rem;font-weight:700;padding:7px 14px;transition:all .2s;flex:1;min-width:120px}
+    .gallery-preview-use-btn:hover{transform:translateY(-1px);box-shadow:0 2px 10px rgba(45,212,191,.3)}
+    .gallery-preview-alias-btn{background:transparent;border:1px solid var(--accent-purple);border-radius:6px;color:var(--accent-purple);cursor:pointer;font-size:.78rem;font-weight:700;padding:7px 14px;transition:all .2s;flex:1;min-width:100px}
+    .gallery-preview-alias-btn:hover{background:rgba(167,139,250,.1)}
+    .gallery-preview-close-btn{background:transparent;border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:.78rem;font-weight:600;padding:7px 14px;transition:all .2s}
+    .gallery-preview-close-btn:hover{border-color:var(--accent-blue);color:var(--text-primary)}
+    /* Featured profiles as horizontal carousel */
+    #featured-profiles-grid{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:thin;scrollbar-color:var(--border-accent) transparent}
+    #featured-profiles-grid::-webkit-scrollbar{height:4px}
+    #featured-profiles-grid::-webkit-scrollbar-track{background:transparent}
+    #featured-profiles-grid::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:4px}
+    .gallery-card-browse-all{width:160px;flex-shrink:0;background:rgba(45,212,191,.06);border:2px dashed var(--accent-cyan);border-radius:8px;padding:14px 12px;cursor:pointer;transition:all .2s;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+    .gallery-card-browse-all:hover{transform:translateY(-2px);background:rgba(45,212,191,.12);box-shadow:0 4px 12px rgba(45,212,191,.15)}
+    .gallery-card-browse-all .gallery-card-icon{font-size:1.8rem}
+    .gallery-card-browse-all .gallery-card-name{font-size:.85rem;font-weight:700;color:var(--accent-cyan)}
+    .gallery-card-build-own{width:160px;flex-shrink:0;background:rgba(90,106,128,.08);border:2px dashed var(--border-dim);border-radius:8px;padding:14px 12px;cursor:pointer;transition:all .2s;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+    .gallery-card-build-own:hover{border-color:var(--border-accent);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+    .gallery-card-build-own .gallery-card-icon{font-size:1.8rem;color:var(--text-dim)}
+    .gallery-card-build-own .gallery-card-name{font-size:.85rem;font-weight:700;color:var(--text-primary)}
+    /* Trade window robot — old full-width robot (hidden, replaced by inline) */
+    .trade-robot{display:none}
   </style>
 </head>
 <body>
@@ -674,7 +723,37 @@
 
   <div id="trade-overlay" class="trade-overlay" style="display:none">
     <div class="trade-window">
-      <div class="trade-robot">
+      <!-- Robot inline beside header -->
+      <div class="trade-robot-speech-wrap" id="trade-robot-speech-wrap">
+        <div class="trade-robot-speech" id="trade-robot-speech">I need your permission to store data on this device.</div>
+      </div>
+      <div class="trade-header-row">
+        <div class="trade-robot-inline">
+          <div class="android-figure">
+            <div class="android-head">
+              <div class="android-antenna"></div>
+              <div class="android-eye left"></div>
+              <div class="android-eye right"></div>
+            </div>
+            <div class="android-body">
+              <div class="android-arm left"></div>
+              <div class="android-arm right"></div>
+              <div class="android-chest-dot"></div>
+            </div>
+            <div class="android-legs">
+              <div class="android-leg left"></div>
+              <div class="android-leg right"></div>
+            </div>
+          </div>
+          <div class="android-floor-glow"></div>
+        </div>
+        <div class="trade-header-text">
+          <div class="trade-window-header">&#9876;&#65039; Permission Exchange</div>
+          <div class="trade-status">&#9672; STATUS: AWAITING CONFIRMATION &#9672;</div>
+        </div>
+      </div>
+      <!-- Keep old robot hidden (backward compat) -->
+      <div class="trade-robot" style="display:none">
         <div class="trade-robot-speech">I need your permission to store data on this device.</div>
         <div class="android-figure">
           <div class="android-head">
@@ -693,23 +772,20 @@
           </div>
         </div>
       </div>
-      <div class="trade-window-header">⚔️ Permission Exchange</div>
-      <div class="trade-status">◈ STATUS: AWAITING CONFIRMATION ◈</div>
       <div class="trade-cols">
         <div class="trade-col">
           <div class="trade-col-header">🤖 FERROS (Your Computer)</div>
-          <div class="trade-item"><span class="trade-item-icon">💾</span><div><div class="trade-item-name">localStorage</div><div class="trade-item-desc">~50KB max, browser-local only</div></div></div>
-          <div class="trade-item"><span class="trade-item-icon">🖥️</span><div><div class="trade-item-name">This browser only</div><div class="trade-item-desc">Never transmitted anywhere</div></div></div>
-          <div class="trade-item"><span class="trade-item-icon">🔐</span><div><div class="trade-item-name">Integrity-Sealed</div><div class="trade-item-desc">Sealed with cryptographic hashes — tamper-evident and locked to this device</div></div></div>
-          <div class="trade-item"><span class="trade-item-icon">🚫</span><div><div class="trade-item-name">No network requests</div><div class="trade-item-desc">Fully offline, zero telemetry</div></div></div>
-          <div class="trade-item"><span class="trade-item-icon">🚫</span><div><div class="trade-item-name">No cookies</div><div class="trade-item-desc">Not a single one</div></div></div>
-          <div class="trade-item"><span class="trade-item-icon">🚫</span><div><div class="trade-item-name">No tracking</div><div class="trade-item-desc">We don't even have a server</div></div></div>
+          <div class="trade-item" data-tooltip="Browser storage that persists even after closing the tab. Like a save file on your computer."><span class="trade-item-icon">💾</span><div><div class="trade-item-name">localStorage (~5 MB)</div><div class="trade-item-desc">Browser-local only, never leaves this device</div></div></div>
+          <div class="trade-item" data-tooltip="Integrity verification checks the seal chain on every load to make sure nothing was modified outside the app."><span class="trade-item-icon">✅</span><div><div class="trade-item-name">Integrity Verification</div><div class="trade-item-desc">Chain is verified on every page load</div></div></div>
+          <div class="trade-item" data-tooltip="All data is hashed with a tamper-evident seal chain. If anything changes, the seal breaks and you'll be notified."><span class="trade-item-icon">🔐</span><div><div class="trade-item-name">Encrypted &amp; Sealed</div><div class="trade-item-desc">Tamper-evident cryptographic seal chain</div></div></div>
+          <div class="trade-item" data-tooltip="The XP, leveling, and skill tree system that tracks your growth across all streams."><span class="trade-item-icon">⚙️</span><div><div class="trade-item-name">Progression Engine</div><div class="trade-item-desc">XP, levels, and skill unlocks</div></div></div>
+          <div class="trade-item" data-tooltip="Badges and milestones you earn. They're checked against your real activity — no fake unlocks."><span class="trade-item-icon">🏆</span><div><div class="trade-item-name">Achievement System</div><div class="trade-item-desc">Milestones checked against real activity</div></div></div>
+          <div class="trade-item" data-tooltip="A chain of cryptographic hashes proving your profile hasn't been tampered with. Each seal links to the previous one."><span class="trade-item-icon">🔗</span><div><div class="trade-item-name">Seal Chain (Integrity Proof)</div><div class="trade-item-desc">Cryptographic proof of your history</div></div></div>
         </div>
         <div class="trade-col">
           <div class="trade-col-header">🧑 You</div>
-          <div class="trade-item"><span class="trade-item-icon">📝</span><div><div class="trade-item-name">Your name / handle</div><div class="trade-item-desc">Stored locally as your character</div></div></div>
-          <div class="trade-item"><span class="trade-item-icon">🎭</span><div><div class="trade-item-name">Avatar &amp; class choice</div><div class="trade-item-desc">Cosmetic identity data</div></div></div>
-          <div class="trade-item"><span class="trade-item-icon">📊</span><div><div class="trade-item-name">Progress &amp; XP</div><div class="trade-item-desc">Your stats and level history</div></div></div>
+          <div class="trade-item" data-tooltip="The character you create — name, avatar, class, attributes. Stored only in THIS browser."><span class="trade-item-icon">📝</span><div><div class="trade-item-name">Your Profile Data</div><div class="trade-item-desc">Name, avatar, class — stored locally</div></div></div>
+          <div class="trade-item" data-tooltip="XP earned, quests completed, skills unlocked. Your progression history stays local and sealed."><span class="trade-item-icon">📊</span><div><div class="trade-item-name">Activity &amp; Progress</div><div class="trade-item-desc">XP, seals, skill tree state</div></div></div>
           <div class="trade-item"><span class="trade-item-icon">🏆</span><div><div class="trade-item-name">Achievements</div><div class="trade-item-desc">Unlocked milestones and badges</div></div></div>
           <div class="trade-item"><span class="trade-item-icon">↩️</span><div><div class="trade-item-name">Revocable anytime</div><div class="trade-item-desc">Use "Clear Data" to wipe everything</div></div></div>
         </div>
@@ -798,6 +874,8 @@
             <div class="speech-phase-bubble" id="speech-phase1">&#128072; Hover over each of the icons to see more information</div>
             <!-- Phase 2: Get Started CTA -->
             <div class="speech-phase-bubble" id="speech-phase2">FERROS is free, for you, for life.<br/><button class="get-started-btn" id="get-started-btn" onclick="handleGetStarted()">Get Started &#9654;</button></div>
+            <!-- Phase 3: urge to click (alternates with phase 2 after 60s) -->
+            <div class="speech-phase-bubble" id="speech-phase3">&#128073; Click the button to continue &#8594;</div>
             <!-- Congrats: after Pioneer achievement -->
             <div class="speech-phase-bubble" id="speech-congrats">&#127881; Congrats! You got your first achievement!</div>
           </div>
@@ -823,33 +901,38 @@
 
       <!-- Achievement Preview Section (revealed after Get Started accepted) -->
       <div class="genesis-ach-section ach-pre-reveal" id="genesis-ach-section">
-        <!-- Achievement companion robot (shown after Genesis Pioneer unlocks) -->
-        <div class="ach-companion-row" id="ach-companion-row">
-          <div class="android-companion-ach">
-            <div class="speech-phase-bubble phase-active" id="speech-congrats-ach">&#127881; Congrats! You got your first achievement!</div>
-            <div class="android-figure">
-              <div class="android-head">
-                <div class="android-antenna"></div>
-                <div class="android-eye left"></div>
-                <div class="android-eye right"></div>
+        <!-- Flex row: robot on left (sticky), achievements on right -->
+        <div class="ach-content-row">
+          <!-- Achievement companion robot (shown after Genesis Pioneer unlocks) -->
+          <div class="ach-companion-row" id="ach-companion-row">
+            <div class="android-companion-ach">
+              <div class="speech-phase-bubble phase-active" id="speech-ach-1">&#127942; Click on each achievement to learn how to unlock it!</div>
+              <div class="speech-phase-bubble" id="speech-ach-2">&#10024; Nice! Now try clicking &lsquo;Discover Profiles&rsquo; to see what others have built!</div>
+              <div class="android-figure">
+                <div class="android-head">
+                  <div class="android-antenna"></div>
+                  <div class="android-eye left"></div>
+                  <div class="android-eye right"></div>
+                </div>
+                <div class="android-body">
+                  <div class="android-arm left"></div>
+                  <div class="android-arm right"></div>
+                  <div class="android-chest-dot"></div>
+                </div>
+                <div class="android-legs">
+                  <div class="android-leg left"></div>
+                  <div class="android-leg right"></div>
+                </div>
               </div>
-              <div class="android-body">
-                <div class="android-arm left"></div>
-                <div class="android-arm right"></div>
-                <div class="android-chest-dot"></div>
-              </div>
-              <div class="android-legs">
-                <div class="android-leg left"></div>
-                <div class="android-leg right"></div>
-              </div>
+              <div class="android-floor-glow" style="opacity:1;transform:scaleX(1)"></div>
             </div>
-            <div class="android-floor-glow" style="opacity:1;transform:scaleX(1)"></div>
           </div>
-        </div>
+          <!-- Achievements grid column -->
+          <div class="ach-grid-col">
         <div class="genesis-ach-section-title">&#127942; Achievements to Unlock</div>
         <div class="genesis-ach-grid">
           <!-- Genesis Pioneer — unlocks after Get Started → Trade Window acceptance -->
-          <div class="genesis-ach-card ach-locked-visual" id="ach-genesis-pioneer">
+          <div class="genesis-ach-card ach-locked-visual" id="ach-genesis-pioneer" onclick="toggleAchDiagram(this)">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#128640;</span>
             <div class="genesis-ach-name">Genesis Pioneer</div>
@@ -865,7 +948,7 @@
             </div>
           </div>
           <!-- Discover Profiles — unlocks on Browse Profiles / Fork Profile / Begin Setup -->
-          <div class="genesis-ach-card ach-discover-available" id="ach-discover-profiles" onclick="unlockFeaturedProfiles()">
+          <div class="genesis-ach-card ach-discover-available" id="ach-discover-profiles" onclick="toggleAchDiagram(this,function(){unlockFeaturedProfiles();})">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#127758;</span>
             <div class="genesis-ach-name">Discover Profiles</div>
@@ -877,11 +960,11 @@
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Scroll to the Featured Profiles section</div>
               <div class="ach-flow-step"><span class="ach-flow-arrow">&#9658;</span>Browse at least one profile archetype</div>
               <div><span class="ach-sp-badge">&#127942; +15 SP on unlock</span></div>
-              <button class="ach-diagram-link-btn" onclick="unlockFeaturedProfiles()">&#128270; Browse Profiles &darr;</button>
+              <button class="ach-diagram-link-btn" onclick="event.stopPropagation();unlockFeaturedProfiles()">&#128270; Browse Profiles &darr;</button>
             </div>
           </div>
           <!-- Home Commander -->
-          <div class="genesis-ach-card ach-locked-visual">
+          <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#127968;</span>
             <div class="genesis-ach-name">Home Commander</div>
@@ -899,7 +982,7 @@
             </div>
           </div>
           <!-- Skill Forester -->
-          <div class="genesis-ach-card ach-locked-visual">
+          <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#127794;</span>
             <div class="genesis-ach-name">Skill Forester</div>
@@ -915,7 +998,7 @@
             </div>
           </div>
           <!-- Stat Sage -->
-          <div class="genesis-ach-card ach-locked-visual">
+          <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#128202;</span>
             <div class="genesis-ach-name">Stat Sage</div>
@@ -931,7 +1014,7 @@
             </div>
           </div>
           <!-- Agent Handler -->
-          <div class="genesis-ach-card ach-locked-visual">
+          <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#129302;</span>
             <div class="genesis-ach-name">Agent Handler</div>
@@ -947,7 +1030,7 @@
             </div>
           </div>
           <!-- Protocol Master -->
-          <div class="genesis-ach-card ach-locked-visual">
+          <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#128220;</span>
             <div class="genesis-ach-name">Protocol Master</div>
@@ -963,7 +1046,7 @@
             </div>
           </div>
           <!-- Iron Month -->
-          <div class="genesis-ach-card ach-locked-visual">
+          <div class="genesis-ach-card ach-locked-visual" onclick="toggleAchDiagram(this)">
             <span class="genesis-ach-lock">&#128274;</span>
             <span class="genesis-ach-icon">&#128293;</span>
             <div class="genesis-ach-name">Iron Month</div>
@@ -978,20 +1061,48 @@
               <div><span class="ach-sp-badge">&#127942; +50 SP on unlock</span></div>
             </div>
           </div>
-        </div>
-      </div>
+        </div> <!-- /genesis-ach-grid -->
+          </div> <!-- /ach-grid-col -->
+        </div> <!-- /ach-content-row -->
+      </div> <!-- /genesis-ach-section -->
 
       <!-- Featured Profiles Preview Section -->
       <div class="gallery-preview-section onboarding-locked" id="gallery-preview-section">
         <div class="gallery-preview-title">🌐 Featured Profiles
           <button class="gallery-dismiss-btn" onclick="dismissFeaturedProfiles()" title="Skip &amp; explore on your own">✕ Skip</button>
         </div>
-        <div class="gallery-preview-subtitle">See how two legends structured their day — or start fresh. Fork a template to begin, or build your own.</div>
-        <div class="featured-profiles-grid" id="featured-profiles-grid">
-          <!-- Newspaper-style profile cards, rendered by JS -->
+        <div class="gallery-preview-subtitle">Click a profile to preview their day structure — or build your own. Fork a template to begin.</div>
+        <!-- Inline preview panel (shown when a carousel card is clicked) -->
+        <div id="gallery-inline-preview" class="gallery-inline-preview" style="display:none">
+          <div class="gallery-preview-row">
+            <div class="gallery-preview-robot-wrap" id="gallery-preview-robot-wrap">
+              <div class="speech-phase-bubble phase-active" id="speech-preview">&#128064; This one&rsquo;s worth a look!</div>
+              <div class="android-figure">
+                <div class="android-head">
+                  <div class="android-antenna"></div>
+                  <div class="android-eye left"></div>
+                  <div class="android-eye right"></div>
+                </div>
+                <div class="android-body">
+                  <div class="android-arm left"></div>
+                  <div class="android-arm right"></div>
+                  <div class="android-chest-dot"></div>
+                </div>
+                <div class="android-legs">
+                  <div class="android-leg left"></div>
+                  <div class="android-leg right"></div>
+                </div>
+              </div>
+              <div class="android-floor-glow" style="opacity:1;transform:scaleX(1)"></div>
+            </div>
+            <div class="gallery-preview-content" id="gallery-preview-content">
+              <!-- Filled by openInlinePreview() -->
+            </div>
+          </div>
         </div>
-        <div style="text-align:center;margin-top:14px">
-          <button class="gallery-browse-btn" onclick="browseAllProfiles()">Browse All Profiles →</button>
+        <!-- Carousel of profile cards -->
+        <div class="featured-profiles-grid" id="featured-profiles-grid">
+          <!-- Rendered by JS: renderFeaturedProfiles() -->
         </div>
       </div>
 
@@ -1432,6 +1543,8 @@
     let _pioneerUnlocked=false;
     let _discoverProfilesUnlocked=false;
     let _inactivityTimer=null;
+    let _phase3Timer=null;
+    let _achClickCount=0;
     // FIX: order must match HTML nav button DOM order (credentials before portability)
     const panelOrder=['character','attributes','skills','achievements','journal','credentials','portability'];
 
@@ -2466,6 +2579,33 @@
           {time:'15:00',label:'Quiet Afternoon Prep'},{time:'17:00',label:'Happy Hour Begins'},
           {time:'21:00',label:'Evening Service'},{time:'00:00',label:'Close & Clean'},
           {time:'02:00',label:'Sleep'}
+        ]}},
+      {id:'turing',name:'Alan Turing',icon:'🖥️',aliasClass:'Engineer',tagline:'Broke codes. Built machines. Ran marathons.',stream:'A',archetype:'structured-research',
+        templateSchedule:{blocks:[
+          {time:'08:00',label:'Morning Run (5–10 miles)'},{time:'09:30',label:'Codebreaking / Logic Work'},
+          {time:'12:00',label:'Lunch'},{time:'13:00',label:'Chess & Puzzles'},
+          {time:'14:00',label:'Machine Design / Theory'},{time:'18:00',label:'Lecture / Paper Writing'},
+          {time:'22:00',label:'Sleep'}
+        ]}},
+      {id:'darwin',name:'Charles Darwin',icon:'🦕',aliasClass:'Scholar',tagline:'Observed everything. Concluded slowly. Changed everything.',stream:'C',archetype:'structured-research',
+        templateSchedule:{blocks:[
+          {time:'07:00',label:'Early Walk'},{time:'08:00',label:'Breakfast & Post'},
+          {time:'09:30',label:'Science Work (prime hours)'},{time:'12:00',label:'Rest & Lunch'},
+          {time:'15:00',label:'Letters & Reading'},{time:'16:00',label:'Walk (thinking time)'},
+          {time:'18:00',label:'Family Time'},{time:'22:00',label:'Sleep'}
+        ]}},
+      {id:'woolf',name:'Virginia Woolf',icon:'📖',aliasClass:'Artisan',tagline:'Three hours of writing per day. The rest was living.',stream:'B',archetype:'pain-driven-creative',
+        templateSchedule:{blocks:[
+          {time:'09:30',label:'Writing (3 hrs, no interruptions)'},{time:'12:30',label:'Lunch & Walk'},
+          {time:'14:00',label:'Rest / Reading'},{time:'16:00',label:'Letters & Social'},
+          {time:'18:00',label:'Tea & Conversation'},{time:'22:00',label:'Sleep'}
+        ]}},
+      {id:'jobs',name:'Steve Jobs',icon:'🍏',aliasClass:'Architect',tagline:'Design first. Ship second. Repeat.',stream:'B',archetype:'stoic-morning-ruler',
+        templateSchedule:{blocks:[
+          {time:'06:00',label:'Wake & Reflect'},{time:'07:00',label:'Family Breakfast'},
+          {time:'09:00',label:'Design Review'},{time:'12:00',label:'Walk Meeting'},
+          {time:'14:00',label:'Product Decisions'},{time:'17:00',label:'Email & Calls'},
+          {time:'19:00',label:'Family Dinner'},{time:'22:00',label:'Sleep'}
         ]}}
     ];
     const ARCHETYPE_DESC={
@@ -2486,44 +2626,86 @@
     function renderGalleryCarousel(){
       // Backward-compat wrapper: exitAliasMode() and exitRecoveryMode() both call
       // renderGalleryCarousel() when returning to Stage 0 after an alias/recovery session.
-      // Those paths need the featured grid refreshed, not the old carousel (now removed).
       renderFeaturedProfiles();
     }
-    // Newspaper-style featured profile cards (first 2 profiles + blank "?" card)
+    // Horizontal carousel of all profiles + Build Your Own + Browse All
     function renderFeaturedProfiles(){
       const grid=$('featured-profiles-grid');if(!grid)return;
-      const featured=TEMPLATE_PROFILES.slice(0,2);
-      const profileCards=featured.map(p=>{
-        const blocks=p.templateSchedule.blocks.slice(0,5);
-        const scheduleRows=blocks.map(b=>
-          '<div class="fp-schedule-row stream-'+esc(p.stream)+'">'
-          +'<span class="fp-schedule-time">'+esc(b.time)+'</span>'
-          +'<span class="fp-schedule-task">'+esc(b.label)+'</span>'
-          +'</div>'
-        ).join('');
-        return '<div class="featured-profile-card" onclick="openProfileAndDetail(\''+p.id+'\')">'
-          +'<div class="fp-card-header">'
-          +'<span class="fp-card-icon">'+p.icon+'</span>'
-          +'<div><div class="fp-card-name">'+esc(p.name)+'</div>'
-          +'<div class="fp-card-tagline">'+esc(p.tagline)+'</div></div>'
-          +'</div>'
-          +'<div class="fp-schedule-label">A day in the life</div>'
-          +'<div class="fp-schedule-blocks">'+scheduleRows+'</div>'
-          +'<button class="fp-fork-btn" onclick="event.stopPropagation();startAliasFromGallery(\''+p.id+'\')">🍴 Fork this Profile</button>'
+      // Profile carousel cards (all profiles)
+      const profileCards=TEMPLATE_PROFILES.map(p=>{
+        return '<div class="gallery-card" onclick="openInlinePreview(\''+p.id+'\')" title="'+esc(p.tagline)+'">'
+          +'<span class="gallery-card-icon">'+p.icon+'</span>'
+          +'<div class="gallery-card-name">'+esc(p.name)+'</div>'
+          +'<div class="gallery-card-tagline">'+esc(p.tagline)+'</div>'
           +'</div>';
       }).join('');
-      const blankCard='<div class="featured-blank-card" onclick="unlockGenesisCard()">'
-        +'<div class="fp-blank-icon">?</div>'
-        +'<div class="fp-blank-title">Build Your Own</div>'
-        +'<div class="fp-blank-desc">Start from scratch. Choose your class, stream, and schedule. Make it entirely yours.</div>'
-        +'<button class="fp-blank-btn" onclick="event.stopPropagation();unlockGenesisCard()">Start from Scratch →</button>'
+      // "Build Your Own" card (second-to-last)
+      const buildOwnCard='<div class="gallery-card-build-own" onclick="unlockGenesisCard()">'
+        +'<span class="gallery-card-icon">&#10067;</span>'
+        +'<div class="gallery-card-name">Build Your Own</div>'
+        +'<div class="gallery-card-tagline" style="font-size:.7rem;color:var(--text-dim)">Start from scratch — your class, your schedule.</div>'
         +'</div>';
-      grid.innerHTML=profileCards+blankCard;
+      // "Browse All" card (last)
+      const browseAllCard='<div class="gallery-card-browse-all" onclick="browseAllProfiles()">'
+        +'<span class="gallery-card-icon">&#127760;</span>'
+        +'<div class="gallery-card-name">Browse All Profiles</div>'
+        +'<div style="font-size:.7rem;color:var(--text-dim)">See the full gallery</div>'
+        +'</div>';
+      grid.innerHTML=profileCards+buildOwnCard+browseAllCard;
+    }
+    /* Open an inline preview panel for a profile (instead of full modal) */
+    function openInlinePreview(profileId){
+      var p=TEMPLATE_PROFILES.find(function(x){return x.id===profileId;});
+      if(!p)return;
+      var panel=$('gallery-inline-preview');
+      var content=$('gallery-preview-content');
+      if(!panel||!content)return;
+      // Build preview content
+      var blocks=p.templateSchedule&&p.templateSchedule.blocks||[];
+      var scheduleRows=blocks.slice(0,6).map(function(b){
+        return '<div class="fp-schedule-row stream-'+esc(p.stream)+'">'
+          +'<span class="fp-schedule-time">'+esc(b.time)+'</span>'
+          +'<span class="fp-schedule-task">'+esc(b.label)+'</span>'
+          +'</div>';
+      }).join('');
+      var badgeColor=CLASS_BADGE_COLOR[p.aliasClass]||'cyan';
+      content.innerHTML=
+        '<div class="gallery-preview-profile-header">'
+        +'<span class="gallery-preview-icon">'+p.icon+'</span>'
+        +'<div><div class="gallery-preview-name">'+esc(p.name)+'</div>'
+        +'<div class="gallery-preview-class"><span class="badge '+badgeColor+'">'+esc(p.aliasClass)+'</span> &nbsp;Stream '+esc(p.stream)+'</div></div>'
+        +'</div>'
+        +'<div class="gallery-preview-tagline">'+esc(p.tagline)+'</div>'
+        +'<div class="gallery-preview-schedule-title">A day in the life</div>'
+        +'<div class="gallery-preview-blocks">'+scheduleRows+'</div>'
+        +'<div class="gallery-preview-actions">'
+        +'<button class="gallery-preview-use-btn" onclick="selectTemplate(\''+p.id+'\');unlockGenesisCard()">&#8594; Use This Template</button>'
+        +'<button class="gallery-preview-alias-btn" onclick="startAliasFromGallery(\''+p.id+'\')">&#127917; Use as Alias</button>'
+        +'<button class="gallery-preview-close-btn" onclick="closeInlinePreview()">&#10006; Close</button>'
+        +'</div>';
+      // Update robot speech based on archetype
+      var archetypeComments={
+        'deep-work-nocturnal':'Night owl energy! Great for deep focus sessions.',
+        'pain-driven-creative':'Creative fire — emotion becomes output.',
+        'structured-research':'Disciplined and data-driven. Morning peak performer.',
+        'stoic-morning-ruler':'Dawn starter. Journals before the world wakes up.',
+        'flexible-chaotic':'Flexible and spontaneous — high variance, high energy.',
+        'systems-care-rotational':'Structured care cycles. Good for healers and helpers.',
+        'analytical-visionary':'Abstract thinker, afternoon builder. Deep technical work.',
+        'service-flexible-shift':'Community-first, shift-based. Social energy blocks.'
+      };
+      var speechEl=$('speech-preview');
+      if(speechEl)speechEl.textContent=archetypeComments[p.archetype]||'A solid choice — check out their day!';
+      // Show the panel and smooth scroll to it
+      panel.style.display='';
+      panel.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+    function closeInlinePreview(){
+      var panel=$('gallery-inline-preview');
+      if(panel)panel.style.display='none';
     }
     function openProfileAndDetail(profileId){
-      openProfileGallery();
-      // Short delay allows the gallery modal's grid to render before showing the detail view.
-      setTimeout(function(){showProfileDetail(profileId)},50);
+      openInlinePreview(profileId);
     }
     function browseAllProfiles(){
       openProfileGallery();
@@ -2546,10 +2728,20 @@
       var card=document.querySelector('.genesis-card');
       var alias=document.querySelector('.alias-entry-section');
       var recovery=document.querySelector('.recovery-entry-section');
-      if(card)card.classList.remove('onboarding-locked');
+      if(card){
+        card.classList.remove('onboarding-locked');
+        // Play unlock animation
+        card.classList.add('genesis-card-unlocking');
+        card.addEventListener('animationend',function(){
+          card.classList.remove('genesis-card-unlocking');
+          // Brief cyan pulse on Level 1 Guided card to draw attention
+          var al1=$('al-1');
+          if(al1){al1.classList.add('assist-card-pulse');setTimeout(function(){al1.classList.remove('assist-card-pulse');},2200);}
+        },{once:true});
+        card.scrollIntoView({behavior:'smooth',block:'start'});
+      }
       if(alias)alias.classList.remove('onboarding-locked');
       if(recovery)recovery.classList.remove('onboarding-locked');
-      if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
     }
     function dismissFeaturedProfiles(){
       unlockGenesisCard();
@@ -2772,7 +2964,7 @@
     function showRobotPhase(phaseId){
       document.body.classList.add('robot-phase-active');
       // Hide all phase bubbles first
-      ['speech-phase1','speech-phase2','speech-congrats'].forEach(function(id){
+      ['speech-phase1','speech-phase2','speech-phase3','speech-congrats'].forEach(function(id){
         var el=$(id);if(el)el.classList.remove('phase-active');
       });
       var target=$(phaseId);
@@ -2812,20 +3004,37 @@
       },1400);
     }
 
-    /* Phase 2: show Get Started CTA + start inactivity glow timer */
+    /* Phase 2: show Get Started CTA + start 60s countdown to Phase 3 nagging */
     function startRobotPhase2(){
       showRobotPhase('speech-phase2');
-      // After 60s of inactivity, glow the Get Started button as an adaptive hint
+      // After 60s (not reset by activity — we always want to nag after 60s), start Phase 3
       if(_inactivityTimer)clearTimeout(_inactivityTimer);
-      _inactivityTimer=setTimeout(function(){
+      _inactivityTimer=setTimeout(startRobotPhase3,60000);
+    }
+
+    /* Phase 3: alternate between urge message and free-for-life every 8s */
+    function startRobotPhase3(){
+      if(_pioneerUnlocked)return;
+      var _phase3Alt=false;
+      function _togglePhase3(){
+        if(_pioneerUnlocked){if(_phase3Timer)clearTimeout(_phase3Timer);return;}
+        _phase3Alt=!_phase3Alt;
         var btn=$('get-started-btn');
-        if(btn&&!_pioneerUnlocked)btn.classList.add('gs-glow');
-      },60000);
+        if(_phase3Alt){
+          showRobotPhase('speech-phase3');
+          if(btn)btn.classList.add('gs-glow');
+        }else{
+          showRobotPhase('speech-phase2');
+        }
+        _phase3Timer=setTimeout(_togglePhase3,8000);
+      }
+      _togglePhase3();
     }
 
     /* Get Started button handler — opens Trade Window */
     function handleGetStarted(){
       if(_inactivityTimer){clearTimeout(_inactivityTimer);_inactivityTimer=null;}
+      if(_phase3Timer){clearTimeout(_phase3Timer);_phase3Timer=null;}
       var btn=$('get-started-btn');if(btn)btn.classList.remove('gs-glow');
       if(!_tradeWindowAccepted&&!sessionMode&&localStorage.getItem('ferros_profile')===null){
         showTradeDialog(_onGetStartedAccept);
@@ -2869,9 +3078,28 @@
         row.classList.add('companion-visible');
         setTimeout(function(){row.classList.add('companion-enter');},50);
       }
-      // Switch hero robot speech (if still showing) to congrats
+      // Switch hero robot speech to congrats, then after a few seconds switch to click-prompt
       var phase2=$('speech-phase2');if(phase2)phase2.classList.remove('phase-active');
-      // Companion has its own speech bubble (speech-congrats-ach) already shown
+      var ach1=$('speech-ach-1');if(ach1){ach1.classList.add('phase-active');}
+      var ach2=$('speech-ach-2');if(ach2)ach2.classList.remove('phase-active');
+    }
+
+    /* Toggle achievement diagram open/closed — only one open at a time */
+    function toggleAchDiagram(card, extraCb){
+      var wasActive=card.classList.contains('ach-active');
+      // Close all open diagrams
+      document.querySelectorAll('.genesis-ach-card.ach-active').forEach(function(c){c.classList.remove('ach-active');});
+      // Open this one if it wasn't already open
+      if(!wasActive){
+        card.classList.add('ach-active');
+        _achClickCount++;
+        // After 2 clicks, switch robot speech to the next-step prompt
+        if(_achClickCount>=2){
+          var ach1=$('speech-ach-1');if(ach1)ach1.classList.remove('phase-active');
+          var ach2=$('speech-ach-2');if(ach2)ach2.classList.add('phase-active');
+        }
+      }
+      if(extraCb)extraCb();
     }
 
     /* Unlock the Discover Profiles achievement (second achievement chain) */
