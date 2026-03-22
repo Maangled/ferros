@@ -645,6 +645,7 @@
     .trade-robot-speech{background:var(--bg-card);border:1px solid var(--accent-cyan);border-radius:8px;color:var(--accent-cyan);font-size:.75rem;font-weight:600;padding:6px 12px;display:inline-block;max-width:100%;position:relative}
     .trade-robot-speech::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--accent-cyan)}
     /* Genesis Card unlock animation */
+    /* Temporary class applied by unlockGenesisCard() then removed via animationend listener */
     @keyframes genesisUnlock{0%{transform:scale(.95);opacity:.4;box-shadow:none}50%{transform:scale(1.02);box-shadow:0 0 30px rgba(45,212,191,.4)}100%{transform:scale(1);opacity:1;box-shadow:var(--shadow-panel)}}
     .genesis-card-unlocking{animation:genesisUnlock .8s ease-out forwards}
     @keyframes assistCardPulse{0%,100%{border-color:var(--border-dim)}50%{border-color:var(--accent-cyan);box-shadow:0 0 14px rgba(45,212,191,.4)}}
