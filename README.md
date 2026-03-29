@@ -125,7 +125,8 @@ ferros/
     ├── ferros-showcase.html               # Public showcase / landing page
     ├── home-hud-dashboard.html            # Smart home HUD prototype
     ├── personal-profile.html              # Personal progression profile (PRIMARY PROTOTYPE)
-    └── schedule-ledger.html               # Schedule/habit ledger prototype
+    ├── schedule-ledger.html               # Schedule/habit ledger prototype
+    └── algo-trading-arena.html            # Gamified algorithmic trading platform example
 ```
 
 Source code for the kernel, bootloader, and services will be organized by subsystem as development progresses.
@@ -144,6 +145,7 @@ These self-contained HTML documents serve as both design targets and milestone v
 | [`docs/schedule-ledger.html`](./docs/schedule-ledger.html) | Personal Schedule Ledger — newspaper-themed interactive schedule editor with My Feed viewer, 5-step editor wizard, visual map (year/week/day views), and localStorage persistence |
 | [`docs/personal-profile.html`](./docs/personal-profile.html) | RPG-style personal progression dashboard with skill trees, achievements, XP tracking, and ADA-conscious assistance levels (Guided → Director) |
 | [`docs/deployment-roadmap.html`](./docs/deployment-roadmap.html) | Technical deployment roadmap with concrete timelines, hardware plans, Gantt chart, interactive cost calculator, and risk register for the 7-home cluster |
+| [`docs/algo-trading-arena.html`](./docs/algo-trading-arena.html) | AI-centric gamified algorithmic trading platform — card-based stock trading (Marvel Snap + Runeterra), lottery scratchers, idle mechanics, Genesis creatures, loot boxes, NFT ticket gallery, and AI trading agents |
 
 ---
 

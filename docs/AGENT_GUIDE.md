@@ -214,6 +214,7 @@ These have been attempted or will be attempted by future agents. Avoid them.
 | `docs/agent-command-center.html` | Agent task UI | ⚠️ Separate concern |
 | `docs/home-hud-dashboard.html` | Smart home HUD prototype | ⚠️ Separate concern |
 | `docs/schedule-ledger.html` | Schedule/habit ledger | ⚠️ Separate concern |
+| `docs/algo-trading-arena.html` | Gamified trading platform example page | ⚠️ Separate concern |
 | `README.md` | Repo overview | ✅ Update when major features land |
 
 ---
