@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="scratcher" data-version="1.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Asset: Scratcher Ticket</title>
+<!--
+  ╔══════════════════════════════════════════════════╗
+  ║  FERROS ASSET: scratcher                         ║
+  ║  Control Levels: DEMO | PREVIEW | PLAY           ║
+  ║  Dependencies: none                              ║
+  ║  Tiers: Tech $5 | Blue Chip $25 | Mega Pick $100 ║
+  ╚══════════════════════════════════════════════════╝
+-->
+<style>
+/* === FERROS DESIGN TOKENS === */
+:root {
+  --bg-base: #0a0c10; --bg-panel: #111520; --bg-card: #161b28;
+  --bg-card-alt: #1a2035; --bg-highlight: #1e2840;
+  --border-dim: #1e2a3a; --border-accent: #2a3f5f; --border-bright: #3a5a8f;
+  --text-primary: #e8edf5; --text-secondary: #8fa0b8; --text-dim: #5a6a80; --text-code: #7eb8e8;
+  --accent-blue: #4a90d9; --accent-cyan: #2dd4bf; --accent-green: #34d399;
+  --accent-amber: #f59e0b; --accent-red: #f87171; --accent-purple: #a78bfa;
+  --accent-pink: #f472b6; --accent-orange: #fb923c;
+  --gradient-card: linear-gradient(145deg, #161b28 0%, #111520 100%);
+  --shadow-card: 0 2px 12px rgba(0,0,0,0.4);
+  --radius-card: 8px; --radius-panel: 12px;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
+
+/* === SCRATCHER STORE === */
+.scratcher-store { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 1.5rem; }
+.scratcher-tier { background: var(--bg-card); border: 2px solid var(--border-dim); border-radius: 10px; padding: 20px; text-align: center; transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s; cursor: pointer; position: relative; overflow: hidden; }
+.scratcher-tier::before { content: ''; position: absolute; top: -60%; left: -60%; width: 220%; height: 220%; background: conic-gradient(transparent, rgba(245,158,11,0.1), transparent 30%); animation: ticketShimmer 10s linear infinite; pointer-events: none; }
+.scratcher-tier:hover { border-color: var(--accent-amber); transform: translateY(-5px); box-shadow: 0 0 20px rgba(245,158,11,0.2); }
+.scratcher-tier.selected { border-color: var(--accent-cyan); box-shadow: 0 0 16px rgba(45,212,191,0.2); }
+.scratcher-tier-icon { font-size: 2.5rem; margin-bottom: 8px; }
+.scratcher-tier-name { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.scratcher-tier-price { font-family: var(--font-mono); font-size: 1.1rem; color: var(--accent-amber); font-weight: 700; margin-bottom: 8px; }
+.scratcher-tier-desc { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 12px; line-height: 1.5; }
+.scratcher-buy-btn { background: var(--accent-cyan); color: var(--bg-base); border: none; padding: 6px 16px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: filter 0.2s; }
+.scratcher-buy-btn:hover { filter: brightness(1.15); }
+
+/* === SCRATCHER CANVAS === */
+.scratcher-wrap { display: flex; justify-content: center; margin: 1.5rem 0; }
+.scratcher { position: relative; width: 340px; height: 220px; border-radius: 12px; overflow: hidden; cursor: crosshair; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+.scratcher-under { position: absolute; inset: 0; background: var(--bg-card); padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.scratcher-reveal { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; }
+.scratcher-reveal.r1 { color: var(--accent-amber); }
+.scratcher-reveal.r2 { color: var(--accent-cyan); }
+.scratcher-reveal.r3 { color: var(--accent-green); }
+.scratcher-label { font-size: 0.72rem; color: var(--text-dim); }
+.scratcher canvas { position: absolute; inset: 0; }
+.scratcher-hint { text-align: center; font-size: 0.75rem; color: var(--text-dim); margin-top: 8px; }
+
+/* === CONFETTI === */
+.confetti-container { position: fixed; inset: 0; pointer-events: none; z-index: 9999; overflow: hidden; }
+.confetti-piece { position: absolute; width: 8px; height: 8px; top: -10px; opacity: 0; }
+
+/* === ANIMATIONS === */
+@keyframes ticketShimmer { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes confettiFall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+@keyframes demoScratch { 0% { cx: 60; cy: 60; } 15% { cx: 280; cy: 60; } 30% { cx: 60; cy: 110; } 45% { cx: 280; cy: 110; } 60% { cx: 60; cy: 160; } 75% { cx: 280; cy: 160; } 100% { cx: 170; cy: 110; } }
+
+/* === CONTROL MODES === */
+[data-control="demo"] .scratcher { cursor: default; }
+[data-control="demo"] .scratcher-tier { cursor: default; pointer-events: none; }
+[data-control="demo"] .scratcher-buy-btn { pointer-events: none; }
+[data-control="preview"] .scratcher { cursor: help; }
+[data-control="preview"] .scratcher-buy-btn { cursor: help; pointer-events: none; }
+
+/* === STANDALONE LAYOUT === */
+.asset-showcase { padding: 24px; max-width: 720px; margin: 0 auto; }
+.asset-showcase h2 { text-align: center; font-size: 1.2rem; color: var(--accent-amber); margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div id="ferros-asset-root" data-control="demo">
+  <div class="asset-showcase">
+    <h2>Scratcher Tickets</h2>
+
+    <!-- Tier Store -->
+    <div class="scratcher-store">
+      <div class="scratcher-tier selected" data-tier="tech" onclick="buyScratcher('tech')">
+        <div class="scratcher-tier-icon">💻</div>
+        <div class="scratcher-tier-name">Tech Scratcher</div>
+        <div class="scratcher-tier-price">$5</div>
+        <div class="scratcher-tier-desc">Common tech stock picks. 1-in-10 chance for a rare pull.</div>
+        <button class="scratcher-buy-btn" onclick="event.stopPropagation(); buyScratcher('tech')">Buy &amp; Scratch</button>
+      </div>
+      <div class="scratcher-tier" data-tier="bluechip" onclick="buyScratcher('bluechip')">
+        <div class="scratcher-tier-icon">💎</div>
+        <div class="scratcher-tier-name">Blue Chip</div>
+        <div class="scratcher-tier-price">$25</div>
+        <div class="scratcher-tier-desc">Premium blue-chip picks. Guaranteed uncommon or better.</div>
+        <button class="scratcher-buy-btn" onclick="event.stopPropagation(); buyScratcher('bluechip')">Buy &amp; Scratch</button>
+      </div>
+      <div class="scratcher-tier" data-tier="mega" onclick="buyScratcher('mega')">
+        <div class="scratcher-tier-icon">🔥</div>
+        <div class="scratcher-tier-name">Mega Pick</div>
+        <div class="scratcher-tier-price">$100</div>
+        <div class="scratcher-tier-desc">Legendary odds. Possible mythic pull with confetti blast!</div>
+        <button class="scratcher-buy-btn" onclick="event.stopPropagation(); buyScratcher('mega')">Buy &amp; Scratch</button>
+      </div>
+    </div>
+
+    <!-- Scratcher Area -->
+    <div class="scratcher-wrap">
+      <div class="scratcher" id="scratcher-main">
+        <div class="scratcher-under" id="scratcher-reveal">
+          <div class="scratcher-label">-- Prize 1 --</div>
+          <div class="scratcher-reveal r1" id="reveal-1">NVDA +$42.50</div>
+          <div class="scratcher-label">-- Prize 2 --</div>
+          <div class="scratcher-reveal r2" id="reveal-2">AMD +$18.20</div>
+          <div class="scratcher-label">-- Prize 3 --</div>
+          <div class="scratcher-reveal r3" id="reveal-3">TSLA +$91.00</div>
+        </div>
+        <canvas id="scratcher-canvas" width="340" height="220"></canvas>
+      </div>
+    </div>
+    <div class="scratcher-hint" id="scratcher-hint">Scratch the card to reveal your prizes!</div>
+
+    <!-- Confetti Container -->
+    <div class="confetti-container" id="confetti-container"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+  var root = document.getElementById('ferros-asset-root');
+  var isEmbedded = window.parent !== window;
+  var params = new URLSearchParams(window.location.search);
+  var control = params.get('control') || 'demo';
+
+  /* === FERROS ASSET PROTOCOL === */
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'ferros:init') {
+      control = e.data.config.control || control;
+      applyControl();
+    }
+    if (e.data && e.data.type === 'ferros:update' && e.data.payload) {
+      handleUpdate(e.data.payload);
+    }
+  });
+
+  function applyControl() {
+    root.dataset.control = control;
+    if (control === 'demo') startDemoMode();
+  }
+
+  function emit(event, payload) {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:event', asset: 'scratcher', event: event, payload: payload }, '*');
+    }
+  }
+
+  function reportSize() {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:resize', asset: 'scratcher', width: root.scrollWidth, height: root.scrollHeight }, '*');
+    }
+  }
+
+  function handleUpdate(data) {
+    if (data.tier) buyScratcher(data.tier);
+  }
+
+  /* === PRIZE DATA === */
+  var tierPrizes = {
+    tech: {
+      prizes: [
+        { label: 'NVDA +$42.50', cls: 'r1' },
+        { label: 'AMD +$18.20', cls: 'r2' },
+        { label: 'INTC +$5.30', cls: 'r3' }
+      ]
+    },
+    bluechip: {
+      prizes: [
+        { label: 'MSFT +$86.00', cls: 'r1' },
+        { label: 'AAPL +$53.40', cls: 'r2' },
+        { label: 'GOOG +$72.10', cls: 'r3' }
+      ]
+    },
+    mega: {
+      prizes: [
+        { label: 'TSLA +$210.00', cls: 'r1' },
+        { label: 'BTC +$3,420.00', cls: 'r2' },
+        { label: 'MYTHIC CARD!', cls: 'r1' }
+      ]
+    }
+  };
+  var currentTier = 'tech';
+  var scratched = false;
+  var scratchPercent = 0;
+
+  /* === CANVAS SETUP === */
+  var canvas = document.getElementById('scratcher-canvas');
+  var ctx = canvas.getContext('2d');
+  var isDrawing = false;
+
+  function drawCover() {
+    ctx.globalCompositeOperation = 'source-over';
+    var grad = ctx.createLinearGradient(0, 0, 340, 220);
+    grad.addColorStop(0, '#1e2840');
+    grad.addColorStop(0.5, '#2a3f5f');
+    grad.addColorStop(1, '#1e2840');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 340, 220);
+
+    /* Shimmer dots */
+    ctx.fillStyle = 'rgba(245,158,11,0.08)';
+    for (var i = 0; i < 40; i++) {
+      ctx.beginPath();
+      ctx.arc(Math.random() * 340, Math.random() * 220, Math.random() * 3 + 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    /* Text */
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 22px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('SCRATCH HERE', 170, 105);
+    ctx.fillStyle = '#5a6a80';
+    ctx.font = '12px monospace';
+    ctx.fillText('FERROS SCRATCHER', 170, 135);
+
+    /* Tier icon */
+    ctx.font = '36px sans-serif';
+    ctx.fillText(currentTier === 'mega' ? '🔥' : currentTier === 'bluechip' ? '💎' : '💻', 170, 70);
+
+    scratchPercent = 0;
+    scratched = false;
+  }
+
+  function scratch(x, y) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
+    ctx.fill();
+    checkScratchProgress();
+  }
+
+  function checkScratchProgress() {
+    var imageData = ctx.getImageData(0, 0, 340, 220);
+    var pixels = imageData.data;
+    var total = pixels.length / 4;
+    var cleared = 0;
+    for (var i = 3; i < pixels.length; i += 4) {
+      if (pixels[i] === 0) cleared++;
+    }
+    scratchPercent = (cleared / total) * 100;
+    if (scratchPercent > 55 && !scratched) {
+      scratched = true;
+      revealFull();
+    }
+  }
+
+  function revealFull() {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillRect(0, 0, 340, 220);
+    var hint = document.getElementById('scratcher-hint');
+    hint.textContent = 'Prizes revealed! Buy another ticket to play again.';
+    hint.style.color = 'var(--accent-green)';
+
+    emit('scratch-revealed', {
+      tier: currentTier,
+      prizes: tierPrizes[currentTier].prizes.map(function(p) { return p.label; })
+    });
+
+    if (currentTier === 'mega') spawnConfetti();
+  }
+
+  /* === MOUSE / TOUCH EVENTS === */
+  canvas.addEventListener('mousedown', function(e) {
+    if (control === 'demo') return;
+    isDrawing = true;
+    var rect = canvas.getBoundingClientRect();
+    scratch(e.clientX - rect.left, e.clientY - rect.top);
+  });
+  canvas.addEventListener('mousemove', function(e) {
+    if (!isDrawing || control === 'demo') return;
+    var rect = canvas.getBoundingClientRect();
+    scratch(e.clientX - rect.left, e.clientY - rect.top);
+  });
+  canvas.addEventListener('mouseup', function() { isDrawing = false; });
+  canvas.addEventListener('mouseleave', function() { isDrawing = false; });
+
+  canvas.addEventListener('touchstart', function(e) {
+    if (control === 'demo') return;
+    e.preventDefault();
+    isDrawing = true;
+    var rect = canvas.getBoundingClientRect();
+    var t = e.touches[0];
+    scratch(t.clientX - rect.left, t.clientY - rect.top);
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    if (!isDrawing || control === 'demo') return;
+    e.preventDefault();
+    var rect = canvas.getBoundingClientRect();
+    var t = e.touches[0];
+    scratch(t.clientX - rect.left, t.clientY - rect.top);
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() { isDrawing = false; });
+
+  /* === BUY / CHANGE TIER === */
+  window.buyScratcher = function(tier) {
+    if (control === 'demo') return;
+    currentTier = tier;
+    /* Update selection */
+    var tiers = document.querySelectorAll('.scratcher-tier');
+    tiers.forEach(function(t) { t.classList.remove('selected'); });
+    var sel = document.querySelector('[data-tier="' + tier + '"]');
+    if (sel) sel.classList.add('selected');
+
+    /* Update reveal content */
+    var prizes = tierPrizes[tier].prizes;
+    document.getElementById('reveal-1').textContent = prizes[0].label;
+    document.getElementById('reveal-1').className = 'scratcher-reveal ' + prizes[0].cls;
+    document.getElementById('reveal-2').textContent = prizes[1].label;
+    document.getElementById('reveal-2').className = 'scratcher-reveal ' + prizes[1].cls;
+    document.getElementById('reveal-3').textContent = prizes[2].label;
+    document.getElementById('reveal-3').className = 'scratcher-reveal ' + prizes[2].cls;
+
+    /* Reset hint */
+    var hint = document.getElementById('scratcher-hint');
+    hint.textContent = 'Scratch the card to reveal your prizes!';
+    hint.style.color = '';
+
+    /* Redraw cover */
+    drawCover();
+  };
+
+  /* === CONFETTI === */
+  function spawnConfetti() {
+    var container = document.getElementById('confetti-container');
+    var colors = ['#f59e0b', '#2dd4bf', '#f87171', '#a78bfa', '#34d399', '#f472b6', '#fb923c'];
+    for (var i = 0; i < 60; i++) {
+      var piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.random() * 100 + '%';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.width = (Math.random() * 8 + 4) + 'px';
+      piece.style.height = (Math.random() * 8 + 4) + 'px';
+      piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+      piece.style.animation = 'confettiFall ' + (Math.random() * 2 + 1.5) + 's ease-out ' + (Math.random() * 0.5) + 's forwards';
+      container.appendChild(piece);
+    }
+    setTimeout(function() { container.innerHTML = ''; }, 4000);
+  }
+
+  /* === DEMO MODE === */
+  function startDemoMode() {
+    var demoPoints = [
+      { x: 60, y: 60 }, { x: 120, y: 60 }, { x: 180, y: 60 }, { x: 240, y: 60 }, { x: 280, y: 60 },
+      { x: 60, y: 110 }, { x: 120, y: 110 }, { x: 180, y: 110 }, { x: 240, y: 110 }, { x: 280, y: 110 },
+      { x: 60, y: 160 }, { x: 120, y: 160 }, { x: 180, y: 160 }, { x: 240, y: 160 }, { x: 280, y: 160 }
+    ];
+    var idx = 0;
+    var interval;
+
+    function demoStep() {
+      if (idx >= demoPoints.length || scratched) {
+        clearInterval(interval);
+        /* After revealing, wait and restart */
+        setTimeout(function() {
+          if (control !== 'demo') return;
+          drawCover();
+          idx = 0;
+          interval = setInterval(demoStep, 200);
+        }, 4000);
+        return;
+      }
+      scratch(demoPoints[idx].x, demoPoints[idx].y);
+      idx++;
+    }
+
+    /* Start after short delay */
+    setTimeout(function() {
+      if (control !== 'demo') return;
+      interval = setInterval(demoStep, 200);
+    }, 1500);
+  }
+
+  /* === INIT === */
+  drawCover();
+  applyControl();
+  reportSize();
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+})();
+</script>
+</body>
+</html>

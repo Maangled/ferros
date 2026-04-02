@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="ticket-gallery" data-version="1.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Asset: NFT Sealed Trade Tickets</title>
+<!--
+  ╔══════════════════════════════════════════════════╗
+  ║  FERROS ASSET: ticket-gallery                    ║
+  ║  Control Levels: DEMO | PREVIEW | PLAY           ║
+  ║  Dependencies: none                              ║
+  ║  Sealed trade ticket NFT display                 ║
+  ╚══════════════════════════════════════════════════╝
+-->
+<style>
+/* === FERROS DESIGN TOKENS === */
+:root {
+  --bg-base: #0a0c10; --bg-panel: #111520; --bg-card: #161b28; --bg-card-alt: #1a2035; --bg-highlight: #1e2840;
+  --border-dim: #1e2a3a; --border-accent: #2a3f5f; --border-bright: #3a5a8f;
+  --text-primary: #e8edf5; --text-secondary: #8fa0b8; --text-dim: #5a6a80; --text-code: #7eb8e8;
+  --accent-blue: #4a90d9; --accent-cyan: #2dd4bf; --accent-green: #34d399; --accent-amber: #f59e0b;
+  --accent-red: #f87171; --accent-purple: #a78bfa; --accent-pink: #f472b6; --accent-orange: #fb923c;
+  --gradient-header: linear-gradient(135deg, #0d1b35 0%, #0a1525 50%, #091020 100%);
+  --gradient-card: linear-gradient(145deg, #161b28 0%, #111520 100%);
+  --gradient-accent: linear-gradient(90deg, #4a90d9 0%, #2dd4bf 100%);
+  --shadow-panel: 0 4px 24px rgba(0,0,0,0.6); --shadow-card: 0 2px 12px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 12px rgba(74,144,217,.35);
+  --radius-panel: 12px; --radius-card: 8px; --radius-badge: 4px;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
+
+/* === TICKET GALLERY === */
+.ticket-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  padding: 24px;
+}
+
+/* === TICKET CARD === */
+.ticket-card {
+  background: var(--gradient-card);
+  border: 2px solid rgba(45,212,191,0.4);
+  border-radius: var(--radius-panel);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.ticket-card::before {
+  content: '';
+  position: absolute;
+  top: -60%; left: -60%;
+  width: 220%; height: 220%;
+  background: conic-gradient(transparent, rgba(45,212,191,0.1), transparent 30%);
+  animation: ticketShimmer 7s linear infinite;
+  pointer-events: none;
+}
+.ticket-card::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(45,212,191,0.12);
+  border-radius: calc(var(--radius-panel) - 4px);
+  pointer-events: none;
+}
+.ticket-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 24px rgba(45,212,191,0.15);
+}
+
+/* Fan card variant (amber border) */
+.ticket-card.ticket-fan {
+  border-color: rgba(245,158,11,0.4);
+}
+.ticket-card.ticket-fan::before {
+  background: conic-gradient(transparent, rgba(245,158,11,0.1), transparent 30%);
+}
+.ticket-card.ticket-fan::after {
+  border-color: rgba(245,158,11,0.12);
+}
+.ticket-card.ticket-fan:hover {
+  box-shadow: 0 6px 24px rgba(245,158,11,0.15);
+}
+
+@keyframes ticketShimmer { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.ticket-ticker {
+  font-family: var(--font-mono); font-size: 1.2rem; font-weight: 800;
+  color: var(--accent-cyan); letter-spacing: 0.04em;
+  margin-bottom: 4px; position: relative; z-index: 1;
+}
+.ticket-fan .ticket-ticker { color: var(--accent-amber); }
+
+.ticket-fan-badge {
+  display: inline-block;
+  font-size: 0.55rem; font-family: var(--font-mono); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 1px 6px; border-radius: var(--radius-badge);
+  background: rgba(245,158,11,0.18); color: var(--accent-amber);
+  border: 1px solid rgba(245,158,11,0.35);
+  margin-left: 8px;
+}
+
+.ticket-date {
+  font-size: 0.68rem; color: var(--text-dim);
+  font-family: var(--font-mono);
+  margin-bottom: 12px; position: relative; z-index: 1;
+}
+
+.ticket-entry {
+  font-size: 0.72rem; color: var(--text-secondary);
+  margin-bottom: 8px; position: relative; z-index: 1;
+}
+
+.ticket-pnl {
+  font-family: var(--font-mono); font-size: 1.1rem; font-weight: 800;
+  margin-bottom: 14px; position: relative; z-index: 1;
+}
+.ticket-pnl.positive { color: var(--accent-green); }
+.ticket-pnl.negative { color: var(--accent-red); }
+
+.ticket-seal {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-badge);
+  position: relative; z-index: 1;
+}
+.ticket-seal-icon { font-size: 0.8rem; }
+.ticket-seal-label {
+  font-size: 0.58rem; color: var(--text-dim);
+  text-transform: uppercase; font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.ticket-seal-hash {
+  font-family: var(--font-mono); font-size: 0.62rem;
+  color: var(--text-code);
+}
+</style>
+</head>
+<body>
+<div id="ferros-asset-root" data-control="demo">
+  <div class="ticket-gallery">
+
+    <!-- Ticket 1: NVDA -->
+    <div class="ticket-card">
+      <div class="ticket-ticker">NVDA</div>
+      <div class="ticket-date">2026-01-15</div>
+      <div class="ticket-entry">Sealed Trade Ticket</div>
+      <div class="ticket-pnl positive">+11.4%</div>
+      <div class="ticket-seal">
+        <span class="ticket-seal-icon">&#x1F512;</span>
+        <div>
+          <div class="ticket-seal-label">Seal</div>
+          <div class="ticket-seal-hash">a3f8...c21d</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ticket 2: AAPL -->
+    <div class="ticket-card">
+      <div class="ticket-ticker">AAPL</div>
+      <div class="ticket-date">2025-11-02</div>
+      <div class="ticket-entry">Sealed Trade Ticket</div>
+      <div class="ticket-pnl positive">+8.9%</div>
+      <div class="ticket-seal">
+        <span class="ticket-seal-icon">&#x1F512;</span>
+        <div>
+          <div class="ticket-seal-label">Seal</div>
+          <div class="ticket-seal-hash">7b42...e09a</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ticket 3: WMG (Fan Card) -->
+    <div class="ticket-card ticket-fan">
+      <div class="ticket-ticker">&#x1F3B5; WMG <span class="ticket-fan-badge">Fan Card</span></div>
+      <div class="ticket-date">Day 1 Holder</div>
+      <div class="ticket-entry">Fan Card Collectible</div>
+      <div class="ticket-pnl positive" style="color: var(--accent-amber);">&#x2B50; Commemorative</div>
+      <div class="ticket-seal">
+        <span class="ticket-seal-icon">&#x1F512;</span>
+        <div>
+          <div class="ticket-seal-label">Seal</div>
+          <div class="ticket-seal-hash">9c3e...d417</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+  var root = document.getElementById('ferros-asset-root');
+  var isEmbedded = window.parent !== window;
+  var params = new URLSearchParams(window.location.search);
+  var control = params.get('control') || 'demo';
+
+  /* === FERROS ASSET PROTOCOL === */
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'ferros:init') {
+      control = e.data.config.control || control;
+      applyControl();
+    }
+  });
+
+  function applyControl() {
+    root.dataset.control = control;
+  }
+
+  function emit(event, payload) {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:event', asset: 'ticket-gallery', event: event, payload: payload }, '*');
+    }
+  }
+
+  function reportSize() {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:resize', asset: 'ticket-gallery', width: root.scrollWidth, height: root.scrollHeight }, '*');
+    }
+  }
+
+  applyControl();
+  reportSize();
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+})();
+</script>
+</body>
+</html>

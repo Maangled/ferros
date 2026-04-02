@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="deck-builder" data-version="1.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Asset: Deck Builder</title>
+<!--
+  ╔══════════════════════════════════════════════════╗
+  ║  FERROS ASSET: deck-builder                      ║
+  ║  Control Levels: DEMO | PREVIEW | PLAY           ║
+  ║  Dependencies: none                              ║
+  ║  Archetypes: Dividend Kings | Momentum Blitz |   ║
+  ║   Value Deep | Sector Siege | Index Shield       ║
+  ╚══════════════════════════════════════════════════╝
+-->
+<style>
+/* === FERROS DESIGN TOKENS === */
+:root {
+  --bg-base: #0a0c10; --bg-panel: #111520; --bg-card: #161b28;
+  --bg-card-alt: #1a2035; --bg-highlight: #1e2840;
+  --border-dim: #1e2a3a; --border-accent: #2a3f5f; --border-bright: #3a5a8f;
+  --text-primary: #e8edf5; --text-secondary: #8fa0b8; --text-dim: #5a6a80; --text-code: #7eb8e8;
+  --accent-blue: #4a90d9; --accent-cyan: #2dd4bf; --accent-green: #34d399;
+  --accent-amber: #f59e0b; --accent-red: #f87171; --accent-purple: #a78bfa;
+  --accent-pink: #f472b6; --accent-orange: #fb923c;
+  --gradient-card: linear-gradient(145deg, #161b28 0%, #111520 100%);
+  --shadow-card: 0 2px 12px rgba(0,0,0,0.4);
+  --radius-card: 8px; --radius-panel: 12px;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
+
+/* === DECK BUILDER === */
+.deck-builder { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin: 1.5rem 0; }
+.deck-collection {
+  background: var(--bg-panel); border: 1px solid var(--border-dim);
+  border-radius: var(--radius-panel); padding: 16px;
+}
+.deck-collection-title { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+.deck-collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+
+/* === DECK MINI CARD === */
+.deck-mini-card {
+  background: var(--bg-card); border: 2px solid var(--border-dim); border-radius: 8px;
+  padding: 10px 8px; text-align: center; cursor: grab;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  font-size: 0.75rem; aspect-ratio: 63/88;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.deck-mini-card::after {
+  content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+  width: 16px; height: 3px; border-radius: 2px; background: var(--border-dim);
+}
+.deck-mini-card:hover {
+  border-color: var(--accent-cyan); transform: scale(1.08) translateY(-3px);
+  box-shadow: 0 4px 16px rgba(45,212,191,0.15);
+}
+.deck-mini-card.dragging { opacity: 0.3; transform: scale(0.9); }
+.deck-mini-card.in-deck { opacity: 0.35; pointer-events: none; border-style: dashed; }
+.deck-mini-card .mini-ticker { font-family: var(--font-mono); font-weight: 800; color: var(--accent-cyan); font-size: 0.85rem; }
+.deck-mini-card .mini-name { color: var(--text-dim); font-size: 0.6rem; margin-top: 3px; }
+.deck-mini-card .mini-sector { color: var(--text-dim); font-size: 0.5rem; margin-top: 2px; opacity: 0.7; }
+
+/* === DECK SLOT === */
+.deck-slot {
+  background: var(--bg-panel); border: 1px solid var(--border-dim);
+  border-radius: var(--radius-panel); padding: 16px;
+}
+.deck-slot-title { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.deck-slot-count { font-size: 0.68rem; color: var(--text-dim); font-family: var(--font-mono); margin-bottom: 12px; }
+.deck-slot-list { display: flex; flex-direction: column; gap: 6px; }
+.deck-slot-item {
+  padding: 8px 12px; background: var(--bg-card); border-left: 3px solid var(--accent-cyan);
+  border-radius: 4px; font-family: var(--font-mono); font-size: 0.78rem;
+  color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;
+}
+.deck-slot-item .remove-btn {
+  background: none; border: none; color: var(--accent-red); cursor: pointer;
+  font-size: 0.85rem; opacity: 0.5; transition: opacity 0.2s;
+}
+.deck-slot-item .remove-btn:hover { opacity: 1; }
+.deck-slot-empty {
+  padding: 10px 12px; border: 1px dashed var(--border-accent); border-radius: 4px;
+  font-size: 0.7rem; color: var(--text-dim); text-align: center;
+}
+.deck-slot-drop-zone {
+  min-height: 40px; border: 2px dashed var(--border-dim); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem; color: var(--text-dim); transition: border-color 0.2s, background 0.2s;
+  margin-top: 8px; padding: 8px;
+}
+.deck-slot-drop-zone.drag-over {
+  border-color: var(--accent-cyan); background: rgba(45,212,191,0.05);
+}
+
+/* === ARCHETYPES === */
+.deck-archetypes { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.deck-archetype {
+  display: inline-block; padding: 4px 10px; border-radius: 4px;
+  font-size: 0.72rem; font-family: var(--font-mono); font-weight: 600;
+  cursor: pointer; transition: all 0.2s; border: 1px solid var(--border-dim);
+  background: var(--bg-card); color: var(--text-secondary);
+}
+.deck-archetype:hover { filter: brightness(1.2); }
+.deck-archetype.active { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(45,212,191,0.08); }
+.deck-archetype[data-arch="dividend"]  { --arch-color: var(--accent-green); }
+.deck-archetype[data-arch="momentum"]  { --arch-color: var(--accent-red); }
+.deck-archetype[data-arch="value"]     { --arch-color: var(--accent-blue); }
+.deck-archetype[data-arch="sector"]    { --arch-color: var(--accent-amber); }
+.deck-archetype[data-arch="index"]     { --arch-color: var(--accent-purple); }
+.deck-archetype.active { border-color: var(--arch-color, var(--accent-cyan)); color: var(--arch-color, var(--accent-cyan)); }
+
+@keyframes demoHighlight { 0%,100% { border-color: var(--border-dim); } 50% { border-color: var(--accent-cyan); box-shadow: 0 0 10px rgba(45,212,191,0.15); } }
+
+/* DEMO mode */
+[data-control="demo"] .deck-mini-card { cursor: default; pointer-events: none; }
+[data-control="demo"] .deck-archetype { pointer-events: none; }
+[data-control="demo"] .deck-slot-drop-zone { display: none; }
+[data-control="demo"] .remove-btn { display: none; }
+
+/* PREVIEW mode */
+[data-control="preview"] .deck-mini-card { cursor: default; }
+[data-control="preview"] .deck-slot-drop-zone { display: none; }
+[data-control="preview"] .remove-btn { display: none; }
+
+/* Standalone layout */
+.asset-showcase { padding: 24px; }
+</style>
+</head>
+<body>
+<div id="ferros-asset-root" data-control="demo">
+  <div class="asset-showcase">
+    <div class="deck-archetypes">
+      <button class="deck-archetype active" data-arch="dividend" data-tickers="JNJ,KO,PG,XOM,V">Dividend Kings</button>
+      <button class="deck-archetype" data-arch="momentum" data-tickers="NVDA,TSLA,AMZN,META,AAPL">Momentum Blitz</button>
+      <button class="deck-archetype" data-arch="value" data-tickers="BRK.B,JPM,JNJ,KO,PG">Value Deep</button>
+      <button class="deck-archetype" data-arch="sector" data-tickers="NVDA,AAPL,MSFT,GOOG,META">Sector Siege</button>
+      <button class="deck-archetype" data-arch="index" data-tickers="AAPL,MSFT,GOOG,AMZN,BRK.B">Index Shield</button>
+    </div>
+    <div class="deck-builder">
+      <div class="deck-collection">
+        <div class="deck-collection-title">COLLECTION (15)</div>
+        <div class="deck-collection-grid" id="collection-grid">
+          <div class="deck-mini-card" draggable="true" data-ticker="AAPL" data-sector="Tech"><div class="mini-ticker">AAPL</div><div class="mini-name">Apple</div><div class="mini-sector">Tech</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="MSFT" data-sector="Tech"><div class="mini-ticker">MSFT</div><div class="mini-name">Microsoft</div><div class="mini-sector">Tech</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="NVDA" data-sector="Tech"><div class="mini-ticker">NVDA</div><div class="mini-name">NVIDIA</div><div class="mini-sector">Tech</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="TSLA" data-sector="Auto"><div class="mini-ticker">TSLA</div><div class="mini-name">Tesla</div><div class="mini-sector">Auto</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="AMZN" data-sector="Retail"><div class="mini-ticker">AMZN</div><div class="mini-name">Amazon</div><div class="mini-sector">Retail</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="GOOG" data-sector="Tech"><div class="mini-ticker">GOOG</div><div class="mini-name">Alphabet</div><div class="mini-sector">Tech</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="META" data-sector="Tech"><div class="mini-ticker">META</div><div class="mini-name">Meta</div><div class="mini-sector">Tech</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="BRK.B" data-sector="Finance"><div class="mini-ticker">BRK.B</div><div class="mini-name">Berkshire</div><div class="mini-sector">Finance</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="JNJ" data-sector="Health"><div class="mini-ticker">JNJ</div><div class="mini-name">J&amp;J</div><div class="mini-sector">Health</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="V" data-sector="Finance"><div class="mini-ticker">V</div><div class="mini-name">Visa</div><div class="mini-sector">Finance</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="JPM" data-sector="Finance"><div class="mini-ticker">JPM</div><div class="mini-name">JPMorgan</div><div class="mini-sector">Finance</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="XOM" data-sector="Energy"><div class="mini-ticker">XOM</div><div class="mini-name">Exxon</div><div class="mini-sector">Energy</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="KO" data-sector="Consumer"><div class="mini-ticker">KO</div><div class="mini-name">Coca-Cola</div><div class="mini-sector">Consumer</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="PG" data-sector="Consumer"><div class="mini-ticker">PG</div><div class="mini-name">Procter&amp;Gamble</div><div class="mini-sector">Consumer</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="DIS" data-sector="Media"><div class="mini-ticker">DIS</div><div class="mini-name">Disney</div><div class="mini-sector">Media</div></div>
+        </div>
+      </div>
+      <div class="deck-slot">
+        <div class="deck-slot-title">ACTIVE DECK</div>
+        <div class="deck-slot-count" id="deck-count">5 / 5 cards</div>
+        <div class="deck-slot-list" id="deck-list">
+          <div class="deck-slot-item" data-ticker="JNJ"><span>JNJ</span><button class="remove-btn" title="Remove">&times;</button></div>
+          <div class="deck-slot-item" data-ticker="KO"><span>KO</span><button class="remove-btn" title="Remove">&times;</button></div>
+          <div class="deck-slot-item" data-ticker="PG"><span>PG</span><button class="remove-btn" title="Remove">&times;</button></div>
+          <div class="deck-slot-item" data-ticker="XOM"><span>XOM</span><button class="remove-btn" title="Remove">&times;</button></div>
+          <div class="deck-slot-item" data-ticker="V"><span>V</span><button class="remove-btn" title="Remove">&times;</button></div>
+        </div>
+        <div class="deck-slot-drop-zone" id="deck-drop-zone">Drop cards here</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+  var root = document.getElementById('ferros-asset-root');
+  var isEmbedded = window.parent !== window;
+  var params = new URLSearchParams(window.location.search);
+  var control = params.get('control') || 'demo';
+  var maxDeck = 5;
+  var demoTimer = null;
+
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'ferros:init') {
+      control = e.data.config.control || control;
+      applyControl();
+    }
+    if (e.data && e.data.type === 'ferros:update' && e.data.payload) {
+      updateDeck(e.data.payload);
+    }
+  });
+
+  function applyControl() {
+    root.dataset.control = control;
+    if (control === 'play') initDragDrop();
+    if (control === 'demo') startDemoLoop();
+    syncCollectionState();
+  }
+
+  function emit(event, payload) {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:event', asset: 'deck-builder', event: event, payload: payload }, '*');
+    }
+  }
+
+  function reportSize() {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:resize', asset: 'deck-builder', width: root.scrollWidth, height: root.scrollHeight }, '*');
+    }
+  }
+
+  // Get current deck tickers
+  function getDeckTickers() {
+    var items = root.querySelectorAll('#deck-list .deck-slot-item');
+    var tickers = [];
+    items.forEach(function(item) { tickers.push(item.dataset.ticker); });
+    return tickers;
+  }
+
+  // Sync collection card dim state
+  function syncCollectionState() {
+    var deckTickers = getDeckTickers();
+    root.querySelectorAll('.deck-mini-card').forEach(function(card) {
+      if (deckTickers.indexOf(card.dataset.ticker) >= 0) {
+        card.classList.add('in-deck');
+      } else {
+        card.classList.remove('in-deck');
+      }
+    });
+    var countEl = root.querySelector('#deck-count');
+    if (countEl) countEl.textContent = deckTickers.length + ' / ' + maxDeck + ' cards';
+  }
+
+  // Add card to deck
+  function addToDeck(ticker) {
+    var deckTickers = getDeckTickers();
+    if (deckTickers.length >= maxDeck) return;
+    if (deckTickers.indexOf(ticker) >= 0) return;
+    var list = root.querySelector('#deck-list');
+    var item = document.createElement('div');
+    item.className = 'deck-slot-item';
+    item.dataset.ticker = ticker;
+    item.innerHTML = '<span>' + ticker + '</span><button class="remove-btn" title="Remove">&times;</button>';
+    item.querySelector('.remove-btn').addEventListener('click', function() { removeFromDeck(ticker); });
+    list.appendChild(item);
+    syncCollectionState();
+    emit('deck-changed', { action: 'add', ticker: ticker, deck: getDeckTickers() });
+  }
+
+  // Remove card from deck
+  function removeFromDeck(ticker) {
+    var item = root.querySelector('#deck-list .deck-slot-item[data-ticker="' + ticker + '"]');
+    if (item) item.remove();
+    syncCollectionState();
+    emit('deck-changed', { action: 'remove', ticker: ticker, deck: getDeckTickers() });
+  }
+
+  // Drag-drop for PLAY mode
+  function initDragDrop() {
+    var dropZone = root.querySelector('#deck-drop-zone');
+    root.querySelectorAll('.deck-mini-card').forEach(function(card) {
+      card.addEventListener('dragstart', function(e) {
+        card.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', card.dataset.ticker);
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      card.addEventListener('dragend', function() {
+        card.classList.remove('dragging');
+      });
+    });
+    if (dropZone) {
+      dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+        dropZone.classList.add('drag-over');
+      });
+      dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('drag-over'); });
+      dropZone.addEventListener('drop', function(e) {
+        e.preventDefault(); dropZone.classList.remove('drag-over');
+        var ticker = e.dataTransfer.getData('text/plain');
+        if (ticker) addToDeck(ticker);
+      });
+    }
+    // Remove buttons
+    root.querySelectorAll('.remove-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var ticker = btn.closest('.deck-slot-item').dataset.ticker;
+        removeFromDeck(ticker);
+      });
+    });
+  }
+
+  // Archetype highlighting
+  function activateArchetype(archBtn) {
+    root.querySelectorAll('.deck-archetype').forEach(function(b) { b.classList.remove('active'); });
+    archBtn.classList.add('active');
+    var tickers = (archBtn.dataset.tickers || '').split(',');
+    root.querySelectorAll('.deck-mini-card').forEach(function(card) {
+      if (tickers.indexOf(card.dataset.ticker) >= 0) {
+        card.style.borderColor = 'var(--accent-cyan)';
+        card.style.boxShadow = '0 0 10px rgba(45,212,191,0.15)';
+      } else {
+        card.style.borderColor = '';
+        card.style.boxShadow = '';
+      }
+    });
+  }
+
+  // Archetype click handler (works in PREVIEW and PLAY)
+  root.querySelectorAll('.deck-archetype').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      if (control === 'demo') return;
+      activateArchetype(btn);
+    });
+  });
+
+  // DEMO mode: auto-cycle archetypes every 3s
+  function startDemoLoop() {
+    var archs = root.querySelectorAll('.deck-archetype');
+    var idx = 0;
+    activateArchetype(archs[idx]);
+    demoTimer = setInterval(function() {
+      idx = (idx + 1) % archs.length;
+      activateArchetype(archs[idx]);
+    }, 3000);
+  }
+
+  // Update deck data from parent
+  function updateDeck(data) {
+    if (!data.deck) return;
+    // Future: dynamically set deck contents
+  }
+
+  applyControl();
+  syncCollectionState();
+  reportSize();
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+})();
+</script>
+</body>
+</html>

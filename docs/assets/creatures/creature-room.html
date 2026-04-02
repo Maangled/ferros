@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="creature-room" data-version="1.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Asset: Genesis Lab Creature Room</title>
+<!--
+  ╔══════════════════════════════════════════════════╗
+  ║  FERROS ASSET: creature-room                     ║
+  ║  Control Levels: DEMO | PREVIEW | PLAY           ║
+  ║  Dependencies: none                              ║
+  ║  Actions: Feed | Play | Train                    ║
+  ╚══════════════════════════════════════════════════╝
+-->
+<style>
+/* === FERROS DESIGN TOKENS === */
+:root {
+  --bg-base: #0a0c10; --bg-panel: #111520; --bg-card: #161b28;
+  --bg-card-alt: #1a2035; --bg-highlight: #1e2840;
+  --border-dim: #1e2a3a; --border-accent: #2a3f5f; --border-bright: #3a5a8f;
+  --text-primary: #e8edf5; --text-secondary: #8fa0b8; --text-dim: #5a6a80; --text-code: #7eb8e8;
+  --accent-blue: #4a90d9; --accent-cyan: #2dd4bf; --accent-green: #34d399;
+  --accent-amber: #f59e0b; --accent-red: #f87171; --accent-purple: #a78bfa;
+  --accent-pink: #f472b6; --accent-orange: #fb923c;
+  --gradient-card: linear-gradient(145deg, #161b28 0%, #111520 100%);
+  --shadow-card: 0 2px 12px rgba(0,0,0,0.4);
+  --radius-card: 8px; --radius-panel: 12px;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
+
+/* === CREATURE ROOM === */
+.creature-room { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 1.5rem 0; }
+.creature-room-scene { background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); border: 1px solid var(--border-dim); border-radius: var(--radius-panel); padding: 30px; min-height: 280px; position: relative; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+.creature-room-scene::before { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 40%; background: linear-gradient(180deg, transparent, rgba(139,90,43,0.15)); }
+
+/* Scene elements */
+.cr-bed { font-size: 2.5rem; position: relative; z-index: 1; margin-right: 20px; }
+.creature-art { font-size: 4rem; position: relative; z-index: 1; filter: drop-shadow(0 0 12px rgba(245,158,11,0.3)); animation: creatureBob 3s ease-in-out infinite; }
+.cr-ambient { position: absolute; z-index: 0; opacity: 0.7; font-size: 1.5rem; }
+.cr-ambient-1 { top: 20px; left: 20px; animation: ambientDrift 6s ease-in-out infinite; }
+.cr-ambient-2 { top: 40px; right: 30px; animation: ambientDrift 8s ease-in-out infinite 1s; }
+.cr-ambient-3 { bottom: 60px; left: 40px; animation: ambientDrift 7s ease-in-out infinite 2s; }
+
+/* Stars in scene */
+.cr-stars { position: absolute; top: 0; left: 0; right: 0; height: 60%; z-index: 0; }
+.cr-star { position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%; animation: starTwinkle 3s ease-in-out infinite; }
+
+/* Action feedback */
+.cr-action-float { position: absolute; top: 50%; left: 50%; font-size: 1.5rem; pointer-events: none; opacity: 0; z-index: 10; animation: actionFloat 1.5s ease-out forwards; }
+@keyframes actionFloat { 0% { transform: translate(-50%, 0) scale(1); opacity: 1; } 100% { transform: translate(-50%, -60px) scale(1.4); opacity: 0; } }
+
+/* HUD */
+.creature-hud { background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: var(--radius-panel); padding: 20px; }
+.creature-name { font-size: 1.1rem; font-weight: 700; color: var(--accent-amber); margin-bottom: 2px; }
+.creature-stage { font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-dim); margin-bottom: 12px; display: inline-block; background: rgba(245,158,11,0.1); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(245,158,11,0.2); }
+.creature-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+.creature-stat { font-size: 0.75rem; color: var(--text-secondary); padding: 4px 8px; background: var(--bg-card); border-radius: 4px; }
+.creature-stat strong { color: var(--text-primary); }
+
+/* Meters */
+.creature-meters { margin: 10px 0; }
+.cr-meter { margin-bottom: 8px; }
+.cr-meter-label { font-size: 0.68rem; color: var(--text-dim); font-family: var(--font-mono); display: flex; justify-content: space-between; }
+.cr-meter-bar { height: 6px; background: var(--border-dim); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+.cr-meter-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+.cr-meter-fill.happiness { background: linear-gradient(90deg, var(--accent-amber), var(--accent-orange)); }
+.cr-meter-fill.xp { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); }
+
+/* Action Buttons */
+.cr-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.cr-action-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border-dim); background: var(--bg-card); color: var(--text-secondary); font-size: 0.78rem; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.cr-action-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(45,212,191,0.15); }
+.cr-action-btn:active { transform: translateY(0); }
+.cr-action-btn.feed:hover { border-color: var(--accent-amber); color: var(--accent-amber); box-shadow: 0 2px 8px rgba(245,158,11,0.15); }
+.cr-action-btn.train:hover { border-color: var(--accent-red); color: var(--accent-red); box-shadow: 0 2px 8px rgba(248,113,113,0.15); }
+
+/* Abilities */
+.creature-abilities { text-align: left; margin-top: 12px; }
+.creature-abilities h4 { font-size: 0.76rem; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+.creature-ability { font-size: 0.78rem; color: var(--accent-purple); padding: 4px 0; border-bottom: 1px solid var(--border-dim); transition: color 0.2s; }
+.creature-ability:last-child { border-bottom: none; }
+.creature-ability:hover { color: var(--accent-pink); }
+
+/* === ANIMATIONS === */
+@keyframes creatureBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes creatureBounce { 0% { transform: translateY(0) scale(1); } 25% { transform: translateY(-20px) scale(1.1); } 50% { transform: translateY(0) scale(1); } 75% { transform: translateY(-10px) scale(1.05); } 100% { transform: translateY(0) scale(1); } }
+@keyframes creatureEat { 0% { transform: scale(1); } 30% { transform: scale(1.15); } 60% { transform: scale(0.95); } 100% { transform: scale(1); } }
+@keyframes creatureFlex { 0% { transform: scale(1) rotate(0deg); } 25% { transform: scale(1.1) rotate(-5deg); } 50% { transform: scale(1.15) rotate(5deg); } 75% { transform: scale(1.1) rotate(-3deg); } 100% { transform: scale(1) rotate(0deg); } }
+@keyframes ambientDrift { 0%, 100% { transform: translateY(0) translateX(0); } 50% { transform: translateY(-10px) translateX(5px); } }
+@keyframes starTwinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* === CONTROL MODES === */
+[data-control="demo"] .cr-action-btn { cursor: default; }
+[data-control="demo"] .creature-ability { cursor: default; }
+[data-control="preview"] .cr-action-btn { cursor: help; }
+
+/* === STANDALONE LAYOUT === */
+.asset-showcase { padding: 24px; max-width: 720px; margin: 0 auto; }
+.asset-showcase > h2 { text-align: center; font-size: 1.2rem; color: var(--accent-amber); margin-bottom: 16px; }
+
+/* === RESPONSIVE === */
+@media (max-width: 580px) {
+  .creature-room { grid-template-columns: 1fr; }
+  .creature-room-scene { min-height: 200px; }
+}
+</style>
+</head>
+<body>
+<div id="ferros-asset-root" data-control="demo">
+  <div class="asset-showcase">
+    <h2>Genesis Lab - Creature Room</h2>
+
+    <div class="creature-room">
+      <!-- Scene -->
+      <div class="creature-room-scene" id="creature-scene">
+        <!-- Stars -->
+        <div class="cr-stars" id="cr-stars"></div>
+        <!-- Ambient creatures -->
+        <span class="cr-ambient cr-ambient-1">🐱</span>
+        <span class="cr-ambient cr-ambient-2">🐦</span>
+        <span class="cr-ambient cr-ambient-3">🐢</span>
+        <!-- Bed -->
+        <span class="cr-bed">🛏️</span>
+        <!-- Main Creature -->
+        <span class="creature-art" id="creature-main">🐉</span>
+      </div>
+
+      <!-- HUD -->
+      <div class="creature-hud">
+        <div class="creature-name" id="creature-name">Voltharion</div>
+        <div class="creature-stage" id="creature-stage-badge">Stage 3 - Juvenile</div>
+
+        <!-- Stats -->
+        <div class="creature-stats">
+          <div class="creature-stat"><strong>ATK</strong> <span id="stat-atk">78</span></div>
+          <div class="creature-stat"><strong>DEF</strong> <span id="stat-def">62</span></div>
+          <div class="creature-stat"><strong>SPD</strong> <span id="stat-spd">91</span></div>
+          <div class="creature-stat"><strong>WIS</strong> <span id="stat-wis">45</span></div>
+        </div>
+
+        <!-- Meters -->
+        <div class="creature-meters">
+          <div class="cr-meter">
+            <div class="cr-meter-label">
+              <span>Happiness</span>
+              <span id="meter-happiness-val">70%</span>
+            </div>
+            <div class="cr-meter-bar">
+              <div class="cr-meter-fill happiness" id="meter-happiness" style="width: 70%"></div>
+            </div>
+          </div>
+          <div class="cr-meter">
+            <div class="cr-meter-label">
+              <span>XP</span>
+              <span id="meter-xp-val">45%</span>
+            </div>
+            <div class="cr-meter-bar">
+              <div class="cr-meter-fill xp" id="meter-xp" style="width: 45%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="cr-actions">
+          <button class="cr-action-btn feed" onclick="creatureAction('feed')">🍖 Feed</button>
+          <button class="cr-action-btn" onclick="creatureAction('play')">🎾 Play</button>
+          <button class="cr-action-btn train" onclick="creatureAction('train')">⚔️ Train</button>
+        </div>
+
+        <!-- Abilities -->
+        <div class="creature-abilities">
+          <h4>Abilities</h4>
+          <div class="creature-ability" id="ability-1">⚡ Volt Surge — Lightning AoE attack</div>
+          <div class="creature-ability" id="ability-2">🛡️ Scale Ward — DEF boost for 3 turns</div>
+          <div class="creature-ability" id="ability-3">🔥 Inferno Breath — High damage, long cooldown</div>
+          <div class="creature-ability" id="ability-4">💨 Tailwind — SPD boost for party</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+  var root = document.getElementById('ferros-asset-root');
+  var isEmbedded = window.parent !== window;
+  var params = new URLSearchParams(window.location.search);
+  var control = params.get('control') || 'demo';
+
+  /* === FERROS ASSET PROTOCOL === */
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'ferros:init') {
+      control = e.data.config.control || control;
+      applyControl();
+    }
+    if (e.data && e.data.type === 'ferros:update' && e.data.payload) {
+      handleUpdate(e.data.payload);
+    }
+  });
+
+  function applyControl() {
+    root.dataset.control = control;
+    if (control === 'demo') startDemoMode();
+  }
+
+  function emit(event, payload) {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:event', asset: 'creature-room', event: event, payload: payload }, '*');
+    }
+  }
+
+  function reportSize() {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:resize', asset: 'creature-room', width: root.scrollWidth, height: root.scrollHeight }, '*');
+    }
+  }
+
+  function handleUpdate(data) {
+    if (data.name) document.getElementById('creature-name').textContent = data.name;
+    if (data.happiness !== undefined) setMeter('happiness', data.happiness);
+    if (data.xp !== undefined) setMeter('xp', data.xp);
+  }
+
+  /* === CREATURE STATE === */
+  var state = {
+    happiness: 70,
+    xp: 45,
+    atk: 78,
+    def: 62,
+    spd: 91,
+    wis: 45
+  };
+
+  /* === STARS GENERATION === */
+  function generateStars() {
+    var container = document.getElementById('cr-stars');
+    for (var i = 0; i < 20; i++) {
+      var star = document.createElement('div');
+      star.className = 'cr-star';
+      star.style.left = Math.random() * 100 + '%';
+      star.style.top = Math.random() * 100 + '%';
+      star.style.animationDelay = (Math.random() * 3) + 's';
+      star.style.animationDuration = (Math.random() * 2 + 2) + 's';
+      container.appendChild(star);
+    }
+  }
+
+  /* === METER UPDATES === */
+  function setMeter(type, value) {
+    value = Math.max(0, Math.min(100, value));
+    state[type] = value;
+    var fill = document.getElementById('meter-' + type);
+    var valEl = document.getElementById('meter-' + type + '-val');
+    if (fill) fill.style.width = value + '%';
+    if (valEl) valEl.textContent = Math.round(value) + '%';
+  }
+
+  function updateStatUI(stat, value) {
+    state[stat] = value;
+    var el = document.getElementById('stat-' + stat);
+    if (el) el.textContent = value;
+  }
+
+  /* === SCENE FEEDBACK === */
+  function showActionFloat(emoji) {
+    var scene = document.getElementById('creature-scene');
+    var float = document.createElement('span');
+    float.className = 'cr-action-float';
+    float.textContent = emoji;
+    scene.appendChild(float);
+    setTimeout(function() { float.remove(); }, 1500);
+  }
+
+  function playCreatureAnim(animName) {
+    var creature = document.getElementById('creature-main');
+    creature.style.animation = 'none';
+    void creature.offsetHeight;
+    creature.style.animation = animName + ' 0.8s ease, creatureBob 3s ease-in-out infinite 0.8s';
+  }
+
+  /* === CREATURE ACTIONS === */
+  window.creatureAction = function(action) {
+    if (control === 'demo') return;
+
+    switch (action) {
+      case 'feed':
+        setMeter('happiness', state.happiness + 12);
+        setMeter('xp', state.xp + 3);
+        showActionFloat('🍖');
+        playCreatureAnim('creatureEat');
+        break;
+
+      case 'play':
+        setMeter('happiness', state.happiness + 8);
+        setMeter('xp', state.xp + 5);
+        showActionFloat('🎾');
+        playCreatureAnim('creatureBounce');
+        break;
+
+      case 'train':
+        setMeter('xp', state.xp + 15);
+        setMeter('happiness', state.happiness - 5);
+        showActionFloat('⚔️');
+        playCreatureAnim('creatureFlex');
+
+        /* Small chance to boost a stat */
+        var stats = ['atk', 'def', 'spd', 'wis'];
+        var pick = stats[Math.floor(Math.random() * stats.length)];
+        updateStatUI(pick, state[pick] + 1);
+        break;
+    }
+
+    /* Level up check */
+    if (state.xp >= 100) {
+      setMeter('xp', 0);
+      var badge = document.getElementById('creature-stage-badge');
+      var stageNum = parseInt(badge.textContent.match(/\d+/)[0]) + 1;
+      var stageNames = { 4: 'Adolescent', 5: 'Adult', 6: 'Elder', 7: 'Ancient', 8: 'Mythic' };
+      var stageName = stageNames[stageNum] || 'Stage ' + stageNum;
+      badge.textContent = 'Stage ' + stageNum + ' - ' + stageName;
+      showActionFloat('⬆️');
+    }
+
+    emit('creature-action', { action: action, happiness: state.happiness, xp: state.xp, stats: { atk: state.atk, def: state.def, spd: state.spd, wis: state.wis } });
+  };
+
+  /* === DEMO MODE === */
+  var demoTimer = null;
+
+  function startDemoMode() {
+    var actions = ['feed', 'play', 'train'];
+    var idx = 0;
+
+    demoTimer = setInterval(function() {
+      if (control !== 'demo') { clearInterval(demoTimer); return; }
+
+      var action = actions[idx % actions.length];
+      idx++;
+
+      /* Perform the action in demo mode directly */
+      switch (action) {
+        case 'feed':
+          setMeter('happiness', state.happiness + 8);
+          setMeter('xp', state.xp + 2);
+          showActionFloat('🍖');
+          playCreatureAnim('creatureEat');
+          break;
+        case 'play':
+          setMeter('happiness', state.happiness + 5);
+          setMeter('xp', state.xp + 3);
+          showActionFloat('🎾');
+          playCreatureAnim('creatureBounce');
+          break;
+        case 'train':
+          setMeter('xp', state.xp + 10);
+          setMeter('happiness', Math.max(10, state.happiness - 3));
+          showActionFloat('⚔️');
+          playCreatureAnim('creatureFlex');
+          break;
+      }
+
+      /* Loop meters to stay interesting */
+      if (state.happiness > 95) state.happiness = 50;
+      if (state.xp > 90) {
+        setMeter('xp', 0);
+        showActionFloat('⬆️');
+      }
+    }, 3000);
+  }
+
+  /* === INIT === */
+  generateStars();
+  applyControl();
+  reportSize();
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="ai-float-panel" data-version="1.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Asset: AI Float Panel</title>
+<!--
+  ╔══════════════════════════════════════════════════╗
+  ║  FERROS ASSET: ai-float-panel                    ║
+  ║  Control Levels: DEMO | PREVIEW | PLAY           ║
+  ║  Dependencies: none                              ║
+  ║  Floating AI assistant with 5 agent personas     ║
+  ╚══════════════════════════════════════════════════╝
+-->
+<style>
+/* === FERROS DESIGN TOKENS === */
+:root {
+  --bg-base: #0a0c10; --bg-panel: #111520; --bg-card: #161b28; --bg-card-alt: #1a2035; --bg-highlight: #1e2840;
+  --border-dim: #1e2a3a; --border-accent: #2a3f5f; --border-bright: #3a5a8f;
+  --text-primary: #e8edf5; --text-secondary: #8fa0b8; --text-dim: #5a6a80; --text-code: #7eb8e8;
+  --accent-blue: #4a90d9; --accent-cyan: #2dd4bf; --accent-green: #34d399; --accent-amber: #f59e0b;
+  --accent-red: #f87171; --accent-purple: #a78bfa; --accent-pink: #f472b6; --accent-orange: #fb923c;
+  --gradient-header: linear-gradient(135deg, #0d1b35 0%, #0a1525 50%, #091020 100%);
+  --gradient-card: linear-gradient(145deg, #161b28 0%, #111520 100%);
+  --gradient-accent: linear-gradient(90deg, #4a90d9 0%, #2dd4bf 100%);
+  --shadow-panel: 0 4px 24px rgba(0,0,0,0.6); --shadow-card: 0 2px 12px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 12px rgba(74,144,217,.35);
+  --radius-panel: 12px; --radius-card: 8px; --radius-badge: 4px;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); min-height: 100vh; }
+
+/* === AI FLOAT BUTTON === */
+.ai-float-btn {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--gradient-accent);
+  border: 2px solid rgba(45,212,191,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: var(--shadow-panel);
+  transition: transform 0.3s, box-shadow 0.3s;
+  animation: aiGlow 3s ease-in-out infinite;
+}
+.ai-float-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 24px rgba(45,212,191,0.4);
+}
+.ai-float-btn.hidden { display: none; }
+
+@keyframes aiGlow {
+  0%, 100% { box-shadow: 0 4px 24px rgba(0,0,0,0.6), 0 0 8px rgba(45,212,191,0.2); }
+  50%      { box-shadow: 0 4px 24px rgba(0,0,0,0.6), 0 0 20px rgba(45,212,191,0.4); }
+}
+
+/* === AI FLOAT PANEL === */
+.ai-float-panel {
+  position: fixed;
+  bottom: 90px; right: 24px;
+  width: 340px;
+  max-height: 480px;
+  background: var(--bg-panel);
+  border: 2px solid var(--border-accent);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(20px) scale(0.95);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.3s, opacity 0.3s;
+}
+.ai-float-panel.open {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Panel Header */
+.ai-float-header {
+  padding: 14px 16px;
+  background: var(--gradient-header);
+  border-bottom: 1px solid var(--border-dim);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.ai-float-title {
+  font-size: 0.82rem; font-weight: 700;
+  color: var(--text-primary);
+}
+.ai-float-close {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--bg-highlight);
+  border: 1px solid var(--border-dim);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.ai-float-close:hover { color: var(--accent-red); border-color: rgba(248,113,113,0.3); }
+
+/* === AGENT MENU === */
+.ai-float-menu {
+  padding: 10px;
+  overflow-y: auto;
+  flex: 1;
+}
+.ai-float-agent {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+}
+.ai-float-agent:hover {
+  background: var(--bg-highlight);
+  border-color: var(--border-dim);
+}
+.ai-float-agent-icon { font-size: 1.4rem; }
+.ai-float-agent-info { flex: 1; }
+.ai-float-agent-name {
+  font-size: 0.75rem; font-weight: 700;
+  color: var(--text-primary);
+}
+.ai-float-agent-role {
+  font-size: 0.62rem; color: var(--text-dim);
+}
+.ai-float-agent-arrow {
+  font-size: 0.7rem; color: var(--text-dim);
+}
+
+/* === CHAT VIEW === */
+.ai-float-chat {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+.ai-float-chat.active {
+  display: flex;
+}
+.ai-float-menu.hidden { display: none; }
+
+.ai-chat-back {
+  padding: 8px 12px;
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer;
+  font-size: 0.7rem; font-weight: 600;
+  color: var(--accent-blue);
+  border-bottom: 1px solid var(--border-dim);
+  transition: background 0.2s;
+}
+.ai-chat-back:hover { background: var(--bg-highlight); }
+
+.ai-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Message bubbles */
+.ai-msg {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  animation: msgFadeIn 0.3s ease;
+}
+.ai-msg.agent {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  color: var(--text-secondary);
+  align-self: flex-start;
+  border-bottom-left-radius: 3px;
+}
+.ai-msg.user {
+  background: rgba(45,212,191,0.12);
+  border: 1px solid rgba(45,212,191,0.25);
+  color: var(--accent-cyan);
+  align-self: flex-end;
+  border-bottom-right-radius: 3px;
+}
+
+@keyframes msgFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+<div id="ferros-asset-root" data-control="demo">
+
+  <!-- Float Button -->
+  <div class="ai-float-btn" id="ai-btn" onclick="toggleAIPanel()">&#x1F916;</div>
+
+  <!-- Float Panel -->
+  <div class="ai-float-panel" id="ai-panel">
+    <div class="ai-float-header">
+      <div class="ai-float-title">AI Trading Assistants</div>
+      <div class="ai-float-close" onclick="toggleAIPanel()">&#x2715;</div>
+    </div>
+
+    <!-- Agent Menu -->
+    <div class="ai-float-menu" id="ai-menu">
+      <div class="ai-float-agent" onclick="openAgentChat('scout')">
+        <div class="ai-float-agent-icon">&#x1F52D;</div>
+        <div class="ai-float-agent-info">
+          <div class="ai-float-agent-name">Scout</div>
+          <div class="ai-float-agent-role">Market Scanner</div>
+        </div>
+        <div class="ai-float-agent-arrow">&#x203A;</div>
+      </div>
+      <div class="ai-float-agent" onclick="openAgentChat('strategist')">
+        <div class="ai-float-agent-icon">&#x1F9E0;</div>
+        <div class="ai-float-agent-info">
+          <div class="ai-float-agent-name">Strategist</div>
+          <div class="ai-float-agent-role">Deck Builder</div>
+        </div>
+        <div class="ai-float-agent-arrow">&#x203A;</div>
+      </div>
+      <div class="ai-float-agent" onclick="openAgentChat('guardian')">
+        <div class="ai-float-agent-icon">&#x1F6E1;&#xFE0F;</div>
+        <div class="ai-float-agent-info">
+          <div class="ai-float-agent-name">Guardian</div>
+          <div class="ai-float-agent-role">Risk Manager</div>
+        </div>
+        <div class="ai-float-agent-arrow">&#x203A;</div>
+      </div>
+      <div class="ai-float-agent" onclick="openAgentChat('oracle')">
+        <div class="ai-float-agent-icon">&#x1F52E;</div>
+        <div class="ai-float-agent-info">
+          <div class="ai-float-agent-name">Oracle</div>
+          <div class="ai-float-agent-role">Prediction Engine</div>
+        </div>
+        <div class="ai-float-agent-arrow">&#x203A;</div>
+      </div>
+      <div class="ai-float-agent" onclick="openAgentChat('broker')">
+        <div class="ai-float-agent-icon">&#x2699;&#xFE0F;</div>
+        <div class="ai-float-agent-info">
+          <div class="ai-float-agent-name">Broker</div>
+          <div class="ai-float-agent-role">Execution Agent</div>
+        </div>
+        <div class="ai-float-agent-arrow">&#x203A;</div>
+      </div>
+    </div>
+
+    <!-- Chat View -->
+    <div class="ai-float-chat" id="ai-chat">
+      <div class="ai-chat-back" onclick="backToMenu()">&#x2190; Back to agents</div>
+      <div class="ai-chat-messages" id="ai-messages"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  'use strict';
+  var root = document.getElementById('ferros-asset-root');
+  var isEmbedded = window.parent !== window;
+  var params = new URLSearchParams(window.location.search);
+  var control = params.get('control') || 'demo';
+  var demoTimeout = null;
+
+  /* === AGENT CONVERSATION DATA === */
+  var conversations = {
+    scout: [
+      { from: 'agent', text: 'Scanning markets across 4,200 tickers... 12 momentum signals detected in the last hour.' },
+      { from: 'agent', text: 'AAPL showing strong momentum breakout: +2.3% on 1.8x average volume. RSI at 68 and climbing.' },
+      { from: 'user', text: 'What about the energy sector?' },
+      { from: 'agent', text: 'Energy is heating up. XOM has a bullish engulfing pattern on the daily chart. Recommend adding to watchlist with a $112 entry target.' }
+    ],
+    strategist: [
+      { from: 'agent', text: 'Analyzing your current deck composition... Your portfolio is heavy on tech (72% allocation).' },
+      { from: 'agent', text: 'Recommendation: Swap COIN (high volatility, low synergy) for JNJ to improve deck balance and reduce sector concentration.' },
+      { from: 'user', text: 'Why JNJ specifically?' },
+      { from: 'agent', text: 'JNJ offers 3.1% dividend yield with a 0.15 beta to your existing holdings. It adds defensive depth and improves your deck\'s risk-adjusted return by an estimated 8%.' }
+    ],
+    guardian: [
+      { from: 'agent', text: 'Risk assessment complete. Your portfolio has moderate risk exposure with a Sharpe ratio of 1.42.' },
+      { from: 'agent', text: 'Alert: COIN position has 3.2x higher volatility than your portfolio average. Consider reducing position size or adding a stop-loss at $238.' },
+      { from: 'user', text: 'How many day trades do I have left?' },
+      { from: 'agent', text: 'You have 2 of 3 day trades remaining this rolling 5-day window. Next reset: Thursday. I\'ll warn you before your last one.' }
+    ],
+    oracle: [
+      { from: 'agent', text: 'Running pattern analysis on your watchlist using 3 models (momentum, mean-reversion, sentiment)...' },
+      { from: 'agent', text: 'NVDA: 78% confidence bullish signal. All 3 models agree on upward momentum. Target: $860 within 2 weeks.' },
+      { from: 'user', text: 'What about TSLA?' },
+      { from: 'agent', text: 'TSLA: 52% confidence, mixed signals. Momentum says bullish but sentiment is divergent. I\'d classify this as a coin-flip. Recommend waiting for clearer signal.' }
+    ],
+    broker: [
+      { from: 'agent', text: 'You have 3 pending orders in the queue. All within normal execution parameters.' },
+      { from: 'agent', text: 'Order #1: AAPL limit buy at $188.50, 10 shares. Currently $189.20 \u2014 waiting for dip to fill.' },
+      { from: 'user', text: 'Go ahead and fill at market.' },
+      { from: 'agent', text: 'Confirmed. AAPL market buy executed: 10 shares at $189.20. Total cost: $1,892.00. Order filled and added to your deck.' }
+    ]
+  };
+
+  /* === FERROS ASSET PROTOCOL === */
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'ferros:init') {
+      control = e.data.config.control || control;
+      applyControl();
+    }
+  });
+
+  function applyControl() {
+    root.dataset.control = control;
+    if (control === 'demo') startDemo();
+  }
+
+  function emit(event, payload) {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:event', asset: 'ai-float-panel', event: event, payload: payload }, '*');
+    }
+  }
+
+  function reportSize() {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:resize', asset: 'ai-float-panel', width: root.scrollWidth, height: root.scrollHeight }, '*');
+    }
+  }
+
+  /* === PANEL TOGGLE === */
+  window.toggleAIPanel = function() {
+    var panel = document.getElementById('ai-panel');
+    var btn = document.getElementById('ai-btn');
+    var isOpen = panel.classList.contains('open');
+    if (isOpen) {
+      panel.classList.remove('open');
+      btn.classList.remove('hidden');
+    } else {
+      panel.classList.add('open');
+      btn.classList.add('hidden');
+    }
+  };
+
+  /* === OPEN AGENT CHAT === */
+  window.openAgentChat = function(agent) {
+    var menu = document.getElementById('ai-menu');
+    var chat = document.getElementById('ai-chat');
+    var messages = document.getElementById('ai-messages');
+
+    menu.classList.add('hidden');
+    chat.classList.add('active');
+    messages.innerHTML = '';
+
+    emit('agent-selected', { agent: agent });
+
+    var convo = conversations[agent];
+    if (!convo) return;
+
+    convo.forEach(function(msg, i) {
+      setTimeout(function() {
+        var div = document.createElement('div');
+        div.className = 'ai-msg ' + msg.from;
+        div.textContent = msg.text;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+      }, (i + 1) * 600);
+    });
+  };
+
+  /* === BACK TO MENU === */
+  window.backToMenu = function() {
+    var menu = document.getElementById('ai-menu');
+    var chat = document.getElementById('ai-chat');
+    menu.classList.remove('hidden');
+    chat.classList.remove('active');
+  };
+
+  /* === DEMO MODE === */
+  function startDemo() {
+    demoTimeout = setTimeout(function() {
+      toggleAIPanel();
+      demoTimeout = setTimeout(function() {
+        openAgentChat('scout');
+      }, 2000);
+    }, 1000);
+  }
+
+  applyControl();
+  reportSize();
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="store-grid" data-version="1.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Asset: Cosmetics Store</title>
+<!--
+  ╔══════════════════════════════════════════════════╗
+  ║  FERROS ASSET: store-grid                        ║
+  ║  Control Levels: DEMO | PREVIEW | PLAY           ║
+  ║  Dependencies: none                              ║
+  ║  Categories: skins | themes | creature |         ║
+  ║              emotes | backs                      ║
+  ╚══════════════════════════════════════════════════╝
+-->
+<style>
+/* === FERROS DESIGN TOKENS === */
+:root {
+  --bg-base: #0a0c10; --bg-panel: #111520; --bg-card: #161b28; --bg-card-alt: #1a2035; --bg-highlight: #1e2840;
+  --border-dim: #1e2a3a; --border-accent: #2a3f5f; --border-bright: #3a5a8f;
+  --text-primary: #e8edf5; --text-secondary: #8fa0b8; --text-dim: #5a6a80; --text-code: #7eb8e8;
+  --accent-blue: #4a90d9; --accent-cyan: #2dd4bf; --accent-green: #34d399; --accent-amber: #f59e0b;
+  --accent-red: #f87171; --accent-purple: #a78bfa; --accent-pink: #f472b6; --accent-orange: #fb923c;
+  --gradient-header: linear-gradient(135deg, #0d1b35 0%, #0a1525 50%, #091020 100%);
+  --gradient-card: linear-gradient(145deg, #161b28 0%, #111520 100%);
+  --gradient-accent: linear-gradient(90deg, #4a90d9 0%, #2dd4bf 100%);
+  --shadow-panel: 0 4px 24px rgba(0,0,0,0.6); --shadow-card: 0 2px 12px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 12px rgba(74,144,217,.35);
+  --radius-panel: 12px; --radius-card: 8px; --radius-badge: 4px;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
+
+/* === STORE FEATURED BANNER === */
+.store-featured {
+  background: var(--gradient-header);
+  border: 2px solid rgba(245,158,11,0.4);
+  border-radius: var(--radius-panel);
+  padding: 24px 28px;
+  margin: 16px 20px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.store-featured::before {
+  content: '';
+  position: absolute;
+  top: -60%; left: -60%;
+  width: 220%; height: 220%;
+  background: conic-gradient(transparent, rgba(245,158,11,0.12), transparent 30%);
+  animation: storeShimmer 6s linear infinite;
+  pointer-events: none;
+}
+.store-featured-info { position: relative; z-index: 1; }
+.store-featured-badge {
+  display: inline-block;
+  font-size: 0.6rem; font-family: var(--font-mono); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 2px 8px; border-radius: var(--radius-badge);
+  background: rgba(245,158,11,0.18); color: var(--accent-amber);
+  border: 1px solid rgba(245,158,11,0.35);
+  margin-bottom: 8px;
+}
+.store-featured-name { font-size: 1.3rem; font-weight: 800; margin-bottom: 4px; }
+.store-featured-price {
+  font-family: var(--font-mono); font-size: 1rem; font-weight: 600;
+  color: var(--accent-amber);
+}
+.store-featured-icon { font-size: 3rem; position: relative; z-index: 1; }
+
+@keyframes storeShimmer { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* === STORE TABS === */
+.store-tabs {
+  display: flex; gap: 4px; padding: 0 20px; margin: 16px 0 12px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.store-tab {
+  padding: 6px 14px; font-size: 0.72rem; font-weight: 600;
+  border-radius: 20px; cursor: pointer; white-space: nowrap;
+  background: var(--bg-card); color: var(--text-dim);
+  border: 1px solid var(--border-dim);
+  transition: all 0.25s;
+}
+.store-tab:hover { color: var(--text-secondary); border-color: var(--border-accent); }
+.store-tab.active {
+  background: rgba(74,144,217,0.15); color: var(--accent-blue);
+  border-color: rgba(74,144,217,0.4);
+}
+
+/* === STORE GRID === */
+.store-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px; padding: 0 20px 20px;
+}
+
+/* === STORE ITEM === */
+.store-item {
+  background: var(--gradient-card);
+  border: 2px solid var(--border-dim);
+  border-radius: var(--radius-card);
+  padding: 14px; cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+  position: relative; overflow: hidden;
+}
+.store-item::before {
+  content: '';
+  position: absolute; top: -60%; left: -60%;
+  width: 220%; height: 220%;
+  background: conic-gradient(transparent, var(--si-glow, transparent), transparent 30%);
+  animation: storeShimmer 8s linear infinite;
+  opacity: 0; transition: opacity 0.4s;
+  pointer-events: none;
+}
+.store-item:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.5); border-color: var(--border-accent); }
+.store-item:hover::before { opacity: 1; }
+
+/* Rarity borders via :has() */
+.store-item:has(.badge-amber)  { border-color: rgba(245,158,11,0.5); --si-glow: rgba(245,158,11,0.15); }
+.store-item:has(.badge-purple) { border-color: rgba(167,139,250,0.5); --si-glow: rgba(167,139,250,0.12); }
+.store-item:has(.badge-blue)   { border-color: rgba(74,144,217,0.4); --si-glow: rgba(74,144,217,0.1); }
+.store-item:has(.badge-green)  { border-color: rgba(52,211,153,0.35); --si-glow: rgba(52,211,153,0.08); }
+.store-item:has(.badge-gray)   { border-color: rgba(90,106,128,0.3); }
+.store-item:has(.badge-amber)::before, .store-item:has(.badge-purple)::before { opacity: 0.6; }
+
+.store-item-icon { font-size: 2rem; margin-bottom: 8px; }
+.store-item-name { font-size: 0.78rem; font-weight: 700; margin-bottom: 4px; }
+.store-item-price {
+  font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600;
+  color: var(--accent-amber); margin-bottom: 6px;
+}
+.store-item-badge {
+  display: inline-block;
+  font-size: 0.55rem; font-family: var(--font-mono); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 1px 6px; border-radius: var(--radius-badge);
+  margin-bottom: 10px;
+}
+.badge-amber  { background: rgba(245,158,11,0.18); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.35); }
+.badge-purple { background: rgba(167,139,250,0.15); color: var(--accent-purple); border: 1px solid rgba(167,139,250,0.3); }
+.badge-blue   { background: rgba(74,144,217,0.15); color: var(--accent-blue); border: 1px solid rgba(74,144,217,0.3); }
+.badge-green  { background: rgba(52,211,153,0.15); color: var(--accent-green); border: 1px solid rgba(52,211,153,0.3); }
+.badge-gray   { background: rgba(90,106,128,0.2); color: var(--text-dim); border: 1px solid rgba(90,106,128,0.3); }
+
+/* === STORE ITEM ACTIONS === */
+.store-item-actions { display: flex; gap: 6px; }
+.store-item-actions button {
+  flex: 1; padding: 5px 0; font-size: 0.65rem; font-weight: 600;
+  border-radius: var(--radius-badge); cursor: pointer;
+  transition: all 0.2s; font-family: inherit;
+}
+.btn-equip {
+  background: rgba(74,144,217,0.15); color: var(--accent-blue);
+  border: 1px solid rgba(74,144,217,0.3);
+}
+.btn-equip:hover { background: rgba(74,144,217,0.25); }
+.btn-preview {
+  background: rgba(167,139,250,0.1); color: var(--accent-purple);
+  border: 1px solid rgba(167,139,250,0.25);
+}
+.btn-preview:hover { background: rgba(167,139,250,0.2); }
+
+/* DEMO mode */
+[data-control="demo"] .store-item { cursor: default; }
+[data-control="demo"] .store-item-actions button { pointer-events: none; cursor: default; }
+[data-control="demo"] .store-tab { cursor: default; }
+/* PREVIEW mode */
+[data-control="preview"] .store-item-actions button { cursor: help; }
+
+/* Hidden filter */
+.store-item.hidden { display: none; }
+</style>
+</head>
+<body>
+<div id="ferros-asset-root" data-control="demo">
+
+  <!-- Featured Banner -->
+  <div class="store-featured">
+    <div class="store-featured-info">
+      <div class="store-featured-badge">LEGENDARY</div>
+      <div class="store-featured-name">Nebula Board Theme</div>
+      <div class="store-featured-price">3,600 coins</div>
+    </div>
+    <div class="store-featured-icon">🌌</div>
+  </div>
+
+  <!-- Category Tabs -->
+  <div class="store-tabs">
+    <div class="store-tab active" data-filter="all">All</div>
+    <div class="store-tab" data-filter="skins">Card Skins</div>
+    <div class="store-tab" data-filter="themes">Board Themes</div>
+    <div class="store-tab" data-filter="creature">Creature Acc.</div>
+    <div class="store-tab" data-filter="emotes">Emotes</div>
+    <div class="store-tab" data-filter="backs">Card Backs</div>
+  </div>
+
+  <!-- Store Grid -->
+  <div class="store-grid">
+    <div class="store-item" data-cat="skins">
+      <div class="store-item-icon">🎴</div>
+      <div class="store-item-name">Holographic Card Skin</div>
+      <div class="store-item-price">2,400 coins</div>
+      <div class="store-item-badge badge-purple">EPIC</div>
+      <div class="store-item-actions">
+        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
+        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+      </div>
+    </div>
+
+    <div class="store-item" data-cat="themes">
+      <div class="store-item-icon">🌌</div>
+      <div class="store-item-name">Nebula Board Theme</div>
+      <div class="store-item-price">3,600 coins</div>
+      <div class="store-item-badge badge-amber">LEGENDARY</div>
+      <div class="store-item-actions">
+        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
+        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+      </div>
+    </div>
+
+    <div class="store-item" data-cat="creature">
+      <div class="store-item-icon">🎩</div>
+      <div class="store-item-name">Top Hat (Creature)</div>
+      <div class="store-item-price">800 coins</div>
+      <div class="store-item-badge badge-green">UNCOMMON</div>
+      <div class="store-item-actions">
+        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
+        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+      </div>
+    </div>
+
+    <div class="store-item" data-cat="themes">
+      <div class="store-item-icon">🖼️</div>
+      <div class="store-item-name">Cyber Grid Background</div>
+      <div class="store-item-price">1,200 coins</div>
+      <div class="store-item-badge badge-blue">RARE</div>
+      <div class="store-item-actions">
+        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
+        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+      </div>
+    </div>
+
+    <div class="store-item" data-cat="backs">
+      <div class="store-item-icon">🃏</div>
+      <div class="store-item-name">Diamond Card Back</div>
+      <div class="store-item-price">1,800 coins</div>
+      <div class="store-item-badge badge-blue">RARE</div>
+      <div class="store-item-actions">
+        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
+        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+      </div>
+    </div>
+
+    <div class="store-item" data-cat="emotes">
+      <div class="store-item-icon">🎆</div>
+      <div class="store-item-name">Fireworks Victory Anim</div>
+      <div class="store-item-price">2,000 coins</div>
+      <div class="store-item-badge badge-purple">EPIC</div>
+      <div class="store-item-actions">
+        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
+        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+      </div>
+    </div>
+
+    <div class="store-item" data-cat="creature">
+      <div class="store-item-icon">🗿</div>
+      <div class="store-item-name">Stone Golem Costume</div>
+      <div class="store-item-price">600 coins</div>
+      <div class="store-item-badge badge-gray">COMMON</div>
+      <div class="store-item-actions">
+        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
+        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+      </div>
+    </div>
+
+    <div class="store-item" data-cat="emotes">
+      <div class="store-item-icon">🌈</div>
+      <div class="store-item-name">Rainbow Emote Pack</div>
+      <div class="store-item-price">400 coins</div>
+      <div class="store-item-badge badge-gray">COMMON</div>
+      <div class="store-item-actions">
+        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
+        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+      </div>
+    </div>
+
+    <div class="store-item" data-cat="skins">
+      <div class="store-item-icon">🔥</div>
+      <div class="store-item-name">Flame Edge Card Skin</div>
+      <div class="store-item-price">1,600 coins</div>
+      <div class="store-item-badge badge-blue">RARE</div>
+      <div class="store-item-actions">
+        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
+        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+      </div>
+    </div>
+
+    <div class="store-item" data-cat="creature">
+      <div class="store-item-icon">👑</div>
+      <div class="store-item-name">Golden Crown</div>
+      <div class="store-item-price">4,000 coins</div>
+      <div class="store-item-badge badge-amber">LEGENDARY</div>
+      <div class="store-item-actions">
+        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
+        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  'use strict';
+  var root = document.getElementById('ferros-asset-root');
+  var isEmbedded = window.parent !== window;
+  var params = new URLSearchParams(window.location.search);
+  var control = params.get('control') || 'demo';
+  var demoInterval = null;
+
+  /* === FERROS ASSET PROTOCOL === */
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'ferros:init') {
+      control = e.data.config.control || control;
+      applyControl();
+    }
+    if (e.data && e.data.type === 'ferros:update' && e.data.payload) {
+      // Future: update store items dynamically
+    }
+  });
+
+  function applyControl() {
+    root.dataset.control = control;
+    if (control === 'demo') startDemo();
+    else stopDemo();
+  }
+
+  function emit(event, payload) {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:event', asset: 'store-grid', event: event, payload: payload }, '*');
+    }
+  }
+
+  function reportSize() {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'ferros:resize', asset: 'store-grid', width: root.scrollWidth, height: root.scrollHeight }, '*');
+    }
+  }
+
+  /* === TAB FILTERING === */
+  var tabs = root.querySelectorAll('.store-tab');
+  var items = root.querySelectorAll('.store-item');
+
+  function filterStore(cat) {
+    tabs.forEach(function(t) { t.classList.toggle('active', t.dataset.filter === cat); });
+    items.forEach(function(item) {
+      if (cat === 'all' || item.dataset.cat === cat) {
+        item.classList.remove('hidden');
+      } else {
+        item.classList.add('hidden');
+      }
+    });
+  }
+
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      if (control === 'demo') return;
+      filterStore(tab.dataset.filter);
+    });
+  });
+
+  /* === ITEM ACTIONS === */
+  window.equipItem = function(btn) {
+    if (control === 'demo') return;
+    var item = btn.closest('.store-item');
+    var name = item.querySelector('.store-item-name').textContent;
+    emit('item-equipped', { item: name, category: item.dataset.cat });
+  };
+
+  window.previewItem = function(btn) {
+    if (control === 'demo') return;
+    var item = btn.closest('.store-item');
+    var name = item.querySelector('.store-item-name').textContent;
+    emit('item-previewed', { item: name, category: item.dataset.cat });
+  };
+
+  /* === DEMO MODE: Auto-cycle tabs === */
+  function startDemo() {
+    var tabArr = Array.prototype.slice.call(tabs);
+    var idx = 0;
+    stopDemo();
+    demoInterval = setInterval(function() {
+      idx = (idx + 1) % tabArr.length;
+      filterStore(tabArr[idx].dataset.filter);
+    }, 2500);
+  }
+
+  function stopDemo() {
+    if (demoInterval) { clearInterval(demoInterval); demoInterval = null; }
+  }
+
+  applyControl();
+  reportSize();
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+})();
+</script>
+</body>
+</html>
