@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="hero-card-fan" data-version="1.0.0">
+<html lang="en" data-ferros-asset="hero-card-fan" data-version="2.0.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FERROS Asset: Hero Card Fan</title>
 <!--
   ╔══════════════════════════════════════════════════╗
-  ║  FERROS ASSET: hero-card-fan                     ║
-  ║  Control Levels: DEMO | PREVIEW | PLAY           ║
-  ║  Dependencies: none                              ║
-  ║  6-card navigation fan with 3D flip on hover     ║
+  ║  FERROS ASSET: hero-card-fan  v2.0.0            ║
+  ║  Control Levels: DEMO | PREVIEW | PLAY          ║
+  ║  Dependencies: none                             ║
+  ║  6-card navigation fan with 3D flip on hover    ║
+  ║  Tap-to-flip, keyboard nav, dynamic rendering   ║
   ╚══════════════════════════════════════════════════╝
 -->
 <style>
@@ -46,36 +47,61 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   width: 120px; height: 170px;
   perspective: 600px;
   cursor: pointer;
-  text-decoration: none;
   position: relative;
   transition: transform 0.4s, margin 0.3s;
   transform-origin: bottom center;
+  margin-right: -20px;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
-/* Fan spread: 6 cards overlapping with rotation */
-.hero-flip-card:nth-child(1) { transform: rotate(-15deg); margin-right: -20px; z-index: 1; animation: hfcFloat 4s ease-in-out infinite 0s; }
-.hero-flip-card:nth-child(2) { transform: rotate(-9deg);  margin-right: -20px; z-index: 2; animation: hfcFloat 4s ease-in-out infinite 0.3s; }
-.hero-flip-card:nth-child(3) { transform: rotate(-3deg);  margin-right: -20px; z-index: 3; animation: hfcFloat 4s ease-in-out infinite 0.6s; }
-.hero-flip-card:nth-child(4) { transform: rotate(3deg);   margin-right: -20px; z-index: 3; animation: hfcFloat 4s ease-in-out infinite 0.9s; }
-.hero-flip-card:nth-child(5) { transform: rotate(9deg);   margin-right: -20px; z-index: 2; animation: hfcFloat 4s ease-in-out infinite 1.2s; }
-.hero-flip-card:nth-child(6) { transform: rotate(15deg);  z-index: 1; animation: hfcFloat 4s ease-in-out infinite 1.5s; }
+.hero-flip-card:last-child {
+  margin-right: 0;
+}
 
+/* Hover lift — non-touch override only */
 .hero-flip-card:hover {
   z-index: 10 !important;
-  transform: rotate(0deg) translateY(-20px) scale(1.08);
+  transform: rotate(0deg) translateY(-20px) scale(1.08) !important;
 }
 
-/* 3D flip inner */
+/* === ACTIVE / SELECTED STATE === */
+.hero-flip-card.hfc-active {
+  transform: scale(1.05) !important;
+}
+.hero-flip-card.hfc-active .hfc-front {
+  border-color: var(--accent-cyan) !important;
+  border-width: 3px;
+  box-shadow: 0 0 16px rgba(45,212,191,0.5), 0 0 32px rgba(45,212,191,0.2);
+}
+.hero-flip-card.hfc-active:hover {
+  transform: rotate(0deg) translateY(-20px) scale(1.12) !important;
+}
+
+/* === FOCUS-VISIBLE (Keyboard Nav) === */
+.hero-flip-card:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+  z-index: 10 !important;
+}
+
+/* === 3D FLIP INNER === */
 .hfc-inner {
   width: 100%; height: 100%;
   position: relative;
   transform-style: preserve-3d;
   transition: transform 0.6s;
 }
+/* Hover flip (non-touch supplementary) */
 .hero-flip-card:hover .hfc-inner {
   transform: rotateY(180deg);
 }
+/* Tap/click flip (persistent toggle) */
+.hero-flip-card.flipped .hfc-inner {
+  transform: rotateY(180deg);
+}
 
-/* Front face */
+/* === CARD FACES === */
 .hfc-front, .hfc-back {
   position: absolute;
   width: 100%; height: 100%;
@@ -103,7 +129,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   pointer-events: none;
 }
 
-/* Rarity borders + glow */
+/* === RARITY BORDERS + GLOW === */
 .hfc-epic .hfc-front    { border-color: rgba(167,139,250,0.5); --hfc-glow: rgba(167,139,250,0.12); }
 .hfc-rare .hfc-front     { border-color: rgba(74,144,217,0.45); --hfc-glow: rgba(74,144,217,0.1); }
 .hfc-common .hfc-front   { border-color: rgba(90,106,128,0.35); --hfc-glow: rgba(90,106,128,0.06); }
@@ -111,12 +137,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .hfc-legendary .hfc-front { border-color: rgba(245,158,11,0.5); --hfc-glow: rgba(245,158,11,0.15); }
 .hfc-mythic .hfc-front   { border-color: rgba(244,114,182,0.5); --hfc-glow: rgba(244,114,182,0.15); }
 
-/* Rarity pulse for legendary/epic/mythic */
-.hfc-legendary { animation: hfcPulse 3s ease-in-out infinite, hfcFloat 4s ease-in-out infinite 1.2s; }
-.hfc-epic      { animation: hfcPulse 3.5s ease-in-out infinite, hfcFloat 4s ease-in-out infinite 0s; }
-.hfc-mythic    { animation: hfcTilt 4s ease-in-out infinite, hfcFloat 4s ease-in-out infinite 1.5s; }
-
-/* Back face (monster card style) */
+/* === BACK FACE (monster card style) === */
 .hfc-back {
   background: var(--gradient-header);
   border: 2px solid var(--border-accent);
@@ -150,7 +171,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   position: relative; z-index: 1;
 }
 
-/* Front content */
+/* === FRONT CONTENT === */
 .hfc-rarity-badge {
   font-size: 0.5rem; font-family: var(--font-mono); font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em;
@@ -193,118 +214,78 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   75%      { transform: rotate(14deg); }
 }
 @keyframes hfcShimmer { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* === PREFERS-REDUCED-MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  .hero-flip-card,
+  .hfc-inner,
+  .hfc-front,
+  .hfc-front::before {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+  .hfc-front::before {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
 </style>
 </head>
 <body>
 <div id="ferros-asset-root" data-control="demo">
-  <div class="hero-fan-container">
-
-    <!-- Card 1: Card-Based Trading (epic) -->
-    <a class="hero-flip-card hfc-epic" href="#card-trading">
-      <div class="hfc-inner">
-        <div class="hfc-front">
-          <div class="hfc-rarity-badge">EPIC</div>
-          <div class="hfc-icon">&#x1F0CF;</div>
-          <div class="hfc-label">Card-Based<br>Trading</div>
-        </div>
-        <div class="hfc-back">
-          <div class="hfc-back-crest">&#x2694;&#xFE0F;</div>
-          <div class="hfc-back-label">FERROS</div>
-        </div>
-      </div>
-    </a>
-
-    <!-- Card 2: AI Agents (rare) -->
-    <a class="hero-flip-card hfc-rare" href="#ai-agents">
-      <div class="hfc-inner">
-        <div class="hfc-front">
-          <div class="hfc-rarity-badge">RARE</div>
-          <div class="hfc-icon">&#x1F916;</div>
-          <div class="hfc-label">AI<br>Agents</div>
-        </div>
-        <div class="hfc-back">
-          <div class="hfc-back-crest">&#x2694;&#xFE0F;</div>
-          <div class="hfc-back-label">FERROS</div>
-        </div>
-      </div>
-    </a>
-
-    <!-- Card 3: Loot Rewards (common) -->
-    <a class="hero-flip-card hfc-common" href="#loot-rewards">
-      <div class="hfc-inner">
-        <div class="hfc-front">
-          <div class="hfc-rarity-badge">COMMON</div>
-          <div class="hfc-icon">&#x1F381;</div>
-          <div class="hfc-label">Loot<br>Rewards</div>
-        </div>
-        <div class="hfc-back">
-          <div class="hfc-back-crest">&#x2694;&#xFE0F;</div>
-          <div class="hfc-back-label">FERROS</div>
-        </div>
-      </div>
-    </a>
-
-    <!-- Card 4: Idle Earnings (uncommon) -->
-    <a class="hero-flip-card hfc-uncommon" href="#idle-earnings">
-      <div class="hfc-inner">
-        <div class="hfc-front">
-          <div class="hfc-rarity-badge">UNCOMMON</div>
-          <div class="hfc-icon">&#x1F4CA;</div>
-          <div class="hfc-label">Idle<br>Earnings</div>
-        </div>
-        <div class="hfc-back">
-          <div class="hfc-back-crest">&#x2694;&#xFE0F;</div>
-          <div class="hfc-back-label">FERROS</div>
-        </div>
-      </div>
-    </a>
-
-    <!-- Card 5: Genesis Creatures (legendary) -->
-    <a class="hero-flip-card hfc-legendary" href="#genesis-creatures">
-      <div class="hfc-inner">
-        <div class="hfc-front">
-          <div class="hfc-rarity-badge">LEGENDARY</div>
-          <div class="hfc-icon">&#x1F9EC;</div>
-          <div class="hfc-label">Genesis<br>Creatures</div>
-        </div>
-        <div class="hfc-back">
-          <div class="hfc-back-crest">&#x2694;&#xFE0F;</div>
-          <div class="hfc-back-label">FERROS</div>
-        </div>
-      </div>
-    </a>
-
-    <!-- Card 6: Open Source (mythic) -->
-    <a class="hero-flip-card hfc-mythic" href="#open-source">
-      <div class="hfc-inner">
-        <div class="hfc-front">
-          <div class="hfc-rarity-badge">MYTHIC</div>
-          <div class="hfc-icon">&#x1F513;</div>
-          <div class="hfc-label">Open<br>Source</div>
-        </div>
-        <div class="hfc-back">
-          <div class="hfc-back-crest">&#x2694;&#xFE0F;</div>
-          <div class="hfc-back-label">FERROS</div>
-        </div>
-      </div>
-    </a>
-
+  <div class="hero-fan-container" role="navigation" aria-label="FERROS section navigation">
+    <!-- Cards rendered dynamically by JS -->
   </div>
 </div>
 
 <script>
 (function() {
   'use strict';
+
+  /* === STATE === */
   var root = document.getElementById('ferros-asset-root');
+  var container = root.querySelector('.hero-fan-container');
   var isEmbedded = window.parent !== window;
   var params = new URLSearchParams(window.location.search);
   var control = params.get('control') || 'demo';
+  var activeSection = null;
+  var spreadDeg = 6;
+  var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* === DEFAULT CARD DATA === */
+  var defaultCards = [
+    { icon: '\uD83C\uDCCF', label: 'Card-Based\nTrading',    rarity: 'epic',      target: 'card-trading' },
+    { icon: '\uD83E\uDD16', label: 'AI\nAgents',             rarity: 'rare',       target: 'ai-agents' },
+    { icon: '\uD83C\uDF81', label: 'Loot\nRewards',          rarity: 'common',     target: 'loot-rewards' },
+    { icon: '\uD83D\uDCCA', label: 'Idle\nEarnings',         rarity: 'uncommon',   target: 'idle-earnings' },
+    { icon: '\uD83E\uDDEC', label: 'Genesis\nCreatures',     rarity: 'legendary',  target: 'genesis-creatures' },
+    { icon: '\uD83D\uDD13', label: 'Open\nSource',           rarity: 'mythic',     target: 'open-source' }
+  ];
+
+  var currentCards = defaultCards;
 
   /* === FERROS ASSET PROTOCOL === */
   window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'ferros:init') {
-      control = e.data.config.control || control;
+    if (!e.data || typeof e.data !== 'object') return;
+
+    if (e.data.type === 'ferros:init') {
+      control = (e.data.config && e.data.config.control) || control;
       applyControl();
+    }
+
+    if (e.data.type === 'ferros:update') {
+      var data = e.data.payload || e.data;
+
+      /* Accept new card data to re-render the fan */
+      if (data.cards && Array.isArray(data.cards)) {
+        currentCards = data.cards;
+        renderFan(currentCards);
+      }
+
+      /* Accept active section highlight */
+      if (typeof data.activeSection === 'string') {
+        setActiveSection(data.activeSection);
+      }
     }
   });
 
@@ -314,19 +295,236 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
   function emit(event, payload) {
     if (isEmbedded) {
-      window.parent.postMessage({ type: 'ferros:event', asset: 'hero-card-fan', event: event, payload: payload }, '*');
+      window.parent.postMessage({
+        type: 'ferros:event',
+        asset: 'hero-card-fan',
+        event: event,
+        payload: payload
+      }, '*');
     }
   }
 
   function reportSize() {
     if (isEmbedded) {
-      window.parent.postMessage({ type: 'ferros:resize', asset: 'hero-card-fan', width: root.scrollWidth, height: root.scrollHeight }, '*');
+      window.parent.postMessage({
+        type: 'ferros:resize',
+        asset: 'hero-card-fan',
+        width: root.scrollWidth,
+        height: root.scrollHeight
+      }, '*');
     }
   }
 
+  /* === ACTIVE SECTION === */
+  function setActiveSection(section) {
+    activeSection = section;
+    var cards = container.querySelectorAll('.hero-flip-card');
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      if (card.dataset.target === section) {
+        card.classList.add('hfc-active');
+      } else {
+        card.classList.remove('hfc-active');
+      }
+    }
+  }
+
+  /* === DYNAMIC FAN ANGLES === */
+  function computeFanLayout() {
+    var cards = container.querySelectorAll('.hero-flip-card');
+    var count = cards.length;
+    if (count === 0) return;
+
+    for (var i = 0; i < count; i++) {
+      var angle = (i - (count - 1) / 2) * spreadDeg;
+      var distFromCenter = Math.abs(i - (count - 1) / 2);
+      var maxDist = (count - 1) / 2;
+      /* Center cards get higher z-index */
+      var zIndex = Math.round((maxDist - distFromCenter + 1) * 2);
+      /* Float animation delay staggered per card */
+      var floatDelay = (i * 0.3) + 's';
+
+      cards[i].style.transform = 'rotate(' + angle + 'deg)';
+      cards[i].style.zIndex = zIndex;
+      cards[i].dataset.baseRotation = angle;
+      cards[i].dataset.baseZIndex = zIndex;
+
+      /* Apply float animation unless reduced motion */
+      if (!prefersReducedMotion) {
+        applyAnimations(cards[i], floatDelay);
+      }
+    }
+  }
+
+  /* Apply rarity-specific animations to a card */
+  function applyAnimations(cardEl, floatDelay) {
+    var rarity = cardEl.dataset.rarity || '';
+    if (rarity === 'legendary') {
+      cardEl.style.animation = 'hfcPulse 3s ease-in-out infinite, hfcFloat 4s ease-in-out infinite ' + floatDelay;
+    } else if (rarity === 'epic') {
+      cardEl.style.animation = 'hfcPulse 3.5s ease-in-out infinite, hfcFloat 4s ease-in-out infinite ' + floatDelay;
+    } else if (rarity === 'mythic') {
+      cardEl.style.animation = 'hfcTilt 4s ease-in-out infinite, hfcFloat 4s ease-in-out infinite ' + floatDelay;
+    } else {
+      cardEl.style.animation = 'hfcFloat 4s ease-in-out infinite ' + floatDelay;
+    }
+  }
+
+  /* === RENDER FAN FROM DATA === */
+  function renderFan(cards) {
+    /* Clear existing cards */
+    container.innerHTML = '';
+
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      var labelHtml = c.label.replace(/\n/g, '<br>');
+      var ariaText = 'Navigate to ' + c.label.replace(/\n/g, ' ') + ', ' + c.rarity + ' rarity';
+
+      /* Build card element — using div, not <a> */
+      var card = document.createElement('div');
+      card.className = 'hero-flip-card hfc-' + c.rarity;
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-label', ariaText);
+      card.dataset.target = c.target;
+      card.dataset.rarity = c.rarity;
+
+      /* Inner 3D flip wrapper */
+      var inner = document.createElement('div');
+      inner.className = 'hfc-inner';
+
+      /* Front face */
+      var front = document.createElement('div');
+      front.className = 'hfc-front';
+
+      var badge = document.createElement('div');
+      badge.className = 'hfc-rarity-badge';
+      badge.textContent = c.rarity.toUpperCase();
+
+      var icon = document.createElement('div');
+      icon.className = 'hfc-icon';
+      icon.textContent = c.icon;
+
+      var label = document.createElement('div');
+      label.className = 'hfc-label';
+      label.innerHTML = labelHtml;
+
+      front.appendChild(badge);
+      front.appendChild(icon);
+      front.appendChild(label);
+
+      /* Back face */
+      var back = document.createElement('div');
+      back.className = 'hfc-back';
+
+      var crest = document.createElement('div');
+      crest.className = 'hfc-back-crest';
+      crest.textContent = '\u2694\uFE0F';
+
+      var backLabel = document.createElement('div');
+      backLabel.className = 'hfc-back-label';
+      backLabel.textContent = 'FERROS';
+
+      back.appendChild(crest);
+      back.appendChild(backLabel);
+
+      /* Assemble */
+      inner.appendChild(front);
+      inner.appendChild(back);
+      card.appendChild(inner);
+      container.appendChild(card);
+
+      /* Bind events */
+      bindCardEvents(card);
+    }
+
+    /* Compute fan layout angles */
+    computeFanLayout();
+
+    /* Restore active section highlight if set */
+    if (activeSection) {
+      setActiveSection(activeSection);
+    }
+
+    /* Report new size */
+    reportSize();
+
+    /* Emit fan-updated event */
+    emit('fan-updated', { cardCount: cards.length });
+  }
+
+  /* === CARD EVENT HANDLERS === */
+  function bindCardEvents(card) {
+    /* Click/tap handler: toggles flip + navigates in PLAY mode */
+    card.addEventListener('click', function(e) {
+      e.preventDefault();
+      handleCardActivation(card);
+    });
+
+    /* Keyboard: Enter or Space */
+    card.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleCardActivation(card);
+      }
+    });
+
+    /* On hover end, restore base transform (since hover override uses !important,
+       this handles re-setting the z-index after mouse leaves) */
+    card.addEventListener('mouseleave', function() {
+      var base = card.dataset.baseRotation;
+      var baseZ = card.dataset.baseZIndex;
+      if (!card.classList.contains('hfc-active')) {
+        card.style.zIndex = baseZ;
+      }
+    });
+  }
+
+  function handleCardActivation(card) {
+    var target = card.dataset.target;
+
+    /* Toggle flip class (tap-to-flip for all modes) */
+    card.classList.toggle('flipped');
+
+    /* In PLAY mode, emit navigation event */
+    if (control === 'play') {
+      emit('navigate', { section: target });
+      setActiveSection(target);
+    }
+    /* In DEMO/PREVIEW mode, only flip — no navigation */
+  }
+
+  /* === RESIZE HANDLER === */
+  var resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      computeFanLayout();
+    }, 100);
+  });
+
+  /* === REDUCED MOTION LISTENER === */
+  if (window.matchMedia) {
+    var motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var handleMotionChange = function(e) {
+      prefersReducedMotion = e.matches;
+      computeFanLayout();
+    };
+    /* Support both addEventListener and deprecated addListener */
+    if (motionQuery.addEventListener) {
+      motionQuery.addEventListener('change', handleMotionChange);
+    } else if (motionQuery.addListener) {
+      motionQuery.addListener(handleMotionChange);
+    }
+  }
+
+  /* === INIT === */
   applyControl();
-  reportSize();
-  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+  renderFan(currentCards);
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(reportSize).observe(root);
+  }
+
 })();
 </script>
 </body>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="hero-infographic" data-version="1.0.0">
+<html lang="en" data-ferros-asset="hero-infographic" data-version="2.0.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,9 +7,16 @@
 <!--
   ╔══════════════════════════════════════════════════╗
   ║  FERROS ASSET: hero-infographic                  ║
+  ║  Version: 2.0.0                                  ║
   ║  Control Levels: DEMO | PREVIEW | PLAY           ║
   ║  Dependencies: none                              ║
   ║  3-panel hero infographic (CSS-only animations)  ║
+  ║  - PLAY: panels navigate on click/Enter/Space    ║
+  ║  - PREVIEW: CSS tooltips on hover                ║
+  ║  - DEMO: ambient animations only                 ║
+  ║  - ferros:update quotes support                  ║
+  ║  - Accessible: focus-visible, aria, keyboard     ║
+  ║  - prefers-reduced-motion respected              ║
   ╚══════════════════════════════════════════════════╝
 -->
 <style>
@@ -31,7 +38,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
 
-/* === HERO INFOGRAPHIC === */
+/* === HERO INFOGRAPHIC GRID === */
 .hero-infographic {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -40,7 +47,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   max-width: 960px;
   margin: 0 auto;
 }
-@media (max-width: 720px) {
+
+/* --- Responsive: 2-column intermediate (560-720px) --- */
+@media (max-width: 720px) and (min-width: 560px) {
+  .hero-infographic {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 640px;
+  }
+  .hero-infographic .hero-info-panel:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* --- Responsive: 1-column small (<560px) --- */
+@media (max-width: 559px) {
   .hero-infographic { grid-template-columns: 1fr; max-width: 340px; }
 }
 
@@ -67,6 +87,54 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 }
 .hero-info-panel:hover {
   transform: translateY(-4px);
+}
+
+/* --- PLAY mode: panels are clickable navigation --- */
+[data-control="play"] .hero-info-panel {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+[data-control="play"] .hero-info-panel:active {
+  transform: scale(0.97) translateY(0px);
+  transition: transform 0.1s;
+}
+
+/* --- Accessibility: focus-visible outline --- */
+.hero-info-panel:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+.panel-cards:focus-visible  { outline-color: var(--accent-pink); }
+.panel-loot:focus-visible   { outline-color: var(--accent-purple); }
+.panel-chess:focus-visible  { outline-color: var(--accent-cyan); }
+
+/* --- PREVIEW mode: CSS-only tooltips via ::after --- */
+[data-control="preview"] .hero-info-panel {
+  overflow: visible;
+}
+[data-control="preview"] .hero-info-panel::after {
+  content: attr(data-preview);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-highlight);
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  padding: 8px 12px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border-accent);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 100;
+  box-shadow: var(--shadow-card);
+}
+[data-control="preview"] .hero-info-panel:hover::after {
+  opacity: 1;
 }
 
 /* Panel variants */
@@ -136,7 +204,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .panel-cards:hover .hip-mini-card:nth-child(4) { transform: rotate(12deg) translateX(26px) translateY(-6px); }
 .panel-cards:hover .hip-mini-card:nth-child(5) { transform: rotate(24deg) translateX(52px) translateY(-4px); }
 
-/* === LOOT BOX (Panel 2) === */
+/* === LOOT BOX (Panel 2) — 6-face cube === */
 .hip-loot-box {
   width: 70px; height: 70px;
   position: relative;
@@ -153,10 +221,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   border-radius: 6px;
   box-shadow: 0 0 12px rgba(167,139,250,0.08);
 }
+/* Front / Right / Back / Left */
 .hip-loot-face:nth-child(1) { transform: rotateY(0deg) translateZ(35px); }
 .hip-loot-face:nth-child(2) { transform: rotateY(90deg) translateZ(35px); }
 .hip-loot-face:nth-child(3) { transform: rotateY(180deg) translateZ(35px); }
 .hip-loot-face:nth-child(4) { transform: rotateY(270deg) translateZ(35px); }
+/* Top / Bottom */
+.hip-loot-face:nth-child(5) { transform: translateY(-35px) rotateX(90deg); }
+.hip-loot-face:nth-child(6) { transform: translateY(35px) rotateX(-90deg); }
 
 @keyframes hipLootSpin {
   0%   { transform: rotateY(0deg) rotateX(5deg); }
@@ -185,6 +257,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .hip-chess-cell {
   display: flex; align-items: center; justify-content: center;
   font-size: 0.7rem;
+  transition: opacity 0.3s;
 }
 .hip-chess-cell.dark { background: rgba(45,212,191,0.08); }
 .hip-chess-cell.light { background: var(--bg-card-alt); }
@@ -208,6 +281,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .panel-cards .hip-quote em { color: var(--accent-pink); }
 .panel-loot .hip-quote em  { color: var(--accent-purple); }
 .panel-chess .hip-quote em  { color: var(--accent-cyan); }
+
+/* === prefers-reduced-motion === */
+@media (prefers-reduced-motion: reduce) {
+  .hero-info-panel::before {
+    animation: none;
+  }
+  .hip-loot-box {
+    animation: none;
+  }
+  .panel-loot .hip-visual {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -215,7 +308,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   <div class="hero-infographic">
 
     <!-- Panel 1: Cards (pink) -->
-    <div class="hero-info-panel panel-cards">
+    <div class="hero-info-panel panel-cards"
+         data-section="card-trading"
+         data-preview="Card-Based Trading &#8212; Build your deck, flip cards, battle opponents"
+         aria-label="Navigate to Card-Based Trading">
       <div class="hip-visual">
         <div class="hip-card-fan">
           <div class="hip-mini-card">&#x1F4C8;</div>
@@ -225,28 +321,36 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
           <div class="hip-mini-card">&#x26A1;</div>
         </div>
       </div>
-      <div class="hip-quote">Trading should be as <em>intuitive</em> as playing a card game</div>
+      <div class="hip-quote" data-quote-key="cards">Trading should be as <em>intuitive</em> as playing a card game</div>
     </div>
 
-    <!-- Panel 2: Loot (purple) -->
-    <div class="hero-info-panel panel-loot">
+    <!-- Panel 2: Loot (purple) — 6-face cube -->
+    <div class="hero-info-panel panel-loot"
+         data-section="loot-rewards"
+         data-preview="Loot &amp; Rewards &#8212; Open boxes, scratch tickets, win rare items"
+         aria-label="Navigate to Loot and Rewards">
       <div class="hip-visual">
         <div class="hip-loot-box">
           <div class="hip-loot-face">&#x1F4E6;</div>
           <div class="hip-loot-face">&#x2728;</div>
           <div class="hip-loot-face">&#x1F48E;</div>
           <div class="hip-loot-face">&#x2B50;</div>
+          <div class="hip-loot-face">&#x1F381;</div>
+          <div class="hip-loot-face">&#x1F4B0;</div>
         </div>
       </div>
-      <div class="hip-quote">As <em>rewarding</em> as opening a loot box</div>
+      <div class="hip-quote" data-quote-key="loot">As <em>rewarding</em> as opening a loot box</div>
     </div>
 
     <!-- Panel 3: Chess (cyan) -->
-    <div class="hero-info-panel panel-chess">
+    <div class="hero-info-panel panel-chess"
+         data-section="strategy"
+         data-preview="Strategy Arena &#8212; Play modes, AI battles, tactical gameplay"
+         aria-label="Navigate to Strategy Arena">
       <div class="hip-visual">
         <div class="hip-chess-area">
           <div class="hip-chess-knight">&#x1F9CA;</div>
-          <div class="hip-chess-board">
+          <div class="hip-chess-board" id="hip-chess-board">
             <div class="hip-chess-cell light"></div>
             <div class="hip-chess-cell dark">&#x265A;</div>
             <div class="hip-chess-cell light"></div>
@@ -267,7 +371,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
           <div class="hip-chess-knight">&#x1F9CA;</div>
         </div>
       </div>
-      <div class="hip-quote">And as <em>strategic</em> as a chess match</div>
+      <div class="hip-quote" data-quote-key="chess">And as <em>strategic</em> as a chess match</div>
     </div>
 
   </div>
@@ -277,37 +381,185 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 (function() {
   'use strict';
   var root = document.getElementById('ferros-asset-root');
+  var panels = root.querySelectorAll('.hero-info-panel');
   var isEmbedded = window.parent !== window;
   var params = new URLSearchParams(window.location.search);
   var control = params.get('control') || 'demo';
+  var chessTimerId = null;
+  var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* === FERROS ASSET PROTOCOL === */
+  /* =========================================================
+   *  FERROS ASSET PROTOCOL — message handlers
+   * ========================================================= */
   window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'ferros:init') {
-      control = e.data.config.control || control;
+    if (!e.data || typeof e.data.type !== 'string') return;
+
+    if (e.data.type === 'ferros:init') {
+      control = (e.data.config && e.data.config.control) || control;
       applyControl();
+    }
+
+    if (e.data.type === 'ferros:update') {
+      handleUpdate(e.data);
     }
   });
 
-  function applyControl() {
-    root.dataset.control = control;
+  /* === ferros:update — quote text updates === */
+  function handleUpdate(data) {
+    if (data.quotes) {
+      var keyMap = { cards: 'cards', loot: 'loot', chess: 'chess' };
+      var updated = false;
+      for (var key in keyMap) {
+        if (data.quotes[key]) {
+          var el = root.querySelector('.hip-quote[data-quote-key="' + key + '"]');
+          if (el) {
+            el.innerHTML = data.quotes[key];
+            updated = true;
+          }
+        }
+      }
+      if (updated) {
+        emit('panels-updated', { keys: Object.keys(data.quotes) });
+      }
+    }
   }
 
+  /* =========================================================
+   *  CONTROL MODE — apply DEMO / PREVIEW / PLAY behaviour
+   * ========================================================= */
+  function applyControl() {
+    root.dataset.control = control;
+    applyAccessibility();
+    manageChessAnimation();
+  }
+
+  /* === Accessibility attributes per mode === */
+  function applyAccessibility() {
+    panels.forEach(function(panel) {
+      if (control === 'play') {
+        panel.setAttribute('role', 'link');
+        panel.setAttribute('tabindex', '0');
+      } else {
+        panel.removeAttribute('role');
+        panel.removeAttribute('tabindex');
+      }
+    });
+  }
+
+  /* =========================================================
+   *  PLAY MODE — click and keyboard navigation
+   * ========================================================= */
+  function handlePanelActivation(panel) {
+    if (control !== 'play') return;
+    var section = panel.getAttribute('data-section');
+    if (section) {
+      emit('navigate', { section: section });
+    }
+  }
+
+  panels.forEach(function(panel) {
+    panel.addEventListener('click', function() {
+      handlePanelActivation(panel);
+    });
+    panel.addEventListener('keydown', function(e) {
+      if (control !== 'play') return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handlePanelActivation(panel);
+      }
+    });
+  });
+
+  /* =========================================================
+   *  CHESS PIECE ANIMATION — random moves every 3s
+   *  Only in DEMO and PREVIEW modes, paused when tab hidden
+   * ========================================================= */
+  function moveRandomChessPiece() {
+    var board = document.getElementById('hip-chess-board');
+    if (!board) return;
+    var cells = board.querySelectorAll('.hip-chess-cell');
+    var occupied = [];
+    var empty = [];
+    cells.forEach(function(cell, i) {
+      if (cell.textContent.trim()) {
+        occupied.push(i);
+      } else {
+        empty.push(i);
+      }
+    });
+    if (occupied.length === 0 || empty.length === 0) return;
+    var srcIdx = occupied[Math.floor(Math.random() * occupied.length)];
+    var dstIdx = empty[Math.floor(Math.random() * empty.length)];
+    var piece = cells[srcIdx].textContent;
+    cells[srcIdx].textContent = '';
+    cells[dstIdx].textContent = piece;
+  }
+
+  function startChessTimer() {
+    if (chessTimerId !== null) return;
+    if (prefersReducedMotion) return;
+    chessTimerId = setInterval(moveRandomChessPiece, 3000);
+  }
+
+  function stopChessTimer() {
+    if (chessTimerId !== null) {
+      clearInterval(chessTimerId);
+      chessTimerId = null;
+    }
+  }
+
+  function manageChessAnimation() {
+    if (control === 'demo' || control === 'preview') {
+      if (!document.hidden) {
+        startChessTimer();
+      }
+    } else {
+      stopChessTimer();
+    }
+  }
+
+  /* Pause chess animation when tab is hidden */
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      stopChessTimer();
+    } else {
+      manageChessAnimation();
+    }
+  });
+
+  /* =========================================================
+   *  CORE PROTOCOL — emit events and report size
+   * ========================================================= */
   function emit(event, payload) {
     if (isEmbedded) {
-      window.parent.postMessage({ type: 'ferros:event', asset: 'hero-infographic', event: event, payload: payload }, '*');
+      window.parent.postMessage({
+        type: 'ferros:event',
+        asset: 'hero-infographic',
+        event: event,
+        payload: payload
+      }, '*');
     }
   }
 
   function reportSize() {
     if (isEmbedded) {
-      window.parent.postMessage({ type: 'ferros:resize', asset: 'hero-infographic', width: root.scrollWidth, height: root.scrollHeight }, '*');
+      window.parent.postMessage({
+        type: 'ferros:resize',
+        asset: 'hero-infographic',
+        width: root.scrollWidth,
+        height: root.scrollHeight
+      }, '*');
     }
   }
 
+  /* =========================================================
+   *  INIT
+   * ========================================================= */
   applyControl();
   reportSize();
-  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(reportSize).observe(root);
+  }
 })();
 </script>
 </body>

@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="ai-float-panel" data-version="1.0.0">
+<html lang="en" data-ferros-asset="ai-float-panel" data-version="2.0.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FERROS Asset: AI Float Panel</title>
 <!--
   ╔══════════════════════════════════════════════════╗
-  ║  FERROS ASSET: ai-float-panel                    ║
+  ║  FERROS ASSET: ai-float-panel  v2.0.0           ║
   ║  Control Levels: DEMO | PREVIEW | PLAY           ║
   ║  Dependencies: none                              ║
   ║  Floating AI assistant with 5 agent personas     ║
@@ -30,6 +30,19 @@
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); min-height: 100vh; }
+
+/* === SCREEN READER ONLY === */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* === FOCUS VISIBLE === */
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
 
 /* === AI FLOAT BUTTON === */
 .ai-float-btn {
@@ -89,12 +102,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   background: var(--gradient-header);
   border-bottom: 1px solid var(--border-dim);
   display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
 }
 .ai-float-title {
   font-size: 0.82rem; font-weight: 700;
   color: var(--text-primary);
 }
-.ai-float-close {
+.ai-header-actions {
+  display: flex; align-items: center; gap: 6px;
+}
+.ai-float-header-btn {
   width: 24px; height: 24px;
   border-radius: 50%;
   background: var(--bg-highlight);
@@ -104,8 +121,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s;
+  line-height: 1;
 }
+.ai-float-header-btn:hover { color: var(--text-primary); border-color: var(--border-accent); }
 .ai-float-close:hover { color: var(--accent-red); border-color: rgba(248,113,113,0.3); }
+
+/* === AGENT STATUS DOT === */
+.ai-agent-status {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  flex-shrink: 0;
+}
+.ai-agent-status.active {
+  background: var(--accent-cyan);
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+[data-control="preview"] .ai-agent-status {
+  animation: statusPulse 2.5s ease-in-out infinite;
+}
 
 /* === AGENT MENU === */
 .ai-float-menu {
@@ -121,13 +159,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   transition: background 0.2s, border-color 0.2s;
   border: 1px solid transparent;
   margin-bottom: 4px;
+  position: relative;
 }
 .ai-float-agent:hover {
   background: var(--bg-highlight);
   border-color: var(--border-dim);
 }
-.ai-float-agent-icon { font-size: 1.4rem; }
-.ai-float-agent-info { flex: 1; }
+.ai-float-agent-icon { font-size: 1.4rem; position: relative; }
+.ai-float-agent-info { flex: 1; min-width: 0; }
 .ai-float-agent-name {
   font-size: 0.75rem; font-weight: 700;
   color: var(--text-primary);
@@ -139,12 +178,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   font-size: 0.7rem; color: var(--text-dim);
 }
 
+/* Agent description tooltip (PREVIEW mode) */
+.ai-float-agent[data-desc]:hover::after {
+  content: attr(data-desc);
+  position: absolute;
+  bottom: calc(100% + 6px); left: 12px; right: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-badge);
+  padding: 6px 8px;
+  font-size: 0.62rem; color: var(--text-secondary);
+  line-height: 1.4;
+  z-index: 10;
+  pointer-events: none;
+  white-space: normal;
+}
+
 /* === CHAT VIEW === */
 .ai-float-chat {
   display: none;
   flex-direction: column;
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
 .ai-float-chat.active {
   display: flex;
@@ -157,8 +213,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   cursor: pointer;
   font-size: 0.7rem; font-weight: 600;
   color: var(--accent-blue);
+  border: none; background: none;
   border-bottom: 1px solid var(--border-dim);
   transition: background 0.2s;
+  width: 100%;
+  text-align: left;
+  flex-shrink: 0;
 }
 .ai-chat-back:hover { background: var(--bg-highlight); }
 
@@ -169,6 +229,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
 }
 
 /* Message bubbles */
@@ -179,6 +240,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   font-size: 0.72rem;
   line-height: 1.45;
   animation: msgFadeIn 0.3s ease;
+  word-wrap: break-word;
 }
 .ai-msg.agent {
   background: var(--bg-card);
@@ -199,69 +261,133 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* === TYPING INDICATOR === */
+.ai-msg.typing {
+  display: flex; align-items: center; gap: 4px;
+  padding: 10px 16px;
+}
+.ai-msg.typing .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  animation: typingBounce 1.2s ease-in-out infinite;
+}
+.ai-msg.typing .dot:nth-child(2) { animation-delay: 0.15s; }
+.ai-msg.typing .dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%           { transform: translateY(-4px); opacity: 1; }
+}
+
+/* === CHAT INPUT === */
+.ai-chat-input-wrap {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border-dim);
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+.ai-chat-input {
+  flex: 1;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 0.72rem;
+  color: var(--text-primary);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.ai-chat-input::placeholder {
+  color: var(--text-dim);
+}
+.ai-chat-input:focus {
+  border-color: var(--accent-cyan);
+}
+.ai-chat-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ai-chat-send {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--gradient-accent);
+  border: none;
+  color: #fff;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.ai-chat-send:hover { transform: scale(1.1); }
+.ai-chat-send:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 400px) {
+  .ai-float-panel { width: 280px; }
+}
+@media (max-width: 360px) {
+  .ai-float-panel {
+    width: calc(100vw - 24px);
+    left: 12px; right: 12px;
+  }
+}
+
+/* === PREFERS REDUCED MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  .ai-float-btn { animation: none; }
+  .ai-msg { animation: none; }
+  .ai-msg.typing .dot { animation: none; opacity: 0.7; }
+  [data-control="preview"] .ai-agent-status { animation: none; }
+  .ai-float-panel,
+  .ai-float-btn,
+  .ai-float-agent,
+  .ai-float-header-btn,
+  .ai-chat-back,
+  .ai-chat-input,
+  .ai-chat-send {
+    transition-duration: 0.01ms !important;
+  }
+}
 </style>
 </head>
 <body>
 <div id="ferros-asset-root" data-control="demo">
 
   <!-- Float Button -->
-  <div class="ai-float-btn" id="ai-btn" onclick="toggleAIPanel()">&#x1F916;</div>
+  <button class="ai-float-btn" id="ai-btn" type="button" aria-label="Open AI assistant">&#x1F916;</button>
 
   <!-- Float Panel -->
-  <div class="ai-float-panel" id="ai-panel">
+  <div class="ai-float-panel" id="ai-panel" role="dialog" aria-modal="false" aria-label="AI Trading Assistants">
     <div class="ai-float-header">
       <div class="ai-float-title">AI Trading Assistants</div>
-      <div class="ai-float-close" onclick="toggleAIPanel()">&#x2715;</div>
+      <div class="ai-header-actions">
+        <button class="ai-float-header-btn ai-float-minimize" id="ai-minimize" type="button" aria-label="Minimize panel">&#x2501;</button>
+        <button class="ai-float-header-btn ai-float-close" id="ai-close" type="button" aria-label="Close panel">&#x2715;</button>
+      </div>
     </div>
 
     <!-- Agent Menu -->
-    <div class="ai-float-menu" id="ai-menu">
-      <div class="ai-float-agent" onclick="openAgentChat('scout')">
-        <div class="ai-float-agent-icon">&#x1F52D;</div>
-        <div class="ai-float-agent-info">
-          <div class="ai-float-agent-name">Scout</div>
-          <div class="ai-float-agent-role">Market Scanner</div>
-        </div>
-        <div class="ai-float-agent-arrow">&#x203A;</div>
-      </div>
-      <div class="ai-float-agent" onclick="openAgentChat('strategist')">
-        <div class="ai-float-agent-icon">&#x1F9E0;</div>
-        <div class="ai-float-agent-info">
-          <div class="ai-float-agent-name">Strategist</div>
-          <div class="ai-float-agent-role">Deck Builder</div>
-        </div>
-        <div class="ai-float-agent-arrow">&#x203A;</div>
-      </div>
-      <div class="ai-float-agent" onclick="openAgentChat('guardian')">
-        <div class="ai-float-agent-icon">&#x1F6E1;&#xFE0F;</div>
-        <div class="ai-float-agent-info">
-          <div class="ai-float-agent-name">Guardian</div>
-          <div class="ai-float-agent-role">Risk Manager</div>
-        </div>
-        <div class="ai-float-agent-arrow">&#x203A;</div>
-      </div>
-      <div class="ai-float-agent" onclick="openAgentChat('oracle')">
-        <div class="ai-float-agent-icon">&#x1F52E;</div>
-        <div class="ai-float-agent-info">
-          <div class="ai-float-agent-name">Oracle</div>
-          <div class="ai-float-agent-role">Prediction Engine</div>
-        </div>
-        <div class="ai-float-agent-arrow">&#x203A;</div>
-      </div>
-      <div class="ai-float-agent" onclick="openAgentChat('broker')">
-        <div class="ai-float-agent-icon">&#x2699;&#xFE0F;</div>
-        <div class="ai-float-agent-info">
-          <div class="ai-float-agent-name">Broker</div>
-          <div class="ai-float-agent-role">Execution Agent</div>
-        </div>
-        <div class="ai-float-agent-arrow">&#x203A;</div>
-      </div>
+    <div class="ai-float-menu" id="ai-menu" role="list">
+      <!-- Agents rendered by JS -->
     </div>
 
     <!-- Chat View -->
     <div class="ai-float-chat" id="ai-chat">
-      <div class="ai-chat-back" onclick="backToMenu()">&#x2190; Back to agents</div>
-      <div class="ai-chat-messages" id="ai-messages"></div>
+      <button class="ai-chat-back" id="ai-back" type="button">&#x2190; Back to agents</button>
+      <div class="ai-chat-messages" id="ai-messages" aria-live="polite" aria-relevant="additions"></div>
+      <div class="ai-chat-input-wrap">
+        <input type="text" class="ai-chat-input" id="ai-input" placeholder="Type a message..." autocomplete="off" aria-label="Chat message input" />
+        <button class="ai-chat-send" id="ai-send" type="button" aria-label="Send message">&#x27A4;</button>
+      </div>
     </div>
   </div>
 
@@ -270,11 +396,41 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <script>
 (function() {
   'use strict';
-  var root = document.getElementById('ferros-asset-root');
-  var isEmbedded = window.parent !== window;
-  var params = new URLSearchParams(window.location.search);
-  var control = params.get('control') || 'demo';
-  var demoTimeout = null;
+
+  /* === DOM REFS === */
+  var root     = document.getElementById('ferros-asset-root');
+  var btn      = document.getElementById('ai-btn');
+  var panel    = document.getElementById('ai-panel');
+  var menuEl   = document.getElementById('ai-menu');
+  var chatEl   = document.getElementById('ai-chat');
+  var msgEl    = document.getElementById('ai-messages');
+  var inputEl  = document.getElementById('ai-input');
+  var sendBtn  = document.getElementById('ai-send');
+  var closeBtn = document.getElementById('ai-close');
+  var minBtn   = document.getElementById('ai-minimize');
+  var backBtn  = document.getElementById('ai-back');
+
+  /* === STATE === */
+  var isEmbedded   = window.parent !== window;
+  var params       = new URLSearchParams(window.location.search);
+  var control      = params.get('control') || 'demo';
+  var demoTimeout  = null;
+  var demoTimeout2 = null;
+  var panelState   = 'closed';    /* closed | open | minimized */
+  var viewState    = 'menu';      /* menu | chat */
+  var activeAgent  = null;
+  var typingTimer  = null;
+  var fallbackIdx  = 0;
+  var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* === AGENT DATA === */
+  var agents = [
+    { id: 'scout',      icon: '\uD83D\uDD2D', name: 'Scout',      role: 'Market Scanner',    status: 'online', desc: 'Scans 4,200+ tickers for momentum signals, breakouts, and sector trends in real time.' },
+    { id: 'strategist', icon: '\uD83E\uDDE0', name: 'Strategist', role: 'Deck Builder',      status: 'online', desc: 'Analyzes deck composition and recommends swaps to optimize risk-adjusted returns.' },
+    { id: 'guardian',   icon: '\uD83D\uDEE1\uFE0F', name: 'Guardian',   role: 'Risk Manager',      status: 'online', desc: 'Monitors portfolio risk exposure, day trade limits, and position sizing.' },
+    { id: 'oracle',     icon: '\uD83D\uDD2E', name: 'Oracle',     role: 'Prediction Engine', status: 'online', desc: 'Runs multi-model pattern analysis with confidence scoring on your watchlist.' },
+    { id: 'broker',     icon: '\u2699\uFE0F', name: 'Broker',     role: 'Execution Agent',   status: 'online', desc: 'Manages pending orders, fills, and trade execution across your portfolio.' }
+  ];
 
   /* === AGENT CONVERSATION DATA === */
   var conversations = {
@@ -310,89 +466,353 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     ]
   };
 
+  /* === FALLBACK RESPONSES === */
+  var fallbackResponses = [
+    'I\'ll learn that in a future update! For now, try talking to my fellow agents.',
+    'That\'s a great question. My training data doesn\'t cover that yet \u2014 check back after the next patch!',
+    'Hmm, I\'m not sure about that one. Try asking the Oracle or Strategist for deeper analysis.',
+    'My circuits are still warming up on that topic. In the meantime, explore the other agents!'
+  ];
+
   /* === FERROS ASSET PROTOCOL === */
   window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'ferros:init') {
+    if (!e.data || !e.data.type) return;
+
+    if (e.data.type === 'ferros:init') {
       control = e.data.config.control || control;
       applyControl();
     }
+
+    if (e.data.type === 'ferros:update') {
+      handleUpdate(e.data);
+    }
   });
+
+  function handleUpdate(data) {
+    if (data.conversations) {
+      var keys = Object.keys(data.conversations);
+      for (var i = 0; i < keys.length; i++) {
+        conversations[keys[i]] = data.conversations[keys[i]];
+      }
+    }
+    if (data.agents && Array.isArray(data.agents)) {
+      agents = data.agents;
+    }
+    renderAgentMenu();
+    emit('panel-updated', { agents: agents.map(function(a){ return a.id; }) });
+  }
 
   function applyControl() {
     root.dataset.control = control;
+    renderAgentMenu();
+    updateInputState();
     if (control === 'demo') startDemo();
   }
 
   function emit(event, payload) {
     if (isEmbedded) {
-      window.parent.postMessage({ type: 'ferros:event', asset: 'ai-float-panel', event: event, payload: payload }, '*');
+      window.parent.postMessage({
+        type: 'ferros:event',
+        asset: 'ai-float-panel',
+        event: event,
+        payload: payload
+      }, '*');
     }
   }
 
   function reportSize() {
     if (isEmbedded) {
-      window.parent.postMessage({ type: 'ferros:resize', asset: 'ai-float-panel', width: root.scrollWidth, height: root.scrollHeight }, '*');
+      window.parent.postMessage({
+        type: 'ferros:resize',
+        asset: 'ai-float-panel',
+        width: root.scrollWidth,
+        height: root.scrollHeight
+      }, '*');
     }
   }
 
-  /* === PANEL TOGGLE === */
-  window.toggleAIPanel = function() {
-    var panel = document.getElementById('ai-panel');
-    var btn = document.getElementById('ai-btn');
-    var isOpen = panel.classList.contains('open');
-    if (isOpen) {
-      panel.classList.remove('open');
-      btn.classList.remove('hidden');
-    } else {
-      panel.classList.add('open');
-      btn.classList.add('hidden');
+  /* === RENDER AGENT MENU === */
+  function renderAgentMenu() {
+    menuEl.innerHTML = '';
+    for (var i = 0; i < agents.length; i++) {
+      var a = agents[i];
+      var item = document.createElement('div');
+      item.className = 'ai-float-agent';
+      item.setAttribute('role', 'listitem');
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('data-agent', a.id);
+      if (a.desc) item.setAttribute('data-desc', a.desc);
+
+      var statusClass = (activeAgent === a.id) ? 'ai-agent-status active' : 'ai-agent-status';
+
+      item.innerHTML =
+        '<div class="ai-float-agent-icon">' + a.icon + '</div>' +
+        '<div class="ai-float-agent-info">' +
+          '<div class="ai-float-agent-name">' + escapeHtml(a.name) + '</div>' +
+          '<div class="ai-float-agent-role">' + escapeHtml(a.role) + '</div>' +
+        '</div>' +
+        '<div class="' + statusClass + '"><span class="sr-only">Agent online</span></div>' +
+        '<div class="ai-float-agent-arrow">&#x203A;</div>';
+
+      (function(agentId) {
+        item.addEventListener('click', function() { openAgentChat(agentId); });
+        item.addEventListener('keydown', function(ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openAgentChat(agentId); }
+        });
+      })(a.id);
+
+      menuEl.appendChild(item);
     }
-  };
+  }
+
+  function escapeHtml(str) {
+    var d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  /* === PANEL OPEN / CLOSE / MINIMIZE === */
+  function openPanel() {
+    panelState = 'open';
+    panel.classList.add('open');
+    panel.setAttribute('aria-modal', 'true');
+    btn.classList.add('hidden');
+    emit('panel-opened', null);
+    setupFocusTrap();
+    /* Focus first interactive element in panel */
+    var firstFocusable = panel.querySelector('button, [tabindex="0"], input');
+    if (firstFocusable) firstFocusable.focus();
+  }
+
+  function closePanel() {
+    panelState = 'closed';
+    panel.classList.remove('open');
+    panel.setAttribute('aria-modal', 'false');
+    btn.classList.remove('hidden');
+    /* Reset to menu view */
+    showMenu();
+    activeAgent = null;
+    clearTypingTimer();
+    emit('panel-closed', null);
+    removeFocusTrap();
+    btn.focus();
+  }
+
+  function minimizePanel() {
+    panelState = 'minimized';
+    panel.classList.remove('open');
+    panel.setAttribute('aria-modal', 'false');
+    btn.classList.remove('hidden');
+    clearTypingTimer();
+    emit('panel-minimized', null);
+    removeFocusTrap();
+    btn.focus();
+  }
+
+  function togglePanel() {
+    if (panelState === 'open') {
+      closePanel();
+    } else if (panelState === 'minimized') {
+      /* Restore to last state (menu or chat) without resetting */
+      openPanel();
+    } else {
+      openPanel();
+    }
+  }
+
+  /* === FOCUS TRAP === */
+  var focusTrapHandler = null;
+
+  function setupFocusTrap() {
+    removeFocusTrap();
+    focusTrapHandler = function(e) {
+      if (e.key === 'Tab') {
+        var focusable = panel.querySelectorAll('button:not([disabled]), [tabindex="0"], input:not([disabled])');
+        if (focusable.length === 0) return;
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+          if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closePanel();
+      }
+    };
+    document.addEventListener('keydown', focusTrapHandler);
+  }
+
+  function removeFocusTrap() {
+    if (focusTrapHandler) {
+      document.removeEventListener('keydown', focusTrapHandler);
+      focusTrapHandler = null;
+    }
+  }
+
+  /* === VIEW SWITCHING === */
+  function showMenu() {
+    viewState = 'menu';
+    menuEl.classList.remove('hidden');
+    chatEl.classList.remove('active');
+    updateInputState();
+  }
+
+  function showChat() {
+    viewState = 'chat';
+    menuEl.classList.add('hidden');
+    chatEl.classList.add('active');
+    updateInputState();
+  }
+
+  /* === INPUT STATE === */
+  function updateInputState() {
+    var canType = (control === 'play');
+    inputEl.disabled = !canType;
+    sendBtn.disabled = !canType;
+    if (!canType) {
+      inputEl.setAttribute('title', 'Chat available in Play mode');
+      inputEl.placeholder = 'Chat available in Play mode';
+    } else {
+      inputEl.removeAttribute('title');
+      inputEl.placeholder = 'Type a message...';
+    }
+  }
+
+  /* === TYPING INDICATOR === */
+  function showTypingIndicator() {
+    var indicator = document.createElement('div');
+    indicator.className = 'ai-msg agent typing';
+    indicator.id = 'ai-typing';
+    indicator.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+    msgEl.appendChild(indicator);
+    msgEl.scrollTop = msgEl.scrollHeight;
+  }
+
+  function removeTypingIndicator() {
+    var indicator = document.getElementById('ai-typing');
+    if (indicator) indicator.remove();
+  }
+
+  function clearTypingTimer() {
+    if (typingTimer) { clearTimeout(typingTimer); typingTimer = null; }
+    removeTypingIndicator();
+  }
+
+  /* === APPEND MESSAGE === */
+  function appendMessage(from, text) {
+    var div = document.createElement('div');
+    div.className = 'ai-msg ' + from;
+    div.textContent = text;
+    msgEl.appendChild(div);
+    msgEl.scrollTop = msgEl.scrollHeight;
+  }
 
   /* === OPEN AGENT CHAT === */
-  window.openAgentChat = function(agent) {
-    var menu = document.getElementById('ai-menu');
-    var chat = document.getElementById('ai-chat');
-    var messages = document.getElementById('ai-messages');
+  function openAgentChat(agentId) {
+    activeAgent = agentId;
+    showChat();
+    msgEl.innerHTML = '';
+    clearTypingTimer();
+    renderAgentMenu(); /* Update status dots */
 
-    menu.classList.add('hidden');
-    chat.classList.add('active');
-    messages.innerHTML = '';
+    emit('agent-selected', { agent: agentId });
 
-    emit('agent-selected', { agent: agent });
+    var convo = conversations[agentId];
+    if (!convo || convo.length === 0) return;
 
-    var convo = conversations[agent];
-    if (!convo) return;
+    var delay = prefersReducedMotion ? 50 : 600;
+    var typingDelay = prefersReducedMotion ? 10 : 800;
+    var pending = [];
 
-    convo.forEach(function(msg, i) {
-      setTimeout(function() {
-        var div = document.createElement('div');
-        div.className = 'ai-msg ' + msg.from;
-        div.textContent = msg.text;
-        messages.appendChild(div);
-        messages.scrollTop = messages.scrollHeight;
-      }, (i + 1) * 600);
-    });
-  };
+    for (var i = 0; i < convo.length; i++) {
+      (function(msg, idx) {
+        var t1 = setTimeout(function() {
+          if (msg.from === 'agent') {
+            showTypingIndicator();
+            var t2 = setTimeout(function() {
+              removeTypingIndicator();
+              appendMessage(msg.from, msg.text);
+            }, typingDelay);
+            pending.push(t2);
+          } else {
+            appendMessage(msg.from, msg.text);
+          }
+        }, idx * (delay + typingDelay));
+        pending.push(t1);
+      })(convo[i], i);
+    }
+
+    /* Focus input after messages load (PLAY mode) */
+    if (control === 'play') {
+      setTimeout(function() { inputEl.focus(); }, convo.length * (delay + typingDelay) + 200);
+    }
+  }
 
   /* === BACK TO MENU === */
-  window.backToMenu = function() {
-    var menu = document.getElementById('ai-menu');
-    var chat = document.getElementById('ai-chat');
-    menu.classList.remove('hidden');
-    chat.classList.remove('active');
-  };
+  function backToMenu() {
+    showMenu();
+    activeAgent = null;
+    clearTypingTimer();
+    renderAgentMenu();
+  }
+
+  /* === SEND USER MESSAGE === */
+  function sendMessage() {
+    if (control !== 'play') return;
+    var text = inputEl.value.trim();
+    if (!text) return;
+
+    inputEl.value = '';
+    appendMessage('user', text);
+
+    /* Agent responds with typing indicator */
+    var typingMs = prefersReducedMotion ? 10 : 800;
+    showTypingIndicator();
+    inputEl.disabled = true;
+    sendBtn.disabled = true;
+
+    typingTimer = setTimeout(function() {
+      removeTypingIndicator();
+      var response = fallbackResponses[fallbackIdx % fallbackResponses.length];
+      fallbackIdx++;
+      appendMessage('agent', response);
+      inputEl.disabled = false;
+      sendBtn.disabled = false;
+      inputEl.focus();
+      typingTimer = null;
+    }, typingMs);
+  }
 
   /* === DEMO MODE === */
   function startDemo() {
+    if (prefersReducedMotion) return;
     demoTimeout = setTimeout(function() {
-      toggleAIPanel();
-      demoTimeout = setTimeout(function() {
+      togglePanel();
+      demoTimeout2 = setTimeout(function() {
         openAgentChat('scout');
       }, 2000);
     }, 1000);
   }
 
+  /* === EVENT BINDINGS === */
+  btn.addEventListener('click', function() { togglePanel(); });
+
+  closeBtn.addEventListener('click', function() { closePanel(); });
+
+  minBtn.addEventListener('click', function() { minimizePanel(); });
+
+  backBtn.addEventListener('click', function() { backToMenu(); });
+
+  sendBtn.addEventListener('click', function() { sendMessage(); });
+
+  inputEl.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+  });
+
+  /* === INIT === */
   applyControl();
   reportSize();
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
