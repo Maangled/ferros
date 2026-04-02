@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="game-board" data-version="1.0.0">
+<html lang="en" data-ferros-asset="game-board" data-version="2.0.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,8 @@
   ║  Control Levels: DEMO | PREVIEW | PLAY           ║
   ║  Dependencies: none                              ║
   ║  Lanes: Day Trade | Swing | Long Hold            ║
+  ║  v2.0.0 — production-wired: drop, energy, turns, ║
+  ║           touch, a11y, reduced-motion, responsive ║
   ╚══════════════════════════════════════════════════╝
 -->
 <style>
@@ -32,7 +34,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* === BOARD INFO BAR === */
 .board-info {
-  display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+  display: flex; gap: 16px; justify-content: center; align-items: center; flex-wrap: wrap;
   padding: 12px 16px; background: var(--bg-panel); border: 1px solid var(--border-dim);
   border-radius: var(--radius-panel); margin-bottom: 16px;
 }
@@ -46,6 +48,43 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .board-info-val.positive { color: var(--accent-green); }
 .board-info-val.negative { color: var(--accent-red); }
 
+/* Energy rejection animation */
+.board-info-val.energy-reject {
+  color: var(--accent-red) !important;
+  animation: energyShake 0.5s ease;
+}
+@keyframes energyShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+  90% { transform: translateX(2px); }
+}
+
+/* === END TURN BUTTON === */
+.btn-end-turn {
+  font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 6px 16px; border-radius: 6px; cursor: pointer;
+  background: rgba(74, 144, 217, 0.15); color: var(--accent-blue);
+  border: 1px solid rgba(74, 144, 217, 0.35);
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+.btn-end-turn:hover {
+  background: rgba(74, 144, 217, 0.25); border-color: var(--accent-blue);
+  box-shadow: 0 0 12px rgba(74, 144, 217, 0.2);
+}
+.btn-end-turn:active {
+  transform: scale(0.97);
+}
+.btn-end-turn:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.25);
+}
+
 /* === GAME BOARD === */
 .game-board {
   display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
@@ -56,10 +95,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   background: var(--bg-panel); border: 1px solid var(--border-dim);
   border-radius: var(--radius-panel); padding: 12px; position: relative;
   min-height: 380px;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 .lane-day    { border-top: 3px solid var(--accent-red); }
 .lane-swing  { border-top: 3px solid var(--accent-amber); }
 .lane-long   { border-top: 3px solid var(--accent-green); }
+
+/* Drag-over highlight */
+.lane.drag-over {
+  border-color: var(--accent-cyan);
+  box-shadow: inset 0 0 20px rgba(45, 212, 191, 0.08), 0 0 16px rgba(45, 212, 191, 0.12);
+  background: rgba(17, 21, 32, 0.95);
+}
+.lane-day.drag-over { border-top-color: var(--accent-red); }
+.lane-swing.drag-over { border-top-color: var(--accent-amber); }
+.lane-long.drag-over { border-top-color: var(--accent-green); }
+
+/* Touch-drag ghost card */
+.touch-ghost {
+  position: fixed; z-index: 9999; pointer-events: none;
+  opacity: 0.85; transform: scale(0.9) rotate(-2deg);
+  border: 2px solid var(--accent-cyan);
+  border-radius: 10px; background: var(--bg-card);
+  padding: 8px; font-family: var(--font-mono); font-size: 0.72rem;
+  color: var(--accent-cyan); font-weight: 700;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  max-width: 120px; text-align: center;
+}
 
 .lane-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -86,6 +148,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .lane-long .capacity-fill   { background: var(--accent-green); }
 
 .lane-cards { display: flex; flex-direction: column; gap: 8px; }
+
+/* Card deploy entrance animation */
+.trading-card.card-deploying {
+  animation: cardDeploy 0.4s ease-out;
+}
+@keyframes cardDeploy {
+  0% { opacity: 0; transform: translateY(-20px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 /* === TRADING CARD (in-lane) === */
 .trading-card {
@@ -153,13 +224,82 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 [data-control="demo"] .lane { animation: demoPulse 6s ease-in-out infinite; }
 [data-control="demo"] .lane-swing { animation-delay: 2s; }
 [data-control="demo"] .lane-long { animation-delay: 4s; }
+[data-control="demo"] .btn-end-turn { display: none; }
 
 /* PREVIEW mode */
 [data-control="preview"] .trading-card { cursor: default; }
 [data-control="preview"] .tc-ability { cursor: help; }
+[data-control="preview"] .btn-end-turn { display: none; }
 
 /* Standalone layout */
 .asset-showcase { padding: 24px; max-width: 900px; margin: 0 auto; }
+
+/* === RESPONSIVE: 600px breakpoint === */
+@media (max-width: 600px) {
+  .game-board {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .lane {
+    min-height: 200px;
+  }
+  .board-info {
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 0.65rem;
+  }
+  .board-info-item {
+    font-size: 0.62rem;
+  }
+  .board-info-val {
+    font-size: 0.72rem;
+  }
+  .btn-end-turn {
+    font-size: 0.62rem;
+    padding: 5px 12px;
+  }
+  .asset-showcase {
+    padding: 10px;
+  }
+}
+
+/* === PREFERS-REDUCED-MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  /* Disable demoPulse */
+  [data-control="demo"] .lane {
+    animation: none !important;
+  }
+  /* Disable price jitter flash — handled in JS, but also kill transitions */
+  .tc-stat-val {
+    transition: none !important;
+  }
+  /* Disable card flip animation */
+  .trading-card.flipping {
+    animation: none !important;
+  }
+  /* Disable shimmer */
+  .trading-card::before {
+    animation: none !important;
+    display: none !important;
+  }
+  /* Disable rarity pulse */
+  .trading-card:has(.rarity-legendary),
+  .trading-card:has(.rarity-epic) {
+    animation: none !important;
+  }
+  /* Disable ability animations */
+  .ability-glow, .ability-bounce, .ability-pulse {
+    animation: none !important;
+  }
+  /* Disable deploy animation */
+  .trading-card.card-deploying {
+    animation: none !important;
+  }
+  /* Disable energy shake */
+  .board-info-val.energy-reject {
+    animation: none !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -167,17 +307,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   <div class="asset-showcase">
     <!-- Board Info Bar -->
     <div class="board-info">
-      <div class="board-info-item">Portfolio: <span class="board-info-val">$48,250</span></div>
-      <div class="board-info-item">Turn: <span class="board-info-val">7</span></div>
-      <div class="board-info-item">P&amp;L: <span class="board-info-val positive" id="board-pnl">+$1,842</span></div>
-      <div class="board-info-item">Positions: <span class="board-info-val">7</span></div>
-      <div class="board-info-item">Energy: <span class="board-info-val">3/5</span></div>
+      <div class="board-info-item">Portfolio: <span class="board-info-val" id="bs-portfolio">$48,250</span></div>
+      <div class="board-info-item">Turn: <span class="board-info-val" id="bs-turn">7</span></div>
+      <div class="board-info-item">P&amp;L: <span class="board-info-val positive" id="bs-pnl">+$1,842</span></div>
+      <div class="board-info-item">Positions: <span class="board-info-val" id="bs-positions">7</span></div>
+      <div class="board-info-item">Energy: <span class="board-info-val" id="bs-energy">3/5</span></div>
+      <button class="btn-end-turn" id="btn-end-turn" type="button" aria-label="End the current turn">End Turn</button>
     </div>
 
     <!-- 3-Lane Game Board -->
     <div class="game-board">
       <!-- Lane 1: Day Trade -->
-      <div class="lane lane-day">
+      <div class="lane lane-day" data-lane="day" role="region" aria-label="Day Trade lane">
         <div class="lane-header">
           <span class="lane-title">Day Trade</span>
           <span class="lane-capacity">3/4 <span class="capacity-bar"><span class="capacity-fill" style="width:75%"></span></span></span>
@@ -188,12 +329,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-top"><span class="tc-ticker">NVDA</span><span class="tc-rarity rarity-epic">EPIC</span></div>
             <div class="tc-name">NVIDIA Corporation</div>
             <div class="tc-stats">
-              <div class="tc-stat">Price: <span class="tc-stat-val tc-price">$824.30</span></div>
+              <div class="tc-stat">Price: <span class="tc-stat-val tc-price" aria-live="polite">$824.30</span></div>
               <div class="tc-stat">Vol: <span class="tc-stat-val">High</span></div>
               <div class="tc-stat">Mom: <span class="tc-stat-val">92</span></div>
               <div class="tc-stat">Sector: <span class="tc-stat-val">Tech</span></div>
             </div>
-            <div class="tc-ability" data-ability="overwhelm">💥 Overwhelm</div>
+            <div class="tc-ability" data-ability="overwhelm">&#x1F4A5; Overwhelm</div>
             <div class="tc-pnl positive">+$142.60 (+2.1%)</div>
           </div>
           <!-- AMD rare -->
@@ -201,12 +342,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-top"><span class="tc-ticker">AMD</span><span class="tc-rarity rarity-rare">RARE</span></div>
             <div class="tc-name">Advanced Micro Devices</div>
             <div class="tc-stats">
-              <div class="tc-stat">Price: <span class="tc-stat-val tc-price">$178.50</span></div>
+              <div class="tc-stat">Price: <span class="tc-stat-val tc-price" aria-live="polite">$178.50</span></div>
               <div class="tc-stat">Vol: <span class="tc-stat-val">Med</span></div>
               <div class="tc-stat">Mom: <span class="tc-stat-val">74</span></div>
               <div class="tc-stat">Sector: <span class="tc-stat-val">Tech</span></div>
             </div>
-            <div class="tc-ability" data-ability="rally">⚡ Rally</div>
+            <div class="tc-ability" data-ability="rally">&#x26A1; Rally</div>
             <div class="tc-pnl positive">+$23.10 (+1.4%)</div>
           </div>
           <!-- COIN uncommon -->
@@ -214,19 +355,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-top"><span class="tc-ticker">COIN</span><span class="tc-rarity rarity-uncommon">UNCOMMON</span></div>
             <div class="tc-name">Coinbase Global</div>
             <div class="tc-stats">
-              <div class="tc-stat">Price: <span class="tc-stat-val tc-price">$256.80</span></div>
+              <div class="tc-stat">Price: <span class="tc-stat-val tc-price" aria-live="polite">$256.80</span></div>
               <div class="tc-stat">Vol: <span class="tc-stat-val">High</span></div>
               <div class="tc-stat">Mom: <span class="tc-stat-val">61</span></div>
               <div class="tc-stat">Sector: <span class="tc-stat-val">Crypto</span></div>
             </div>
-            <div class="tc-ability" data-ability="elusive">👻 Elusive</div>
+            <div class="tc-ability" data-ability="elusive">&#x1F47B; Elusive</div>
             <div class="tc-pnl negative">-$18.40 (-0.8%)</div>
           </div>
         </div>
       </div>
 
       <!-- Lane 2: Swing -->
-      <div class="lane lane-swing">
+      <div class="lane lane-swing" data-lane="swing" role="region" aria-label="Swing Trade lane">
         <div class="lane-header">
           <span class="lane-title">Swing</span>
           <span class="lane-capacity">2/3 <span class="capacity-bar"><span class="capacity-fill" style="width:66%"></span></span></span>
@@ -237,12 +378,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-top"><span class="tc-ticker">MSFT</span><span class="tc-rarity rarity-legendary">LEGEND</span></div>
             <div class="tc-name">Microsoft Corporation</div>
             <div class="tc-stats">
-              <div class="tc-stat">Price: <span class="tc-stat-val tc-price">$420.15</span></div>
+              <div class="tc-stat">Price: <span class="tc-stat-val tc-price" aria-live="polite">$420.15</span></div>
               <div class="tc-stat">Vol: <span class="tc-stat-val">Low</span></div>
               <div class="tc-stat">Mom: <span class="tc-stat-val">85</span></div>
               <div class="tc-stat">Sector: <span class="tc-stat-val">Tech</span></div>
             </div>
-            <div class="tc-ability" data-ability="barrier">🛡️ Barrier</div>
+            <div class="tc-ability" data-ability="barrier">&#x1F6E1;&#xFE0F; Barrier</div>
             <div class="tc-pnl positive">+$86.20 (+1.9%)</div>
           </div>
           <!-- XOM rare -->
@@ -250,19 +391,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-top"><span class="tc-ticker">XOM</span><span class="tc-rarity rarity-rare">RARE</span></div>
             <div class="tc-name">Exxon Mobil Corp.</div>
             <div class="tc-stats">
-              <div class="tc-stat">Price: <span class="tc-stat-val tc-price">$104.60</span></div>
+              <div class="tc-stat">Price: <span class="tc-stat-val tc-price" aria-live="polite">$104.60</span></div>
               <div class="tc-stat">Vol: <span class="tc-stat-val">Low</span></div>
               <div class="tc-stat">Mom: <span class="tc-stat-val">56</span></div>
               <div class="tc-stat">Sector: <span class="tc-stat-val">Energy</span></div>
             </div>
-            <div class="tc-ability" data-ability="lifesteal">💚 Lifesteal</div>
+            <div class="tc-ability" data-ability="lifesteal">&#x1F49A; Lifesteal</div>
             <div class="tc-pnl positive">+$12.40 (+0.6%)</div>
           </div>
         </div>
       </div>
 
       <!-- Lane 3: Long Hold -->
-      <div class="lane lane-long">
+      <div class="lane lane-long" data-lane="long" role="region" aria-label="Long Hold lane">
         <div class="lane-header">
           <span class="lane-title">Long Hold</span>
           <span class="lane-capacity">2/3 <span class="capacity-bar"><span class="capacity-fill" style="width:66%"></span></span></span>
@@ -273,12 +414,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-top"><span class="tc-ticker">AAPL</span><span class="tc-rarity rarity-legendary">LEGEND</span></div>
             <div class="tc-name">Apple Inc.</div>
             <div class="tc-stats">
-              <div class="tc-stat">Price: <span class="tc-stat-val tc-price">$192.80</span></div>
+              <div class="tc-stat">Price: <span class="tc-stat-val tc-price" aria-live="polite">$192.80</span></div>
               <div class="tc-stat">Vol: <span class="tc-stat-val">Low</span></div>
               <div class="tc-stat">Mom: <span class="tc-stat-val">78</span></div>
               <div class="tc-stat">Sector: <span class="tc-stat-val">Tech</span></div>
             </div>
-            <div class="tc-ability" data-ability="barrier">🛡️ Barrier</div>
+            <div class="tc-ability" data-ability="barrier">&#x1F6E1;&#xFE0F; Barrier</div>
             <div class="tc-pnl positive">+$210.40 (+3.2%)</div>
           </div>
           <!-- BRK.B legendary -->
@@ -286,12 +427,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-top"><span class="tc-ticker">BRK.B</span><span class="tc-rarity rarity-legendary">LEGEND</span></div>
             <div class="tc-name">Berkshire Hathaway</div>
             <div class="tc-stats">
-              <div class="tc-stat">Price: <span class="tc-stat-val tc-price">$408.20</span></div>
+              <div class="tc-stat">Price: <span class="tc-stat-val tc-price" aria-live="polite">$408.20</span></div>
               <div class="tc-stat">Vol: <span class="tc-stat-val">Low</span></div>
               <div class="tc-stat">Mom: <span class="tc-stat-val">68</span></div>
               <div class="tc-stat">Sector: <span class="tc-stat-val">Finance</span></div>
             </div>
-            <div class="tc-ability" data-ability="attune">🔮 Attune</div>
+            <div class="tc-ability" data-ability="attune">&#x1F52E; Attune</div>
             <div class="tc-pnl positive">+$320.10 (+4.1%)</div>
           </div>
         </div>
@@ -308,10 +449,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   var params = new URLSearchParams(window.location.search);
   var control = params.get('control') || 'demo';
   var jitterInterval = null;
+  var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // ── Board state ──
+  var state = {
+    turn: 7,
+    energy: 3,
+    maxEnergy: 5,
+    portfolio: 48250,
+    pnl: 1842,
+    positions: 7,
+    board: { day: [], swing: [], long: [] }
+  };
+
+  // Initialize board state from existing DOM cards
+  (function initBoardState() {
+    ['day', 'swing', 'long'].forEach(function(laneName) {
+      var lane = root.querySelector('.lane[data-lane="' + laneName + '"]');
+      if (!lane) return;
+      lane.querySelectorAll('.trading-card').forEach(function(card) {
+        state.board[laneName].push(card.dataset.ticker);
+      });
+    });
+  })();
+
+  // ── Lane capacity limits ──
+  var laneCapacity = { day: 4, swing: 3, long: 3 };
+
+  // ── PostMessage listener ──
   window.addEventListener('message', function(e) {
     if (e.data && e.data.type === 'ferros:init') {
       control = e.data.config.control || control;
+      if (e.data.config.state) {
+        Object.keys(e.data.config.state).forEach(function(k) { state[k] = e.data.config.state[k]; });
+      }
       applyControl();
     }
     if (e.data && e.data.type === 'ferros:update' && e.data.payload) {
@@ -323,12 +494,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     root.dataset.control = control;
     startPriceJitter();
     if (control === 'play' || control === 'preview') initInteractions();
+    if (control === 'play') {
+      initDropHandlers();
+      initEndTurnButton();
+      initTouchDrag();
+    }
+    refreshInfoBar();
   }
 
   function emit(event, payload) {
+    var detail = { type: 'ferros:event', asset: 'game-board', event: event, payload: payload };
     if (isEmbedded) {
-      window.parent.postMessage({ type: 'ferros:event', asset: 'game-board', event: event, payload: payload }, '*');
+      window.parent.postMessage(detail, '*');
     }
+    // Also dispatch a DOM CustomEvent so same-page listeners can react
+    root.dispatchEvent(new CustomEvent(event, { detail: payload, bubbles: true }));
   }
 
   function reportSize() {
@@ -337,7 +517,53 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     }
   }
 
-  // Price jitter: small random changes every 2s
+  // ── Refresh the info bar from state ──
+  function refreshInfoBar() {
+    var elTurn = root.querySelector('#bs-turn');
+    var elEnergy = root.querySelector('#bs-energy');
+    var elPortfolio = root.querySelector('#bs-portfolio');
+    var elPnl = root.querySelector('#bs-pnl');
+    var elPositions = root.querySelector('#bs-positions');
+
+    if (elTurn) elTurn.textContent = state.turn;
+    if (elEnergy) elEnergy.textContent = state.energy + '/' + state.maxEnergy;
+    if (elPortfolio) elPortfolio.textContent = '$' + state.portfolio.toLocaleString();
+    if (elPositions) {
+      var total = state.board.day.length + state.board.swing.length + state.board.long.length;
+      state.positions = total;
+      elPositions.textContent = total;
+    }
+    if (elPnl) {
+      var val = state.pnl;
+      elPnl.textContent = (val >= 0 ? '+' : '-') + '$' + Math.abs(val).toLocaleString();
+      elPnl.className = 'board-info-val ' + (val >= 0 ? 'positive' : 'negative');
+    }
+  }
+
+  // ── Update lane capacity display ──
+  function refreshLaneCapacity(laneName) {
+    var lane = root.querySelector('.lane[data-lane="' + laneName + '"]');
+    if (!lane) return;
+    var count = lane.querySelectorAll('.trading-card').length;
+    var max = laneCapacity[laneName] || 4;
+    var capEl = lane.querySelector('.lane-capacity');
+    if (capEl) {
+      var pct = Math.min(100, Math.round((count / max) * 100));
+      capEl.innerHTML = count + '/' + max + ' <span class="capacity-bar"><span class="capacity-fill" style="width:' + pct + '%"></span></span>';
+    }
+  }
+
+  // ── Energy rejection ──
+  function rejectEnergy() {
+    var elEnergy = root.querySelector('#bs-energy');
+    if (!elEnergy) return;
+    elEnergy.classList.remove('energy-reject');
+    void elEnergy.offsetHeight; // force reflow
+    elEnergy.classList.add('energy-reject');
+    setTimeout(function() { elEnergy.classList.remove('energy-reject'); }, 600);
+  }
+
+  // ── Price jitter: small random changes every 2s ──
   function startPriceJitter() {
     if (jitterInterval) clearInterval(jitterInterval);
     jitterInterval = setInterval(function() {
@@ -347,23 +573,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
         var change = (Math.random() - 0.5) * price * 0.005;
         var newPrice = price + change;
         el.textContent = '$' + newPrice.toFixed(2);
-        // Brief color flash
-        el.style.color = change >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-        setTimeout(function() { el.style.color = ''; }, 600);
+        // Brief color flash — skip if reduced motion
+        if (!prefersReducedMotion) {
+          el.style.color = change >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+          setTimeout(function() { el.style.color = ''; }, 600);
+        }
       });
     }, 2000);
   }
 
-  // Card flip on click
+  // ── Pause jitter when tab hidden (6) ──
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      if (jitterInterval) { clearInterval(jitterInterval); jitterInterval = null; }
+    } else {
+      startPriceJitter();
+    }
+  });
+
+  // ── Card flip on click ──
   function flipCard(card) {
     if (control === 'demo') return;
     if (card.classList.contains('flipping')) return;
     card.classList.add('flipping');
     setTimeout(function() { card.classList.remove('flipping'); }, 600);
-    emit('card-played', { ticker: card.dataset.ticker, lane: card.closest('.lane') ? card.closest('.lane').querySelector('.lane-title').textContent : '' });
+    emit('card-played', { ticker: card.dataset.ticker, lane: card.closest('.lane') ? card.closest('.lane').dataset.lane : '' });
   }
 
-  // Ability demo glow
+  // ── Ability demo glow ──
   function triggerAbility(el) {
     if (control === 'demo') return;
     var card = el.closest('.trading-card');
@@ -374,7 +611,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     void card.offsetHeight;
     card.classList.add(cls);
     setTimeout(function() { card.classList.remove(cls); }, 1000);
-    emit('card-played', { ticker: card.dataset.ticker, ability: el.dataset.ability });
+    emit('ability-used', { ticker: card.dataset.ticker, ability: el.dataset.ability });
   }
 
   function initInteractions() {
@@ -392,16 +629,307 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     });
   }
 
-  // Update board data from parent
-  function updateBoard(data) {
-    if (data.pnl !== undefined) {
-      var pnlEl = root.querySelector('#board-pnl');
-      if (pnlEl) {
-        var val = parseFloat(data.pnl);
-        pnlEl.textContent = (val >= 0 ? '+' : '') + '$' + Math.abs(val).toLocaleString();
-        pnlEl.className = 'board-info-val ' + (val >= 0 ? 'positive' : 'negative');
-      }
+  // ── Build a trading card DOM element from card data ──
+  function createCardElement(cardData) {
+    var ticker = cardData.ticker || '???';
+    var name = cardData.name || ticker;
+    var rarity = (cardData.rarity || 'common').toLowerCase();
+    var ability = cardData.ability || 'rally';
+    var rarityLabel = rarity === 'legendary' ? 'LEGEND' : rarity.toUpperCase();
+
+    var abilityEmojis = {
+      rally: '&#x26A1;', barrier: '&#x1F6E1;&#xFE0F;', elusive: '&#x1F47B;',
+      overwhelm: '&#x1F4A5;', lifesteal: '&#x1F49A;', attune: '&#x1F52E;'
+    };
+    var abilityEmoji = abilityEmojis[ability] || '&#x2728;';
+
+    var el = document.createElement('div');
+    el.className = 'trading-card card-deploying';
+    el.dataset.ticker = ticker;
+    el.innerHTML =
+      '<div class="tc-top"><span class="tc-ticker">' + ticker + '</span><span class="tc-rarity rarity-' + rarity + '">' + rarityLabel + '</span></div>' +
+      '<div class="tc-name">' + name + '</div>' +
+      '<div class="tc-stats">' +
+        '<div class="tc-stat">Price: <span class="tc-stat-val tc-price" aria-live="polite">$0.00</span></div>' +
+        '<div class="tc-stat">Vol: <span class="tc-stat-val">--</span></div>' +
+        '<div class="tc-stat">Mom: <span class="tc-stat-val">--</span></div>' +
+        '<div class="tc-stat">Sector: <span class="tc-stat-val">--</span></div>' +
+      '</div>' +
+      '<div class="tc-ability" data-ability="' + ability + '">' + abilityEmoji + ' ' + ability.charAt(0).toUpperCase() + ability.slice(1) + '</div>' +
+      '<div class="tc-pnl positive">$0.00 (0.0%)</div>';
+
+    // Remove deploy animation after it plays
+    setTimeout(function() { el.classList.remove('card-deploying'); }, 500);
+
+    // Wire click interactions on the new card
+    el.addEventListener('click', function(e) {
+      if (e.target.closest('.tc-ability')) return;
+      flipCard(el);
+    });
+    var abilBtn = el.querySelector('.tc-ability');
+    if (abilBtn) {
+      abilBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        triggerAbility(abilBtn);
+      });
     }
+    return el;
+  }
+
+  // ── Deploy a card to a lane (shared by drag-drop and touch) ──
+  function deployCardToLane(cardData, lane) {
+    var laneName = lane.dataset.lane;
+    var energyCost = parseInt(cardData.energy, 10) || 1;
+
+    // Energy check
+    if (state.energy < energyCost) {
+      rejectEnergy();
+      return false;
+    }
+
+    // Capacity check
+    var currentCount = lane.querySelectorAll('.trading-card').length;
+    var maxCap = laneCapacity[laneName] || 4;
+    if (currentCount >= maxCap) return false;
+
+    // Spend energy
+    state.energy -= energyCost;
+
+    // Increment turn
+    state.turn++;
+
+    // Add card to board state
+    state.board[laneName].push(cardData.ticker);
+
+    // Create and insert DOM element
+    var cardEl = createCardElement(cardData);
+    var laneCards = lane.querySelector('.lane-cards');
+    if (laneCards) laneCards.appendChild(cardEl);
+
+    // Update displays
+    refreshInfoBar();
+    refreshLaneCapacity(laneName);
+
+    // Emit card-played event
+    emit('card-played', {
+      ticker: cardData.ticker,
+      lane: laneName,
+      energy: energyCost
+    });
+
+    return true;
+  }
+
+  // ── (1) Drop handlers on lanes ──
+  function initDropHandlers() {
+    var lanes = root.querySelectorAll('.lane');
+    lanes.forEach(function(lane) {
+      lane.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        lane.classList.add('drag-over');
+      });
+
+      lane.addEventListener('dragenter', function(e) {
+        e.preventDefault();
+        lane.classList.add('drag-over');
+      });
+
+      lane.addEventListener('dragleave', function(e) {
+        // Only remove if actually leaving the lane (not entering a child)
+        if (!lane.contains(e.relatedTarget)) {
+          lane.classList.remove('drag-over');
+        }
+      });
+
+      lane.addEventListener('drop', function(e) {
+        e.preventDefault();
+        lane.classList.remove('drag-over');
+
+        var raw = e.dataTransfer.getData('text/plain');
+        var cardData;
+        try { cardData = JSON.parse(raw); } catch (err) { return; }
+        if (!cardData || !cardData.ticker) return;
+
+        deployCardToLane(cardData, lane);
+      });
+    });
+  }
+
+  // ── (4) End Turn button ──
+  function initEndTurnButton() {
+    var btn = root.querySelector('#btn-end-turn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+      var boardSnapshot = {
+        day: state.board.day.slice(),
+        swing: state.board.swing.slice(),
+        long: state.board.long.slice()
+      };
+
+      emit('turn-ended', {
+        turn: state.turn,
+        board: boardSnapshot
+      });
+
+      // Reset energy to max
+      state.energy = state.maxEnergy;
+
+      // Increment turn
+      state.turn++;
+
+      refreshInfoBar();
+    });
+  }
+
+  // ── (7) Touch-drag card placement for mobile ──
+  var touchState = { active: false, ghost: null, cardData: null, startX: 0, startY: 0 };
+
+  function initTouchDrag() {
+    // Listen for custom touch-drag-start events from hand cards in parent
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'ferros:touch-drag-start' && e.data.cardData) {
+        touchState.cardData = e.data.cardData;
+        touchState.active = true;
+      }
+    });
+
+    // Also support same-page touch drag from any [draggable] with data-card-json
+    root.addEventListener('touchstart', function(e) {
+      var draggable = e.target.closest('[draggable="true"][data-card-json]');
+      if (!draggable) return;
+      var cardData;
+      try { cardData = JSON.parse(draggable.dataset.cardJson); } catch (err) { return; }
+      if (!cardData || !cardData.ticker) return;
+
+      touchState.active = true;
+      touchState.cardData = cardData;
+      var touch = e.touches[0];
+      touchState.startX = touch.clientX;
+      touchState.startY = touch.clientY;
+
+      // Create ghost
+      var ghost = document.createElement('div');
+      ghost.className = 'touch-ghost';
+      ghost.textContent = cardData.ticker;
+      ghost.style.left = (touch.clientX - 40) + 'px';
+      ghost.style.top = (touch.clientY - 30) + 'px';
+      document.body.appendChild(ghost);
+      touchState.ghost = ghost;
+
+      e.preventDefault();
+    }, { passive: false });
+
+    root.addEventListener('touchmove', function(e) {
+      if (!touchState.active) return;
+      var touch = e.touches[0];
+
+      // Move ghost
+      if (touchState.ghost) {
+        touchState.ghost.style.left = (touch.clientX - 40) + 'px';
+        touchState.ghost.style.top = (touch.clientY - 30) + 'px';
+      }
+
+      // Highlight lane under finger
+      var lanes = root.querySelectorAll('.lane');
+      lanes.forEach(function(lane) { lane.classList.remove('drag-over'); });
+
+      var elUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (elUnder) {
+        var laneUnder = elUnder.closest('.lane');
+        if (laneUnder) laneUnder.classList.add('drag-over');
+      }
+
+      e.preventDefault();
+    }, { passive: false });
+
+    root.addEventListener('touchend', function(e) {
+      if (!touchState.active) return;
+
+      // Remove ghost
+      if (touchState.ghost) {
+        document.body.removeChild(touchState.ghost);
+        touchState.ghost = null;
+      }
+
+      // Clear highlights
+      var lanes = root.querySelectorAll('.lane');
+      lanes.forEach(function(lane) { lane.classList.remove('drag-over'); });
+
+      // Find lane under final touch position
+      var touch = e.changedTouches[0];
+      var elUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (elUnder) {
+        var laneUnder = elUnder.closest('.lane');
+        if (laneUnder && touchState.cardData) {
+          deployCardToLane(touchState.cardData, laneUnder);
+        }
+      }
+
+      touchState.active = false;
+      touchState.cardData = null;
+    });
+
+    root.addEventListener('touchcancel', function() {
+      if (touchState.ghost) {
+        document.body.removeChild(touchState.ghost);
+        touchState.ghost = null;
+      }
+      root.querySelectorAll('.lane').forEach(function(lane) { lane.classList.remove('drag-over'); });
+      touchState.active = false;
+      touchState.cardData = null;
+    });
+  }
+
+  // ── (5) Full board rebuild from ferros:update ──
+  function updateBoard(data) {
+    // Update stats if provided
+    if (data.stats) {
+      if (data.stats.portfolio !== undefined) state.portfolio = data.stats.portfolio;
+      if (data.stats.turn !== undefined) state.turn = data.stats.turn;
+      if (data.stats.pnl !== undefined) state.pnl = data.stats.pnl;
+      if (data.stats.positions !== undefined) state.positions = data.stats.positions;
+      if (data.stats.energy !== undefined) state.energy = data.stats.energy;
+      if (data.stats.maxEnergy !== undefined) state.maxEnergy = data.stats.maxEnergy;
+    }
+
+    // Rebuild board lanes if provided
+    if (data.board) {
+      ['day', 'swing', 'long'].forEach(function(laneName) {
+        if (!data.board[laneName]) return;
+        var lane = root.querySelector('.lane[data-lane="' + laneName + '"]');
+        if (!lane) return;
+        var laneCards = lane.querySelector('.lane-cards');
+        if (!laneCards) return;
+
+        // Clear existing cards
+        laneCards.innerHTML = '';
+
+        // Reset board state for this lane
+        state.board[laneName] = [];
+
+        // Rebuild from data
+        data.board[laneName].forEach(function(cardData) {
+          // Accept both full card objects and ticker strings
+          if (typeof cardData === 'string') {
+            cardData = { ticker: cardData, name: cardData, rarity: 'common', ability: 'rally', energy: 1 };
+          }
+          var cardEl = createCardElement(cardData);
+          cardEl.classList.remove('card-deploying'); // No animation on rebuild
+          laneCards.appendChild(cardEl);
+          state.board[laneName].push(cardData.ticker);
+        });
+
+        refreshLaneCapacity(laneName);
+      });
+    }
+
+    // Legacy single-pnl update support
+    if (data.pnl !== undefined && !data.stats) {
+      state.pnl = parseFloat(data.pnl);
+    }
+
+    refreshInfoBar();
   }
 
   applyControl();
