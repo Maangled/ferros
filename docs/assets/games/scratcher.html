@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="scratcher" data-version="1.0.0">
+<html lang="en" data-ferros-asset="scratcher" data-version="2.0.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,7 @@
   ║  Control Levels: DEMO | PREVIEW | PLAY           ║
   ║  Dependencies: none                              ║
   ║  Tiers: Tech $5 | Blue Chip $25 | Mega Pick $100 ║
+  ║  v2.0.0 — weighted prizes, responsive, a11y      ║
   ╚══════════════════════════════════════════════════╝
 -->
 <style>
@@ -30,6 +31,11 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
 
+/* === HEADER / BALANCE === */
+.scratcher-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+.scratcher-header h2 { font-size: 1.2rem; color: var(--accent-amber); margin: 0; }
+.scratcher-balance { font-family: var(--font-mono); font-size: 0.95rem; color: var(--accent-cyan); background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: 6px; padding: 4px 12px; }
+
 /* === SCRATCHER STORE === */
 .scratcher-store { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 1.5rem; }
 .scratcher-tier { background: var(--bg-card); border: 2px solid var(--border-dim); border-radius: 10px; padding: 20px; text-align: center; transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s; cursor: pointer; position: relative; overflow: hidden; }
@@ -42,18 +48,38 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .scratcher-tier-desc { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 12px; line-height: 1.5; }
 .scratcher-buy-btn { background: var(--accent-cyan); color: var(--bg-base); border: none; padding: 6px 16px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: filter 0.2s; }
 .scratcher-buy-btn:hover { filter: brightness(1.15); }
+.scratcher-buy-btn:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
 
-/* === SCRATCHER CANVAS === */
-.scratcher-wrap { display: flex; justify-content: center; margin: 1.5rem 0; }
-.scratcher { position: relative; width: 340px; height: 220px; border-radius: 12px; overflow: hidden; cursor: crosshair; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+/* === COIN DEDUCTION FLOAT === */
+.coin-deduct { position: absolute; font-family: var(--font-mono); font-size: 1.3rem; font-weight: 700; color: var(--accent-red); pointer-events: none; z-index: 100; animation: coinFloat 1.2s ease-out forwards; white-space: nowrap; }
+@keyframes coinFloat {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  60%  { opacity: 0.8; transform: translateY(-40px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-70px) scale(0.8); }
+}
+
+/* === SCRATCHER CANVAS (responsive) === */
+.scratcher-wrap { display: flex; flex-direction: column; align-items: center; margin: 1.5rem 0; }
+.scratcher { position: relative; width: 100%; max-width: 340px; aspect-ratio: 340 / 220; border-radius: 12px; overflow: hidden; cursor: crosshair; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
 .scratcher-under { position: absolute; inset: 0; background: var(--bg-card); padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
 .scratcher-reveal { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; }
+.scratcher-reveal.r-common { color: var(--text-dim); }
+.scratcher-reveal.r-uncommon { color: var(--accent-green); }
+.scratcher-reveal.r-rare { color: var(--accent-blue); }
+.scratcher-reveal.r-epic { color: var(--accent-purple); }
+.scratcher-reveal.r-legendary { color: var(--accent-amber); }
 .scratcher-reveal.r1 { color: var(--accent-amber); }
 .scratcher-reveal.r2 { color: var(--accent-cyan); }
 .scratcher-reveal.r3 { color: var(--accent-green); }
 .scratcher-label { font-size: 0.72rem; color: var(--text-dim); }
-.scratcher canvas { position: absolute; inset: 0; }
+.scratcher canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .scratcher-hint { text-align: center; font-size: 0.75rem; color: var(--text-dim); margin-top: 8px; }
+
+/* === NEW TICKET BUTTON === */
+.new-ticket-btn { display: none; margin-top: 10px; background: var(--accent-amber); color: var(--bg-base); border: none; padding: 8px 20px; border-radius: 6px; font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: filter 0.2s, transform 0.2s; }
+.new-ticket-btn:hover { filter: brightness(1.15); transform: translateY(-2px); }
+.new-ticket-btn:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+.new-ticket-btn.visible { display: inline-block; }
 
 /* === CONFETTI === */
 .confetti-container { position: fixed; inset: 0; pointer-events: none; z-index: 9999; overflow: hidden; }
@@ -62,7 +88,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 /* === ANIMATIONS === */
 @keyframes ticketShimmer { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes confettiFall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
-@keyframes demoScratch { 0% { cx: 60; cy: 60; } 15% { cx: 280; cy: 60; } 30% { cx: 60; cy: 110; } 45% { cx: 280; cy: 110; } 60% { cx: 60; cy: 160; } 75% { cx: 280; cy: 160; } 100% { cx: 170; cy: 110; } }
+
+/* === prefers-reduced-motion === */
+@media (prefers-reduced-motion: reduce) {
+  .scratcher-tier::before { animation: none !important; }
+  .confetti-piece { animation: none !important; display: none !important; }
+  .coin-deduct { animation: none !important; opacity: 0 !important; }
+  @keyframes ticketShimmer { from { transform: none; } to { transform: none; } }
+}
 
 /* === CONTROL MODES === */
 [data-control="demo"] .scratcher { cursor: default; }
@@ -73,32 +106,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* === STANDALONE LAYOUT === */
 .asset-showcase { padding: 24px; max-width: 720px; margin: 0 auto; }
-.asset-showcase h2 { text-align: center; font-size: 1.2rem; color: var(--accent-amber); margin-bottom: 16px; }
 </style>
 </head>
 <body>
 <div id="ferros-asset-root" data-control="demo">
   <div class="asset-showcase">
-    <h2>Scratcher Tickets</h2>
+    <div class="scratcher-header">
+      <h2>Scratcher Tickets</h2>
+      <div class="scratcher-balance" id="scratcher-balance" aria-live="polite">Balance: $1,000</div>
+    </div>
 
     <!-- Tier Store -->
-    <div class="scratcher-store">
-      <div class="scratcher-tier selected" data-tier="tech" onclick="buyScratcher('tech')">
-        <div class="scratcher-tier-icon">💻</div>
+    <div class="scratcher-store" role="list">
+      <div class="scratcher-tier selected" data-tier="tech" role="listitem" tabindex="0" onclick="buyScratcher('tech')" onkeydown="if(event.key==='Enter')buyScratcher('tech')">
+        <div class="scratcher-tier-icon" aria-hidden="true">💻</div>
         <div class="scratcher-tier-name">Tech Scratcher</div>
         <div class="scratcher-tier-price">$5</div>
         <div class="scratcher-tier-desc">Common tech stock picks. 1-in-10 chance for a rare pull.</div>
         <button class="scratcher-buy-btn" onclick="event.stopPropagation(); buyScratcher('tech')">Buy &amp; Scratch</button>
       </div>
-      <div class="scratcher-tier" data-tier="bluechip" onclick="buyScratcher('bluechip')">
-        <div class="scratcher-tier-icon">💎</div>
+      <div class="scratcher-tier" data-tier="bluechip" role="listitem" tabindex="0" onclick="buyScratcher('bluechip')" onkeydown="if(event.key==='Enter')buyScratcher('bluechip')">
+        <div class="scratcher-tier-icon" aria-hidden="true">💎</div>
         <div class="scratcher-tier-name">Blue Chip</div>
         <div class="scratcher-tier-price">$25</div>
         <div class="scratcher-tier-desc">Premium blue-chip picks. Guaranteed uncommon or better.</div>
         <button class="scratcher-buy-btn" onclick="event.stopPropagation(); buyScratcher('bluechip')">Buy &amp; Scratch</button>
       </div>
-      <div class="scratcher-tier" data-tier="mega" onclick="buyScratcher('mega')">
-        <div class="scratcher-tier-icon">🔥</div>
+      <div class="scratcher-tier" data-tier="mega" role="listitem" tabindex="0" onclick="buyScratcher('mega')" onkeydown="if(event.key==='Enter')buyScratcher('mega')">
+        <div class="scratcher-tier-icon" aria-hidden="true">🔥</div>
         <div class="scratcher-tier-name">Mega Pick</div>
         <div class="scratcher-tier-price">$100</div>
         <div class="scratcher-tier-desc">Legendary odds. Possible mythic pull with confetti blast!</div>
@@ -108,7 +143,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
     <!-- Scratcher Area -->
     <div class="scratcher-wrap">
-      <div class="scratcher" id="scratcher-main">
+      <div class="scratcher" id="scratcher-main" role="application" aria-label="Scratcher ticket — scratch to reveal prizes. Press spacebar to scratch with keyboard." tabindex="0">
         <div class="scratcher-under" id="scratcher-reveal">
           <div class="scratcher-label">-- Prize 1 --</div>
           <div class="scratcher-reveal r1" id="reveal-1">NVDA +$42.50</div>
@@ -117,13 +152,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
           <div class="scratcher-label">-- Prize 3 --</div>
           <div class="scratcher-reveal r3" id="reveal-3">TSLA +$91.00</div>
         </div>
-        <canvas id="scratcher-canvas" width="340" height="220"></canvas>
+        <canvas id="scratcher-canvas"></canvas>
       </div>
+      <button class="new-ticket-btn" id="new-ticket-btn" aria-label="Reset scratcher to scratch same prizes again">New Ticket</button>
     </div>
-    <div class="scratcher-hint" id="scratcher-hint">Scratch the card to reveal your prizes!</div>
+    <div class="scratcher-hint" id="scratcher-hint" aria-live="polite">Scratch the card to reveal your prizes!</div>
 
     <!-- Confetti Container -->
-    <div class="confetti-container" id="confetti-container"></div>
+    <div class="confetti-container" id="confetti-container" aria-hidden="true"></div>
   </div>
 </div>
 
@@ -134,6 +170,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   var isEmbedded = window.parent !== window;
   var params = new URLSearchParams(window.location.search);
   var control = params.get('control') || 'demo';
+  var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Listen for reduced-motion changes */
+  window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', function(e) {
+    prefersReducedMotion = e.matches;
+  });
 
   /* === FERROS ASSET PROTOCOL === */
   window.addEventListener('message', function(e) {
@@ -155,6 +197,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     if (isEmbedded) {
       window.parent.postMessage({ type: 'ferros:event', asset: 'scratcher', event: event, payload: payload }, '*');
     }
+    /* Also dispatch a DOM CustomEvent for same-page listeners */
+    root.dispatchEvent(new CustomEvent(event, { detail: payload, bubbles: true }));
   }
 
   function reportSize() {
@@ -164,86 +208,232 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   }
 
   function handleUpdate(data) {
+    /* (4) ferros:update wire — accept prizePools, balance, tier */
+    if (data.prizePools) {
+      if (data.prizePools.tech) prizePools.tech = data.prizePools.tech;
+      if (data.prizePools.bluechip) prizePools.bluechip = data.prizePools.bluechip;
+      if (data.prizePools.mega) prizePools.mega = data.prizePools.mega;
+    }
+    if (typeof data.balance === 'number') {
+      balance = data.balance;
+      updateBalanceDisplay();
+    }
     if (data.tier) buyScratcher(data.tier);
   }
 
-  /* === PRIZE DATA === */
-  var tierPrizes = {
-    tech: {
-      prizes: [
-        { label: 'NVDA +$42.50', cls: 'r1' },
-        { label: 'AMD +$18.20', cls: 'r2' },
-        { label: 'INTC +$5.30', cls: 'r3' }
-      ]
-    },
-    bluechip: {
-      prizes: [
-        { label: 'MSFT +$86.00', cls: 'r1' },
-        { label: 'AAPL +$53.40', cls: 'r2' },
-        { label: 'GOOG +$72.10', cls: 'r3' }
-      ]
-    },
-    mega: {
-      prizes: [
-        { label: 'TSLA +$210.00', cls: 'r1' },
-        { label: 'BTC +$3,420.00', cls: 'r2' },
-        { label: 'MYTHIC CARD!', cls: 'r1' }
-      ]
-    }
+  /* === BALANCE === */
+  var balance = 1000;
+
+  function updateBalanceDisplay() {
+    var el = document.getElementById('scratcher-balance');
+    el.textContent = 'Balance: $' + balance.toLocaleString();
+  }
+
+  /* === TIER PRICES === */
+  var tierPrices = { tech: 5, bluechip: 25, mega: 100 };
+
+  /* === (1) WEIGHTED PRIZE POOLS === */
+  var rarityWeights = [
+    { rarity: 'common',    weight: 50 },
+    { rarity: 'uncommon',  weight: 25 },
+    { rarity: 'rare',      weight: 15 },
+    { rarity: 'epic',      weight: 8 },
+    { rarity: 'legendary', weight: 2 }
+  ];
+
+  var prizePools = {
+    tech: [
+      { ticker: 'INTC',  pct: '+3.2%',   rarity: 'common',    emoji: '💻' },
+      { ticker: 'CSCO',  pct: '+2.1%',   rarity: 'common',    emoji: '🖧' },
+      { ticker: 'HPQ',   pct: '+1.5%',   rarity: 'common',    emoji: '🖨' },
+      { ticker: 'DELL',  pct: '+2.8%',   rarity: 'common',    emoji: '🖥' },
+      { ticker: 'IBM',   pct: '+1.9%',   rarity: 'common',    emoji: '📊' },
+      { ticker: 'AMD',   pct: '+8.4%',   rarity: 'uncommon',  emoji: '🔴' },
+      { ticker: 'QCOM',  pct: '+6.7%',   rarity: 'uncommon',  emoji: '📶' },
+      { ticker: 'CRM',   pct: '+5.9%',   rarity: 'uncommon',  emoji: '☁' },
+      { ticker: 'NVDA',  pct: '+18.5%',  rarity: 'rare',      emoji: '🟢' },
+      { ticker: 'AVGO',  pct: '+14.2%',  rarity: 'rare',      emoji: '📡' },
+      { ticker: 'MSFT',  pct: '+22.0%',  rarity: 'epic',      emoji: '🪟' },
+      { ticker: 'AAPL',  pct: '+28.0%',  rarity: 'epic',      emoji: '🍎' },
+      { ticker: 'TSLA',  pct: '+45.0%',  rarity: 'legendary', emoji: '⚡' }
+    ],
+    bluechip: [
+      { ticker: 'KO',    pct: '+2.0%',   rarity: 'common',    emoji: '🥤' },
+      { ticker: 'PG',    pct: '+1.8%',   rarity: 'common',    emoji: '🧴' },
+      { ticker: 'JNJ',   pct: '+2.3%',   rarity: 'common',    emoji: '💊' },
+      { ticker: 'WMT',   pct: '+1.6%',   rarity: 'common',    emoji: '🛒' },
+      { ticker: 'PEP',   pct: '+2.5%',   rarity: 'common',    emoji: '🥫' },
+      { ticker: 'V',     pct: '+7.1%',   rarity: 'uncommon',  emoji: '💳' },
+      { ticker: 'MA',    pct: '+6.5%',   rarity: 'uncommon',  emoji: '💰' },
+      { ticker: 'UNH',   pct: '+8.0%',   rarity: 'uncommon',  emoji: '🏥' },
+      { ticker: 'JPM',   pct: '+12.3%',  rarity: 'rare',      emoji: '🏦' },
+      { ticker: 'BRK.B', pct: '+15.0%',  rarity: 'rare',      emoji: '🎩' },
+      { ticker: 'AMZN',  pct: '+24.0%',  rarity: 'epic',      emoji: '📦' },
+      { ticker: 'GOOG',  pct: '+20.0%',  rarity: 'epic',      emoji: '🔍' },
+      { ticker: 'MSFT',  pct: '+35.0%',  rarity: 'legendary', emoji: '🪟' }
+    ],
+    mega: [
+      { ticker: 'GME',   pct: '+12.0%',  rarity: 'common',    emoji: '🎮' },
+      { ticker: 'AMC',   pct: '+8.5%',   rarity: 'common',    emoji: '🎬' },
+      { ticker: 'PLTR',  pct: '+10.0%',  rarity: 'common',    emoji: '🔮' },
+      { ticker: 'RIVN',  pct: '+15.0%',  rarity: 'common',    emoji: '🚙' },
+      { ticker: 'SOFI',  pct: '+11.0%',  rarity: 'common',    emoji: '🪙' },
+      { ticker: 'COIN',  pct: '+22.0%',  rarity: 'uncommon',  emoji: '🟠' },
+      { ticker: 'MARA',  pct: '+30.0%',  rarity: 'uncommon',  emoji: '⛏' },
+      { ticker: 'ARKK',  pct: '+18.0%',  rarity: 'uncommon',  emoji: '🚀' },
+      { ticker: 'TSLA',  pct: '+55.0%',  rarity: 'rare',      emoji: '⚡' },
+      { ticker: 'NVDA',  pct: '+60.0%',  rarity: 'rare',      emoji: '🟢' },
+      { ticker: 'BTC',   pct: '+120.0%', rarity: 'epic',      emoji: '₿' },
+      { ticker: 'ETH',   pct: '+95.0%',  rarity: 'epic',      emoji: '💎' },
+      { ticker: 'MYTHIC', pct: '+999.0%', rarity: 'legendary', emoji: '🌟' }
+    ]
   };
+
+  function pickWeightedRarity() {
+    var total = 0;
+    for (var i = 0; i < rarityWeights.length; i++) total += rarityWeights[i].weight;
+    var roll = Math.random() * total;
+    var cumulative = 0;
+    for (var j = 0; j < rarityWeights.length; j++) {
+      cumulative += rarityWeights[j].weight;
+      if (roll <= cumulative) return rarityWeights[j].rarity;
+    }
+    return 'common';
+  }
+
+  function pickPrizeFromPool(tier) {
+    var pool = prizePools[tier] || prizePools.tech;
+    var rarity = pickWeightedRarity();
+    /* Filter pool by rarity; fall back to common if none exist */
+    var candidates = pool.filter(function(p) { return p.rarity === rarity; });
+    if (candidates.length === 0) candidates = pool.filter(function(p) { return p.rarity === 'common'; });
+    if (candidates.length === 0) candidates = pool;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  function rollPrizes(tier) {
+    var results = [];
+    for (var i = 0; i < 3; i++) {
+      results.push(pickPrizeFromPool(tier));
+    }
+    return results;
+  }
+
+  /* Map rarity to CSS class */
+  function rarityClass(rarity) {
+    return 'r-' + rarity;
+  }
+
+  function prizeLabel(prize) {
+    return prize.emoji + ' ' + prize.ticker + ' ' + prize.pct;
+  }
+
   var currentTier = 'tech';
+  var currentPrizes = [];
   var scratched = false;
   var scratchPercent = 0;
+  var newTicketShown = false;
+
+  /* === (6) CONFETTI TIMEOUT TRACKING === */
+  var confettiTimeoutId = null;
 
   /* === CANVAS SETUP === */
   var canvas = document.getElementById('scratcher-canvas');
   var ctx = canvas.getContext('2d');
   var isDrawing = false;
+  var canvasW = 340;
+  var canvasH = 220;
+
+  /* === (3) RESPONSIVE CANVAS === */
+  function resizeCanvas() {
+    var container = document.getElementById('scratcher-main');
+    var rect = container.getBoundingClientRect();
+    var w = Math.round(rect.width);
+    var h = Math.round(rect.height);
+    if (w < 1 || h < 1) return;
+    canvasW = w;
+    canvasH = h;
+    canvas.width = w;
+    canvas.height = h;
+    drawCover();
+  }
 
   function drawCover() {
     ctx.globalCompositeOperation = 'source-over';
-    var grad = ctx.createLinearGradient(0, 0, 340, 220);
+    var grad = ctx.createLinearGradient(0, 0, canvasW, canvasH);
     grad.addColorStop(0, '#1e2840');
     grad.addColorStop(0.5, '#2a3f5f');
     grad.addColorStop(1, '#1e2840');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 340, 220);
+    ctx.fillRect(0, 0, canvasW, canvasH);
 
-    /* Shimmer dots */
-    ctx.fillStyle = 'rgba(245,158,11,0.08)';
-    for (var i = 0; i < 40; i++) {
-      ctx.beginPath();
-      ctx.arc(Math.random() * 340, Math.random() * 220, Math.random() * 3 + 1, 0, Math.PI * 2);
-      ctx.fill();
+    /* Shimmer dots (skip if reduced motion) */
+    if (!prefersReducedMotion) {
+      ctx.fillStyle = 'rgba(245,158,11,0.08)';
+      for (var i = 0; i < 40; i++) {
+        ctx.beginPath();
+        ctx.arc(Math.random() * canvasW, Math.random() * canvasH, Math.random() * 3 + 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     /* Text */
     ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 22px -apple-system, sans-serif';
+    ctx.font = 'bold ' + Math.max(16, Math.round(canvasW * 0.065)) + 'px -apple-system, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('SCRATCH HERE', 170, 105);
+    ctx.fillText('SCRATCH HERE', canvasW / 2, canvasH * 0.48);
     ctx.fillStyle = '#5a6a80';
-    ctx.font = '12px monospace';
-    ctx.fillText('FERROS SCRATCHER', 170, 135);
+    ctx.font = Math.max(10, Math.round(canvasW * 0.035)) + 'px monospace';
+    ctx.fillText('FERROS SCRATCHER', canvasW / 2, canvasH * 0.62);
 
     /* Tier icon */
-    ctx.font = '36px sans-serif';
-    ctx.fillText(currentTier === 'mega' ? '🔥' : currentTier === 'bluechip' ? '💎' : '💻', 170, 70);
+    ctx.font = Math.max(24, Math.round(canvasW * 0.1)) + 'px sans-serif';
+    ctx.fillText(currentTier === 'mega' ? '🔥' : currentTier === 'bluechip' ? '💎' : '💻', canvasW / 2, canvasH * 0.32);
 
     scratchPercent = 0;
     scratched = false;
+    newTicketShown = false;
+    hideNewTicketBtn();
+    updateAriaLabel('covered');
+  }
+
+  /* === (7) ACCESSIBILITY — ARIA LABEL UPDATES === */
+  function updateAriaLabel(state) {
+    var scratcherEl = document.getElementById('scratcher-main');
+    if (state === 'covered') {
+      scratcherEl.setAttribute('aria-label', 'Scratcher ticket for ' + currentTier + ' tier. Not yet scratched. Press spacebar to scratch incrementally, or click and drag to scratch.');
+    } else if (state === 'partial') {
+      scratcherEl.setAttribute('aria-label', 'Scratcher ticket — ' + Math.round(scratchPercent) + '% scratched. Press spacebar to continue scratching.');
+    } else if (state === 'revealed') {
+      var prizeText = currentPrizes.map(function(p) { return p.ticker + ' ' + p.pct + ' (' + p.rarity + ')'; }).join(', ');
+      scratcherEl.setAttribute('aria-label', 'Prizes revealed: ' + prizeText);
+    }
+  }
+
+  function getCanvasCoords(clientX, clientY) {
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = canvasW / rect.width;
+    var scaleY = canvasH / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  }
+
+  function scratchRadius() {
+    return Math.max(14, Math.round(canvasW * 0.065));
   }
 
   function scratch(x, y) {
     ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath();
-    ctx.arc(x, y, 22, 0, Math.PI * 2);
+    ctx.arc(x, y, scratchRadius(), 0, Math.PI * 2);
     ctx.fill();
     checkScratchProgress();
   }
 
   function checkScratchProgress() {
-    var imageData = ctx.getImageData(0, 0, 340, 220);
+    var imageData = ctx.getImageData(0, 0, canvasW, canvasH);
     var pixels = imageData.data;
     var total = pixels.length / 4;
     var cleared = 0;
@@ -251,6 +441,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       if (pixels[i] === 0) cleared++;
     }
     scratchPercent = (cleared / total) * 100;
+    updateAriaLabel('partial');
+
+    /* (5) Show "New Ticket" button after >50% scratch */
+    if (scratchPercent > 50 && !newTicketShown) {
+      newTicketShown = true;
+      showNewTicketBtn();
+    }
+
     if (scratchPercent > 55 && !scratched) {
       scratched = true;
       revealFull();
@@ -258,31 +456,105 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   }
 
   function revealFull() {
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillRect(0, 0, 340, 220);
+    if (prefersReducedMotion) {
+      /* Instant clear for reduced motion */
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.clearRect(0, 0, canvasW, canvasH);
+    } else {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillRect(0, 0, canvasW, canvasH);
+    }
     var hint = document.getElementById('scratcher-hint');
-    hint.textContent = 'Prizes revealed! Buy another ticket to play again.';
+    hint.textContent = 'Prizes revealed! Buy another ticket or press "New Ticket" to re-scratch.';
     hint.style.color = 'var(--accent-green)';
+    updateAriaLabel('revealed');
+
+    /* Show "New Ticket" always on full reveal */
+    if (!newTicketShown) {
+      newTicketShown = true;
+      showNewTicketBtn();
+    }
 
     emit('scratch-revealed', {
       tier: currentTier,
-      prizes: tierPrizes[currentTier].prizes.map(function(p) { return p.label; })
+      prizes: currentPrizes.map(function(p) {
+        return { ticker: p.ticker, pct: p.pct, rarity: p.rarity, emoji: p.emoji };
+      })
     });
 
-    if (currentTier === 'mega') spawnConfetti();
+    /* Confetti on high-rarity results (epic or legendary in any slot) or mega tier */
+    var hasHighRarity = currentPrizes.some(function(p) { return p.rarity === 'epic' || p.rarity === 'legendary'; });
+    if (currentTier === 'mega' || hasHighRarity) {
+      if (!prefersReducedMotion) spawnConfetti();
+    }
+  }
+
+  /* === (5) NEW TICKET BUTTON === */
+  var newTicketBtn = document.getElementById('new-ticket-btn');
+  newTicketBtn.addEventListener('click', function() {
+    resetScratchOverlay();
+  });
+
+  function showNewTicketBtn() {
+    newTicketBtn.classList.add('visible');
+  }
+
+  function hideNewTicketBtn() {
+    newTicketBtn.classList.remove('visible');
+  }
+
+  function resetScratchOverlay() {
+    /* Redraw cover without changing prizes */
+    ctx.globalCompositeOperation = 'source-over';
+    var grad = ctx.createLinearGradient(0, 0, canvasW, canvasH);
+    grad.addColorStop(0, '#1e2840');
+    grad.addColorStop(0.5, '#2a3f5f');
+    grad.addColorStop(1, '#1e2840');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    if (!prefersReducedMotion) {
+      ctx.fillStyle = 'rgba(245,158,11,0.08)';
+      for (var i = 0; i < 40; i++) {
+        ctx.beginPath();
+        ctx.arc(Math.random() * canvasW, Math.random() * canvasH, Math.random() * 3 + 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold ' + Math.max(16, Math.round(canvasW * 0.065)) + 'px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('SCRATCH AGAIN', canvasW / 2, canvasH * 0.48);
+    ctx.fillStyle = '#5a6a80';
+    ctx.font = Math.max(10, Math.round(canvasW * 0.035)) + 'px monospace';
+    ctx.fillText('SAME PRIZES', canvasW / 2, canvasH * 0.62);
+
+    ctx.font = Math.max(24, Math.round(canvasW * 0.1)) + 'px sans-serif';
+    ctx.fillText(currentTier === 'mega' ? '🔥' : currentTier === 'bluechip' ? '💎' : '💻', canvasW / 2, canvasH * 0.32);
+
+    scratchPercent = 0;
+    scratched = false;
+    newTicketShown = false;
+    hideNewTicketBtn();
+
+    var hint = document.getElementById('scratcher-hint');
+    hint.textContent = 'Scratch again to reveal the same prizes!';
+    hint.style.color = '';
+    updateAriaLabel('covered');
   }
 
   /* === MOUSE / TOUCH EVENTS === */
   canvas.addEventListener('mousedown', function(e) {
     if (control === 'demo') return;
     isDrawing = true;
-    var rect = canvas.getBoundingClientRect();
-    scratch(e.clientX - rect.left, e.clientY - rect.top);
+    var c = getCanvasCoords(e.clientX, e.clientY);
+    scratch(c.x, c.y);
   });
   canvas.addEventListener('mousemove', function(e) {
     if (!isDrawing || control === 'demo') return;
-    var rect = canvas.getBoundingClientRect();
-    scratch(e.clientX - rect.left, e.clientY - rect.top);
+    var c = getCanvasCoords(e.clientX, e.clientY);
+    scratch(c.x, c.y);
   });
   canvas.addEventListener('mouseup', function() { isDrawing = false; });
   canvas.addEventListener('mouseleave', function() { isDrawing = false; });
@@ -291,37 +563,105 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     if (control === 'demo') return;
     e.preventDefault();
     isDrawing = true;
-    var rect = canvas.getBoundingClientRect();
     var t = e.touches[0];
-    scratch(t.clientX - rect.left, t.clientY - rect.top);
+    var c = getCanvasCoords(t.clientX, t.clientY);
+    scratch(c.x, c.y);
   }, { passive: false });
   canvas.addEventListener('touchmove', function(e) {
     if (!isDrawing || control === 'demo') return;
     e.preventDefault();
-    var rect = canvas.getBoundingClientRect();
     var t = e.touches[0];
-    scratch(t.clientX - rect.left, t.clientY - rect.top);
+    var c = getCanvasCoords(t.clientX, t.clientY);
+    scratch(c.x, c.y);
   }, { passive: false });
   canvas.addEventListener('touchend', function() { isDrawing = false; });
+
+  /* === (7) KEYBOARD SCRATCH — spacebar reveals 20% per press === */
+  var scratcherEl = document.getElementById('scratcher-main');
+  scratcherEl.addEventListener('keydown', function(e) {
+    if (control === 'demo') return;
+    if (e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      if (scratched) return;
+      keyboardScratch();
+    }
+  });
+
+  function keyboardScratch() {
+    /* Reveal ~20% of the canvas in a band pattern */
+    ctx.globalCompositeOperation = 'destination-out';
+    var bandHeight = canvasH / 5;
+    /* Determine which band to clear based on current scratchPercent */
+    var bandIndex = Math.floor(scratchPercent / 20);
+    if (bandIndex > 4) bandIndex = 4;
+    var y = bandIndex * bandHeight;
+    ctx.fillRect(0, y, canvasW, bandHeight);
+    checkScratchProgress();
+  }
+
+  /* === (2) COIN DEDUCTION ANIMATION === */
+  function showCoinDeduction(tier) {
+    var amount = tierPrices[tier];
+    var tierEl = document.querySelector('[data-tier="' + tier + '"]');
+    if (!tierEl) return;
+
+    var floater = document.createElement('div');
+    floater.className = 'coin-deduct';
+    floater.textContent = '-$' + amount;
+    floater.setAttribute('aria-hidden', 'true');
+
+    /* Position relative to the tier card */
+    tierEl.style.position = 'relative';
+    floater.style.left = '50%';
+    floater.style.top = '10px';
+    floater.style.transform = 'translateX(-50%)';
+    tierEl.appendChild(floater);
+
+    /* Remove after animation */
+    setTimeout(function() {
+      if (floater.parentNode) floater.parentNode.removeChild(floater);
+    }, 1300);
+  }
 
   /* === BUY / CHANGE TIER === */
   window.buyScratcher = function(tier) {
     if (control === 'demo') return;
+
+    var cost = tierPrices[tier];
+
+    /* Check balance */
+    if (balance < cost) {
+      var hint = document.getElementById('scratcher-hint');
+      hint.textContent = 'Insufficient balance! Need $' + cost + ' but have $' + balance + '.';
+      hint.style.color = 'var(--accent-red)';
+      return;
+    }
+
+    /* Deduct balance */
+    balance -= cost;
+    updateBalanceDisplay();
+
+    /* (2) Coin deduction animation + event */
+    showCoinDeduction(tier);
+    emit('coins-spent', { amount: cost, tier: tier });
+
     currentTier = tier;
+
     /* Update selection */
     var tiers = document.querySelectorAll('.scratcher-tier');
     tiers.forEach(function(t) { t.classList.remove('selected'); });
     var sel = document.querySelector('[data-tier="' + tier + '"]');
     if (sel) sel.classList.add('selected');
 
+    /* (1) Roll random prizes */
+    currentPrizes = rollPrizes(tier);
+
     /* Update reveal content */
-    var prizes = tierPrizes[tier].prizes;
-    document.getElementById('reveal-1').textContent = prizes[0].label;
-    document.getElementById('reveal-1').className = 'scratcher-reveal ' + prizes[0].cls;
-    document.getElementById('reveal-2').textContent = prizes[1].label;
-    document.getElementById('reveal-2').className = 'scratcher-reveal ' + prizes[1].cls;
-    document.getElementById('reveal-3').textContent = prizes[2].label;
-    document.getElementById('reveal-3').className = 'scratcher-reveal ' + prizes[2].cls;
+    for (var i = 0; i < 3; i++) {
+      var revealEl = document.getElementById('reveal-' + (i + 1));
+      revealEl.textContent = prizeLabel(currentPrizes[i]);
+      revealEl.className = 'scratcher-reveal ' + rarityClass(currentPrizes[i].rarity);
+    }
 
     /* Reset hint */
     var hint = document.getElementById('scratcher-hint');
@@ -332,9 +672,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     drawCover();
   };
 
-  /* === CONFETTI === */
+  /* === (6) CONFETTI — with collision fix === */
   function spawnConfetti() {
+    /* Cancel any existing confetti timeout */
+    if (confettiTimeoutId !== null) {
+      clearTimeout(confettiTimeoutId);
+      confettiTimeoutId = null;
+    }
+
     var container = document.getElementById('confetti-container');
+    container.innerHTML = '';
+
     var colors = ['#f59e0b', '#2dd4bf', '#f87171', '#a78bfa', '#34d399', '#f472b6', '#fb923c'];
     for (var i = 0; i < 60; i++) {
       var piece = document.createElement('div');
@@ -347,47 +695,97 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       piece.style.animation = 'confettiFall ' + (Math.random() * 2 + 1.5) + 's ease-out ' + (Math.random() * 0.5) + 's forwards';
       container.appendChild(piece);
     }
-    setTimeout(function() { container.innerHTML = ''; }, 4000);
+    confettiTimeoutId = setTimeout(function() {
+      container.innerHTML = '';
+      confettiTimeoutId = null;
+    }, 4000);
   }
 
   /* === DEMO MODE === */
+  var demoIntervalId = null;
+  var demoTimeoutId = null;
+
   function startDemoMode() {
+    /* (8) Skip demo loop entirely for prefers-reduced-motion */
+    if (prefersReducedMotion) return;
+
+    /* Set initial demo prizes */
+    currentPrizes = [
+      { ticker: 'NVDA', pct: '+18.5%', rarity: 'rare', emoji: '🟢' },
+      { ticker: 'AMD',  pct: '+8.4%',  rarity: 'uncommon', emoji: '🔴' },
+      { ticker: 'TSLA', pct: '+45.0%', rarity: 'legendary', emoji: '⚡' }
+    ];
+    for (var p = 0; p < 3; p++) {
+      var revealEl = document.getElementById('reveal-' + (p + 1));
+      revealEl.textContent = prizeLabel(currentPrizes[p]);
+      revealEl.className = 'scratcher-reveal ' + rarityClass(currentPrizes[p].rarity);
+    }
+
     var demoPoints = [
-      { x: 60, y: 60 }, { x: 120, y: 60 }, { x: 180, y: 60 }, { x: 240, y: 60 }, { x: 280, y: 60 },
-      { x: 60, y: 110 }, { x: 120, y: 110 }, { x: 180, y: 110 }, { x: 240, y: 110 }, { x: 280, y: 110 },
-      { x: 60, y: 160 }, { x: 120, y: 160 }, { x: 180, y: 160 }, { x: 240, y: 160 }, { x: 280, y: 160 }
+      { x: 0.18, y: 0.27 }, { x: 0.35, y: 0.27 }, { x: 0.53, y: 0.27 }, { x: 0.71, y: 0.27 }, { x: 0.82, y: 0.27 },
+      { x: 0.18, y: 0.50 }, { x: 0.35, y: 0.50 }, { x: 0.53, y: 0.50 }, { x: 0.71, y: 0.50 }, { x: 0.82, y: 0.50 },
+      { x: 0.18, y: 0.73 }, { x: 0.35, y: 0.73 }, { x: 0.53, y: 0.73 }, { x: 0.71, y: 0.73 }, { x: 0.82, y: 0.73 }
     ];
     var idx = 0;
-    var interval;
+
+    function cleanupDemo() {
+      if (demoIntervalId !== null) { clearInterval(demoIntervalId); demoIntervalId = null; }
+      if (demoTimeoutId !== null) { clearTimeout(demoTimeoutId); demoTimeoutId = null; }
+    }
 
     function demoStep() {
       if (idx >= demoPoints.length || scratched) {
-        clearInterval(interval);
+        cleanupDemo();
         /* After revealing, wait and restart */
-        setTimeout(function() {
+        demoTimeoutId = setTimeout(function() {
           if (control !== 'demo') return;
           drawCover();
           idx = 0;
-          interval = setInterval(demoStep, 200);
+          demoIntervalId = setInterval(demoStep, 200);
         }, 4000);
         return;
       }
-      scratch(demoPoints[idx].x, demoPoints[idx].y);
+      scratch(demoPoints[idx].x * canvasW, demoPoints[idx].y * canvasH);
       idx++;
     }
 
     /* Start after short delay */
-    setTimeout(function() {
+    demoTimeoutId = setTimeout(function() {
       if (control !== 'demo') return;
-      interval = setInterval(demoStep, 200);
+      demoIntervalId = setInterval(demoStep, 200);
     }, 1500);
   }
 
+  /* === (3) RESIZE OBSERVER === */
+  var resizeTimer = null;
+  function handleResize() {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      resizeCanvas();
+      reportSize();
+    }, 150);
+  }
+
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(function() {
+      handleResize();
+    }).observe(document.getElementById('scratcher-main'));
+  }
+  window.addEventListener('resize', handleResize);
+
   /* === INIT === */
-  drawCover();
+  /* Set initial prizes for demo/preview */
+  currentPrizes = rollPrizes('tech');
+  for (var p = 0; p < 3; p++) {
+    var revealEl = document.getElementById('reveal-' + (p + 1));
+    revealEl.textContent = prizeLabel(currentPrizes[p]);
+    revealEl.className = 'scratcher-reveal ' + rarityClass(currentPrizes[p].rarity);
+  }
+
+  updateBalanceDisplay();
+  resizeCanvas();
   applyControl();
   reportSize();
-  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
 })();
 </script>
 </body>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="creature-room" data-version="1.0.0">
+<html lang="en" data-ferros-asset="creature-room" data-version="2.0.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,8 @@
   ║  Control Levels: DEMO | PREVIEW | PLAY           ║
   ║  Dependencies: none                              ║
   ║  Actions: Feed | Play | Train                    ║
+  ║  Events: creature-action, ability-used           ║
+  ║  Inbound: ferros:init, ferros:update             ║
   ╚══════════════════════════════════════════════════╝
 -->
 <style>
@@ -37,7 +39,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* Scene elements */
 .cr-bed { font-size: 2.5rem; position: relative; z-index: 1; margin-right: 20px; }
-.creature-art { font-size: 4rem; position: relative; z-index: 1; filter: drop-shadow(0 0 12px rgba(245,158,11,0.3)); animation: creatureBob 3s ease-in-out infinite; }
+.creature-art { font-size: 4rem; position: relative; z-index: 1; filter: drop-shadow(0 0 12px rgba(245,158,11,0.3)); animation: creatureBob 3s ease-in-out infinite; transition: filter 0.5s; }
 .cr-ambient { position: absolute; z-index: 0; opacity: 0.7; font-size: 1.5rem; }
 .cr-ambient-1 { top: 20px; left: 20px; animation: ambientDrift 6s ease-in-out infinite; }
 .cr-ambient-2 { top: 40px; right: 30px; animation: ambientDrift 8s ease-in-out infinite 1s; }
@@ -50,6 +52,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 /* Action feedback */
 .cr-action-float { position: absolute; top: 50%; left: 50%; font-size: 1.5rem; pointer-events: none; opacity: 0; z-index: 10; animation: actionFloat 1.5s ease-out forwards; }
 @keyframes actionFloat { 0% { transform: translate(-50%, 0) scale(1); opacity: 1; } 100% { transform: translate(-50%, -60px) scale(1.4); opacity: 0; } }
+
+/* Evolution flash */
+.cr-evolve-flash { position: absolute; inset: 0; z-index: 20; pointer-events: none; background: radial-gradient(circle, rgba(245,158,11,0.6) 0%, transparent 70%); animation: evolveFlash 1.2s ease-out forwards; }
+@keyframes evolveFlash {
+  0% { opacity: 0; transform: scale(0.5); }
+  20% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(2); }
+}
+.cr-evolve-text { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); z-index: 21; pointer-events: none; font-size: 1.6rem; font-weight: 900; color: var(--accent-amber); text-shadow: 0 0 20px rgba(245,158,11,0.8), 0 0 40px rgba(245,158,11,0.4); animation: evolveTextPop 1.4s ease-out forwards; letter-spacing: 0.1em; font-family: var(--font-mono); }
+@keyframes evolveTextPop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  30% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+  60% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -70%) scale(1.1); }
+}
+
+/* Ability particle burst */
+.cr-particle { position: absolute; z-index: 15; pointer-events: none; font-size: 1.2rem; animation: particleBurst 0.8s ease-out forwards; }
+@keyframes particleBurst {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--px, 0), var(--py, 0)) scale(0.3); }
+}
 
 /* HUD */
 .creature-hud { background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: var(--radius-panel); padding: 20px; }
@@ -70,18 +94,47 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* Action Buttons */
 .cr-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
-.cr-action-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border-dim); background: var(--bg-card); color: var(--text-secondary); font-size: 0.78rem; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.cr-action-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border-dim); background: var(--bg-card); color: var(--text-secondary); font-size: 0.78rem; cursor: pointer; transition: all 0.2s; font-family: inherit; position: relative; }
 .cr-action-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(45,212,191,0.15); }
 .cr-action-btn:active { transform: translateY(0); }
 .cr-action-btn.feed:hover { border-color: var(--accent-amber); color: var(--accent-amber); box-shadow: 0 2px 8px rgba(245,158,11,0.15); }
 .cr-action-btn.train:hover { border-color: var(--accent-red); color: var(--accent-red); box-shadow: 0 2px 8px rgba(248,113,113,0.15); }
+.cr-action-btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+/* PREVIEW tooltips — CSS-only via data-tooltip + ::after */
+[data-control="preview"] .cr-action-btn[data-tooltip]:hover::after,
+[data-control="preview"] .cr-ability-btn[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000e;
+  color: var(--text-primary);
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  border: 1px solid var(--border-accent);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
 
 /* Abilities */
 .creature-abilities { text-align: left; margin-top: 12px; }
 .creature-abilities h4 { font-size: 0.76rem; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-.creature-ability { font-size: 0.78rem; color: var(--accent-purple); padding: 4px 0; border-bottom: 1px solid var(--border-dim); transition: color 0.2s; }
-.creature-ability:last-child { border-bottom: none; }
-.creature-ability:hover { color: var(--accent-pink); }
+.cr-ability-btn { display: block; width: 100%; text-align: left; font-size: 0.78rem; color: var(--accent-purple); padding: 6px 8px; border: none; border-bottom: 1px solid var(--border-dim); background: transparent; cursor: pointer; transition: color 0.2s, background 0.2s; font-family: inherit; position: relative; border-radius: 0; }
+.cr-ability-btn:last-child { border-bottom: none; }
+.cr-ability-btn:hover:not(:disabled) { color: var(--accent-pink); background: rgba(167,139,250,0.06); }
+.cr-ability-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.cr-ability-btn .cr-ability-cd { display: inline-block; font-size: 0.65rem; color: var(--text-dim); margin-left: 6px; font-family: var(--font-mono); }
+
+/* Faint overlay / message */
+.creature-art.fainted { filter: grayscale(1) opacity(0.5) !important; }
+.cr-faint-msg { display: none; margin-top: 10px; padding: 8px 12px; background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); border-radius: 6px; font-size: 0.76rem; color: var(--accent-red); font-family: var(--font-mono); text-align: center; }
+.cr-faint-msg.visible { display: block; }
 
 /* === ANIMATIONS === */
 @keyframes creatureBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
@@ -93,8 +146,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* === CONTROL MODES === */
 [data-control="demo"] .cr-action-btn { cursor: default; }
-[data-control="demo"] .creature-ability { cursor: default; }
+[data-control="demo"] .cr-ability-btn { cursor: default; }
 [data-control="preview"] .cr-action-btn { cursor: help; }
+[data-control="preview"] .cr-ability-btn { cursor: help; }
 
 /* === STANDALONE LAYOUT === */
 .asset-showcase { padding: 24px; max-width: 720px; margin: 0 auto; }
@@ -104,6 +158,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 @media (max-width: 580px) {
   .creature-room { grid-template-columns: 1fr; }
   .creature-room-scene { min-height: 200px; }
+}
+
+/* === PREFERS-REDUCED-MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  .creature-art { animation: none !important; }
+  .cr-star { animation: none !important; opacity: 0.5; }
+  .cr-ambient { animation: none !important; }
+  .cr-evolve-flash { animation: none !important; display: none !important; }
+  .cr-evolve-text { animation: none !important; opacity: 1; }
+  .cr-particle { animation: none !important; display: none !important; }
+  .cr-action-float { animation: none !important; }
+  .cr-meter-fill { transition: none !important; }
+  .cr-action-btn { transition: none !important; }
+  .cr-ability-btn { transition: none !important; }
 }
 </style>
 </head>
@@ -130,7 +198,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <!-- HUD -->
       <div class="creature-hud">
         <div class="creature-name" id="creature-name">Voltharion</div>
-        <div class="creature-stage" id="creature-stage-badge">Stage 3 - Juvenile</div>
+        <div class="creature-stage" id="creature-stage-badge" role="status">Stage 4 - Dragon</div>
 
         <!-- Stats -->
         <div class="creature-stats">
@@ -147,7 +215,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
               <span>Happiness</span>
               <span id="meter-happiness-val">70%</span>
             </div>
-            <div class="cr-meter-bar">
+            <div class="cr-meter-bar"
+                 role="progressbar"
+                 aria-label="Creature happiness"
+                 aria-valuenow="70"
+                 aria-valuemin="0"
+                 aria-valuemax="100"
+                 id="meter-happiness-bar">
               <div class="cr-meter-fill happiness" id="meter-happiness" style="width: 70%"></div>
             </div>
           </div>
@@ -156,7 +230,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
               <span>XP</span>
               <span id="meter-xp-val">45%</span>
             </div>
-            <div class="cr-meter-bar">
+            <div class="cr-meter-bar"
+                 role="progressbar"
+                 aria-label="Creature experience"
+                 aria-valuenow="45"
+                 aria-valuemin="0"
+                 aria-valuemax="100"
+                 id="meter-xp-bar">
               <div class="cr-meter-fill xp" id="meter-xp" style="width: 45%"></div>
             </div>
           </div>
@@ -164,18 +244,38 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
         <!-- Actions -->
         <div class="cr-actions">
-          <button class="cr-action-btn feed" onclick="creatureAction('feed')">🍖 Feed</button>
-          <button class="cr-action-btn" onclick="creatureAction('play')">🎾 Play</button>
-          <button class="cr-action-btn train" onclick="creatureAction('train')">⚔️ Train</button>
+          <button class="cr-action-btn feed"
+                  data-action="feed"
+                  data-tooltip="Feed: +15 happiness, costs 5 coins"
+                  aria-label="Feed creature: increases happiness by 15, costs 5 coins">🍖 Feed</button>
+          <button class="cr-action-btn"
+                  data-action="play"
+                  data-tooltip="Play: +10 happiness, +5 XP"
+                  aria-label="Play with creature: increases happiness by 10 and XP by 5">🎾 Play</button>
+          <button class="cr-action-btn train"
+                  data-action="train"
+                  data-tooltip="Train: +15 XP, -5 happiness, random stat boost"
+                  aria-label="Train creature: increases XP by 15, decreases happiness by 5, random stat boost">⚔️ Train</button>
         </div>
+
+        <!-- Faint message -->
+        <div class="cr-faint-msg" id="faint-msg" role="alert">Your creature fainted! Feed it to revive.</div>
 
         <!-- Abilities -->
         <div class="creature-abilities">
           <h4>Abilities</h4>
-          <div class="creature-ability" id="ability-1">⚡ Volt Surge — Lightning AoE attack</div>
-          <div class="creature-ability" id="ability-2">🛡️ Scale Ward — DEF boost for 3 turns</div>
-          <div class="creature-ability" id="ability-3">🔥 Inferno Breath — High damage, long cooldown</div>
-          <div class="creature-ability" id="ability-4">💨 Tailwind — SPD boost for party</div>
+          <button class="cr-ability-btn" id="ability-1"
+                  data-ability="flame-rush"
+                  data-tooltip="Flame Rush: Fire AoE, 3s cooldown"
+                  aria-label="Use Flame Rush ability: fire area-of-effect attack, 3 second cooldown">🔥 Flame Rush — Fire AoE attack</button>
+          <button class="cr-ability-btn" id="ability-2"
+                  data-ability="volt-shield"
+                  data-tooltip="Volt Shield: DEF boost, 3s cooldown"
+                  aria-label="Use Volt Shield ability: defense boost for 3 turns, 3 second cooldown">⚡ Volt Shield — DEF boost for 3 turns</button>
+          <button class="cr-ability-btn" id="ability-3"
+                  data-ability="lucky-scales"
+                  data-tooltip="Lucky Scales: Random stat boost, 3s cooldown"
+                  aria-label="Use Lucky Scales ability: random stat boost, 3 second cooldown">✨ Lucky Scales — Random stat boost</button>
         </div>
       </div>
     </div>
@@ -190,6 +290,43 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   var params = new URLSearchParams(window.location.search);
   var control = params.get('control') || 'demo';
 
+  /* === REDUCED MOTION CHECK === */
+  var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  function isReducedMotion() { return prefersReducedMotion.matches; }
+
+  /* === EVOLUTION STAGES === */
+  var EVOLUTION_STAGES = [
+    { stage: 1, name: 'Egg',          emoji: '\uD83E\uDD5A' },       /* 🥚 */
+    { stage: 2, name: 'Hatchling',    emoji: '\uD83D\uDC23' },       /* 🐣 */
+    { stage: 3, name: 'Drake',        emoji: '\uD83E\uDD8E' },       /* 🦎 */
+    { stage: 4, name: 'Dragon',       emoji: '\uD83D\uDC09' },       /* 🐉 */
+    { stage: 5, name: 'Elder Dragon', emoji: '\uD83D\uDC32' },       /* 🐲 */
+    { stage: 6, name: 'Mythic',       emoji: '\u2728\uD83D\uDC09\u2728' } /* ✨🐉✨ */
+  ];
+
+  /* === ABILITIES DEFINITION === */
+  var ABILITIES = [
+    { id: 'flame-rush',   name: 'Flame Rush',   emoji: '\uD83D\uDD25', desc: 'Fire AoE attack',       particles: ['\uD83D\uDD25', '\uD83D\uDCA5', '\u2604\uFE0F'] },
+    { id: 'volt-shield',  name: 'Volt Shield',  emoji: '\u26A1',       desc: 'DEF boost for 3 turns', particles: ['\u26A1', '\uD83D\uDCA0', '\u2728'] },
+    { id: 'lucky-scales', name: 'Lucky Scales', emoji: '\u2728',       desc: 'Random stat boost',     particles: ['\u2728', '\uD83C\uDF1F', '\uD83D\uDCAB'] }
+  ];
+
+  /* === CREATURE STATE === */
+  var state = {
+    name: 'Voltharion',
+    happiness: 70,
+    xp: 45,
+    atk: 78,
+    def: 62,
+    spd: 91,
+    wis: 45,
+    stageIndex: 3,  /* index into EVOLUTION_STAGES (0-based), default = Dragon (index 3) */
+    fainted: false,
+    abilityCooldowns: {}  /* ability id -> true while on cooldown */
+  };
+
+  var happinessDecayTimer = null;
+
   /* === FERROS ASSET PROTOCOL === */
   window.addEventListener('message', function(e) {
     if (e.data && e.data.type === 'ferros:init') {
@@ -203,13 +340,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
   function applyControl() {
     root.dataset.control = control;
+    clearInterval(happinessDecayTimer);
     if (control === 'demo') startDemoMode();
+    if (control === 'play') startPlayMode();
   }
 
   function emit(event, payload) {
     if (isEmbedded) {
       window.parent.postMessage({ type: 'ferros:event', asset: 'creature-room', event: event, payload: payload }, '*');
     }
+    /* Also dispatch a DOM CustomEvent for same-page listeners */
+    root.dispatchEvent(new CustomEvent(event, { detail: payload, bubbles: true }));
   }
 
   function reportSize() {
@@ -218,21 +359,70 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     }
   }
 
+  /* === ferros:update HANDLER (upgrade #5) === */
   function handleUpdate(data) {
-    if (data.name) document.getElementById('creature-name').textContent = data.name;
-    if (data.happiness !== undefined) setMeter('happiness', data.happiness);
-    if (data.xp !== undefined) setMeter('xp', data.xp);
+    if (!data.creature) {
+      /* Legacy compat: top-level name/happiness/xp */
+      if (data.name) document.getElementById('creature-name').textContent = data.name;
+      if (data.happiness !== undefined) setMeter('happiness', data.happiness);
+      if (data.xp !== undefined) setMeter('xp', data.xp);
+      return;
+    }
+
+    var c = data.creature;
+    if (c.name) {
+      state.name = c.name;
+      document.getElementById('creature-name').textContent = c.name;
+    }
+    if (c.emoji) {
+      document.getElementById('creature-main').textContent = c.emoji;
+    }
+    if (c.stage !== undefined) {
+      var idx = c.stage - 1;
+      if (idx >= 0 && idx < EVOLUTION_STAGES.length) {
+        state.stageIndex = idx;
+        updateStageBadge();
+        if (!c.emoji) {
+          document.getElementById('creature-main').textContent = EVOLUTION_STAGES[idx].emoji;
+        }
+      }
+    }
+    if (c.stats) {
+      if (c.stats.atk !== undefined) updateStatUI('atk', c.stats.atk);
+      if (c.stats.def !== undefined) updateStatUI('def', c.stats.def);
+      if (c.stats.spd !== undefined) updateStatUI('spd', c.stats.spd);
+      if (c.stats.wis !== undefined) updateStatUI('wis', c.stats.wis);
+    }
+    if (c.happiness !== undefined) {
+      setMeter('happiness', c.happiness);
+      checkFaint();
+    }
+    if (c.xp !== undefined) {
+      setMeter('xp', c.xp);
+    }
+    if (c.abilities && Array.isArray(c.abilities)) {
+      updateAbilitiesFromPayload(c.abilities);
+    }
   }
 
-  /* === CREATURE STATE === */
-  var state = {
-    happiness: 70,
-    xp: 45,
-    atk: 78,
-    def: 62,
-    spd: 91,
-    wis: 45
-  };
+  function updateAbilitiesFromPayload(abilities) {
+    for (var i = 0; i < abilities.length && i < 3; i++) {
+      var btn = document.getElementById('ability-' + (i + 1));
+      if (!btn) continue;
+      var a = abilities[i];
+      btn.textContent = (a.emoji || '') + ' ' + (a.name || '') + ' \u2014 ' + (a.desc || '');
+      if (a.name) {
+        var abId = a.name.toLowerCase().replace(/\s+/g, '-');
+        btn.dataset.ability = abId;
+        if (ABILITIES[i]) {
+          ABILITIES[i].id = abId;
+          ABILITIES[i].name = a.name;
+          ABILITIES[i].emoji = a.emoji || ABILITIES[i].emoji;
+          ABILITIES[i].desc = a.desc || ABILITIES[i].desc;
+        }
+      }
+    }
+  }
 
   /* === STARS GENERATION === */
   function generateStars() {
@@ -254,8 +444,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     state[type] = value;
     var fill = document.getElementById('meter-' + type);
     var valEl = document.getElementById('meter-' + type + '-val');
+    var bar = document.getElementById('meter-' + type + '-bar');
     if (fill) fill.style.width = value + '%';
     if (valEl) valEl.textContent = Math.round(value) + '%';
+    /* Accessibility: update aria-valuenow */
+    if (bar) bar.setAttribute('aria-valuenow', Math.round(value));
   }
 
   function updateStatUI(stat, value) {
@@ -264,8 +457,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     if (el) el.textContent = value;
   }
 
+  /* === EVOLUTION STAGE BADGE === */
+  function updateStageBadge() {
+    var evo = EVOLUTION_STAGES[state.stageIndex];
+    var badge = document.getElementById('creature-stage-badge');
+    badge.textContent = 'Stage ' + evo.stage + ' - ' + evo.name;
+  }
+
   /* === SCENE FEEDBACK === */
   function showActionFloat(emoji) {
+    if (isReducedMotion()) return;
     var scene = document.getElementById('creature-scene');
     var float = document.createElement('span');
     float.className = 'cr-action-float';
@@ -275,57 +476,246 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   }
 
   function playCreatureAnim(animName) {
+    if (isReducedMotion()) return;
     var creature = document.getElementById('creature-main');
     creature.style.animation = 'none';
     void creature.offsetHeight;
     creature.style.animation = animName + ' 0.8s ease, creatureBob 3s ease-in-out infinite 0.8s';
   }
 
-  /* === CREATURE ACTIONS === */
-  window.creatureAction = function(action) {
+  /* === EVOLUTION (upgrade #3) === */
+  function triggerEvolution() {
+    if (state.stageIndex >= EVOLUTION_STAGES.length - 1) return; /* Already mythic */
+
+    state.stageIndex++;
+    var evo = EVOLUTION_STAGES[state.stageIndex];
+
+    /* Update emoji */
+    document.getElementById('creature-main').textContent = evo.emoji;
+
+    /* Update badge */
+    updateStageBadge();
+
+    /* Flash effect */
+    if (!isReducedMotion()) {
+      var scene = document.getElementById('creature-scene');
+      var flash = document.createElement('div');
+      flash.className = 'cr-evolve-flash';
+      scene.appendChild(flash);
+      setTimeout(function() { flash.remove(); }, 1200);
+
+      var text = document.createElement('div');
+      text.className = 'cr-evolve-text';
+      text.textContent = 'EVOLVED!';
+      scene.appendChild(text);
+      setTimeout(function() { text.remove(); }, 1400);
+    }
+
+    showActionFloat('\u2B06\uFE0F');
+
+    emit('creature-action', {
+      action: 'evolve',
+      stage: evo.stage,
+      stageName: evo.name,
+      happiness: state.happiness,
+      xp: state.xp,
+      stats: { atk: state.atk, def: state.def, spd: state.spd, wis: state.wis }
+    });
+  }
+
+  /* === FAINT CONDITION (upgrade #6) === */
+  function checkFaint() {
+    var creature = document.getElementById('creature-main');
+    var faintMsg = document.getElementById('faint-msg');
+    var playBtn = root.querySelector('[data-action="play"]');
+    var trainBtn = root.querySelector('[data-action="train"]');
+    var abilityBtns = root.querySelectorAll('.cr-ability-btn');
+
+    if (state.happiness <= 0 && !state.fainted) {
+      state.fainted = true;
+      creature.classList.add('fainted');
+      faintMsg.classList.add('visible');
+
+      /* Disable Play and Train, keep Feed enabled */
+      if (playBtn) playBtn.disabled = true;
+      if (trainBtn) trainBtn.disabled = true;
+      for (var i = 0; i < abilityBtns.length; i++) {
+        abilityBtns[i].disabled = true;
+      }
+    } else if (state.happiness > 0 && state.fainted) {
+      state.fainted = false;
+      creature.classList.remove('fainted');
+      faintMsg.classList.remove('visible');
+
+      if (playBtn) playBtn.disabled = false;
+      if (trainBtn) trainBtn.disabled = false;
+      for (var j = 0; j < abilityBtns.length; j++) {
+        if (!state.abilityCooldowns[abilityBtns[j].dataset.ability]) {
+          abilityBtns[j].disabled = false;
+        }
+      }
+    }
+  }
+
+  /* === ABILITY PARTICLES (upgrade #4) === */
+  function showAbilityParticles(abilityDef) {
+    if (isReducedMotion()) return;
+    var scene = document.getElementById('creature-scene');
+    var creature = document.getElementById('creature-main');
+    var rect = creature.getBoundingClientRect();
+    var sceneRect = scene.getBoundingClientRect();
+    var cx = rect.left - sceneRect.left + rect.width / 2;
+    var cy = rect.top - sceneRect.top + rect.height / 2;
+
+    for (var i = 0; i < 8; i++) {
+      var p = document.createElement('span');
+      p.className = 'cr-particle';
+      p.textContent = abilityDef.particles[i % abilityDef.particles.length];
+      var angle = (Math.PI * 2 / 8) * i;
+      var dist = 40 + Math.random() * 40;
+      p.style.left = cx + 'px';
+      p.style.top = cy + 'px';
+      p.style.setProperty('--px', Math.cos(angle) * dist + 'px');
+      p.style.setProperty('--py', Math.sin(angle) * dist + 'px');
+      p.style.animationDelay = (i * 0.05) + 's';
+      scene.appendChild(p);
+      (function(el) { setTimeout(function() { el.remove(); }, 1000); })(p);
+    }
+  }
+
+  /* === CREATURE ACTIONS (upgrades #1 preview tooltips via CSS, #6 faint check) === */
+  function creatureAction(action) {
     if (control === 'demo') return;
+    if (control === 'preview') return; /* Preview: tooltips only, no state changes */
+
+    /* Faint guard: only Feed allowed when fainted */
+    if (state.fainted && action !== 'feed') return;
 
     switch (action) {
       case 'feed':
-        setMeter('happiness', state.happiness + 12);
+        if (state.fainted) {
+          /* Revive: set happiness to 20 */
+          setMeter('happiness', 20);
+        } else {
+          setMeter('happiness', state.happiness + 15);
+        }
         setMeter('xp', state.xp + 3);
-        showActionFloat('🍖');
+        showActionFloat('\uD83C\uDF56'); /* 🍖 */
         playCreatureAnim('creatureEat');
+        checkFaint();
         break;
 
       case 'play':
-        setMeter('happiness', state.happiness + 8);
+        setMeter('happiness', state.happiness + 10);
         setMeter('xp', state.xp + 5);
-        showActionFloat('🎾');
+        showActionFloat('\uD83C\uDFBE'); /* 🎾 */
         playCreatureAnim('creatureBounce');
         break;
 
       case 'train':
         setMeter('xp', state.xp + 15);
         setMeter('happiness', state.happiness - 5);
-        showActionFloat('⚔️');
+        showActionFloat('\u2694\uFE0F'); /* ⚔️ */
         playCreatureAnim('creatureFlex');
 
-        /* Small chance to boost a stat */
+        /* Random stat boost */
         var stats = ['atk', 'def', 'spd', 'wis'];
         var pick = stats[Math.floor(Math.random() * stats.length)];
         updateStatUI(pick, state[pick] + 1);
         break;
     }
 
-    /* Level up check */
+    /* Check faint after happiness change */
+    checkFaint();
+
+    /* Evolution check: XP overflow at 100% */
     if (state.xp >= 100) {
-      setMeter('xp', 0);
-      var badge = document.getElementById('creature-stage-badge');
-      var stageNum = parseInt(badge.textContent.match(/\d+/)[0]) + 1;
-      var stageNames = { 4: 'Adolescent', 5: 'Adult', 6: 'Elder', 7: 'Ancient', 8: 'Mythic' };
-      var stageName = stageNames[stageNum] || 'Stage ' + stageNum;
-      badge.textContent = 'Stage ' + stageNum + ' - ' + stageName;
-      showActionFloat('⬆️');
+      setMeter('xp', state.xp - 100);
+      triggerEvolution();
     }
 
-    emit('creature-action', { action: action, happiness: state.happiness, xp: state.xp, stats: { atk: state.atk, def: state.def, spd: state.spd, wis: state.wis } });
-  };
+    emit('creature-action', {
+      action: action,
+      happiness: state.happiness,
+      xp: state.xp,
+      stage: EVOLUTION_STAGES[state.stageIndex].stage,
+      stats: { atk: state.atk, def: state.def, spd: state.spd, wis: state.wis }
+    });
+  }
+
+  /* Wire action buttons via event delegation */
+  root.addEventListener('click', function(e) {
+    var btn = e.target.closest('.cr-action-btn');
+    if (btn && btn.dataset.action) {
+      creatureAction(btn.dataset.action);
+    }
+  });
+
+  /* === ABILITY CLICK HANDLERS (upgrade #4) === */
+  root.addEventListener('click', function(e) {
+    var btn = e.target.closest('.cr-ability-btn');
+    if (!btn) return;
+    if (control === 'demo' || control === 'preview') return;
+    if (state.fainted) return;
+
+    var abilityId = btn.dataset.ability;
+    if (!abilityId) return;
+
+    /* Cooldown check */
+    if (state.abilityCooldowns[abilityId]) return;
+
+    /* Find ability definition */
+    var abilityDef = null;
+    for (var i = 0; i < ABILITIES.length; i++) {
+      if (ABILITIES[i].id === abilityId) { abilityDef = ABILITIES[i]; break; }
+    }
+    if (!abilityDef) return;
+
+    /* Particle burst effect */
+    showAbilityParticles(abilityDef);
+
+    /* Start 3-second cooldown */
+    state.abilityCooldowns[abilityId] = true;
+    btn.disabled = true;
+
+    /* Add cooldown indicator */
+    var cdSpan = document.createElement('span');
+    cdSpan.className = 'cr-ability-cd';
+    var cdTime = 3;
+    cdSpan.textContent = '(' + cdTime + 's)';
+    btn.appendChild(cdSpan);
+
+    var cdInterval = setInterval(function() {
+      cdTime--;
+      if (cdTime > 0) {
+        cdSpan.textContent = '(' + cdTime + 's)';
+      } else {
+        clearInterval(cdInterval);
+        cdSpan.remove();
+        state.abilityCooldowns[abilityId] = false;
+        if (!state.fainted) btn.disabled = false;
+      }
+    }, 1000);
+
+    /* Emit ability-used event */
+    emit('ability-used', {
+      creature: state.name,
+      ability: abilityDef.name,
+      abilityId: abilityDef.id,
+      stage: EVOLUTION_STAGES[state.stageIndex].stage
+    });
+  });
+
+  /* === PASSIVE HAPPINESS DECAY (upgrade #2) === */
+  function startPlayMode() {
+    happinessDecayTimer = setInterval(function() {
+      if (control !== 'play') { clearInterval(happinessDecayTimer); return; }
+      if (state.fainted) return; /* Don't decay further if already fainted */
+
+      setMeter('happiness', state.happiness - 1);
+      checkFaint();
+    }, 30000); /* 30 seconds */
+  }
 
   /* === DEMO MODE === */
   var demoTimer = null;
@@ -345,19 +735,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
         case 'feed':
           setMeter('happiness', state.happiness + 8);
           setMeter('xp', state.xp + 2);
-          showActionFloat('🍖');
+          showActionFloat('\uD83C\uDF56');
           playCreatureAnim('creatureEat');
           break;
         case 'play':
           setMeter('happiness', state.happiness + 5);
           setMeter('xp', state.xp + 3);
-          showActionFloat('🎾');
+          showActionFloat('\uD83C\uDFBE');
           playCreatureAnim('creatureBounce');
           break;
         case 'train':
           setMeter('xp', state.xp + 10);
           setMeter('happiness', Math.max(10, state.happiness - 3));
-          showActionFloat('⚔️');
+          showActionFloat('\u2694\uFE0F');
           playCreatureAnim('creatureFlex');
           break;
       }
@@ -366,7 +756,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       if (state.happiness > 95) state.happiness = 50;
       if (state.xp > 90) {
         setMeter('xp', 0);
-        showActionFloat('⬆️');
+        showActionFloat('\u2B06\uFE0F');
       }
     }, 3000);
   }

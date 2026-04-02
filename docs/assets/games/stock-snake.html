@@ -1,16 +1,26 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="stock-snake" data-version="1.0.0">
+<html lang="en" data-ferros-asset="stock-snake" data-version="2.0.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FERROS Asset: Stock Snake</title>
 <!--
-  ╔══════════════════════════════════════════════════╗
-  ║  FERROS ASSET: stock-snake                       ║
-  ║  Control Levels: DEMO | PLAY                     ║
-  ║  Dependencies: none                              ║
-  ║  Arrow keys to play. Eat stocks, grow portfolio. ║
-  ╚══════════════════════════════════════════════════╝
+  ╔══════════════════════════════════════════════════════╗
+  ║  FERROS ASSET: stock-snake                           ║
+  ║  Control Levels: DEMO | PREVIEW | PLAY               ║
+  ║  Dependencies: none                                   ║
+  ║  Arrow keys / swipe to play. Eat stocks, grow.        ║
+  ║                                                       ║
+  ║  v2.0.0 — Production wire                             ║
+  ║  + PREVIEW mode with mechanic overlay                 ║
+  ║  + Touch/swipe controls for mobile                    ║
+  ║  + Responsive canvas with devicePixelRatio            ║
+  ║  + Speed ramping every 5 food items                   ║
+  ║  + Mini portfolio bar with ticker pills               ║
+  ║  + ferros:update config message                       ║
+  ║  + Accessibility (aria, role, SR announcements)       ║
+  ║  + prefers-reduced-motion support                     ║
+  ╚══════════════════════════════════════════════════════╝
 -->
 <style>
 /* === FERROS DESIGN TOKENS === */
@@ -19,201 +29,735 @@
   --border-dim: #1e2a3a; --border-accent: #2a3f5f;
   --text-primary: #e8edf5; --text-secondary: #8fa0b8; --text-dim: #5a6a80;
   --accent-cyan: #2dd4bf; --accent-green: #34d399; --accent-amber: #f59e0b;
-  --accent-red: #f87171;
+  --accent-red: #f87171; --accent-blue: #60a5fa; --accent-purple: #a78bfa;
+  --accent-pink: #f472b6;
   --font-mono: 'Courier New', Courier, monospace;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-base); color: var(--text-primary);
+  display: flex; align-items: center; justify-content: center; min-height: 100vh;
+}
 
-.snake-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 1rem; }
-.snake-header { display: flex; justify-content: space-between; width: 480px; max-width: 100%; font-family: var(--font-mono); font-size: 0.78rem; }
+.snake-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; padding: 1rem; width: 100%; max-width: 512px;
+}
+.snake-header {
+  display: flex; justify-content: space-between; width: 100%;
+  font-family: var(--font-mono); font-size: 0.78rem;
+}
 .snake-header .label { color: var(--accent-green); }
 .snake-header .score { color: var(--accent-amber); }
 .snake-header .status { color: var(--text-dim); }
-canvas { background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: 8px; display: block; max-width: 100%; }
+
+/* --- Canvas container --- */
+.canvas-container {
+  position: relative; width: 100%; max-width: 480px;
+  aspect-ratio: 3 / 2;
+}
+canvas {
+  background: var(--bg-card); border: 1px solid var(--border-dim);
+  border-radius: 8px; display: block;
+  width: 100%; height: 100%;
+  touch-action: none; /* prevent scroll on swipe */
+}
+
 .snake-hint { font-size: 0.72rem; color: var(--text-dim); margin-top: 6px; }
 
-/* DEMO mode overlay */
-.demo-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,12,16,0.5); border-radius: 8px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-cyan); letter-spacing: 0.1em; pointer-events: none; }
+/* --- DEMO mode overlay --- */
+.demo-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(10,12,16,0.5); border-radius: 8px;
+  font-family: var(--font-mono); font-size: 0.85rem;
+  color: var(--accent-cyan); letter-spacing: 0.1em;
+  pointer-events: none;
+}
 [data-control="play"] .demo-overlay,
 [data-control="preview"] .demo-overlay { display: none; }
+
+/* --- PREVIEW mode overlay --- */
+.preview-overlay {
+  position: absolute; inset: 0;
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px;
+  background: rgba(10,12,16,0.72); border-radius: 8px;
+  font-family: var(--font-mono); padding: 1.5rem;
+  cursor: pointer; z-index: 2;
+  backdrop-filter: blur(2px);
+}
+[data-control="preview"] .preview-overlay { display: flex; }
+.preview-overlay .preview-title {
+  font-size: 1.1rem; color: var(--accent-cyan);
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.preview-overlay .preview-mechanic {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.82rem; color: var(--text-primary);
+}
+.preview-overlay .preview-mechanic .key {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  background: var(--bg-panel); border: 1px solid var(--border-accent);
+  color: var(--accent-amber); font-size: 0.72rem; min-width: 24px;
+  text-align: center;
+}
+.preview-overlay .preview-dismiss {
+  margin-top: 10px; font-size: 0.68rem; color: var(--text-dim);
+  animation: previewPulse 2s infinite;
+}
+@keyframes previewPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* --- Touch hint overlay --- */
+.touch-hint {
+  display: none; position: absolute; bottom: 10px; left: 50%;
+  transform: translateX(-50%); font-family: var(--font-mono);
+  font-size: 0.7rem; color: var(--text-dim);
+  background: rgba(17,21,32,0.85); padding: 4px 12px;
+  border-radius: 6px; pointer-events: none; z-index: 1;
+  white-space: nowrap;
+}
+@media (pointer: coarse) {
+  .touch-hint { display: block; }
+}
+
+/* --- Mini portfolio bar --- */
+.portfolio-bar {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  width: 100%; max-width: 480px; min-height: 26px;
+  justify-content: center; padding: 4px 0;
+}
+.portfolio-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 10px; border-radius: 12px; font-family: var(--font-mono);
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em;
+  border: 1px solid var(--border-accent);
+  background: var(--bg-panel);
+}
+.portfolio-pill .ticker { color: inherit; }
+.portfolio-pill .count { color: var(--text-dim); }
+
+/* --- Ticker colors --- */
+.portfolio-pill[data-ticker="AAPL"] { color: var(--accent-cyan); border-color: #2dd4bf44; }
+.portfolio-pill[data-ticker="NVDA"] { color: var(--accent-green); border-color: #34d39944; }
+.portfolio-pill[data-ticker="MSFT"] { color: var(--accent-blue); border-color: #60a5fa44; }
+.portfolio-pill[data-ticker="TSLA"] { color: var(--accent-red); border-color: #f8717144; }
+.portfolio-pill[data-ticker="AMZN"] { color: var(--accent-amber); border-color: #f59e0b44; }
+.portfolio-pill[data-ticker="GOOG"] { color: var(--accent-purple); border-color: #a78bfa44; }
+.portfolio-pill[data-ticker="META"] { color: var(--accent-pink); border-color: #f472b644; }
+
+/* --- Screen reader only --- */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* --- prefers-reduced-motion --- */
+@media (prefers-reduced-motion: reduce) {
+  .preview-overlay .preview-dismiss { animation: none; opacity: 0.8; }
+  .demo-overlay { transition: none; }
+}
 </style>
 </head>
 <body>
-<div id="ferros-asset-root" data-control="demo">
+<div id="ferros-asset-root" data-control="demo" role="application" aria-label="Stock Snake game: eat stock tickers to grow your portfolio">
   <div class="snake-wrap">
     <div class="snake-header">
-      <span class="label">🐍 STOCK SNAKE</span>
+      <span class="label">STOCK SNAKE</span>
       <span class="score" id="snake-score">Score: $0.000</span>
       <span class="status" id="snake-status">Arrow keys to start</span>
     </div>
-    <div style="position:relative;">
-      <canvas id="snake-canvas" width="480" height="320"></canvas>
+    <div class="canvas-container">
+      <canvas id="snake-canvas" aria-label="Snake game board. Waiting to start."></canvas>
       <div class="demo-overlay">DEMO MODE</div>
+      <div class="preview-overlay" id="preview-overlay">
+        <div class="preview-title">How to Play</div>
+        <div class="preview-mechanic"><span class="key">&#8593;&#8595;&#8592;&#8594;</span> Arrow keys to move</div>
+        <div class="preview-mechanic"><span class="key">swipe</span> Swipe on mobile</div>
+        <div class="preview-mechanic"><span class="key">eat</span> Eat stocks to grow</div>
+        <div class="preview-mechanic"><span class="key">!</span> Avoid walls and yourself</div>
+        <div class="preview-dismiss">Click anywhere to dismiss</div>
+      </div>
+      <div class="touch-hint" id="touch-hint">Swipe to move</div>
     </div>
+    <div class="portfolio-bar" id="portfolio-bar" aria-label="Collected stocks"></div>
     <div class="snake-hint">Eat stocks to grow your micro-portfolio</div>
+    <!-- Screen reader live region for game events -->
+    <div id="sr-announce" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
   </div>
 </div>
 
 <script>
 (function() {
   'use strict';
+
+  /* ==============================
+     GLOBALS & DOM
+     ============================== */
   var root = document.getElementById('ferros-asset-root');
   var isEmbedded = window.parent !== window;
   var params = new URLSearchParams(window.location.search);
   var control = params.get('control') || 'demo';
 
-  window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'ferros:init') {
-      control = e.data.config.control || control;
-      applyControl();
-    }
-  });
-
-  function applyControl() { root.dataset.control = control; }
-  function emit(event, payload) {
-    if (isEmbedded) window.parent.postMessage({ type: 'ferros:event', asset: 'stock-snake', event: event, payload: payload }, '*');
-  }
-  function reportSize() {
-    if (isEmbedded) window.parent.postMessage({ type: 'ferros:resize', asset: 'stock-snake', width: root.scrollWidth, height: root.scrollHeight }, '*');
-  }
-
-  // === SNAKE GAME ===
   var cvs = document.getElementById('snake-canvas');
   var ctx = cvs.getContext('2d');
-  var W = cvs.width, H = cvs.height;
-  var CELL = 16;
-  var cols = Math.floor(W / CELL), rows = Math.floor(H / CELL);
-  var snake = [{x: 5, y: 5}];
-  var dir = {x: 0, y: 0};
-  var food = spawnFood();
-  var score = 0;
-  var running = false;
-  var gameOver = false;
   var scoreEl = document.getElementById('snake-score');
   var statusEl = document.getElementById('snake-status');
-  var stocks = ['AAPL','NVDA','MSFT','TSLA','AMZN','GOOG','META'];
-  var currentStock = stocks[0];
-  var accum = {};
-  var interval;
+  var portfolioBar = document.getElementById('portfolio-bar');
+  var previewOverlay = document.getElementById('preview-overlay');
+  var touchHintEl = document.getElementById('touch-hint');
+  var srAnnounce = document.getElementById('sr-announce');
 
-  // Demo AI state
-  var demoInterval;
+  /* ==============================
+     CONFIGURABLE SETTINGS
+     (overridden via ferros:update)
+     ============================== */
+  var difficulty = 'medium';
+  var startLength = 1;
+  var foodTickers = ['AAPL','NVDA','MSFT','TSLA','AMZN','GOOG','META'];
 
-  function spawnFood() {
-    currentStock = stocks[Math.floor(Math.random() * stocks.length)];
-    return { x: Math.floor(Math.random() * cols), y: Math.floor(Math.random() * rows) };
+  // Difficulty -> base tick speed mapping
+  var difficultyMap = { easy: 180, medium: 150, hard: 110 };
+
+  /* ==============================
+     RESPONSIVE CANVAS
+     ============================== */
+  var CELL = 16;   // logical cell size (will scale)
+  var cols, rows;
+  var canvasLogicalW, canvasLogicalH;
+  var dpr = window.devicePixelRatio || 1;
+
+  // prefers-reduced-motion
+  var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function sizeCanvas() {
+    var container = cvs.parentElement;
+    var rect = container.getBoundingClientRect();
+    var w = Math.floor(rect.width);
+    var h = Math.floor(rect.height);
+
+    // Maintain 3:2 aspect ratio
+    if (h === 0) h = Math.floor(w * 2 / 3);
+
+    dpr = window.devicePixelRatio || 1;
+
+    // Set canvas backing store to high-res
+    cvs.width = w * dpr;
+    cvs.height = h * dpr;
+
+    // Logical dimensions for game math
+    canvasLogicalW = w;
+    canvasLogicalH = h;
+
+    // Calculate cell size that fits and grid dimensions
+    // Scale CELL proportionally: base 16px at 480px width
+    CELL = Math.max(10, Math.floor(w / 30));
+    cols = Math.floor(w / CELL);
+    rows = Math.floor(h / CELL);
+
+    // Scale context to match DPR
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Update canvas aria-label
+    updateCanvasAriaLabel();
   }
 
+  /* ==============================
+     GAME STATE
+     ============================== */
+  var snake, dir, food, score, running, gameOver;
+  var currentStock;
+  var accum;          // { 'NVDA': 3, 'AAPL': 1, ... } — counts
+  var foodEaten;      // total items eaten (for speed ramp)
+  var interval;
+  var currentTickMs;
+
+  function resetGame() {
+    var sx = Math.min(5, Math.floor(cols / 2));
+    var sy = Math.min(5, Math.floor(rows / 2));
+    snake = [];
+    for (var i = 0; i < startLength; i++) {
+      snake.push({ x: sx - i, y: sy });
+    }
+    if (snake.length === 0) snake.push({ x: sx, y: sy });
+    dir = { x: 0, y: 0 };
+    food = spawnFood();
+    score = 0;
+    running = false;
+    gameOver = false;
+    foodEaten = 0;
+    accum = {};
+    currentTickMs = difficultyMap[difficulty] || 150;
+    scoreEl.textContent = 'Score: $0.000';
+    renderPortfolio();
+    updateCanvasAriaLabel();
+  }
+
+  function spawnFood() {
+    currentStock = foodTickers[Math.floor(Math.random() * foodTickers.length)];
+    var fx, fy, valid;
+    // Avoid spawning on snake body
+    do {
+      fx = Math.floor(Math.random() * cols);
+      fy = Math.floor(Math.random() * rows);
+      valid = true;
+      for (var i = 0; i < snake.length; i++) {
+        if (snake[i].x === fx && snake[i].y === fy) { valid = false; break; }
+      }
+    } while (!valid);
+    return { x: fx, y: fy };
+  }
+
+  /* ==============================
+     SPEED RAMP
+     Every 5 food items, decrease tick by 10ms, min 80ms
+     ============================== */
+  function getTickMs() {
+    var base = difficultyMap[difficulty] || 150;
+    var level = Math.floor(foodEaten / 5);
+    return Math.max(80, base - level * 10);
+  }
+
+  function restartInterval() {
+    if (interval) clearInterval(interval);
+    currentTickMs = getTickMs();
+    interval = setInterval(tick, currentTickMs);
+  }
+
+  /* ==============================
+     TICKER COLORS (for draw)
+     ============================== */
+  var tickerColors = {
+    'AAPL': '#2dd4bf', 'NVDA': '#34d399', 'MSFT': '#60a5fa',
+    'TSLA': '#f87171', 'AMZN': '#f59e0b', 'GOOG': '#a78bfa', 'META': '#f472b6'
+  };
+
+  /* ==============================
+     DRAW
+     ============================== */
   function draw() {
+    var w = canvasLogicalW;
+    var h = canvasLogicalH;
+
+    // Background
     ctx.fillStyle = '#161b28';
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, w, h);
+
+    // Grid
     ctx.strokeStyle = 'rgba(30,42,58,0.5)';
-    for (var i = 0; i <= cols; i++) { ctx.beginPath(); ctx.moveTo(i*CELL,0); ctx.lineTo(i*CELL,H); ctx.stroke(); }
-    for (var j = 0; j <= rows; j++) { ctx.beginPath(); ctx.moveTo(0,j*CELL); ctx.lineTo(W,j*CELL); ctx.stroke(); }
-    snake.forEach(function(s, idx) {
-      ctx.fillStyle = idx === 0 ? '#2dd4bf' : '#1a8a7a';
-      ctx.fillRect(s.x * CELL + 1, s.y * CELL + 1, CELL - 2, CELL - 2);
-    });
-    ctx.font = '12px sans-serif';
+    ctx.lineWidth = 0.5;
+    for (var i = 0; i <= cols; i++) {
+      ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, h); ctx.stroke();
+    }
+    for (var j = 0; j <= rows; j++) {
+      ctx.beginPath(); ctx.moveTo(0, j * CELL); ctx.lineTo(w, j * CELL); ctx.stroke();
+    }
+
+    // Snake
+    for (var s = 0; s < snake.length; s++) {
+      ctx.fillStyle = s === 0 ? '#2dd4bf' : '#1a8a7a';
+      ctx.fillRect(snake[s].x * CELL + 1, snake[s].y * CELL + 1, CELL - 2, CELL - 2);
+    }
+
+    // Food
+    var foodColor = tickerColors[currentStock] || '#f59e0b';
+    ctx.fillStyle = foodColor;
+    ctx.globalAlpha = 0.25;
+    ctx.fillRect(food.x * CELL, food.y * CELL, CELL, CELL);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = foodColor;
+    var fontSize = Math.max(8, CELL * 0.6);
+    ctx.font = fontSize + 'px ' + 'monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🍎', food.x * CELL + CELL/2, food.y * CELL + CELL/2);
-    ctx.font = '8px monospace';
-    ctx.fillStyle = '#5a6a80';
-    ctx.fillText(currentStock, food.x * CELL + CELL/2, food.y * CELL + CELL + 6);
+    ctx.fillText('$', food.x * CELL + CELL / 2, food.y * CELL + CELL / 2);
+
+    // Ticker label below food
+    if (CELL >= 12) {
+      ctx.font = Math.max(6, CELL * 0.45) + 'px monospace';
+      ctx.fillStyle = '#5a6a80';
+      ctx.fillText(currentStock, food.x * CELL + CELL / 2, food.y * CELL + CELL + Math.max(4, CELL * 0.35));
+    }
+
+    // Game Over overlay
     if (gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(0,0,W,H);
-      ctx.font = '18px sans-serif';
+      ctx.fillRect(0, 0, w, h);
+      var goFontSize = Math.max(12, Math.floor(w / 26));
+      ctx.font = goFontSize + 'px sans-serif';
       ctx.fillStyle = '#f87171';
       ctx.textAlign = 'center';
-      ctx.fillText('GAME OVER — Press any arrow to restart', W/2, H/2);
+      ctx.textBaseline = 'middle';
+      var msg = control === 'play' ? 'GAME OVER \u2014 Press arrow / swipe to restart' : 'GAME OVER';
+      ctx.fillText(msg, w / 2, h / 2);
     }
   }
 
+  /* ==============================
+     UPDATE (game logic)
+     ============================== */
   function update() {
     if (!running || gameOver) return;
     var head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
-    if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows) { gameOver = true; statusEl.textContent = 'Game Over!'; return; }
-    for (var i = 0; i < snake.length; i++) {
-      if (snake[i].x === head.x && snake[i].y === head.y) { gameOver = true; statusEl.textContent = 'Game Over!'; return; }
+
+    // Wall collision
+    if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows) {
+      endGame(); return;
     }
+    // Self collision
+    for (var i = 0; i < snake.length; i++) {
+      if (snake[i].x === head.x && snake[i].y === head.y) {
+        endGame(); return;
+      }
+    }
+
     snake.unshift(head);
+
     if (head.x === food.x && head.y === food.y) {
+      foodEaten++;
       score += 0.001;
-      accum[currentStock] = (accum[currentStock] || 0) + 0.001;
+      accum[currentStock] = (accum[currentStock] || 0) + 1;
       scoreEl.textContent = 'Score: $' + score.toFixed(3);
       statusEl.textContent = '+$0.001 ' + currentStock;
-      emit('score', { score: score, stock: currentStock });
+
+      // Emit score with portfolio data
+      emit('score', {
+        score: score,
+        stock: currentStock,
+        foodEaten: foodEaten,
+        portfolio: Object.assign({}, accum)
+      });
+
+      renderPortfolio();
+      updateCanvasAriaLabel();
       food = spawnFood();
+
+      // Speed ramp: check if we crossed a 5-item threshold
+      var newTick = getTickMs();
+      if (newTick !== currentTickMs) {
+        restartInterval();
+      }
     } else {
       snake.pop();
     }
   }
 
-  // Keyboard input (only in PLAY mode)
+  function endGame() {
+    gameOver = true;
+    running = false;
+    statusEl.textContent = 'Game Over!';
+    updateCanvasAriaLabel();
+
+    // Emit game over
+    emit('gameOver', {
+      score: score,
+      foodEaten: foodEaten,
+      portfolio: Object.assign({}, accum)
+    });
+
+    // Screen reader announcement
+    srAnnounce.textContent = 'Game over. Final score: $' + score.toFixed(3) +
+      '. Stocks eaten: ' + foodEaten + '.';
+  }
+
+  /* ==============================
+     TICK (combined update+draw)
+     ============================== */
+  function tick() {
+    update();
+    draw();
+  }
+
+  /* ==============================
+     MINI PORTFOLIO BAR
+     ============================== */
+  function renderPortfolio() {
+    portfolioBar.innerHTML = '';
+    var tickers = Object.keys(accum);
+    if (tickers.length === 0) return;
+    tickers.sort();
+    for (var i = 0; i < tickers.length; i++) {
+      var t = tickers[i];
+      var pill = document.createElement('span');
+      pill.className = 'portfolio-pill';
+      pill.dataset.ticker = t;
+      pill.innerHTML = '<span class="ticker">' + t + '</span><span class="count">x' + accum[t] + '</span>';
+      portfolioBar.appendChild(pill);
+    }
+  }
+
+  /* ==============================
+     CANVAS ARIA LABEL
+     ============================== */
+  function updateCanvasAriaLabel() {
+    var desc;
+    if (gameOver) {
+      desc = 'Snake game board. Game over. Score: $' + score.toFixed(3) + '. Stocks eaten: ' + foodEaten + '.';
+    } else if (!running) {
+      desc = 'Snake game board. Waiting to start. Press arrow keys or swipe to begin.';
+    } else {
+      desc = 'Snake game board. Playing. Score: $' + score.toFixed(3) + '. Snake length: ' + snake.length + '.';
+    }
+    cvs.setAttribute('aria-label', desc);
+  }
+
+  /* ==============================
+     KEYBOARD INPUT
+     ============================== */
+  var arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
   document.addEventListener('keydown', function(e) {
     if (control !== 'play') return;
-    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.key) === -1) return;
+    if (arrowKeys.indexOf(e.key) === -1) return;
     e.preventDefault();
-    if (gameOver) {
-      snake = [{x: 5, y: 5}]; dir = {x:0,y:0}; score = 0; accum = {}; gameOver = false;
-      scoreEl.textContent = 'Score: $0.000'; statusEl.textContent = 'Playing...';
-    }
-    if (!running) {
-      running = true;
-      if (interval) clearInterval(interval);
-      interval = setInterval(function() { update(); draw(); }, 120);
-    }
-    if (e.key === 'ArrowUp' && dir.y !== 1) dir = {x:0,y:-1};
-    if (e.key === 'ArrowDown' && dir.y !== -1) dir = {x:0,y:1};
-    if (e.key === 'ArrowLeft' && dir.x !== 1) dir = {x:-1,y:0};
-    if (e.key === 'ArrowRight' && dir.x !== -1) dir = {x:1,y:0};
+    handleDirectionInput(e.key);
   });
 
-  // Demo AI: simple snake that chases food
+  function handleDirectionInput(key) {
+    // If game over, reset
+    if (gameOver) {
+      resetGame();
+    }
+    // Start game on first input
+    if (!running) {
+      running = true;
+      statusEl.textContent = 'Playing...';
+      // Hide touch hint after first input
+      touchHintEl.style.display = 'none';
+      restartInterval();
+    }
+    // Map key to direction (prevent 180 reversal)
+    if (key === 'ArrowUp' && dir.y !== 1) dir = { x: 0, y: -1 };
+    if (key === 'ArrowDown' && dir.y !== -1) dir = { x: 0, y: 1 };
+    if (key === 'ArrowLeft' && dir.x !== 1) dir = { x: -1, y: 0 };
+    if (key === 'ArrowRight' && dir.x !== -1) dir = { x: 1, y: 0 };
+  }
+
+  /* ==============================
+     TOUCH / SWIPE CONTROLS
+     ============================== */
+  var touchStartX = 0;
+  var touchStartY = 0;
+  var SWIPE_THRESHOLD = 30;
+
+  cvs.addEventListener('touchstart', function(e) {
+    if (control !== 'play') return;
+    var t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+  }, { passive: true });
+
+  cvs.addEventListener('touchmove', function(e) {
+    if (control !== 'play') return;
+    e.preventDefault(); // prevent scroll
+  }, { passive: false });
+
+  cvs.addEventListener('touchend', function(e) {
+    if (control !== 'play') return;
+    var t = e.changedTouches[0];
+    var dx = t.clientX - touchStartX;
+    var dy = t.clientY - touchStartY;
+
+    if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return;
+
+    var key;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      key = dx > 0 ? 'ArrowRight' : 'ArrowLeft';
+    } else {
+      key = dy > 0 ? 'ArrowDown' : 'ArrowUp';
+    }
+    handleDirectionInput(key);
+  }, { passive: true });
+
+  /* ==============================
+     PREVIEW OVERLAY DISMISS
+     ============================== */
+  previewOverlay.addEventListener('click', function() {
+    previewOverlay.style.display = 'none';
+  });
+
+  /* ==============================
+     DEMO AI
+     ============================== */
   function startDemoAI() {
+    resetGame();
     running = true;
-    dir = {x: 1, y: 0};
+    dir = { x: 1, y: 0 };
     statusEl.textContent = 'AI Playing...';
     if (interval) clearInterval(interval);
     interval = setInterval(function() {
-      // Simple AI: move toward food
+      // Simple AI: move toward food avoiding immediate self-collision
       var head = snake[0];
       var dx = food.x - head.x;
       var dy = food.y - head.y;
-      if (Math.abs(dx) > Math.abs(dy)) {
-        var newDir = {x: dx > 0 ? 1 : -1, y: 0};
-        if (newDir.x !== -dir.x) dir = newDir;
-        else dir = {x: 0, y: dy >= 0 ? 1 : -1};
+      var candidates = [];
+
+      // Prefer axis with larger distance
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        candidates.push({ x: dx > 0 ? 1 : -1, y: 0 });
+        candidates.push({ x: 0, y: dy >= 0 ? 1 : -1 });
+        candidates.push({ x: 0, y: dy >= 0 ? -1 : 1 });
+        candidates.push({ x: dx > 0 ? -1 : 1, y: 0 });
       } else {
-        var newDir2 = {x: 0, y: dy > 0 ? 1 : -1};
-        if (newDir2.y !== -dir.y) dir = newDir2;
-        else dir = {x: dx >= 0 ? 1 : -1, y: 0};
+        candidates.push({ x: 0, y: dy > 0 ? 1 : -1 });
+        candidates.push({ x: dx >= 0 ? 1 : -1, y: 0 });
+        candidates.push({ x: dx >= 0 ? -1 : 1, y: 0 });
+        candidates.push({ x: 0, y: dy > 0 ? -1 : 1 });
       }
+
+      // Pick first candidate that doesn't reverse and doesn't hit self/wall
+      var chosen = null;
+      for (var c = 0; c < candidates.length; c++) {
+        var cand = candidates[c];
+        // No 180 reversal
+        if (cand.x === -dir.x && cand.y === -dir.y && (dir.x !== 0 || dir.y !== 0)) continue;
+        var nx = head.x + cand.x;
+        var ny = head.y + cand.y;
+        if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
+        var selfHit = false;
+        for (var s = 0; s < snake.length; s++) {
+          if (snake[s].x === nx && snake[s].y === ny) { selfHit = true; break; }
+        }
+        if (!selfHit) { chosen = cand; break; }
+      }
+      if (chosen) dir = chosen;
+      // else keep current dir (will likely die)
+
       update();
       draw();
+
       if (gameOver) {
-        snake = [{x: 5, y: 5}]; dir = {x:1,y:0}; score = 0; accum = {}; gameOver = false;
-        scoreEl.textContent = 'Score: $0.000'; statusEl.textContent = 'AI Playing...';
-        food = spawnFood();
+        // Auto-restart AI demo (respect reduced motion)
+        clearInterval(interval);
+        if (prefersReducedMotion) {
+          // Restart immediately, no flash/pause
+          startDemoAI();
+        } else {
+          // Brief pause then restart
+          setTimeout(function() {
+            startDemoAI();
+          }, 800);
+        }
+        return;
       }
     }, 120);
   }
 
-  // Initialize based on control level
+  /* ==============================
+     PREVIEW MODE (AI + overlay)
+     ============================== */
+  function startPreview() {
+    // Same as demo AI but overlay is shown via CSS
+    startDemoAI();
+  }
+
+  /* ==============================
+     MESSAGE HANDLERS
+     ============================== */
+  window.addEventListener('message', function(e) {
+    if (!e.data || typeof e.data !== 'object') return;
+
+    // ferros:init — initial control level
+    if (e.data.type === 'ferros:init') {
+      control = (e.data.config && e.data.config.control) || control;
+      applyControl();
+      init();
+    }
+
+    // ferros:update — runtime configuration
+    if (e.data.type === 'ferros:update') {
+      var cfg = e.data.config || e.data;
+      if (cfg.difficulty && difficultyMap[cfg.difficulty]) {
+        difficulty = cfg.difficulty;
+      }
+      if (typeof cfg.startLength === 'number' && cfg.startLength >= 1) {
+        startLength = Math.floor(cfg.startLength);
+      }
+      if (Array.isArray(cfg.foodTickers) && cfg.foodTickers.length > 0) {
+        foodTickers = cfg.foodTickers.slice();
+      }
+      // Apply new settings: reset the game
+      if (interval) clearInterval(interval);
+      init();
+    }
+  });
+
+  function applyControl() { root.dataset.control = control; }
+
+  function emit(event, payload) {
+    if (isEmbedded) {
+      window.parent.postMessage({
+        type: 'ferros:event', asset: 'stock-snake',
+        event: event, payload: payload
+      }, '*');
+    }
+  }
+
+  function reportSize() {
+    if (isEmbedded) {
+      window.parent.postMessage({
+        type: 'ferros:resize', asset: 'stock-snake',
+        width: root.scrollWidth, height: root.scrollHeight
+      }, '*');
+    }
+  }
+
+  /* ==============================
+     RESIZE HANDLER
+     ============================== */
+  var resizeTimer;
+  function handleResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      sizeCanvas();
+      // Clamp snake and food to new grid
+      for (var i = snake.length - 1; i >= 0; i--) {
+        if (snake[i].x >= cols || snake[i].y >= rows) {
+          snake.splice(i, 1);
+        }
+      }
+      if (snake.length === 0) {
+        snake.push({ x: Math.floor(cols / 2), y: Math.floor(rows / 2) });
+      }
+      if (food.x >= cols || food.y >= rows) food = spawnFood();
+      draw();
+      reportSize();
+    }, 100);
+  }
+  window.addEventListener('resize', handleResize);
+
+  /* ==============================
+     INIT
+     ============================== */
   function init() {
+    sizeCanvas();
+    resetGame();
     draw();
+
     if (control === 'demo') {
       startDemoAI();
+    } else if (control === 'preview') {
+      startPreview();
+    } else {
+      // play mode: waiting for user input
+      statusEl.textContent = 'Arrow keys / swipe to start';
     }
   }
 
   applyControl();
   init();
   reportSize();
-  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(function() {
+      handleResize();
+    }).observe(cvs.parentElement);
+  }
 })();
 </script>
 </body>

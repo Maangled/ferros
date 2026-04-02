@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="idle-town" data-version="1.0.0">
+<html lang="en" data-ferros-asset="idle-town" data-version="2.0.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FERROS Asset: Idle Town Builder</title>
 <!--
   ╔══════════════════════════════════════════════════╗
-  ║  FERROS ASSET: idle-town                         ║
+  ║  FERROS ASSET: idle-town                v2.0.0   ║
   ║  Control Levels: DEMO | PREVIEW | PLAY           ║
   ║  Dependencies: none                              ║
   ║  Buildings: Farm | Mine | Workshop | Market       ║
+  ║  Upgrades: Levels 1-5, emoji evolution, quests   ║
   ╚══════════════════════════════════════════════════╝
 -->
 <style>
@@ -33,29 +34,42 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 /* === IDLE MODE LAYOUT === */
 .idle-mode-layout { display: grid; grid-template-columns: 1fr 260px; gap: 16px; }
 .idle-town { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.idle-building { background: var(--bg-card); border: 2px solid var(--border-dim); border-radius: 10px; padding: 14px; text-align: center; transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s; cursor: pointer; }
+.idle-building { background: var(--bg-card); border: 2px solid var(--border-dim); border-radius: 10px; padding: 14px; text-align: center; transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s; cursor: pointer; position: relative; }
 .idle-building:hover { border-color: var(--accent-green); transform: translateY(-2px); box-shadow: 0 0 12px rgba(52,211,153,0.12); }
 .idle-building.harvesting { border-color: var(--accent-amber); box-shadow: 0 0 18px rgba(245,158,11,0.2); }
 .idle-building.ready { border-color: var(--accent-green); box-shadow: 0 0 14px rgba(52,211,153,0.2); }
 .idle-b-icon { font-size: 2rem; margin-bottom: 6px; }
-.idle-b-name { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.idle-b-name { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+.idle-b-level { font-size: 0.65rem; font-weight: 700; color: var(--accent-cyan); font-family: var(--font-mono); margin-bottom: 6px; }
 .idle-timer-bar { height: 4px; background: var(--border-dim); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
 .idle-timer-fill { height: 100%; background: var(--accent-green); border-radius: 2px; transition: width 0.1s linear; }
 .idle-b-status { font-size: 0.68rem; color: var(--text-dim); font-family: var(--font-mono); }
-.idle-harvest-btn { background: var(--accent-green); color: var(--bg-base); border: none; padding: 4px 12px; border-radius: 5px; font-size: 0.72rem; font-weight: 600; cursor: pointer; margin-top: 6px; transition: filter 0.2s, transform 0.2s; display: none; }
+.idle-b-buttons { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+.idle-harvest-btn { background: var(--accent-green); color: var(--bg-base); border: none; padding: 4px 12px; border-radius: 5px; font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: filter 0.2s, transform 0.2s; display: none; }
 .idle-harvest-btn.visible { display: inline-block; }
 .idle-harvest-btn:hover { filter: brightness(1.15); transform: scale(1.05); }
-.idle-harvest-float { position: absolute; font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; color: var(--accent-amber); pointer-events: none; opacity: 0; animation: harvestFloat 1.2s ease-out forwards; }
-@keyframes harvestFloat { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-40px); opacity: 0; } }
+.idle-harvest-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.idle-upgrade-btn { background: var(--accent-purple); color: #fff; border: none; padding: 4px 10px; border-radius: 5px; font-size: 0.68rem; font-weight: 600; cursor: pointer; transition: filter 0.2s, transform 0.2s, opacity 0.3s; display: none; }
+.idle-upgrade-btn.visible { display: inline-block; }
+.idle-upgrade-btn:hover { filter: brightness(1.15); transform: scale(1.05); }
+.idle-upgrade-btn:disabled { opacity: 0.35; cursor: not-allowed; filter: none; transform: none; }
+.idle-upgrade-btn.maxed { background: var(--text-dim); cursor: default; }
+.idle-harvest-float { position: absolute; font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; pointer-events: none; opacity: 0; animation: harvestFloat 1.2s ease-out forwards; z-index: 10; }
+.idle-harvest-float.gain { color: var(--accent-amber); }
+.idle-harvest-float.cost { color: var(--accent-red); }
+@keyframes harvestFloat { 0% { transform: translateY(0) translateX(-50%); opacity: 1; } 100% { transform: translateY(-40px) translateX(-50%); opacity: 0; } }
 
 /* === QUEST PANEL === */
 .idle-quest-panel { background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: var(--radius-panel); padding: 16px; }
 .idle-quest-panel h3 { font-size: 0.88rem; color: var(--accent-cyan); margin-bottom: 10px; }
-.idle-quest { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text-secondary); padding: 6px 0; border-bottom: 1px solid var(--border-dim); cursor: pointer; transition: color 0.2s; }
+.idle-quest { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text-secondary); padding: 6px 0; border-bottom: 1px solid var(--border-dim); transition: color 0.2s; }
 .idle-quest:last-of-type { border-bottom: none; }
-.idle-quest:hover { color: var(--text-primary); }
-.idle-quest input[type="checkbox"] { accent-color: var(--accent-cyan); cursor: pointer; }
+.idle-quest input[type="checkbox"] { accent-color: var(--accent-cyan); pointer-events: none; }
 .idle-quest.done { text-decoration: line-through; color: var(--text-dim); }
+.idle-quest.done .idle-quest-check { color: var(--accent-green); }
+.idle-quest-text { flex: 1; }
+.idle-quest-check { font-size: 0.9rem; display: none; }
+.idle-quest.done .idle-quest-check { display: inline; }
 
 /* === IDLE PANEL (Stats) === */
 .idle-panel { background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: var(--radius-panel); padding: 24px; max-width: 600px; margin: 1.5rem auto; }
@@ -83,6 +97,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 [data-control="demo"] .idle-quest input { pointer-events: none; }
 [data-control="preview"] .idle-building { cursor: help; }
 [data-control="preview"] .idle-harvest-btn { cursor: help; pointer-events: none; }
+[data-control="preview"] .idle-upgrade-btn { cursor: help; pointer-events: none; }
 
 /* === STANDALONE LAYOUT === */
 .asset-showcase { padding: 24px; max-width: 720px; margin: 0 auto; }
@@ -92,6 +107,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 @media (max-width: 580px) {
   .idle-mode-layout { grid-template-columns: 1fr; }
   .idle-town { grid-template-columns: 1fr; }
+}
+
+/* === PREFERS-REDUCED-MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  .idle-harvest-float { animation: none !important; opacity: 1 !important; }
+  .idle-timer-fill { transition: none !important; }
+  .idle-building { transition: border-color 0.3s, box-shadow 0.3s !important; transform: none !important; }
+  .idle-building:hover { transform: none !important; }
+  .idle-harvest-btn { transition: none !important; }
+  .idle-harvest-btn:hover { transform: none !important; }
+  .idle-upgrade-btn { transition: none !important; }
+  .idle-upgrade-btn:hover { transform: none !important; }
+  .idle-away-popup { transition: none !important; }
 }
 </style>
 </head>
@@ -103,53 +131,111 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     <div class="idle-mode-layout">
       <!-- Town Grid -->
       <div class="idle-town">
-        <div class="idle-building" data-building="farm" onclick="harvestBuilding('farm')">
-          <div class="idle-b-icon">🌾</div>
+        <div class="idle-building" data-building="farm">
+          <div class="idle-b-icon" id="icon-farm">&#x1F33E;</div>
           <div class="idle-b-name">Dividend Farm</div>
-          <div class="idle-timer-bar"><div class="idle-timer-fill" id="timer-farm" style="width: 0%"></div></div>
+          <div class="idle-b-level" id="level-farm">Lv 1</div>
+          <div class="idle-timer-bar">
+            <div class="idle-timer-fill" id="timer-farm" style="width: 0%"
+                 role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                 aria-label="Dividend Farm production progress"></div>
+          </div>
           <div class="idle-b-status" id="status-farm">Producing...</div>
-          <button class="idle-harvest-btn" id="harvest-farm" onclick="event.stopPropagation(); harvestBuilding('farm')">Harvest</button>
+          <div class="idle-b-buttons">
+            <button class="idle-harvest-btn" id="harvest-farm"
+                    aria-label="Harvest Dividend Farm"
+                    onclick="event.stopPropagation(); window._idleTown.harvest('farm')">Harvest</button>
+            <button class="idle-upgrade-btn" id="upgrade-farm"
+                    aria-label="Upgrade Dividend Farm"
+                    onclick="event.stopPropagation(); window._idleTown.upgrade('farm')">Upgrade (50c)</button>
+          </div>
         </div>
-        <div class="idle-building" data-building="mine" onclick="harvestBuilding('mine')">
-          <div class="idle-b-icon">⛏️</div>
+        <div class="idle-building" data-building="mine">
+          <div class="idle-b-icon" id="icon-mine">&#x26CF;&#xFE0F;</div>
           <div class="idle-b-name">Stock Mine</div>
-          <div class="idle-timer-bar"><div class="idle-timer-fill" id="timer-mine" style="width: 0%"></div></div>
+          <div class="idle-b-level" id="level-mine">Lv 1</div>
+          <div class="idle-timer-bar">
+            <div class="idle-timer-fill" id="timer-mine" style="width: 0%"
+                 role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                 aria-label="Stock Mine production progress"></div>
+          </div>
           <div class="idle-b-status" id="status-mine">Producing...</div>
-          <button class="idle-harvest-btn" id="harvest-mine" onclick="event.stopPropagation(); harvestBuilding('mine')">Harvest</button>
+          <div class="idle-b-buttons">
+            <button class="idle-harvest-btn" id="harvest-mine"
+                    aria-label="Harvest Stock Mine"
+                    onclick="event.stopPropagation(); window._idleTown.harvest('mine')">Harvest</button>
+            <button class="idle-upgrade-btn" id="upgrade-mine"
+                    aria-label="Upgrade Stock Mine"
+                    onclick="event.stopPropagation(); window._idleTown.upgrade('mine')">Upgrade (50c)</button>
+          </div>
         </div>
-        <div class="idle-building" data-building="workshop" onclick="harvestBuilding('workshop')">
-          <div class="idle-b-icon">🔧</div>
+        <div class="idle-building" data-building="workshop">
+          <div class="idle-b-icon" id="icon-workshop">&#x1F527;</div>
           <div class="idle-b-name">Card Workshop</div>
-          <div class="idle-timer-bar"><div class="idle-timer-fill" id="timer-workshop" style="width: 0%"></div></div>
+          <div class="idle-b-level" id="level-workshop">Lv 1</div>
+          <div class="idle-timer-bar">
+            <div class="idle-timer-fill" id="timer-workshop" style="width: 0%"
+                 role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                 aria-label="Card Workshop production progress"></div>
+          </div>
           <div class="idle-b-status" id="status-workshop">Producing...</div>
-          <button class="idle-harvest-btn" id="harvest-workshop" onclick="event.stopPropagation(); harvestBuilding('workshop')">Harvest</button>
+          <div class="idle-b-buttons">
+            <button class="idle-harvest-btn" id="harvest-workshop"
+                    aria-label="Harvest Card Workshop"
+                    onclick="event.stopPropagation(); window._idleTown.harvest('workshop')">Harvest</button>
+            <button class="idle-upgrade-btn" id="upgrade-workshop"
+                    aria-label="Upgrade Card Workshop"
+                    onclick="event.stopPropagation(); window._idleTown.upgrade('workshop')">Upgrade (50c)</button>
+          </div>
         </div>
-        <div class="idle-building" data-building="market" onclick="harvestBuilding('market')">
-          <div class="idle-b-icon">🏪</div>
+        <div class="idle-building" data-building="market">
+          <div class="idle-b-icon" id="icon-market">&#x1F3EA;</div>
           <div class="idle-b-name">Trade Market</div>
-          <div class="idle-timer-bar"><div class="idle-timer-fill" id="timer-market" style="width: 0%"></div></div>
+          <div class="idle-b-level" id="level-market">Lv 1</div>
+          <div class="idle-timer-bar">
+            <div class="idle-timer-fill" id="timer-market" style="width: 0%"
+                 role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                 aria-label="Trade Market production progress"></div>
+          </div>
           <div class="idle-b-status" id="status-market">Producing...</div>
-          <button class="idle-harvest-btn" id="harvest-market" onclick="event.stopPropagation(); harvestBuilding('market')">Harvest</button>
+          <div class="idle-b-buttons">
+            <button class="idle-harvest-btn" id="harvest-market"
+                    aria-label="Harvest Trade Market"
+                    onclick="event.stopPropagation(); window._idleTown.harvest('market')">Harvest</button>
+            <button class="idle-upgrade-btn" id="upgrade-market"
+                    aria-label="Upgrade Trade Market"
+                    onclick="event.stopPropagation(); window._idleTown.upgrade('market')">Upgrade (50c)</button>
+          </div>
         </div>
       </div>
 
       <!-- Quest Panel -->
       <div class="idle-quest-panel">
         <h3>Daily Quests</h3>
-        <label class="idle-quest" id="quest-1">
-          <input type="checkbox" onchange="toggleQuest(this, 'harvest-3')"> Harvest 3 buildings
+        <label class="idle-quest" id="quest-harvest5" data-quest="harvest5">
+          <input type="checkbox" tabindex="-1">
+          <span class="idle-quest-text">Harvest 5 times</span>
+          <span class="idle-quest-check" aria-hidden="true">&#x2705;</span>
         </label>
-        <label class="idle-quest" id="quest-2">
-          <input type="checkbox" onchange="toggleQuest(this, 'upgrade-farm')"> Upgrade the Farm
+        <label class="idle-quest" id="quest-earn100" data-quest="earn100">
+          <input type="checkbox" tabindex="-1">
+          <span class="idle-quest-text">Earn 100 coins</span>
+          <span class="idle-quest-check" aria-hidden="true">&#x2705;</span>
         </label>
-        <label class="idle-quest" id="quest-3">
-          <input type="checkbox" onchange="toggleQuest(this, 'collect-100')"> Collect 100 coins
+        <label class="idle-quest" id="quest-upgrade1" data-quest="upgrade1">
+          <input type="checkbox" tabindex="-1">
+          <span class="idle-quest-text">Upgrade a building</span>
+          <span class="idle-quest-check" aria-hidden="true">&#x2705;</span>
         </label>
-        <label class="idle-quest" id="quest-4">
-          <input type="checkbox" onchange="toggleQuest(this, 'visit-mine')"> Visit the Stock Mine
+        <label class="idle-quest" id="quest-fullcycle" data-quest="fullcycle">
+          <input type="checkbox" tabindex="-1">
+          <span class="idle-quest-text">Complete all harvests in one cycle</span>
+          <span class="idle-quest-check" aria-hidden="true">&#x2705;</span>
         </label>
-        <label class="idle-quest" id="quest-5">
-          <input type="checkbox" onchange="toggleQuest(this, 'craft-card')"> Craft a trading card
+        <label class="idle-quest" id="quest-level3" data-quest="level3">
+          <input type="checkbox" tabindex="-1">
+          <span class="idle-quest-text">Reach Town Level 3</span>
+          <span class="idle-quest-check" aria-hidden="true">&#x2705;</span>
         </label>
       </div>
     </div>
@@ -163,15 +249,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="idle-rows">
         <div class="idle-row">
           <span class="idle-row-label">Total Coins</span>
-          <span class="idle-row-value" id="stat-coins">0</span>
+          <span class="idle-row-value" id="stat-coins" aria-live="polite">0</span>
         </div>
         <div class="idle-row">
           <span class="idle-row-label">Harvests</span>
           <span class="idle-row-value" id="stat-harvests">0</span>
         </div>
         <div class="idle-row">
-          <span class="idle-row-label">Cards Crafted</span>
-          <span class="idle-row-value" id="stat-cards">0</span>
+          <span class="idle-row-label">Upgrades</span>
+          <span class="idle-row-value" id="stat-upgrades">0</span>
         </div>
         <div class="idle-row">
           <span class="idle-row-label">Town Level</span>
@@ -181,31 +267,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     </div>
 
     <!-- Away Popup -->
-    <div class="idle-away-popup" id="away-popup">
+    <div class="idle-away-popup" id="away-popup" role="dialog" aria-labelledby="away-title" aria-modal="true">
       <div class="idle-away-content">
-        <button class="idle-away-close" onclick="hideAwayPopup()">&times;</button>
-        <h3>While You Were Away...</h3>
+        <button class="idle-away-close" onclick="window._idleTown.hideAway()" aria-label="Close popup">&times;</button>
+        <h3 id="away-title">While You Were Away...</h3>
         <p>Your buildings kept working! Here is what they earned:</p>
-        <div class="idle-rows" style="margin-bottom: 16px;">
-          <div class="idle-row">
-            <span class="idle-row-label">Dividend Farm</span>
-            <span class="idle-row-value">+24 coins</span>
-          </div>
-          <div class="idle-row">
-            <span class="idle-row-label">Stock Mine</span>
-            <span class="idle-row-value">+18 coins</span>
-          </div>
-          <div class="idle-row">
-            <span class="idle-row-label">Card Workshop</span>
-            <span class="idle-row-value">+12 coins</span>
-          </div>
-          <div class="idle-row">
-            <span class="idle-row-label">Trade Market</span>
-            <span class="idle-row-value">+30 coins</span>
-          </div>
+        <div class="idle-rows" id="away-rows" style="margin-bottom: 16px;">
+          <!-- Populated dynamically -->
         </div>
-        <p style="font-size: 1.1rem; color: var(--accent-amber); font-weight: 700; margin-bottom: 16px;">Total: +84 coins</p>
-        <button class="idle-away-claim" onclick="claimAway()">Claim Rewards</button>
+        <p id="away-total" style="font-size: 1.1rem; color: var(--accent-amber); font-weight: 700; margin-bottom: 16px;">Total: +0 coins</p>
+        <button class="idle-away-claim" onclick="window._idleTown.claimAway()" aria-label="Claim offline rewards">Claim Rewards</button>
       </div>
     </div>
   </div>
@@ -218,6 +289,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   var isEmbedded = window.parent !== window;
   var params = new URLSearchParams(window.location.search);
   var control = params.get('control') || 'demo';
+  var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* === FERROS ASSET PROTOCOL === */
   window.addEventListener('message', function(e) {
@@ -239,6 +311,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     if (isEmbedded) {
       window.parent.postMessage({ type: 'ferros:event', asset: 'idle-town', event: event, payload: payload }, '*');
     }
+    /* Also dispatch a custom DOM event for local listeners */
+    root.dispatchEvent(new CustomEvent(event, { detail: payload, bubbles: true }));
   }
 
   function reportSize() {
@@ -247,33 +321,65 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     }
   }
 
-  function handleUpdate(data) {
-    /* Future: sync building levels, coin counts, etc. */
-  }
+  /* === EMOJI LOOKUP BY BUILDING + LEVEL === */
+  var emojiMap = {
+    farm:     { 1: '\u{1F33E}', 2: '\u{1F33E}', 3: '\u{1F33B}', 4: '\u{1F33B}', 5: '\u{1F3E1}' },
+    mine:     { 1: '\u26CF\uFE0F', 2: '\u26CF\uFE0F', 3: '\u{1F48E}', 4: '\u{1F48E}', 5: '\u{1F3D4}\uFE0F' },
+    workshop: { 1: '\u{1F527}', 2: '\u{1F527}', 3: '\u2699\uFE0F',  4: '\u2699\uFE0F',  5: '\u{1F3ED}' },
+    market:   { 1: '\u{1F3EA}', 2: '\u{1F3EA}', 3: '\u{1F3E6}', 4: '\u{1F3E6}', 5: '\u{1F3DB}\uFE0F' }
+  };
+
+  var MAX_LEVEL = 5;
 
   /* === BUILDING STATE === */
   var buildings = {
-    farm:     { speed: 1.2, progress: 0, ready: false, reward: 8,  label: 'Dividend Farm' },
-    mine:     { speed: 0.8, progress: 0, ready: false, reward: 12, label: 'Stock Mine' },
-    workshop: { speed: 0.6, progress: 0, ready: false, reward: 6,  label: 'Card Workshop' },
-    market:   { speed: 1.0, progress: 0, ready: false, reward: 15, label: 'Trade Market' }
+    farm:     { speed: 1.2, progress: 0, ready: false, reward: 8,  label: 'Dividend Farm',  level: 1 },
+    mine:     { speed: 0.8, progress: 0, ready: false, reward: 12, label: 'Stock Mine',      level: 1 },
+    workshop: { speed: 0.6, progress: 0, ready: false, reward: 6,  label: 'Card Workshop',   level: 1 },
+    market:   { speed: 1.0, progress: 0, ready: false, reward: 15, label: 'Trade Market',    level: 1 }
   };
 
-  var stats = { coins: 0, harvests: 0, cards: 0, level: 1 };
+  var stats = { coins: 0, harvests: 0, upgrades: 0, level: 1 };
+
+  /* === QUEST STATE === */
+  /* Track which buildings were harvested in the current "cycle"
+     A cycle resets when all 4 buildings are harvested before any one refills */
+  var cycleHarvests = { farm: false, mine: false, workshop: false, market: false };
+  var fullCycleDone = false;
+
+  var quests = {
+    harvest5:  { text: 'Harvest 5 times',                    completed: false, check: function() { return stats.harvests >= 5; } },
+    earn100:   { text: 'Earn 100 coins',                     completed: false, check: function() { return stats.coins >= 100; } },
+    upgrade1:  { text: 'Upgrade a building',                 completed: false, check: function() { return stats.upgrades >= 1; } },
+    fullcycle: { text: 'Complete all harvests in one cycle',  completed: false, check: function() { return fullCycleDone; } },
+    level3:    { text: 'Reach Town Level 3',                 completed: false, check: function() { return stats.level >= 3; } }
+  };
+
+  /* === OFFLINE TRACKING === */
+  var lastTickTime = Date.now();
+  var pendingAwayCoins = 0;
+  var awayBreakdown = [];
+
+  /* === UPGRADE COST === */
+  function upgradeCost(currentLevel) {
+    return currentLevel * 50;
+  }
 
   /* === GAME LOOP === */
-  var lastTime = Date.now();
-
   function gameLoop() {
     var now = Date.now();
-    var dt = (now - lastTime) / 1000;
-    lastTime = now;
+    var dt = (now - lastTickTime) / 1000;
+    lastTickTime = now;
 
-    Object.keys(buildings).forEach(function(key) {
+    var keys = Object.keys(buildings);
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
       var b = buildings[key];
-      if (b.ready) return;
+      if (b.ready) continue;
 
-      b.progress += b.speed * dt;
+      /* Speed scales with level: base speed * (1 + (level-1)*0.25) */
+      var effectiveSpeed = b.speed * (1 + (b.level - 1) * 0.25);
+      b.progress += effectiveSpeed * dt;
       if (b.progress >= 100) {
         b.progress = 100;
         b.ready = true;
@@ -285,7 +391,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       var harvestBtn = document.getElementById('harvest-' + key);
       var buildingEl = document.querySelector('[data-building="' + key + '"]');
 
-      if (timerFill) timerFill.style.width = b.progress + '%';
+      if (timerFill) {
+        timerFill.style.width = b.progress + '%';
+        timerFill.setAttribute('aria-valuenow', Math.round(b.progress));
+      }
 
       if (b.ready) {
         if (statusEl) statusEl.textContent = 'Ready!';
@@ -296,13 +405,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
         if (harvestBtn) harvestBtn.classList.remove('visible');
         if (buildingEl) { buildingEl.classList.remove('ready'); }
       }
-    });
+    }
 
+    updateUpgradeButtons();
     requestAnimationFrame(gameLoop);
   }
 
   /* === HARVEST === */
-  window.harvestBuilding = function(key) {
+  function harvestBuilding(key) {
     if (control === 'demo') return;
     var b = buildings[key];
     if (!b || !b.ready) return;
@@ -310,121 +420,402 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     b.ready = false;
     b.progress = 0;
 
-    stats.coins += b.reward;
+    /* Reward scales with level */
+    var reward = Math.floor(b.reward * (1 + (b.level - 1) * 0.3));
+    stats.coins += reward;
     stats.harvests += 1;
-    if (key === 'workshop') stats.cards += 1;
-    if (stats.harvests % 10 === 0) stats.level += 1;
+    recalcTownLevel();
+
+    /* Track cycle harvests */
+    cycleHarvests[key] = true;
+    var allHarvested = Object.keys(cycleHarvests).every(function(k) { return cycleHarvests[k]; });
+    if (allHarvested) {
+      fullCycleDone = true;
+      /* Reset cycle for next round */
+      Object.keys(cycleHarvests).forEach(function(k) { cycleHarvests[k] = false; });
+    }
 
     updateStatsUI();
+    evaluateQuests();
 
     /* Float text */
+    showFloatingText(key, '+' + reward, 'gain');
+
     var buildingEl = document.querySelector('[data-building="' + key + '"]');
     if (buildingEl) {
       buildingEl.classList.add('harvesting');
       setTimeout(function() { buildingEl.classList.remove('harvesting'); }, 600);
-
-      var float = document.createElement('div');
-      float.className = 'idle-harvest-float';
-      float.textContent = '+' + b.reward;
-      float.style.left = '50%';
-      float.style.top = '10px';
-      float.style.transform = 'translateX(-50%)';
-      buildingEl.style.position = 'relative';
-      buildingEl.appendChild(float);
-      setTimeout(function() { float.remove(); }, 1200);
     }
 
-    emit('idle-harvest', { building: key, reward: b.reward, totalCoins: stats.coins, harvests: stats.harvests });
-  };
+    emit('resource-gained', { building: key, coins: reward, totalCoins: stats.coins });
+  }
 
+  /* === UPGRADE === */
+  function upgradeBuilding(key) {
+    if (control === 'demo') return;
+    var b = buildings[key];
+    if (!b || b.level >= MAX_LEVEL) return;
+
+    var cost = upgradeCost(b.level);
+    if (stats.coins < cost) return;
+
+    stats.coins -= cost;
+    b.level += 1;
+    stats.upgrades += 1;
+    recalcTownLevel();
+
+    updateBuildingLevelUI(key);
+    updateStatsUI();
+    evaluateQuests();
+
+    /* Float cost text */
+    showFloatingText(key, '-' + cost + ' coins', 'cost');
+
+    emit('building-upgraded', { building: key, newLevel: b.level, cost: cost });
+  }
+
+  /* === TOWN LEVEL RECALCULATION === */
+  function recalcTownLevel() {
+    /* Town level = floor of average building level + harvest milestone bonus */
+    var totalBuildingLevels = 0;
+    var keys = Object.keys(buildings);
+    for (var i = 0; i < keys.length; i++) {
+      totalBuildingLevels += buildings[keys[i]].level;
+    }
+    var avgLevel = totalBuildingLevels / keys.length;
+    var harvestBonus = Math.floor(stats.harvests / 10);
+    stats.level = Math.max(1, Math.floor(avgLevel) + harvestBonus);
+  }
+
+  /* === FLOATING TEXT === */
+  function showFloatingText(key, text, type) {
+    if (prefersReducedMotion) return;
+    var buildingEl = document.querySelector('[data-building="' + key + '"]');
+    if (!buildingEl) return;
+    var float = document.createElement('div');
+    float.className = 'idle-harvest-float ' + (type || 'gain');
+    float.textContent = text;
+    float.style.left = '50%';
+    float.style.top = '10px';
+    buildingEl.appendChild(float);
+    setTimeout(function() { float.remove(); }, 1200);
+  }
+
+  /* === UPDATE BUILDING LEVEL UI === */
+  function updateBuildingLevelUI(key) {
+    var b = buildings[key];
+    var levelEl = document.getElementById('level-' + key);
+    var iconEl = document.getElementById('icon-' + key);
+    var upgradeBtn = document.getElementById('upgrade-' + key);
+
+    if (levelEl) levelEl.textContent = 'Lv ' + b.level;
+    if (iconEl && emojiMap[key] && emojiMap[key][b.level]) {
+      iconEl.textContent = emojiMap[key][b.level];
+    }
+    if (upgradeBtn) {
+      if (b.level >= MAX_LEVEL) {
+        upgradeBtn.textContent = 'MAX';
+        upgradeBtn.classList.add('maxed');
+        upgradeBtn.disabled = true;
+      } else {
+        upgradeBtn.textContent = 'Upgrade (' + upgradeCost(b.level) + 'c)';
+      }
+    }
+  }
+
+  /* === UPDATE UPGRADE BUTTONS VISIBILITY === */
+  function updateUpgradeButtons() {
+    if (control === 'demo') return;
+    var keys = Object.keys(buildings);
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      var b = buildings[key];
+      var upgradeBtn = document.getElementById('upgrade-' + key);
+      if (!upgradeBtn) continue;
+
+      if (b.level >= MAX_LEVEL) {
+        upgradeBtn.classList.add('visible');
+        upgradeBtn.disabled = true;
+        upgradeBtn.classList.add('maxed');
+        upgradeBtn.textContent = 'MAX';
+      } else {
+        var cost = upgradeCost(b.level);
+        if (stats.coins >= cost) {
+          upgradeBtn.classList.add('visible');
+          upgradeBtn.disabled = false;
+          upgradeBtn.textContent = 'Upgrade (' + cost + 'c)';
+        } else {
+          /* Show but disable when not affordable, hide if never upgraded */
+          if (stats.upgrades > 0 || stats.coins > 0) {
+            upgradeBtn.classList.add('visible');
+            upgradeBtn.disabled = true;
+            upgradeBtn.textContent = 'Upgrade (' + cost + 'c)';
+          } else {
+            upgradeBtn.classList.remove('visible');
+          }
+        }
+      }
+    }
+  }
+
+  /* === STATS UI === */
   function updateStatsUI() {
     document.getElementById('stat-coins').textContent = stats.coins;
     document.getElementById('stat-harvests').textContent = stats.harvests;
-    document.getElementById('stat-cards').textContent = stats.cards;
+    document.getElementById('stat-upgrades').textContent = stats.upgrades;
     document.getElementById('stat-level').textContent = stats.level;
   }
 
-  /* === QUESTS === */
-  window.toggleQuest = function(checkbox, questId) {
-    if (control === 'demo') return;
-    var label = checkbox.closest('.idle-quest');
-    if (checkbox.checked) {
-      label.classList.add('done');
-    } else {
-      label.classList.remove('done');
+  /* === QUEST EVALUATION === */
+  function evaluateQuests() {
+    var questKeys = Object.keys(quests);
+    for (var i = 0; i < questKeys.length; i++) {
+      var qk = questKeys[i];
+      var q = quests[qk];
+      var wasCompleted = q.completed;
+      q.completed = q.check();
+
+      var questEl = document.getElementById('quest-' + qk);
+      if (!questEl) continue;
+      var checkbox = questEl.querySelector('input[type="checkbox"]');
+
+      if (q.completed) {
+        checkbox.checked = true;
+        questEl.classList.add('done');
+      } else {
+        checkbox.checked = false;
+        questEl.classList.remove('done');
+      }
     }
-  };
+  }
 
   /* === AWAY POPUP === */
-  window.showAwayPopup = function() {
+  function calculateOfflineRewards(elapsedSeconds) {
+    var breakdown = [];
+    var total = 0;
+    var keys = Object.keys(buildings);
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      var b = buildings[key];
+      var earned = Math.floor(b.level * elapsedSeconds * 0.1);
+      breakdown.push({ label: b.label, coins: earned, key: key });
+      total += earned;
+    }
+    return { breakdown: breakdown, total: total };
+  }
+
+  function showAwayPopup(elapsedSeconds) {
+    if (!elapsedSeconds || elapsedSeconds < 1) return;
+
+    var result = calculateOfflineRewards(elapsedSeconds);
+    awayBreakdown = result.breakdown;
+    pendingAwayCoins = result.total;
+
+    if (pendingAwayCoins <= 0) return;
+
+    /* Render breakdown rows */
+    var rowsEl = document.getElementById('away-rows');
+    rowsEl.innerHTML = '';
+    for (var i = 0; i < awayBreakdown.length; i++) {
+      var item = awayBreakdown[i];
+      var row = document.createElement('div');
+      row.className = 'idle-row';
+      row.innerHTML = '<span class="idle-row-label">' + item.label + '</span>' +
+                      '<span class="idle-row-value">+' + item.coins + ' coins</span>';
+      rowsEl.appendChild(row);
+    }
+
+    var totalEl = document.getElementById('away-total');
+    totalEl.textContent = 'Total: +' + pendingAwayCoins + ' coins';
+
     document.getElementById('away-popup').classList.add('active');
-  };
+  }
 
-  window.hideAwayPopup = function() {
+  function hideAwayPopup() {
     document.getElementById('away-popup').classList.remove('active');
-  };
+  }
 
-  window.claimAway = function() {
-    stats.coins += 84;
-    updateStatsUI();
+  function claimAway() {
+    if (pendingAwayCoins > 0) {
+      stats.coins += pendingAwayCoins;
+      updateStatsUI();
+      evaluateQuests();
+      emit('resource-gained', { building: 'away-claim', coins: pendingAwayCoins, totalCoins: stats.coins });
+      pendingAwayCoins = 0;
+      awayBreakdown = [];
+    }
     hideAwayPopup();
-    emit('idle-harvest', { building: 'away-claim', reward: 84, totalCoins: stats.coins });
-  };
+  }
+
+  /* === FERROS:UPDATE HANDLER === */
+  function handleUpdate(data) {
+    /* Accept: { buildings: [{name, level, emoji, productionRate}], coins, quests: [{text, completed}], townLevel } */
+
+    if (typeof data.coins === 'number') {
+      stats.coins = data.coins;
+    }
+
+    if (typeof data.townLevel === 'number') {
+      stats.level = data.townLevel;
+    }
+
+    if (Array.isArray(data.buildings)) {
+      for (var i = 0; i < data.buildings.length; i++) {
+        var bd = data.buildings[i];
+        if (bd.name && buildings[bd.name]) {
+          var b = buildings[bd.name];
+          if (typeof bd.level === 'number') b.level = Math.min(bd.level, MAX_LEVEL);
+          if (typeof bd.productionRate === 'number') b.speed = bd.productionRate;
+          if (typeof bd.emoji === 'string') {
+            var iconEl = document.getElementById('icon-' + bd.name);
+            if (iconEl) iconEl.textContent = bd.emoji;
+          }
+          updateBuildingLevelUI(bd.name);
+        }
+      }
+    }
+
+    if (Array.isArray(data.quests)) {
+      var questKeys = Object.keys(quests);
+      for (var i = 0; i < data.quests.length && i < questKeys.length; i++) {
+        var qk = questKeys[i];
+        var qd = data.quests[i];
+        if (typeof qd.text === 'string') {
+          quests[qk].text = qd.text;
+          var textEl = document.querySelector('#quest-' + qk + ' .idle-quest-text');
+          if (textEl) textEl.textContent = qd.text;
+        }
+        if (typeof qd.completed === 'boolean') {
+          quests[qk].completed = qd.completed;
+          var questEl = document.getElementById('quest-' + qk);
+          var cb = questEl ? questEl.querySelector('input[type="checkbox"]') : null;
+          if (qd.completed) {
+            if (cb) cb.checked = true;
+            if (questEl) questEl.classList.add('done');
+          } else {
+            if (cb) cb.checked = false;
+            if (questEl) questEl.classList.remove('done');
+          }
+        }
+      }
+    }
+
+    updateStatsUI();
+    updateUpgradeButtons();
+  }
 
   /* === DEMO MODE === */
   function startDemoMode() {
-    /* In demo mode, auto-harvest when buildings complete */
     var demoInterval = setInterval(function() {
       if (control !== 'demo') { clearInterval(demoInterval); return; }
 
-      Object.keys(buildings).forEach(function(key) {
+      var keys = Object.keys(buildings);
+      for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
         var b = buildings[key];
         if (b.ready) {
-          /* Auto-harvest */
           b.ready = false;
           b.progress = 0;
-          stats.coins += b.reward;
+          var reward = Math.floor(b.reward * (1 + (b.level - 1) * 0.3));
+          stats.coins += reward;
           stats.harvests += 1;
-          if (key === 'workshop') stats.cards += 1;
+          recalcTownLevel();
           updateStatsUI();
+          evaluateQuests();
 
-          /* Float text in demo */
-          var buildingEl = document.querySelector('[data-building="' + key + '"]');
-          if (buildingEl) {
-            var float = document.createElement('div');
-            float.className = 'idle-harvest-float';
-            float.textContent = '+' + b.reward;
-            float.style.left = '50%';
-            float.style.top = '10px';
-            float.style.transform = 'translateX(-50%)';
-            buildingEl.style.position = 'relative';
-            buildingEl.appendChild(float);
-            setTimeout(function() { float.remove(); }, 1200);
+          if (!prefersReducedMotion) {
+            showFloatingText(key, '+' + reward, 'gain');
           }
         }
-      });
+      }
     }, 500);
+
+    /* Demo: auto-upgrade at certain coin thresholds */
+    var demoUpgradeInterval = setInterval(function() {
+      if (control !== 'demo') { clearInterval(demoUpgradeInterval); return; }
+      var keys = Object.keys(buildings);
+      for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        var b = buildings[key];
+        if (b.level < MAX_LEVEL) {
+          var cost = upgradeCost(b.level);
+          if (stats.coins >= cost) {
+            stats.coins -= cost;
+            b.level += 1;
+            stats.upgrades += 1;
+            recalcTownLevel();
+            updateBuildingLevelUI(key);
+            updateStatsUI();
+            evaluateQuests();
+            break; /* One upgrade per tick in demo */
+          }
+        }
+      }
+    }, 3000);
 
     /* Show away popup after 5 seconds */
     setTimeout(function() {
       if (control !== 'demo') return;
-      showAwayPopup();
+      showAwayPopup(120); /* Simulate 2 minutes away */
       /* Auto-dismiss after 4 seconds in demo */
       setTimeout(function() {
         if (control !== 'demo') return;
-        stats.coins += 84;
-        updateStatsUI();
-        hideAwayPopup();
+        claimAway();
       }, 4000);
     }, 5000);
   }
 
+  /* === EXPOSE PUBLIC API === */
+  window._idleTown = {
+    harvest: harvestBuilding,
+    upgrade: upgradeBuilding,
+    showAway: showAwayPopup,
+    hideAway: hideAwayPopup,
+    claimAway: claimAway,
+    getState: function() {
+      return {
+        buildings: Object.keys(buildings).map(function(k) {
+          var b = buildings[k];
+          return { name: k, level: b.level, emoji: emojiMap[k][b.level], productionRate: b.speed };
+        }),
+        coins: stats.coins,
+        quests: Object.keys(quests).map(function(k) {
+          return { text: quests[k].text, completed: quests[k].completed };
+        }),
+        townLevel: stats.level
+      };
+    }
+  };
+
+  /* Also keep legacy global names for backward compat with onclick in demo mode */
+  window.harvestBuilding = harvestBuilding;
+  window.showAwayPopup = function() { showAwayPopup(120); };
+  window.hideAwayPopup = hideAwayPopup;
+  window.claimAway = claimAway;
+
   /* === INIT === */
   applyControl();
   updateStatsUI();
+  evaluateQuests();
   requestAnimationFrame(gameLoop);
   reportSize();
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+
+  /* Listen for reduced motion changes at runtime */
+  window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', function(e) {
+    prefersReducedMotion = e.matches;
+  });
+
+  /* Wire building click handlers (non-demo) */
+  var buildingEls = document.querySelectorAll('.idle-building');
+  for (var i = 0; i < buildingEls.length; i++) {
+    (function(el) {
+      el.addEventListener('click', function() {
+        var key = el.getAttribute('data-building');
+        if (key) harvestBuilding(key);
+      });
+    })(buildingEls[i]);
+  }
 })();
 </script>
 </body>
