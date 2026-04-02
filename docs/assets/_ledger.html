@@ -7,7 +7,7 @@
 <body>
 <!--
 ╔═══════════════════════════════════════════════════════════════════╗
-║                    FERROS ASSET LEDGER v1.0                      ║
+║                    FERROS ASSET LEDGER v2.0                      ║
 ║                    Phase 1: HTML Prototypes                      ║
 ║                    ADR-007: Single File System                   ║
 ╚═══════════════════════════════════════════════════════════════════╝
@@ -23,29 +23,33 @@ ASSEMBLED ARTIFACTS (single-file pages):
 
 SHARED FOUNDATION:
   _tokens.css                 Canonical design tokens (dark theme, 6 pages)
-  _embed.js                   Parent-side iframe auto-init helper
+  _embed.js                   Parent-side iframe helper + event router v2.0
+  _ledger.html                This file — manifest + schemas + event catalog
 
-ASSET MODULES:
-  Path                        Source    Description
-  ─────────────────────────── ──────── ────────────────────────────────
-  cards/trading-card.html     arena    Stock trading card with rarity system
-  cards/hand-fan.html         arena    Player hand with fan layout
-  cards/deck-builder.html     arena    Collection + deck drag-drop
-  arena/game-board.html       arena    3-lane trading game board
-  arena/pvp-arena.html        arena    PvP arena with health bars
-  games/stock-snake.html      arena    Playable Stock Snake canvas game
-  games/scratcher.html        arena    Scratcher ticket canvas
-  games/idle-town.html        arena    Idle town builder
-  creatures/creature-room.html arena   Genesis Lab Tamagotchi
-  loot/loot-box-3d.html       arena    3D CSS rotating loot box
-  store/store-grid.html       arena    Filterable cosmetics store
-  profile/profile-card.html   arena    User profile display
-  profile/ticket-gallery.html arena    NFT sealed trade tickets
-  hero/hero-infographic.html  arena    3-panel hero infographic
-  hero/hero-card-fan.html     arena    Playing card navigation fan
-  ai/ai-float-panel.html      arena    Floating AI assistant
+═══════════════════════════════════════════════════════════════════
+ ASSET MODULES (16 total — 12,761 lines)
+═══════════════════════════════════════════════════════════════════
 
-  Status: [x] = extracted, [ ] = planned
+  Path                         Lines   Source    Description
+  ──────────────────────────── ─────── ──────── ──────────────────────────────
+  cards/trading-card.html       562    arena    Stock cards with rarity + 3D flip
+  cards/hand-fan.html           675    arena    Player hand with dynamic fan layout
+  cards/deck-builder.html       654    arena    Collection + deck drag-drop builder
+  arena/game-board.html         942    arena    3-lane trading game board
+  arena/pvp-arena.html         1300    arena    PvP arena with health bars + rounds
+  games/stock-snake.html        765    arena    Playable Stock Snake canvas game
+  games/scratcher.html          793    arena    Scratcher ticket canvas
+  games/idle-town.html          823    arena    Idle town builder
+  creatures/creature-room.html  773    arena    Genesis Lab Tamagotchi creature
+  loot/loot-box-3d.html         701    arena    3D CSS rotating loot box
+  store/store-grid.html         959    arena    Filterable cosmetics store
+  profile/profile-card.html     820    arena    User profile display + editing
+  profile/ticket-gallery.html  1072    arena    NFT sealed trade tickets + modal
+  hero/hero-infographic.html    567    arena    3-panel hero infographic
+  hero/hero-card-fan.html       532    arena    Playing card navigation fan
+  ai/ai-float-panel.html        823    arena    Floating AI assistant + chat
+
+  Status: [x] = extracted + production-wired
   [x] cards/trading-card.html
   [x] cards/hand-fan.html
   [x] cards/deck-builder.html
@@ -63,26 +67,157 @@ ASSET MODULES:
   [x] hero/hero-card-fan.html
   [x] ai/ai-float-panel.html
 
-CONTROL LEVELS:
+═══════════════════════════════════════════════════════════════════
+ CONTROL LEVELS
+═══════════════════════════════════════════════════════════════════
+
   DEMO    — Locked animated showcase, no user interaction
   PREVIEW — Hover/tooltip interaction only, no state mutation
   PLAY    — Full user control, drag-drop, buttons, state changes
 
-COMMUNICATION PROTOCOL (postMessage):
+═══════════════════════════════════════════════════════════════════
+ COMMUNICATION PROTOCOL (postMessage)
+═══════════════════════════════════════════════════════════════════
+
   Parent → Asset:  {type:'ferros:init',   config:{control, data, theme}}
   Parent → Asset:  {type:'ferros:update', payload:{...}}
   Asset  → Parent: {type:'ferros:event',  asset, event, payload}
   Asset  → Parent: {type:'ferros:resize', asset, width, height}
 
-DESIGN SYSTEM:
+═══════════════════════════════════════════════════════════════════
+ DATA SCHEMAS
+═══════════════════════════════════════════════════════════════════
+
+  Card Data (shared across card/arena assets):
+    { ticker, name, rarity, ability, price, pnl, energy, sector }
+
+  Creature State:
+    { name, emoji, stage, stats:{atk,def,spd,wis}, happiness, xp,
+      abilities:[{name,icon,cooldown}] }
+
+  Profile State:
+    { avatar, name, level, xp:{current,max}, title, matches,
+      winRate, deck }
+
+  Ticket Data:
+    { ticker, type, direction, entryPrice, exitPrice,
+      date, pnl, rarity, sealHash, duration, isFan }
+
+  Store Item:
+    { name, price, rarity, category }
+
+  Loot Table Entry:
+    { icon, name, rarity, color? }
+
+  Match State (pvp-arena):
+    { playerHP, opponentHP, round, timer,
+      playerLanes:{day,swing,long}, opponentLanes:{day,swing,long} }
+
+  Board State (game-board):
+    { stats:{portfolio,turn,pnl,positions,energy,maxEnergy},
+      board:{day:[card],swing:[card],long:[card]} }
+
+═══════════════════════════════════════════════════════════════════
+ EVENT CATALOG (all emitted ferros:event types)
+═══════════════════════════════════════════════════════════════════
+
+  ┌─────────────────── CARD SYSTEM ────────────────────┐
+  │ card-flipped      trading-card   {ticker, flipped}  │
+  │ card-dragged      hand-fan       {ticker, action}   │
+  │ card-played       hand-fan       {ticker,name,...}   │
+  │ card-played       game-board     {ticker, lane}      │
+  │ card-played       pvp-arena      {playerCard,...}     │
+  │ deck-changed      deck-builder   {action,ticker,deck}│
+  │ deck-validated    deck-builder   {deck,archetype,...} │
+  │ cards-updated     trading-card   {count}             │
+  └────────────────────────────────────────────────────┘
+
+  ┌─────────────── BATTLE / ABILITY ───────────────────┐
+  │ ability-used      hand-fan       {ticker, ability}   │
+  │ ability-used      trading-card   {ticker, ability}   │
+  │ ability-used      game-board     {ticker, ability}   │
+  │ ability-used      creature-room  {creature,ability..}│
+  │ turn-ended        game-board     {turn, board}       │
+  │ match-update      pvp-arena      {timer,round}       │
+  │ match-end         pvp-arena      {result,HP,stats..} │
+  │ match-result      pvp-arena      (alias of match-end)│
+  └────────────────────────────────────────────────────┘
+
+  ┌─────────────── MINI-GAMES ─────────────────────────┐
+  │ score             stock-snake    {score,stock,food..}│
+  │ gameOver          stock-snake    {score,foodEaten..} │
+  │ scratch-revealed  scratcher      {tier, prizes}      │
+  │ coins-spent       scratcher      {amount, tier}      │
+  │ resource-gained   idle-town      {building,coins..}  │
+  │ building-upgraded idle-town      {building,newLevel.}│
+  │ creature-action   creature-room  {action,stats..}    │
+  └────────────────────────────────────────────────────┘
+
+  ┌─────────────── ECONOMY & IDENTITY ─────────────────┐
+  │ loot-opened       loot-box-3d    {icon,name,rarity..}│
+  │ item-purchased    store-grid     {item,cost,rarity..}│
+  │ item-equipped     store-grid     {item, category}    │
+  │ item-unequipped   store-grid     {item, category}    │
+  │ item-previewed    store-grid     {item, category}    │
+  │ profile-updated   profile-card   {field, value}      │
+  │ gallery-updated   ticket-gallery {count}             │
+  └────────────────────────────────────────────────────┘
+
+  ┌─────────────── NAVIGATION & AI ────────────────────┐
+  │ navigate          hero-infogrph  {section}           │
+  │ navigate          hero-card-fan  {section}           │
+  │ fan-updated       hero-card-fan  {cardCount}         │
+  │ panels-updated    hero-infogrph  {keys}              │
+  │ agent-selected    ai-float-panel {agent}             │
+  │ panel-opened      ai-float-panel null                │
+  │ panel-closed      ai-float-panel null                │
+  │ panel-minimized   ai-float-panel null                │
+  │ panel-updated     ai-float-panel {agents}            │
+  └────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+ EVENT ROUTING TABLE (_embed.js v2.0)
+═══════════════════════════════════════════════════════════════════
+
+  Event             →  Routed to
+  ──────────────────── ──────────────────────────────────
+  deck-changed       → hand-fan
+  deck-validated     → hand-fan
+  card-played        → game-board, pvp-arena
+  card-dragged       → game-board
+  turn-ended         → pvp-arena
+  ability-used       → pvp-arena, game-board
+  loot-opened        → profile-card
+  item-purchased     → profile-card, store-grid
+  item-equipped      → profile-card
+  score              → profile-card
+  navigate           → hero-card-fan, hero-infographic
+  creature-evolved   → profile-card
+  resource-gained    → profile-card
+  building-upgraded  → idle-town
+  gallery-updated    → profile-card
+  agent-selected     → ai-float-panel
+  match-result       → profile-card
+
+  Custom routes: data-ferros-routes='["target1","target2"]'
+
+═══════════════════════════════════════════════════════════════════
+ DESIGN SYSTEM
+═══════════════════════════════════════════════════════════════════
+
   Theme:    Dark (--bg-base: #0a0c10)
   Rarity:   common(gray) > uncommon(green) > rare(blue) > epic(purple) >
             legendary(amber) > mythic(pink)
   Shimmer:  ticketShimmer — conic-gradient rotation (holographic)
   Art:      Emoji-first, zero external dependencies
   Protocol: Works on file://, no CDN, no fetch, vanilla JS only
+  A11y:     prefers-reduced-motion on all 16 assets, focus-visible,
+            ARIA roles/labels, keyboard navigation, screen reader support
 
-CASCADING ASSET HIERARCHY:
+═══════════════════════════════════════════════════════════════════
+ CASCADING ASSET HIERARCHY
+═══════════════════════════════════════════════════════════════════
+
   hero-infographic.html
     └─ game-board.html [DEMO]     ← mini battle showcase
     └─ loot-box-3d.html [DEMO]    ← spinning loot teaser
