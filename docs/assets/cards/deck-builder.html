@@ -53,16 +53,44 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* === DECK MINI CARD === */
 .deck-mini-card {
-  background: var(--bg-card); border: 2px solid var(--border-dim); border-radius: 8px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0px, rgba(255,255,255,0.008) 1px, transparent 2px),
+    repeating-linear-gradient(90deg, transparent 0px, rgba(255,255,255,0.008) 1px, transparent 2px),
+    var(--gradient-card);
+  border: 2px solid var(--border-dim); border-radius: 8px;
   padding: 10px 8px; text-align: center; cursor: grab;
   transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
   font-size: 0.75rem; aspect-ratio: 63/88;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   position: relative; overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    inset 0 -1px 0 rgba(0,0,0,0.2),
+    0 2px 6px rgba(0,0,0,0.3),
+    0 4px 12px rgba(0,0,0,0.12);
 }
 .deck-mini-card::after {
   content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
   width: 16px; height: 3px; border-radius: 2px; background: var(--border-dim);
+  z-index: 1;
+}
+.deck-mini-card::before {
+  content: '';
+  position: absolute;
+  top: -60%; left: -60%;
+  width: 220%; height: 220%;
+  background: conic-gradient(transparent, var(--dmc-glow, rgba(45,212,191,0.06)), transparent 30%);
+  animation: ticketShimmer 10s linear infinite;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+  z-index: 0;
+}
+.deck-mini-card:hover::before { opacity: 0.5; }
+
+@keyframes ticketShimmer {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 .deck-mini-card:hover {
   border-color: var(--accent-cyan); transform: scale(1.08) translateY(-3px);
@@ -74,9 +102,49 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 }
 .deck-mini-card.dragging { opacity: 0.3; transform: scale(0.9); }
 .deck-mini-card.in-deck { opacity: 0.35; pointer-events: none; border-style: dashed; }
-.deck-mini-card .mini-ticker { font-family: var(--font-mono); font-weight: 800; color: var(--accent-cyan); font-size: 0.85rem; }
-.deck-mini-card .mini-name { color: var(--text-dim); font-size: 0.6rem; margin-top: 3px; }
-.deck-mini-card .mini-sector { color: var(--text-dim); font-size: 0.5rem; margin-top: 2px; opacity: 0.7; }
+.deck-mini-card .mini-ticker { font-family: var(--font-mono); font-weight: 800; color: var(--accent-cyan); font-size: 0.85rem; text-shadow: 0 1px 0 rgba(255,255,255,0.06), 0 -1px 1px rgba(0,0,0,0.3); position: relative; z-index: 1; }
+.deck-mini-card .mini-name { color: var(--text-dim); font-size: 0.6rem; margin-top: 3px; position: relative; z-index: 1; }
+.deck-mini-card .mini-sector { color: var(--text-dim); font-size: 0.5rem; margin-top: 2px; opacity: 0.7; position: relative; z-index: 1; }
+
+/* === RARITY BORDER COLORS === */
+.deck-mini-card[data-rarity="mythic"]    { border-color: rgba(244,114,182,0.5); --dmc-glow: rgba(244,114,182,0.12); }
+.deck-mini-card[data-rarity="legendary"] { border-color: rgba(245,158,11,0.5);  --dmc-glow: rgba(245,158,11,0.12);  }
+.deck-mini-card[data-rarity="epic"]      { border-color: rgba(167,139,250,0.5); --dmc-glow: rgba(167,139,250,0.1);  }
+.deck-mini-card[data-rarity="rare"]      { border-color: rgba(74,144,217,0.4);  --dmc-glow: rgba(74,144,217,0.08);  }
+.deck-mini-card[data-rarity="uncommon"]  { border-color: rgba(52,211,153,0.35); --dmc-glow: rgba(52,211,153,0.06);  }
+.deck-mini-card[data-rarity="common"]    { border-color: rgba(90,106,128,0.3); }
+
+/* Always-on shimmer for high rarity */
+.deck-mini-card[data-rarity="mythic"]::before,
+.deck-mini-card[data-rarity="legendary"]::before,
+.deck-mini-card[data-rarity="epic"]::before {
+  opacity: 0.4;
+}
+
+/* === MINI ART AREA === */
+.mini-art {
+  width: calc(100% + 12px);
+  margin: 3px -6px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  border-top: 1px solid rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  position: relative;
+  z-index: 1;
+}
+.mini-art[data-sector="Tech"]          { background: linear-gradient(135deg, #0f1a2e, #1a2544, #0d1525); }
+.mini-art[data-sector="Crypto"]        { background: linear-gradient(135deg, #1a0f2e, #2a1544, #150d25); }
+.mini-art[data-sector="Finance"]       { background: linear-gradient(135deg, #1a1a0f, #2a2515, #15150d); }
+.mini-art[data-sector="Auto"]          { background: linear-gradient(135deg, #1a150f, #2a2015, #15120d); }
+.mini-art[data-sector="Energy"]        { background: linear-gradient(135deg, #1a0f0f, #2a1515, #150d0d); }
+.mini-art[data-sector="Consumer"]      { background: linear-gradient(135deg, #0f1a15, #152a20, #0d1510); }
+.mini-art[data-sector="Health"]        { background: linear-gradient(135deg, #0f151a, #152025, #0d1215); }
+.mini-art[data-sector="Media"]         { background: linear-gradient(135deg, #150f1a, #201525, #120d15); }
+.mini-art[data-sector="Semiconductor"] { background: linear-gradient(135deg, #0f1a2e, #1a2544, #0d1525); }
+.mini-art[data-sector="Retail"]        { background: linear-gradient(135deg, #0f1a15, #152a20, #0d1510); }
 
 /* === DECK SLOT === */
 .deck-slot {
@@ -185,6 +253,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   .deck-mini-card {
     transition: none !important;
   }
+  .deck-mini-card::before {
+    animation: none !important;
+    opacity: 0 !important;
+  }
   .deck-mini-card:hover {
     transform: none !important;
     box-shadow: none !important;
@@ -227,21 +299,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="deck-collection">
         <div class="deck-collection-title" id="collection-title">COLLECTION (15)</div>
         <div class="deck-collection-grid" id="collection-grid" role="listbox" aria-label="Card collection" aria-describedby="collection-title">
-          <div class="deck-mini-card" draggable="true" data-ticker="AAPL" data-sector="Tech" tabindex="0" role="option" aria-label="AAPL - Apple - Tech"><div class="mini-ticker">AAPL</div><div class="mini-name">Apple</div><div class="mini-sector">Tech</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="MSFT" data-sector="Tech" tabindex="0" role="option" aria-label="MSFT - Microsoft - Tech"><div class="mini-ticker">MSFT</div><div class="mini-name">Microsoft</div><div class="mini-sector">Tech</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="NVDA" data-sector="Tech" tabindex="0" role="option" aria-label="NVDA - NVIDIA - Tech"><div class="mini-ticker">NVDA</div><div class="mini-name">NVIDIA</div><div class="mini-sector">Tech</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="TSLA" data-sector="Auto" tabindex="0" role="option" aria-label="TSLA - Tesla - Auto"><div class="mini-ticker">TSLA</div><div class="mini-name">Tesla</div><div class="mini-sector">Auto</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="AMZN" data-sector="Retail" tabindex="0" role="option" aria-label="AMZN - Amazon - Retail"><div class="mini-ticker">AMZN</div><div class="mini-name">Amazon</div><div class="mini-sector">Retail</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="GOOG" data-sector="Tech" tabindex="0" role="option" aria-label="GOOG - Alphabet - Tech"><div class="mini-ticker">GOOG</div><div class="mini-name">Alphabet</div><div class="mini-sector">Tech</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="META" data-sector="Tech" tabindex="0" role="option" aria-label="META - Meta - Tech"><div class="mini-ticker">META</div><div class="mini-name">Meta</div><div class="mini-sector">Tech</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="BRK.B" data-sector="Finance" tabindex="0" role="option" aria-label="BRK.B - Berkshire - Finance"><div class="mini-ticker">BRK.B</div><div class="mini-name">Berkshire</div><div class="mini-sector">Finance</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="JNJ" data-sector="Health" tabindex="0" role="option" aria-label="JNJ - J&amp;J - Health"><div class="mini-ticker">JNJ</div><div class="mini-name">J&amp;J</div><div class="mini-sector">Health</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="V" data-sector="Finance" tabindex="0" role="option" aria-label="V - Visa - Finance"><div class="mini-ticker">V</div><div class="mini-name">Visa</div><div class="mini-sector">Finance</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="JPM" data-sector="Finance" tabindex="0" role="option" aria-label="JPM - JPMorgan - Finance"><div class="mini-ticker">JPM</div><div class="mini-name">JPMorgan</div><div class="mini-sector">Finance</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="XOM" data-sector="Energy" tabindex="0" role="option" aria-label="XOM - Exxon - Energy"><div class="mini-ticker">XOM</div><div class="mini-name">Exxon</div><div class="mini-sector">Energy</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="KO" data-sector="Consumer" tabindex="0" role="option" aria-label="KO - Coca-Cola - Consumer"><div class="mini-ticker">KO</div><div class="mini-name">Coca-Cola</div><div class="mini-sector">Consumer</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="PG" data-sector="Consumer" tabindex="0" role="option" aria-label="PG - Procter&amp;Gamble - Consumer"><div class="mini-ticker">PG</div><div class="mini-name">Procter&amp;Gamble</div><div class="mini-sector">Consumer</div></div>
-          <div class="deck-mini-card" draggable="true" data-ticker="DIS" data-sector="Media" tabindex="0" role="option" aria-label="DIS - Disney - Media"><div class="mini-ticker">DIS</div><div class="mini-name">Disney</div><div class="mini-sector">Media</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="AAPL" data-sector="Tech" data-rarity="rare" tabindex="0" role="option" aria-label="AAPL - Apple - Tech"><div class="mini-ticker">AAPL</div><div class="mini-art" data-sector="Tech">&#x1F5A5;&#xFE0F;</div><div class="mini-name">Apple</div><div class="mini-sector">Tech</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="MSFT" data-sector="Tech" data-rarity="rare" tabindex="0" role="option" aria-label="MSFT - Microsoft - Tech"><div class="mini-ticker">MSFT</div><div class="mini-art" data-sector="Tech">&#x1F5A5;&#xFE0F;</div><div class="mini-name">Microsoft</div><div class="mini-sector">Tech</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="NVDA" data-sector="Tech" data-rarity="epic" tabindex="0" role="option" aria-label="NVDA - NVIDIA - Tech"><div class="mini-ticker">NVDA</div><div class="mini-art" data-sector="Tech">&#x1F5A5;&#xFE0F;</div><div class="mini-name">NVIDIA</div><div class="mini-sector">Tech</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="TSLA" data-sector="Auto" data-rarity="uncommon" tabindex="0" role="option" aria-label="TSLA - Tesla - Auto"><div class="mini-ticker">TSLA</div><div class="mini-art" data-sector="Auto">&#x1F697;</div><div class="mini-name">Tesla</div><div class="mini-sector">Auto</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="AMZN" data-sector="Retail" data-rarity="rare" tabindex="0" role="option" aria-label="AMZN - Amazon - Retail"><div class="mini-ticker">AMZN</div><div class="mini-art" data-sector="Retail">&#x1F6D2;</div><div class="mini-name">Amazon</div><div class="mini-sector">Retail</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="GOOG" data-sector="Tech" data-rarity="rare" tabindex="0" role="option" aria-label="GOOG - Alphabet - Tech"><div class="mini-ticker">GOOG</div><div class="mini-art" data-sector="Tech">&#x1F5A5;&#xFE0F;</div><div class="mini-name">Alphabet</div><div class="mini-sector">Tech</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="META" data-sector="Tech" data-rarity="uncommon" tabindex="0" role="option" aria-label="META - Meta - Tech"><div class="mini-ticker">META</div><div class="mini-art" data-sector="Tech">&#x1F5A5;&#xFE0F;</div><div class="mini-name">Meta</div><div class="mini-sector">Tech</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="BRK.B" data-sector="Finance" data-rarity="legendary" tabindex="0" role="option" aria-label="BRK.B - Berkshire - Finance"><div class="mini-ticker">BRK.B</div><div class="mini-art" data-sector="Finance">&#x1F3E6;</div><div class="mini-name">Berkshire</div><div class="mini-sector">Finance</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="JNJ" data-sector="Health" data-rarity="common" tabindex="0" role="option" aria-label="JNJ - J&amp;J - Health"><div class="mini-ticker">JNJ</div><div class="mini-art" data-sector="Health">&#x1F3E5;</div><div class="mini-name">J&amp;J</div><div class="mini-sector">Health</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="V" data-sector="Finance" data-rarity="uncommon" tabindex="0" role="option" aria-label="V - Visa - Finance"><div class="mini-ticker">V</div><div class="mini-art" data-sector="Finance">&#x1F3E6;</div><div class="mini-name">Visa</div><div class="mini-sector">Finance</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="JPM" data-sector="Finance" data-rarity="uncommon" tabindex="0" role="option" aria-label="JPM - JPMorgan - Finance"><div class="mini-ticker">JPM</div><div class="mini-art" data-sector="Finance">&#x1F3E6;</div><div class="mini-name">JPMorgan</div><div class="mini-sector">Finance</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="XOM" data-sector="Energy" data-rarity="common" tabindex="0" role="option" aria-label="XOM - Exxon - Energy"><div class="mini-ticker">XOM</div><div class="mini-art" data-sector="Energy">&#x26A1;</div><div class="mini-name">Exxon</div><div class="mini-sector">Energy</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="KO" data-sector="Consumer" data-rarity="common" tabindex="0" role="option" aria-label="KO - Coca-Cola - Consumer"><div class="mini-ticker">KO</div><div class="mini-art" data-sector="Consumer">&#x1F6D2;</div><div class="mini-name">Coca-Cola</div><div class="mini-sector">Consumer</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="PG" data-sector="Consumer" data-rarity="common" tabindex="0" role="option" aria-label="PG - Procter&amp;Gamble - Consumer"><div class="mini-ticker">PG</div><div class="mini-art" data-sector="Consumer">&#x1F6D2;</div><div class="mini-name">Procter&amp;Gamble</div><div class="mini-sector">Consumer</div></div>
+          <div class="deck-mini-card" draggable="true" data-ticker="DIS" data-sector="Media" data-rarity="uncommon" tabindex="0" role="option" aria-label="DIS - Disney - Media"><div class="mini-ticker">DIS</div><div class="mini-art" data-sector="Media">&#x1F3AC;</div><div class="mini-name">Disney</div><div class="mini-sector">Media</div></div>
         </div>
       </div>
       <div class="deck-slot">
@@ -287,6 +359,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     value:    ['BRK.B', 'JPM', 'JNJ', 'KO', 'PG'],
     sector:   ['NVDA', 'AAPL', 'MSFT', 'GOOG', 'META'],
     index:    ['AAPL', 'MSFT', 'GOOG', 'AMZN', 'BRK.B']
+  };
+
+  var SECTOR_AVATARS = {
+    Tech: '\u{1F5A5}\uFE0F',
+    Crypto: '\u26D3\uFE0F',
+    Finance: '\u{1F3E6}',
+    Auto: '\u{1F697}',
+    Energy: '\u26A1',
+    Consumer: '\u{1F6D2}',
+    Health: '\u{1F3E5}',
+    Media: '\u{1F3AC}',
+    Semiconductor: '\u{1F48E}',
+    Retail: '\u{1F6D2}'
   };
 
   // Listen for reduced-motion changes at runtime
@@ -626,8 +711,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       el.setAttribute('tabindex', '0');
       el.setAttribute('role', 'option');
       el.setAttribute('aria-label', card.ticker + ' - ' + (card.name || '') + ' - ' + (card.sector || ''));
+      var sectorEmoji = SECTOR_AVATARS[card.sector] || '';
       el.innerHTML =
         '<div class="mini-ticker">' + escapeHTML(card.ticker) + '</div>' +
+        '<div class="mini-art" data-sector="' + escapeHTML(card.sector || '') + '">' + sectorEmoji + '</div>' +
         '<div class="mini-name">' + escapeHTML(card.name || '') + '</div>' +
         '<div class="mini-sector">' + escapeHTML(card.sector || '') + '</div>';
       grid.appendChild(el);

@@ -54,15 +54,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* === ARENA BOARD === */
 .arena-board {
-  display: grid; grid-template-columns: 1fr auto 1fr; gap: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr auto 1fr;
+  gap: 0;
   background: var(--bg-panel); border: 1px solid var(--border-dim);
-  border-radius: var(--radius-panel); overflow: hidden; min-height: 320px;
+  border-radius: var(--radius-panel); overflow: hidden; min-height: 500px;
+  transform: perspective(1200px) rotateX(2deg);
+  transform-origin: center 60%;
 }
 
 /* === ARENA SIDE === */
 .arena-side { padding: 16px; }
-.arena-side-you { border-right: 1px solid var(--border-dim); }
-.arena-side-opp { border-left: 1px solid var(--border-dim); }
+.arena-side-opp {
+  order: 1;
+  transform: rotate(180deg);
+  border-left: none;
+  border-bottom: 1px solid var(--border-dim);
+}
+.arena-center { order: 2; }
+.arena-side-you {
+  order: 3;
+  border-right: none;
+  border-top: 1px solid var(--border-dim);
+}
 
 .arena-player-label {
   font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700;
@@ -92,7 +107,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 }
 
 /* Mini Lanes */
-.arena-mini-lanes { display: flex; flex-direction: column; gap: 8px; }
+.arena-mini-lanes {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
 .arena-mini-lane {
   background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: 6px;
   padding: 8px; position: relative;
@@ -110,12 +129,36 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 .arena-mini-cards { display: flex; gap: 6px; flex-wrap: wrap; }
 .arena-mini-card {
-  background: var(--bg-card-alt); border: 1px solid var(--accent-cyan);
-  border-radius: 4px; padding: 4px 8px; font-family: var(--font-mono);
-  font-size: 0.68rem; font-weight: 700; color: var(--accent-cyan);
+  background: var(--bg-card);
+  border: 2px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  min-width: 70px;
+  text-align: center;
   transition: all 0.2s;
+  position: relative;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 1px 4px rgba(0,0,0,0.3);
 }
 .arena-mini-card:hover { background: rgba(45,212,191,0.08); transform: scale(1.05); }
+/* Rarity border colors */
+.arena-mini-card[data-rarity="epic"]      { border-color: rgba(167,139,250,0.4); }
+.arena-mini-card[data-rarity="legendary"] { border-color: rgba(245,158,11,0.4); }
+.arena-mini-card[data-rarity="rare"]      { border-color: rgba(74,144,217,0.35); }
+.arena-mini-card[data-rarity="uncommon"]  { border-color: rgba(52,211,153,0.3); }
+.arena-mini-card[data-rarity="mythic"]    { border-color: rgba(244,114,182,0.45); }
+/* Ability text inside mini-cards */
+.arena-mini-card .mini-ability {
+  font-size: 0.5rem;
+  color: var(--text-dim);
+  font-weight: 400;
+  margin-top: 2px;
+}
 /* Opponent mini-cards get red border */
 .arena-side-opp .arena-mini-card {
   border-color: var(--accent-red); color: var(--accent-red);
@@ -124,24 +167,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* === ARENA CENTER === */
 .arena-center {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 20px 24px; min-width: 160px; position: relative;
-  background: linear-gradient(180deg, rgba(167,139,250,0.05) 0%, rgba(248,113,113,0.05) 50%, rgba(45,212,191,0.05) 100%);
-  border-left: 1px solid var(--border-dim); border-right: 1px solid var(--border-dim);
+  display: flex; flex-direction: row; align-items: center; justify-content: center;
+  gap: 16px; padding: 12px 20px; position: relative;
+  min-width: unset; min-height: auto;
+  background: linear-gradient(90deg,
+    rgba(167,139,250,0.03) 0%,
+    rgba(248,113,113,0.05) 50%,
+    rgba(45,212,191,0.03) 100%
+  );
+  border-top: 1px solid var(--border-dim);
+  border-bottom: 1px solid var(--border-dim);
+  border-left: none; border-right: none;
 }
 .arena-vs {
   font-family: var(--font-mono); font-size: 2rem; font-weight: 900;
   background: linear-gradient(180deg, var(--accent-purple), var(--accent-red));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text; margin-bottom: 12px;
+  background-clip: text; margin: 0;
 }
 .arena-round {
   font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim);
-  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;
+  text-transform: uppercase; letter-spacing: 0.1em; margin: 0;
 }
 .arena-timer {
   font-family: var(--font-mono); font-size: 1.4rem; font-weight: 700;
-  color: var(--accent-amber); margin-bottom: 16px; letter-spacing: 0.05em;
+  color: var(--accent-amber); margin: 0; letter-spacing: 0.05em;
 }
 .arena-timer.low { color: var(--accent-red); animation: timerPulse 0.8s ease-in-out infinite; }
 .arena-play-btn {
@@ -336,27 +386,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   .arena-board {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
+    transform: none;
   }
   .arena-side-you {
     border-right: none; border-bottom: 1px solid var(--border-dim);
     order: 1;
   }
   .arena-center {
-    flex-direction: row; flex-wrap: wrap; gap: 10px; min-width: unset;
-    padding: 12px 16px; border-left: none; border-right: none;
+    flex-direction: column; gap: 8px; min-width: unset;
+    padding: 8px; border-left: none; border-right: none;
     border-bottom: 1px solid var(--border-dim);
     order: 2;
   }
-  .arena-center .arena-vs { font-size: 1.4rem; margin-bottom: 0; margin-right: 10px; }
-  .arena-center .arena-round { margin-bottom: 0; font-size: 0.6rem; }
-  .arena-center .arena-timer { font-size: 1.1rem; margin-bottom: 0; margin-right: auto; }
-  .arena-center .arena-play-btn { font-size: 0.65rem; padding: 6px 14px; }
-  .arena-center .card-select-overlay { min-width: 240px; }
-
   .arena-side-opp {
+    transform: none;  /* Don't rotate on mobile — too small to read */
     border-left: none;
     order: 3;
   }
+  .arena-center .arena-vs { font-size: 1.4rem; margin: 0; margin-right: 10px; }
+  .arena-center .arena-round { margin: 0; font-size: 0.6rem; }
+  .arena-center .arena-timer { font-size: 1.1rem; margin: 0; margin-right: auto; }
+  .arena-center .arena-play-btn { font-size: 0.65rem; padding: 6px 14px; }
+  .arena-center .card-select-overlay { min-width: 240px; }
+
   .arena-side { padding: 12px; }
   .arena-player-label { font-size: 0.7rem; }
   .arena-health-text { font-size: 0.58rem; }
@@ -378,6 +430,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* === PREFERS REDUCED MOTION === */
 @media (prefers-reduced-motion: reduce) {
+  .arena-board { transform: none; }
   .arena-timer.low { animation: none; }
   .arena-health-fill { transition: width 0.1s linear; }
   .arena-mini-card { transition: none; }
@@ -560,29 +613,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
    *  CARD DATABASE (hand of 4 rotating options)
    * ============================================ */
   var CARD_POOL = [
-    { ticker: 'NVDA', ability: 'GPU Surge', cost: 3, lane: 'day' },
-    { ticker: 'AMD', ability: 'Chip Rush', cost: 2, lane: 'day' },
-    { ticker: 'TSLA', ability: 'Volt Strike', cost: 4, lane: 'day' },
-    { ticker: 'MSFT', ability: 'Cloud Wall', cost: 3, lane: 'swing' },
-    { ticker: 'GOOG', ability: 'Data Mine', cost: 3, lane: 'swing' },
-    { ticker: 'META', ability: 'Social Pulse', cost: 2, lane: 'swing' },
-    { ticker: 'AAPL', ability: 'Steady Yield', cost: 2, lane: 'long' },
-    { ticker: 'BRK.B', ability: 'Value Hold', cost: 3, lane: 'long' },
-    { ticker: 'JNJ', ability: 'Safe Haven', cost: 1, lane: 'long' },
-    { ticker: 'AMZN', ability: 'Prime Deliver', cost: 4, lane: 'swing' },
-    { ticker: 'SPY', ability: 'Index Shield', cost: 2, lane: 'long' },
-    { ticker: 'QQQ', ability: 'Tech Blitz', cost: 3, lane: 'day' }
+    { ticker: 'NVDA', ability: 'GPU Surge', cost: 3, lane: 'day', rarity: 'epic' },
+    { ticker: 'AMD', ability: 'Chip Rush', cost: 2, lane: 'day', rarity: 'rare' },
+    { ticker: 'TSLA', ability: 'Volt Strike', cost: 4, lane: 'day', rarity: 'legendary' },
+    { ticker: 'MSFT', ability: 'Cloud Wall', cost: 3, lane: 'swing', rarity: 'epic' },
+    { ticker: 'GOOG', ability: 'Data Mine', cost: 3, lane: 'swing', rarity: 'rare' },
+    { ticker: 'META', ability: 'Social Pulse', cost: 2, lane: 'swing', rarity: 'uncommon' },
+    { ticker: 'AAPL', ability: 'Steady Yield', cost: 2, lane: 'long', rarity: 'rare' },
+    { ticker: 'BRK.B', ability: 'Value Hold', cost: 3, lane: 'long', rarity: 'legendary' },
+    { ticker: 'JNJ', ability: 'Safe Haven', cost: 1, lane: 'long', rarity: 'uncommon' },
+    { ticker: 'AMZN', ability: 'Prime Deliver', cost: 4, lane: 'swing', rarity: 'legendary' },
+    { ticker: 'SPY', ability: 'Index Shield', cost: 2, lane: 'long', rarity: 'uncommon' },
+    { ticker: 'QQQ', ability: 'Tech Blitz', cost: 3, lane: 'day', rarity: 'rare' }
   ];
 
   var OPPONENT_POOL = [
-    { ticker: 'BABA', ability: 'Alibaba Strike', cost: 3, lane: 'day' },
-    { ticker: 'PFE', ability: 'Pharma Block', cost: 2, lane: 'long' },
-    { ticker: 'DIS', ability: 'Magic Cast', cost: 3, lane: 'swing' },
-    { ticker: 'NFLX', ability: 'Stream Drain', cost: 4, lane: 'day' },
-    { ticker: 'INTC', ability: 'Core Dump', cost: 2, lane: 'swing' },
-    { ticker: 'WMT', ability: 'Bulk Shield', cost: 1, lane: 'long' },
-    { ticker: 'V', ability: 'Swipe Cut', cost: 3, lane: 'day' },
-    { ticker: 'JPM', ability: 'Bank Vault', cost: 2, lane: 'long' }
+    { ticker: 'BABA', ability: 'Alibaba Strike', cost: 3, lane: 'day', rarity: 'rare' },
+    { ticker: 'PFE', ability: 'Pharma Block', cost: 2, lane: 'long', rarity: 'uncommon' },
+    { ticker: 'DIS', ability: 'Magic Cast', cost: 3, lane: 'swing', rarity: 'epic' },
+    { ticker: 'NFLX', ability: 'Stream Drain', cost: 4, lane: 'day', rarity: 'legendary' },
+    { ticker: 'INTC', ability: 'Core Dump', cost: 2, lane: 'swing', rarity: 'uncommon' },
+    { ticker: 'WMT', ability: 'Bulk Shield', cost: 1, lane: 'long', rarity: 'uncommon' },
+    { ticker: 'V', ability: 'Swipe Cut', cost: 3, lane: 'day', rarity: 'rare' },
+    { ticker: 'JPM', ability: 'Bank Vault', cost: 2, lane: 'long', rarity: 'rare' }
   ];
 
   var currentHand = [];
@@ -706,8 +759,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       cards.forEach(function(card) {
         var el = document.createElement('div');
         el.className = 'arena-mini-card';
-        el.textContent = card.ticker || card;
-        if (card.ability) el.title = card.ability + ' (Cost: ' + card.cost + ')';
+        var ticker = card.ticker || card;
+        var ability = card.ability || '';
+        el.innerHTML = '<span>' + ticker + '</span>' +
+          (ability ? '<div class="mini-ability">' + ability + '</div>' : '');
+        if (card.rarity) el.dataset.rarity = card.rarity;
+        if (ability) el.title = ability + ' (Cost: ' + (card.cost || '?') + ')';
         container.appendChild(el);
       });
     });
@@ -795,14 +852,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     closeCardSelect();
 
     // Add card to player lane
-    state.playerLanes[card.lane].push({ ticker: card.ticker, ability: card.ability, cost: card.cost });
+    state.playerLanes[card.lane].push({ ticker: card.ticker, ability: card.ability, cost: card.cost, rarity: card.rarity });
 
     // Calculate player attack damage
     var playerDmg = card.cost * 5;
 
     // Opponent responds with a random card
     var oppCard = pickRandom(OPPONENT_POOL);
-    state.opponentLanes[oppCard.lane].push({ ticker: oppCard.ticker, ability: oppCard.ability, cost: oppCard.cost });
+    state.opponentLanes[oppCard.lane].push({ ticker: oppCard.ticker, ability: oppCard.ability, cost: oppCard.cost, rarity: oppCard.rarity });
 
     // Opponent attack damage
     var oppDmg = Math.floor(Math.random() * 16) + 5; // random(5-20)
@@ -1250,14 +1307,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     state.timer = 165; // 2:45
 
     state.playerLanes = {
-      day: [{ ticker: 'NVDA', ability: 'GPU Surge', cost: 3 }, { ticker: 'AMD', ability: 'Chip Rush', cost: 2 }],
-      swing: [{ ticker: 'MSFT', ability: 'Cloud Wall', cost: 3 }],
-      long: [{ ticker: 'AAPL', ability: 'Steady Yield', cost: 2 }, { ticker: 'BRK.B', ability: 'Value Hold', cost: 3 }]
+      day: [{ ticker: 'NVDA', ability: 'GPU Surge', cost: 3, rarity: 'epic' }, { ticker: 'AMD', ability: 'Chip Rush', cost: 2, rarity: 'rare' }],
+      swing: [{ ticker: 'MSFT', ability: 'Cloud Wall', cost: 3, rarity: 'epic' }],
+      long: [{ ticker: 'AAPL', ability: 'Steady Yield', cost: 2, rarity: 'rare' }, { ticker: 'BRK.B', ability: 'Value Hold', cost: 3, rarity: 'legendary' }]
     };
     state.opponentLanes = {
-      day: [{ ticker: 'TSLA', ability: 'Volt Strike', cost: 4 }],
-      swing: [{ ticker: 'META', ability: 'Social Pulse', cost: 2 }, { ticker: 'GOOG', ability: 'Data Mine', cost: 3 }],
-      long: [{ ticker: 'JNJ', ability: 'Safe Haven', cost: 1 }]
+      day: [{ ticker: 'TSLA', ability: 'Volt Strike', cost: 4, rarity: 'legendary' }],
+      swing: [{ ticker: 'META', ability: 'Social Pulse', cost: 2, rarity: 'uncommon' }, { ticker: 'GOOG', ability: 'Data Mine', cost: 3, rarity: 'rare' }],
+      long: [{ ticker: 'JNJ', ability: 'Safe Haven', cost: 1, rarity: 'uncommon' }]
     };
 
     renderHealth();

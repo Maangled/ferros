@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="trading-card" data-version="2.0.0">
+<html lang="en" data-ferros-asset="trading-card" data-version="2.1.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +7,7 @@
 <!--
   ╔══════════════════════════════════════════════════╗
   ║  FERROS ASSET: trading-card                      ║
-  ║  Version: 2.0.0 — Production-wired              ║
+  ║  Version: 2.1.0 — AAA Photorealistic Visuals    ║
   ║  Control Levels: DEMO | PREVIEW | PLAY           ║
   ║  Dependencies: none                              ║
   ║  Rarity: common | uncommon | rare | epic |       ║
@@ -59,7 +59,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 /* === FRONT FACE === */
 .tc-front {
   position: relative;
-  background: var(--bg-card);
+  /* [UPGRADE 1] Card stock microfiber texture over gradient */
+  background:
+    repeating-linear-gradient(0deg, transparent 0px, rgba(255,255,255,0.008) 1px, transparent 2px),
+    repeating-linear-gradient(90deg, transparent 0px, rgba(255,255,255,0.008) 1px, transparent 2px),
+    var(--gradient-card);
   border: 2px solid var(--border-dim);
   border-radius: 10px;
   padding: 12px;
@@ -67,6 +71,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transition: box-shadow 0.3s, border-color 0.3s;
+  /* [UPGRADE 2] Physical card thickness — multi-layer shadows */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(0,0,0,0.25),
+    inset 1px 0 0 rgba(255,255,255,0.03),
+    inset -1px 0 0 rgba(0,0,0,0.12),
+    0 1px 2px rgba(0,0,0,0.3),
+    0 4px 8px rgba(0,0,0,0.2),
+    0 8px 20px rgba(0,0,0,0.12);
 }
 /* Shimmer overlay on front */
 .tc-front::before {
@@ -80,7 +93,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   transition: opacity 0.4s;
   pointer-events: none;
 }
-.trading-card:hover .tc-front { box-shadow: 0 6px 20px rgba(0,0,0,0.5); border-color: var(--border-accent); }
+.trading-card:hover .tc-front {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(0,0,0,0.25),
+    inset 1px 0 0 rgba(255,255,255,0.03),
+    inset -1px 0 0 rgba(0,0,0,0.12),
+    0 2px 4px rgba(0,0,0,0.35),
+    0 6px 16px rgba(0,0,0,0.3),
+    0 12px 28px rgba(0,0,0,0.18);
+  border-color: var(--border-accent);
+}
 .trading-card:hover .tc-front::before { opacity: 1; }
 
 /* === BACK FACE — FERROS CREST (matches hero-card-fan pattern) === */
@@ -112,11 +135,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   content: '';
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(167,139,250,0.03) 8px, rgba(167,139,250,0.03) 16px);
+  background:
+    /* [UPGRADE 6] Subtle radial spotlight on the crest */
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(167,139,250,0.06) 0%, transparent 70%),
+    repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(167,139,250,0.03) 8px, rgba(167,139,250,0.03) 16px);
   pointer-events: none;
   border-radius: 10px;
 }
 .tc-back-crest { font-size: 2rem; opacity: 0.8; z-index: 1; }
+/* [UPGRADE 6] Embossed FERROS label on card back */
 .tc-back-label {
   font-family: var(--font-mono);
   font-size: 0.65rem;
@@ -124,6 +151,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   letter-spacing: 0.15em;
   text-transform: uppercase;
   z-index: 1;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 -1px 1px rgba(0,0,0,0.4);
 }
 
 /* === RARITY BORDER GLOW (targets .tc-front via :has) === */
@@ -137,12 +165,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .trading-card:has(.rarity-mythic) .tc-front::before,
 .trading-card:has(.rarity-legendary) .tc-front::before,
 .trading-card:has(.rarity-epic) .tc-front::before { opacity: 0.6; }
-/* Hover glow boost */
-.trading-card:has(.rarity-mythic):hover .tc-front    { box-shadow: 0 0 22px rgba(244,114,182,0.45); }
-.trading-card:has(.rarity-legendary):hover .tc-front  { box-shadow: 0 0 20px rgba(245,158,11,0.4); }
-.trading-card:has(.rarity-epic):hover .tc-front       { box-shadow: 0 0 20px rgba(167,139,250,0.4); }
-.trading-card:has(.rarity-rare):hover .tc-front       { box-shadow: 0 0 16px rgba(74,144,217,0.3); }
-.trading-card:has(.rarity-uncommon):hover .tc-front   { box-shadow: 0 0 14px rgba(52,211,153,0.25); }
+/* Hover glow boost — rarity glows layer on top of base thickness shadows */
+.trading-card:has(.rarity-mythic):hover .tc-front    { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25), inset 1px 0 0 rgba(255,255,255,0.03), inset -1px 0 0 rgba(0,0,0,0.12), 0 0 22px rgba(244,114,182,0.45), 0 4px 8px rgba(0,0,0,0.2), 0 8px 20px rgba(0,0,0,0.12); }
+.trading-card:has(.rarity-legendary):hover .tc-front  { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25), inset 1px 0 0 rgba(255,255,255,0.03), inset -1px 0 0 rgba(0,0,0,0.12), 0 0 20px rgba(245,158,11,0.4), 0 4px 8px rgba(0,0,0,0.2), 0 8px 20px rgba(0,0,0,0.12); }
+.trading-card:has(.rarity-epic):hover .tc-front       { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25), inset 1px 0 0 rgba(255,255,255,0.03), inset -1px 0 0 rgba(0,0,0,0.12), 0 0 20px rgba(167,139,250,0.4), 0 4px 8px rgba(0,0,0,0.2), 0 8px 20px rgba(0,0,0,0.12); }
+.trading-card:has(.rarity-rare):hover .tc-front       { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25), inset 1px 0 0 rgba(255,255,255,0.03), inset -1px 0 0 rgba(0,0,0,0.12), 0 0 16px rgba(74,144,217,0.3), 0 4px 8px rgba(0,0,0,0.2), 0 8px 20px rgba(0,0,0,0.12); }
+.trading-card:has(.rarity-uncommon):hover .tc-front   { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25), inset 1px 0 0 rgba(255,255,255,0.03), inset -1px 0 0 rgba(0,0,0,0.12), 0 0 14px rgba(52,211,153,0.25), 0 4px 8px rgba(0,0,0,0.2), 0 8px 20px rgba(0,0,0,0.12); }
 
 /* === KEYFRAMES === */
 @keyframes tcRarityPulse  { 0%,100% { box-shadow: 0 0 6px var(--tc-pulse-color, transparent); } 50% { box-shadow: 0 0 18px var(--tc-pulse-color, transparent); } }
@@ -155,7 +183,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* === CARD INNER ELEMENTS === */
 .tc-top      { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-.tc-ticker   { font-family: var(--font-mono); font-size: 1rem; font-weight: 800; color: var(--accent-cyan); letter-spacing: 0.04em; }
+/* [UPGRADE 3] Embossed ticker text */
+.tc-ticker   { font-family: var(--font-mono); font-size: 1rem; font-weight: 800; color: var(--accent-cyan); letter-spacing: 0.04em; text-shadow: 0 1px 0 rgba(255,255,255,0.08), 0 -1px 1px rgba(0,0,0,0.35); }
 .tc-rarity   { font-size: 0.6rem; padding: 2px 6px; border-radius: 3px; font-family: var(--font-mono); font-weight: 600; text-transform: uppercase; }
 .rarity-common    { background: rgba(90,106,128,0.2);  color: var(--text-dim);      border: 1px solid rgba(90,106,128,0.3); }
 .rarity-uncommon  { background: rgba(52,211,153,0.15); color: var(--accent-green);  border: 1px solid rgba(52,211,153,0.3); }
@@ -163,7 +192,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .rarity-epic      { background: rgba(167,139,250,0.15);color: var(--accent-purple); border: 1px solid rgba(167,139,250,0.3); }
 .rarity-legendary { background: rgba(245,158,11,0.15); color: var(--accent-amber);  border: 1px solid rgba(245,158,11,0.3); }
 .rarity-mythic    { background: rgba(244,114,182,0.15);color: var(--accent-pink);   border: 1px solid rgba(244,114,182,0.3); }
-.tc-name     { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 8px; }
+/* [UPGRADE 3] Embossed name text */
+.tc-name     { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 8px; text-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 -1px 0 rgba(0,0,0,0.2); }
 .tc-stats    { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 .tc-stat     { font-size: 0.68rem; color: var(--text-dim); font-family: var(--font-mono); }
 .tc-stat-val { color: var(--text-secondary); font-weight: 600; }
@@ -179,6 +209,52 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .tc-pnl          { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; margin-top: 6px; padding: 3px 6px; border-radius: 4px; }
 .tc-pnl.positive { color: var(--accent-green); background: rgba(52,211,153,0.08); }
 .tc-pnl.negative { color: var(--accent-red);   background: rgba(248,113,113,0.08); }
+
+/* === [UPGRADE 4] CARD ART AREA === */
+.tc-art {
+  position: relative;
+  height: 72px;
+  margin: 4px -12px 6px -12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+/* Sector-specific background gradients */
+.tc-art[data-sector="Tech"]          { background: linear-gradient(135deg, #0f1a2e 0%, #1a2544 50%, #0d1525 100%); }
+.tc-art[data-sector="Crypto"]        { background: linear-gradient(135deg, #1a0f2e 0%, #2a1544 50%, #150d25 100%); }
+.tc-art[data-sector="Finance"]       { background: linear-gradient(135deg, #1a1a0f 0%, #2a2515 50%, #15150d 100%); }
+.tc-art[data-sector="Auto"]          { background: linear-gradient(135deg, #1a150f 0%, #2a2015 50%, #15120d 100%); }
+.tc-art[data-sector="Energy"]        { background: linear-gradient(135deg, #1a0f0f 0%, #2a1515 50%, #150d0d 100%); }
+.tc-art[data-sector="Consumer"]      { background: linear-gradient(135deg, #0f1a15 0%, #152a20 50%, #0d1510 100%); }
+.tc-art[data-sector="Health"]        { background: linear-gradient(135deg, #0f151a 0%, #152025 50%, #0d1215 100%); }
+.tc-art[data-sector="Media"]         { background: linear-gradient(135deg, #150f1a 0%, #201525 50%, #120d15 100%); }
+.tc-art[data-sector="Semiconductor"] { background: linear-gradient(135deg, #0f1a2e 0%, #1a2544 50%, #0d1525 100%); }
+.tc-art[data-sector="Retail"]        { background: linear-gradient(135deg, #0f1a15 0%, #152a20 50%, #0d1510 100%); }
+.tc-art[data-sector="Defense"]       { background: linear-gradient(135deg, #12141a 0%, #1c2030 50%, #10121a 100%); }
+
+/* Avatar emoji */
+.tc-art-avatar {
+  font-size: 2.2rem;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+  z-index: 1;
+}
+
+/* Watermark — absolute positioned, bottom-right, embossed */
+.tc-art-watermark {
+  position: absolute;
+  bottom: 4px;
+  right: 8px;
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: rgba(255,255,255,0.04);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 -1px 1px rgba(0,0,0,0.3);
+  pointer-events: none;
+  z-index: 0;
+}
 
 /* Ability click animations */
 .ability-glow   { animation: abilityGlow 0.8s ease; }
@@ -238,6 +314,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="tc-inner">
         <div class="tc-front">
           <div class="tc-top"><span class="tc-ticker">BTC</span><span class="tc-rarity rarity-mythic">MYTHIC</span></div>
+          <div class="tc-art" data-sector="Crypto">
+            <span class="tc-art-avatar">&#x26D3;&#xFE0F;</span>
+            <span class="tc-art-watermark">BTC</span>
+          </div>
           <div class="tc-name">Bitcoin</div>
           <div class="tc-stats">
             <div class="tc-stat">Price: <span class="tc-stat-val">$68,420</span></div>
@@ -245,10 +325,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-stat">Energy: <span class="tc-stat-val">99</span></div>
             <div class="tc-stat">Sector: <span class="tc-stat-val">Crypto</span></div>
           </div>
-          <div class="tc-ability" data-ability="overwhelm">💥 Overwhelm — Halving momentum surge</div>
+          <div class="tc-ability" data-ability="overwhelm">&#x1F4A5; Overwhelm — Halving momentum surge</div>
           <div class="tc-pnl positive">+$4,210.00 (+6.6%)</div>
         </div>
-        <div class="tc-back"><div class="tc-back-crest">⚔️</div><div class="tc-back-label">FERROS</div></div>
+        <div class="tc-back"><div class="tc-back-crest">&#x2694;&#xFE0F;</div><div class="tc-back-label">FERROS</div></div>
       </div>
     </div>
 
@@ -258,6 +338,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="tc-inner">
         <div class="tc-front">
           <div class="tc-top"><span class="tc-ticker">MSFT</span><span class="tc-rarity rarity-legendary">LEGEND</span></div>
+          <div class="tc-art" data-sector="Tech">
+            <span class="tc-art-avatar">&#x1F5A5;&#xFE0F;</span>
+            <span class="tc-art-watermark">MSFT</span>
+          </div>
           <div class="tc-name">Microsoft Corporation</div>
           <div class="tc-stats">
             <div class="tc-stat">Price: <span class="tc-stat-val">$420.15</span></div>
@@ -265,10 +349,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-stat">Energy: <span class="tc-stat-val">85</span></div>
             <div class="tc-stat">Sector: <span class="tc-stat-val">Tech</span></div>
           </div>
-          <div class="tc-ability" data-ability="barrier">🛡️ Barrier — Stop-loss at $405</div>
+          <div class="tc-ability" data-ability="barrier">&#x1F6E1;&#xFE0F; Barrier — Stop-loss at $405</div>
           <div class="tc-pnl positive">+$86.20 (+1.9%)</div>
         </div>
-        <div class="tc-back"><div class="tc-back-crest">⚔️</div><div class="tc-back-label">FERROS</div></div>
+        <div class="tc-back"><div class="tc-back-crest">&#x2694;&#xFE0F;</div><div class="tc-back-label">FERROS</div></div>
       </div>
     </div>
 
@@ -278,6 +362,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="tc-inner">
         <div class="tc-front">
           <div class="tc-top"><span class="tc-ticker">NVDA</span><span class="tc-rarity rarity-epic">EPIC</span></div>
+          <div class="tc-art" data-sector="Tech">
+            <span class="tc-art-avatar">&#x1F5A5;&#xFE0F;</span>
+            <span class="tc-art-watermark">NVDA</span>
+          </div>
           <div class="tc-name">NVIDIA Corporation</div>
           <div class="tc-stats">
             <div class="tc-stat">Price: <span class="tc-stat-val">$824.30</span></div>
@@ -285,10 +373,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-stat">Energy: <span class="tc-stat-val">92</span></div>
             <div class="tc-stat">Sector: <span class="tc-stat-val">Tech</span></div>
           </div>
-          <div class="tc-ability" data-ability="overwhelm">💥 Overwhelm — Momentum breakout play</div>
+          <div class="tc-ability" data-ability="overwhelm">&#x1F4A5; Overwhelm — Momentum breakout play</div>
           <div class="tc-pnl positive">+$142.60 (+2.1%)</div>
         </div>
-        <div class="tc-back"><div class="tc-back-crest">⚔️</div><div class="tc-back-label">FERROS</div></div>
+        <div class="tc-back"><div class="tc-back-crest">&#x2694;&#xFE0F;</div><div class="tc-back-label">FERROS</div></div>
       </div>
     </div>
 
@@ -298,6 +386,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="tc-inner">
         <div class="tc-front">
           <div class="tc-top"><span class="tc-ticker">AMD</span><span class="tc-rarity rarity-rare">RARE</span></div>
+          <div class="tc-art" data-sector="Tech">
+            <span class="tc-art-avatar">&#x1F5A5;&#xFE0F;</span>
+            <span class="tc-art-watermark">AMD</span>
+          </div>
           <div class="tc-name">Advanced Micro Devices</div>
           <div class="tc-stats">
             <div class="tc-stat">Price: <span class="tc-stat-val">$178.50</span></div>
@@ -305,10 +397,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-stat">Energy: <span class="tc-stat-val">74</span></div>
             <div class="tc-stat">Sector: <span class="tc-stat-val">Tech</span></div>
           </div>
-          <div class="tc-ability" data-ability="rally">⚡ Rally — Re-buy at dip trigger</div>
+          <div class="tc-ability" data-ability="rally">&#x26A1; Rally — Re-buy at dip trigger</div>
           <div class="tc-pnl positive">+$23.10 (+1.4%)</div>
         </div>
-        <div class="tc-back"><div class="tc-back-crest">⚔️</div><div class="tc-back-label">FERROS</div></div>
+        <div class="tc-back"><div class="tc-back-crest">&#x2694;&#xFE0F;</div><div class="tc-back-label">FERROS</div></div>
       </div>
     </div>
 
@@ -318,6 +410,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="tc-inner">
         <div class="tc-front">
           <div class="tc-top"><span class="tc-ticker">COIN</span><span class="tc-rarity rarity-uncommon">UNCOMMON</span></div>
+          <div class="tc-art" data-sector="Crypto">
+            <span class="tc-art-avatar">&#x26D3;&#xFE0F;</span>
+            <span class="tc-art-watermark">COIN</span>
+          </div>
           <div class="tc-name">Coinbase Global</div>
           <div class="tc-stats">
             <div class="tc-stat">Price: <span class="tc-stat-val">$256.80</span></div>
@@ -325,10 +421,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-stat">Energy: <span class="tc-stat-val">61</span></div>
             <div class="tc-stat">Sector: <span class="tc-stat-val">Crypto</span></div>
           </div>
-          <div class="tc-ability" data-ability="elusive">👻 Elusive — Low-correlation stealth</div>
+          <div class="tc-ability" data-ability="elusive">&#x1F47B; Elusive — Low-correlation stealth</div>
           <div class="tc-pnl negative">-$18.40 (-0.8%)</div>
         </div>
-        <div class="tc-back"><div class="tc-back-crest">⚔️</div><div class="tc-back-label">FERROS</div></div>
+        <div class="tc-back"><div class="tc-back-crest">&#x2694;&#xFE0F;</div><div class="tc-back-label">FERROS</div></div>
       </div>
     </div>
 
@@ -338,6 +434,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="tc-inner">
         <div class="tc-front">
           <div class="tc-top"><span class="tc-ticker">F</span><span class="tc-rarity rarity-common">COMMON</span></div>
+          <div class="tc-art" data-sector="Auto">
+            <span class="tc-art-avatar">&#x1F697;</span>
+            <span class="tc-art-watermark">F</span>
+          </div>
           <div class="tc-name">Ford Motor Company</div>
           <div class="tc-stats">
             <div class="tc-stat">Price: <span class="tc-stat-val">$12.40</span></div>
@@ -345,10 +445,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             <div class="tc-stat">Energy: <span class="tc-stat-val">28</span></div>
             <div class="tc-stat">Sector: <span class="tc-stat-val">Auto</span></div>
           </div>
-          <div class="tc-ability" data-ability="barrier">🛡️ Barrier — Dividend shield active</div>
+          <div class="tc-ability" data-ability="barrier">&#x1F6E1;&#xFE0F; Barrier — Dividend shield active</div>
           <div class="tc-pnl negative">-$0.35 (-0.3%)</div>
         </div>
-        <div class="tc-back"><div class="tc-back-crest">⚔️</div><div class="tc-back-label">FERROS</div></div>
+        <div class="tc-back"><div class="tc-back-crest">&#x2694;&#xFE0F;</div><div class="tc-back-label">FERROS</div></div>
       </div>
     </div>
 
@@ -405,6 +505,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     attune:    { emoji: '\uD83D\uDD2E', anim: 'fade' }    // 🔮
   };
 
+  /* ── [UPGRADE 5] SECTOR AVATARS MAP ── */
+  var SECTOR_AVATARS = {
+    Tech: '\uD83D\uDDA5\uFE0F',         // 🖥️
+    Crypto: '\u26D3\uFE0F',             // ⛓️
+    Finance: '\uD83C\uDFE6',            // 🏦
+    Auto: '\uD83D\uDE97',               // 🚗
+    Energy: '\u26A1',                    // ⚡
+    Consumer: '\uD83D\uDED2',            // 🛒
+    Health: '\uD83C\uDFE5',             // 🏥
+    Media: '\uD83C\uDFAC',              // 🎬
+    Semiconductor: '\uD83D\uDC8E',       // 💎
+    Retail: '\uD83D\uDCE6',             // 📦
+    Defense: '\uD83D\uDEE1\uFE0F'       // 🛡️
+  };
+
   /* ── HTML HELPERS ── */
   function esc(s) {
     var d = document.createElement('div');
@@ -428,6 +543,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     var pnlCls  = pnl >= 0 ? 'positive' : 'negative';
     var pnlSign = pnl >= 0 ? '+' : '';
 
+    /* Resolve sector avatar */
+    var sectorRaw = d.sector || '';
+    var avatar = SECTOR_AVATARS[sectorRaw] || '\uD83D\uDCCA'; // 📊 fallback
+
     var abilityHtml = '';
     if (ability && info) {
       abilityHtml = '<div class="tc-ability" data-ability="' + ability + '">' +
@@ -444,6 +563,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
           '<div class="tc-top">' +
             '<span class="tc-ticker">' + ticker + '</span>' +
             '<span class="tc-rarity rarity-' + rarity + '">' + label + '</span>' +
+          '</div>' +
+          /* [UPGRADE 4] Card art area with sector avatar and watermark */
+          '<div class="tc-art" data-sector="' + esc(sectorRaw) + '">' +
+            '<span class="tc-art-avatar">' + avatar + '</span>' +
+            '<span class="tc-art-watermark">' + ticker + '</span>' +
           '</div>' +
           '<div class="tc-name">' + name + '</div>' +
           '<div class="tc-stats">' +

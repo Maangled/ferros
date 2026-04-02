@@ -37,6 +37,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   display: flex; gap: 16px; justify-content: center; align-items: center; flex-wrap: wrap;
   padding: 12px 16px; background: var(--bg-panel); border: 1px solid var(--border-dim);
   border-radius: var(--radius-panel); margin-bottom: 16px;
+  position: relative; z-index: 1;
 }
 .board-info-item {
   font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);
@@ -88,18 +89,71 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 /* === GAME BOARD === */
 .game-board {
   display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+  position: relative; overflow: hidden;
+}
+
+/* Perspective grid — 3D landscape floor */
+.game-board::before {
+  content: '';
+  position: absolute;
+  left: -20px; right: -20px;
+  bottom: -20px;
+  height: 200%;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(90deg, rgba(74,144,217,0.05) 0px, transparent 1px, transparent 50px),
+    repeating-linear-gradient(0deg, rgba(74,144,217,0.05) 0px, transparent 1px, transparent 50px);
+  transform: perspective(600px) rotateX(55deg);
+  transform-origin: center bottom;
+  mask-image: linear-gradient(to top, black 10%, transparent 70%);
+  -webkit-mask-image: linear-gradient(to top, black 10%, transparent 70%);
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* Horizon fog — fades top edge into bg */
+.game-board::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, var(--bg-base) 0%, transparent 100%);
+  z-index: 0;
+  pointer-events: none;
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
 }
 
 /* === LANE === */
 .lane {
   background: var(--bg-panel); border: 1px solid var(--border-dim);
   border-radius: var(--radius-panel); padding: 12px; position: relative;
-  min-height: 380px;
+  z-index: 1; min-height: 380px;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
-.lane-day    { border-top: 3px solid var(--accent-red); }
-.lane-swing  { border-top: 3px solid var(--accent-amber); }
-.lane-long   { border-top: 3px solid var(--accent-green); }
+.lane-day {
+  border-top: 3px solid var(--accent-red);
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(248,113,113,0.06) 0%, transparent 70%),
+    linear-gradient(180deg, rgba(248,113,113,0.02) 0%, rgba(248,113,113,0.06) 100%),
+    var(--bg-panel);
+  box-shadow: inset 0 3px 12px rgba(248,113,113,0.06);
+}
+.lane-swing {
+  border-top: 3px solid var(--accent-amber);
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(245,158,11,0.06) 0%, transparent 70%),
+    linear-gradient(180deg, rgba(245,158,11,0.02) 0%, rgba(245,158,11,0.06) 100%),
+    var(--bg-panel);
+  box-shadow: inset 0 3px 12px rgba(245,158,11,0.06);
+}
+.lane-long {
+  border-top: 3px solid var(--accent-green);
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(52,211,153,0.06) 0%, transparent 70%),
+    linear-gradient(180deg, rgba(52,211,153,0.02) 0%, rgba(52,211,153,0.06) 100%),
+    var(--bg-panel);
+  box-shadow: inset 0 3px 12px rgba(52,211,153,0.06);
+}
 
 /* Drag-over highlight */
 .lane.drag-over {
@@ -261,6 +315,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   .asset-showcase {
     padding: 10px;
   }
+  .game-board::before {
+    display: none;
+  }
 }
 
 /* === PREFERS-REDUCED-MOTION === */
@@ -298,6 +355,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   /* Disable energy shake */
   .board-info-val.energy-reject {
     animation: none !important;
+  }
+  /* Disable perspective grid */
+  .game-board::before {
+    display: none;
   }
 }
 </style>
