@@ -89,6 +89,9 @@ body {
   transform: rotateX(-5deg) rotateY(-5deg) translateY(-4px);
 }
 
+/* === 3D DIMENSIONS === */
+/* Body: 160w × 81h × 50d  |  Lid: 160w × 63h × 50d */
+
 /* === CHEST BODY (lower box) === */
 .chest-body {
   position: absolute;
@@ -97,27 +100,98 @@ body {
   transform-style: preserve-3d;
 }
 
-/* Body front face — wood texture */
-.chest-body-front {
+/* Shared wood texture for all body faces */
+.chest-body-front,
+.chest-body-back,
+.chest-body-left,
+.chest-body-right,
+.chest-body-bottom {
   position: absolute;
+  border: 1px solid rgba(90,60,30,0.4);
+}
+
+/* Body FRONT face — wood + bands + rivets */
+.chest-body-front {
   width: 100%; height: 100%;
   border-radius: 4px 4px 8px 8px;
-  /* Layered wood grain */
   background:
     repeating-linear-gradient(2deg, rgba(60,30,10,0.15) 0px, transparent 1px, transparent 6px),
     radial-gradient(ellipse 20px 15px at 30% 40%, rgba(80,40,15,0.2) 0%, transparent 70%),
     radial-gradient(ellipse 15px 12px at 70% 60%, rgba(80,40,15,0.15) 0%, transparent 70%),
     linear-gradient(180deg, #8B5E3C 0%, #7A4F2E 20%, #6B4226 50%, #5C3620 80%, #4D2B18 100%);
-  border: 1px solid rgba(90,60,30,0.4);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.08),
-    inset 0 -2px 4px rgba(0,0,0,0.3),
-    0 4px 12px rgba(0,0,0,0.5),
-    0 8px 24px rgba(0,0,0,0.3);
-  transform: translateZ(1px);
+    inset 0 -2px 4px rgba(0,0,0,0.3);
+  transform: translateZ(25px);
 }
 
-/* Metal bands on body */
+/* Body BACK face */
+.chest-body-back {
+  width: 100%; height: 100%;
+  border-radius: 4px 4px 8px 8px;
+  background:
+    repeating-linear-gradient(-2deg, rgba(60,30,10,0.12) 0px, transparent 1px, transparent 6px),
+    linear-gradient(180deg, #7A4F2E 0%, #6B4226 40%, #5C3620 70%, #4D2B18 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    inset 0 -2px 4px rgba(0,0,0,0.4);
+  transform: rotateY(180deg) translateZ(25px);
+}
+
+/* Body LEFT face */
+.chest-body-left {
+  width: 50px; height: 100%;
+  left: 0; top: 0;
+  background:
+    repeating-linear-gradient(2deg, rgba(60,30,10,0.1) 0px, transparent 1px, transparent 6px),
+    linear-gradient(90deg, #5C3620 0%, #6B4226 30%, #7A4F2E 70%, #6B4226 100%);
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,0.06),
+    inset -1px 0 0 rgba(0,0,0,0.2);
+  transform-origin: left center;
+  transform: rotateY(-90deg) translateZ(0px);
+  border-radius: 4px 0 0 8px;
+}
+
+/* Body RIGHT face */
+.chest-body-right {
+  width: 50px; height: 100%;
+  right: 0; top: 0;
+  background:
+    repeating-linear-gradient(-2deg, rgba(60,30,10,0.1) 0px, transparent 1px, transparent 6px),
+    linear-gradient(90deg, #6B4226 0%, #7A4F2E 30%, #6B4226 70%, #5C3620 100%);
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,0.04),
+    inset -1px 0 0 rgba(0,0,0,0.25);
+  transform-origin: right center;
+  transform: rotateY(90deg) translateZ(0px);
+  border-radius: 0 4px 8px 0;
+}
+
+/* Body BOTTOM face */
+.chest-body-bottom {
+  width: 100%; height: 50px;
+  bottom: 0; left: 0;
+  background: linear-gradient(180deg, #3D2415 0%, #2E1A0E 100%);
+  transform-origin: bottom center;
+  transform: rotateX(-90deg) translateZ(0px);
+  border-radius: 0;
+}
+
+/* Body INTERIOR (visible when lid opens) */
+.chest-body-interior {
+  position: absolute;
+  width: calc(100% - 8px); height: calc(100% - 8px);
+  top: 4px; left: 4px;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(180,120,60,0.3) 0%, transparent 60%),
+    linear-gradient(180deg, #3D2A18 0%, #2E1A0E 60%, #1E1008 100%);
+  border-radius: 2px;
+  transform: translateZ(24px);
+  border: 1px solid rgba(60,35,15,0.5);
+}
+
+/* Metal bands on body front */
 .chest-body-front::before {
   content: '';
   position: absolute;
@@ -129,20 +203,17 @@ body {
     inset 0 1px 0 rgba(255,255,255,0.25),
     inset 0 -1px 0 rgba(0,0,0,0.3),
     0 42px 0 0 #6e6048,
-    0 42px 0 0 #6e6048,
     0 43px 0 0 #9a8a6e,
     0 44px 0 0 #c4b896,
     0 45px 0 0 #c4b896,
     0 46px 0 0 #b5a67a,
     0 47px 0 0 #8a7a5e,
     0 48px 0 0 #6e6048,
-    0 49px 0 0 #6e6048,
-    0 50px 0 0 #6e6048,
-    0 51px 0 0 #6e6048;
+    0 49px 0 0 #6e6048;
   z-index: 2;
 }
 
-/* Rivets on body (decorative dots at band edges) */
+/* Rivets on body front */
 .chest-body-front::after {
   content: '';
   position: absolute;
@@ -152,14 +223,41 @@ body {
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #d4c89a, #8a7a5e 60%, #5e5040);
   box-shadow:
-    /* Right rivet on first band */
     130px 0 0 0 #8a7a5e,
-    130px 0 0 0 #8a7a5e,
-    /* Left rivet on second band */
     0 42px 0 0 #8a7a5e,
-    /* Right rivet on second band */
     130px 42px 0 0 #8a7a5e;
   z-index: 3;
+}
+
+/* Metal band wrapping onto left side face */
+.chest-body-left::before {
+  content: '';
+  position: absolute;
+  width: 100%; height: 10px;
+  top: 18%;
+  background: linear-gradient(180deg, #5e5040 0%, #8a7a5e 40%, #9a8a6e 60%, #6e6048 100%);
+  box-shadow: 0 42px 0 0 #6e6048, 0 43px 0 0 #8a7a5e, 0 44px 0 0 #9a8a6e, 0 45px 0 0 #8a7a5e, 0 46px 0 0 #6e6048;
+}
+
+/* Metal band wrapping onto right side face */
+.chest-body-right::before {
+  content: '';
+  position: absolute;
+  width: 100%; height: 10px;
+  top: 18%;
+  background: linear-gradient(180deg, #5e5040 0%, #8a7a5e 40%, #9a8a6e 60%, #6e6048 100%);
+  box-shadow: 0 42px 0 0 #6e6048, 0 43px 0 0 #8a7a5e, 0 44px 0 0 #9a8a6e, 0 45px 0 0 #8a7a5e, 0 46px 0 0 #6e6048;
+}
+
+/* Ground shadow under the chest */
+.chest-body::after {
+  content: '';
+  position: absolute;
+  width: 120%; height: 20px;
+  left: -10%; bottom: -12px;
+  background: radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.5) 0%, transparent 70%);
+  transform: rotateX(-90deg) translateZ(-5px);
+  pointer-events: none;
 }
 
 /* === CHEST LID (upper piece, hinges from top) === */
@@ -172,9 +270,17 @@ body {
   transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Lid front face — wood texture + slight barrel curve via gradient */
-.chest-lid-front {
+/* Shared lid face styles */
+.chest-lid-front,
+.chest-lid-back,
+.chest-lid-left,
+.chest-lid-right {
   position: absolute;
+  border: 1px solid rgba(90,60,30,0.4);
+}
+
+/* Lid FRONT face — wood texture + keyhole */
+.chest-lid-front {
   width: 100%; height: 100%;
   bottom: 0; left: 0;
   border-radius: 8px 8px 2px 2px;
@@ -182,15 +288,57 @@ body {
     repeating-linear-gradient(2deg, rgba(60,30,10,0.12) 0px, transparent 1px, transparent 6px),
     radial-gradient(ellipse 25px 18px at 60% 50%, rgba(80,40,15,0.15) 0%, transparent 70%),
     linear-gradient(180deg, #9B6E4C 0%, #8B5E3C 30%, #7A4F2E 60%, #6B4226 100%);
-  border: 1px solid rgba(90,60,30,0.4);
   box-shadow:
     inset 0 2px 0 rgba(255,255,255,0.1),
-    inset 0 -1px 3px rgba(0,0,0,0.2),
-    0 2px 8px rgba(0,0,0,0.4);
-  transform: translateZ(2px);
+    inset 0 -1px 3px rgba(0,0,0,0.2);
+  transform: translateZ(25px);
 }
 
-/* Metal band on lid */
+/* Lid BACK face */
+.chest-lid-back {
+  width: 100%; height: 100%;
+  bottom: 0; left: 0;
+  border-radius: 8px 8px 2px 2px;
+  background:
+    repeating-linear-gradient(-2deg, rgba(60,30,10,0.1) 0px, transparent 1px, transparent 6px),
+    linear-gradient(180deg, #8B5E3C 0%, #7A4F2E 40%, #6B4226 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    inset 0 -1px 3px rgba(0,0,0,0.3);
+  transform: rotateY(180deg) translateZ(25px);
+}
+
+/* Lid LEFT face */
+.chest-lid-left {
+  width: 50px; height: 100%;
+  left: 0; top: 0;
+  background:
+    repeating-linear-gradient(2deg, rgba(60,30,10,0.08) 0px, transparent 1px, transparent 6px),
+    linear-gradient(90deg, #6B4226 0%, #8B5E3C 40%, #7A4F2E 100%);
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,0.06),
+    inset -1px 0 0 rgba(0,0,0,0.15);
+  transform-origin: left center;
+  transform: rotateY(-90deg) translateZ(0px);
+  border-radius: 8px 0 0 2px;
+}
+
+/* Lid RIGHT face */
+.chest-lid-right {
+  width: 50px; height: 100%;
+  right: 0; top: 0;
+  background:
+    repeating-linear-gradient(-2deg, rgba(60,30,10,0.08) 0px, transparent 1px, transparent 6px),
+    linear-gradient(90deg, #7A4F2E 0%, #8B5E3C 60%, #6B4226 100%);
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,0.04),
+    inset -1px 0 0 rgba(0,0,0,0.2);
+  transform-origin: right center;
+  transform: rotateY(90deg) translateZ(0px);
+  border-radius: 0 8px 2px 0;
+}
+
+/* Metal band on lid front */
 .chest-lid-front::before {
   content: '';
   position: absolute;
@@ -205,7 +353,7 @@ body {
   z-index: 2;
 }
 
-/* Keyhole on lid (via clip-path on ::after pseudo) */
+/* Keyhole on lid front */
 .chest-lid-front::after {
   content: '';
   position: absolute;
@@ -226,32 +374,51 @@ body {
   z-index: 3;
 }
 
-/* Lid top face (the barrel/arch visible from above) */
+/* Metal band wrapping onto lid side faces */
+.chest-lid-left::before {
+  content: '';
+  position: absolute;
+  width: 100%; height: 10px;
+  top: 50%; margin-top: -5px;
+  background: linear-gradient(180deg, #5e5040 0%, #8a7a5e 40%, #9a8a6e 60%, #6e6048 100%);
+}
+.chest-lid-right::before {
+  content: '';
+  position: absolute;
+  width: 100%; height: 10px;
+  top: 50%; margin-top: -5px;
+  background: linear-gradient(180deg, #5e5040 0%, #8a7a5e 40%, #9a8a6e 60%, #6e6048 100%);
+}
+
+/* Lid top face (barrel/arch visible from above) */
 .chest-lid-top {
   position: absolute;
-  width: 100%; height: 20px;
+  width: 100%; height: 50px;
   top: -10px; left: 0;
   background:
+    repeating-linear-gradient(90deg, rgba(60,30,10,0.08) 0px, transparent 1px, transparent 8px),
     linear-gradient(180deg, #A07050 0%, #9B6E4C 50%, #8B5E3C 100%);
   border-radius: 6px 6px 0 0;
   border: 1px solid rgba(90,60,30,0.3);
   border-bottom: none;
-  transform: rotateX(30deg) translateZ(0px);
+  transform: rotateX(90deg) translateZ(0px);
   transform-origin: bottom center;
   box-shadow:
-    inset 0 2px 0 rgba(255,255,255,0.1);
+    inset 0 2px 0 rgba(255,255,255,0.1),
+    inset 0 -1px 0 rgba(0,0,0,0.15);
 }
 
 /* === INTERIOR GLOW (visible when lid opens) === */
 .chest-glow {
   position: absolute;
-  width: 80%; height: 30%;
-  left: 10%; top: 35%;
+  width: 70%; height: 20%;
+  left: 15%; top: 40%;
   border-radius: 50%;
   opacity: 0;
   transition: opacity 0.6s ease 0.2s;
   pointer-events: none;
-  z-index: 0;
+  z-index: 5;
+  transform: translateZ(26px);
 }
 
 /* === LID OPENING STATE === */
@@ -484,9 +651,17 @@ body {
         <div class="chest-lid">
           <div class="chest-lid-top"></div>
           <div class="chest-lid-front"></div>
+          <div class="chest-lid-back"></div>
+          <div class="chest-lid-left"></div>
+          <div class="chest-lid-right"></div>
         </div>
         <div class="chest-body">
           <div class="chest-body-front"></div>
+          <div class="chest-body-back"></div>
+          <div class="chest-body-left"></div>
+          <div class="chest-body-right"></div>
+          <div class="chest-body-bottom"></div>
+          <div class="chest-body-interior"></div>
         </div>
         <div class="chest-glow" id="chest-glow"></div>
       </div>
