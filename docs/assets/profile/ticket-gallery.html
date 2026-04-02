@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="ticket-gallery" data-version="1.0.0">
+<html lang="en" data-ferros-asset="ticket-gallery" data-version="2.0.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,7 @@
   ║  Control Levels: DEMO | PREVIEW | PLAY           ║
   ║  Dependencies: none                              ║
   ║  Sealed trade ticket NFT display                 ║
+  ║  v2.0.0 — production-wired                       ║
   ╚══════════════════════════════════════════════════╝
 -->
 <style>
@@ -27,9 +28,52 @@
   --shadow-glow: 0 0 12px rgba(74,144,217,.35);
   --radius-panel: 12px; --radius-card: 8px; --radius-badge: 4px;
   --font-mono: 'Courier New', Courier, monospace;
+
+  /* Rarity border colors */
+  --rarity-common: #6b7280;
+  --rarity-uncommon: #34d399;
+  --rarity-rare: #4a90d9;
+  --rarity-epic: #a78bfa;
+  --rarity-legendary: #f59e0b;
+  --rarity-mythic: #f472b6;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
+
+/* === GALLERY STATS HEADER === */
+.ticket-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 24px 0 24px;
+}
+.ticket-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ticket-stat-label {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.ticket-stat-value {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 800;
+}
+.ticket-stat-value.positive { color: var(--accent-green); }
+.ticket-stat-value.negative { color: var(--accent-red); }
+.ticket-stat-value.neutral { color: var(--text-secondary); }
+.ticket-stat-sub {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
 
 /* === TICKET GALLERY === */
 .ticket-gallery {
@@ -48,6 +92,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   position: relative;
   overflow: hidden;
   transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
 }
 .ticket-card::before {
   content: '';
@@ -70,8 +115,43 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   transform: translateY(-3px);
   box-shadow: 0 6px 24px rgba(45,212,191,0.15);
 }
+.ticket-card:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
 
-/* Fan card variant (amber border) */
+/* Rarity border variants */
+.ticket-card[data-rarity="common"] { border-color: rgba(107,114,128,0.5); }
+.ticket-card[data-rarity="common"]::before { background: conic-gradient(transparent, rgba(107,114,128,0.08), transparent 30%); }
+.ticket-card[data-rarity="common"]::after { border-color: rgba(107,114,128,0.12); }
+.ticket-card[data-rarity="common"]:hover { box-shadow: 0 6px 24px rgba(107,114,128,0.12); }
+
+.ticket-card[data-rarity="uncommon"] { border-color: rgba(52,211,153,0.5); }
+.ticket-card[data-rarity="uncommon"]::before { background: conic-gradient(transparent, rgba(52,211,153,0.1), transparent 30%); }
+.ticket-card[data-rarity="uncommon"]::after { border-color: rgba(52,211,153,0.12); }
+.ticket-card[data-rarity="uncommon"]:hover { box-shadow: 0 6px 24px rgba(52,211,153,0.15); }
+
+.ticket-card[data-rarity="rare"] { border-color: rgba(74,144,217,0.5); }
+.ticket-card[data-rarity="rare"]::before { background: conic-gradient(transparent, rgba(74,144,217,0.1), transparent 30%); }
+.ticket-card[data-rarity="rare"]::after { border-color: rgba(74,144,217,0.12); }
+.ticket-card[data-rarity="rare"]:hover { box-shadow: 0 6px 24px rgba(74,144,217,0.15); }
+
+.ticket-card[data-rarity="epic"] { border-color: rgba(167,139,250,0.5); }
+.ticket-card[data-rarity="epic"]::before { background: conic-gradient(transparent, rgba(167,139,250,0.1), transparent 30%); }
+.ticket-card[data-rarity="epic"]::after { border-color: rgba(167,139,250,0.12); }
+.ticket-card[data-rarity="epic"]:hover { box-shadow: 0 6px 24px rgba(167,139,250,0.15); }
+
+.ticket-card[data-rarity="legendary"] { border-color: rgba(245,158,11,0.5); }
+.ticket-card[data-rarity="legendary"]::before { background: conic-gradient(transparent, rgba(245,158,11,0.1), transparent 30%); }
+.ticket-card[data-rarity="legendary"]::after { border-color: rgba(245,158,11,0.12); }
+.ticket-card[data-rarity="legendary"]:hover { box-shadow: 0 6px 24px rgba(245,158,11,0.15); }
+
+.ticket-card[data-rarity="mythic"] { border-color: rgba(244,114,182,0.5); }
+.ticket-card[data-rarity="mythic"]::before { background: conic-gradient(transparent, rgba(244,114,182,0.1), transparent 30%); }
+.ticket-card[data-rarity="mythic"]::after { border-color: rgba(244,114,182,0.12); }
+.ticket-card[data-rarity="mythic"]:hover { box-shadow: 0 6px 24px rgba(244,114,182,0.15); }
+
+/* Fan card variant (amber border) — kept for backward compat */
 .ticket-card.ticket-fan {
   border-color: rgba(245,158,11,0.4);
 }
@@ -87,12 +167,47 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 @keyframes ticketShimmer { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+/* === TICKET CONTENT === */
+.ticket-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  position: relative; z-index: 1;
+}
+
 .ticket-ticker {
   font-family: var(--font-mono); font-size: 1.2rem; font-weight: 800;
   color: var(--accent-cyan); letter-spacing: 0.04em;
-  margin-bottom: 4px; position: relative; z-index: 1;
+  position: relative; z-index: 1;
 }
 .ticket-fan .ticket-ticker { color: var(--accent-amber); }
+
+.ticket-type-badge {
+  display: inline-block;
+  font-size: 0.58rem; font-family: var(--font-mono); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 2px 7px; border-radius: var(--radius-badge);
+  position: relative; z-index: 1;
+}
+.ticket-type-badge.buy {
+  background: rgba(52,211,153,0.18); color: var(--accent-green);
+  border: 1px solid rgba(52,211,153,0.35);
+}
+.ticket-type-badge.sell {
+  background: rgba(248,113,113,0.18); color: var(--accent-red);
+  border: 1px solid rgba(248,113,113,0.35);
+}
+
+.ticket-direction-badge {
+  display: inline-block;
+  font-size: 0.5rem; font-family: var(--font-mono); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 1px 5px; border-radius: var(--radius-badge);
+  background: rgba(138,160,190,0.12); color: var(--text-secondary);
+  border: 1px solid rgba(138,160,190,0.2);
+  position: relative; z-index: 1;
+}
 
 .ticket-fan-badge {
   display: inline-block;
@@ -129,6 +244,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   border: 1px solid var(--border-dim);
   border-radius: var(--radius-badge);
   position: relative; z-index: 1;
+  cursor: pointer;
+}
+.ticket-seal:hover {
+  border-color: var(--border-accent);
+}
+.ticket-seal:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 1px;
 }
 .ticket-seal-icon { font-size: 0.8rem; }
 .ticket-seal-label {
@@ -139,76 +262,391 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .ticket-seal-hash {
   font-family: var(--font-mono); font-size: 0.62rem;
   color: var(--text-code);
+  transition: color 0.3s;
+}
+.ticket-seal-hash.verified {
+  color: var(--accent-green);
+}
+
+/* === MODAL OVERLAY === */
+.ticket-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+  padding: 24px;
+}
+.ticket-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.ticket-modal {
+  background: var(--bg-panel);
+  border: 2px solid var(--accent-cyan);
+  border-radius: var(--radius-panel);
+  padding: 28px 32px;
+  max-width: 440px;
+  width: 100%;
+  position: relative;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.6), 0 0 20px rgba(45,212,191,0.1);
+  transform: scale(0.95);
+  transition: transform 0.25s ease;
+}
+.ticket-modal-overlay.active .ticket-modal {
+  transform: scale(1);
+}
+
+.ticket-modal-close {
+  position: absolute;
+  top: 12px; right: 14px;
+  background: none;
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-badge);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, color 0.2s;
+  line-height: 1;
+}
+.ticket-modal-close:hover {
+  background: var(--bg-highlight);
+  color: var(--text-primary);
+}
+.ticket-modal-close:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 1px;
+}
+
+.ticket-modal-title {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+  color: var(--accent-cyan);
+}
+
+.ticket-modal-badges {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.ticket-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 20px;
+  margin-bottom: 18px;
+}
+
+.ticket-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ticket-modal-field-label {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.ticket-modal-field-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+.ticket-modal-field-value.positive { color: var(--accent-green); }
+.ticket-modal-field-value.negative { color: var(--accent-red); }
+
+.ticket-modal-seal {
+  background: var(--bg-base);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-card);
+  padding: 12px;
+  margin-top: 4px;
+}
+.ticket-modal-seal-title {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.ticket-modal-seal-hash {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-code);
+  word-break: break-all;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: var(--radius-badge);
+  transition: background 0.2s, color 0.3s;
+}
+.ticket-modal-seal-hash:hover {
+  background: var(--bg-highlight);
+}
+.ticket-modal-seal-hash:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 1px;
+}
+.ticket-modal-seal-hash.verified {
+  color: var(--accent-green);
+}
+
+.ticket-modal-verify {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  min-height: 22px;
+}
+.ticket-modal-verify-btn {
+  background: rgba(74,144,217,0.12);
+  border: 1px solid rgba(74,144,217,0.3);
+  border-radius: var(--radius-badge);
+  color: var(--accent-blue);
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.ticket-modal-verify-btn:hover {
+  background: rgba(74,144,217,0.22);
+}
+.ticket-modal-verify-btn:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 1px;
+}
+.ticket-modal-verify-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ticket-verify-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border-dim);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: verifySpinnerSpin 0.6s linear infinite;
+  display: inline-block;
+}
+@keyframes verifySpinnerSpin {
+  to { transform: rotate(360deg); }
+}
+
+.ticket-verify-result {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--accent-green);
+  animation: verifyPulse 0.4s ease;
+}
+@keyframes verifyPulse {
+  0% { opacity: 0; transform: scale(0.9); }
+  50% { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* === TOAST === */
+.ticket-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--bg-highlight);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-card);
+  padding: 8px 18px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--accent-green);
+  font-weight: 600;
+  z-index: 10000;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+.ticket-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* === PREFERS-REDUCED-MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  .ticket-card::before {
+    animation: none;
+  }
+  .ticket-card {
+    transition: none;
+  }
+  .ticket-card:hover {
+    transform: none;
+  }
+  .ticket-seal-hash {
+    transition: none;
+  }
+  .ticket-modal-overlay {
+    transition: none;
+  }
+  .ticket-modal {
+    transition: none;
+  }
+  .ticket-modal-overlay.active .ticket-modal {
+    transform: none;
+  }
+  .ticket-modal-seal-hash {
+    transition: none;
+  }
+  .ticket-verify-spinner {
+    animation: none;
+    border-color: var(--accent-blue);
+    opacity: 0.6;
+  }
+  .ticket-verify-result {
+    animation: none;
+  }
+  .ticket-toast {
+    transition: none;
+  }
+  .ticket-modal-verify-btn {
+    transition: none;
+  }
+  .ticket-modal-close {
+    transition: none;
+  }
+  .ticket-seal:hover {
+    border-color: var(--border-dim);
+  }
 }
 </style>
 </head>
 <body>
 <div id="ferros-asset-root" data-control="demo">
-  <div class="ticket-gallery">
+  <!-- Stats header inserted by JS -->
+  <div class="ticket-stats" id="ticket-stats" aria-label="Gallery statistics"></div>
+  <div class="ticket-gallery" id="ticket-gallery"></div>
+</div>
 
-    <!-- Ticket 1: NVDA -->
-    <div class="ticket-card">
-      <div class="ticket-ticker">NVDA</div>
-      <div class="ticket-date">2026-01-15</div>
-      <div class="ticket-entry">Sealed Trade Ticket</div>
-      <div class="ticket-pnl positive">+11.4%</div>
-      <div class="ticket-seal">
-        <span class="ticket-seal-icon">&#x1F512;</span>
-        <div>
-          <div class="ticket-seal-label">Seal</div>
-          <div class="ticket-seal-hash">a3f8...c21d</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Ticket 2: AAPL -->
-    <div class="ticket-card">
-      <div class="ticket-ticker">AAPL</div>
-      <div class="ticket-date">2025-11-02</div>
-      <div class="ticket-entry">Sealed Trade Ticket</div>
-      <div class="ticket-pnl positive">+8.9%</div>
-      <div class="ticket-seal">
-        <span class="ticket-seal-icon">&#x1F512;</span>
-        <div>
-          <div class="ticket-seal-label">Seal</div>
-          <div class="ticket-seal-hash">7b42...e09a</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Ticket 3: WMG (Fan Card) -->
-    <div class="ticket-card ticket-fan">
-      <div class="ticket-ticker">&#x1F3B5; WMG <span class="ticket-fan-badge">Fan Card</span></div>
-      <div class="ticket-date">Day 1 Holder</div>
-      <div class="ticket-entry">Fan Card Collectible</div>
-      <div class="ticket-pnl positive" style="color: var(--accent-amber);">&#x2B50; Commemorative</div>
-      <div class="ticket-seal">
-        <span class="ticket-seal-icon">&#x1F512;</span>
-        <div>
-          <div class="ticket-seal-label">Seal</div>
-          <div class="ticket-seal-hash">9c3e...d417</div>
-        </div>
-      </div>
-    </div>
-
+<!-- Modal overlay -->
+<div class="ticket-modal-overlay" id="ticket-modal-overlay">
+  <div class="ticket-modal" id="ticket-modal" role="dialog" aria-modal="true" aria-label="Trade ticket details">
+    <button class="ticket-modal-close" id="ticket-modal-close" aria-label="Close modal">&times;</button>
+    <div id="ticket-modal-content"></div>
   </div>
 </div>
+
+<!-- Toast -->
+<div class="ticket-toast" id="ticket-toast" aria-live="polite" role="status"></div>
 
 <script>
 (function() {
   'use strict';
+
+  /* === STATE === */
   var root = document.getElementById('ferros-asset-root');
+  var galleryEl = document.getElementById('ticket-gallery');
+  var statsEl = document.getElementById('ticket-stats');
+  var overlayEl = document.getElementById('ticket-modal-overlay');
+  var modalEl = document.getElementById('ticket-modal');
+  var modalContentEl = document.getElementById('ticket-modal-content');
+  var modalCloseBtn = document.getElementById('ticket-modal-close');
+  var toastEl = document.getElementById('ticket-toast');
   var isEmbedded = window.parent !== window;
   var params = new URLSearchParams(window.location.search);
   var control = params.get('control') || 'demo';
+  var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var previouslyFocused = null;
+  var toastTimer = null;
+
+  /* === DEFAULT DEMO DATA === */
+  var tickets = [
+    {
+      ticker: 'NVDA',
+      type: 'buy',
+      direction: 'long',
+      entryPrice: 420.00,
+      exitPrice: 467.88,
+      date: '2026-01-15',
+      pnl: 11.4,
+      rarity: 'rare',
+      sealHash: 'a3f829b71e5c04d8a6f31c2e90ba87d4f2e1c21d',
+      duration: '14d',
+      isFan: false
+    },
+    {
+      ticker: 'AAPL',
+      type: 'buy',
+      direction: 'long',
+      entryPrice: 185.50,
+      exitPrice: 202.00,
+      date: '2025-11-02',
+      pnl: 8.9,
+      rarity: 'uncommon',
+      sealHash: '7b42f6a83d19e7c50b2a84f1d3c690e52f8e09a',
+      duration: '21d',
+      isFan: false
+    },
+    {
+      ticker: 'WMG',
+      type: 'buy',
+      direction: 'long',
+      entryPrice: 0,
+      exitPrice: 0,
+      date: 'Day 1 Holder',
+      pnl: 0,
+      rarity: 'legendary',
+      sealHash: '9c3e4f1a28b750d63e91c8742dfa06b53e8d417',
+      duration: '--',
+      isFan: true
+    }
+  ];
 
   /* === FERROS ASSET PROTOCOL === */
   window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'ferros:init') {
+    if (!e.data) return;
+    if (e.data.type === 'ferros:init') {
       control = e.data.config.control || control;
       applyControl();
     }
+    if (e.data.type === 'ferros:update') {
+      if (e.data.tickets && Array.isArray(e.data.tickets)) {
+        tickets = e.data.tickets.map(normalizeTicket);
+        renderGallery();
+        renderStats();
+        emit('gallery-updated', { count: tickets.length });
+      }
+    }
   });
+
+  function normalizeTicket(t) {
+    return {
+      ticker: t.ticker || '???',
+      type: (t.type || 'buy').toLowerCase(),
+      direction: (t.direction || (t.type && t.type.toLowerCase() === 'sell' ? 'short' : 'long')).toLowerCase(),
+      entryPrice: parseFloat(t.entryPrice) || 0,
+      exitPrice: parseFloat(t.exitPrice) || 0,
+      date: t.date || '--',
+      pnl: parseFloat(t.pnl) || 0,
+      rarity: t.rarity || 'common',
+      sealHash: t.sealHash || '0000...0000',
+      duration: t.duration || '--',
+      isFan: !!t.isFan
+    };
+  }
 
   function applyControl() {
     root.dataset.control = control;
@@ -226,8 +664,406 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     }
   }
 
+  /* === UTILITY === */
+  function esc(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function truncHash(hash) {
+    if (!hash || hash.length <= 12) return hash;
+    return hash.slice(0, 4) + '...' + hash.slice(-4);
+  }
+
+  function formatPrice(n) {
+    if (n === 0) return '--';
+    return '$' + n.toFixed(2);
+  }
+
+  function formatPnl(n) {
+    if (n === 0) return '--';
+    return (n > 0 ? '+' : '') + n.toFixed(1) + '%';
+  }
+
+  function pnlClass(n) {
+    if (n > 0) return 'positive';
+    if (n < 0) return 'negative';
+    return 'neutral';
+  }
+
+  function rarityBorderColor(rarity) {
+    var map = {
+      common: 'var(--rarity-common)',
+      uncommon: 'var(--rarity-uncommon)',
+      rare: 'var(--rarity-rare)',
+      epic: 'var(--rarity-epic)',
+      legendary: 'var(--rarity-legendary)',
+      mythic: 'var(--rarity-mythic)'
+    };
+    return map[rarity] || map.common;
+  }
+
+  /* === TOAST === */
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('visible');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() {
+      toastEl.classList.remove('visible');
+    }, 1800);
+  }
+
+  /* === CLIPBOARD === */
+  function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() {
+        showToast('Copied!');
+      }).catch(function() {
+        fallbackCopy(text);
+      });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      showToast('Copied!');
+    } catch (e) {
+      showToast('Copy failed');
+    }
+    document.body.removeChild(ta);
+  }
+
+  /* === RENDER STATS === */
+  function renderStats() {
+    var totalPnl = 0;
+    var tradeCount = 0;
+    var bestTrade = null;
+    var bestPnl = -Infinity;
+
+    for (var i = 0; i < tickets.length; i++) {
+      var t = tickets[i];
+      if (t.isFan) continue;
+      totalPnl += t.pnl;
+      tradeCount++;
+      if (t.pnl > bestPnl) {
+        bestPnl = t.pnl;
+        bestTrade = t;
+      }
+    }
+
+    var totalCount = tickets.length;
+    var bestStr = bestTrade ? (esc(bestTrade.ticker) + ' ' + formatPnl(bestTrade.pnl)) : '--';
+    var bestClass = bestTrade ? pnlClass(bestTrade.pnl) : 'neutral';
+
+    statsEl.innerHTML =
+      '<div class="ticket-stat">' +
+        '<span class="ticket-stat-label">Total P&amp;L</span>' +
+        '<span class="ticket-stat-value ' + pnlClass(totalPnl) + '">' + formatPnl(totalPnl) + '</span>' +
+      '</div>' +
+      '<div class="ticket-stat">' +
+        '<span class="ticket-stat-label">Collection</span>' +
+        '<span class="ticket-stat-value neutral">' + totalCount + ' Sealed Ticket' + (totalCount !== 1 ? 's' : '') + '</span>' +
+      '</div>' +
+      '<div class="ticket-stat">' +
+        '<span class="ticket-stat-label">Best Trade</span>' +
+        '<span class="ticket-stat-value ' + bestClass + '">' + bestStr + '</span>' +
+      '</div>';
+  }
+
+  /* === RENDER GALLERY === */
+  function renderGallery() {
+    var html = '';
+    for (var i = 0; i < tickets.length; i++) {
+      html += renderTicketCard(tickets[i], i);
+    }
+    galleryEl.innerHTML = html;
+
+    /* Bind card click events */
+    var cards = galleryEl.querySelectorAll('.ticket-card');
+    for (var j = 0; j < cards.length; j++) {
+      (function(idx) {
+        cards[idx].addEventListener('click', function(e) {
+          /* If clicking the seal hash directly, copy instead of open modal */
+          if (e.target.classList.contains('ticket-seal-hash')) {
+            e.stopPropagation();
+            copyToClipboard(tickets[idx].sealHash);
+            return;
+          }
+          if (e.target.closest('.ticket-seal')) {
+            e.stopPropagation();
+            copyToClipboard(tickets[idx].sealHash);
+            return;
+          }
+          openModal(idx);
+        });
+        cards[idx].addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openModal(idx);
+          }
+        });
+      })(j);
+    }
+
+    reportSize();
+  }
+
+  function renderTicketCard(t, idx) {
+    var fanClass = t.isFan ? ' ticket-fan' : '';
+    var rarityAttr = ' data-rarity="' + esc(t.rarity) + '"';
+    var tickerColor = t.isFan ? 'color: var(--accent-amber);' : '';
+    var pnlDisplay = t.isFan
+      ? '<div class="ticket-pnl" style="color: var(--accent-amber);">&#x2B50; Commemorative</div>'
+      : '<div class="ticket-pnl ' + pnlClass(t.pnl) + '">' + esc(formatPnl(t.pnl)) + '</div>';
+
+    var badges = '';
+    if (t.isFan) {
+      badges = '<span class="ticket-fan-badge">Fan Card</span>';
+    } else {
+      var typeClass = t.type === 'sell' ? 'sell' : 'buy';
+      badges =
+        '<span class="ticket-type-badge ' + typeClass + '">' + esc(t.type.toUpperCase()) + '</span>' +
+        '<span class="ticket-direction-badge">' + esc(t.direction.toUpperCase()) + '</span>';
+    }
+
+    var entryText = t.isFan ? 'Fan Card Collectible' : ('Entry ' + formatPrice(t.entryPrice) + '  /  Exit ' + formatPrice(t.exitPrice));
+
+    var ariaLabel = t.isFan
+      ? (t.ticker + ' fan card, ' + t.rarity + ' rarity')
+      : (t.ticker + ' ' + t.type + ' ' + t.direction + ', P&L ' + formatPnl(t.pnl) + ', ' + t.rarity + ' rarity');
+
+    return (
+      '<div class="ticket-card' + fanClass + '"' + rarityAttr +
+        ' tabindex="0" role="button"' +
+        ' aria-label="' + esc(ariaLabel) + '"' +
+        ' data-ticket-idx="' + idx + '">' +
+        '<div class="ticket-header">' +
+          '<span class="ticket-ticker"' + (tickerColor ? ' style="' + tickerColor + '"' : '') + '>' +
+            (t.isFan ? '&#x1F3B5; ' : '') + esc(t.ticker) +
+          '</span>' +
+          badges +
+        '</div>' +
+        '<div class="ticket-date">' + esc(t.date) + '</div>' +
+        '<div class="ticket-entry">' + esc(entryText) + '</div>' +
+        pnlDisplay +
+        '<div class="ticket-seal" tabindex="0" role="button" aria-label="Copy seal hash to clipboard">' +
+          '<span class="ticket-seal-icon">&#x1F512;</span>' +
+          '<div>' +
+            '<div class="ticket-seal-label">Seal</div>' +
+            '<div class="ticket-seal-hash">' + esc(truncHash(t.sealHash)) + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  /* === MODAL === */
+  function openModal(idx) {
+    var t = tickets[idx];
+    if (!t) return;
+
+    previouslyFocused = document.activeElement;
+
+    var borderColor = rarityBorderColor(t.rarity);
+    modalEl.style.borderColor = borderColor;
+
+    var typeLabel = t.type === 'sell' ? 'SELL' : 'BUY';
+    var typeClass = t.type === 'sell' ? 'sell' : 'buy';
+    var dirLabel = t.direction === 'short' ? 'SHORT' : 'LONG';
+
+    var badgesHtml = t.isFan
+      ? '<span class="ticket-fan-badge">Fan Card</span>'
+      : '<span class="ticket-type-badge ' + typeClass + '">' + esc(typeLabel) + '</span>' +
+        '<span class="ticket-direction-badge">' + esc(dirLabel) + '</span>';
+
+    var fieldsHtml = '';
+
+    if (!t.isFan) {
+      fieldsHtml =
+        '<div class="ticket-modal-grid">' +
+          '<div class="ticket-modal-field">' +
+            '<span class="ticket-modal-field-label">Type</span>' +
+            '<span class="ticket-modal-field-value">' + esc(typeLabel) + ' / ' + esc(dirLabel) + '</span>' +
+          '</div>' +
+          '<div class="ticket-modal-field">' +
+            '<span class="ticket-modal-field-label">Date</span>' +
+            '<span class="ticket-modal-field-value">' + esc(t.date) + '</span>' +
+          '</div>' +
+          '<div class="ticket-modal-field">' +
+            '<span class="ticket-modal-field-label">Entry Price</span>' +
+            '<span class="ticket-modal-field-value">' + esc(formatPrice(t.entryPrice)) + '</span>' +
+          '</div>' +
+          '<div class="ticket-modal-field">' +
+            '<span class="ticket-modal-field-label">Exit Price</span>' +
+            '<span class="ticket-modal-field-value">' + esc(formatPrice(t.exitPrice)) + '</span>' +
+          '</div>' +
+          '<div class="ticket-modal-field">' +
+            '<span class="ticket-modal-field-label">Duration</span>' +
+            '<span class="ticket-modal-field-value">' + esc(t.duration) + '</span>' +
+          '</div>' +
+          '<div class="ticket-modal-field">' +
+            '<span class="ticket-modal-field-label">P&amp;L</span>' +
+            '<span class="ticket-modal-field-value ' + pnlClass(t.pnl) + '">' + esc(formatPnl(t.pnl)) + '</span>' +
+          '</div>' +
+          '<div class="ticket-modal-field">' +
+            '<span class="ticket-modal-field-label">Rarity</span>' +
+            '<span class="ticket-modal-field-value" style="text-transform:capitalize;">' + esc(t.rarity) + '</span>' +
+          '</div>' +
+        '</div>';
+    } else {
+      fieldsHtml =
+        '<div class="ticket-modal-grid">' +
+          '<div class="ticket-modal-field">' +
+            '<span class="ticket-modal-field-label">Type</span>' +
+            '<span class="ticket-modal-field-value" style="color: var(--accent-amber);">Fan Card Collectible</span>' +
+          '</div>' +
+          '<div class="ticket-modal-field">' +
+            '<span class="ticket-modal-field-label">Date</span>' +
+            '<span class="ticket-modal-field-value">' + esc(t.date) + '</span>' +
+          '</div>' +
+          '<div class="ticket-modal-field">' +
+            '<span class="ticket-modal-field-label">Rarity</span>' +
+            '<span class="ticket-modal-field-value" style="text-transform:capitalize;">' + esc(t.rarity) + '</span>' +
+          '</div>' +
+        '</div>';
+    }
+
+    var sealHtml =
+      '<div class="ticket-modal-seal">' +
+        '<div class="ticket-modal-seal-title">&#x1F512; Blockchain Seal</div>' +
+        '<div class="ticket-modal-seal-hash" id="modal-seal-hash" tabindex="0" role="button" aria-label="Click to copy seal hash">' +
+          esc(t.sealHash) +
+        '</div>' +
+        '<div class="ticket-modal-verify">' +
+          '<button class="ticket-modal-verify-btn" id="modal-verify-btn" type="button">Verify Seal</button>' +
+          '<span id="modal-verify-status" role="status" aria-live="polite"></span>' +
+        '</div>' +
+      '</div>';
+
+    var titleColor = t.isFan ? 'color: var(--accent-amber);' : '';
+
+    modalContentEl.innerHTML =
+      '<div class="ticket-modal-title" style="' + titleColor + '">' +
+        (t.isFan ? '&#x1F3B5; ' : '') + esc(t.ticker) +
+      '</div>' +
+      '<div class="ticket-modal-badges">' + badgesHtml + '</div>' +
+      fieldsHtml +
+      sealHtml;
+
+    modalEl.setAttribute('aria-label', t.ticker + ' trade ticket details');
+
+    /* Bind modal-specific events */
+    var sealHashEl = document.getElementById('modal-seal-hash');
+    var verifyBtn = document.getElementById('modal-verify-btn');
+    var verifyStatus = document.getElementById('modal-verify-status');
+
+    sealHashEl.addEventListener('click', function() {
+      copyToClipboard(t.sealHash);
+    });
+    sealHashEl.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        copyToClipboard(t.sealHash);
+      }
+    });
+
+    verifyBtn.addEventListener('click', function() {
+      triggerVerification(verifyBtn, verifyStatus, sealHashEl);
+    });
+
+    /* Show overlay */
+    overlayEl.classList.add('active');
+
+    /* Focus the close button */
+    setTimeout(function() {
+      modalCloseBtn.focus();
+    }, 50);
+  }
+
+  function closeModal() {
+    overlayEl.classList.remove('active');
+    if (previouslyFocused) {
+      previouslyFocused.focus();
+      previouslyFocused = null;
+    }
+  }
+
+  /* Close on overlay click */
+  overlayEl.addEventListener('click', function(e) {
+    if (e.target === overlayEl) {
+      closeModal();
+    }
+  });
+
+  /* Close button */
+  modalCloseBtn.addEventListener('click', function() {
+    closeModal();
+  });
+
+  /* Escape key closes modal */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && overlayEl.classList.contains('active')) {
+      closeModal();
+    }
+  });
+
+  /* Focus trap in modal */
+  modalEl.addEventListener('keydown', function(e) {
+    if (e.key !== 'Tab') return;
+    var focusable = modalEl.querySelectorAll('button, [tabindex="0"], [href], input, select, textarea');
+    if (focusable.length === 0) return;
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  });
+
+  /* === SEAL VERIFICATION === */
+  function triggerVerification(btn, statusEl, hashEl) {
+    btn.disabled = true;
+
+    if (prefersReducedMotion) {
+      /* Instant result for reduced motion */
+      statusEl.innerHTML = '<span class="ticket-verify-result">Verified &#x2713;</span>';
+      hashEl.classList.add('verified');
+      btn.style.display = 'none';
+      return;
+    }
+
+    /* Show spinner */
+    statusEl.innerHTML = '<span class="ticket-verify-spinner" aria-label="Verifying"></span> <span style="font-size:0.62rem;color:var(--text-secondary);font-family:var(--font-mono);">Verifying...</span>';
+
+    setTimeout(function() {
+      statusEl.innerHTML = '<span class="ticket-verify-result">Verified &#x2713;</span>';
+      hashEl.classList.add('verified');
+      btn.style.display = 'none';
+    }, 1000);
+  }
+
+  /* === INIT === */
   applyControl();
-  reportSize();
+  renderStats();
+  renderGallery();
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
 })();
 </script>

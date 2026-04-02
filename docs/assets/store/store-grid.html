@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="store-grid" data-version="1.0.0">
+<html lang="en" data-ferros-asset="store-grid" data-version="2.0.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,6 +11,9 @@
   ║  Dependencies: none                              ║
   ║  Categories: skins | themes | creature |         ║
   ║              emotes | backs                      ║
+  ║  Events OUT: item-equipped, item-unequipped,     ║
+  ║              item-purchased, item-previewed       ║
+  ║  Events IN:  ferros:init, ferros:update           ║
   ╚══════════════════════════════════════════════════╝
 -->
 <style>
@@ -28,9 +31,35 @@
   --shadow-glow: 0 0 12px rgba(74,144,217,.35);
   --radius-panel: 12px; --radius-card: 8px; --radius-badge: 4px;
   --font-mono: 'Courier New', Courier, monospace;
+  --filter-duration: 200ms;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
+
+/* === STORE HEADER (balance) === */
+.store-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 0;
+}
+.store-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--accent-amber);
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 20px;
+  padding: 5px 14px;
+}
+.store-balance-coin {
+  font-size: 1rem;
+  line-height: 1;
+}
 
 /* === STORE FEATURED BANNER === */
 .store-featured {
@@ -38,7 +67,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   border: 2px solid rgba(245,158,11,0.4);
   border-radius: var(--radius-panel);
   padding: 24px 28px;
-  margin: 16px 20px;
+  margin: 12px 20px;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -86,7 +115,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   transition: all 0.25s;
 }
 .store-tab:hover { color: var(--text-secondary); border-color: var(--border-accent); }
-.store-tab.active {
+.store-tab:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+.store-tab.active,
+.store-tab[aria-selected="true"] {
   background: rgba(74,144,217,0.15); color: var(--accent-blue);
   border-color: rgba(74,144,217,0.4);
 }
@@ -104,8 +138,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   border: 2px solid var(--border-dim);
   border-radius: var(--radius-card);
   padding: 14px; cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+  transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s, opacity var(--filter-duration) ease, translate var(--filter-duration) ease;
   position: relative; overflow: hidden;
+  opacity: 1;
+  translate: 0 0;
 }
 .store-item::before {
   content: '';
@@ -119,6 +155,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .store-item:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.5); border-color: var(--border-accent); }
 .store-item:hover::before { opacity: 1; }
 
+/* Filter transition states */
+.store-item.filter-out {
+  opacity: 0;
+  translate: 0 8px;
+}
+.store-item.filter-in {
+  opacity: 0;
+  translate: 0 8px;
+}
+
+/* Equipped state: cyan border glow */
+.store-item.equipped {
+  border-color: rgba(45,212,191,0.6) !important;
+  box-shadow: 0 0 14px rgba(45,212,191,0.25), 0 0 4px rgba(45,212,191,0.15);
+}
+
 /* Rarity borders via :has() */
 .store-item:has(.badge-amber)  { border-color: rgba(245,158,11,0.5); --si-glow: rgba(245,158,11,0.15); }
 .store-item:has(.badge-purple) { border-color: rgba(167,139,250,0.5); --si-glow: rgba(167,139,250,0.12); }
@@ -126,6 +178,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .store-item:has(.badge-green)  { border-color: rgba(52,211,153,0.35); --si-glow: rgba(52,211,153,0.08); }
 .store-item:has(.badge-gray)   { border-color: rgba(90,106,128,0.3); }
 .store-item:has(.badge-amber)::before, .store-item:has(.badge-purple)::before { opacity: 0.6; }
+/* Equipped overrides rarity border */
+.store-item.equipped:has(.badge-amber),
+.store-item.equipped:has(.badge-purple),
+.store-item.equipped:has(.badge-blue),
+.store-item.equipped:has(.badge-green),
+.store-item.equipped:has(.badge-gray) {
+  border-color: rgba(45,212,191,0.6);
+}
 
 .store-item-icon { font-size: 2rem; margin-bottom: 8px; }
 .store-item-name { font-size: 0.78rem; font-weight: 700; margin-bottom: 4px; }
@@ -145,6 +205,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .badge-blue   { background: rgba(74,144,217,0.15); color: var(--accent-blue); border: 1px solid rgba(74,144,217,0.3); }
 .badge-green  { background: rgba(52,211,153,0.15); color: var(--accent-green); border: 1px solid rgba(52,211,153,0.3); }
 .badge-gray   { background: rgba(90,106,128,0.2); color: var(--text-dim); border: 1px solid rgba(90,106,128,0.3); }
+.badge-pink   { background: rgba(244,114,182,0.15); color: var(--accent-pink); border: 1px solid rgba(244,114,182,0.3); }
 
 /* === STORE ITEM ACTIONS === */
 .store-item-actions { display: flex; gap: 6px; }
@@ -153,16 +214,137 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   border-radius: var(--radius-badge); cursor: pointer;
   transition: all 0.2s; font-family: inherit;
 }
+.store-item-actions button:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
 .btn-equip {
   background: rgba(74,144,217,0.15); color: var(--accent-blue);
   border: 1px solid rgba(74,144,217,0.3);
 }
 .btn-equip:hover { background: rgba(74,144,217,0.25); }
+/* Equipped toggle */
+.btn-equip.equipped {
+  background: rgba(45,212,191,0.2); color: var(--accent-cyan);
+  border-color: rgba(45,212,191,0.5);
+}
+/* Buy button */
+.btn-buy {
+  background: rgba(245,158,11,0.15); color: var(--accent-amber);
+  border: 1px solid rgba(245,158,11,0.3);
+}
+.btn-buy:hover { background: rgba(245,158,11,0.25); }
+/* Insufficient funds */
+.btn-buy.insufficient {
+  opacity: 0.5;
+  cursor: not-allowed;
+  position: relative;
+}
 .btn-preview {
   background: rgba(167,139,250,0.1); color: var(--accent-purple);
   border: 1px solid rgba(167,139,250,0.25);
 }
 .btn-preview:hover { background: rgba(167,139,250,0.2); }
+
+/* === BUY CONFIRMATION OVERLAY === */
+.buy-confirm-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+.buy-confirm-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.buy-confirm-dialog {
+  background: var(--bg-panel);
+  border: 2px solid var(--border-accent);
+  border-radius: var(--radius-panel);
+  padding: 28px 32px;
+  max-width: 340px;
+  width: 90%;
+  text-align: center;
+  box-shadow: var(--shadow-panel);
+}
+.buy-confirm-dialog h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+.buy-confirm-dialog p {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+.buy-confirm-dialog .cost-highlight {
+  font-family: var(--font-mono);
+  color: var(--accent-amber);
+  font-weight: 700;
+}
+.buy-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.buy-confirm-actions button {
+  padding: 8px 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: var(--radius-badge);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.buy-confirm-actions button:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+.btn-confirm-buy {
+  background: rgba(245,158,11,0.2);
+  color: var(--accent-amber);
+  border: 1px solid rgba(245,158,11,0.4);
+}
+.btn-confirm-buy:hover { background: rgba(245,158,11,0.35); }
+.btn-confirm-cancel {
+  background: rgba(90,106,128,0.15);
+  color: var(--text-secondary);
+  border: 1px solid rgba(90,106,128,0.3);
+}
+.btn-confirm-cancel:hover { background: rgba(90,106,128,0.25); }
+
+/* === TOOLTIP === */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-highlight);
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  padding: 3px 8px;
+  border-radius: var(--radius-badge);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+[data-tooltip]:hover::after {
+  opacity: 1;
+}
 
 /* DEMO mode */
 [data-control="demo"] .store-item { cursor: default; }
@@ -173,10 +355,55 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* Hidden filter */
 .store-item.hidden { display: none; }
+
+/* === PREFERS-REDUCED-MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  /* Disable shimmer on featured item and store items */
+  .store-featured::before,
+  .store-item::before {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+  /* Disable filter transition animations */
+  .store-item {
+    transition: none !important;
+  }
+  .store-item.filter-out,
+  .store-item.filter-in {
+    opacity: 1 !important;
+    translate: none !important;
+    transition: none !important;
+  }
+  /* Disable hover transforms */
+  .store-item:hover {
+    transform: none !important;
+  }
+  /* Disable tab transitions */
+  .store-tab {
+    transition: none !important;
+  }
+  /* Disable button transitions */
+  .store-item-actions button {
+    transition: none !important;
+  }
+  /* Keep overlay functional but instant */
+  .buy-confirm-overlay {
+    transition: none !important;
+  }
+}
 </style>
 </head>
 <body>
 <div id="ferros-asset-root" data-control="demo">
+
+  <!-- Store Header with Balance -->
+  <div class="store-header">
+    <div></div>
+    <div class="store-balance" aria-live="polite" aria-atomic="true" id="store-balance">
+      <span class="store-balance-coin" aria-hidden="true">&#x1FA99;</span>
+      <span id="balance-value">1,250</span> coins
+    </div>
+  </div>
 
   <!-- Featured Banner -->
   <div class="store-featured">
@@ -185,128 +412,140 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="store-featured-name">Nebula Board Theme</div>
       <div class="store-featured-price">3,600 coins</div>
     </div>
-    <div class="store-featured-icon">🌌</div>
+    <div class="store-featured-icon">&#x1F30C;</div>
   </div>
 
   <!-- Category Tabs -->
-  <div class="store-tabs">
-    <div class="store-tab active" data-filter="all">All</div>
-    <div class="store-tab" data-filter="skins">Card Skins</div>
-    <div class="store-tab" data-filter="themes">Board Themes</div>
-    <div class="store-tab" data-filter="creature">Creature Acc.</div>
-    <div class="store-tab" data-filter="emotes">Emotes</div>
-    <div class="store-tab" data-filter="backs">Card Backs</div>
+  <div class="store-tabs" role="tablist" aria-label="Store categories">
+    <button class="store-tab active" data-filter="all" role="tab" aria-selected="true" id="tab-all" aria-controls="store-grid-panel">All</button>
+    <button class="store-tab" data-filter="skins" role="tab" aria-selected="false" id="tab-skins" aria-controls="store-grid-panel">Card Skins</button>
+    <button class="store-tab" data-filter="themes" role="tab" aria-selected="false" id="tab-themes" aria-controls="store-grid-panel">Board Themes</button>
+    <button class="store-tab" data-filter="creature" role="tab" aria-selected="false" id="tab-creature" aria-controls="store-grid-panel">Creature Acc.</button>
+    <button class="store-tab" data-filter="emotes" role="tab" aria-selected="false" id="tab-emotes" aria-controls="store-grid-panel">Emotes</button>
+    <button class="store-tab" data-filter="backs" role="tab" aria-selected="false" id="tab-backs" aria-controls="store-grid-panel">Card Backs</button>
   </div>
 
   <!-- Store Grid -->
-  <div class="store-grid">
-    <div class="store-item" data-cat="skins">
-      <div class="store-item-icon">🎴</div>
+  <div class="store-grid" role="tabpanel" id="store-grid-panel" aria-labelledby="tab-all">
+    <div class="store-item" data-cat="skins" data-item-id="holographic-card-skin" data-price="2400" data-rarity="epic">
+      <div class="store-item-icon">&#x1F3B4;</div>
       <div class="store-item-name">Holographic Card Skin</div>
       <div class="store-item-price">2,400 coins</div>
       <div class="store-item-badge badge-purple">EPIC</div>
       <div class="store-item-actions">
-        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
-        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+        <button class="btn-buy" data-action="buy">Buy for 2,400</button>
+        <button class="btn-preview" data-action="preview">Preview</button>
       </div>
     </div>
 
-    <div class="store-item" data-cat="themes">
-      <div class="store-item-icon">🌌</div>
+    <div class="store-item" data-cat="themes" data-item-id="nebula-board-theme" data-price="3600" data-rarity="legendary">
+      <div class="store-item-icon">&#x1F30C;</div>
       <div class="store-item-name">Nebula Board Theme</div>
       <div class="store-item-price">3,600 coins</div>
       <div class="store-item-badge badge-amber">LEGENDARY</div>
       <div class="store-item-actions">
-        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
-        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+        <button class="btn-buy" data-action="buy">Buy for 3,600</button>
+        <button class="btn-preview" data-action="preview">Preview</button>
       </div>
     </div>
 
-    <div class="store-item" data-cat="creature">
-      <div class="store-item-icon">🎩</div>
+    <div class="store-item" data-cat="creature" data-item-id="top-hat-creature" data-price="800" data-rarity="uncommon">
+      <div class="store-item-icon">&#x1F3A9;</div>
       <div class="store-item-name">Top Hat (Creature)</div>
       <div class="store-item-price">800 coins</div>
       <div class="store-item-badge badge-green">UNCOMMON</div>
       <div class="store-item-actions">
-        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
-        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+        <button class="btn-buy" data-action="buy">Buy for 800</button>
+        <button class="btn-preview" data-action="preview">Preview</button>
       </div>
     </div>
 
-    <div class="store-item" data-cat="themes">
-      <div class="store-item-icon">🖼️</div>
+    <div class="store-item" data-cat="themes" data-item-id="cyber-grid-background" data-price="1200" data-rarity="rare">
+      <div class="store-item-icon">&#x1F5BC;&#xFE0F;</div>
       <div class="store-item-name">Cyber Grid Background</div>
       <div class="store-item-price">1,200 coins</div>
       <div class="store-item-badge badge-blue">RARE</div>
       <div class="store-item-actions">
-        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
-        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+        <button class="btn-buy" data-action="buy">Buy for 1,200</button>
+        <button class="btn-preview" data-action="preview">Preview</button>
       </div>
     </div>
 
-    <div class="store-item" data-cat="backs">
-      <div class="store-item-icon">🃏</div>
+    <div class="store-item" data-cat="backs" data-item-id="diamond-card-back" data-price="1800" data-rarity="rare">
+      <div class="store-item-icon">&#x1F0CF;</div>
       <div class="store-item-name">Diamond Card Back</div>
       <div class="store-item-price">1,800 coins</div>
       <div class="store-item-badge badge-blue">RARE</div>
       <div class="store-item-actions">
-        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
-        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+        <button class="btn-buy" data-action="buy">Buy for 1,800</button>
+        <button class="btn-preview" data-action="preview">Preview</button>
       </div>
     </div>
 
-    <div class="store-item" data-cat="emotes">
-      <div class="store-item-icon">🎆</div>
+    <div class="store-item" data-cat="emotes" data-item-id="fireworks-victory-anim" data-price="2000" data-rarity="epic">
+      <div class="store-item-icon">&#x1F386;</div>
       <div class="store-item-name">Fireworks Victory Anim</div>
       <div class="store-item-price">2,000 coins</div>
       <div class="store-item-badge badge-purple">EPIC</div>
       <div class="store-item-actions">
-        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
-        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+        <button class="btn-buy" data-action="buy">Buy for 2,000</button>
+        <button class="btn-preview" data-action="preview">Preview</button>
       </div>
     </div>
 
-    <div class="store-item" data-cat="creature">
-      <div class="store-item-icon">🗿</div>
+    <div class="store-item" data-cat="creature" data-item-id="stone-golem-costume" data-price="600" data-rarity="common">
+      <div class="store-item-icon">&#x1F5FF;</div>
       <div class="store-item-name">Stone Golem Costume</div>
       <div class="store-item-price">600 coins</div>
       <div class="store-item-badge badge-gray">COMMON</div>
       <div class="store-item-actions">
-        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
-        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+        <button class="btn-buy" data-action="buy">Buy for 600</button>
+        <button class="btn-preview" data-action="preview">Preview</button>
       </div>
     </div>
 
-    <div class="store-item" data-cat="emotes">
-      <div class="store-item-icon">🌈</div>
+    <div class="store-item" data-cat="emotes" data-item-id="rainbow-emote-pack" data-price="400" data-rarity="common">
+      <div class="store-item-icon">&#x1F308;</div>
       <div class="store-item-name">Rainbow Emote Pack</div>
       <div class="store-item-price">400 coins</div>
       <div class="store-item-badge badge-gray">COMMON</div>
       <div class="store-item-actions">
-        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
-        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+        <button class="btn-buy" data-action="buy">Buy for 400</button>
+        <button class="btn-preview" data-action="preview">Preview</button>
       </div>
     </div>
 
-    <div class="store-item" data-cat="skins">
-      <div class="store-item-icon">🔥</div>
+    <div class="store-item" data-cat="skins" data-item-id="flame-edge-card-skin" data-price="1600" data-rarity="rare">
+      <div class="store-item-icon">&#x1F525;</div>
       <div class="store-item-name">Flame Edge Card Skin</div>
       <div class="store-item-price">1,600 coins</div>
       <div class="store-item-badge badge-blue">RARE</div>
       <div class="store-item-actions">
-        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
-        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+        <button class="btn-buy" data-action="buy">Buy for 1,600</button>
+        <button class="btn-preview" data-action="preview">Preview</button>
       </div>
     </div>
 
-    <div class="store-item" data-cat="creature">
-      <div class="store-item-icon">👑</div>
+    <div class="store-item" data-cat="creature" data-item-id="golden-crown" data-price="4000" data-rarity="legendary">
+      <div class="store-item-icon">&#x1F451;</div>
       <div class="store-item-name">Golden Crown</div>
       <div class="store-item-price">4,000 coins</div>
       <div class="store-item-badge badge-amber">LEGENDARY</div>
       <div class="store-item-actions">
-        <button class="btn-equip" onclick="equipItem(this)">Equip</button>
-        <button class="btn-preview" onclick="previewItem(this)">Preview</button>
+        <button class="btn-buy" data-action="buy">Buy for 4,000</button>
+        <button class="btn-preview" data-action="preview">Preview</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buy Confirmation Overlay -->
+  <div class="buy-confirm-overlay" id="buy-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="buy-confirm-title" aria-hidden="true">
+    <div class="buy-confirm-dialog">
+      <h3 id="buy-confirm-title">Confirm Purchase</h3>
+      <p id="buy-confirm-msg">Spend <span class="cost-highlight" id="buy-confirm-cost">0</span> coins on <strong id="buy-confirm-item">item</strong>?</p>
+      <div class="buy-confirm-actions">
+        <button class="btn-confirm-buy" id="btn-confirm-buy">Confirm</button>
+        <button class="btn-confirm-cancel" id="btn-confirm-cancel">Cancel</button>
       </div>
     </div>
   </div>
@@ -322,16 +561,94 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   var control = params.get('control') || 'demo';
   var demoInterval = null;
 
+  /* === STORE STATE === */
+  var state = {
+    balance: 1250,
+    owned: [],
+    equipped: {},   /* { category: 'item-id' } */
+    activeFilter: 'all'
+  };
+
+  var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
   /* === FERROS ASSET PROTOCOL === */
   window.addEventListener('message', function(e) {
     if (e.data && e.data.type === 'ferros:init') {
       control = e.data.config.control || control;
+      if (e.data.config.balance !== undefined) state.balance = e.data.config.balance;
+      if (e.data.config.owned) state.owned = e.data.config.owned.slice();
+      if (e.data.config.equipped) state.equipped = Object.assign({}, e.data.config.equipped);
       applyControl();
+      renderState();
     }
     if (e.data && e.data.type === 'ferros:update' && e.data.payload) {
-      // Future: update store items dynamically
+      handleUpdate(e.data.payload);
     }
   });
+
+  /* === ferros:update handler (#5) === */
+  function handleUpdate(payload) {
+    /* Accept {items, owned, equipped, balance} */
+    if (payload.balance !== undefined) {
+      state.balance = payload.balance;
+    }
+    if (payload.owned) {
+      state.owned = payload.owned.slice();
+    }
+    if (payload.equipped) {
+      state.equipped = Object.assign({}, payload.equipped);
+    }
+    if (payload.items && Array.isArray(payload.items)) {
+      rebuildGrid(payload.items);
+    }
+    renderState();
+  }
+
+  function rebuildGrid(items) {
+    var grid = root.querySelector('.store-grid');
+    grid.innerHTML = '';
+    items.forEach(function(item) {
+      var id = item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      var rarityClass = rarityToBadgeClass(item.rarity);
+      var div = document.createElement('div');
+      div.className = 'store-item';
+      div.dataset.cat = item.category;
+      div.dataset.itemId = id;
+      div.dataset.price = item.price;
+      div.dataset.rarity = item.rarity;
+      div.innerHTML =
+        '<div class="store-item-icon">' + (item.icon || '') + '</div>' +
+        '<div class="store-item-name">' + escapeHtml(item.name) + '</div>' +
+        '<div class="store-item-price">' + formatNumber(item.price) + ' coins</div>' +
+        '<div class="store-item-badge ' + rarityClass + '">' + (item.rarity || '').toUpperCase() + '</div>' +
+        '<div class="store-item-actions">' +
+          '<button class="btn-buy" data-action="buy">Buy for ' + formatNumber(item.price) + '</button>' +
+          '<button class="btn-preview" data-action="preview">Preview</button>' +
+        '</div>';
+      grid.appendChild(div);
+    });
+    bindItemActions();
+    /* Re-apply filter */
+    filterStore(state.activeFilter, true);
+  }
+
+  function rarityToBadgeClass(rarity) {
+    var map = {
+      common: 'badge-gray', uncommon: 'badge-green', rare: 'badge-blue',
+      epic: 'badge-purple', legendary: 'badge-amber', mythic: 'badge-pink'
+    };
+    return map[(rarity || '').toLowerCase()] || 'badge-gray';
+  }
+
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function formatNumber(n) {
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
 
   function applyControl() {
     root.dataset.control = control;
@@ -343,6 +660,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     if (isEmbedded) {
       window.parent.postMessage({ type: 'ferros:event', asset: 'store-grid', event: event, payload: payload }, '*');
     }
+    /* Also dispatch a DOM CustomEvent for same-page listeners */
+    root.dispatchEvent(new CustomEvent(event, { detail: payload, bubbles: true }));
   }
 
   function reportSize() {
@@ -351,19 +670,237 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     }
   }
 
-  /* === TAB FILTERING === */
-  var tabs = root.querySelectorAll('.store-tab');
-  var items = root.querySelectorAll('.store-item');
+  /* === BALANCE DISPLAY (#1) === */
+  function renderBalance() {
+    var el = document.getElementById('balance-value');
+    if (el) el.textContent = formatNumber(state.balance);
+  }
 
-  function filterStore(cat) {
-    tabs.forEach(function(t) { t.classList.toggle('active', t.dataset.filter === cat); });
-    items.forEach(function(item) {
-      if (cat === 'all' || item.dataset.cat === cat) {
-        item.classList.remove('hidden');
+  /* === RENDER STATE (ownership, equipped, insufficient funds) === */
+  function renderState() {
+    renderBalance();
+    var allItems = root.querySelectorAll('.store-item');
+    allItems.forEach(function(el) {
+      var itemId = el.dataset.itemId;
+      var cat = el.dataset.cat;
+      var price = parseInt(el.dataset.price, 10);
+      var isOwned = state.owned.indexOf(itemId) !== -1;
+      var isEquipped = state.equipped[cat] === itemId;
+      var actionsDiv = el.querySelector('.store-item-actions');
+      var actionBtn = actionsDiv.querySelector('[data-action="buy"], [data-action="equip"]');
+
+      /* Equipped visual state */
+      el.classList.toggle('equipped', isEquipped);
+
+      if (isOwned) {
+        /* Show equip/unequip toggle (#2) */
+        if (!actionBtn || actionBtn.dataset.action !== 'equip') {
+          /* Replace buy button with equip button */
+          var newBtn = document.createElement('button');
+          newBtn.className = 'btn-equip';
+          newBtn.dataset.action = 'equip';
+          if (actionBtn) actionsDiv.replaceChild(newBtn, actionBtn);
+        }
+        actionBtn = actionsDiv.querySelector('[data-action="equip"]');
+        if (actionBtn) {
+          if (isEquipped) {
+            actionBtn.textContent = 'Equipped \u2713';
+            actionBtn.classList.add('equipped');
+            actionBtn.setAttribute('aria-pressed', 'true');
+          } else {
+            actionBtn.textContent = 'Equip';
+            actionBtn.classList.remove('equipped');
+            actionBtn.setAttribute('aria-pressed', 'false');
+          }
+        }
       } else {
-        item.classList.add('hidden');
+        /* Show buy button (#3, #4) */
+        if (!actionBtn || actionBtn.dataset.action !== 'buy') {
+          var newBtn = document.createElement('button');
+          newBtn.className = 'btn-buy';
+          newBtn.dataset.action = 'buy';
+          newBtn.textContent = 'Buy for ' + formatNumber(price);
+          if (actionBtn) actionsDiv.replaceChild(newBtn, actionBtn);
+        }
+        actionBtn = actionsDiv.querySelector('[data-action="buy"]');
+        if (actionBtn) {
+          actionBtn.textContent = 'Buy for ' + formatNumber(price);
+          /* Insufficient funds (#4) */
+          if (price > state.balance) {
+            actionBtn.classList.add('insufficient');
+            actionBtn.disabled = true;
+            actionBtn.setAttribute('data-tooltip', 'Not enough coins');
+          } else {
+            actionBtn.classList.remove('insufficient');
+            actionBtn.disabled = false;
+            actionBtn.removeAttribute('data-tooltip');
+          }
+        }
       }
     });
+    bindItemActions();
+  }
+
+  /* === BIND ITEM BUTTON EVENTS === */
+  function bindItemActions() {
+    var allActions = root.querySelectorAll('.store-item-actions button');
+    allActions.forEach(function(btn) {
+      /* Remove old listeners by cloning */
+      if (btn._bound) return;
+      btn._bound = true;
+      btn.addEventListener('click', function(e) {
+        handleItemAction(e);
+      });
+    });
+  }
+
+  function handleItemAction(e) {
+    var btn = e.currentTarget;
+    var action = btn.dataset.action;
+    if (control === 'demo') return;
+
+    var item = btn.closest('.store-item');
+    var name = item.querySelector('.store-item-name').textContent;
+    var cat = item.dataset.cat;
+    var itemId = item.dataset.itemId;
+    var price = parseInt(item.dataset.price, 10);
+    var rarity = item.dataset.rarity;
+
+    if (action === 'buy') {
+      /* (#3) Buy confirmation */
+      if (price > state.balance) return; /* insufficient funds */
+      showBuyConfirm(name, price, rarity, cat, itemId);
+    } else if (action === 'equip') {
+      /* (#2) Equip toggle */
+      if (state.equipped[cat] === itemId) {
+        /* Unequip */
+        delete state.equipped[cat];
+        emit('item-unequipped', { item: name, category: cat });
+      } else {
+        /* Equip (unequips previous in same category) */
+        state.equipped[cat] = itemId;
+        emit('item-equipped', { item: name, category: cat });
+      }
+      renderState();
+    } else if (action === 'preview') {
+      emit('item-previewed', { item: name, category: cat });
+    }
+  }
+
+  /* === BUY CONFIRMATION (#3) === */
+  var pendingPurchase = null;
+  var overlay = document.getElementById('buy-confirm-overlay');
+  var btnConfirm = document.getElementById('btn-confirm-buy');
+  var btnCancel = document.getElementById('btn-confirm-cancel');
+
+  function showBuyConfirm(name, price, rarity, cat, itemId) {
+    pendingPurchase = { name: name, price: price, rarity: rarity, category: cat, itemId: itemId };
+    document.getElementById('buy-confirm-cost').textContent = formatNumber(price);
+    document.getElementById('buy-confirm-item').textContent = name;
+    overlay.classList.add('visible');
+    overlay.setAttribute('aria-hidden', 'false');
+    btnConfirm.focus();
+  }
+
+  function hideBuyConfirm() {
+    overlay.classList.remove('visible');
+    overlay.setAttribute('aria-hidden', 'true');
+    pendingPurchase = null;
+  }
+
+  btnConfirm.addEventListener('click', function() {
+    if (!pendingPurchase) return;
+    var p = pendingPurchase;
+    if (p.price > state.balance) { hideBuyConfirm(); return; }
+    state.balance -= p.price;
+    state.owned.push(p.itemId);
+    emit('item-purchased', { item: p.name, cost: p.price, rarity: p.rarity, category: p.category });
+    hideBuyConfirm();
+    renderState();
+  });
+
+  btnCancel.addEventListener('click', function() {
+    hideBuyConfirm();
+  });
+
+  /* Close overlay on backdrop click */
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) hideBuyConfirm();
+  });
+
+  /* Close overlay on Escape */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && overlay.classList.contains('visible')) {
+      hideBuyConfirm();
+    }
+  });
+
+  /* === TAB FILTERING (#6, #7) === */
+  var tabs = root.querySelectorAll('.store-tab');
+  var gridPanel = document.getElementById('store-grid-panel');
+
+  function filterStore(cat, skipAnimation) {
+    state.activeFilter = cat;
+    var items = root.querySelectorAll('.store-item');
+    var useAnimation = !skipAnimation && !prefersReducedMotion.matches;
+    var duration = useAnimation ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--filter-duration')) || 200 : 0;
+
+    /* Update tabs (#7 accessibility) */
+    tabs.forEach(function(t) {
+      var isActive = t.dataset.filter === cat;
+      t.classList.toggle('active', isActive);
+      t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      t.setAttribute('tabindex', isActive ? '0' : '-1');
+    });
+
+    /* Update tabpanel labelledby */
+    var activeTab = root.querySelector('.store-tab[data-filter="' + cat + '"]');
+    if (activeTab && gridPanel) {
+      gridPanel.setAttribute('aria-labelledby', activeTab.id);
+    }
+
+    if (useAnimation) {
+      /* Phase 1: fade out visible items */
+      items.forEach(function(item) {
+        if (!item.classList.contains('hidden')) {
+          item.classList.add('filter-out');
+        }
+      });
+
+      setTimeout(function() {
+        /* Phase 2: toggle visibility, then fade in */
+        items.forEach(function(item) {
+          item.classList.remove('filter-out');
+          if (cat === 'all' || item.dataset.cat === cat) {
+            item.classList.remove('hidden');
+            item.classList.add('filter-in');
+          } else {
+            item.classList.add('hidden');
+            item.classList.remove('filter-in');
+          }
+        });
+
+        /* Force reflow */
+        void root.offsetHeight;
+
+        /* Fade in */
+        requestAnimationFrame(function() {
+          items.forEach(function(item) {
+            item.classList.remove('filter-in');
+          });
+        });
+      }, duration);
+    } else {
+      /* Instant (reduced motion or skipAnimation) */
+      items.forEach(function(item) {
+        item.classList.remove('filter-out', 'filter-in');
+        if (cat === 'all' || item.dataset.cat === cat) {
+          item.classList.remove('hidden');
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+    }
   }
 
   tabs.forEach(function(tab) {
@@ -371,22 +908,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       if (control === 'demo') return;
       filterStore(tab.dataset.filter);
     });
+    /* Keyboard navigation for tablist (#7) */
+    tab.addEventListener('keydown', function(e) {
+      var tabArr = Array.prototype.slice.call(tabs);
+      var idx = tabArr.indexOf(tab);
+      var next = -1;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        next = (idx + 1) % tabArr.length;
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        next = (idx - 1 + tabArr.length) % tabArr.length;
+      } else if (e.key === 'Home') {
+        next = 0;
+      } else if (e.key === 'End') {
+        next = tabArr.length - 1;
+      }
+      if (next >= 0) {
+        e.preventDefault();
+        tabArr[next].focus();
+        if (control !== 'demo') {
+          tabArr[next].click();
+        }
+      }
+    });
   });
-
-  /* === ITEM ACTIONS === */
-  window.equipItem = function(btn) {
-    if (control === 'demo') return;
-    var item = btn.closest('.store-item');
-    var name = item.querySelector('.store-item-name').textContent;
-    emit('item-equipped', { item: name, category: item.dataset.cat });
-  };
-
-  window.previewItem = function(btn) {
-    if (control === 'demo') return;
-    var item = btn.closest('.store-item');
-    var name = item.querySelector('.store-item-name').textContent;
-    emit('item-previewed', { item: name, category: item.dataset.cat });
-  };
 
   /* === DEMO MODE: Auto-cycle tabs === */
   function startDemo() {
@@ -395,7 +939,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     stopDemo();
     demoInterval = setInterval(function() {
       idx = (idx + 1) % tabArr.length;
-      filterStore(tabArr[idx].dataset.filter);
+      filterStore(tabArr[idx].dataset.filter, true);
     }, 2500);
   }
 
@@ -403,7 +947,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     if (demoInterval) { clearInterval(demoInterval); demoInterval = null; }
   }
 
+  /* === INIT === */
   applyControl();
+  renderState();
   reportSize();
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
 })();

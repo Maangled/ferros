@@ -1,15 +1,24 @@
 <!DOCTYPE html>
-<html lang="en" data-ferros-asset="loot-box-3d" data-version="1.0.0">
+<html lang="en" data-ferros-asset="loot-box-3d" data-version="2.0.0">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FERROS Asset: 3D Loot Box</title>
 <!--
   ╔══════════════════════════════════════════════════╗
-  ║  FERROS ASSET: loot-box-3d                       ║
+  ║  FERROS ASSET: loot-box-3d  v2.0.0              ║
   ║  Control Levels: DEMO | PREVIEW | PLAY           ║
   ║  Dependencies: none                              ║
   ║  Click to open — shake, dissolve, reveal reward  ║
+  ║                                                  ║
+  ║  v2 upgrades:                                    ║
+  ║  - Weighted rarity probability (mythic 1%)       ║
+  ║  - PREVIEW odds overlay panel                    ║
+  ║  - ferros:update for custom loot tables          ║
+  ║  - Responsive cube below 400px                   ║
+  ║  - Enhanced loot-opened event with stats         ║
+  ║  - Full accessibility (ARIA, screen reader)      ║
+  ║  - prefers-reduced-motion support                ║
   ╚══════════════════════════════════════════════════╝
 -->
 <style>
@@ -23,16 +32,51 @@
   --accent-pink: #f472b6;
   --gradient-card: linear-gradient(145deg, #161b28 0%, #111520 100%);
   --font-mono: 'Courier New', Courier, monospace;
+
+  /* Rarity colors for odds panel */
+  --rarity-common: #5a6a80;
+  --rarity-uncommon: #34d399;
+  --rarity-rare: #4a90d9;
+  --rarity-epic: #a78bfa;
+  --rarity-legendary: #f59e0b;
+  --rarity-mythic: #f472b6;
+
+  /* Responsive cube scale */
+  --cube-scale: 1;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-base); color: var(--text-primary);
+  display: flex; align-items: center; justify-content: center; min-height: 100vh;
+}
 
 /* === 3D LOOT BOX === */
-.loot-3d-platform { display: flex; flex-direction: column; align-items: center; padding: 2rem; }
-.loot-3d-scene { width: 160px; height: 160px; perspective: 600px; cursor: pointer; }
-.loot-3d-cube { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; animation: lootRotate 8s linear infinite; transition: transform 0.5s; }
+.loot-3d-platform {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 2rem; position: relative; max-width: 100vw; overflow: visible;
+}
+.loot-3d-scene {
+  width: 160px; height: 160px; perspective: 600px;
+  cursor: pointer;
+  transform: scale(var(--cube-scale));
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+.loot-3d-cube {
+  width: 100%; height: 100%; position: relative;
+  transform-style: preserve-3d;
+  animation: lootRotate 8s linear infinite;
+  transition: transform 0.5s;
+}
 .loot-3d-scene:hover .loot-3d-cube { animation-play-state: paused; }
-.loot-3d-face { position: absolute; width: 100px; height: 100px; left: 30px; top: 30px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; background: var(--gradient-card); border: 2px solid var(--accent-purple); border-radius: 12px; box-shadow: 0 0 20px rgba(167,139,250,0.2); }
+.loot-3d-face {
+  position: absolute; width: 100px; height: 100px; left: 30px; top: 30px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem; background: var(--gradient-card);
+  border: 2px solid var(--accent-purple); border-radius: 12px;
+  box-shadow: 0 0 20px rgba(167,139,250,0.2);
+}
 .loot-3d-face.front  { transform: translateZ(50px); }
 .loot-3d-face.back   { transform: rotateY(180deg) translateZ(50px); }
 .loot-3d-face.right  { transform: rotateY(90deg) translateZ(50px); }
@@ -40,47 +84,179 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .loot-3d-face.top    { transform: rotateX(90deg) translateZ(50px); }
 .loot-3d-face.bottom { transform: rotateX(-90deg) translateZ(50px); }
 
-.loot-hint { margin-top: 12px; font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono); }
+.loot-hint {
+  margin-top: 12px; font-size: 0.75rem; color: var(--text-dim);
+  font-family: var(--font-mono);
+}
 
-.loot-result { text-align: center; margin-top: 20px; opacity: 0; transition: opacity 0.5s; pointer-events: none; }
+.loot-result {
+  text-align: center; margin-top: 20px; opacity: 0;
+  transition: opacity 0.5s; pointer-events: none;
+}
 .loot-result.visible { opacity: 1; }
 .loot-result-icon { font-size: 3rem; }
 .loot-result-name { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-top: 4px; }
-.loot-result-rarity { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; margin-top: 2px; }
+.loot-result-rarity {
+  font-family: var(--font-mono); font-size: 0.8rem;
+  font-weight: 700; margin-top: 2px;
+}
 
 .loot-particles { position: relative; height: 0; overflow: visible; pointer-events: none; }
-.loot-particle { position: absolute; width: 8px; height: 8px; border-radius: 50%; animation: lootParticle 0.8s ease-out forwards; }
+.loot-particle {
+  position: absolute; width: 8px; height: 8px; border-radius: 50%;
+  animation: lootParticle 0.8s ease-out forwards;
+}
 
-@keyframes lootRotate { 0% { transform: rotateY(0) rotateX(10deg); } 100% { transform: rotateY(360deg) rotateX(10deg); } }
-@keyframes lootShake { 0%,100% { transform: translateX(0) rotate(0); } 15% { transform: translateX(-6px) rotate(-3deg); } 30% { transform: translateX(6px) rotate(3deg); } 45% { transform: translateX(-4px) rotate(-2deg); } 60% { transform: translateX(4px) rotate(2deg); } 75% { transform: translateX(-2px) rotate(-1deg); } 90% { transform: translateX(2px) rotate(1deg); } }
-@keyframes lootParticle { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(var(--lp-x), var(--lp-y)) scale(0); opacity: 0; } }
+/* === ODDS OVERLAY (PREVIEW mode) === */
+.loot-odds-overlay {
+  display: none;
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 100; align-items: center; justify-content: center;
+}
+.loot-odds-overlay.visible { display: flex; }
+.loot-odds-backdrop {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(10, 12, 16, 0.6); z-index: 0;
+}
+.loot-odds-panel {
+  position: relative; z-index: 1;
+  background: rgba(17, 21, 32, 0.95);
+  border: 1px solid var(--border-accent);
+  border-radius: 12px; padding: 20px 24px;
+  max-width: 320px; width: 90%;
+  max-height: 80vh; overflow-y: auto;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.loot-odds-title {
+  font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--text-secondary);
+  margin-bottom: 14px; text-align: center;
+  font-family: var(--font-mono);
+}
+.loot-odds-group { margin-bottom: 12px; }
+.loot-odds-group:last-child { margin-bottom: 0; }
+.loot-odds-rarity-header {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; padding-bottom: 4px;
+  margin-bottom: 6px; border-bottom: 1px solid var(--border-dim);
+  font-family: var(--font-mono);
+}
+.loot-odds-pct {
+  font-size: 0.7rem; font-weight: 400; opacity: 0.7;
+}
+.loot-odds-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 0; font-size: 0.75rem; color: var(--text-secondary);
+}
+.loot-odds-item-icon { font-size: 1rem; width: 1.4em; text-align: center; }
+.loot-odds-item-name { flex: 1; }
+.loot-odds-item-pct {
+  font-family: var(--font-mono); font-size: 0.65rem;
+  color: var(--text-dim);
+}
 
+/* === ANIMATIONS === */
+@keyframes lootRotate {
+  0% { transform: rotateY(0) rotateX(10deg); }
+  100% { transform: rotateY(360deg) rotateX(10deg); }
+}
+@keyframes lootShake {
+  0%,100% { transform: translateX(0) rotate(0); }
+  15% { transform: translateX(-6px) rotate(-3deg); }
+  30% { transform: translateX(6px) rotate(3deg); }
+  45% { transform: translateX(-4px) rotate(-2deg); }
+  60% { transform: translateX(4px) rotate(2deg); }
+  75% { transform: translateX(-2px) rotate(-1deg); }
+  90% { transform: translateX(2px) rotate(1deg); }
+}
+@keyframes lootParticle {
+  0% { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--lp-x), var(--lp-y)) scale(0); opacity: 0; }
+}
+
+/* === CONTROL MODE OVERRIDES === */
 /* DEMO mode — auto-rotates, no click */
 [data-control="demo"] .loot-3d-scene { cursor: default; pointer-events: none; }
 [data-control="demo"] .loot-hint { display: none; }
-/* PREVIEW mode — hover pauses, no click */
-[data-control="preview"] .loot-3d-scene { cursor: default; }
+
+/* PREVIEW mode — hover pauses, click shows odds, no open */
+[data-control="preview"] .loot-3d-scene { cursor: help; }
+[data-control="preview"] .loot-hint { display: none; }
+
+/* === PREFERS-REDUCED-MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  .loot-3d-cube {
+    animation: none !important;
+    transform: rotateY(-25deg) rotateX(10deg) !important;
+  }
+  .loot-3d-scene:hover .loot-3d-cube {
+    animation: none !important;
+  }
+  .loot-particle {
+    animation: none !important;
+    display: none !important;
+  }
+  .loot-result {
+    transition: none !important;
+  }
+  /* The shake and dissolve are handled in JS by checking the media query */
+}
+
+/* === RESPONSIVE CUBE: scale down below 400px === */
+@media (max-width: 400px) {
+  :root { --cube-scale: 0.75; }
+  .loot-3d-platform { padding: 1rem; }
+  .loot-odds-panel { padding: 14px 16px; max-width: 280px; }
+}
+@media (max-width: 300px) {
+  :root { --cube-scale: 0.6; }
+}
+
+/* === SCREEN READER ONLY (visually hidden) === */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
 </style>
 </head>
 <body>
 <div id="ferros-asset-root" data-control="demo">
   <div class="loot-3d-platform">
-    <div class="loot-3d-scene" id="loot-3d-scene">
-      <div class="loot-3d-cube" id="loot-3d-cube">
-        <div class="loot-3d-face front">📦</div>
-        <div class="loot-3d-face back">🎁</div>
-        <div class="loot-3d-face right">✨</div>
-        <div class="loot-3d-face left">💎</div>
-        <div class="loot-3d-face top">⭐</div>
-        <div class="loot-3d-face bottom">🔮</div>
+    <!-- ODDS OVERLAY (PREVIEW mode) -->
+    <div class="loot-odds-overlay" id="loot-odds-overlay" role="dialog" aria-label="Loot drop rates">
+      <div class="loot-odds-backdrop" id="loot-odds-backdrop"></div>
+      <div class="loot-odds-panel" id="loot-odds-panel">
+        <div class="loot-odds-title">Drop Rates</div>
+        <div id="loot-odds-content"></div>
       </div>
     </div>
+
+    <!-- 3D SCENE (role=button for accessibility) -->
+    <div class="loot-3d-scene" id="loot-3d-scene"
+         role="button" tabindex="0"
+         aria-label="Click to open loot box">
+      <div class="loot-3d-cube" id="loot-3d-cube">
+        <div class="loot-3d-face front">&#x1F4E6;</div>
+        <div class="loot-3d-face back">&#x1F381;</div>
+        <div class="loot-3d-face right">&#x2728;</div>
+        <div class="loot-3d-face left">&#x1F48E;</div>
+        <div class="loot-3d-face top">&#x2B50;</div>
+        <div class="loot-3d-face bottom">&#x1F52E;</div>
+      </div>
+    </div>
+
     <div class="loot-hint">Click to open</div>
     <div class="loot-particles" id="loot-particles"></div>
-    <div class="loot-result" id="loot-result">
-      <div class="loot-result-icon" id="loot-item-icon"></div>
+
+    <!-- RESULT with aria-live for screen reader announcements -->
+    <div class="loot-result" id="loot-result" aria-live="polite" aria-atomic="true">
+      <div class="loot-result-icon" id="loot-item-icon" aria-hidden="true"></div>
       <div class="loot-result-name" id="loot-item-name"></div>
       <div class="loot-result-rarity" id="loot-item-rarity"></div>
+      <span class="sr-only" id="loot-sr-announce"></span>
     </div>
   </div>
 </div>
@@ -88,80 +264,294 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <script>
 (function() {
   'use strict';
+
+  /* ─── DOM refs ─── */
   var root = document.getElementById('ferros-asset-root');
   var isEmbedded = window.parent !== window;
   var params = new URLSearchParams(window.location.search);
   var control = params.get('control') || 'demo';
 
-  window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'ferros:init') {
-      control = e.data.config.control || control;
-      applyControl();
-    }
-  });
-
-  function applyControl() { root.dataset.control = control; }
-  function emit(event, payload) {
-    if (isEmbedded) window.parent.postMessage({ type: 'ferros:event', asset: 'loot-box-3d', event: event, payload: payload }, '*');
-  }
-  function reportSize() {
-    if (isEmbedded) window.parent.postMessage({ type: 'ferros:resize', asset: 'loot-box-3d', width: root.scrollWidth, height: root.scrollHeight }, '*');
-  }
-
-  // Loot items
-  var lootItems = [
-    { icon: '🎴', name: 'Holographic NVDA Skin', rarity: 'EPIC', color: 'var(--accent-purple)' },
-    { icon: '🌌', name: 'Nebula Board Theme', rarity: 'LEGENDARY', color: 'var(--accent-amber)' },
-    { icon: '🎩', name: 'Top Hat Accessory', rarity: 'UNCOMMON', color: 'var(--accent-green)' },
-    { icon: '💎', name: 'Diamond Card Back', rarity: 'RARE', color: 'var(--accent-blue)' },
-    { icon: '🃏', name: 'Neon Edge Card Skin', rarity: 'RARE', color: 'var(--accent-blue)' },
-    { icon: '🗿', name: 'Stone Guardian Costume', rarity: 'COMMON', color: 'var(--text-dim)' },
-    { icon: '🎆', name: 'Fireworks Victory Animation', rarity: 'EPIC', color: 'var(--accent-purple)' },
-    { icon: '🌈', name: 'Rainbow Emote', rarity: 'COMMON', color: 'var(--text-dim)' },
-    { icon: '🔥', name: 'Flame Trail Effect', rarity: 'RARE', color: 'var(--accent-blue)' },
-    { icon: '👑', name: 'Golden Crown (Creature)', rarity: 'LEGENDARY', color: 'var(--accent-amber)' }
-  ];
-
   var loot3dScene = document.getElementById('loot-3d-scene');
   var loot3dCube = document.getElementById('loot-3d-cube');
   var lootResult = document.getElementById('loot-result');
   var lootParticles = document.getElementById('loot-particles');
+  var lootOddsOverlay = document.getElementById('loot-odds-overlay');
+  var lootOddsBackdrop = document.getElementById('loot-odds-backdrop');
+  var lootOddsContent = document.getElementById('loot-odds-content');
+  var lootSrAnnounce = document.getElementById('loot-sr-announce');
   var lootOpen = false;
 
-  if (loot3dScene) {
-    loot3dScene.addEventListener('click', function() {
-      if (control !== 'play' || lootOpen) return;
-      lootOpen = true;
-      lootResult.classList.remove('visible');
-      loot3dCube.style.animation = 'lootShake 0.5s ease-in-out';
-      setTimeout(function() {
-        spawnParticles();
-        loot3dCube.style.transition = 'transform 0.6s, opacity 0.6s';
-        loot3dCube.style.transform = 'scale(0) rotateY(720deg)';
-        loot3dCube.style.opacity = '0';
-        setTimeout(function() {
-          var item = lootItems[Math.floor(Math.random() * lootItems.length)];
-          document.getElementById('loot-item-icon').textContent = item.icon;
-          document.getElementById('loot-item-name').textContent = item.name;
-          var rarityEl = document.getElementById('loot-item-rarity');
-          rarityEl.textContent = item.rarity;
-          rarityEl.style.color = item.color;
-          lootResult.classList.add('visible');
-          emit('loot-opened', { name: item.name, rarity: item.rarity });
-          setTimeout(function() {
-            loot3dCube.style.transition = 'none';
-            loot3dCube.style.transform = '';
-            loot3dCube.style.opacity = '';
-            loot3dCube.style.animation = 'lootRotate 8s linear infinite';
-            lootOpen = false;
-          }, 2500);
-        }, 600);
-      }, 500);
-    });
+  /* ─── Reduced motion detection ─── */
+  var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+  function isReducedMotion() {
+    return prefersReducedMotion && prefersReducedMotion.matches;
   }
 
+  /* ─── Rarity weight system ─── */
+  var RARITY_WEIGHTS = {
+    COMMON:    40,
+    UNCOMMON:  25,
+    RARE:      20,
+    EPIC:      10,
+    LEGENDARY:  4,
+    MYTHIC:     1
+  };
+
+  var RARITY_COLORS = {
+    COMMON:    'var(--rarity-common)',
+    UNCOMMON:  'var(--rarity-uncommon)',
+    RARE:      'var(--rarity-rare)',
+    EPIC:      'var(--rarity-epic)',
+    LEGENDARY: 'var(--rarity-legendary)',
+    MYTHIC:    'var(--rarity-mythic)'
+  };
+
+  var RARITY_ORDER = ['MYTHIC', 'LEGENDARY', 'EPIC', 'RARE', 'UNCOMMON', 'COMMON'];
+
+  /* ─── Loot table ─── */
+  var lootItems = [
+    { icon: '\u{1F3B4}', name: 'Holographic NVDA Skin',       rarity: 'EPIC',      color: 'var(--accent-purple)' },
+    { icon: '\u{1F30C}', name: 'Nebula Board Theme',          rarity: 'LEGENDARY',  color: 'var(--accent-amber)' },
+    { icon: '\u{1F3A9}', name: 'Top Hat Accessory',           rarity: 'UNCOMMON',   color: 'var(--accent-green)' },
+    { icon: '\u{1F48E}', name: 'Diamond Card Back',           rarity: 'RARE',       color: 'var(--accent-blue)' },
+    { icon: '\u{1F0CF}', name: 'Neon Edge Card Skin',         rarity: 'RARE',       color: 'var(--accent-blue)' },
+    { icon: '\u{1F5FF}', name: 'Stone Guardian Costume',      rarity: 'COMMON',     color: 'var(--text-dim)' },
+    { icon: '\u{1F386}', name: 'Fireworks Victory Animation', rarity: 'EPIC',       color: 'var(--accent-purple)' },
+    { icon: '\u{1F308}', name: 'Rainbow Emote',               rarity: 'COMMON',     color: 'var(--text-dim)' },
+    { icon: '\u{1F525}', name: 'Flame Trail Effect',          rarity: 'RARE',       color: 'var(--accent-blue)' },
+    { icon: '\u{1F451}', name: 'Golden Crown (Creature)',     rarity: 'LEGENDARY',  color: 'var(--accent-amber)' },
+    { icon: '\u{1F4AB}', name: 'Dizzy Star Emote',            rarity: 'COMMON',     color: 'var(--text-dim)' },
+    { icon: '\u{1F9E9}', name: 'Puzzle Piece Charm',          rarity: 'UNCOMMON',   color: 'var(--accent-green)' },
+    /* Mythic tier items */
+    { icon: '\u{1F300}', name: 'Mythic Card Back',            rarity: 'MYTHIC',     color: 'var(--accent-pink)' },
+    { icon: '\u{1F409}', name: 'Holographic Dragon',          rarity: 'MYTHIC',     color: 'var(--accent-pink)' },
+    { icon: '\u{1FA90}', name: 'Celestial Ringed Planet',     rarity: 'MYTHIC',     color: 'var(--accent-pink)' }
+  ];
+
+  /* ─── Stats tracking ─── */
+  var totalOpens = 0;
+  var rarityCount = {
+    COMMON: 0, UNCOMMON: 0, RARE: 0,
+    EPIC: 0, LEGENDARY: 0, MYTHIC: 0
+  };
+
+  /* ─── Weighted probability roll ─── */
+  function computeWeightTotal() {
+    var total = 0;
+    for (var key in RARITY_WEIGHTS) { total += RARITY_WEIGHTS[key]; }
+    return total;
+  }
+
+  function rollRarity() {
+    var total = computeWeightTotal();
+    var roll = Math.random() * total;
+    var cumulative = 0;
+    for (var i = 0; i < RARITY_ORDER.length; i++) {
+      var r = RARITY_ORDER[i];
+      if (RARITY_WEIGHTS[r] === undefined || RARITY_WEIGHTS[r] <= 0) continue;
+      cumulative += RARITY_WEIGHTS[r];
+      if (roll < cumulative) return r;
+    }
+    // Fallback to common
+    return 'COMMON';
+  }
+
+  function rollItem() {
+    var rarity = rollRarity();
+    var candidates = [];
+    for (var i = 0; i < lootItems.length; i++) {
+      if (lootItems[i].rarity === rarity) candidates.push(lootItems[i]);
+    }
+    // If no candidates at that rarity (shouldn't happen), fall back to full pool
+    if (candidates.length === 0) {
+      return lootItems[Math.floor(Math.random() * lootItems.length)];
+    }
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  /* ─── Drop rate calculations ─── */
+  function getDropRateForItem(item) {
+    var total = computeWeightTotal();
+    var rarityWeight = RARITY_WEIGHTS[item.rarity] || 0;
+    var rarityPct = (rarityWeight / total) * 100;
+    // Count how many items share this rarity
+    var count = 0;
+    for (var i = 0; i < lootItems.length; i++) {
+      if (lootItems[i].rarity === item.rarity) count++;
+    }
+    return count > 0 ? rarityPct / count : 0;
+  }
+
+  function getRarityPct(rarity) {
+    var total = computeWeightTotal();
+    var w = RARITY_WEIGHTS[rarity] || 0;
+    return (w / total) * 100;
+  }
+
+  /* ─── Recalculate weights from loot table rarities ─── */
+  function recalcWeightsFromTable() {
+    // Reset weights based on which rarities exist in the table
+    var present = {};
+    for (var i = 0; i < lootItems.length; i++) {
+      present[lootItems[i].rarity.toUpperCase()] = true;
+    }
+    // Zero out weights for rarities not in the table
+    for (var key in RARITY_WEIGHTS) {
+      if (!present[key]) RARITY_WEIGHTS[key] = 0;
+    }
+    // Ensure rarityCount has keys for all present rarities
+    for (var r in present) {
+      if (rarityCount[r] === undefined) rarityCount[r] = 0;
+    }
+  }
+
+  /* ─── Odds overlay (PREVIEW mode) ─── */
+  function buildOddsPanel() {
+    if (!lootOddsContent) return;
+    lootOddsContent.innerHTML = '';
+    var total = computeWeightTotal();
+
+    for (var ri = 0; ri < RARITY_ORDER.length; ri++) {
+      var rarity = RARITY_ORDER[ri];
+      var weight = RARITY_WEIGHTS[rarity];
+      if (!weight || weight <= 0) continue;
+
+      var items = [];
+      for (var i = 0; i < lootItems.length; i++) {
+        if (lootItems[i].rarity === rarity) items.push(lootItems[i]);
+      }
+      if (items.length === 0) continue;
+
+      var rarityPct = ((weight / total) * 100).toFixed(1);
+      var perItemPct = (weight / total * 100 / items.length).toFixed(2);
+      var color = RARITY_COLORS[rarity] || 'var(--text-dim)';
+
+      var group = document.createElement('div');
+      group.className = 'loot-odds-group';
+
+      var header = document.createElement('div');
+      header.className = 'loot-odds-rarity-header';
+      header.style.color = color;
+      header.innerHTML = '<span>' + rarity + '</span><span class="loot-odds-pct">' + rarityPct + '%</span>';
+      group.appendChild(header);
+
+      for (var j = 0; j < items.length; j++) {
+        var row = document.createElement('div');
+        row.className = 'loot-odds-item';
+        row.innerHTML =
+          '<span class="loot-odds-item-icon">' + items[j].icon + '</span>' +
+          '<span class="loot-odds-item-name">' + items[j].name + '</span>' +
+          '<span class="loot-odds-item-pct">' + perItemPct + '%</span>';
+        group.appendChild(row);
+      }
+
+      lootOddsContent.appendChild(group);
+    }
+  }
+
+  function showOddsOverlay() {
+    buildOddsPanel();
+    lootOddsOverlay.classList.add('visible');
+  }
+
+  function hideOddsOverlay() {
+    lootOddsOverlay.classList.remove('visible');
+  }
+
+  /* ─── Accessibility: update aria-label on scene ─── */
+  function updateSceneAria(state, item) {
+    if (!loot3dScene) return;
+    if (state === 'ready') {
+      loot3dScene.setAttribute('aria-label', 'Click to open loot box');
+    } else if (state === 'opening') {
+      loot3dScene.setAttribute('aria-label', 'Loot box is opening');
+    } else if (state === 'result' && item) {
+      loot3dScene.setAttribute('aria-label',
+        'Loot result: ' + item.name + ', ' + item.rarity + ' rarity');
+    } else if (state === 'preview') {
+      loot3dScene.setAttribute('aria-label', 'Loot box preview. Click to view drop rates.');
+    } else if (state === 'demo') {
+      loot3dScene.setAttribute('aria-label', 'Loot box display (demo mode)');
+    }
+  }
+
+  function announceToScreenReader(text) {
+    if (lootSrAnnounce) {
+      lootSrAnnounce.textContent = '';
+      // Force reflow for aria-live to re-announce
+      void lootSrAnnounce.offsetWidth;
+      lootSrAnnounce.textContent = text;
+    }
+  }
+
+  /* ─── Messaging ─── */
+  function emit(event, payload) {
+    if (isEmbedded) {
+      window.parent.postMessage({
+        type: 'ferros:event', asset: 'loot-box-3d',
+        event: event, payload: payload
+      }, '*');
+    }
+  }
+
+  function reportSize() {
+    if (isEmbedded) {
+      window.parent.postMessage({
+        type: 'ferros:resize', asset: 'loot-box-3d',
+        width: root.scrollWidth, height: root.scrollHeight
+      }, '*');
+    }
+  }
+
+  /* ─── Message listener (init + update) ─── */
+  window.addEventListener('message', function(e) {
+    if (!e.data) return;
+
+    if (e.data.type === 'ferros:init') {
+      control = e.data.config.control || control;
+      applyControl();
+    }
+
+    if (e.data.type === 'ferros:update') {
+      var payload = e.data;
+      if (payload.lootTable && Array.isArray(payload.lootTable)) {
+        lootItems = [];
+        for (var i = 0; i < payload.lootTable.length; i++) {
+          var entry = payload.lootTable[i];
+          lootItems.push({
+            icon:   entry.icon   || '?',
+            name:   entry.name   || 'Unknown Item',
+            rarity: (entry.rarity || 'COMMON').toUpperCase(),
+            color:  entry.color  || RARITY_COLORS[(entry.rarity || 'COMMON').toUpperCase()] || 'var(--text-dim)'
+          });
+        }
+        recalcWeightsFromTable();
+        // Rebuild odds panel if preview mode
+        if (control === 'preview') buildOddsPanel();
+      }
+      // Allow overriding control via update as well
+      if (payload.control) {
+        control = payload.control;
+        applyControl();
+      }
+    }
+  });
+
+  /* ─── Control mode application ─── */
+  function applyControl() {
+    root.dataset.control = control;
+    if (control === 'preview') {
+      updateSceneAria('preview');
+    } else if (control === 'demo') {
+      updateSceneAria('demo');
+    } else {
+      updateSceneAria('ready');
+    }
+  }
+
+  /* ─── Particle burst ─── */
   function spawnParticles() {
-    if (!lootParticles) return;
+    if (!lootParticles || isReducedMotion()) return;
     lootParticles.innerHTML = '';
     var colors = ['#f59e0b', '#a78bfa', '#2dd4bf', '#f472b6', '#4a90d9', '#34d399', '#f87171'];
     for (var i = 0; i < 20; i++) {
@@ -178,9 +568,132 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     }
   }
 
+  /* ─── Open loot box (PLAY mode) ─── */
+  function openLootBox() {
+    if (control !== 'play' || lootOpen) return;
+    lootOpen = true;
+    lootResult.classList.remove('visible');
+    updateSceneAria('opening');
+
+    var reduced = isReducedMotion();
+
+    if (reduced) {
+      // Instant reveal: no shake, no dissolve, no particles
+      revealItem();
+    } else {
+      // Shake phase
+      loot3dCube.style.animation = 'lootShake 0.5s ease-in-out';
+      setTimeout(function() {
+        spawnParticles();
+        // Dissolve phase
+        loot3dCube.style.transition = 'transform 0.6s, opacity 0.6s';
+        loot3dCube.style.transform = 'scale(0) rotateY(720deg)';
+        loot3dCube.style.opacity = '0';
+        setTimeout(function() {
+          revealItem();
+        }, 600);
+      }, 500);
+    }
+  }
+
+  function revealItem() {
+    var reduced = isReducedMotion();
+    var item = rollItem();
+
+    // Update stats
+    totalOpens++;
+    if (rarityCount[item.rarity] !== undefined) {
+      rarityCount[item.rarity]++;
+    } else {
+      rarityCount[item.rarity] = 1;
+    }
+
+    // Display result
+    document.getElementById('loot-item-icon').textContent = item.icon;
+    document.getElementById('loot-item-name').textContent = item.name;
+    var rarityEl = document.getElementById('loot-item-rarity');
+    rarityEl.textContent = item.rarity;
+    rarityEl.style.color = item.color;
+    lootResult.classList.add('visible');
+
+    // Accessibility: update aria and announce
+    updateSceneAria('result', item);
+    announceToScreenReader(
+      'Loot result: ' + item.name + ', ' + item.rarity + ' rarity'
+    );
+
+    // Enhanced event payload
+    var dropRate = getDropRateForItem(item);
+    var countSnapshot = {};
+    for (var k in rarityCount) { countSnapshot[k] = rarityCount[k]; }
+    emit('loot-opened', {
+      icon: item.icon,
+      name: item.name,
+      rarity: item.rarity,
+      dropRate: Math.round(dropRate * 100) / 100,
+      totalOpens: totalOpens,
+      rarityCount: countSnapshot
+    });
+
+    // Reset cube after delay
+    var resetDelay = reduced ? 1500 : 2500;
+    setTimeout(function() {
+      if (!reduced) {
+        loot3dCube.style.transition = 'none';
+        loot3dCube.style.transform = '';
+        loot3dCube.style.opacity = '';
+        loot3dCube.style.animation = 'lootRotate 8s linear infinite';
+      }
+      lootOpen = false;
+      updateSceneAria('ready');
+    }, resetDelay);
+  }
+
+  /* ─── Event binding ─── */
+  if (loot3dScene) {
+    loot3dScene.addEventListener('click', function() {
+      if (control === 'preview') {
+        // Toggle odds overlay
+        if (lootOddsOverlay.classList.contains('visible')) {
+          hideOddsOverlay();
+        } else {
+          showOddsOverlay();
+        }
+        return;
+      }
+      openLootBox();
+    });
+
+    // Keyboard support (Enter/Space activates button)
+    loot3dScene.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        loot3dScene.click();
+      }
+    });
+  }
+
+  // Dismiss odds overlay on click outside panel
+  if (lootOddsBackdrop) {
+    lootOddsBackdrop.addEventListener('click', function() {
+      hideOddsOverlay();
+    });
+  }
+
+  // Dismiss odds overlay on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && lootOddsOverlay.classList.contains('visible')) {
+      hideOddsOverlay();
+    }
+  });
+
+  /* ─── Initialize ─── */
+  recalcWeightsFromTable();
   applyControl();
   reportSize();
-  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(reportSize).observe(root);
+  }
 })();
 </script>
 </body>
