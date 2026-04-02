@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FERROS Asset Ledger</title>
+</head>
+<body>
+<!--
+╔═══════════════════════════════════════════════════════════════════╗
+║                    FERROS ASSET LEDGER v1.0                      ║
+║                    Phase 1: HTML Prototypes                      ║
+║                    ADR-007: Single File System                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+ASSEMBLED ARTIFACTS (single-file pages):
+  algo-trading-arena.html     [2658 lines]  The Battle Arena
+  personal-profile.html       [3290 lines]  Profile & Progression
+  home-hud-dashboard.html     [1190 lines]  HUD Dashboard
+  agent-command-center.html   [1760 lines]  Agent Management
+  ferros-showcase.html        [2242 lines]  Landing/Showcase
+  deployment-roadmap.html     [1109 lines]  Deployment Planning
+  schedule-ledger.html        [801  lines]  Schedule (different design system)
+
+SHARED FOUNDATION:
+  _tokens.css                 Canonical design tokens (dark theme, 6 pages)
+  _embed.js                   Parent-side iframe auto-init helper
+
+ASSET MODULES:
+  Path                        Source    Description
+  ─────────────────────────── ──────── ────────────────────────────────
+  cards/trading-card.html     arena    Stock trading card with rarity system
+  cards/hand-fan.html         arena    Player hand with fan layout
+  cards/deck-builder.html     arena    Collection + deck drag-drop
+  arena/game-board.html       arena    3-lane trading game board
+  arena/pvp-arena.html        arena    PvP arena with health bars
+  games/stock-snake.html      arena    Playable Stock Snake canvas game
+  games/scratcher.html        arena    Scratcher ticket canvas
+  games/idle-town.html        arena    Idle town builder
+  creatures/creature-room.html arena   Genesis Lab Tamagotchi
+  loot/loot-box-3d.html       arena    3D CSS rotating loot box
+  store/store-grid.html       arena    Filterable cosmetics store
+  profile/profile-card.html   arena    User profile display
+  profile/ticket-gallery.html arena    NFT sealed trade tickets
+  hero/hero-infographic.html  arena    3-panel hero infographic
+  hero/hero-card-fan.html     arena    Playing card navigation fan
+  ai/ai-float-panel.html      arena    Floating AI assistant
+
+  Status: [x] = extracted, [ ] = planned
+  [x] cards/trading-card.html
+  [x] loot/loot-box-3d.html
+  [x] games/stock-snake.html
+  [ ] cards/hand-fan.html
+  [ ] cards/deck-builder.html
+  [ ] arena/game-board.html
+  [ ] arena/pvp-arena.html
+  [ ] games/scratcher.html
+  [ ] games/idle-town.html
+  [ ] creatures/creature-room.html
+  [ ] store/store-grid.html
+  [ ] profile/profile-card.html
+  [ ] profile/ticket-gallery.html
+  [ ] hero/hero-infographic.html
+  [ ] hero/hero-card-fan.html
+  [ ] ai/ai-float-panel.html
+
+CONTROL LEVELS:
+  DEMO    — Locked animated showcase, no user interaction
+  PREVIEW — Hover/tooltip interaction only, no state mutation
+  PLAY    — Full user control, drag-drop, buttons, state changes
+
+COMMUNICATION PROTOCOL (postMessage):
+  Parent → Asset:  {type:'ferros:init',   config:{control, data, theme}}
+  Parent → Asset:  {type:'ferros:update', payload:{...}}
+  Asset  → Parent: {type:'ferros:event',  asset, event, payload}
+  Asset  → Parent: {type:'ferros:resize', asset, width, height}
+
+DESIGN SYSTEM:
+  Theme:    Dark (--bg-base: #0a0c10)
+  Rarity:   common(gray) > uncommon(green) > rare(blue) > epic(purple) >
+            legendary(amber) > mythic(pink)
+  Shimmer:  ticketShimmer — conic-gradient rotation (holographic)
+  Art:      Emoji-first, zero external dependencies
+  Protocol: Works on file://, no CDN, no fetch, vanilla JS only
+
+CASCADING ASSET HIERARCHY:
+  hero-infographic.html
+    └─ game-board.html [DEMO]     ← mini battle showcase
+    └─ loot-box-3d.html [DEMO]    ← spinning loot teaser
+  play-modes (arena tab)
+    └─ game-board.html [PLAY]     ← same asset, full control
+  personal-profile.html
+    └─ profile-card.html [PLAY]   ← reusable across pages
+    └─ trading-card.html [PREVIEW] ← stock holdings display
+-->
+</body>
+</html>

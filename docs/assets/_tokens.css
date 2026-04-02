@@ -1,0 +1,59 @@
+/*
+ * FERROS Design Tokens v1.0
+ * Canonical source — superset of all 6 dark-theme pages
+ * Copy this block into each asset's <style> tag
+ *
+ * Pages using this token set:
+ *   algo-trading-arena.html, personal-profile.html,
+ *   home-hud-dashboard.html, agent-command-center.html,
+ *   ferros-showcase.html, deployment-roadmap.html
+ *
+ * NOT used by: schedule-ledger.html (different design system)
+ */
+:root {
+  /* === Backgrounds === */
+  --bg-base:        #0a0c10;
+  --bg-panel:       #111520;
+  --bg-card:        #161b28;
+  --bg-card-alt:    #1a2035;
+  --bg-highlight:   #1e2840;
+
+  /* === Borders === */
+  --border-dim:     #1e2a3a;
+  --border-accent:  #2a3f5f;
+  --border-bright:  #3a5a8f;
+
+  /* === Text === */
+  --text-primary:   #e8edf5;
+  --text-secondary: #8fa0b8;
+  --text-dim:       #5a6a80;
+  --text-code:      #7eb8e8;
+
+  /* === Accents === */
+  --accent-blue:    #4a90d9;
+  --accent-cyan:    #2dd4bf;
+  --accent-green:   #34d399;
+  --accent-amber:   #f59e0b;
+  --accent-red:     #f87171;
+  --accent-purple:  #a78bfa;
+  --accent-pink:    #f472b6;
+  --accent-orange:  #fb923c;
+
+  /* === Gradients === */
+  --gradient-header: linear-gradient(135deg, #0d1b35 0%, #0a1525 50%, #091020 100%);
+  --gradient-card:   linear-gradient(145deg, #161b28 0%, #111520 100%);
+  --gradient-accent: linear-gradient(90deg, #4a90d9 0%, #2dd4bf 100%);
+
+  /* === Shadows === */
+  --shadow-panel:  0 4px 24px rgba(0, 0, 0, 0.6);
+  --shadow-card:   0 2px 12px rgba(0, 0, 0, 0.4);
+  --shadow-glow:   0 0 12px rgba(74,144,217,.35);
+
+  /* === Radii === */
+  --radius-panel:  12px;
+  --radius-card:   8px;
+  --radius-badge:  4px;
+
+  /* === Typography === */
+  --font-mono: 'Courier New', Courier, monospace;
+}

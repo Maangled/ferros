@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="stock-snake" data-version="1.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Asset: Stock Snake</title>
+<!--
+  ╔══════════════════════════════════════════════════╗
+  ║  FERROS ASSET: stock-snake                       ║
+  ║  Control Levels: DEMO | PLAY                     ║
+  ║  Dependencies: none                              ║
+  ║  Arrow keys to play. Eat stocks, grow portfolio. ║
+  ╚══════════════════════════════════════════════════╝
+-->
+<style>
+/* === FERROS DESIGN TOKENS === */
+:root {
+  --bg-base: #0a0c10; --bg-panel: #111520; --bg-card: #161b28;
+  --border-dim: #1e2a3a; --border-accent: #2a3f5f;
+  --text-primary: #e8edf5; --text-secondary: #8fa0b8; --text-dim: #5a6a80;
+  --accent-cyan: #2dd4bf; --accent-green: #34d399; --accent-amber: #f59e0b;
+  --accent-red: #f87171;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+
+.snake-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 1rem; }
+.snake-header { display: flex; justify-content: space-between; width: 480px; max-width: 100%; font-family: var(--font-mono); font-size: 0.78rem; }
+.snake-header .label { color: var(--accent-green); }
+.snake-header .score { color: var(--accent-amber); }
+.snake-header .status { color: var(--text-dim); }
+canvas { background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: 8px; display: block; max-width: 100%; }
+.snake-hint { font-size: 0.72rem; color: var(--text-dim); margin-top: 6px; }
+
+/* DEMO mode overlay */
+.demo-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,12,16,0.5); border-radius: 8px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-cyan); letter-spacing: 0.1em; pointer-events: none; }
+[data-control="play"] .demo-overlay,
+[data-control="preview"] .demo-overlay { display: none; }
+</style>
+</head>
+<body>
+<div id="ferros-asset-root" data-control="demo">
+  <div class="snake-wrap">
+    <div class="snake-header">
+      <span class="label">🐍 STOCK SNAKE</span>
+      <span class="score" id="snake-score">Score: $0.000</span>
+      <span class="status" id="snake-status">Arrow keys to start</span>
+    </div>
+    <div style="position:relative;">
+      <canvas id="snake-canvas" width="480" height="320"></canvas>
+      <div class="demo-overlay">DEMO MODE</div>
+    </div>
+    <div class="snake-hint">Eat stocks to grow your micro-portfolio</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+  var root = document.getElementById('ferros-asset-root');
+  var isEmbedded = window.parent !== window;
+  var params = new URLSearchParams(window.location.search);
+  var control = params.get('control') || 'demo';
+
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'ferros:init') {
+      control = e.data.config.control || control;
+      applyControl();
+    }
+  });
+
+  function applyControl() { root.dataset.control = control; }
+  function emit(event, payload) {
+    if (isEmbedded) window.parent.postMessage({ type: 'ferros:event', asset: 'stock-snake', event: event, payload: payload }, '*');
+  }
+  function reportSize() {
+    if (isEmbedded) window.parent.postMessage({ type: 'ferros:resize', asset: 'stock-snake', width: root.scrollWidth, height: root.scrollHeight }, '*');
+  }
+
+  // === SNAKE GAME ===
+  var cvs = document.getElementById('snake-canvas');
+  var ctx = cvs.getContext('2d');
+  var W = cvs.width, H = cvs.height;
+  var CELL = 16;
+  var cols = Math.floor(W / CELL), rows = Math.floor(H / CELL);
+  var snake = [{x: 5, y: 5}];
+  var dir = {x: 0, y: 0};
+  var food = spawnFood();
+  var score = 0;
+  var running = false;
+  var gameOver = false;
+  var scoreEl = document.getElementById('snake-score');
+  var statusEl = document.getElementById('snake-status');
+  var stocks = ['AAPL','NVDA','MSFT','TSLA','AMZN','GOOG','META'];
+  var currentStock = stocks[0];
+  var accum = {};
+  var interval;
+
+  // Demo AI state
+  var demoInterval;
+
+  function spawnFood() {
+    currentStock = stocks[Math.floor(Math.random() * stocks.length)];
+    return { x: Math.floor(Math.random() * cols), y: Math.floor(Math.random() * rows) };
+  }
+
+  function draw() {
+    ctx.fillStyle = '#161b28';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(30,42,58,0.5)';
+    for (var i = 0; i <= cols; i++) { ctx.beginPath(); ctx.moveTo(i*CELL,0); ctx.lineTo(i*CELL,H); ctx.stroke(); }
+    for (var j = 0; j <= rows; j++) { ctx.beginPath(); ctx.moveTo(0,j*CELL); ctx.lineTo(W,j*CELL); ctx.stroke(); }
+    snake.forEach(function(s, idx) {
+      ctx.fillStyle = idx === 0 ? '#2dd4bf' : '#1a8a7a';
+      ctx.fillRect(s.x * CELL + 1, s.y * CELL + 1, CELL - 2, CELL - 2);
+    });
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🍎', food.x * CELL + CELL/2, food.y * CELL + CELL/2);
+    ctx.font = '8px monospace';
+    ctx.fillStyle = '#5a6a80';
+    ctx.fillText(currentStock, food.x * CELL + CELL/2, food.y * CELL + CELL + 6);
+    if (gameOver) {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0,0,W,H);
+      ctx.font = '18px sans-serif';
+      ctx.fillStyle = '#f87171';
+      ctx.textAlign = 'center';
+      ctx.fillText('GAME OVER — Press any arrow to restart', W/2, H/2);
+    }
+  }
+
+  function update() {
+    if (!running || gameOver) return;
+    var head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+    if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows) { gameOver = true; statusEl.textContent = 'Game Over!'; return; }
+    for (var i = 0; i < snake.length; i++) {
+      if (snake[i].x === head.x && snake[i].y === head.y) { gameOver = true; statusEl.textContent = 'Game Over!'; return; }
+    }
+    snake.unshift(head);
+    if (head.x === food.x && head.y === food.y) {
+      score += 0.001;
+      accum[currentStock] = (accum[currentStock] || 0) + 0.001;
+      scoreEl.textContent = 'Score: $' + score.toFixed(3);
+      statusEl.textContent = '+$0.001 ' + currentStock;
+      emit('score', { score: score, stock: currentStock });
+      food = spawnFood();
+    } else {
+      snake.pop();
+    }
+  }
+
+  // Keyboard input (only in PLAY mode)
+  document.addEventListener('keydown', function(e) {
+    if (control !== 'play') return;
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.key) === -1) return;
+    e.preventDefault();
+    if (gameOver) {
+      snake = [{x: 5, y: 5}]; dir = {x:0,y:0}; score = 0; accum = {}; gameOver = false;
+      scoreEl.textContent = 'Score: $0.000'; statusEl.textContent = 'Playing...';
+    }
+    if (!running) {
+      running = true;
+      if (interval) clearInterval(interval);
+      interval = setInterval(function() { update(); draw(); }, 120);
+    }
+    if (e.key === 'ArrowUp' && dir.y !== 1) dir = {x:0,y:-1};
+    if (e.key === 'ArrowDown' && dir.y !== -1) dir = {x:0,y:1};
+    if (e.key === 'ArrowLeft' && dir.x !== 1) dir = {x:-1,y:0};
+    if (e.key === 'ArrowRight' && dir.x !== -1) dir = {x:1,y:0};
+  });
+
+  // Demo AI: simple snake that chases food
+  function startDemoAI() {
+    running = true;
+    dir = {x: 1, y: 0};
+    statusEl.textContent = 'AI Playing...';
+    if (interval) clearInterval(interval);
+    interval = setInterval(function() {
+      // Simple AI: move toward food
+      var head = snake[0];
+      var dx = food.x - head.x;
+      var dy = food.y - head.y;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        var newDir = {x: dx > 0 ? 1 : -1, y: 0};
+        if (newDir.x !== -dir.x) dir = newDir;
+        else dir = {x: 0, y: dy >= 0 ? 1 : -1};
+      } else {
+        var newDir2 = {x: 0, y: dy > 0 ? 1 : -1};
+        if (newDir2.y !== -dir.y) dir = newDir2;
+        else dir = {x: dx >= 0 ? 1 : -1, y: 0};
+      }
+      update();
+      draw();
+      if (gameOver) {
+        snake = [{x: 5, y: 5}]; dir = {x:1,y:0}; score = 0; accum = {}; gameOver = false;
+        scoreEl.textContent = 'Score: $0.000'; statusEl.textContent = 'AI Playing...';
+        food = spawnFood();
+      }
+    }, 120);
+  }
+
+  // Initialize based on control level
+  function init() {
+    draw();
+    if (control === 'demo') {
+      startDemoAI();
+    }
+  }
+
+  applyControl();
+  init();
+  reportSize();
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(root);
+})();
+</script>
+</body>
+</html>
