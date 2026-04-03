@@ -1,0 +1,65 @@
+/* ferros-abilities v1.0.0
+ *
+ * Card ability animation keyframes and button styles.
+ * Union of all ability types across trading-card, hand-fan, and game-board.
+ *
+ * Consumers: trading-card, hand-fan, game-board
+ * See: ADR-008 (docs/adr/ADR-008-modular-rendering-system.md)
+ */
+
+/* === Ability keyframes === */
+@keyframes abilityGlow {
+  0%   { box-shadow: 0 0 0 0 var(--ability-glow-color, rgba(45,212,191,0.4)); }
+  50%  { box-shadow: 0 0 20px 6px var(--ability-glow-color, rgba(45,212,191,0.6)); }
+  100% { box-shadow: 0 0 0 0 var(--ability-glow-color, rgba(45,212,191,0)); }
+}
+
+@keyframes abilityBounce {
+  0%,100% { transform: translateY(0); }
+  25%     { transform: translateY(-8px); }
+  50%     { transform: translateY(0); }
+  75%     { transform: translateY(-4px); }
+}
+
+@keyframes abilityPulse {
+  0%,100% { transform: scale(1); }
+  50%     { transform: scale(1.05); border-color: var(--accent-amber); }
+}
+
+@keyframes abilityFade {
+  0%   { opacity: 1; }
+  30%  { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+
+/* Trigger classes */
+.ability-glow   { animation: abilityGlow 0.8s ease; }
+.ability-bounce { animation: abilityBounce 0.6s ease; }
+.ability-pulse  { animation: abilityPulse 0.7s ease; }
+.ability-fade   { animation: abilityFade 0.6s ease; }
+
+/* === Ability button base === */
+.tc-ability {
+  margin-top: 8px;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  z-index: 1;
+}
+.tc-ability:hover { filter: brightness(1.2); transform: scale(1.02); }
+
+/* Per-ability colors (union of all 9 ability types) */
+.tc-ability[data-ability="rally"]     { background: rgba(248,113,113,0.12); color: var(--accent-red);    border: 1px solid rgba(248,113,113,0.25); }
+.tc-ability[data-ability="barrier"]   { background: rgba(45,212,191,0.1);   color: var(--accent-cyan);   border: 1px solid rgba(45,212,191,0.25); }
+.tc-ability[data-ability="elusive"]   { background: rgba(167,139,250,0.1);  color: var(--accent-purple); border: 1px solid rgba(167,139,250,0.25); }
+.tc-ability[data-ability="overwhelm"] { background: rgba(245,158,11,0.12);  color: var(--accent-amber);  border: 1px solid rgba(245,158,11,0.25); }
+.tc-ability[data-ability="lifesteal"] { background: rgba(52,211,153,0.1);   color: var(--accent-green);  border: 1px solid rgba(52,211,153,0.25); }
+.tc-ability[data-ability="attune"]    { background: rgba(74,144,217,0.1);   color: var(--accent-blue);   border: 1px solid rgba(74,144,217,0.25); }
+.tc-ability[data-ability="heal"]      { background: rgba(52,211,153,0.1);   color: var(--accent-green);  border: 1px solid rgba(52,211,153,0.25); }
+.tc-ability[data-ability="snipe"]     { background: rgba(248,113,113,0.12); color: var(--accent-red);    border: 1px solid rgba(248,113,113,0.25); }
+.tc-ability[data-ability="burn"]      { background: rgba(251,146,60,0.12);  color: var(--accent-orange); border: 1px solid rgba(251,146,60,0.25); }
+.tc-ability:not([data-ability])       { background: rgba(167,139,250,0.08); color: var(--accent-purple); border: 1px solid rgba(167,139,250,0.2); }

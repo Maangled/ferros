@@ -7,9 +7,10 @@
 <body>
 <!--
 ╔═══════════════════════════════════════════════════════════════════╗
-║                    FERROS ASSET LEDGER v2.0                      ║
+║                    FERROS ASSET LEDGER v3.0                      ║
 ║                    Phase 1: HTML Prototypes                      ║
 ║                    ADR-007: Single File System                   ║
+║                    ADR-008: Modular Rendering System             ║
 ╚═══════════════════════════════════════════════════════════════════╝
 
 ASSEMBLED ARTIFACTS (single-file pages):
@@ -22,32 +23,60 @@ ASSEMBLED ARTIFACTS (single-file pages):
   schedule-ledger.html        [801  lines]  Schedule (different design system)
 
 SHARED FOUNDATION:
-  _tokens.css                 Canonical design tokens (dark theme, 6 pages)
+  _tokens.css                 Canonical design tokens v2.0.0 (40 vars, dark theme)
   _embed.js                   Parent-side iframe helper + event router v2.0
   _ledger.html                This file — manifest + schemas + event catalog
+  _build/inline.js            Build script — refreshes @inline blocks → dist/
 
 ═══════════════════════════════════════════════════════════════════
- ASSET MODULES (16 total — 12,761 lines)
+ MODULE REGISTRY (ADR-008 — three-layer system)
 ═══════════════════════════════════════════════════════════════════
 
-  Path                         Lines   Source    Description
-  ──────────────────────────── ─────── ──────── ──────────────────────────────
-  cards/trading-card.html       562    arena    Stock cards with rarity + 3D flip
-  cards/hand-fan.html           675    arena    Player hand with dynamic fan layout
-  cards/deck-builder.html       654    arena    Collection + deck drag-drop builder
-  arena/game-board.html         942    arena    3-lane trading game board
-  arena/pvp-arena.html         1300    arena    PvP arena with health bars + rounds
-  games/stock-snake.html        765    arena    Playable Stock Snake canvas game
-  games/scratcher.html          793    arena    Scratcher ticket canvas
-  games/idle-town.html          823    arena    Idle town builder
-  creatures/creature-room.html  773    arena    Genesis Lab Tamagotchi creature
-  loot/loot-box-3d.html         701    arena    3D CSS rotating loot box
-  store/store-grid.html         959    arena    Filterable cosmetics store
-  profile/profile-card.html     820    arena    User profile display + editing
-  profile/ticket-gallery.html  1072    arena    NFT sealed trade tickets + modal
-  hero/hero-infographic.html    567    arena    3-panel hero infographic
-  hero/hero-card-fan.html       532    arena    Playing card navigation fan
-  ai/ai-float-panel.html        823    arena    Floating AI assistant + chat
+  Layer 1: _core/ — required by ALL assets
+  ─────────────────────────────────────────────────────────────────
+  _core/_runtime.js       117 lines  v1.0.0  Messaging IIFE (emit, control, resize, a11y)
+  _core/_a11y.css          33 lines  v1.0.0  .sr-only, :focus-visible, reduced-motion reset
+  _core/_stage.css         68 lines  v1.0.0  Perspective grid floor, fog, DOF (opt-in)
+
+  Layer 2: _lib/ — shared utilities (opt-in per asset)
+  ─────────────────────────────────────────────────────────────────
+  _lib/_shimmer.css        21 lines  v1.0.0  ticketShimmer keyframe (7 consumers)
+  _lib/_abilities.css      65 lines  v1.0.0  4 ability keyframes, 9 button colors
+  _lib/_rarity.css         34 lines  v1.0.0  Badge + glow classes
+  _lib/_rarity.js          55 lines  v1.0.0  RARITY_WEIGHTS/COLORS/ORDER, rollRarity()
+  _lib/_particles.js       54 lines  v1.0.0  spawnParticles(container, opts)
+  _lib/_sector-avatars.js  21 lines  v1.0.0  Canonical 11-sector emoji map
+  _lib/_escape-html.js     13 lines  v1.0.0  esc() XSS helper
+
+  Inline syntax:
+    CSS/JS context:  /* @inline <path> */
+    HTML context:    <!-- @inline <path> -->
+
+  Build: node docs/assets/_build/inline.js          → dist/
+         node docs/assets/_build/inline.js --check   → validate only
+
+═══════════════════════════════════════════════════════════════════
+ ASSET MODULES (16 total — 15,044 lines, all v3.0.0+)
+═══════════════════════════════════════════════════════════════════
+
+  Path                         Lines   Version  Modules  Description
+  ──────────────────────────── ─────── ──────── ──────── ──────────────────────────────
+  cards/trading-card.html       791    v3.0.0   5       Stock cards with rarity + 3D flip
+  cards/hand-fan.html           706    v3.0.0   5       Player hand with dynamic fan layout
+  cards/deck-builder.html       819    v3.0.0   5       Collection + deck drag-drop builder
+  arena/game-board.html        1146    v3.0.0   6       3-lane trading game board
+  arena/pvp-arena.html         1429    v3.0.0   3       PvP arena with health bars + rounds
+  games/stock-snake.html        788    v3.0.0   3       Playable Stock Snake canvas game
+  games/scratcher.html          835    v3.0.0   4       Scratcher ticket canvas
+  games/idle-town.html          858    v3.0.0   3       Idle town builder
+  creatures/creature-room.html  857    v3.0.0   3       Genesis Lab Tamagotchi creature
+  loot/loot-box-3d.html        1598    v5.2.0   6       3D CSS loot chest (dark iron + DOF + mouse-follow)
+  store/store-grid.html        1050    v3.0.0   4       Filterable cosmetics store
+  profile/profile-card.html     897    v3.0.0   4       User profile display + editing
+  profile/ticket-gallery.html  1150    v3.0.0   5       NFT sealed trade tickets + modal
+  hero/hero-infographic.html    638    v3.0.0   3       3-panel hero infographic
+  hero/hero-card-fan.html       595    v3.0.0   3       Playing card navigation fan
+  ai/ai-float-panel.html        887    v3.0.0   3       Floating AI assistant + chat
 
   Status: [x] = extracted + production-wired
   [x] cards/trading-card.html

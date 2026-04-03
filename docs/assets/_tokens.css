@@ -1,14 +1,14 @@
-/*
- * FERROS Design Tokens v1.0
- * Canonical source — superset of all 6 dark-theme pages
- * Copy this block into each asset's <style> tag
+/* ferros-tokens v2.0.0
  *
- * Pages using this token set:
- *   algo-trading-arena.html, personal-profile.html,
- *   home-hud-dashboard.html, agent-command-center.html,
- *   ferros-showcase.html, deployment-roadmap.html
+ * FERROS Design Tokens — single canonical source
+ * All 16 render assets inline this file via @inline marker.
+ * Assets may override any token by redefining in their own :root block.
  *
+ * Consumers: all asset HTML files under docs/assets/
  * NOT used by: schedule-ledger.html (different design system)
+ *
+ * v2.0.0 — absorb rarity + stage tokens from asset copies (ADR-008)
+ * v1.0.0 — initial token set (6 dark-theme pages)
  */
 :root {
   /* === Backgrounds === */
@@ -38,6 +38,19 @@
   --accent-purple:  #a78bfa;
   --accent-pink:    #f472b6;
   --accent-orange:  #fb923c;
+
+  /* === Rarity System === */
+  --rarity-common:    #5a6a80;
+  --rarity-uncommon:  #34d399;
+  --rarity-rare:      #4a90d9;
+  --rarity-epic:      #a78bfa;
+  --rarity-legendary: #f59e0b;
+  --rarity-mythic:    #f472b6;
+
+  /* === Stage / 3D Scene === */
+  --stage-grid-major: rgba(74,144,217, 0.10);
+  --stage-grid-minor: rgba(74,144,217, 0.03);
+  --stage-fog-color:  var(--bg-base);
 
   /* === Gradients === */
   --gradient-header: linear-gradient(135deg, #0d1b35 0%, #0a1525 50%, #091020 100%);

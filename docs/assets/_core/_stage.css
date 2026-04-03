@@ -1,0 +1,68 @@
+/* ferros-stage v1.0.0
+ *
+ * Perspective grid floor and horizon fog for 3D-ish asset scenes.
+ * Apply .ferros-stage to the scene's platform container.
+ * Grid renders as ::before, fog as ::after.
+ *
+ * Uses token variables from _tokens.css:
+ *   --stage-grid-major, --stage-grid-minor, --stage-fog-color, --bg-base
+ *
+ * See: ADR-008 (docs/adr/ADR-008-modular-rendering-system.md)
+ */
+
+.ferros-stage {
+  position: relative;
+  overflow: visible;
+}
+
+/* Perspective grid floor */
+.ferros-stage::before {
+  content: '';
+  position: absolute;
+  left: -80px; right: -80px;
+  bottom: 20px;
+  height: 500%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg,
+      var(--stage-grid-major, rgba(74,144,217,0.10)) 0px, transparent 1px, transparent 80px),
+    repeating-linear-gradient(0deg,
+      var(--stage-grid-major, rgba(74,144,217,0.10)) 0px, transparent 1px, transparent 80px),
+    repeating-linear-gradient(90deg,
+      var(--stage-grid-minor, rgba(74,144,217,0.03)) 0px, transparent 1px, transparent 20px),
+    repeating-linear-gradient(0deg,
+      var(--stage-grid-minor, rgba(74,144,217,0.03)) 0px, transparent 1px, transparent 20px);
+  transform: perspective(400px) rotateX(60deg);
+  transform-origin: center bottom;
+  mask-image: linear-gradient(to top,
+    rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 25%, transparent 55%);
+  -webkit-mask-image: linear-gradient(to top,
+    rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 25%, transparent 55%);
+}
+
+/* Horizon fog — fades bottom edge into background */
+.ferros-stage::after {
+  content: '';
+  position: absolute;
+  left: -80px; right: -80px;
+  bottom: 0;
+  height: 40px;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to top,
+    var(--stage-fog-color, var(--bg-base, #0a0c10)) 0%,
+    transparent 100%);
+}
+
+/* Optional DOF: blur the stage floor when asset triggers focus mode */
+.ferros-dof-active .ferros-stage::before {
+  filter: blur(2px);
+  transition: filter 0.5s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ferros-dof-active .ferros-stage::before {
+    transition: none;
+  }
+}

@@ -15,19 +15,38 @@
 -->
 <style>
 /* @inline _tokens.css */
+/* ferros-tokens v2.0.0
+ *
+ * FERROS Design Tokens — single canonical source
+ * All 16 render assets inline this file via @inline marker.
+ * Assets may override any token by redefining in their own :root block.
+ *
+ * Consumers: all asset HTML files under docs/assets/
+ * NOT used by: schedule-ledger.html (different design system)
+ *
+ * v2.0.0 — absorb rarity + stage tokens from asset copies (ADR-008)
+ * v1.0.0 — initial token set (6 dark-theme pages)
+ */
 :root {
+  /* === Backgrounds === */
   --bg-base:        #0a0c10;
   --bg-panel:       #111520;
   --bg-card:        #161b28;
   --bg-card-alt:    #1a2035;
   --bg-highlight:   #1e2840;
+
+  /* === Borders === */
   --border-dim:     #1e2a3a;
   --border-accent:  #2a3f5f;
   --border-bright:  #3a5a8f;
+
+  /* === Text === */
   --text-primary:   #e8edf5;
   --text-secondary: #8fa0b8;
   --text-dim:       #5a6a80;
   --text-code:      #7eb8e8;
+
+  /* === Accents === */
   --accent-blue:    #4a90d9;
   --accent-cyan:    #2dd4bf;
   --accent-green:   #34d399;
@@ -36,28 +55,49 @@
   --accent-purple:  #a78bfa;
   --accent-pink:    #f472b6;
   --accent-orange:  #fb923c;
+
+  /* === Rarity System === */
   --rarity-common:    #5a6a80;
   --rarity-uncommon:  #34d399;
   --rarity-rare:      #4a90d9;
   --rarity-epic:      #a78bfa;
   --rarity-legendary: #f59e0b;
   --rarity-mythic:    #f472b6;
+
+  /* === Stage / 3D Scene === */
   --stage-grid-major: rgba(74,144,217, 0.10);
   --stage-grid-minor: rgba(74,144,217, 0.03);
   --stage-fog-color:  var(--bg-base);
+
+  /* === Gradients === */
   --gradient-header: linear-gradient(135deg, #0d1b35 0%, #0a1525 50%, #091020 100%);
   --gradient-card:   linear-gradient(145deg, #161b28 0%, #111520 100%);
   --gradient-accent: linear-gradient(90deg, #4a90d9 0%, #2dd4bf 100%);
+
+  /* === Shadows === */
   --shadow-panel:  0 4px 24px rgba(0, 0, 0, 0.6);
   --shadow-card:   0 2px 12px rgba(0, 0, 0, 0.4);
   --shadow-glow:   0 0 12px rgba(74,144,217,.35);
+
+  /* === Radii === */
   --radius-panel:  12px;
   --radius-card:   8px;
   --radius-badge:  4px;
+
+  /* === Typography === */
   --font-mono: 'Courier New', Courier, monospace;
 }
 
 /* @inline _core/_a11y.css */
+/* ferros-a11y v1.0.0
+ *
+ * Accessibility CSS primitives for all FERROS render assets.
+ * Provides: .sr-only, :focus-visible base, prefers-reduced-motion reset.
+ *
+ * See: ADR-008 (docs/adr/ADR-008-modular-rendering-system.md)
+ */
+
+/* Screen-reader-only text */
 .sr-only {
   position: absolute;
   width: 1px; height: 1px;
@@ -67,10 +107,14 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* Focus-visible baseline — assets can override with higher-specificity selectors */
 :focus-visible {
   outline: 2px solid var(--accent-cyan, #2dd4bf);
   outline-offset: 2px;
 }
+
+/* Reduced-motion: kill all animation globally, assets layer their own overrides on top */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -80,7 +124,27 @@
 }
 
 /* @inline _lib/_shimmer.css */
-@keyframes ticketShimmer { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+/* ferros-shimmer v1.0.0
+ *
+ * Conic shimmer keyframe used for card and ticket effects.
+ * Apply via animation: ticketShimmer 3s linear infinite;
+ * Typically used on a ::before pseudo-element with conic-gradient.
+ *
+ * Consumers: trading-card, hand-fan, deck-builder, game-board, scratcher, ticket-gallery
+ * See: ADR-008 (docs/adr/ADR-008-modular-rendering-system.md)
+ */
+
+@keyframes ticketShimmer {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes ticketShimmer {
+    from { transform: none; }
+    to   { transform: none; }
+  }
+}
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
@@ -598,64 +662,133 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 <script>
 /* @inline _core/_runtime.js */
+/* ferros-runtime v1.0.0
+ *
+ * Asset-side IIFE scaffold for all FERROS render assets.
+ * Provides messaging, control modes, reduced-motion, accessibility, resize.
+ *
+ * Contract:
+ *   - Assets set data-ferros-asset on <html> tag
+ *   - Assets provide #ferros-asset-root element
+ *   - Assets optionally define window.onFerrosInit(config) and window.onFerrosUpdate(payload)
+ *   - Assets optionally provide #ferros-sr-announce element for screen-reader announcements
+ *   - Runtime exposes window.ferrosRuntime namespace — assets NEVER redefine it
+ *   - Runtime OWNS root.dataset.control — assets read via CSS [data-control] selectors
+ *
+ * See: ADR-008 (docs/adr/ADR-008-modular-rendering-system.md)
+ */
 (function() {
   'use strict';
+
+  /* ═══ BOOTSTRAPPING ═══ */
   var ASSET_NAME = document.documentElement.dataset.ferrosAsset || 'unknown-asset';
   var root       = document.getElementById('ferros-asset-root');
   var isEmbedded = window.parent !== window;
   var params     = new URLSearchParams(window.location.search);
   var control    = params.get('control') || 'demo';
+
+  /* ═══ REDUCED MOTION ═══ */
   var mql = window.matchMedia('(prefers-reduced-motion: reduce)');
   function isReducedMotion() { return mql.matches; }
+
+  /* ═══ MESSAGING — OUTBOUND ═══ */
   function emit(event, payload) {
-    var msg = { type: 'ferros:event', asset: ASSET_NAME, event: event, payload: payload };
-    if (isEmbedded) window.parent.postMessage(msg, '*');
-    if (root) root.dispatchEvent(new CustomEvent('ferros:event', { detail: msg, bubbles: true }));
+    var msg = {
+      type: 'ferros:event',
+      asset: ASSET_NAME,
+      event: event,
+      payload: payload
+    };
+    if (isEmbedded) {
+      window.parent.postMessage(msg, '*');
+    }
+    if (root) {
+      root.dispatchEvent(new CustomEvent('ferros:event', {
+        detail: msg,
+        bubbles: true
+      }));
+    }
   }
+
   function reportSize() {
     if (!isEmbedded || !root) return;
     window.parent.postMessage({
-      type: 'ferros:resize', asset: ASSET_NAME,
-      width: root.scrollWidth, height: root.scrollHeight
+      type: 'ferros:resize',
+      asset: ASSET_NAME,
+      width: root.scrollWidth,
+      height: root.scrollHeight
     }, '*');
   }
+
+  /* ═══ MESSAGING — INBOUND ═══ */
   window.addEventListener('message', function(e) {
     if (!e.data || !e.data.type) return;
+
     if (e.data.type === 'ferros:init') {
       var config = e.data.config || {};
       if (config.control) control = config.control;
       applyControl();
-      if (typeof window.onFerrosInit === 'function') window.onFerrosInit(config);
+      if (typeof window.onFerrosInit === 'function') {
+        window.onFerrosInit(config);
+      }
     }
+
     if (e.data.type === 'ferros:update') {
+      /* Normalize: _embed.js wraps in e.data.payload, but some legacy
+         callers put data directly on e.data. Try .payload first. */
       var payload = e.data.payload || e.data;
-      if (payload.control) { control = payload.control; applyControl(); }
-      if (typeof window.onFerrosUpdate === 'function') window.onFerrosUpdate(payload);
+      if (payload.control) {
+        control = payload.control;
+        applyControl();
+      }
+      if (typeof window.onFerrosUpdate === 'function') {
+        window.onFerrosUpdate(payload);
+      }
     }
   });
-  function applyControl() { if (root) root.dataset.control = control; }
+
+  /* ═══ CONTROL MODES ═══ */
+  function applyControl() {
+    if (root) root.dataset.control = control;
+  }
+
+  /* ═══ ACCESSIBILITY ═══ */
   function announceToScreenReader(text) {
     var el = document.getElementById('ferros-sr-announce');
     if (!el) return;
     el.textContent = '';
-    void el.offsetWidth;
+    void el.offsetWidth; /* force reflow to re-trigger aria-live */
     el.textContent = text;
   }
+
+  /* ═══ AUTO-INIT ═══ */
   applyControl();
   reportSize();
   if (typeof ResizeObserver !== 'undefined' && root) {
     new ResizeObserver(function() { reportSize(); }).observe(root);
   }
+
+  /* ═══ EXPORTS ═══ */
   window.ferrosRuntime = {
-    root: root, isEmbedded: isEmbedded,
+    root: root,
+    isEmbedded: isEmbedded,
     control: function() { return control; },
-    emit: emit, reportSize: reportSize,
+    emit: emit,
+    reportSize: reportSize,
     isReducedMotion: isReducedMotion,
     announceToScreenReader: announceToScreenReader
   };
 })();
 
 /* @inline _lib/_escape-html.js */
+/* ferros-escape-html v1.0.0
+ *
+ * XSS-safe HTML escaping via DOM textContent trick.
+ *
+ * Consumers: trading-card, hand-fan, deck-builder, ticket-gallery
+ * See: ADR-008 (docs/adr/ADR-008-modular-rendering-system.md)
+ */
+
 function esc(str) {
   var div = document.createElement('div');
   div.textContent = str;

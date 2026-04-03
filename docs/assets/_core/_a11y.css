@@ -1,0 +1,33 @@
+/* ferros-a11y v1.0.0
+ *
+ * Accessibility CSS primitives for all FERROS render assets.
+ * Provides: .sr-only, :focus-visible base, prefers-reduced-motion reset.
+ *
+ * See: ADR-008 (docs/adr/ADR-008-modular-rendering-system.md)
+ */
+
+/* Screen-reader-only text */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus-visible baseline — assets can override with higher-specificity selectors */
+:focus-visible {
+  outline: 2px solid var(--accent-cyan, #2dd4bf);
+  outline-offset: 2px;
+}
+
+/* Reduced-motion: kill all animation globally, assets layer their own overrides on top */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

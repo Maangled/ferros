@@ -1,0 +1,21 @@
+/* ferros-shimmer v1.0.0
+ *
+ * Conic shimmer keyframe used for card and ticket effects.
+ * Apply via animation: ticketShimmer 3s linear infinite;
+ * Typically used on a ::before pseudo-element with conic-gradient.
+ *
+ * Consumers: trading-card, hand-fan, deck-builder, game-board, scratcher, ticket-gallery
+ * See: ADR-008 (docs/adr/ADR-008-modular-rendering-system.md)
+ */
+
+@keyframes ticketShimmer {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes ticketShimmer {
+    from { transform: none; }
+    to   { transform: none; }
+  }
+}
