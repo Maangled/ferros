@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "id": "loot-chest-assembly",
+      "kind": "project",
+      "name": "Loot Box Project",
+      "icon": "\u26cf",
+      "file": "assets/loot/loot-box-3d.json",
+      "dims": "manifest",
+      "role": "composition",
+      "viewer": "manifest",
+      "notes": "Project manifest that points Forge at the saved loot-box assembly render and its simple state presets."
+    }
+  ]
+}

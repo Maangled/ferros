@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Arena</title>
+<!--
+  ╔══════════════════════════════════════════════════╗
+  ║  THE ARENA — FERROS 3D Asset Renderer v2.0.0    ║
+  ║                                                  ║
+  ║  Loads any FERROS part geometry file via iframe   ║
+  ║  and controls it via postMessage. Works on both   ║
+  ║  file:// and http:// protocols.                  ║
+  ║                                                  ║
+  ║  Usage: arena.html?part=../loot/parts/hinge.html ║
+  ║                                                  ║
+  ║  Loosely inspired by Neal Stephenson's            ║
+  ║  Snow Crash (1992) and Ernest Cline's             ║
+  ║  Ready Player One (2011).                        ║
+  ╚══════════════════════════════════════════════════╝
+-->
+<link rel="stylesheet" href="../_tokens.css">
+<link rel="stylesheet" href="_a11y.css">
+<link rel="stylesheet" href="arena.css?v=2.1.0">
+</head>
+<body>
+
+<div class="arena">
+
+  <!-- Inspection tools (top-right corner, translucent) -->
+  <div class="arena-inspection-tools" aria-label="Inspection tools">
+    <div class="arena-tools-title">Inspect</div>
+    <div class="arena-tools-row">
+      <div class="arena-tool-group">
+        <span class="arena-tool-label arena-proj-label">PERSP</span>
+        <button class="arena-tool-button arena-proj-toggle" data-mode="perspective"
+                title="Toggle Isometric / Perspective" aria-label="Toggle projection mode">
+          <span class="arena-icon-persp">&#9674;</span>
+          <span class="arena-icon-iso">&#9632;</span>
+        </button>
+      </div>
+      <div class="arena-tool-group">
+        <span class="arena-tool-label arena-debug-label">NORMALS</span>
+        <button class="arena-tool-button arena-debug-toggle" data-enabled="false"
+                title="Toggle face normals debug overlay" aria-label="Toggle normals debug overlay">
+          <span class="arena-icon-debug">N</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Title (hidden in embedded mode) -->
+  <div class="arena-title">The Arena</div>
+
+  <!-- 3D Stage — iframe loads part file, overlay captures mouse -->
+  <div class="arena-scene">
+    <iframe id="arena-frame" title="Part Viewer"></iframe>
+    <div class="arena-overlay"></div>
+    <span class="arena-loading">select a part...</span>
+  </div>
+
+  <!-- Controls -->
+  <div class="arena-controls">
+    <button id="arena-reset">Reset</button>
+    <button id="arena-wireframe">Wireframe</button>
+  </div>
+
+  <!-- HUD -->
+  <div class="arena-hud" aria-live="polite"></div>
+
+  <span class="sr-only" aria-live="polite">
+    The Arena — FERROS 3D asset renderer. Click and drag to rotate. Scroll to zoom.
+    Use the inspection tools in the top-right corner to toggle projection and normals debug views.
+  </span>
+</div>
+
+<script src="arena.js?v=3.1.0"></script>
+</body>
+</html>

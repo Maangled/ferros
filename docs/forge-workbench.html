@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS FORGE — 3D Assembly Workbench</title>
+<link rel="stylesheet" href="assets/_tokens.css">
+<link rel="stylesheet" href="assets/_core/_a11y.css">
+<style>
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top, rgba(74,144,217,0.16), transparent 34%),
+    linear-gradient(180deg, #0d1119 0%, #090c12 100%);
+  color: var(--text-primary);
+}
+
+.forge-shell {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.forge-nav,
+.forge-panel,
+.forge-status {
+  backdrop-filter: blur(12px);
+}
+
+.forge-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, rgba(8, 10, 16, 0.96), rgba(8, 10, 16, 0.82));
+  border-bottom: 1px solid rgba(42, 63, 95, 0.45);
+}
+
+.forge-brand {
+  font-family: var(--font-mono);
+  font-size: 1.06rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  background: linear-gradient(90deg, #6ec1ff 0%, #2dd4bf 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.forge-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.forge-nav-spacer {
+  flex: 1;
+}
+
+.forge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-accent);
+  background: rgba(17, 21, 32, 0.7);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+.forge-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  box-shadow: 0 0 8px rgba(52,211,153,0.45);
+}
+
+.forge-panel {
+  position: absolute;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(58, 90, 143, 0.18);
+  border-radius: 20px;
+  background: rgba(14, 18, 28, 0.72);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0.88;
+  transition: opacity 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+.forge-panel:hover { opacity: 0.94; }
+
+.corner-tl { top: 76px; left: 16px; }
+.corner-tr { top: 76px; right: 16px; }
+.corner-bl { bottom: 56px; left: 16px; }
+.corner-br { bottom: 56px; right: 16px; }
+
+.corner-tl:not(.panel-collapsed) { bottom: 56px; width: 308px; }
+.corner-tr:not(.panel-collapsed) { bottom: 56px; width: 338px; }
+.corner-bl:not(.panel-collapsed) { max-height: 50vh; width: 308px; }
+.corner-br:not(.panel-collapsed) { max-height: 50vh; width: 338px; }
+
+.panel-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(58, 90, 143, 0.18);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  background: linear-gradient(90deg, rgba(74,144,217,0.12), transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-scroll {
+  flex: 1;
+  overflow: hidden;
+}
+
+.panel-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-accent);
+  border-radius: 999px;
+}
+
+.catalog-stack {
+  height: 100%;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.catalog-block {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid rgba(58, 90, 143, 0.14);
+  border-radius: 16px;
+  background: rgba(17, 21, 32, 0.52);
+  overflow: hidden;
+}
+
+.catalog-heading {
+  width: 100%;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.catalog-heading:hover {
+  background: rgba(30, 40, 64, 0.3);
+}
+
+.catalog-chevron {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  transition: transform 0.15s ease;
+}
+
+.catalog-block.collapsed .catalog-chevron {
+  transform: rotate(-90deg);
+}
+
+.catalog-items {
+  overflow-y: auto;
+  padding: 0 0 8px;
+}
+
+.catalog-block.collapsed .catalog-items {
+  display: none;
+}
+
+.asset-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.asset-item:hover {
+  background: rgba(30, 40, 64, 0.55);
+}
+
+.asset-item.active {
+  background: rgba(45,212,191,0.08);
+  border-left-color: var(--accent-cyan);
+}
+
+.asset-icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  font-size: 1.05rem;
+}
+
+.asset-item.active .asset-icon {
+  border-color: var(--accent-cyan);
+  background: rgba(45,212,191,0.08);
+}
+
+.asset-copy {
+  min-width: 0;
+}
+
+.asset-name {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.asset-subtitle,
+.asset-note,
+.inspector-copy,
+.inspector-list,
+.inspector-empty,
+.control-help,
+.launch-link {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1.55;
+}
+
+.asset-subtitle {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.asset-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-secondary);
+}
+
+.forge-viewport {
+  position: absolute;
+  inset: 0;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(74,144,217,0.14), transparent 28%),
+    linear-gradient(180deg, #0a0c10 0%, #06080d 100%);
+}
+
+.forge-viewport iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.viewport-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.viewport-empty.hidden {
+  display: none;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  opacity: 0.28;
+}
+
+.vp-hud {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.vp-hud-tl {
+  top: 84px;
+  left: 22px;
+}
+
+.vp-hud-tr {
+  top: 84px;
+  right: 22px;
+  text-align: right;
+}
+
+.inspector-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(42,63,95,0.45);
+}
+
+.inspector-label {
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.inspector-title {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.inspector-subtitle {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.inspector-copy {
+  color: var(--text-secondary);
+}
+
+.inspector-kv {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 8px 10px;
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.inspector-kv dt {
+  color: var(--text-dim);
+}
+
+.inspector-kv dd {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.inspector-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+}
+
+.inspector-empty {
+  color: var(--text-dim);
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.control-button,
+.launch-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-accent);
+  background: rgba(22, 27, 40, 0.92);
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.control-button:hover,
+.launch-link:hover {
+  border-color: var(--border-bright);
+  color: var(--text-primary);
+  background: rgba(30, 40, 64, 0.75);
+}
+
+.control-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.control-help {
+  margin-top: 10px;
+  color: var(--text-dim);
+}
+
+.panel-toggle {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(58, 90, 143, 0.24);
+  background: rgba(17, 21, 32, 0.68);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.panel-toggle:hover {
+  color: var(--text-primary);
+  border-color: rgba(74, 144, 217, 0.4);
+}
+
+.panel-toggle-icon {
+  transition: transform 0.15s ease;
+}
+
+.panel-collapsed .panel-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.forge-panel.panel-collapsed {
+  opacity: 0.22;
+  background: rgba(14, 18, 28, 0.18);
+  box-shadow: none;
+}
+
+.forge-panel.panel-collapsed:hover {
+  opacity: 0.5;
+}
+
+.panel-collapsed .panel-body-content {
+  display: none;
+}
+
+.panel-collapsed .panel-header {
+  border-bottom: none;
+}
+
+.floating-label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.forge-status {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 14px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border: 1px solid rgba(58, 90, 143, 0.18);
+  border-radius: 16px;
+  background: rgba(10, 12, 16, 0.72);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  overflow-x: auto;
+}
+
+.status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+}
+
+.status-separator {
+  width: 1px;
+  height: 16px;
+  background: var(--border-dim);
+}
+
+@media (max-width: 1100px) {
+  .corner-tl:not(.panel-collapsed),
+  .corner-bl:not(.panel-collapsed) {
+    width: 274px;
+  }
+
+  .corner-tr:not(.panel-collapsed),
+  .corner-br:not(.panel-collapsed) {
+    width: 304px;
+  }
+}
+
+@media (max-width: 760px) {
+  .forge-panel:not(.panel-collapsed) {
+    width: 248px;
+  }
+
+  .corner-tl, .corner-bl { left: 10px; }
+  .corner-tr, .corner-br { right: 10px; }
+
+  .forge-nav {
+    flex-wrap: wrap;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    height: auto;
+  }
+
+  .forge-status {
+    left: 10px;
+    right: 10px;
+  }
+}
+</style>
+</head>
+<body>
+<div class="forge-shell">
+  <nav class="forge-nav">
+    <span class="forge-brand">FERROS FORGE</span>
+    <span class="forge-subtitle">cards, decks, and animation review</span>
+    <span class="forge-nav-spacer"></span>
+    <span class="forge-pill"><span class="forge-pill-dot"></span><span id="asset-count">7 assets indexed</span></span>
+  </nav>
+
+  <aside class="forge-panel corner-tl" id="panel-bag">
+    <div class="panel-header">
+      <span class="panel-title-text">🎒 Bag</span>
+      <button class="panel-toggle" type="button" aria-label="Toggle bag panel">
+        <span class="panel-toggle-icon">&#8249;</span>
+      </button>
+    </div>
+    <div class="panel-scroll panel-body-content">
+      <div class="catalog-stack" id="catalog"></div>
+    </div>
+  </aside>
+
+  <main class="forge-viewport">
+    <div class="viewport-empty hidden" id="empty-state">
+      <span class="empty-icon">&#9881;</span>
+      <span>Select an asset to view</span>
+    </div>
+    <div class="vp-hud vp-hud-tl" id="hud-left">FERROS FORGE v0.4.0</div>
+    <div class="vp-hud vp-hud-tr" id="hud-right">--</div>
+    <iframe id="viewer-frame" title="FERROS Forge Viewer"></iframe>
+  </main>
+
+  <aside class="forge-panel corner-tr" id="panel-inspector">
+    <div class="panel-header">
+      <span class="panel-title-text">🔍 Inspector</span>
+      <button class="panel-toggle" type="button" aria-label="Toggle inspector panel">
+        <span class="panel-toggle-icon">&#8250;</span>
+      </button>
+    </div>
+    <div class="panel-scroll panel-body-content">
+      <section class="inspector-section">
+        <div class="inspector-label">Selection</div>
+        <div class="inspector-title" id="inspector-title">No selection</div>
+        <div class="inspector-subtitle" id="meta-type-subtitle">--</div>
+        <p class="inspector-copy" id="inspector-copy">Choose a part or project to inspect it in the viewer.</p>
+        <dl class="inspector-kv">
+          <dt>Role</dt>
+          <dd id="meta-role">--</dd>
+          <dt>Viewer</dt>
+          <dd id="meta-viewer">--</dd>
+        </dl>
+      </section>
+
+      <section class="inspector-section">
+        <div class="inspector-label">Assembly Notes</div>
+        <p class="inspector-copy" id="inspector-notes">No composition notes yet.</p>
+      </section>
+
+      <section class="inspector-section">
+        <div class="inspector-label">Composition</div>
+        <div id="component-list" class="inspector-empty">Select a project to see its assembled parts.</div>
+      </section>
+
+      <section class="inspector-section">
+        <div class="inspector-label">Animation Presets</div>
+        <div class="control-grid" id="control-grid">
+          <button class="control-button" type="button" disabled>No controls</button>
+        </div>
+        <div class="control-help" id="control-help">Project presets appear here when the selected asset exposes pose states.</div>
+      </section>
+
+      <section class="inspector-section">
+        <div class="inspector-label">Saved Render / Arena</div>
+        <a class="launch-link" id="arena-link" href="assets/_core/arena.html?part=../loot/parts/box-body.html" target="_blank" rel="noreferrer">Open current render target</a>
+        <div class="inspector-copy" style="margin-top:10px;">
+          <div id="viewer-manifest">manifest: --</div>
+          <div id="viewer-render">render: --</div>
+        </div>
+      </section>
+    </div>
+  </aside>
+
+  <aside class="forge-panel corner-bl panel-collapsed" id="panel-tools">
+    <div class="panel-header">
+      <span class="panel-title-text">🔧 Tools</span>
+      <button class="panel-toggle" type="button" aria-label="Toggle tools panel">
+        <span class="panel-toggle-icon">&#8249;</span>
+      </button>
+    </div>
+    <div class="panel-scroll panel-body-content">
+      <div style="padding: 16px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">
+        Tool palette coming soon. Left-hand access for quick tool switching.
+      </div>
+    </div>
+  </aside>
+
+  <aside class="forge-panel corner-br panel-collapsed" id="panel-assistant">
+    <div class="panel-header">
+      <span class="panel-title-text">💬 Assistant</span>
+      <button class="panel-toggle" type="button" aria-label="Toggle assistant panel">
+        <span class="panel-toggle-icon">&#8250;</span>
+      </button>
+    </div>
+    <div class="panel-scroll panel-body-content">
+      <div style="padding: 16px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">
+        AI assistant coming soon. Context-aware help and card suggestions.
+      </div>
+    </div>
+  </aside>
+
+  <div class="forge-status">
+    <span class="status-item"><span class="status-dot"></span> ready</span>
+    <span class="status-separator"></span>
+    <span class="status-item" id="status-selection">box body</span>
+    <span class="status-separator"></span>
+    <span class="status-item" id="status-viewer">viewer: arena</span>
+    <span class="status-separator"></span>
+    <span class="status-item" id="status-pose">pose: default</span>
+    <span class="status-separator"></span>
+    <span class="status-item" id="status-source">source: part index</span>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var PART_INDEX_PATH = 'assets/loot/parts/index.json';
+  var PROJECT_INDEX_PATH = 'assets/loot/projects/index.json';
+  var isFileProtocol = window.location.protocol === 'file:';
+  var PARTS = [];
+  var PROJECTS = [];
+
+  var FILE_FALLBACKS = {
+    partIndex: {
+      version: 1,
+      parts: [
+        { id: 'box-body', kind: 'part', name: 'Box Body', icon: '\uD83D\uDCE6', file: '../loot/parts/box-body.html', dims: '200x70x130', role: 'container', viewer: 'arena', notes: 'Primary shell with recessed interior and lip geometry.' },
+        { id: 'barrel-lid', kind: 'part', name: 'Barrel Vault Lid', icon: '\uD83D\uDEE1', file: '../loot/parts/barrel-lid.html', dims: '200xR65', role: 'lid', viewer: 'arena', notes: 'Barrel-vault lid profile sized to the chest body depth.' },
+        { id: 'edge-bracket', kind: 'part', name: 'Edge Bracket', icon: '\uD83D\uDD29', file: '../loot/parts/edge-bracket.html', dims: '10x70x5', role: 'structural', viewer: 'arena', notes: 'Corner reinforcement used on the body shell.' },
+        { id: 'lid-band', kind: 'part', name: 'Lid Band', icon: '\u26D3', file: '../loot/parts/lid-band.html', dims: '210x8x4', role: 'decorative', viewer: 'arena', notes: 'Curved strap that rides the lid arc.' },
+        { id: 'hinge', kind: 'part', name: 'Strap Hinge', icon: '\u2699', file: '../loot/parts/hinge.html', dims: '22x16x6', role: 'mechanism', viewer: 'arena', notes: 'Alternating knuckles, pin, and fasteners for the rear lid joint.' },
+        { id: 'lock-plate', kind: 'part', name: 'Lock Plate', icon: '\u25C8', file: '../loot/parts/lock-plate.html', dims: '36x46x8', role: 'mechanism', viewer: 'arena', notes: 'Escutcheon plate with raised bezel and front-facing keyhole.' }
+      ]
+    },
+    projectIndex: {
+      version: 1,
+      projects: [
+        {
+          id: 'loot-chest-assembly',
+          kind: 'project',
+          name: 'Loot Box Project',
+          icon: '\u26CF',
+          file: 'assets/loot/loot-box-3d.json',
+          dims: 'manifest',
+          role: 'composition',
+          viewer: 'manifest',
+          notes: 'Project manifest that points Forge at the saved loot-box assembly render and its simple state presets.'
+        }
+      ]
+    },
+    manifests: {
+      'assets/loot/loot-box-3d.json': {
+        $schema: './project.schema.json',
+        id: 'loot-box-assembly',
+        name: 'Loot Box Assembly',
+        kind: 'project',
+        role: 'composition',
+        dims: '200x114x130',
+        description: 'Project manifest for the baseline loot chest assembly used by Forge and game arenas.',
+        notes: 'This file defines the project hierarchy, saved render target, and simple state presets. The assembled 3D chest lives in a separate render asset.',
+        defaultState: 'Open',
+        renderFile: 'projects/loot-box-assembly.html?control=demo',
+        standaloneRenderFile: 'projects/loot-box-assembly.html',
+        tags: ['loot', 'container', 'assembly', 'project'],
+        components: [
+          { id: 'box-body', name: 'Box Body', file: 'parts/box-body.html', role: 'container', slot: 'base-shell' },
+          { id: 'barrel-lid', name: 'Barrel Vault Lid', file: 'parts/barrel-lid.html', role: 'lid', slot: 'top-shell' },
+          { id: 'edge-bracket', name: 'Edge Bracket', file: 'parts/edge-bracket.html', role: 'structural', slot: 'corner-reinforcement', instances: 4 },
+          { id: 'lid-band', name: 'Lid Band', file: 'parts/lid-band.html', role: 'decorative', slot: 'lid-strapping', instances: 2 },
+          { id: 'hinge', name: 'Strap Hinge', file: 'parts/hinge.html', role: 'mechanism', slot: 'rear-joint', instances: 2 },
+          { id: 'lock-plate', name: 'Lock Plate', file: 'parts/lock-plate.html', role: 'mechanism', slot: 'front-lock' }
+        ],
+        rules: [
+          'The body owns the occupied volume and the lid hinges against the rear edge.',
+          'Decorative and mechanism parts attach to named slots rather than floating freely.',
+          'Animation presets stay simple for now so game arenas can choose their own presentation logic later.'
+        ],
+        states: [
+          { label: 'Closed', payload: { control: 'demo', pose: 'closed' } },
+          { label: 'Odds', payload: { control: 'preview', pose: 'preview' } },
+          { label: 'Open', payload: { control: 'demo', pose: 'open' } },
+          { label: 'Common', payload: { control: 'demo', pose: 'revealed', rarity: 'common' } },
+          { label: 'Epic', payload: { control: 'demo', pose: 'revealed', rarity: 'epic' } },
+          { label: 'Legendary', payload: { control: 'demo', pose: 'revealed', rarity: 'legendary' } }
+        ]
+      }
+    }
+  };
+
+  var ARENA_BASE = 'assets/_core/arena.html?part=';
+  var ASSETS = PARTS.concat(PROJECTS);
+
+  var frame = document.getElementById('viewer-frame');
+  var emptyState = document.getElementById('empty-state');
+  var catalog = document.getElementById('catalog');
+  var hudRight = document.getElementById('hud-right');
+  var statusSelection = document.getElementById('status-selection');
+  var statusViewer = document.getElementById('status-viewer');
+  var statusPose = document.getElementById('status-pose');
+  var assetCount = document.getElementById('asset-count');
+  var inspectorTitle = document.getElementById('inspector-title');
+  var inspectorCopy = document.getElementById('inspector-copy');
+  var inspectorNotes = document.getElementById('inspector-notes');
+  var metaTypeSubtitle = document.getElementById('meta-type-subtitle');
+  var metaRole = document.getElementById('meta-role');
+  var metaViewer = document.getElementById('meta-viewer');
+  var componentList = document.getElementById('component-list');
+  var controlGrid = document.getElementById('control-grid');
+  var controlHelp = document.getElementById('control-help');
+  var arenaLink = document.getElementById('arena-link');
+  var viewerManifest = document.getElementById('viewer-manifest');
+  var viewerRender = document.getElementById('viewer-render');
+  var statusSource = document.getElementById('status-source');
+
+  var activeAsset = null;
+  var pendingPayload = null;
+  var pendingPoseLabel = 'default';
+
+  assetCount.textContent = PARTS.length + ' assets indexed';
+
+  function cloneData(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function loadJsonResource(path, fallbackValue) {
+    if (isFileProtocol && fallbackValue) {
+      return Promise.resolve(cloneData(fallbackValue));
+    }
+
+    return fetch(path).then(function(response) {
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+      return response.json();
+    });
+  }
+
+  function refreshAssets() {
+    ASSETS = PARTS.concat(PROJECTS);
+    assetCount.textContent = ASSETS.length + ' assets indexed';
+  }
+
+  function buildGroup(title, assets) {
+    var block = document.createElement('section');
+    block.className = 'catalog-block';
+    block.dataset.group = title.toLowerCase();
+
+    var heading = document.createElement('button');
+    heading.type = 'button';
+    heading.className = 'catalog-heading';
+    heading.innerHTML = '<span>' + title + '</span><span class="catalog-chevron">&#8250;</span>';
+    heading.addEventListener('click', function() {
+      block.classList.toggle('collapsed');
+    });
+    block.appendChild(heading);
+
+    var itemsWrap = document.createElement('div');
+    itemsWrap.className = 'catalog-items';
+
+    for (var i = 0; i < assets.length; i++) {
+      var asset = assets[i];
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'asset-item';
+      button.dataset.assetId = asset.id;
+      button.innerHTML =
+        '<span class="asset-icon">' + asset.icon + '</span>' +
+        '<span class="asset-copy">' +
+          '<span class="asset-name">' + asset.name + '</span>' +
+          '<span class="asset-subtitle">' + asset.kind + '</span>' +
+          '<span class="asset-note">' + asset.notes + '</span>' +
+        '</span>';
+      button.addEventListener('click', makeLoader(asset.id));
+      itemsWrap.appendChild(button);
+    }
+
+    block.appendChild(itemsWrap);
+
+    return block;
+  }
+
+  function makeLoader(id) {
+    return function() {
+      loadAsset(id);
+    };
+  }
+
+  function rebuildCatalog() {
+    catalog.innerHTML = '';
+    catalog.appendChild(buildGroup('Cards', PARTS));
+    if (PROJECTS.length) {
+      catalog.appendChild(buildGroup('Decks', PROJECTS));
+    }
+  }
+
+  function loadProjectIndex() {
+    return loadJsonResource(PROJECT_INDEX_PATH, FILE_FALLBACKS.projectIndex)
+      .then(function(index) {
+        PROJECTS = Array.isArray(index.projects) ? index.projects : [];
+        refreshAssets();
+        rebuildCatalog();
+      })
+      .catch(function(error) {
+        PROJECTS = [];
+        refreshAssets();
+        rebuildCatalog();
+        controlHelp.textContent = 'Project index unavailable: ' + error.message;
+      });
+  }
+
+  function loadPartIndex() {
+    return loadJsonResource(PART_INDEX_PATH, FILE_FALLBACKS.partIndex)
+      .then(function(index) {
+        PARTS = Array.isArray(index.parts) ? index.parts : [];
+        refreshAssets();
+        rebuildCatalog();
+      })
+      .catch(function(error) {
+        PARTS = [];
+        refreshAssets();
+        rebuildCatalog();
+        controlHelp.textContent = 'Part index unavailable: ' + error.message;
+      });
+  }
+
+  refreshAssets();
+  rebuildCatalog();
+
+  function findAsset(id) {
+    for (var i = 0; i < ASSETS.length; i++) {
+      if (ASSETS[i].id === id) return ASSETS[i];
+    }
+    return null;
+  }
+
+  function parseProjectManifest(text, assetPath) {
+    if (/\.json(?:\?|$)/i.test(assetPath)) {
+      return JSON.parse(text);
+    }
+
+    var doc = new DOMParser().parseFromString(text, 'text/html');
+    var manifestEl = doc.getElementById('ferros-project-manifest');
+    if (!manifestEl) {
+      throw new Error('Missing #ferros-project-manifest');
+    }
+    return JSON.parse(manifestEl.textContent);
+  }
+
+  function resolveProjectAsset(asset, manifest) {
+    var manifestUrl = new URL(asset.file, window.location.href);
+    var renderUrl = new URL(manifest.renderFile, manifestUrl);
+    var standaloneRenderUrl = new URL(manifest.standaloneRenderFile || manifest.renderFile, manifestUrl);
+    var components = manifest.components || [];
+    var states = manifest.states || [];
+
+    return {
+      id: asset.id,
+      kind: 'project',
+      icon: asset.icon,
+      name: manifest.name || asset.name,
+      file: asset.file,
+      manifestPath: asset.file,
+      renderFile: renderUrl.href,
+      standaloneRenderFile: standaloneRenderUrl.href,
+      dims: manifest.dims || asset.dims,
+      role: manifest.role || asset.role,
+      viewer: 'direct',
+      notes: manifest.notes || asset.notes,
+      description: manifest.description || asset.notes,
+      defaultState: manifest.defaultState || '',
+      components: components,
+      states: states,
+      tags: manifest.tags || [],
+      rules: manifest.rules || []
+    };
+  }
+
+  function loadProjectManifest(asset) {
+    if (isFileProtocol && FILE_FALLBACKS.manifests[asset.file]) {
+      return Promise.resolve(resolveProjectAsset(asset, cloneData(FILE_FALLBACKS.manifests[asset.file])));
+    }
+
+    return fetch(asset.file)
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('HTTP ' + response.status);
+        }
+        return response.text();
+      })
+      .then(function(text) {
+        return resolveProjectAsset(asset, parseProjectManifest(text, asset.file));
+      });
+  }
+
+  function setActiveItem(id) {
+    var items = catalog.querySelectorAll('.asset-item');
+    for (var i = 0; i < items.length; i++) {
+      items[i].classList.toggle('active', items[i].dataset.assetId === id);
+    }
+  }
+
+  function renderInspector(asset) {
+    inspectorTitle.textContent = asset.name;
+    metaTypeSubtitle.textContent = asset.kind;
+    inspectorCopy.textContent = asset.kind === 'project'
+      ? 'Manifest-defined project. Forge loads the saved render target and applies simple states from the project definition.'
+      : 'Standalone part rendered through The Arena for isolated inspection.';
+    inspectorNotes.textContent = asset.notes;
+    metaRole.textContent = asset.role;
+    metaViewer.textContent = asset.viewer;
+    viewerManifest.textContent = 'manifest: ' + (asset.manifestPath || '--');
+    viewerRender.textContent = 'render: ' + (asset.kind === 'project' ? asset.renderFile : asset.file);
+    arenaLink.href = asset.kind === 'project'
+      ? asset.standaloneRenderFile
+      : 'assets/_core/arena.html?part=' + encodeURIComponent(asset.file);
+
+    if (asset.components && asset.components.length) {
+      componentList.className = '';
+      var list = '<ul class="inspector-list">';
+      for (var i = 0; i < asset.components.length; i++) {
+        list += '<li>' + (asset.components[i].name || asset.components[i]) + '</li>';
+      }
+      list += '</ul>';
+      componentList.innerHTML = list;
+    } else {
+      componentList.className = 'inspector-empty';
+      componentList.textContent = 'Single asset. No composition breakdown for this selection.';
+    }
+
+    renderControls(asset);
+  }
+
+  function renderControls(asset) {
+    controlGrid.innerHTML = '';
+    var controls = asset.states || asset.controls || [];
+
+    if (!controls.length) {
+      var disabled = document.createElement('button');
+      disabled.type = 'button';
+      disabled.className = 'control-button';
+      disabled.disabled = true;
+      disabled.textContent = 'No controls';
+      controlGrid.appendChild(disabled);
+      controlHelp.textContent = 'Parts stay in the shared Arena viewer. Projects expose simple named pose states here.';
+      statusPose.textContent = 'pose: default';
+      return;
+    }
+
+    controlHelp.textContent = 'These presets come from the project manifest and send ferros:update payloads to the saved render target.';
+    for (var i = 0; i < controls.length; i++) {
+      (function(control) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'control-button';
+        button.textContent = control.label;
+        button.addEventListener('click', function() {
+          applyProjectControl(control);
+        });
+        controlGrid.appendChild(button);
+      })(controls[i]);
+    }
+  }
+
+  function resolveDefaultControl(asset) {
+    var controls = asset.states || asset.controls || [];
+    if (!controls.length) return null;
+
+    var defaultControl = controls[0];
+    var desired = String(asset.defaultState || '').trim().toLowerCase();
+    if (!desired) return defaultControl;
+
+    for (var i = 0; i < controls.length; i++) {
+      var label = String(controls[i].label || '').trim().toLowerCase();
+      var pose = controls[i].payload && controls[i].payload.pose
+        ? String(controls[i].payload.pose).trim().toLowerCase()
+        : '';
+      if (label === desired || pose === desired) {
+        return controls[i];
+      }
+    }
+
+    return defaultControl;
+  }
+
+  function loadResolvedAsset(asset) {
+    activeAsset = asset;
+    pendingPayload = null;
+    pendingPoseLabel = 'default';
+
+    var controls = asset.states || asset.controls || [];
+    if (controls.length) {
+      var defaultControl = resolveDefaultControl(asset);
+      pendingPayload = defaultControl.payload;
+      pendingPoseLabel = String(defaultControl.label || defaultControl.payload.pose || 'default').toLowerCase();
+      statusPose.textContent = 'pose: ' + pendingPoseLabel;
+    } else {
+      statusPose.textContent = 'pose: default';
+    }
+
+    setActiveItem(asset.id);
+    renderInspector(asset);
+    emptyState.classList.add('hidden');
+    frame.style.display = 'block';
+
+    if (asset.viewer === 'arena') {
+      frame.src = ARENA_BASE + encodeURIComponent(asset.file);
+      statusViewer.textContent = 'viewer: arena';
+      hudRight.textContent = asset.name + ' / part';
+      statusSource.textContent = 'source: ' + asset.file;
+    } else {
+      frame.src = asset.renderFile;
+      statusViewer.textContent = 'viewer: forge project';
+      hudRight.textContent = asset.name + ' / project';
+      statusSource.textContent = 'source: ' + (asset.manifestPath || asset.renderFile);
+    }
+
+    statusSelection.textContent = asset.name.toLowerCase();
+  }
+
+  function loadAsset(id) {
+    var asset = findAsset(id);
+    if (!asset) return;
+
+    if (asset.kind === 'project') {
+      statusSelection.textContent = 'loading project';
+      statusViewer.textContent = 'viewer: manifest';
+      hudRight.textContent = asset.name + ' / manifest';
+      loadProjectManifest(asset)
+        .then(function(resolved) {
+          loadResolvedAsset(resolved);
+        })
+        .catch(function(error) {
+          activeAsset = asset;
+          setActiveItem(asset.id);
+          renderInspector(asset);
+          frame.style.display = 'none';
+          emptyState.classList.remove('hidden');
+          statusSelection.textContent = 'project load failed';
+          statusViewer.textContent = 'viewer: manifest';
+          statusPose.textContent = 'pose: unavailable';
+          hudRight.textContent = 'manifest error';
+          controlHelp.textContent = 'Could not load project manifest: ' + error.message;
+        });
+      return;
+    }
+
+    loadResolvedAsset(asset);
+  }
+
+  function postToViewer(message) {
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage(message, '*');
+    }
+  }
+
+  function applyProjectControl(control) {
+    if (!activeAsset || activeAsset.viewer !== 'direct') return;
+    pendingPayload = control.payload;
+    pendingPoseLabel = String(control.label || control.payload.pose || 'default').toLowerCase();
+    postToViewer({ type: 'ferros:update', payload: control.payload });
+    statusPose.textContent = 'pose: ' + pendingPoseLabel;
+  }
+
+  frame.addEventListener('load', function() {
+    if (activeAsset && activeAsset.viewer === 'direct' && pendingPayload) {
+      window.requestAnimationFrame(function() {
+        postToViewer({ type: 'ferros:update', payload: pendingPayload });
+        statusPose.textContent = 'pose: ' + pendingPoseLabel;
+      });
+    }
+  });
+
+  Promise.allSettled([loadPartIndex(), loadProjectIndex()]).then(function() {
+    if (PARTS.length) {
+      loadAsset(PARTS[0].id);
+      return;
+    }
+
+    emptyState.classList.remove('hidden');
+    frame.style.display = 'none';
+    statusSelection.textContent = 'no assets loaded';
+    statusViewer.textContent = 'viewer: unavailable';
+    statusPose.textContent = 'pose: unavailable';
+    statusSource.textContent = 'source: unavailable';
+  });
+
+  function togglePanel(panelEl) {
+    panelEl.classList.toggle('panel-collapsed');
+  }
+
+  var panelToggles = document.querySelectorAll('.panel-toggle');
+  for (var t = 0; t < panelToggles.length; t++) {
+    (function(btn) {
+      btn.addEventListener('click', function() {
+        togglePanel(btn.closest('.forge-panel'));
+      });
+    })(panelToggles[t]);
+  }
+})();
+</script>
+</body>
+</html>

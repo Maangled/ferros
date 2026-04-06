@@ -1,0 +1,92 @@
+{
+  "$schema": "./project.schema.json",
+  "id": "loot-box-assembly",
+  "name": "Loot Box Assembly",
+  "kind": "project",
+  "role": "composition",
+  "dims": "200x114x130",
+  "description": "Project manifest for the baseline loot chest assembly used by Forge and game arenas.",
+  "notes": "This file defines the project hierarchy, saved render target, and simple state presets. The assembled 3D chest lives in a separate render asset.",
+  "defaultState": "Open",
+  "renderFile": "projects/loot-box-assembly.html?control=demo",
+  "standaloneRenderFile": "projects/loot-box-assembly.html",
+  "tags": ["loot", "container", "assembly", "project"],
+  "components": [
+    {
+      "id": "box-body",
+      "name": "Box Body",
+      "file": "parts/box-body.html",
+      "role": "container",
+      "slot": "base-shell"
+    },
+    {
+      "id": "barrel-lid",
+      "name": "Barrel Vault Lid",
+      "file": "parts/barrel-lid.html",
+      "role": "lid",
+      "slot": "top-shell"
+    },
+    {
+      "id": "edge-bracket",
+      "name": "Edge Bracket",
+      "file": "parts/edge-bracket.html",
+      "role": "structural",
+      "slot": "corner-reinforcement",
+      "instances": 4
+    },
+    {
+      "id": "lid-band",
+      "name": "Lid Band",
+      "file": "parts/lid-band.html",
+      "role": "decorative",
+      "slot": "lid-strapping",
+      "instances": 2
+    },
+    {
+      "id": "hinge",
+      "name": "Strap Hinge",
+      "file": "parts/hinge.html",
+      "role": "mechanism",
+      "slot": "rear-joint",
+      "instances": 2
+    },
+    {
+      "id": "lock-plate",
+      "name": "Lock Plate",
+      "file": "parts/lock-plate.html",
+      "role": "mechanism",
+      "slot": "front-lock"
+    }
+  ],
+  "rules": [
+    "The body owns the occupied volume and the lid hinges against the rear edge.",
+    "Decorative and mechanism parts attach to named slots rather than floating freely.",
+    "Animation presets stay simple for now so game arenas can choose their own presentation logic later."
+  ],
+  "states": [
+    {
+      "label": "Closed",
+      "payload": { "control": "demo", "pose": "closed" }
+    },
+    {
+      "label": "Odds",
+      "payload": { "control": "preview", "pose": "preview" }
+    },
+    {
+      "label": "Open",
+      "payload": { "control": "demo", "pose": "open" }
+    },
+    {
+      "label": "Common",
+      "payload": { "control": "demo", "pose": "revealed", "rarity": "common" }
+    },
+    {
+      "label": "Epic",
+      "payload": { "control": "demo", "pose": "revealed", "rarity": "epic" }
+    },
+    {
+      "label": "Legendary",
+      "payload": { "control": "demo", "pose": "revealed", "rarity": "legendary" }
+    }
+  ]
+}

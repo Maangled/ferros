@@ -1,0 +1,2028 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="loot-box-assembly" data-version="5.4.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Asset: Loot Box Assembly Render</title>
+<!--
+  ╔══════════════════════════════════════════════════╗
+  ║  FERROS ASSET: loot-box-3d  v5.4.0              ║
+  ║  Control Levels: DEMO | PREVIEW | PLAY           ║
+  ║  Dependencies: _core/_runtime.js v1.0.0          ║
+  ║                _lib/_rarity.js   v1.0.0          ║
+  ║                _lib/_particles.js v1.0.0         ║
+  ║  Click to open — shake, lid opens, reveal reward ║
+  ║                                                  ║
+  ║  v5.4 — Structural depth (lid underside + interior)║
+  ║  - Barrel underside plane (visible on lid open)    ║
+  ║  - 5-face recessed interior box (4px wall inset)   ║
+  ║  - Geometry tokens in :root for coupled constants  ║
+  ║                                                  ║
+  ║  v5.3 — Geometry overhaul + 3D brackets          ║
+  ║  - Barrel vault R=44→65 (true half-cylinder)      ║
+  ║  - 3D extruded L-profile corner brackets          ║
+  ║  - Continuous horizontal band ring (4 faces)      ║
+  ║  - Lock plate side walls fixed (depth Z=0→8)      ║
+  ║  - DEMO mode: hover rotation enabled              ║
+  ║  - Lid endcap bands repositioned for R=65         ║
+  ║                                                  ║
+  ║  v5.1 — Visual redesign (dark iron + FERROS wood)║
+  ║  - L-shaped corner brackets, dark gunmetal iron  ║
+  ║  - Drop-ring side handles, dark iron lock plate  ║
+  ║  - Dark charred wood, blue-gray undertones       ║
+  ║  - Fe watermark at 0.03 opacity on front face    ║
+  ║  - All metal bands converted to dark iron        ║
+  ║                                                  ║
+  ║  v5.0 — Modular rendering system (ADR-008)       ║
+  ║  - Uses canonical _tokens.css, _core/_runtime.js ║
+  ║  - Uses _lib/_rarity.js for probability engine   ║
+  ║  - Uses _lib/_particles.js for burst effects     ║
+  ║  - Uses .ferros-stage for perspective grid floor  ║
+  ║                                                  ║
+  ║  v5 geometry:                                    ║
+  ║  - 200w × 114h × 130d (beefy 1.75:1 ratio)      ║
+  ║  - Camera: 800px perspective, -20° X, 30° Y     ║
+  ║  - 12-strip barrel vault (was 8), smoother arc   ║
+  ║  - Hinge plates + lid rim bridging body to lid   ║
+  ╚══════════════════════════════════════════════════╝
+-->
+<style>
+/* @inline _tokens.css */
+:root {
+  --bg-base:        #0a0c10;
+  --bg-panel:       #111520;
+  --bg-card:        #161b28;
+  --bg-card-alt:    #1a2035;
+  --bg-highlight:   #1e2840;
+  --border-dim:     #1e2a3a;
+  --border-accent:  #2a3f5f;
+  --border-bright:  #3a5a8f;
+  --text-primary:   #e8edf5;
+  --text-secondary: #8fa0b8;
+  --text-dim:       #5a6a80;
+  --text-code:      #7eb8e8;
+  --accent-blue:    #4a90d9;
+  --accent-cyan:    #2dd4bf;
+  --accent-green:   #34d399;
+  --accent-amber:   #f59e0b;
+  --accent-red:     #f87171;
+  --accent-purple:  #a78bfa;
+  --accent-pink:    #f472b6;
+  --accent-orange:  #fb923c;
+  --rarity-common:    #5a6a80;
+  --rarity-uncommon:  #34d399;
+  --rarity-rare:      #4a90d9;
+  --rarity-epic:      #a78bfa;
+  --rarity-legendary: #f59e0b;
+  --rarity-mythic:    #f472b6;
+  --stage-grid-major: rgba(74,144,217, 0.10);
+  --stage-grid-minor: rgba(74,144,217, 0.03);
+  --stage-fog-color:  var(--bg-base);
+  --gradient-header: linear-gradient(135deg, #0d1b35 0%, #0a1525 50%, #091020 100%);
+  --gradient-card:   linear-gradient(145deg, #161b28 0%, #111520 100%);
+  --gradient-accent: linear-gradient(90deg, #4a90d9 0%, #2dd4bf 100%);
+  --shadow-panel:  0 4px 24px rgba(0, 0, 0, 0.6);
+  --shadow-card:   0 2px 12px rgba(0, 0, 0, 0.4);
+  --shadow-glow:   0 0 12px rgba(74,144,217,.35);
+  --radius-panel:  12px;
+  --radius-card:   8px;
+  --radius-badge:  4px;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+
+/* @inline _core/_a11y.css */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+:focus-visible {
+  outline: 2px solid var(--accent-cyan, #2dd4bf);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* === CHEST-SPECIFIC TOKENS === */
+:root {
+  --chest-scale: 1;
+  --arena-pan-x: 0px;
+  --arena-pan-y: 0px;
+  --arena-perspective: 800px;
+  /* Geometry tokens — all other values derive from these.
+     Documentation only (CSS transforms need bare px, not var()).
+     --chest-w: 200    body width px
+     --chest-h: 70     body height px
+     --chest-d: 130    body depth px
+     --barrel-r: 65    lid radius px (= chest-d / 2)
+     --half-w: 100     chest-w / 2
+     --half-d: 65      chest-d / 2
+     --wall-t: 4       interior inset / wall thickness px
+     --bracket-w: 6    bracket face width px
+     --bracket-t: 3    bracket protrusion depth px
+  */
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-base); color: var(--text-primary);
+  display: flex; align-items: center; justify-content: center; min-height: 100vh;
+}
+
+/* @inline _core/_stage.css */
+.ferros-stage {
+  position: relative;
+  overflow: visible;
+}
+.ferros-stage::before {
+  content: '';
+  position: absolute;
+  left: -80px; right: -80px;
+  bottom: 20px;
+  height: 500%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg,
+      var(--stage-grid-major, rgba(74,144,217,0.10)) 0px, transparent 1px, transparent 80px),
+    repeating-linear-gradient(0deg,
+      var(--stage-grid-major, rgba(74,144,217,0.10)) 0px, transparent 1px, transparent 80px),
+    repeating-linear-gradient(90deg,
+      var(--stage-grid-minor, rgba(74,144,217,0.03)) 0px, transparent 1px, transparent 20px),
+    repeating-linear-gradient(0deg,
+      var(--stage-grid-minor, rgba(74,144,217,0.03)) 0px, transparent 1px, transparent 20px);
+  transform: perspective(400px) rotateX(60deg);
+  transform-origin: center bottom;
+  mask-image: linear-gradient(to top,
+    rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 25%, transparent 55%);
+  -webkit-mask-image: linear-gradient(to top,
+    rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 25%, transparent 55%);
+}
+.ferros-stage::after {
+  content: '';
+  position: absolute;
+  left: -80px; right: -80px;
+  bottom: 0;
+  height: 40px;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to top,
+    var(--stage-fog-color, var(--bg-base, #0a0c10)) 0%,
+    transparent 100%);
+}
+.ferros-dof-active .ferros-stage::before {
+  filter: blur(2px);
+  transition: filter 0.5s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ferros-dof-active .ferros-stage::before {
+    transition: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   LOOT PLATFORM (extends .ferros-stage)
+   ═══════════════════════════════════════════════ */
+.loot-3d-platform {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 2rem; max-width: 100vw;
+}
+
+/* ═══════════════════════════════════════════════
+   3D SCENE + CHEST ROOT  (v5.3 geometry)
+   Chest: 200w × 114h, Floor: 200w × 130d
+   Body: 70px tall, Barrel radius: 65px (true half-cylinder)
+   Camera: perspective 800px, rotateX(-20) rotateY(30)
+   ═══════════════════════════════════════════════ */
+.chest-scene {
+  width: 320px; height: 280px;
+  perspective: var(--arena-perspective, 800px);
+  cursor: pointer;
+  transform: translate(var(--arena-pan-x), var(--arena-pan-y)) scale(var(--chest-scale));
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; z-index: 1;
+}
+.chest {
+  width: 200px; height: 135px;
+  position: relative;
+  transform-style: preserve-3d;
+  --arena-scale: 1;
+  --arena-z: 0px;
+  --base-rx: -20deg;
+  --base-ry: 30deg;
+  --follow-rx: 0deg;
+  --follow-ry: 0deg;
+  transform: translateZ(var(--arena-z)) scale(var(--arena-scale)) rotateX(calc(var(--base-rx) + var(--follow-rx))) rotateY(calc(var(--base-ry) + var(--follow-ry)));
+  transition: transform 0.15s ease-out;
+}
+.chest.returning {
+  transition: transform 0.6s ease-out;
+}
+.chest-scene:hover .chest:not(.shaking):not(.opening) {
+  transform: translateZ(var(--arena-z)) scale(var(--arena-scale)) rotateX(calc(var(--base-rx) + var(--follow-rx))) rotateY(calc(var(--base-ry) + var(--follow-ry))) translateY(-4px);
+}
+
+/* ═══════════════════════════════════════════════
+   CHEST BODY — lower box (70px tall, 200w × 130d)
+   ═══════════════════════════════════════════════ */
+.chest-body {
+  position: absolute;
+  width: 200px; height: 70px;
+  bottom: 0; left: 0;
+  transform-style: preserve-3d;
+}
+
+/* Shared face base */
+.chest-body-front,
+.chest-body-back,
+.chest-body-left,
+.chest-body-right,
+.chest-body-bottom {
+  position: absolute;
+  border: 1px solid rgba(40,38,35,0.5);
+}
+
+/* ── BODY FRONT ── */
+.chest-body-front {
+  width: 200px; height: 100%;
+  left: 50%; top: 0; margin-left: -100px;
+  border-radius: 0 0 6px 6px;
+  background:
+    repeating-linear-gradient(2deg, rgba(30,35,40,0.22) 0px, transparent 1px, transparent 4px),
+    repeating-linear-gradient(88deg, rgba(25,30,35,0.08) 0px, transparent 1px, transparent 14px),
+    radial-gradient(ellipse 14px 11px at 22% 30%, rgba(25,30,35,0.35) 0%, transparent 70%),
+    radial-gradient(ellipse 10px 8px at 75% 60%, rgba(25,30,35,0.25) 0%, transparent 70%),
+    radial-gradient(ellipse 7px 5px at 50% 82%, rgba(20,25,30,0.20) 0%, transparent 70%),
+    radial-gradient(circle 18px at 38% 18%, rgba(15,18,22,0.18) 0%, transparent 60%),
+    radial-gradient(circle 14px at 82% 72%, rgba(15,18,22,0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 50px 35px at 30% 55%, rgba(70,58,48,0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 40px 30px at 72% 28%, rgba(40,35,28,0.08) 0%, transparent 70%),
+    linear-gradient(180deg, #4D3D32 0%, #3E3028 15%, #32271E 35%, #281E16 55%, #281E16 72%, #1E1610 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -2px 4px rgba(0,0,0,0.35);
+  transform: translateZ(65px);
+}
+/* FERROS "Fe" watermark — barely visible brand mark */
+.chest-fe-mark {
+  position: absolute;
+  bottom: 8px; right: 10px;
+  font-family: 'Georgia', serif;
+  font-size: 18px; font-weight: bold; font-style: italic;
+  color: rgba(255,255,255,0.03);
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
+/* ── BODY BACK ── */
+.chest-body-back {
+  width: 200px; height: 100%;
+  left: 50%; top: 0; margin-left: -100px;
+  border-radius: 0 0 6px 6px;
+  background:
+    repeating-linear-gradient(-3deg, rgba(30,35,40,0.18) 0px, transparent 1px, transparent 5px),
+    repeating-linear-gradient(85deg, rgba(25,30,35,0.06) 0px, transparent 1px, transparent 16px),
+    radial-gradient(ellipse 12px 10px at 35% 40%, rgba(25,30,35,0.22) 0%, transparent 70%),
+    radial-gradient(circle 12px at 65% 25%, rgba(15,18,22,0.14) 0%, transparent 60%),
+    linear-gradient(180deg, #3E3028 0%, #32271E 30%, #281E16 60%, #1E1610 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    inset 0 -2px 4px rgba(0,0,0,0.45);
+  transform: rotateY(180deg) translateZ(65px);
+}
+
+/* ── BODY LEFT ── */
+.chest-body-left {
+  width: 130px; height: 100%;
+  left: 50%; top: 0; margin-left: -65px;
+  background:
+    repeating-linear-gradient(2deg, rgba(30,35,40,0.18) 0px, transparent 1px, transparent 5px),
+    repeating-linear-gradient(87deg, rgba(25,30,35,0.06) 0px, transparent 1px, transparent 16px),
+    radial-gradient(ellipse 12px 9px at 30% 45%, rgba(25,30,35,0.28) 0%, transparent 70%),
+    radial-gradient(ellipse 9px 7px at 70% 70%, rgba(25,30,35,0.20) 0%, transparent 70%),
+    radial-gradient(circle 16px at 55% 20%, rgba(15,18,22,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 45px 30px at 50% 50%, rgba(55,45,38,0.08) 0%, transparent 70%),
+    linear-gradient(90deg, #281E16 0%, #32271E 25%, #3E3028 55%, #32271E 80%, #281E16 100%);
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,0.05),
+    inset -1px 0 0 rgba(0,0,0,0.25);
+  transform: rotateY(-90deg) translateZ(100px);
+  border-radius: 0 0 6px 6px;
+}
+
+/* ── BODY RIGHT ── */
+.chest-body-right {
+  width: 130px; height: 100%;
+  left: 50%; top: 0; margin-left: -65px;
+  background:
+    repeating-linear-gradient(-2deg, rgba(30,35,40,0.16) 0px, transparent 1px, transparent 5px),
+    repeating-linear-gradient(92deg, rgba(25,30,35,0.06) 0px, transparent 1px, transparent 16px),
+    radial-gradient(ellipse 11px 8px at 65% 35%, rgba(25,30,35,0.25) 0%, transparent 70%),
+    radial-gradient(ellipse 8px 6px at 25% 72%, rgba(25,30,35,0.18) 0%, transparent 70%),
+    radial-gradient(circle 14px at 40% 15%, rgba(15,18,22,0.12) 0%, transparent 60%),
+    linear-gradient(90deg, #32271E 0%, #3E3028 30%, #32271E 65%, #281E16 100%);
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,0.04),
+    inset -1px 0 0 rgba(0,0,0,0.28);
+  transform: rotateY(90deg) translateZ(100px);
+  border-radius: 0 0 6px 6px;
+}
+
+/* ── BODY BOTTOM ── */
+.chest-body-bottom {
+  width: 200px; height: 130px;
+  left: 50%; top: 50%;
+  margin-left: -100px; margin-top: -65px;
+  background: linear-gradient(180deg, #1A140E 0%, #120E0A 100%);
+  transform: rotateX(-90deg) translateZ(35px);
+}
+
+/* ── BODY INTERIOR (visible when lid opens) ──
+   5-face recessed box, wall-t=4px inset from each exterior face.
+   Height: chest-h − wall-t = 66px (leaves 4px rim at top). */
+.chest-interior {
+  position: absolute;
+  width: 200px; height: 70px;        /* matches chest-body */
+  top: 0; left: 0;
+  transform-style: preserve-3d;
+}
+.chest-interior-face {
+  position: absolute;
+  background: linear-gradient(180deg, #1A140E 0%, #120E0A 55%, #0A0806 100%);
+  border: 1px solid rgba(35,28,20,0.3);
+}
+/* Front inner wall: 192×66, translateZ = half-d − wall-t = 61 */
+.chest-interior-front {
+  width: 192px; height: 66px;
+  top: 4px; left: 50%; margin-left: -96px;
+  transform: translateZ(61px);
+}
+/* Back inner wall: mirrors front */
+.chest-interior-back {
+  width: 192px; height: 66px;
+  top: 4px; left: 50%; margin-left: -96px;
+  transform: rotateY(180deg) translateZ(61px);
+}
+/* Left inner wall: 122×66, translateZ = half-w − wall-t = 96 */
+.chest-interior-left {
+  width: 122px; height: 66px;
+  top: 4px; left: 50%; margin-left: -61px;
+  transform: rotateY(-90deg) translateZ(96px);
+}
+/* Right inner wall: mirrors left */
+.chest-interior-right {
+  width: 122px; height: 66px;
+  top: 4px; left: 50%; margin-left: -61px;
+  transform: rotateY(90deg) translateZ(96px);
+}
+/* Bottom plate: 192×122, in XZ plane, translateZ = (chest-h − wall-t)/2 = 33 */
+.chest-interior-bottom {
+  width: 192px; height: 122px;
+  left: 50%; top: 50%;
+  margin-left: -96px; margin-top: -61px;
+  transform: rotateX(-90deg) translateZ(33px);
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(120,90,65,0.35) 0%, transparent 60%),
+    linear-gradient(180deg, #1A140E 0%, #120E0A 55%, #0A0806 100%);
+}
+
+/* ═══════════════════════════════════════════════
+   METAL STRAPPING — iron bands at box seams
+   Wrap around edges: front → left/right faces
+   ═══════════════════════════════════════════════ */
+.strap {
+  position: absolute;
+  background: linear-gradient(180deg,
+    #2a2520 0%, #3a3530 25%, #4a4540 50%, #3a3530 75%, #2a2520 100%);
+  border: 1px solid rgba(30,25,20,0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(0,0,0,0.3);
+}
+/* Rivet on each strap */
+.strap::before, .strap::after {
+  content: '';
+  position: absolute;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #5a5248, #3a3530 50%, #2a2520);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+/* ── Horizontal top straps (6px tall, along top edge) ── */
+.strap-top-front {
+  width: 200px; height: 6px;
+  top: 3px; left: 50%; margin-left: -100px;
+  transform: translateZ(65.5px);
+}
+.strap-top-front::before { top: 1px; left: 6px; }
+.strap-top-front::after  { top: 1px; right: 6px; }
+
+.strap-top-left {
+  width: 130px; height: 6px;
+  top: 3px; left: 50%; margin-left: -65px;
+  transform: rotateY(-90deg) translateZ(100.5px);
+}
+.strap-top-left::before { top: 1px; left: 6px; }
+.strap-top-left::after  { top: 1px; right: 6px; }
+
+.strap-top-right {
+  width: 130px; height: 6px;
+  top: 3px; left: 50%; margin-left: -65px;
+  transform: rotateY(90deg) translateZ(100.5px);
+}
+.strap-top-right::before { top: 1px; left: 6px; }
+.strap-top-right::after  { top: 1px; right: 6px; }
+
+/* ── Horizontal bottom straps (6px tall, along bottom edge) ── */
+.strap-bot-front {
+  width: 200px; height: 6px;
+  bottom: 4px; left: 50%; margin-left: -100px;
+  transform: translateZ(65.5px);
+}
+.strap-bot-front::before { top: 1px; left: 6px; }
+.strap-bot-front::after  { top: 1px; right: 6px; }
+
+.strap-bot-left {
+  width: 130px; height: 6px;
+  bottom: 4px; left: 50%; margin-left: -65px;
+  transform: rotateY(-90deg) translateZ(100.5px);
+}
+.strap-bot-left::before { top: 1px; left: 6px; }
+.strap-bot-left::after  { top: 1px; right: 6px; }
+
+.strap-bot-right {
+  width: 130px; height: 6px;
+  bottom: 4px; left: 50%; margin-left: -65px;
+  transform: rotateY(90deg) translateZ(100.5px);
+}
+.strap-bot-right::before { top: 1px; left: 6px; }
+.strap-bot-right::after  { top: 1px; right: 6px; }
+
+/* ── Back-face horizontal straps (completes continuous ring) ── */
+.strap-top-back {
+  width: 200px; height: 6px;
+  top: 3px; left: 50%; margin-left: -100px;
+  transform: rotateY(180deg) translateZ(65.5px);
+}
+.strap-top-back::before { top: 1px; left: 6px; }
+.strap-top-back::after  { top: 1px; right: 6px; }
+
+.strap-bot-back {
+  width: 200px; height: 6px;
+  bottom: 4px; left: 50%; margin-left: -100px;
+  transform: rotateY(180deg) translateZ(65.5px);
+}
+.strap-bot-back::before { top: 1px; left: 6px; }
+.strap-bot-back::after  { top: 1px; right: 6px; }
+
+/* ═══════════════════════════════════════════════
+   3D CORNER BRACKETS — extruded L-profile iron
+   Each bracket = two legs meeting at the corner.
+   Each leg: outer face (protruding 3px from wood) + thickness edge (3px connecting wood to outer).
+   Chest body is 200w × 70h × 130d.
+   Front plane: translateZ(65px). Side planes: rotateY(±90deg) translateZ(100px).
+   Brackets use same centering as body faces for side legs.
+   ═══════════════════════════════════════════════ */
+.bracket {
+  position: absolute;
+  width: 200px; height: 70px;
+  top: 0; left: 0;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+/* Shared iron material for bracket faces */
+.bracket-face {
+  position: absolute;
+  background: linear-gradient(180deg,
+    #2a2520 0%, #3a3530 25%, #4a4540 50%, #3a3530 75%, #2a2520 100%);
+  border: 1px solid rgba(30,25,20,0.6);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.3);
+}
+/* Rivet dots on bracket outer faces */
+.bracket-face.has-rivets::before, .bracket-face.has-rivets::after {
+  content: '';
+  position: absolute;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  left: 50%; margin-left: -2px;
+  background: radial-gradient(circle at 35% 35%, #5a5248, #3a3530 50%, #2a2520);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.bracket-face.has-rivets::before { top: 8px; }
+.bracket-face.has-rivets::after  { bottom: 8px; }
+/* Thickness-edge dark iron */
+.bracket-edge {
+  background: linear-gradient(180deg, #3a3530 0%, #2a2520 50%, #1e1a18 100%) !important;
+}
+
+/* ── Front-Left bracket ── */
+/* Front leg outer: on front plane + 3px protrusion */
+.bracket-fl-front {
+  width: 6px; height: 70px; top: 0; left: 0;
+  transform: translateZ(68px);
+}
+/* Front leg edge: folds 3px outward from front wood surface, visible from left */
+.bracket-fl-front-edge {
+  width: 3px; height: 70px; top: 0; left: 0;
+  transform-origin: left center;
+  transform: translateZ(65px) rotateY(-90deg);
+}
+/* Side leg outer: on left face, at front edge (Z=59..65), protruding 3px outward (X=−3) */
+.bracket-fl-side {
+  width: 6px; height: 70px; top: 0; left: 0;
+  transform-origin: 0 0;
+  transform: rotateY(-90deg) translateZ(3px) translateX(59px);
+}
+/* Side leg edge: flush with left wood, at front edge (Z=59..62) */
+.bracket-fl-side-edge {
+  width: 3px; height: 70px; top: 0; left: 0;
+  transform-origin: 0 0;
+  transform: rotateY(-90deg) translateX(59px);
+}
+
+/* ── Front-Right bracket ── */
+/* Front leg outer: on front plane + 3px, flush right */
+.bracket-fr-front {
+  width: 6px; height: 70px; top: 0; right: 0;
+  transform: translateZ(68px);
+}
+/* Front leg edge: folds 3px outward from front wood surface, visible from right */
+.bracket-fr-front-edge {
+  width: 3px; height: 70px; top: 0; right: 0;
+  transform-origin: right center;
+  transform: translateZ(65px) rotateY(90deg);
+}
+/* Side leg outer: on right face, at front edge (Z=59..65), protruding 3px outward (X=203) */
+.bracket-fr-side {
+  width: 6px; height: 70px; top: 0; right: 0;
+  transform-origin: 100% 0;
+  transform: rotateY(90deg) translateZ(3px) translateX(-59px);
+}
+/* Side leg edge: flush with right wood, at front edge */
+.bracket-fr-side-edge {
+  width: 3px; height: 70px; top: 0; right: 0;
+  transform-origin: 100% 0;
+  transform: rotateY(90deg) translateX(-59px);
+}
+
+/* ── Back-Left bracket (partially visible under mouse-follow) ── */
+.bracket-bl-back {
+  width: 6px; height: 70px; top: 0; left: 0;
+  transform: rotateY(180deg) translateZ(68px);
+}
+.bracket-bl-side {
+  width: 6px; height: 70px; top: 0; left: 0;
+  transform-origin: 0 0;
+  transform: rotateY(-90deg) translateZ(3px) translateX(-65px);
+}
+
+/* ── Back-Right bracket (mostly hidden) ── */
+.bracket-br-back {
+  width: 6px; height: 70px; top: 0; right: 0;
+  transform: rotateY(180deg) translateZ(68px);
+}
+.bracket-br-side {
+  width: 6px; height: 70px; top: 0; right: 0;
+  transform-origin: 100% 0;
+  transform: rotateY(90deg) translateZ(3px) translateX(65px);
+}
+
+/* ═══════════════════════════════════════════════
+   SIDE HANDLES — dark iron drop-ring style
+   ═══════════════════════════════════════════════ */
+.chest-body-left::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  top: 50%; left: 50%;
+  margin-top: -9px; margin-left: -9px;
+  background: transparent;
+  border: 3px solid #3a3530;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    inset 0 -1px 0 rgba(0,0,0,0.35),
+    0 2px 5px rgba(0,0,0,0.45);
+  transform: translateZ(3px);
+  z-index: 4;
+}
+.chest-body-right::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  top: 50%; left: 50%;
+  margin-top: -9px; margin-left: -9px;
+  background: transparent;
+  border: 3px solid #3a3530;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    inset 0 -1px 0 rgba(0,0,0,0.35),
+    0 2px 5px rgba(0,0,0,0.45);
+  transform: translateZ(3px);
+  z-index: 4;
+}
+
+/* ═══════════════════════════════════════════════
+   LOCK PLATE — 3D dark gunmetal iron (protruding)
+   Container is preserve-3d with 5 faces + keyhole cavity
+   ═══════════════════════════════════════════════ */
+.chest-lock {
+  position: absolute;
+  width: 36px; height: 46px;
+  left: 50%; margin-left: -18px;
+  top: -8px;
+  transform-style: preserve-3d;
+  transform: translateZ(64px);
+  z-index: 5;
+}
+/* Front face — primary visible surface */
+.lock-face {
+  position: absolute;
+  width: 100%; height: 100%;
+  background: linear-gradient(180deg,
+    #4a4540 0%, #3a3530 10%, #2a2520 30%,
+    #1e1a18 50%, #2a2520 70%, #3a3530 90%, #4a4540 100%);
+  border-radius: 10px 10px 5px 5px;
+  border: 1px solid rgba(60,55,50,0.7);
+  transform: translateZ(8px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
+/* Beveled inner edge on front face */
+.lock-face::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 8px 8px 3px 3px;
+  border: 2px solid;
+  border-color: #4a4540 #2a2520 #1e1a18 #3a3530;
+}
+/* Keyhole cutout on front face */
+.lock-face::after {
+  content: '';
+  position: absolute;
+  width: 14px; height: 20px;
+  left: 50%; bottom: 6px;
+  margin-left: -7px;
+  background: #050404;
+  clip-path: polygon(
+    30% 0%, 70% 0%,
+    80% 12%, 80% 42%,
+    100% 48%, 100% 55%,
+    70% 62%, 65% 100%,
+    35% 100%, 30% 62%,
+    0% 55%, 0% 48%,
+    20% 42%, 20% 12%
+  );
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.95);
+  z-index: 6;
+}
+/* Left side wall — spans Z=0 to Z=8px (chest surface → lock front face) */
+.lock-left {
+  position: absolute;
+  width: 8px; height: 100%;
+  top: 0; left: 0;
+  background: linear-gradient(180deg,
+    #3a3530 0%, #2a2520 30%, #1e1a18 70%, #2a2520 100%);
+  border-radius: 4px 0 0 2px;
+  transform-origin: left center;
+  transform: rotateY(-90deg);
+  border-top: 1px solid rgba(60,55,50,0.5);
+  border-bottom: 1px solid rgba(20,18,15,0.6);
+}
+/* Right side wall (mostly hidden from this angle) */
+.lock-right {
+  position: absolute;
+  width: 8px; height: 100%;
+  top: 0; right: 0;
+  background: linear-gradient(180deg,
+    #2a2520 0%, #1e1a18 40%, #151210 70%, #1e1a18 100%);
+  border-radius: 0 4px 2px 0;
+  transform-origin: right center;
+  transform: rotateY(90deg);
+  border-top: 1px solid rgba(40,38,35,0.4);
+  border-bottom: 1px solid rgba(15,12,10,0.6);
+}
+/* Top face (visible from above) — spans Z=0 to Z=8px */
+.lock-top {
+  position: absolute;
+  width: 100%; height: 8px;
+  top: 0; left: 0;
+  background: linear-gradient(90deg,
+    #3a3530 0%, #4a4540 30%, #5a5248 50%, #4a4540 70%, #3a3530 100%);
+  border-radius: 6px 6px 0 0;
+  transform-origin: center top;
+  transform: rotateX(90deg);
+  border: 1px solid rgba(60,55,50,0.5);
+  border-bottom: none;
+}
+/* Bottom edge */
+.lock-bottom {
+  position: absolute;
+  width: 100%; height: 8px;
+  bottom: 0; left: 0;
+  background: linear-gradient(90deg,
+    #1e1a18 0%, #2a2520 40%, #1e1a18 100%);
+  border-radius: 0 0 3px 3px;
+  transform-origin: center bottom;
+  transform: rotateX(-90deg);
+}
+/* Keyhole cavity — 3D recess behind the cutout */
+.lock-kh {
+  position: absolute;
+  width: 14px; height: 20px;
+  left: 50%; bottom: 6px;
+  margin-left: -7px;
+  transform-style: preserve-3d;
+  transform: translateZ(4px);
+}
+/* Keyhole right inner wall (visible from viewing angle) */
+.lock-kh-right {
+  position: absolute;
+  width: 4px; height: 100%;
+  top: 0; right: 0;
+  background: linear-gradient(180deg, #0a0808 0%, #060505 50%, #0a0808 100%);
+  transform-origin: right center;
+  transform: rotateY(90deg);
+}
+/* Keyhole top inner wall */
+.lock-kh-top {
+  position: absolute;
+  width: 100%; height: 4px;
+  top: 0; left: 0;
+  background: #080606;
+  transform-origin: center top;
+  transform: rotateX(90deg);
+}
+/* Keyhole bottom inner wall */
+.lock-kh-bottom {
+  position: absolute;
+  width: 100%; height: 4px;
+  bottom: 0; left: 0;
+  background: #0c0a08;
+  transform-origin: center bottom;
+  transform: rotateX(-90deg);
+}
+
+/* Ground shadow */
+.chest-body-shadow {
+  position: absolute;
+  width: 240px; height: 160px;
+  left: 50%; bottom: -8px;
+  margin-left: -120px;
+  background: radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.45) 0%, transparent 65%);
+  transform: rotateX(-90deg) translateZ(36px);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════
+   BARREL VAULT LID  (v5.3 geometry — Option A: true half-cylinder)
+   R=65px → diameter 130px = full box depth.
+   12 strips at 15° each, strip height = π×65/12 ≈ 17px.
+   Hinge at back-bottom of barrel.
+   ═══════════════════════════════════════════════ */
+.chest-lid {
+  position: absolute;
+  width: 200px;
+  height: 0;
+  bottom: 70px;
+  left: 0;
+  transform-origin: center center -65px;
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.barrel-vault {
+  position: absolute;
+  width: 200px;
+  bottom: 0; left: 0;
+  transform-style: preserve-3d;
+}
+
+/* ── Barrel strips (12 strips, 15° increments, height=π×65/12≈17px) ── */
+.bv-strip {
+  position: absolute;
+  width: 200px;
+  height: 17px;
+  bottom: 0;
+  left: 0;
+  /* No backface-visibility:hidden — back-facing strips darken instead of vanishing */
+  border-left: 1px solid rgba(40,38,35,0.3);
+  border-right: 1px solid rgba(40,38,35,0.3);
+  background:
+    repeating-linear-gradient(90deg, rgba(30,35,40,0.16) 0px, transparent 1px, transparent 5px),
+    linear-gradient(180deg, #5C4A3E 0%, #4D3D32 40%, #3E3028 70%, #32271E 100%);
+}
+/* Plank edge shadow between strips */
+.bv-strip::before {
+  content: '';
+  position: absolute; bottom: 0; left: 0; width: 100%; height: 1px;
+  background: rgba(30,15,5,0.3);
+}
+
+/* Strip transforms: 12 strips from 7.5° to 172.5° at R=65px.
+   Positive rotateX tilts backward → translateZ pushes forward-and-UP.
+   Arc sweeps from front-base (7.5°) over apex (~90°) to back-base (172.5°). */
+.bv-strip[data-i="0"]  { transform: rotateX(7.5deg)   translateZ(65px); }
+.bv-strip[data-i="1"]  { transform: rotateX(22.5deg)  translateZ(65px); }
+.bv-strip[data-i="2"]  { transform: rotateX(37.5deg)  translateZ(65px); }
+.bv-strip[data-i="3"]  { transform: rotateX(52.5deg)  translateZ(65px); }
+.bv-strip[data-i="4"]  { transform: rotateX(67.5deg)  translateZ(65px); }
+.bv-strip[data-i="5"]  { transform: rotateX(82.5deg)  translateZ(65px); }
+.bv-strip[data-i="6"]  { transform: rotateX(97.5deg)  translateZ(65px); }
+.bv-strip[data-i="7"]  { transform: rotateX(112.5deg) translateZ(65px); }
+.bv-strip[data-i="8"]  { transform: rotateX(127.5deg) translateZ(65px); }
+.bv-strip[data-i="9"]  { transform: rotateX(142.5deg) translateZ(65px); }
+.bv-strip[data-i="10"] { transform: rotateX(157.5deg) translateZ(65px); }
+.bv-strip[data-i="11"] { transform: rotateX(172.5deg) translateZ(65px); }
+
+/* Lighting: front strips bright, top brightest, back in deep shadow */
+.bv-strip[data-i="0"], .bv-strip[data-i="1"] { filter: brightness(0.95); }
+.bv-strip[data-i="2"] { filter: brightness(1.05); }
+.bv-strip[data-i="3"] { filter: brightness(1.12); background-image:
+  repeating-linear-gradient(90deg, rgba(30,35,40,0.14) 0px, transparent 1px, transparent 5px),
+  linear-gradient(180deg, #6A5548 0%, #5C4A3E 40%, #4D3D32 70%, #3E3028 100%); }
+.bv-strip[data-i="4"] { filter: brightness(1.18); background-image:
+  repeating-linear-gradient(90deg, rgba(30,35,40,0.12) 0px, transparent 1px, transparent 5px),
+  linear-gradient(180deg, #72594A 0%, #5E4A3C 40%, #5C4A3E 70%, #4D3D32 100%); }
+.bv-strip[data-i="5"] { filter: brightness(1.15); background-image:
+  repeating-linear-gradient(90deg, rgba(30,35,40,0.12) 0px, transparent 1px, transparent 5px),
+  linear-gradient(180deg, #6A5548 0%, #5C4A3E 40%, #4D3D32 70%, #3E3028 100%); }
+.bv-strip[data-i="6"] { filter: brightness(1.05); }
+.bv-strip[data-i="7"] { filter: brightness(0.90); }
+.bv-strip[data-i="8"] { filter: brightness(0.75); }
+.bv-strip[data-i="9"] { filter: brightness(0.55); }
+.bv-strip[data-i="10"] { filter: brightness(0.40); }
+.bv-strip[data-i="11"] { filter: brightness(0.35); }
+
+/* Metal band across barrel apex (strip 4-5 area) — dark iron */
+.bv-strip[data-i="4"]::after {
+  content: '';
+  position: absolute; top: 1px; left: 3%; width: 94%; height: 6px;
+  background: linear-gradient(180deg, #2a2520 0%, #3a3530 20%, #4a4540 45%, #3a3530 65%, #2a2520 85%, #1e1a18 100%);
+  border-radius: 1px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.35);
+}
+
+/* ── Barrel underside (flat plane visible when lid opens) ──
+   200×130 (chest-w × chest-d) lying in the XZ plane at barrel base.
+   rotateX(-90deg) from transform-origin:center top folds downward.
+   translateY(-65px) in post-rotation local Y = world −Z, centering
+   the 130px plane between Z=+half-d and Z=−half-d. */
+.bv-bottom {
+  position: absolute;
+  width: 200px; height: 130px;       /* chest-w × chest-d */
+  bottom: 0; left: 0;
+  transform-origin: center top;
+  transform: rotateX(-90deg) translateY(-65px);  /* half-d */
+  background: linear-gradient(180deg, #1A140E 0%, #120E0A 100%);
+  border: 1px solid rgba(35,28,20,0.3);
+}
+
+/* ── Barrel endcaps (semicircular side faces with depth, R=65px) ── */
+.bv-cap {
+  position: absolute;
+  width: 130px; height: 65px;
+  bottom: 0;
+  left: 50%; margin-left: -65px;
+  transform-style: preserve-3d;
+}
+.bv-cap-left {
+  transform: rotateY(-90deg) translateZ(100px);
+}
+.bv-cap-right {
+  transform: rotateY(90deg) translateZ(100px);
+}
+/* Outer face — visible semicircle */
+.bv-cap-left::after {
+  content: '';
+  position: absolute;
+  width: 100%; height: 100%;
+  top: 0; left: 0;
+  clip-path: ellipse(65px 65px at 50% 100%);
+  background:
+    repeating-linear-gradient(45deg, rgba(30,35,40,0.14) 0px, transparent 1px, transparent 6px),
+    radial-gradient(ellipse 10px 8px at 40% 65%, rgba(25,30,35,0.22) 0%, transparent 70%),
+    radial-gradient(circle 10px at 60% 80%, rgba(15,18,22,0.12) 0%, transparent 60%),
+    linear-gradient(0deg, #32271E 0%, #3E3028 30%, #4D3D32 60%, #5C4A3E 85%, #4D3D32 100%);
+  border: 1px solid rgba(40,38,35,0.4);
+}
+.bv-cap-right::after {
+  content: '';
+  position: absolute;
+  width: 100%; height: 100%;
+  top: 0; left: 0;
+  clip-path: ellipse(65px 65px at 50% 100%);
+  background:
+    repeating-linear-gradient(-45deg, rgba(30,35,40,0.12) 0px, transparent 1px, transparent 6px),
+    radial-gradient(ellipse 8px 7px at 55% 70%, rgba(25,30,35,0.18) 0%, transparent 70%),
+    linear-gradient(0deg, #32271E 0%, #3E3028 25%, #4D3D32 55%, #3E3028 100%);
+  border: 1px solid rgba(40,38,35,0.4);
+}
+/* Inner face — offset inward for rim depth */
+.bv-cap-inner {
+  position: absolute;
+  width: 100%; height: 100%;
+  top: 0; left: 0;
+  clip-path: ellipse(61px 61px at 50% 100%);
+  transform: translateZ(-4px);
+}
+.bv-cap-left .bv-cap-inner {
+  background: linear-gradient(0deg, #1E1610 0%, #281E16 40%, #32271E 70%, #281E16 100%);
+  border: 1px solid rgba(30,25,20,0.5);
+}
+.bv-cap-right .bv-cap-inner {
+  background: linear-gradient(0deg, #1E1610 0%, #281E16 35%, #32271E 65%, #281E16 100%);
+  border: 1px solid rgba(30,25,20,0.5);
+}
+/* Bottom straight edge — thickness at diameter base (full 130px = 2R) */
+.bv-cap-edge {
+  position: absolute;
+  width: 130px; height: 4px;
+  bottom: 0; left: 50%; margin-left: -65px;
+  background: linear-gradient(90deg,
+    #1e1a18 0%, #2a2520 20%, #3a3530 50%, #2a2520 80%, #1e1a18 100%);
+  transform: rotateX(-90deg);
+  transform-origin: center bottom;
+}
+
+/* Metal band wrapping across endcaps — connects to barrel apex band on strip 4.
+   With R=65, strip 4 at 67.5° is at Y = R×sin(67.5°) ≈ 60px from base.
+   In endcap coords (height=65, semicircle arcs upward from bottom): top ≈ 2px. */
+.bv-cap-left::before {
+  content: '';
+  position: absolute;
+  width: 100%; height: 6px;
+  top: 2px;
+  clip-path: ellipse(65px 65px at 50% calc(100% + 14px));
+  background: linear-gradient(180deg, #1e1a18 0%, #3a3530 40%, #4a4540 60%, #2a2520 100%);
+  transform: translateZ(0.5px);
+  z-index: 1;
+}
+.bv-cap-right::before {
+  content: '';
+  position: absolute;
+  width: 100%; height: 6px;
+  top: 2px;
+  clip-path: ellipse(65px 65px at 50% calc(100% + 14px));
+  background: linear-gradient(180deg, #1e1a18 0%, #3a3530 40%, #4a4540 60%, #2a2520 100%);
+  transform: translateZ(0.5px);
+  z-index: 1;
+}
+
+/* ── Hinge plates (visible at back-bottom of barrel) ── */
+.chest-lid-hinge-l,
+.chest-lid-hinge-r {
+  position: absolute;
+  width: 14px; height: 10px;
+  bottom: -5px;
+  background: linear-gradient(180deg, #5a5248 0%, #3a3530 50%, #2a2520 100%);
+  border: 1px solid rgba(40,30,20,0.5);
+  border-radius: 2px;
+  transform: translateZ(-65px);
+  z-index: 2;
+}
+.chest-lid-hinge-l { left: 25%; }
+.chest-lid-hinge-r { right: 25%; }
+
+/* ── Lid rim (thin strip connecting barrel base to body top) ── */
+.chest-lid-rim {
+  position: absolute;
+  width: 200px; height: 3px;
+  bottom: -1px; left: 0;
+  background: linear-gradient(90deg, #281E16 0%, #3E3028 20%, #4D3D32 50%, #3E3028 80%, #281E16 100%);
+  border-bottom: 1px solid rgba(25,22,18,0.5);
+  transform: translateZ(65px);
+}
+
+/* ═══════════════════════════════════════════════
+   INTERIOR GLOW (visible when lid opens)
+   ═══════════════════════════════════════════════ */
+.chest-glow {
+  position: absolute;
+  width: 150px; height: 24px;
+  left: 50%; margin-left: -75px;
+  bottom: 72px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.6s ease 0.2s;
+  pointer-events: none;
+  z-index: 5;
+  transform: translateZ(64px);
+}
+
+/* ═══════════════════════════════════════════════
+   LID OPENING STATE
+   ═══════════════════════════════════════════════ */
+.chest.opening .chest-lid {
+  transform: rotateX(-110deg);
+}
+.chest.opening .chest-glow {
+  opacity: 1;
+  box-shadow:
+    0 -10px 30px rgba(245,158,11,0.5),
+    0 -20px 60px rgba(245,158,11,0.25),
+    0 -5px 15px rgba(245,158,11,0.3);
+  background: radial-gradient(ellipse at center, rgba(245,158,11,0.3) 0%, transparent 70%);
+}
+
+/* Rarity-colored interior glows */
+.chest[data-result-rarity="MYTHIC"].opening .chest-glow {
+  box-shadow: 0 -10px 30px rgba(244,114,182,0.5), 0 -20px 60px rgba(244,114,182,0.25), 0 -5px 15px rgba(244,114,182,0.3);
+  background: radial-gradient(ellipse at center, rgba(244,114,182,0.3) 0%, transparent 70%);
+}
+.chest[data-result-rarity="LEGENDARY"].opening .chest-glow {
+  box-shadow: 0 -10px 30px rgba(245,158,11,0.5), 0 -20px 60px rgba(245,158,11,0.25), 0 -5px 15px rgba(245,158,11,0.3);
+  background: radial-gradient(ellipse at center, rgba(245,158,11,0.3) 0%, transparent 70%);
+}
+.chest[data-result-rarity="EPIC"].opening .chest-glow {
+  box-shadow: 0 -10px 30px rgba(167,139,250,0.5), 0 -20px 60px rgba(167,139,250,0.25), 0 -5px 15px rgba(167,139,250,0.3);
+  background: radial-gradient(ellipse at center, rgba(167,139,250,0.3) 0%, transparent 70%);
+}
+.chest[data-result-rarity="RARE"].opening .chest-glow {
+  box-shadow: 0 -10px 30px rgba(74,144,217,0.5), 0 -20px 60px rgba(74,144,217,0.25), 0 -5px 15px rgba(74,144,217,0.3);
+  background: radial-gradient(ellipse at center, rgba(74,144,217,0.3) 0%, transparent 70%);
+}
+.chest[data-result-rarity="UNCOMMON"].opening .chest-glow {
+  box-shadow: 0 -10px 30px rgba(52,211,153,0.4), 0 -20px 60px rgba(52,211,153,0.2), 0 -5px 15px rgba(52,211,153,0.25);
+  background: radial-gradient(ellipse at center, rgba(52,211,153,0.25) 0%, transparent 70%);
+}
+.chest[data-result-rarity="COMMON"].opening .chest-glow {
+  box-shadow: 0 -10px 30px rgba(128,128,128,0.35), 0 -20px 60px rgba(128,128,128,0.15), 0 -5px 15px rgba(128,128,128,0.2);
+  background: radial-gradient(ellipse at center, rgba(128,128,128,0.2) 0%, transparent 70%);
+}
+
+/* ═══════════════════════════════════════════════
+   UI ELEMENTS
+   ═══════════════════════════════════════════════ */
+.loot-hint {
+  margin-top: 14px; font-size: 0.75rem; color: var(--text-dim);
+  font-family: var(--font-mono);
+  position: relative; z-index: 1;
+}
+.loot-result {
+  text-align: center; margin-top: 20px; opacity: 0;
+  transition: opacity 0.5s; pointer-events: none;
+  position: relative; z-index: 1;
+}
+.loot-result.visible { opacity: 1; }
+.loot-result-icon { font-size: 3rem; }
+.loot-result-name { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-top: 4px; }
+.loot-result-rarity {
+  font-family: var(--font-mono); font-size: 0.8rem;
+  font-weight: 700; margin-top: 2px;
+}
+
+/* Particle CSS for _lib/_particles.js */
+.ferros-particle {
+  position: absolute; width: 8px; height: 8px; border-radius: 50%;
+  animation: ferrosParticleBurst 0.8s ease-out forwards;
+}
+@keyframes ferrosParticleBurst {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--lp-x), var(--lp-y)) scale(0); opacity: 0; }
+}
+.loot-particles { position: relative; height: 0; overflow: visible; pointer-events: none; }
+
+/* ═══════════════════════════════════════════════
+   ODDS OVERLAY (PREVIEW mode)
+   ═══════════════════════════════════════════════ */
+.loot-odds-overlay {
+  display: none;
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 100; align-items: center; justify-content: center;
+}
+.loot-odds-overlay.visible { display: flex; }
+.loot-odds-backdrop {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(10, 12, 16, 0.6); z-index: 0;
+}
+.loot-odds-panel {
+  position: relative; z-index: 1;
+  background: rgba(17, 21, 32, 0.95);
+  border: 1px solid var(--border-accent);
+  border-radius: 12px; padding: 20px 24px;
+  max-width: 320px; width: 90%;
+  max-height: 80vh; overflow-y: auto;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.loot-odds-title {
+  font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--text-secondary);
+  margin-bottom: 14px; text-align: center;
+  font-family: var(--font-mono);
+}
+.loot-odds-group { margin-bottom: 12px; }
+.loot-odds-group:last-child { margin-bottom: 0; }
+.loot-odds-rarity-header {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; padding-bottom: 4px;
+  margin-bottom: 6px; border-bottom: 1px solid var(--border-dim);
+  font-family: var(--font-mono);
+}
+.loot-odds-pct { font-size: 0.7rem; font-weight: 400; opacity: 0.7; }
+.loot-odds-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 0; font-size: 0.75rem; color: var(--text-secondary);
+}
+.loot-odds-item-icon { font-size: 1rem; width: 1.4em; text-align: center; }
+.loot-odds-item-name { flex: 1; }
+.loot-odds-item-pct {
+  font-family: var(--font-mono); font-size: 0.65rem;
+  color: var(--text-dim);
+}
+
+/* ═══════════════════════════════════════════════
+   DOF (experimental, opt-in via .ferros-dof-active)
+   Cannot blur preserve-3d elements — uses opacity/scale
+   for non-focal elements. Stage floor blur from _stage.css.
+   ═══════════════════════════════════════════════ */
+.ferros-dof-active .loot-hint {
+  transition: opacity 0.4s ease, filter 0.4s ease;
+}
+.ferros-dof-active .loot-result {
+  transition: opacity 0.4s ease, filter 0.4s ease;
+}
+
+/* DOF: opening — hint fades, result hidden */
+.ferros-dof-active[data-dof="opening"] .loot-hint {
+  opacity: 0.3; filter: blur(2px);
+}
+
+/* DOF: revealed — chest scene dims slightly, result sharp */
+.ferros-dof-active[data-dof="revealed"] .chest-scene {
+  opacity: 0.65;
+  transition: opacity 0.6s ease;
+}
+.ferros-dof-active[data-dof="revealed"] .loot-hint {
+  opacity: 0; filter: blur(3px);
+}
+
+/* DOF: closed (default) — everything neutral */
+.ferros-dof-active[data-dof="closed"] .chest-scene {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ferros-dof-active .loot-hint,
+  .ferros-dof-active .loot-result,
+  .ferros-dof-active .chest-scene {
+    transition: none !important;
+    filter: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   ANIMATIONS (chest-specific)
+   ═══════════════════════════════════════════════ */
+
+/* TODO: Phase 5 — Opening Animation Sequence
+   Planned state machine:
+   1. SHAKE:    chestShake 0.6s (existing)
+   2. LID OPEN: lid rotateX(-110deg) with spring easing (existing)
+   3. GLOW:     rarity-colored interior glow ramps up 0→1 over 0.4s
+                Intensity scales with rarity (mythic = brightest)
+   4. PARTICLES: spawnParticles burst from chest center (existing)
+   5. REVEAL:   loot item rises from chest with scale(0.5→1) + opacity(0→1)
+                Entry animation varies by rarity (mythic gets extra bloom)
+   6. RESET:    reverse sequence — glow fades, lid closes, idle
+*/
+@keyframes chestShake {
+  0%, 100% { transform: rotateX(-20deg) rotateY(30deg) translateX(0); }
+  15%      { transform: rotateX(-20deg) rotateY(30deg) translateX(-4px) rotate(-1deg); }
+  30%      { transform: rotateX(-20deg) rotateY(30deg) translateX(4px) rotate(1deg); }
+  45%      { transform: rotateX(-20deg) rotateY(30deg) translateX(-3px); }
+  60%      { transform: rotateX(-20deg) rotateY(30deg) translateX(3px); }
+  75%      { transform: rotateX(-20deg) rotateY(30deg) translateX(-1px); }
+}
+.chest.shaking {
+  transition: none !important;
+}
+
+/* ═══════════════════════════════════════════════
+   CONTROL MODE OVERRIDES
+   ═══════════════════════════════════════════════ */
+/* Phase 2A: DEMO allows hover rotation (mouse-follow) but click-to-open
+   is prevented by JS guard (rt.control() !== 'play') in openLootBox(). */
+[data-control="demo"] .chest-scene { cursor: default; }
+[data-control="demo"] .loot-hint { display: none; }
+[data-control="preview"] .chest-scene { cursor: help; }
+[data-control="preview"] .loot-hint { display: none; }
+
+/* ═══════════════════════════════════════════════
+   CHEST-SPECIFIC REDUCED MOTION + RESPONSIVE
+   ═══════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .chest {
+    --follow-rx: 0deg !important;
+    --follow-ry: 0deg !important;
+    transform: rotateX(-20deg) rotateY(30deg) !important;
+    transition: none !important;
+  }
+  .chest-scene:hover .chest {
+    transform: rotateX(-20deg) rotateY(30deg) !important;
+  }
+  .ferros-stage::before { display: none; }
+}
+
+@media (max-width: 400px) {
+  :root { --chest-scale: 0.75; }
+  .loot-3d-platform { padding: 1rem; }
+  .ferros-stage::before { display: none; }
+  .ferros-stage::after { display: none; }
+  .loot-odds-panel { padding: 14px 16px; max-width: 280px; }
+}
+@media (max-width: 300px) {
+  :root { --chest-scale: 0.6; }
+}
+
+/* TODO: Phase 5 — Shading & Textures
+   After geometry is finalized, add:
+   - Realistic directional lighting (top-left key light) via gradient overlays
+   - Wood grain texture using repeating SVG data-uri or fine CSS gradients
+   - Iron surface texture (brushed metal / hammered look) on all bracket + strap faces
+   - Ambient occlusion at wood/metal seams via inset box-shadows
+   - Per-strip lighting on barrel vault (already partially done with filter:brightness)
+*/
+
+/* TODO: Phase 5 — FERROS Glowing Outline
+   Drafting line-weight edge glow using theme accent colors:
+   - Outermost silhouette: 2-3px, gradient glow (--accent-blue → --accent-cyan)
+   - Internal visible edges: 1px, subtle glow (--accent-blue at 30% opacity)
+   - Detail/texture lines: 0.5px, no glow
+   Implementation: Layered box-shadows + outline on each face element,
+   keyed to a .ferros-glow-active class for toggle support.
+   Consider using drop-shadow filter on .chest container for silhouette pass.
+*/
+</style>
+</head>
+<body data-arena-scale="1" data-arena-rx="-20" data-arena-ry="30">
+<div id="ferros-asset-root" data-control="demo">
+  <div class="loot-3d-platform ferros-stage ferros-dof-active" data-dof="closed">
+    <!-- ODDS OVERLAY (PREVIEW mode) -->
+    <div class="loot-odds-overlay" id="loot-odds-overlay" role="dialog" aria-label="Loot drop rates">
+      <div class="loot-odds-backdrop" id="loot-odds-backdrop"></div>
+      <div class="loot-odds-panel" id="loot-odds-panel">
+        <div class="loot-odds-title">Drop Rates</div>
+        <div id="loot-odds-content"></div>
+      </div>
+    </div>
+
+    <!-- 3D CHEST SCENE -->
+    <div class="chest-scene" id="chest-scene"
+         role="button" tabindex="0"
+         aria-label="Click to open loot chest">
+      <div class="chest" id="chest">
+        <!-- BARREL VAULT LID (12 strips, hinges, rim) -->
+        <div class="chest-lid">
+          <div class="barrel-vault">
+            <div class="bv-strip" data-i="0"></div>
+            <div class="bv-strip" data-i="1"></div>
+            <div class="bv-strip" data-i="2"></div>
+            <div class="bv-strip" data-i="3"></div>
+            <div class="bv-strip" data-i="4"></div>
+            <div class="bv-strip" data-i="5"></div>
+            <div class="bv-strip" data-i="6"></div>
+            <div class="bv-strip" data-i="7"></div>
+            <div class="bv-strip" data-i="8"></div>
+            <div class="bv-strip" data-i="9"></div>
+            <div class="bv-strip" data-i="10"></div>
+            <div class="bv-strip" data-i="11"></div>
+            <div class="bv-bottom"></div>
+          </div>
+          <div class="bv-cap bv-cap-left">
+            <div class="bv-cap-inner"></div>
+            <div class="bv-cap-edge"></div>
+          </div>
+          <div class="bv-cap bv-cap-right">
+            <div class="bv-cap-inner"></div>
+            <div class="bv-cap-edge"></div>
+          </div>
+          <div class="chest-lid-hinge-l"></div>
+          <div class="chest-lid-hinge-r"></div>
+          <div class="chest-lid-rim"></div>
+        </div>
+        <!-- BOX BODY -->
+        <div class="chest-body">
+          <div class="chest-body-front"><span class="chest-fe-mark" aria-hidden="true">Fe</span></div>
+          <div class="chest-body-back"></div>
+          <div class="chest-body-left"></div>
+          <div class="chest-body-right"></div>
+          <div class="chest-body-bottom"></div>
+          <!-- Interior box (5 walls, 4px inset, visible when lid opens) -->
+          <div class="chest-interior">
+            <div class="chest-interior-face chest-interior-front"></div>
+            <div class="chest-interior-face chest-interior-back"></div>
+            <div class="chest-interior-face chest-interior-left"></div>
+            <div class="chest-interior-face chest-interior-right"></div>
+            <div class="chest-interior-face chest-interior-bottom"></div>
+          </div>
+          <div class="chest-lock">
+            <div class="lock-face"></div>
+            <div class="lock-left"></div>
+            <div class="lock-right"></div>
+            <div class="lock-top"></div>
+            <div class="lock-bottom"></div>
+            <div class="lock-kh">
+              <div class="lock-kh-right"></div>
+              <div class="lock-kh-top"></div>
+              <div class="lock-kh-bottom"></div>
+            </div>
+          </div>
+          <div class="chest-body-shadow"></div>
+          <!-- Metal strapping bands at box seams (continuous ring on all 4 faces) -->
+          <div class="strap strap-top-front"></div>
+          <div class="strap strap-top-left"></div>
+          <div class="strap strap-top-right"></div>
+          <div class="strap strap-top-back"></div>
+          <div class="strap strap-bot-front"></div>
+          <div class="strap strap-bot-left"></div>
+          <div class="strap strap-bot-right"></div>
+          <div class="strap strap-bot-back"></div>
+          <!-- 3D Corner Brackets (extruded L-profile iron at all 4 corners) -->
+          <div class="bracket" aria-hidden="true">
+            <!-- Front-Left -->
+            <div class="bracket-face has-rivets bracket-fl-front"></div>
+            <div class="bracket-face bracket-edge bracket-fl-front-edge"></div>
+            <div class="bracket-face bracket-fl-side"></div>
+            <div class="bracket-face bracket-edge bracket-fl-side-edge"></div>
+            <!-- Front-Right -->
+            <div class="bracket-face has-rivets bracket-fr-front"></div>
+            <div class="bracket-face bracket-edge bracket-fr-front-edge"></div>
+            <div class="bracket-face bracket-fr-side"></div>
+            <div class="bracket-face bracket-edge bracket-fr-side-edge"></div>
+            <!-- Back-Left -->
+            <div class="bracket-face bracket-bl-back"></div>
+            <div class="bracket-face bracket-bl-side"></div>
+            <!-- Back-Right -->
+            <div class="bracket-face bracket-br-back"></div>
+            <div class="bracket-face bracket-br-side"></div>
+          </div>
+        </div>
+        <div class="chest-glow" id="chest-glow"></div>
+      </div>
+    </div>
+
+    <div class="loot-hint">Click to open</div>
+    <div class="loot-particles" id="loot-particles"></div>
+
+    <!-- RESULT -->
+    <div class="loot-result" id="loot-result" aria-live="polite" aria-atomic="true">
+      <div class="loot-result-icon" id="loot-item-icon" aria-hidden="true"></div>
+      <div class="loot-result-name" id="loot-item-name"></div>
+      <div class="loot-result-rarity" id="loot-item-rarity"></div>
+      <span class="sr-only" id="ferros-sr-announce"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* @inline _core/_runtime.js */
+(function() {
+  'use strict';
+  var ASSET_NAME = document.documentElement.dataset.ferrosAsset || 'unknown-asset';
+  var root       = document.getElementById('ferros-asset-root');
+  var isEmbedded = window.parent !== window;
+  var params     = new URLSearchParams(window.location.search);
+  var control    = params.get('control') || 'demo';
+  var mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+  function isReducedMotion() { return mql.matches; }
+  function emit(event, payload) {
+    var msg = { type: 'ferros:event', asset: ASSET_NAME, event: event, payload: payload };
+    if (isEmbedded) window.parent.postMessage(msg, '*');
+    if (root) root.dispatchEvent(new CustomEvent('ferros:event', { detail: msg, bubbles: true }));
+  }
+  function reportSize() {
+    if (!isEmbedded || !root) return;
+    window.parent.postMessage({
+      type: 'ferros:resize', asset: ASSET_NAME,
+      width: root.scrollWidth, height: root.scrollHeight
+    }, '*');
+  }
+  window.addEventListener('message', function(e) {
+    if (!e.data || !e.data.type) return;
+    if (e.data.type === 'ferros:init') {
+      var config = e.data.config || {};
+      if (config.control) control = config.control;
+      applyControl();
+      if (typeof window.onFerrosInit === 'function') window.onFerrosInit(config);
+    }
+    if (e.data.type === 'ferros:update') {
+      var payload = e.data.payload || e.data;
+      if (payload.control) { control = payload.control; applyControl(); }
+      if (typeof window.onFerrosUpdate === 'function') window.onFerrosUpdate(payload);
+    }
+  });
+  function applyControl() { if (root) root.dataset.control = control; }
+  function announceToScreenReader(text) {
+    var el = document.getElementById('ferros-sr-announce');
+    if (!el) return;
+    el.textContent = '';
+    void el.offsetWidth;
+    el.textContent = text;
+  }
+  applyControl();
+  reportSize();
+  if (typeof ResizeObserver !== 'undefined' && root) {
+    new ResizeObserver(function() { reportSize(); }).observe(root);
+  }
+  window.ferrosRuntime = {
+    root: root, isEmbedded: isEmbedded,
+    control: function() { return control; },
+    emit: emit, reportSize: reportSize,
+    isReducedMotion: isReducedMotion,
+    announceToScreenReader: announceToScreenReader
+  };
+})();
+
+/* @inline _lib/_rarity.js */
+var RARITY_WEIGHTS = {
+  COMMON: 40, UNCOMMON: 25, RARE: 20, EPIC: 10, LEGENDARY: 4, MYTHIC: 1
+};
+var RARITY_COLORS = {
+  COMMON: 'var(--rarity-common)', UNCOMMON: 'var(--rarity-uncommon)',
+  RARE: 'var(--rarity-rare)', EPIC: 'var(--rarity-epic)',
+  LEGENDARY: 'var(--rarity-legendary)', MYTHIC: 'var(--rarity-mythic)'
+};
+var RARITY_ORDER = ['MYTHIC', 'LEGENDARY', 'EPIC', 'RARE', 'UNCOMMON', 'COMMON'];
+function computeWeightTotal() {
+  var total = 0;
+  for (var key in RARITY_WEIGHTS) { total += RARITY_WEIGHTS[key]; }
+  return total;
+}
+function rollRarity() {
+  var total = computeWeightTotal();
+  var roll = Math.random() * total;
+  var cumulative = 0;
+  for (var i = 0; i < RARITY_ORDER.length; i++) {
+    var r = RARITY_ORDER[i];
+    if (RARITY_WEIGHTS[r] === undefined || RARITY_WEIGHTS[r] <= 0) continue;
+    cumulative += RARITY_WEIGHTS[r];
+    if (roll < cumulative) return r;
+  }
+  return 'COMMON';
+}
+function getRarityPct(rarity) {
+  var total = computeWeightTotal();
+  var w = RARITY_WEIGHTS[rarity] || 0;
+  return (w / total) * 100;
+}
+
+/* @inline _lib/_particles.js */
+var PARTICLE_DEFAULTS = {
+  count: 20, radius: 80,
+  colors: ['#f59e0b', '#a78bfa', '#2dd4bf', '#f472b6', '#4a90d9', '#34d399', '#f87171'],
+  className: 'ferros-particle'
+};
+function spawnParticles(container, opts) {
+  if (!container) return;
+  if (window.ferrosRuntime && window.ferrosRuntime.isReducedMotion()) return;
+  opts = opts || {};
+  var count  = opts.count  || PARTICLE_DEFAULTS.count;
+  var radius = opts.radius || PARTICLE_DEFAULTS.radius;
+  var colors = opts.colors || PARTICLE_DEFAULTS.colors;
+  var cls    = opts.className || PARTICLE_DEFAULTS.className;
+  container.innerHTML = '';
+  for (var i = 0; i < count; i++) {
+    var p = document.createElement('div');
+    p.classList.add(cls);
+    var angle = (Math.PI * 2 / count) * i;
+    var dist  = (radius * 0.5) + Math.random() * (radius * 0.5);
+    p.style.setProperty('--lp-x', (Math.cos(angle) * dist) + 'px');
+    p.style.setProperty('--lp-y', (Math.sin(angle) * dist) + 'px');
+    p.style.left = '50%';
+    p.style.top  = '50%';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.animationDelay = (Math.random() * 0.2) + 's';
+    container.appendChild(p);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   CHEST-SPECIFIC JS — state machine, loot logic, UI
+   ═══════════════════════════════════════════════════════ */
+(function() {
+  'use strict';
+
+  var rt = window.ferrosRuntime;
+  var chestScene = document.getElementById('chest-scene');
+  var chest = document.getElementById('chest');
+  var lootResult = document.getElementById('loot-result');
+  var lootParticles = document.getElementById('loot-particles');
+  var lootOddsOverlay = document.getElementById('loot-odds-overlay');
+  var lootOddsBackdrop = document.getElementById('loot-odds-backdrop');
+  var lootOddsContent = document.getElementById('loot-odds-content');
+  var lootOpen = false;
+
+  /* --- DOF manager (opt-in via .ferros-dof-active on platform) --- */
+  var platform = document.querySelector('.loot-3d-platform');
+  var dofEnabled = platform && platform.classList.contains('ferros-dof-active');
+  function setDof(state) {
+    if (!dofEnabled || rt.isReducedMotion()) return;
+    platform.dataset.dof = state;
+  }
+
+  /* --- Loot table --- */
+  var lootItems = [
+    { icon: '\u{1F3B4}', name: 'Holographic NVDA Skin',       rarity: 'EPIC',      color: 'var(--accent-purple)' },
+    { icon: '\u{1F30C}', name: 'Nebula Board Theme',          rarity: 'LEGENDARY',  color: 'var(--accent-amber)' },
+    { icon: '\u{1F3A9}', name: 'Top Hat Accessory',           rarity: 'UNCOMMON',   color: 'var(--accent-green)' },
+    { icon: '\u{1F48E}', name: 'Diamond Card Back',           rarity: 'RARE',       color: 'var(--accent-blue)' },
+    { icon: '\u{1F0CF}', name: 'Neon Edge Card Skin',         rarity: 'RARE',       color: 'var(--accent-blue)' },
+    { icon: '\u{1F5FF}', name: 'Stone Guardian Costume',      rarity: 'COMMON',     color: 'var(--text-dim)' },
+    { icon: '\u{1F386}', name: 'Fireworks Victory Animation', rarity: 'EPIC',       color: 'var(--accent-purple)' },
+    { icon: '\u{1F308}', name: 'Rainbow Emote',               rarity: 'COMMON',     color: 'var(--text-dim)' },
+    { icon: '\u{1F525}', name: 'Flame Trail Effect',          rarity: 'RARE',       color: 'var(--accent-blue)' },
+    { icon: '\u{1F451}', name: 'Golden Crown (Creature)',     rarity: 'LEGENDARY',  color: 'var(--accent-amber)' },
+    { icon: '\u{1F4AB}', name: 'Dizzy Star Emote',            rarity: 'COMMON',     color: 'var(--text-dim)' },
+    { icon: '\u{1F9E9}', name: 'Puzzle Piece Charm',          rarity: 'UNCOMMON',   color: 'var(--accent-green)' },
+    { icon: '\u{1F300}', name: 'Mythic Card Back',            rarity: 'MYTHIC',     color: 'var(--accent-pink)' },
+    { icon: '\u{1F409}', name: 'Holographic Dragon',          rarity: 'MYTHIC',     color: 'var(--accent-pink)' },
+    { icon: '\u{1FA90}', name: 'Celestial Ringed Planet',     rarity: 'MYTHIC',     color: 'var(--accent-pink)' }
+  ];
+
+  /* --- Stats tracking --- */
+  var totalOpens = 0;
+  var rarityCount = {
+    COMMON: 0, UNCOMMON: 0, RARE: 0,
+    EPIC: 0, LEGENDARY: 0, MYTHIC: 0
+  };
+
+  /* --- Loot-specific probability functions --- */
+  function rollItem() {
+    var rarity = rollRarity();
+    var candidates = [];
+    for (var i = 0; i < lootItems.length; i++) {
+      if (lootItems[i].rarity === rarity) candidates.push(lootItems[i]);
+    }
+    if (candidates.length === 0) {
+      return lootItems[Math.floor(Math.random() * lootItems.length)];
+    }
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  function getDropRateForItem(item) {
+    var total = computeWeightTotal();
+    var rarityWeight = RARITY_WEIGHTS[item.rarity] || 0;
+    var rarityPct = (rarityWeight / total) * 100;
+    var count = 0;
+    for (var i = 0; i < lootItems.length; i++) {
+      if (lootItems[i].rarity === item.rarity) count++;
+    }
+    return count > 0 ? rarityPct / count : 0;
+  }
+
+  function recalcWeightsFromTable() {
+    var present = {};
+    for (var i = 0; i < lootItems.length; i++) {
+      present[lootItems[i].rarity.toUpperCase()] = true;
+    }
+    for (var key in RARITY_WEIGHTS) {
+      if (!present[key]) RARITY_WEIGHTS[key] = 0;
+    }
+    for (var r in present) {
+      if (rarityCount[r] === undefined) rarityCount[r] = 0;
+    }
+  }
+
+  /* --- Odds overlay (PREVIEW mode) --- */
+  function buildOddsPanel() {
+    if (!lootOddsContent) return;
+    lootOddsContent.innerHTML = '';
+    var total = computeWeightTotal();
+    for (var ri = 0; ri < RARITY_ORDER.length; ri++) {
+      var rarity = RARITY_ORDER[ri];
+      var weight = RARITY_WEIGHTS[rarity];
+      if (!weight || weight <= 0) continue;
+      var items = [];
+      for (var i = 0; i < lootItems.length; i++) {
+        if (lootItems[i].rarity === rarity) items.push(lootItems[i]);
+      }
+      if (items.length === 0) continue;
+      var rarityPct = ((weight / total) * 100).toFixed(1);
+      var perItemPct = (weight / total * 100 / items.length).toFixed(2);
+      var color = RARITY_COLORS[rarity] || 'var(--text-dim)';
+      var group = document.createElement('div');
+      group.className = 'loot-odds-group';
+      var header = document.createElement('div');
+      header.className = 'loot-odds-rarity-header';
+      header.style.color = color;
+      header.innerHTML = '<span>' + rarity + '</span><span class="loot-odds-pct">' + rarityPct + '%</span>';
+      group.appendChild(header);
+      for (var j = 0; j < items.length; j++) {
+        var row = document.createElement('div');
+        row.className = 'loot-odds-item';
+        row.innerHTML =
+          '<span class="loot-odds-item-icon">' + items[j].icon + '</span>' +
+          '<span class="loot-odds-item-name">' + items[j].name + '</span>' +
+          '<span class="loot-odds-item-pct">' + perItemPct + '%</span>';
+        group.appendChild(row);
+      }
+      lootOddsContent.appendChild(group);
+    }
+  }
+
+  function showOddsOverlay() {
+    buildOddsPanel();
+    lootOddsOverlay.classList.add('visible');
+  }
+
+  function hideOddsOverlay() {
+    lootOddsOverlay.classList.remove('visible');
+  }
+
+  /* --- Accessibility: update aria-label on scene --- */
+  function updateSceneAria(state, item) {
+    if (!chestScene) return;
+    if (state === 'ready') {
+      chestScene.setAttribute('aria-label', 'Click to open loot chest');
+    } else if (state === 'opening') {
+      chestScene.setAttribute('aria-label', 'Loot chest is opening');
+    } else if (state === 'result' && item) {
+      chestScene.setAttribute('aria-label',
+        'Loot result: ' + item.name + ', ' + item.rarity + ' rarity');
+    } else if (state === 'preview') {
+      chestScene.setAttribute('aria-label', 'Loot chest preview. Click to view drop rates.');
+    } else if (state === 'demo') {
+      chestScene.setAttribute('aria-label', 'Loot chest display (demo mode)');
+    }
+  }
+
+  function findLootItem(criteria) {
+    criteria = criteria || {};
+    var rarity = criteria.rarity ? String(criteria.rarity).toUpperCase() : '';
+    var name = criteria.name ? String(criteria.name).toLowerCase() : '';
+    for (var i = 0; i < lootItems.length; i++) {
+      if (name && lootItems[i].name.toLowerCase() === name) return lootItems[i];
+    }
+    if (rarity) {
+      for (var j = 0; j < lootItems.length; j++) {
+        if (lootItems[j].rarity === rarity) return lootItems[j];
+      }
+    }
+    return lootItems[0] || null;
+  }
+
+  function populateLootResult(item) {
+    if (!item) return;
+    document.getElementById('loot-item-icon').textContent = item.icon;
+    document.getElementById('loot-item-name').textContent = item.name;
+    var rarityEl = document.getElementById('loot-item-rarity');
+    rarityEl.textContent = item.rarity;
+    rarityEl.style.color = item.color;
+  }
+
+  function showResultState(item, options) {
+    options = options || {};
+    if (!item) return;
+    chest.setAttribute('data-result-rarity', item.rarity);
+    populateLootResult(item);
+    lootResult.classList.add('visible');
+    setDof('revealed');
+    updateSceneAria('result', item);
+    if (options.announce !== false) {
+      rt.announceToScreenReader(
+        'Loot result: ' + item.name + ', ' + item.rarity + ' rarity'
+      );
+    }
+  }
+
+  function applyDisplayPose(pose, payload) {
+    pose = String(pose || 'closed').toLowerCase();
+    payload = payload || {};
+    hideOddsOverlay();
+    chest.classList.remove('shaking');
+    chest.style.animation = '';
+    lootResult.classList.remove('visible');
+    chest.removeAttribute('data-result-rarity');
+
+    if (pose === 'closed' || pose === 'ready') {
+      resetChest();
+      return;
+    }
+
+    mouseFollow.disable();
+    lootOpen = true;
+
+    if (pose === 'preview') {
+      chest.classList.remove('opening');
+      setDof('closed');
+      showOddsOverlay();
+      updateSceneAria('preview');
+      return;
+    }
+
+    chest.classList.add('opening');
+
+    if (pose === 'open' || pose === 'opened') {
+      setDof('opening');
+      updateSceneAria('opening');
+      return;
+    }
+
+    if (pose === 'revealed' || pose === 'result') {
+      showResultState(findLootItem({
+        rarity: payload.rarity,
+        name: payload.itemName || payload.name
+      }), { announce: false });
+      return;
+    }
+
+    resetChest();
+  }
+
+  /* --- Reset chest to idle state --- */
+  function resetChest() {
+    chest.classList.remove('opening');
+    chest.removeAttribute('data-result-rarity');
+    chest.style.animation = '';
+    lootOpen = false;
+    lootResult.classList.remove('visible');
+    hideOddsOverlay();
+    setDof('closed');
+    updateSceneAria('ready');
+    mouseFollow.enable();
+  }
+
+  /* --- Open loot chest (PLAY mode) --- */
+  function openLootBox() {
+    if (rt.control() !== 'play' || lootOpen) return;
+    lootOpen = true;
+    lootResult.classList.remove('visible');
+    setDof('opening');
+    updateSceneAria('opening');
+    mouseFollow.disable();
+
+    var reduced = rt.isReducedMotion();
+    var item = rollItem();
+
+    if (reduced) {
+      chest.setAttribute('data-result-rarity', item.rarity);
+      chest.classList.add('opening');
+      revealItem(item);
+    } else {
+      chest.classList.add('shaking');
+      chest.style.animation = 'chestShake 0.6s ease-in-out';
+      setTimeout(function() {
+        chest.classList.remove('shaking');
+        chest.style.animation = 'none';
+        chest.setAttribute('data-result-rarity', item.rarity);
+        chest.classList.add('opening');
+        spawnParticles(lootParticles);
+        setTimeout(function() {
+          revealItem(item);
+        }, 800);
+      }, 600);
+    }
+  }
+
+  function revealItem(item) {
+    var reduced = rt.isReducedMotion();
+    totalOpens++;
+    if (rarityCount[item.rarity] !== undefined) {
+      rarityCount[item.rarity]++;
+    } else {
+      rarityCount[item.rarity] = 1;
+    }
+    showResultState(item);
+    var dropRate = getDropRateForItem(item);
+    var countSnapshot = {};
+    for (var k in rarityCount) { countSnapshot[k] = rarityCount[k]; }
+    rt.emit('loot-opened', {
+      icon: item.icon, name: item.name, rarity: item.rarity,
+      dropRate: Math.round(dropRate * 100) / 100,
+      totalOpens: totalOpens, rarityCount: countSnapshot
+    });
+    var resetDelay = reduced ? 1500 : 2500;
+    setTimeout(function() { resetChest(); }, resetDelay);
+  }
+
+  /* --- ferros:init callback (control mode changes) --- */
+  window.onFerrosInit = function(config) {
+    var c = rt.control();
+    if (c === 'preview') {
+      updateSceneAria('preview');
+    } else if (c === 'demo') {
+      updateSceneAria('demo');
+    } else {
+      updateSceneAria('ready');
+    }
+  };
+
+  /* --- ferros:update callback (custom loot tables) --- */
+  window.onFerrosUpdate = function(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    if (payload.lootTable && Array.isArray(payload.lootTable)) {
+      lootItems = [];
+      for (var i = 0; i < payload.lootTable.length; i++) {
+        var entry = payload.lootTable[i];
+        lootItems.push({
+          icon:   entry.icon   || '?',
+          name:   entry.name   || 'Unknown Item',
+          rarity: (entry.rarity || 'COMMON').toUpperCase(),
+          color:  entry.color  || RARITY_COLORS[(entry.rarity || 'COMMON').toUpperCase()] || 'var(--text-dim)'
+        });
+      }
+      recalcWeightsFromTable();
+      if (rt.control() === 'preview') buildOddsPanel();
+    }
+    if (payload.reset) {
+      resetChest();
+      return;
+    }
+    if (payload.pose || payload.state || payload.animationState || payload.previewOdds) {
+      applyDisplayPose(
+        payload.pose || payload.state || payload.animationState || (payload.previewOdds ? 'preview' : 'closed'),
+        payload
+      );
+      return;
+    }
+    if (payload.control) {
+      if (rt.control() === 'preview') {
+        updateSceneAria('preview');
+      } else if (rt.control() === 'demo') {
+        updateSceneAria('demo');
+      } else {
+        updateSceneAria('ready');
+      }
+    }
+  };
+
+  (function initArenaBridge(sceneEl, targetEl) {
+    if (!sceneEl || !targetEl) return;
+
+    var scale = parseFloat(document.body.getAttribute('data-arena-scale')) || 1;
+    var initRx = parseFloat(document.body.getAttribute('data-arena-rx')) || -20;
+    var initRy = parseFloat(document.body.getAttribute('data-arena-ry')) || 30;
+    var wireStyle = null;
+
+    function reportReady() {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'arena:ready',
+          scale: scale,
+          rx: initRx,
+          ry: initRy,
+          title: document.title || 'FERROS Asset: 3D Loot Chest'
+        }, '*');
+      }
+    }
+
+    window.addEventListener('message', function(e) {
+      var data = e.data;
+      if (!data || !data.type) return;
+
+      if (data.type === 'arena:update') {
+        var totalRx = data.rx != null ? data.rx : initRx;
+        var totalRy = data.ry != null ? data.ry : initRy;
+        var zoom = data.zoom || scale || 1;
+        var rel = zoom / (scale || 1);
+        var panX = data.panX || 0;
+        var panY = data.panY || 0;
+        if (!isFinite(rel) || rel <= 0) rel = 1;
+
+        sceneEl.style.setProperty('--arena-pan-x', panX + 'px');
+        sceneEl.style.setProperty('--arena-pan-y', panY + 'px');
+        targetEl.style.setProperty('--base-rx', totalRx + 'deg');
+        targetEl.style.setProperty('--base-ry', totalRy + 'deg');
+
+        if (data.projMode === 'iso') {
+          sceneEl.style.setProperty('--arena-perspective', '8000px');
+          targetEl.style.setProperty('--arena-z', '0px');
+          targetEl.style.setProperty('--arena-scale', rel.toFixed(4));
+        } else {
+          sceneEl.style.setProperty('--arena-perspective', '1400px');
+          targetEl.style.setProperty('--arena-scale', '1');
+          targetEl.style.setProperty('--arena-z', (Math.log(rel) * 900).toFixed(3) + 'px');
+        }
+      }
+
+      if (data.type === 'arena:transition') {
+        sceneEl.style.transition = data.value || '';
+        targetEl.style.transition = data.value || '';
+      }
+
+      if (data.type === 'arena:wireframe') {
+        if (data.value && !wireStyle) {
+          wireStyle = document.createElement('style');
+          wireStyle.textContent =
+            '#ferros-asset-root * { background: transparent !important; ' +
+            'box-shadow: inset 0 0 0 1px rgba(74,144,217,0.35) !important; ' +
+            'filter: none !important; border-color: rgba(74,144,217,0.35) !important; ' +
+
+            'text-shadow: none !important; }\n' +
+            '#ferros-asset-root .loot-result, #ferros-asset-root .loot-odds-overlay, #ferros-asset-root #loot-particles { display: none !important; }';
+          document.head.appendChild(wireStyle);
+        } else if (!data.value && wireStyle) {
+          wireStyle.remove();
+          wireStyle = null;
+        }
+      }
+    });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', reportReady);
+    } else {
+      reportReady();
+    }
+  })(chestScene, chest);
+  /* --- Mouse-follow 3D rotation --- */
+  var mouseFollow = (function initMouseFollow(sceneEl, targetEl, opts) {
+    if (!sceneEl || !targetEl || rt.isReducedMotion()) {
+      return { disable: function() {}, enable: function() {} };
+    }
+    opts = opts || {};
+    var maxRX = opts.maxRotateX || 8;
+    var maxRY = opts.maxRotateY || 12;
+    var enabled = true;
+
+    sceneEl.addEventListener('mousemove', function(e) {
+      if (!enabled) return;
+      var rect = sceneEl.getBoundingClientRect();
+      var cx = (e.clientX - rect.left) / rect.width;
+      var cy = (e.clientY - rect.top) / rect.height;
+      var offX = (cx - 0.5) * 2;
+      var offY = (cy - 0.5) * 2;
+      targetEl.classList.remove('returning');
+      targetEl.style.setProperty('--follow-ry', (offX * maxRY) + 'deg');
+      targetEl.style.setProperty('--follow-rx', (-offY * maxRX) + 'deg');
+    });
+
+    sceneEl.addEventListener('mouseleave', function() {
+      if (!enabled) return;
+      targetEl.classList.add('returning');
+      targetEl.style.setProperty('--follow-rx', '0deg');
+      targetEl.style.setProperty('--follow-ry', '0deg');
+    });
+
+    return {
+      disable: function() {
+        enabled = false;
+        targetEl.style.setProperty('--follow-rx', '0deg');
+        targetEl.style.setProperty('--follow-ry', '0deg');
+      },
+      enable: function() {
+        enabled = true;
+        targetEl.classList.add('returning');
+      }
+    };
+  })(chestScene, chest);
+
+  /* --- Event binding --- */
+  if (chestScene) {
+    chestScene.addEventListener('click', function() {
+      if (rt.control() === 'preview') {
+        if (lootOddsOverlay.classList.contains('visible')) {
+          hideOddsOverlay();
+        } else {
+          showOddsOverlay();
+        }
+        return;
+      }
+      openLootBox();
+    });
+    chestScene.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        chestScene.click();
+      }
+    });
+  }
+
+  if (lootOddsBackdrop) {
+    lootOddsBackdrop.addEventListener('click', function() {
+      hideOddsOverlay();
+    });
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && lootOddsOverlay.classList.contains('visible')) {
+      hideOddsOverlay();
+    }
+  });
+
+  /* --- Initialize --- */
+  recalcWeightsFromTable();
+  /* applyControl already called by runtime */
+  window.onFerrosInit({ control: rt.control() });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="barrel-lid" data-version="3.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Part: Barrel Vault Lid</title>
+<!--
+  =====================================================
+   FERROS PART: barrel-lid  v3.0.0
+   Parametric half-cylinder shell (vertex-defined)
+   Rendered by _geo3d.js
+
+   Parameters:
+     W  = 200   (width, X axis)
+     D  = 130   (depth, Z axis)
+     T  = 12    (wall thickness)
+     R  = 65    (outer radius = D/2)
+     RI = 53    (inner radius = R - T)
+     WI = 176   (interior width = W - 2T)
+     N  = 12    (strips per barrel surface)
+
+   Geometry:
+     Outer barrel:  12 strips (W wide, R=65)
+     Inner barrel:  12 strips (WI wide, RI=53)
+     Outer endcaps: 2 semicircle clip-path faces
+     Inner endcaps: 2 semicircle clip-path faces
+     Bottom frame:  4 rim strips (rect minus inner rect)
+  =====================================================
+-->
+<link rel="stylesheet" href="../../_tokens.css">
+<style>
+body {
+  margin: 0;
+  background: #0a0c10;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.part-root {
+  perspective: 1400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.part-root,
+.part-geo,
+.part-geo * {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+.part-geo {
+  transform: rotateX(-20deg) rotateY(30deg);
+}
+.part-geo .face {
+  will-change: transform;
+}
+</style>
+</head>
+<body data-ferros-part="barrel-lid" data-arena-scale="1" data-arena-rx="-20" data-arena-ry="30">
+
+<div class="part-root">
+  <div class="part-geo"></div>
+</div>
+
+<script>
+/* =====================================================
+   BARREL LID vertex geometry v3.0.0
+
+   Half-cylinder shell with wall thickness T=12.
+   Barrel axis along X. Arch from front (+Z) over top (-Y)
+   to back (-Z). Base at Y=0.
+
+   Coordinate origin: center of barrel base plane.
+     X: left=-100, right=+100
+     Y: 0 = base, -R = outer top, -(R-T) = inner top
+     Z: front=+R, back=-R
+
+   N=12 strips per barrel, 15° each.
+   Strips are flat quads tangent to the cylinder.
+   ===================================================== */
+var W  = 200;
+var D  = 130;
+var T  = 12;
+var R  = D / 2;         /* 65  outer radius */
+var RI = R - T;          /* 53  inner radius */
+var WI = W - 2 * T;     /* 176 interior width */
+var hw = W / 2;          /* 100 */
+var hwi = WI / 2;        /* 88  */
+
+var N = 12;              /* strips per barrel surface */
+var STEP = Math.PI / N;  /* 15° in radians */
+
+var faces = [];
+
+/* ── Helper: barrel point at angle θ, radius r ──
+   θ=0 → front base (Y=0, Z=+R)
+   θ=π/2 → top (Y=-R, Z=0)
+   θ=π → back base (Y=0, Z=-R) */
+function bY(r, theta) { return -r * Math.sin(theta); }
+function bZ(r, theta) { return  r * Math.cos(theta); }
+
+/* ── Outer barrel: 12 strips ──
+   Viewed from outside: TL, TR, BR, BL
+   "Top" = lower angle (closer to front base), "Bottom" = higher angle
+   Normal points outward (away from center) */
+for (var i = 0; i < N; i++) {
+  var a0 = i * STEP;           /* start angle */
+  var a1 = (i + 1) * STEP;    /* end angle */
+
+  /* Outer strip vertices: front edge (a0) to back edge (a1) */
+  var y0 = bY(R, a0), z0 = bZ(R, a0);
+  var y1 = bY(R, a1), z1 = bZ(R, a1);
+
+  /* From outside, the outward normal points away from barrel axis.
+     Sweep goes from a0 (front) to a1 (further back/up).
+     TL = left, a1 (upper edge)
+     TR = right, a1
+     BR = right, a0 (lower edge, closer to base)
+     BL = left, a0 */
+  faces.push({
+    id: 'bo' + i,
+    verts: [
+      [-hw, y1, z1], [ hw, y1, z1],
+      [ hw, y0, z0], [-hw, y0, z0]
+    ],
+    color: '#4D3D32'
+  });
+}
+
+/* ── Inner barrel: 12 strips ──
+   Faces inward (toward barrel center).
+   Normal points inward = toward axis. So winding
+   is reversed vs outer: swap left/right. */
+for (var i = 0; i < N; i++) {
+  var a0 = i * STEP;
+  var a1 = (i + 1) * STEP;
+
+  var y0 = bY(RI, a0), z0 = bZ(RI, a0);
+  var y1 = bY(RI, a1), z1 = bZ(RI, a1);
+
+  /* Inward-facing: normal points toward barrel axis.
+     Reverse winding from outer barrel. */
+  faces.push({
+    id: 'bi' + i,
+    verts: [
+      [-hwi, y0, z0], [ hwi, y0, z0],
+      [ hwi, y1, z1], [-hwi, y1, z1]
+    ],
+    color: '#241A12'
+  });
+}
+
+/* ── Outer endcaps (semicircles) ──
+   Left at X=-hw, Right at X=+hw.
+   Each is a D×R rectangle with semicircle clip-path.
+   The semicircle sits at the bottom of the rectangle (base of arch). */
+
+/* Left endcap: faces -X (outward left)
+   Viewed from outside (from -X looking toward +X):
+   The endcap is a semicircle in the Z-Y plane.
+   TL = (back, top), TR = (front, top), BR = (front, base), BL = (back, base)
+   But for a semicircle we need the full bounding rect clipped. */
+faces.push({
+  id: 'ecl',
+  verts: [
+    [-hw, -R, -R], [-hw, -R,  R],
+    [-hw,  0,  R], [-hw,  0, -R]
+  ],
+  color: '#443626',
+  clip: 'ellipse(50% 100% at 50% 100%)'
+});
+
+/* Right endcap: faces +X (outward right) */
+faces.push({
+  id: 'ecr',
+  verts: [
+    [ hw, -R,  R], [ hw, -R, -R],
+    [ hw,  0, -R], [ hw,  0,  R]
+  ],
+  color: '#443626',
+  clip: 'ellipse(50% 100% at 50% 100%)'
+});
+
+/* ── Inner endcaps (semicircles) ──
+   Left at X=-hwi, Right at X=+hwi.
+   Smaller radius RI, faces inward. */
+
+/* Left inner endcap: faces +X (inward) */
+faces.push({
+  id: 'icl',
+  verts: [
+    [-hwi, -RI,  RI], [-hwi, -RI, -RI],
+    [-hwi,   0, -RI], [-hwi,   0,  RI]
+  ],
+  color: '#1E1610',
+  clip: 'ellipse(50% 100% at 50% 100%)'
+});
+
+/* Right inner endcap: faces -X (inward) */
+faces.push({
+  id: 'icr',
+  verts: [
+    [ hwi, -RI, -RI], [ hwi, -RI,  RI],
+    [ hwi,   0,  RI], [ hwi,   0, -RI]
+  ],
+  color: '#1E1610',
+  clip: 'ellipse(50% 100% at 50% 100%)'
+});
+
+/* ── Bottom frame ──
+   The base plane at Y=0. A rectangular frame between
+   outer (W×D) and inner (WI×DI) perimeters.
+   Split into 4 non-overlapping rim strips (no clip-path). */
+
+var DI = D - 2 * T;  /* 106 */
+var hd = D / 2;       /* 65  */
+var hdi = DI / 2;     /* 53  */
+
+/* Bottom faces +Y (visible from below = underside of lid) */
+/* Front rim strip: X: -hw..+hw, Z: hdi..hd */
+faces.push({
+  id: 'bff',
+  verts: [
+    [-hw, 0,  hd],  [ hw, 0,  hd],
+    [ hw, 0,  hdi], [-hw, 0,  hdi]
+  ],
+  color: '#1A140E'
+});
+
+/* Back rim strip: X: -hw..+hw, Z: -hd..-hdi */
+faces.push({
+  id: 'bfb',
+  verts: [
+    [-hw, 0, -hdi], [ hw, 0, -hdi],
+    [ hw, 0, -hd],  [-hw, 0, -hd]
+  ],
+  color: '#1A140E'
+});
+
+/* Left rim strip: X: -hw..-hwi, Z: -hdi..+hdi */
+faces.push({
+  id: 'bfl',
+  verts: [
+    [-hw,  0, -hdi], [-hw,  0,  hdi],
+    [-hwi, 0,  hdi], [-hwi, 0, -hdi]
+  ],
+  color: '#120E0A'
+});
+
+/* Right rim strip: X: +hwi..+hw, Z: -hdi..+hdi */
+faces.push({
+  id: 'bfr',
+  verts: [
+    [ hwi, 0, -hdi], [ hwi, 0,  hdi],
+    [ hw, 0,  hdi], [ hw, 0, -hdi]
+  ],
+  color: '#120E0A'
+});
+
+window.FERROS_GEO = faces;
+</script>
+<script src="../../_lib/_geo3d.js?v=1.2.1"></script>
+<script src="../../_core/arena-guest.js?v=2.1.0"></script>
+</body>
+</html>

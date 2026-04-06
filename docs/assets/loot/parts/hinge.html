@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="hinge" data-version="3.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Part: Strap Hinge</title>
+<!--
+  =====================================================
+   FERROS PART: hinge  v3.0.0
+   Strap hinge with alternating knuckles and pin,
+   vertex-defined and rendered by _geo3d.js
+
+   Coordinate origin: hinge pin center.
+   X axis runs along the pin.
+   Y axis points down.
+   Z axis points toward the viewer.
+
+   Design updates:
+     - 3 alternating hinge barrels
+     - visible center pin
+     - thinner strap leaves instead of solid blocks
+     - fastener heads on both leaves
+  =====================================================
+-->
+<link rel="stylesheet" href="../../_tokens.css">
+<style>
+body {
+  margin: 0;
+  background: #0a0c10;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.part-root {
+  perspective: 1400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.part-root,
+.part-geo,
+.part-geo * {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+.part-geo {
+  transform: rotateX(-20deg) rotateY(30deg);
+}
+.part-geo .face {
+  will-change: transform;
+}
+</style>
+</head>
+<body data-ferros-part="hinge" data-arena-scale="4" data-arena-rx="-20" data-arena-ry="30">
+
+<div class="part-root">
+  <div class="part-geo"></div>
+</div>
+
+<script>
+var S = 4;
+
+var LEAF_W = 22 * S;
+var LEAF_H = 16 * S;
+var LEAF_T = 2 * S;
+var BARREL_R = 3 * S;
+var PIN_R = 1.4 * S;
+var FASTENER_R = 1.6 * S;
+var FASTENER_H = 1.2 * S;
+var CHAMFER = 2.2 * S;
+
+var faces = [];
+
+function clipPath(points, minX, minY) {
+  return 'polygon(' + points.map(function(p) {
+    return (p[0] - minX) + 'px ' + (p[1] - minY) + 'px';
+  }).join(',') + ')';
+}
+
+function edgeColor(dx, dy) {
+  var len = Math.sqrt(dx * dx + dy * dy) || 1;
+  var ny = -dx / len;
+  var nx = dy / len;
+
+  if (ny < -0.6) return '#5b544b';
+  if (ny > 0.6) return '#231d19';
+  return nx > 0 ? '#312c27' : '#423b34';
+}
+
+function addExtrudedProfile(points, zFront, zBack, prefix, frontColor, backColor) {
+  var minX = Infinity, maxX = -Infinity;
+  var minY = Infinity, maxY = -Infinity;
+  var i;
+
+  for (i = 0; i < points.length; i++) {
+    if (points[i][0] < minX) minX = points[i][0];
+    if (points[i][0] > maxX) maxX = points[i][0];
+    if (points[i][1] < minY) minY = points[i][1];
+    if (points[i][1] > maxY) maxY = points[i][1];
+  }
+
+  faces.push({
+    id: prefix + 'f',
+    color: frontColor,
+    clip: clipPath(points, minX, minY),
+    verts: [
+      [minX, minY, zFront], [maxX, minY, zFront],
+      [maxX, maxY, zFront], [minX, maxY, zFront]
+    ]
+  });
+
+  faces.push({
+    id: prefix + 'k',
+    color: backColor,
+    clip: clipPath(points, minX, minY),
+    verts: [
+      [maxX, minY, zBack], [minX, minY, zBack],
+      [minX, maxY, zBack], [maxX, maxY, zBack]
+    ]
+  });
+
+  for (i = 0; i < points.length; i++) {
+    var p0 = points[i];
+    var p1 = points[(i + 1) % points.length];
+    faces.push({
+      id: prefix + 'e' + i,
+      color: edgeColor(p1[0] - p0[0], p1[1] - p0[1]),
+      verts: [
+        [p0[0], p0[1], zBack], [p1[0], p1[1], zBack],
+        [p1[0], p1[1], zFront], [p0[0], p0[1], zFront]
+      ]
+    });
+  }
+}
+
+function roundedLeaf(left, top, right, bottom, chamfer) {
+  return [
+    [left + chamfer, top],
+    [right - chamfer, top],
+    [right, top + chamfer],
+    [right, bottom - chamfer],
+    [right - chamfer, bottom],
+    [left + chamfer, bottom],
+    [left, bottom - chamfer],
+    [left, top + chamfer]
+  ];
+}
+
+function octagon(cx, cy, r) {
+  var s = r * 0.55;
+  return [
+    [cx - s, cy - r],
+    [cx + s, cy - r],
+    [cx + r, cy - s],
+    [cx + r, cy + s],
+    [cx + s, cy + r],
+    [cx - s, cy + r],
+    [cx - r, cy + s],
+    [cx - r, cy - s]
+  ];
+}
+
+function addBarrelSegment(x0, x1, radius, prefix, frontTint, backTint) {
+  var steps = 10;
+  var i;
+
+  for (i = 0; i < steps; i++) {
+    var a0 = (Math.PI * 2 * i) / steps;
+    var a1 = (Math.PI * 2 * (i + 1)) / steps;
+    var y0 = radius * Math.sin(a0);
+    var z0 = radius * Math.cos(a0);
+    var y1 = radius * Math.sin(a1);
+    var z1 = radius * Math.cos(a1);
+    var mix = 0.45 + 0.55 * Math.max(0, z0 / radius, z1 / radius);
+    var shade = Math.round(46 + mix * 38);
+
+    faces.push({
+      id: prefix + 'c' + i,
+      color: 'rgb(' + shade + ',' + Math.round(shade * 0.92) + ',' + Math.round(shade * 0.84) + ')',
+      verts: [
+        [x0, y0, z0], [x1, y0, z0],
+        [x1, y1, z1], [x0, y1, z1]
+      ]
+    });
+  }
+
+  faces.push({
+    id: prefix + 'l',
+    color: backTint,
+    clip: 'ellipse(50% 50% at 50% 50%)',
+    verts: [
+      [x0, -radius, -radius], [x0, -radius, radius],
+      [x0, radius, radius], [x0, radius, -radius]
+    ]
+  });
+
+  faces.push({
+    id: prefix + 'r',
+    color: frontTint,
+    clip: 'ellipse(50% 50% at 50% 50%)',
+    verts: [
+      [x1, -radius, radius], [x1, -radius, -radius],
+      [x1, radius, -radius], [x1, radius, radius]
+    ]
+  });
+}
+
+addExtrudedProfile(
+  roundedLeaf(-LEAF_W / 2, 0, LEAF_W / 2, LEAF_H, CHAMFER),
+  LEAF_T / 2,
+  -LEAF_T / 2,
+  'body',
+  '#504941',
+  '#221d19'
+);
+
+addExtrudedProfile(
+  roundedLeaf(-LEAF_W / 2, -LEAF_H, LEAF_W / 2, 0, CHAMFER),
+  LEAF_T / 2,
+  -LEAF_T / 2,
+  'lid',
+  '#4a433c',
+  '#211b17'
+);
+
+addBarrelSegment(-48, -16, BARREL_R, 'kbL', '#5f584f', '#2a2420');
+addBarrelSegment(-12, 12, BARREL_R, 'kbC', '#655d54', '#2d2722');
+addBarrelSegment(16, 48, BARREL_R, 'kbR', '#5f584f', '#2a2420');
+addBarrelSegment(-50, 50, PIN_R, 'pin', '#877d70', '#4d463f');
+
+addExtrudedProfile(octagon(-22, 20, FASTENER_R), LEAF_T / 2 + FASTENER_H, LEAF_T / 2, 'bf1', '#71685d', '#49423c');
+addExtrudedProfile(octagon(22, 20, FASTENER_R), LEAF_T / 2 + FASTENER_H, LEAF_T / 2, 'bf2', '#71685d', '#49423c');
+addExtrudedProfile(octagon(-22, -20, FASTENER_R), LEAF_T / 2 + FASTENER_H, LEAF_T / 2, 'lf1', '#6a6258', '#453f39');
+addExtrudedProfile(octagon(22, -20, FASTENER_R), LEAF_T / 2 + FASTENER_H, LEAF_T / 2, 'lf2', '#6a6258', '#453f39');
+
+window.FERROS_GEO = faces;
+</script>
+<script src="../../_lib/_geo3d.js?v=1.2.1"></script>
+<script src="../../_core/arena-guest.js?v=2.1.0"></script>
+</body>
+</html>

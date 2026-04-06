@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="edge-bracket" data-version="4.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Part: Edge Bracket (FL)</title>
+<!--
+  =====================================================
+   FERROS PART: edge-bracket  v4.0.0
+   10-face L-angle iron extrusion (vertex-defined)
+   Rendered by _geo3d.js
+
+   Right-angle iron bracket at chest front-left corner.
+   Template for all 4 corner brackets.
+
+   Cross-section (top-down, in base units before S scale):
+
+      z=+5  +------------------+  front outer (1)
+            |   FRONT FLANGE   |  t=3
+      z=+2  +---+              |  front inner (2)
+            |   |              |
+            | S |   (empty)    |
+            |   |              |
+      z=-5  +---+              .
+          x=-5  x=-2        x=+5
+
+   10 faces (caps split into 2 rects, no clip-path):
+     1-6: vertical walls (same as before)
+     7-8: top cap = front strip + side strip
+     9-10: bottom cap = front strip + side strip
+  =====================================================
+-->
+<link rel="stylesheet" href="../../_tokens.css">
+<style>
+body {
+  margin: 0;
+  background: #0a0c10;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.part-root {
+  perspective: 1400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.part-root,
+.part-geo,
+.part-geo * {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+.part-geo {
+  transform: rotateX(-15deg) rotateY(40deg);
+}
+.part-geo .face {
+  will-change: transform;
+}
+</style>
+</head>
+<body data-ferros-part="edge-bracket" data-arena-scale="0.5" data-arena-rx="-15" data-arena-ry="40">
+
+<div class="part-root">
+  <div class="part-geo"></div>
+</div>
+
+<script>
+/* =====================================================
+   EDGE BRACKET (Front-Left) vertex geometry v4.0.0
+
+   S = 8 — scale factor so native pixels are large enough
+   for CSS 3D to render crisp edges without excessive zoom.
+
+   Caps split into exact non-overlapping rectangles.
+   _geo3d.js applies a tiny per-face bleed to hide AA seams.
+
+   Verts: [TL, TR, BR, BL] as seen from outside.
+   CCW winding → outward normal.
+   ===================================================== */
+var S = 8;
+
+var X0 = -5 * S;
+var X1 = -2 * S;
+var X2 =  5 * S;
+
+var Z0 = -5 * S;
+var Z1 =  2 * S;
+var Z2 =  5 * S;
+
+var Y0 = -35 * S;
+var Y1 =  35 * S;
+
+window.FERROS_GEO = [
+  /* 1. Front outer (z=Z2, faces +Z) */
+  { id:'fo', verts:[[X0,Y0,Z2],[X2,Y0,Z2],[X2,Y1,Z2],[X0,Y1,Z2]],
+    color:'#5a5550' },
+
+  /* 2. Front inner (z=Z1, faces -Z) — x: X1 to X2 */
+  { id:'fi', verts:[[X2,Y0,Z1],[X1,Y0,Z1],[X1,Y1,Z1],[X2,Y1,Z1]],
+    color:'#3a3530' },
+
+  /* 3. Side outer (x=X0, faces -X) */
+  { id:'so', verts:[[X0,Y0,Z0],[X0,Y0,Z2],[X0,Y1,Z2],[X0,Y1,Z0]],
+    color:'#4a4540' },
+
+  /* 4. Side inner (x=X1, faces +X) — z: Z0 to Z1 */
+  { id:'si', verts:[[X1,Y0,Z1],[X1,Y0,Z0],[X1,Y1,Z0],[X1,Y1,Z1]],
+    color:'#3a3530' },
+
+  /* 5. Front tip (x=X2, faces +X) — z: Z1 to Z2 */
+  { id:'ft', verts:[[X2,Y0,Z2],[X2,Y0,Z1],[X2,Y1,Z1],[X2,Y1,Z2]],
+    color:'#322e28' },
+
+  /* 6. Side tip (z=Z0, faces -Z) — x: X0 to X1 */
+  { id:'st', verts:[[X1,Y0,Z0],[X0,Y0,Z0],[X0,Y1,Z0],[X1,Y1,Z0]],
+    color:'#322e28' },
+
+  /* 7. Top cap — front strip (y=Y0, faces -Y)
+       X1..X2 × Z1..Z2 (front flange top) */
+  { id:'ttf', verts:[[X1,Y0,Z1],[X2,Y0,Z1],[X2,Y0,Z2],[X1,Y0,Z2]],
+    color:'#5a5550' },
+
+  /* 8. Top cap — side strip (y=Y0, faces -Y)
+       X0..X1 × Z0..Z2 (side flange top, full Z) */
+  { id:'tts', verts:[[X0,Y0,Z0],[X1,Y0,Z0],[X1,Y0,Z2],[X0,Y0,Z2]],
+    color:'#5a5550' },
+
+  /* 9. Bottom cap — front strip (y=Y1, faces +Y)
+       X1..X2 × Z1..Z2 */
+  { id:'bbf', verts:[[X1,Y1,Z2],[X2,Y1,Z2],[X2,Y1,Z1],[X1,Y1,Z1]],
+    color:'#383430' },
+
+  /* 10. Bottom cap — side strip (y=Y1, faces +Y)
+        X0..X1 × Z0..Z2 */
+  { id:'bbs', verts:[[X0,Y1,Z2],[X1,Y1,Z2],[X1,Y1,Z0],[X0,Y1,Z0]],
+    color:'#383430' }
+];
+</script>
+<script src="../../_lib/_geo3d.js?v=1.2.1"></script>
+<script src="../../_core/arena-guest.js?v=2.1.0"></script>
+</body>
+</html>

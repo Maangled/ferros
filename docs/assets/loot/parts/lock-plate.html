@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="lock-plate" data-version="3.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Part: Lock Plate</title>
+<!--
+  =====================================================
+   FERROS PART: lock-plate  v3.0.0
+   Escutcheon-style lock plate with raised bezel,
+   recessed keyhole, and rivet heads.
+   Rendered by _geo3d.js
+
+   Coordinate origin: plate center.
+   X axis runs left/right.
+   Y axis runs top/down.
+   Z axis runs front/back.
+  =====================================================
+-->
+<link rel="stylesheet" href="../../_tokens.css">
+<style>
+body {
+  margin: 0;
+  background: #0a0c10;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.part-root {
+  perspective: 1400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.part-root,
+.part-geo,
+.part-geo * {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+.part-geo {
+  transform: rotateX(-10deg) rotateY(25deg);
+}
+.part-geo .face {
+  will-change: transform;
+}
+</style>
+</head>
+<body data-ferros-part="lock-plate" data-arena-scale="3" data-arena-rx="-10" data-arena-ry="25">
+
+<div class="part-root">
+  <div class="part-geo"></div>
+</div>
+
+<script>
+var S = 3;
+
+var BODY_W = 36 * S;
+var BODY_H = 46 * S;
+var BODY_D = 6 * S;
+var BODY_CH = 5 * S;
+
+var BEZEL_W = 26 * S;
+var BEZEL_H = 35 * S;
+var BEZEL_D = 3 * S;
+var BEZEL_CH = 4 * S;
+
+var RIVET_R = 2.2 * S;
+var RIVET_D = 1.8 * S;
+
+var faces = [];
+
+function clipPath(points, minX, minY) {
+  return 'polygon(' + points.map(function(p) {
+    return (p[0] - minX) + 'px ' + (p[1] - minY) + 'px';
+  }).join(',') + ')';
+}
+
+function edgeColor(dx, dy) {
+  var len = Math.sqrt(dx * dx + dy * dy) || 1;
+  var ny = -dx / len;
+  var nx = dy / len;
+
+  if (ny < -0.6) return '#5c5349';
+  if (ny > 0.6) return '#1f1915';
+  return nx > 0 ? '#332d28' : '#413a33';
+}
+
+function addExtrudedProfile(points, zFront, zBack, prefix, frontColor, backColor) {
+  var minX = Infinity, maxX = -Infinity;
+  var minY = Infinity, maxY = -Infinity;
+  var i;
+
+  for (i = 0; i < points.length; i++) {
+    if (points[i][0] < minX) minX = points[i][0];
+    if (points[i][0] > maxX) maxX = points[i][0];
+    if (points[i][1] < minY) minY = points[i][1];
+    if (points[i][1] > maxY) maxY = points[i][1];
+  }
+
+  faces.push({
+    id: prefix + 'f',
+    color: frontColor,
+    clip: clipPath(points, minX, minY),
+    verts: [
+      [minX, minY, zFront], [maxX, minY, zFront],
+      [maxX, maxY, zFront], [minX, maxY, zFront]
+    ]
+  });
+
+  faces.push({
+    id: prefix + 'k',
+    color: backColor,
+    clip: clipPath(points, minX, minY),
+    verts: [
+      [maxX, minY, zBack], [minX, minY, zBack],
+      [minX, maxY, zBack], [maxX, maxY, zBack]
+    ]
+  });
+
+  for (i = 0; i < points.length; i++) {
+    var p0 = points[i];
+    var p1 = points[(i + 1) % points.length];
+    faces.push({
+      id: prefix + 'e' + i,
+      color: edgeColor(p1[0] - p0[0], p1[1] - p0[1]),
+      verts: [
+        [p0[0], p0[1], zBack], [p1[0], p1[1], zBack],
+        [p1[0], p1[1], zFront], [p0[0], p0[1], zFront]
+      ]
+    });
+  }
+}
+
+function octagon(cx, cy, r) {
+  var s = r * 0.55;
+  return [
+    [cx - s, cy - r],
+    [cx + s, cy - r],
+    [cx + r, cy - s],
+    [cx + r, cy + s],
+    [cx + s, cy + r],
+    [cx - s, cy + r],
+    [cx - r, cy + s],
+    [cx - r, cy - s]
+  ];
+}
+
+function plateProfile(width, height, chamfer) {
+  var hw = width / 2;
+  var hh = height / 2;
+  return [
+    [-hw + chamfer, -hh],
+    [hw - chamfer, -hh],
+    [hw, -hh + chamfer],
+    [hw, hh - chamfer],
+    [hw - chamfer, hh],
+    [-hw + chamfer, hh],
+    [-hw, hh - chamfer],
+    [-hw, -hh + chamfer]
+  ];
+}
+
+var bodyFront = BODY_D / 2;
+var bodyBack = -BODY_D / 2;
+var bezelFront = bodyFront + BEZEL_D;
+var bezelBack = bodyFront - 1;
+
+addExtrudedProfile(
+  plateProfile(BODY_W, BODY_H, BODY_CH),
+  bodyFront,
+  bodyBack,
+  'body',
+  '#3d3732',
+  '#1d1814'
+);
+
+addExtrudedProfile(
+  plateProfile(BEZEL_W, BEZEL_H, BEZEL_CH),
+  bezelFront,
+  bezelBack,
+  'bezel',
+  '#554d44',
+  '#2d2722'
+);
+
+addExtrudedProfile(
+  octagon(0, 18, 5 * S),
+  bezelFront + 0.4,
+  bodyFront - 8,
+  'khOrb',
+  '#090706',
+  '#060504'
+);
+
+addExtrudedProfile(
+  [
+    [-2 * S, 18],
+    [2 * S, 18],
+    [2 * S, 50],
+    [-2 * S, 50]
+  ],
+  bezelFront + 0.4,
+  bodyFront - 8,
+  'khStem',
+  '#080605',
+  '#050403'
+);
+
+addExtrudedProfile(octagon(-24, -32, RIVET_R), bezelFront + RIVET_D, bezelFront, 'rvL', '#796f63', '#4f473f');
+addExtrudedProfile(octagon(24, -32, RIVET_R), bezelFront + RIVET_D, bezelFront, 'rvR', '#796f63', '#4f473f');
+addExtrudedProfile(octagon(0, 56, 1.9 * S), bezelFront + RIVET_D, bezelFront, 'rvB', '#6f665b', '#463f38');
+
+window.FERROS_GEO = faces;
+</script>
+<script src="../../_lib/_geo3d.js?v=1.2.1"></script>
+<script src="../../_core/arena-guest.js?v=2.1.0"></script>
+</body>
+</html>

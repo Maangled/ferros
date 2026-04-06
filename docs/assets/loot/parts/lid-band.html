@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="lid-band" data-version="3.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Part: Lid Band (Left)</title>
+<!--
+  =====================================================
+   FERROS PART: lid-band  v3.0.0
+   L-profile metal band — LEFT SIDE ONLY
+   Rendered by _geo3d.js
+
+   Cross-section (looking from +X toward -X):
+        BW=8
+    +----------+
+    |  TOP     | t=2
+    +--+-------+
+    |  |
+    |L | BW=8
+    |  |
+    +--+
+    +-- t=2
+
+   6 extruded surfaces x 12 strips + 4 endcap rects
+   = 76 faces total
+  =====================================================
+-->
+<link rel="stylesheet" href="../../_tokens.css">
+<style>
+body {
+  margin: 0;
+  background: #0a0c10;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.part-root {
+  perspective: 1400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.part-root,
+.part-geo,
+.part-geo * {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+.part-geo {
+  transform: rotateX(-20deg) rotateY(30deg);
+}
+.part-geo .face {
+  will-change: transform;
+}
+</style>
+</head>
+<body data-ferros-part="lid-band" data-arena-scale="1.5" data-arena-rx="-20" data-arena-ry="30">
+
+<div class="part-root">
+  <div class="part-geo"></div>
+</div>
+
+<script>
+/* =====================================================
+   LID BAND (Left) vertex geometry v3.0.0
+
+   Barrel parameterization:
+     Y(r,a) = -r * sin(a)
+     Z(r,a) =  r * cos(a)
+     a=0: front base, a=pi/2: top, a=pi: back base
+
+   Parameters:
+     R=65, BW=8, t=2, W=200, hw=100, Rb=65.5
+   ===================================================== */
+var R  = 65;
+var BW = 8;
+var t  = 2;
+var hw = 100;
+var Rb = R + 0.5;
+
+var N = 12;
+var STEP = Math.PI / N;
+var faces = [];
+
+function bY(r, a) { return -r * Math.sin(a); }
+function bZ(r, a) { return  r * Math.cos(a); }
+
+/* ── Angle-based brightness for iron strips ──
+   Top of arch is brightest, sides dimmer, base darkest */
+function ironColor(i) {
+  /* i=0..11, 6 is top of arch */
+  var mid = (N - 1) / 2;
+  var dist = Math.abs(i - mid) / mid;
+  var base = 58;
+  var range = 30;
+  var v = Math.round(base + range * (1 - dist));
+  return 'rgb(' + v + ',' + Math.round(v * 0.92) + ',' + Math.round(v * 0.84) + ')';
+}
+function ironDark(i) {
+  var mid = (N - 1) / 2;
+  var dist = Math.abs(i - mid) / mid;
+  var base = 30;
+  var range = 22;
+  var v = Math.round(base + range * (1 - dist));
+  return 'rgb(' + v + ',' + Math.round(v * 0.92) + ',' + Math.round(v * 0.84) + ')';
+}
+
+/* ══════════════════════════════════════
+   1. TOP FACE — BW wide at Rb, outward normal
+   ══════════════════════════════════════ */
+for (var i = 0; i < N; i++) {
+  var a0 = i * STEP, a1 = (i + 1) * STEP;
+  var y0 = bY(Rb, a0), z0 = bZ(Rb, a0);
+  var y1 = bY(Rb, a1), z1 = bZ(Rb, a1);
+  faces.push({ id: 'bt' + i, color: ironColor(i), verts: [
+    [-hw, y1, z1], [-hw+BW, y1, z1],
+    [-hw+BW, y0, z0], [-hw, y0, z0]
+  ]});
+}
+
+/* ══════════════════════════════════════
+   2. LEFT/OUTER FACE — BW tall, normal -X
+   ══════════════════════════════════════ */
+for (var i = 0; i < N; i++) {
+  var a0 = i * STEP, a1 = (i + 1) * STEP;
+  var oy0 = bY(Rb, a0), oz0 = bZ(Rb, a0);
+  var oy1 = bY(Rb, a1), oz1 = bZ(Rb, a1);
+  var iy0 = bY(Rb-BW, a0), iz0 = bZ(Rb-BW, a0);
+  var iy1 = bY(Rb-BW, a1), iz1 = bZ(Rb-BW, a1);
+  faces.push({ id: 'bl' + i, color: ironDark(i), verts: [
+    [-hw, oy1, oz1], [-hw, oy0, oz0],
+    [-hw, iy0, iz0], [-hw, iy1, iz1]
+  ]});
+}
+
+/* ══════════════════════════════════════
+   3. INNER VERT EDGE — t tall at X=-hw+BW
+      Right side of top bar, faces +X (toward box center)
+      Spans Rb to Rb-t
+   ══════════════════════════════════════ */
+for (var i = 0; i < N; i++) {
+  var a0 = i * STEP, a1 = (i + 1) * STEP;
+  var oy0 = bY(Rb, a0), oz0 = bZ(Rb, a0);
+  var oy1 = bY(Rb, a1), oz1 = bZ(Rb, a1);
+  var iy0 = bY(Rb-t, a0), iz0 = bZ(Rb-t, a0);
+  var iy1 = bY(Rb-t, a1), iz1 = bZ(Rb-t, a1);
+
+  /* Normal +X: viewed from right (+X looking -X), the face
+     is a strip from a0 to a1, outer (Rb) to inner (Rb-t) */
+  faces.push({ id: 'bv' + i, color: ironDark(i), verts: [
+    [-hw+BW, oy0, oz0], [-hw+BW, oy1, oz1],
+    [-hw+BW, iy1, iz1], [-hw+BW, iy0, iz0]
+  ]});
+}
+
+/* ══════════════════════════════════════
+   4. BOTTOM HORIZ EDGE — t wide at Rb-BW
+      Bottom of left bar, faces inward toward barrel axis
+   ══════════════════════════════════════ */
+for (var i = 0; i < N; i++) {
+  var a0 = i * STEP, a1 = (i + 1) * STEP;
+  var y0 = bY(Rb-BW, a0), z0 = bZ(Rb-BW, a0);
+  var y1 = bY(Rb-BW, a1), z1 = bZ(Rb-BW, a1);
+  faces.push({ id: 'bh' + i, color: ironDark(i), verts: [
+    [-hw+t, y0, z0], [-hw+t, y1, z1],
+    [-hw, y1, z1], [-hw, y0, z0]
+  ]});
+}
+
+/* ══════════════════════════════════════
+   5. INNER-TOP — underside of top bar at Rb-t
+      Faces inward toward barrel axis
+   ══════════════════════════════════════ */
+for (var i = 0; i < N; i++) {
+  var a0 = i * STEP, a1 = (i + 1) * STEP;
+  var y0 = bY(Rb-t, a0), z0 = bZ(Rb-t, a0);
+  var y1 = bY(Rb-t, a1), z1 = bZ(Rb-t, a1);
+  faces.push({ id: 'bit' + i, color: ironDark(i), verts: [
+    [-hw+t, y0, z0], [-hw+BW, y0, z0],
+    [-hw+BW, y1, z1], [-hw+t, y1, z1]
+  ]});
+}
+
+/* ══════════════════════════════════════
+   6. INNER-LEFT — inside of left bar at X=-hw+t
+      Faces +X (toward box center)
+      Spans Rb-t to Rb-BW
+   ══════════════════════════════════════ */
+for (var i = 0; i < N; i++) {
+  var a0 = i * STEP, a1 = (i + 1) * STEP;
+  var oy0 = bY(Rb-t, a0), oz0 = bZ(Rb-t, a0);
+  var oy1 = bY(Rb-t, a1), oz1 = bZ(Rb-t, a1);
+  var iy0 = bY(Rb-BW, a0), iz0 = bZ(Rb-BW, a0);
+  var iy1 = bY(Rb-BW, a1), iz1 = bZ(Rb-BW, a1);
+  faces.push({ id: 'bil' + i, color: ironDark(i), verts: [
+    [-hw+t, oy0, oz0], [-hw+t, oy1, oz1],
+    [-hw+t, iy1, iz1], [-hw+t, iy0, iz0]
+  ]});
+}
+
+/* ══════════════════════════════════════
+   7-8. L-ENDCAPS at front (a=0) and back (a=pi)
+   At base level (Y=0), cross-section in X-Z plane.
+   Face +Y (downward). Split L into 2 rects each.
+   ══════════════════════════════════════ */
+
+/* Front endcap — top bar */
+faces.push({ id: 'eft', color: '#4a4540', verts: [
+  [-hw, 0, Rb], [-hw+BW, 0, Rb],
+  [-hw+BW, 0, Rb-t], [-hw, 0, Rb-t]
+]});
+/* Front endcap — left bar */
+faces.push({ id: 'efl', color: '#4a4540', verts: [
+  [-hw, 0, Rb-t], [-hw+t, 0, Rb-t],
+  [-hw+t, 0, Rb-BW], [-hw, 0, Rb-BW]
+]});
+
+/* Back endcap — top bar */
+faces.push({ id: 'ebt', color: '#3a3530', verts: [
+  [-hw+BW, 0, -Rb], [-hw, 0, -Rb],
+  [-hw, 0, -Rb+t], [-hw+BW, 0, -Rb+t]
+]});
+/* Back endcap — left bar */
+faces.push({ id: 'ebl', color: '#3a3530', verts: [
+  [-hw+t, 0, -Rb+t], [-hw, 0, -Rb+t],
+  [-hw, 0, -Rb+BW], [-hw+t, 0, -Rb+BW]
+]});
+
+window.FERROS_GEO = faces;
+</script>
+<script src="../../_lib/_geo3d.js?v=1.2.1"></script>
+<script src="../../_core/arena-guest.js?v=2.1.0"></script>
+</body>
+</html>

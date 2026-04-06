@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-ferros-asset="box-body" data-version="5.0.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Part: Box Body</title>
+<!--
+  =====================================================
+   FERROS PART: box-body  v5.0.0
+  14-face open-top box (vertex-defined)
+   Rendered by _geo3d.js
+
+   Exterior: 200w × 70h × 130d
+   Wall thickness: T = 12
+   Interior: 176w × 58h × 106d (flush bottom)
+
+   Faces:
+     1-4:   exterior walls (front, back, left, right)
+     5:     exterior bottom
+     6-9:   interior walls (front, back, left, right)
+     10:    interior bottom
+     11-14: rim strips (top frame between ext/int walls)
+  =====================================================
+-->
+<link rel="stylesheet" href="../../_tokens.css">
+<style>
+body {
+  margin: 0;
+  background: #0a0c10;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.part-root {
+  perspective: 1400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.part-root,
+.part-geo,
+.part-geo * {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+.part-geo {
+  transform: rotateX(-20deg) rotateY(30deg);
+}
+.part-geo .face {
+  will-change: transform;
+}
+</style>
+</head>
+<body data-ferros-part="box-body" data-arena-scale="1" data-arena-rx="-20" data-arena-ry="30">
+
+<div class="part-root">
+  <div class="part-geo"></div>
+</div>
+
+<script>
+/* =====================================================
+   BOX BODY vertex geometry v5.0.0
+
+   Dimensions (CSS px):
+     W  = 200   (width, X axis)
+     H  = 70    (height, Y axis)
+     D  = 130   (depth, Z axis)
+     T  = 12    (wall thickness)
+
+   Interior:
+     WI = 176   (W - 2T)
+     HI = 58    (H - T, bottom flush with exterior)
+     DI = 106   (D - 2T)
+
+   Coordinate origin: center of bounding box
+     X: left=-100, right=+100
+     Y: top=-35, bottom=+35
+     Z: back=-65, front=+65
+
+   Verts: [TL, TR, BR, BL] as seen from outside.
+   CCW winding → outward normal.
+   ===================================================== */
+var W  = 200;
+var H  = 70;
+var D  = 130;
+var T  = 12;
+
+/* Half-values */
+var hw = W / 2;    /* 100 */
+var hh = H / 2;    /* 35  */
+var hd = D / 2;    /* 65  */
+
+/* Interior */
+var WI = W - 2 * T;  /* 176 */
+var HI = H - T;      /* 58 (flush bottom) */
+var DI = D - 2 * T;  /* 106 */
+
+var hwi = WI / 2;  /* 88 */
+var hhi = HI / 2;  /* 29 */
+var hdi = DI / 2;  /* 53 */
+
+/* Exterior corners */
+var L  = -hw;    /* -100  left */
+var R  =  hw;    /* +100  right */
+var T_ = -hh;    /* -35   top */
+var B  =  hh;    /* +35   bottom */
+var F  =  hd;    /* +65   front */
+var K  = -hd;    /* -65   back */
+
+/* Interior corners */
+var LI = -hwi;   /* -88  int left */
+var RI =  hwi;   /* +88  int right */
+var TI = -hh + T;/* -23  int top (T below exterior top) */
+var FI =  hdi;   /* +53  int front */
+var KI = -hdi;   /* -53  int back */
+/* Interior bottom = B (flush) */
+
+window.FERROS_GEO = [
+
+  /* ── Exterior walls ── */
+
+  /* 1. Front (faces +Z) */
+  { id:'ef', verts:[[L,T_,F],[R,T_,F],[R,B,F],[L,B,F]],
+    color:'#4D3D32' },
+
+  /* 2. Back (faces -Z) */
+  { id:'eb', verts:[[R,T_,K],[L,T_,K],[L,B,K],[R,B,K]],
+    color:'#3E3028' },
+
+  /* 3. Left (faces -X) */
+  { id:'el', verts:[[L,T_,K],[L,T_,F],[L,B,F],[L,B,K]],
+    color:'#443626' },
+
+  /* 4. Right (faces +X) */
+  { id:'er', verts:[[R,T_,F],[R,T_,K],[R,B,K],[R,B,F]],
+    color:'#443626' },
+
+  /* 5. Bottom (faces +Y) */
+  { id:'bot', verts:[[L,B,F],[R,B,F],[R,B,K],[L,B,K]],
+    color:'#1A140E' },
+
+  /* ── Interior walls (face inward) ── */
+
+  /* 6. Interior front (faces -Z, inward) */
+  { id:'if', verts:[[RI,T_,FI],[LI,T_,FI],[LI,B,FI],[RI,B,FI]],
+    color:'#241A12' },
+
+  /* 7. Interior back (faces +Z, inward) */
+  { id:'ib', verts:[[LI,T_,KI],[RI,T_,KI],[RI,B,KI],[LI,B,KI]],
+    color:'#241A12' },
+
+  /* 8. Interior left (faces +X, inward) */
+  { id:'il', verts:[[LI,T_,FI],[LI,T_,KI],[LI,B,KI],[LI,B,FI]],
+    color:'#1E1610' },
+
+  /* 9. Interior right (faces -X, inward) */
+  { id:'ir', verts:[[RI,T_,KI],[RI,T_,FI],[RI,B,FI],[RI,B,KI]],
+    color:'#1E1610' },
+
+  /* 10. Interior bottom (faces -Y, inward = looking down into box) */
+  { id:'ib2', verts:[[LI,B,KI],[RI,B,KI],[RI,B,FI],[LI,B,FI]],
+    color:'#120E0A' },
+
+  /* ── Rim strips (top frame at Y=T_, between ext & int walls) ── */
+
+  /* 11. Front rim (faces -Y, Z: FI to F, X: L to R) */
+  { id:'rf', verts:[[L,T_,FI],[R,T_,FI],[R,T_,F],[L,T_,F]],
+    color:'#5C4A3E' },
+
+  /* 12. Back rim (faces -Y, Z: K to KI, X: L to R) */
+  { id:'rb', verts:[[L,T_,K],[R,T_,K],[R,T_,KI],[L,T_,KI]],
+    color:'#5C4A3E' },
+
+  /* 13. Left rim (faces -Y, X: L to LI, Z: KI to FI) */
+  { id:'rl', verts:[[L,T_,FI],[L,T_,KI],[LI,T_,KI],[LI,T_,FI]],
+    color:'#4D3D32' },
+
+  /* 14. Right rim (faces -Y, X: RI to R, Z: KI to FI) */
+  { id:'rr', verts:[[R,T_,KI],[R,T_,FI],[RI,T_,FI],[RI,T_,KI]],
+    color:'#4D3D32' },
+];
+</script>
+<script src="../../_lib/_geo3d.js?v=1.2.1"></script>
+<script src="../../_core/arena-guest.js?v=2.1.0"></script>
+</body>
+</html>

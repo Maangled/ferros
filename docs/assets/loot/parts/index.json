@@ -1,0 +1,72 @@
+{
+  "$schema": "../part.schema.json",
+  "version": 1,
+  "parts": [
+    {
+      "id": "box-body",
+      "kind": "part",
+      "name": "Box Body",
+      "icon": "\ud83d\udce6",
+      "file": "../loot/parts/box-body.html",
+      "dims": "200x70x130",
+      "role": "container",
+      "viewer": "arena",
+      "notes": "Primary shell with recessed interior and lip geometry."
+    },
+    {
+      "id": "barrel-lid",
+      "kind": "part",
+      "name": "Barrel Vault Lid",
+      "icon": "\ud83d\udee1",
+      "file": "../loot/parts/barrel-lid.html",
+      "dims": "200xR65",
+      "role": "lid",
+      "viewer": "arena",
+      "notes": "Barrel-vault lid profile sized to the chest body depth."
+    },
+    {
+      "id": "edge-bracket",
+      "kind": "part",
+      "name": "Edge Bracket",
+      "icon": "\ud83d\udd29",
+      "file": "../loot/parts/edge-bracket.html",
+      "dims": "10x70x5",
+      "role": "structural",
+      "viewer": "arena",
+      "notes": "Corner reinforcement used on the body shell."
+    },
+    {
+      "id": "lid-band",
+      "kind": "part",
+      "name": "Lid Band",
+      "icon": "\u26d3",
+      "file": "../loot/parts/lid-band.html",
+      "dims": "210x8x4",
+      "role": "decorative",
+      "viewer": "arena",
+      "notes": "Curved strap that rides the lid arc."
+    },
+    {
+      "id": "hinge",
+      "kind": "part",
+      "name": "Strap Hinge",
+      "icon": "\u2699",
+      "file": "../loot/parts/hinge.html",
+      "dims": "22x16x6",
+      "role": "mechanism",
+      "viewer": "arena",
+      "notes": "Alternating knuckles, pin, and fasteners for the rear lid joint."
+    },
+    {
+      "id": "lock-plate",
+      "kind": "part",
+      "name": "Lock Plate",
+      "icon": "\u25c8",
+      "file": "../loot/parts/lock-plate.html",
+      "dims": "36x46x8",
+      "role": "mechanism",
+      "viewer": "arena",
+      "notes": "Escutcheon plate with raised bezel and front-facing keyhole."
+    }
+  ]
+}
