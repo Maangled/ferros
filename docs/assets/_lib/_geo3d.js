@@ -34,6 +34,8 @@
   var BLEED = 0.6;   /* local px overlap to hide AA seams */
   var BIAS  = 0.01;  /* tiny normal nudge to reduce z-fight */
 
+  var _debugNormals = false; /* set true only for debug; default OFF avoids ~520 extra DOM nodes */
+
   /* ─── helpers ─────────────────────────────────────────── */
 
   function dot(ax, ay, az, bx, by, bz) {
@@ -199,18 +201,29 @@
       'width:' + w2 + 'px;height:' + h2 + 'px;' +
       'transform-origin:0 0;' +
       'backface-visibility:hidden;' +
-      'will-change:transform;' +
       'transform:matrix3d(' + m.join(',') + ');' +
       (f.color ? 'background:' + f.color + ';' : '') +
       (clip ? 'clip-path:' + clip + ';' : '');
 
+    /* Store params for lazy normal-indicator creation when debug is toggled on.
+       Lightweight object kept per-face to enable setDebugNormals() without re-render. */
+    div._normalParams = {
+      center: [
+        (v[0][0] + v[1][0] + v[2][0] + v[3][0]) / 4,
+        (v[0][1] + v[1][1] + v[2][1] + v[3][1]) / 4,
+        (v[0][2] + v[1][2] + v[2][2] + v[3][2]) / 4
+      ],
+      nx: nx, ny: ny, nz: nz,
+      ux: ux, uy: uy, uz: uz,
+      faceW: faceW, faceH: faceH
+    };
+
     originNode.appendChild(div);
 
-    addNormalIndicator(originNode, [
-      (v[0][0] + v[1][0] + v[2][0] + v[3][0]) / 4,
-      (v[0][1] + v[1][1] + v[2][1] + v[3][1]) / 4,
-      (v[0][2] + v[1][2] + v[2][2] + v[3][2]) / 4
-    ], nx, ny, nz, ux, uy, uz, faceW, faceH);
+    if (_debugNormals) {
+      addNormalIndicator(originNode, div._normalParams.center,
+        nx, ny, nz, ux, uy, uz, faceW, faceH);
+    }
 
     return div;
   }
@@ -249,10 +262,35 @@
 
   /* ─── expose namespace ───────────────────────────────── */
 
+  /**
+   * Enable or disable debug normal indicators at runtime.
+   * When enabling, lazily creates indicators for faces already in the DOM.
+   * @param {boolean} enabled
+   * @param {HTMLElement} [origin] — origin node to create missing indicators in
+   */
+  function setDebugNormals(enabled, origin) {
+    _debugNormals = !!enabled;
+    if (_debugNormals && origin) {
+      ensureDebugStyle();
+      var children = origin.children;
+      for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        if (!child._normalParams) continue;
+        /* Skip if a .geo3d-normal sibling already follows this face */
+        var next = child.nextElementSibling;
+        if (next && next.classList && next.classList.contains('geo3d-normal')) continue;
+        var p = child._normalParams;
+        addNormalIndicator(origin, p.center,
+          p.nx, p.ny, p.nz, p.ux, p.uy, p.uz, p.faceW, p.faceH);
+      }
+    }
+  }
+
   window.FERROS_GEO3D = {
     createScene: createScene,
     render: render,
-    ensureDebugStyle: ensureDebugStyle
+    ensureDebugStyle: ensureDebugStyle,
+    setDebugNormals: setDebugNormals
   };
 
   /* ─── geometry extraction protocol ─────────────────── */
