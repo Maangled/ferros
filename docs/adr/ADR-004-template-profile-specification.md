@@ -323,10 +323,21 @@ When the FERROS ledger is operational:
 - Fetching extended profile data from `ledgerPointer` (future — requires ledger infrastructure).
 - Template "cost" / bounty for alias use (future — see ADR-003 design notes).
 
+---
+
+## Addendum (2026-04-08): Superseded by ADR-011
+
+**ADR-011 (Routine Module System)** supersedes this ADR for routine/schedule selection. The `TEMPLATE_PROFILES` constant and its schema defined above are **preserved as the alias identity pool** — they are NOT removed. Alias codes (`nikola-50a9`, `frida-82a7`, etc.), `.ferros-log` claim flow (ADR-003), and session mode verification (ADR-005) all depend on `TEMPLATE_PROFILES` existing at runtime.
+
+The celebrity gallery is demoted from primary Stage 1 selection UX to a secondary "Browse Aliases" panel. New routine composition uses `MODULE_REGISTRY` and `STARTER_DECKS` (defined in ADR-011), which are separate data structures with no dependency on `TEMPLATE_PROFILES`.
+
+---
+
 ## Related
 - [ADR-001: Progression-Lock Pattern](./ADR-001-progression-lock-pattern.md)
 - [ADR-002: Smart Contract Boundaries](./ADR-002-smart-contract-boundaries.md)
 - [ADR-003: The Alias System](./ADR-003-alias-system.md)
+- [ADR-011: Routine Module System](./ADR-011-routine-module-system.md) — Supersedes this ADR for routine selection
 - FERROS Blueprint: Section 07 — Ledger & Smart Contract Coordination
 - PR 7: Profile Gallery
 - PR 8: Template Schedules (future)

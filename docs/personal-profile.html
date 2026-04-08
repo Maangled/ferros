@@ -222,6 +222,36 @@
     .template-clear-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.82rem;padding:2px 6px;transition:color .2s;flex-shrink:0}
     .template-clear-btn:hover{color:var(--accent-red)}
     .template-stage2-indicator{font-size:.78rem;color:var(--text-dim);margin-bottom:24px;margin-top:-20px}
+    /* Archetype Picker */
+    .archetype-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+    .archetype-card{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:10px;padding:18px 16px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;text-align:center}
+    .archetype-card:hover{transform:translateY(-2px);border-color:var(--border-accent);box-shadow:0 4px 16px rgba(0,0,0,.4)}
+    .archetype-card.selected{border-color:var(--accent-cyan);background:rgba(45,212,191,.04);box-shadow:0 0 12px rgba(45,212,191,.2)}
+    .archetype-card-icon{font-size:2rem;display:block;margin-bottom:8px}
+    .archetype-card-name{font-weight:700;font-size:.92rem;color:var(--text-primary);margin-bottom:4px}
+    .archetype-card-desc{font-size:.74rem;color:var(--text-secondary);line-height:1.35}
+    .aliases-collapsible{margin-top:20px;border:1px solid var(--border-dim);border-radius:8px;overflow:hidden}
+    .aliases-toggle{cursor:pointer;padding:12px 16px;font-size:.85rem;color:var(--text-secondary);font-weight:600;list-style:none}
+    .aliases-toggle::-webkit-details-marker{display:none}
+    .aliases-toggle::before{content:'▸ ';transition:transform .2s}
+    details[open]>.aliases-toggle::before{content:'▾ '}
+    .aliases-collapsible[open]{background:var(--bg-panel)}
+    .aliases-collapsible .template-picker-grid{padding:0 16px 16px}
+    /* Time Inputs */
+    .time-input-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .time-input-group{display:flex;flex-direction:column;gap:4px}
+    .time-label{font-size:.78rem;color:var(--text-secondary);font-weight:600}
+    .time-input{font-size:1rem;padding:10px 12px}
+    /* Category Interest Grid */
+    .category-interest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+    .category-interest-btn{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:8px;padding:12px 10px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+    .category-interest-btn:hover{border-color:var(--border-accent);background:rgba(255,255,255,.02)}
+    .category-interest-btn.selected{border-color:var(--accent-cyan);background:rgba(45,212,191,.06);box-shadow:0 0 8px rgba(45,212,191,.15)}
+    .category-interest-btn .cat-icon{font-size:1.3rem}
+    .category-interest-btn .cat-name{font-size:.82rem;font-weight:600;color:var(--text-primary)}
+    .category-interest-btn .cat-attr{font-size:.68rem;color:var(--text-dim);font-family:var(--font-mono)}
+    .field-hint{font-size:.78rem;color:var(--text-dim);margin:-4px 0 10px;line-height:1.4}
+    @media(max-width:500px){.archetype-picker-grid{grid-template-columns:1fr 1fr}.category-interest-grid{grid-template-columns:1fr 1fr}.time-input-row{grid-template-columns:1fr}}
     .checklist{display:flex;flex-direction:column;gap:10px;margin-bottom:8px}
     .checklist-item{display:flex;align-items:center;gap:12px;background:var(--bg-card);border:1px solid var(--border-dim);border-radius:7px;padding:12px 16px;cursor:pointer;transition:all .2s}
     .checklist-item input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--accent-cyan)}
@@ -1190,19 +1220,30 @@
       </div>
     </header>
     <div class="setup-body">
-      <!-- Template Picker (shown first on Stage 1 entry if no template selected) -->
-      <div id="template-picker-section">
-        <h2 class="setup-title">&#128193; Start with a Template?</h2>
-        <p class="setup-subtitle">Skip the blank slate. Start with a day structure inspired by someone who figured it out.</p>
-        <div class="template-picker-grid" id="template-picker-grid">
-          <!-- Rendered by JS: renderTemplatePicker() -->
+      <!-- Archetype Picker (shown first on Stage 1 entry) -->
+      <div id="archetype-picker-section">
+        <h2 class="setup-title">&#9876;&#65039; Choose Your Archetype</h2>
+        <p class="setup-subtitle">Your archetype defines your daily rhythm. When do you come alive?</p>
+        <div class="archetype-picker-grid" id="archetype-picker-grid">
+          <!-- Rendered by JS: renderArchetypePicker() -->
         </div>
+        <details class="aliases-collapsible">
+          <summary class="aliases-toggle">&#127917; Browse Aliases &mdash; celebrity templates</summary>
+          <p class="setup-subtitle" style="margin-top:10px">Start with a famous daily routine as an alias identity.</p>
+          <div class="template-picker-grid" id="template-picker-grid">
+            <!-- Rendered by JS: renderTemplatePicker() -->
+          </div>
+        </details>
         <div style="text-align:right;margin-top:16px">
-          <button class="template-skip-link" onclick="skipTemplate()">Skip &mdash; start from scratch &#8594;</button>
+          <button class="template-skip-link" onclick="skipArchetypeSelection()">Skip &mdash; choose later &#8594;</button>
         </div>
       </div>
       <!-- Stage 1 Form (shown after template selected or skipped) -->
       <div id="stage1-form-section" style="display:none">
+        <div id="archetype-active-banner" class="template-active-banner" style="display:none">
+          <span id="archetype-active-text"></span>
+          <button class="template-clear-btn" onclick="clearArchetype()">&#10005; Clear</button>
+        </div>
         <div id="template-active-banner" class="template-active-banner" style="display:none">
           <span id="template-active-text"></span>
           <button class="template-clear-btn" onclick="clearTemplate()">&#10005; Clear</button>
@@ -1233,6 +1274,26 @@
             <button class="option-btn"          onclick="selectClass('Scholar')"     id="cls-Scholar">&#128216; Scholar</button>
             <button class="option-btn"          onclick="selectClass('Artisan')"     id="cls-Artisan">&#127912; Artisan</button>
             <button class="option-btn"          onclick="selectClass('Healer')"      id="cls-Healer">&#127807; Healer</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <span class="field-label">&#9200; Wake &amp; Sleep Schedule</span>
+          <div class="time-input-row">
+            <div class="time-input-group">
+              <label class="time-label" for="wake-time-input">Wake Time</label>
+              <input class="field-input time-input" id="wake-time-input" type="time" value="07:00" />
+            </div>
+            <div class="time-input-group">
+              <label class="time-label" for="sleep-time-input">Sleep Time</label>
+              <input class="field-input time-input" id="sleep-time-input" type="time" value="23:00" />
+            </div>
+          </div>
+        </div>
+        <div class="field-group">
+          <span class="field-label">&#127919; What Matters to You?</span>
+          <p class="field-hint">Select categories that interest you. This helps recommend modules in Stage 2.</p>
+          <div class="category-interest-grid" id="category-interest-grid">
+            <!-- Rendered by JS: renderCategoryInterests() -->
           </div>
         </div>
         <div class="field-group">
@@ -1562,6 +1623,8 @@
     let recoveryMode=false,recoveryProfile=null,recoverySealChain=[],recoveryJournal=[],_recoverySessionStart=null,recoveryHasIntegrityWarning=false;
     let _tradeAcceptCb=null,_pendingImportData=null,_pendingAliasClaimData=null,_pendingRecoveryData=null;
     let selectedTemplate=null;
+    let selectedArchetype=null;
+    let selectedCategoryInterests=[];
     let scrollUnlocked=false;
     // ADR-006: Level Zero onboarding state
     let _tradeWindowAccepted=false;
@@ -1669,8 +1732,41 @@
       },1800);
     }
 
+    // ── V1 → V2 Migration ──────────────────────────────────────────────────
+    function migrateProfileV1toV2(){
+      if(profile.meta&&profile.meta.schemaVersion>=2)return;
+      // Assign default archetype based on template or fallback
+      if(!profile.identity.archetype){
+        if(selectedTemplate&&selectedTemplate.archetype){
+          profile.identity.archetype=selectedTemplate.archetype;
+        }else{
+          profile.identity.archetype='flex';
+        }
+      }
+      // Default wake/sleep
+      if(!profile.identity.wakeTime)profile.identity.wakeTime='07:00';
+      if(!profile.identity.sleepTime)profile.identity.sleepTime='23:00';
+      // Default category interests
+      if(!profile.identity.categoryInterests)profile.identity.categoryInterests=[];
+      // Initialize schedule if absent
+      if(!profile.schedule){
+        profile.schedule={archetype:profile.identity.archetype,activeDeck:null,wakeTime:profile.identity.wakeTime,sleepTime:profile.identity.sleepTime,slots:[]};
+      }
+      // Initialize completions
+      if(!profile.completions)profile.completions={};
+      // Initialize creditLog
+      if(!profile.creditLog)profile.creditLog={};
+      // Initialize bag
+      if(!profile.bag)profile.bag=[];
+      // Bump schema version
+      if(!profile.meta)profile.meta={};
+      profile.meta.schemaVersion=2;
+      saveProfile();
+    }
+
     async function init(){
       const exists=loadProfile();
+      if(exists)migrateProfileV1toV2();
       selectedAssistLevel=(exists?profile.meta.assistanceLevel:null)||1;
       document.body.className='level-'+selectedAssistLevel;
       if(exists&&profile.meta&&profile.meta.stage===3){
@@ -1708,15 +1804,17 @@
       const vp=$('verification-panel');if(vp)vp.style.display=n>0?'flex':'none';
       if(n>0){const se=$('stage-'+n);if(se)se.classList.add('stage-visible')}
       if(n===1&&!aliasMode){
-        const picker=$('template-picker-section');
+        const picker=$('archetype-picker-section');
         const form=$('stage1-form-section');
-        if(selectedTemplate===null){
+        if(selectedArchetype===null&&selectedTemplate===null){
           if(picker)picker.style.display='';
           if(form)form.style.display='none';
+          renderArchetypePicker();
           renderTemplatePicker();
         }else{
           if(picker)picker.style.display='none';
           if(form)form.style.display='';
+          renderCategoryInterests();
         }
       }
       if(n===2){showProtoForLevel(profile.meta.assistanceLevel);seedStage2FromTemplate();}
@@ -1841,7 +1939,7 @@
       selectedTemplate=p;
       // Brief pause then transition to form
       setTimeout(()=>{
-        const picker=$('template-picker-section');
+        const picker=$('archetype-picker-section');
         const form=$('stage1-form-section');
         if(picker)picker.style.display='none';
         if(form)form.style.display='';
@@ -1864,7 +1962,7 @@
       // Hide banner
       const banner=$('template-active-banner');if(banner)banner.style.display='none';
       // Re-show picker
-      const picker=$('template-picker-section');
+      const picker=$('archetype-picker-section');
       const form=$('stage1-form-section');
       if(picker)picker.style.display='';
       if(form)form.style.display='none';
@@ -1872,11 +1970,88 @@
     }
     function skipTemplate(){
       selectedTemplate=null;
-      const picker=$('template-picker-section');
+      const picker=$('archetype-picker-section');
       const form=$('stage1-form-section');
       if(picker)picker.style.display='none';
       if(form)form.style.display='';
       const banner=$('template-active-banner');if(banner)banner.style.display='none';
+    }
+
+    // ── Archetype Picker ──────────────────────────────────────────────────────
+    function renderArchetypePicker(){
+      const grid=$('archetype-picker-grid');if(!grid)return;
+      grid.innerHTML=ARCHETYPES.map(id=>{
+        const m=ARCHETYPE_META[id];if(!m)return '';
+        const sel=selectedArchetype===id?' selected':'';
+        return '<div class="archetype-card'+sel+'" id="atype-'+id+'" onclick="selectArchetype(\''+id+'\')">' 
+          +'<span class="archetype-card-icon">'+m.icon+'</span>'
+          +'<div class="archetype-card-name">'+esc(m.name)+'</div>'
+          +'<div class="archetype-card-desc">'+esc(m.desc)+'</div>'
+          +'</div>';
+      }).join('');
+    }
+    function selectArchetype(id){
+      const m=ARCHETYPE_META[id];if(!m)return;
+      selectedArchetype=id;
+      document.querySelectorAll('.archetype-card').forEach(c=>c.classList.remove('selected'));
+      const card=$('atype-'+id);if(card)card.classList.add('selected');
+      // Set default wake/sleep based on archetype
+      const defaults={'early-bird':['05:00','21:00'],'night-owl':['10:00','02:00'],'shift-worker':['06:00','22:00'],'flex':['08:00','00:00'],'structured':['06:00','22:00']};
+      const times=defaults[id]||['07:00','23:00'];
+      setTimeout(()=>{
+        const picker=$('archetype-picker-section');
+        const form=$('stage1-form-section');
+        if(picker)picker.style.display='none';
+        if(form)form.style.display='';
+        // Pre-fill wake/sleep times
+        const wt=$('wake-time-input');if(wt)wt.value=times[0];
+        const st=$('sleep-time-input');if(st)st.value=times[1];
+        // Show archetype banner
+        const banner=$('archetype-active-banner');
+        const bannerText=$('archetype-active-text');
+        if(bannerText)bannerText.textContent=m.icon+' Archetype: '+m.name+' selected — wake/sleep times pre-filled.';
+        if(banner)banner.style.display='flex';
+        renderCategoryInterests();
+      },200);
+    }
+    function clearArchetype(){
+      selectedArchetype=null;
+      selectedCategoryInterests=[];
+      const banner=$('archetype-active-banner');if(banner)banner.style.display='none';
+      const picker=$('archetype-picker-section');
+      const form=$('stage1-form-section');
+      if(picker)picker.style.display='';
+      if(form)form.style.display='none';
+      renderArchetypePicker();
+    }
+    function skipArchetypeSelection(){
+      selectedArchetype=null;
+      const picker=$('archetype-picker-section');
+      const form=$('stage1-form-section');
+      if(picker)picker.style.display='none';
+      if(form)form.style.display='';
+      const banner=$('archetype-active-banner');if(banner)banner.style.display='none';
+      renderCategoryInterests();
+    }
+
+    // ── Category Interest Picker ──────────────────────────────────────────────
+    function renderCategoryInterests(){
+      const grid=$('category-interest-grid');if(!grid)return;
+      grid.innerHTML=MODULE_CATEGORIES.map(cat=>{
+        const m=CATEGORY_META[cat];if(!m)return '';
+        const sel=selectedCategoryInterests.indexOf(cat)>=0?' selected':'';
+        return '<button class="category-interest-btn'+sel+'" onclick="toggleCategoryInterest(\''+cat+'\')" type="button">'
+          +'<span class="cat-icon">'+m.icon+'</span>'
+          +'<span class="cat-name">'+esc(m.name)+'</span>'
+          +'<span class="cat-attr">'+m.attr+'</span>'
+          +'</button>';
+      }).join('');
+    }
+    function toggleCategoryInterest(cat){
+      const idx=selectedCategoryInterests.indexOf(cat);
+      if(idx>=0)selectedCategoryInterests.splice(idx,1);
+      else selectedCategoryInterests.push(cat);
+      renderCategoryInterests();
     }
     function seedStage2FromTemplate(){
       const ind=$('stage2-template-indicator');
@@ -1925,9 +2100,16 @@
         profile.identity.class=selectedClass;
         profile.identity.streamAffinity=selectedStream;
         profile.identity.joinedDate=new Date().toISOString().split('T')[0];
+        // V2 fields: archetype, wake/sleep, category interests
+        profile.identity.archetype=selectedArchetype||'flex';
+        const wt=$('wake-time-input');
+        const st=$('sleep-time-input');
+        profile.identity.wakeTime=wt?wt.value:'07:00';
+        profile.identity.sleepTime=st?st.value:'23:00';
+        profile.identity.categoryInterests=selectedCategoryInterests.slice();
         const streamAttrMap={A:'Governance',B:'Craft',C:'Discipline'};
         awardXP(streamAttrMap[selectedStream],50,false);
-        await addSeal('stage_1_character',{name,avatar:selectedAvatar,class:selectedClass,stream:selectedStream});
+        await addSeal('stage_1_character',{name,avatar:selectedAvatar,class:selectedClass,stream:selectedStream,archetype:profile.identity.archetype,wakeTime:profile.identity.wakeTime,sleepTime:profile.identity.sleepTime});
         profile.meta.stage=2;
         saveProfile();updateVerificationPanel();
         unlockAchievement('char_created');showStage(2);
@@ -2653,6 +2835,498 @@
       'Engineer':'blue','Artisan':'pink','Scholar':'cyan','Guardian':'amber',
       'Guided':'green','Healer':'green','Architect':'cyan','Community':'purple'
     };
+
+    // ── ADR-011: Routine Module System ────────────────────────────────────────
+    // MODULE_REGISTRY — atomic and compound routine Cards (per ADR-010 nomenclature).
+    // TEMPLATE_PROFILES above is PRESERVED for alias identity pool (ADR-003/005).
+    const MODULE_CATEGORIES=['fitness','mind','hygiene','nutrition','work','social','rest','creative'];
+    const ARCHETYPES=['early-bird','night-owl','shift-worker','flex','structured'];
+    const ARCHETYPE_META={
+      'early-bird':  {name:'Early Bird',  icon:'🌅',desc:'4-5 AM wake, front-loaded productivity, early wind-down'},
+      'night-owl':   {name:'Night Owl',   icon:'🌙',desc:'No set wake, day compresses around available hours, evening creative peak'},
+      'shift-worker':{name:'Shift Worker',icon:'🔄',desc:'Rotating schedules, sleep anchors shift dynamically'},
+      'flex':        {name:'Flex',         icon:'🌊',desc:'Minimal time anchors, modules float to available slots'},
+      'structured':  {name:'Structured',   icon:'🧱',desc:'Every hour accounted for, rigid blocks, military precision'}
+    };
+    const CATEGORY_META={
+      fitness:  {name:'Fitness',   icon:'💪',stream:'C',attr:'STR'},
+      mind:     {name:'Mind',      icon:'🧠',stream:'A',attr:'INT'},
+      hygiene:  {name:'Hygiene',   icon:'🪥',stream:'C',attr:'CON'},
+      nutrition:{name:'Nutrition', icon:'🥗',stream:'C',attr:'CON'},
+      work:     {name:'Work',      icon:'⚡',stream:'A',attr:'WIS'},
+      social:   {name:'Social',    icon:'🤝',stream:'B',attr:'CHA'},
+      rest:     {name:'Rest',      icon:'😴',stream:'C',attr:'CON'},
+      creative: {name:'Creative',  icon:'🎨',stream:'B',attr:'DEX'}
+    };
+    const MODULE_REGISTRY=[
+      // ── Fitness ──
+      {id:'dawn-athletics',kind:'routine-module',name:'Dawn Athletics',icon:'🏋️',
+        category:'fitness',archetype:['early-bird','structured'],
+        description:'High-intensity workout designed for early risers.',
+        timeConstraint:{anchor:'wake',offsetMinutes:30,durationMinutes:60,flexibility:'compressible'},
+        tasks:[{id:'warmup',name:'Dynamic Warmup',minutes:10,optional:false},{id:'strength',name:'Strength Circuit',minutes:35,optional:false},{id:'cooldown',name:'Stretch & Cool Down',minutes:15,optional:true}],
+        conflicts:['late-night-deep-work'],synergies:['cold-shower-protocol'],tags:['morning','physical'],origin:'curated',modules:[]},
+      {id:'midday-movement',kind:'routine-module',name:'Midday Movement',icon:'🚶',
+        category:'fitness',archetype:['flex','structured','night-owl'],
+        description:'Light movement break to reset focus and circulation.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:20,flexibility:'movable'},
+        tasks:[{id:'walk',name:'Brisk Walk or Stretch',minutes:15,optional:false},{id:'breathe',name:'Breathing Reset',minutes:5,optional:true}],
+        conflicts:[],synergies:['mindful-eating'],tags:['midday','light'],origin:'curated',modules:[]},
+      {id:'evening-yoga',kind:'routine-module',name:'Evening Yoga',icon:'🧘',
+        category:'fitness',archetype:['night-owl','flex'],
+        description:'Gentle yoga flow for evening wind-down.',
+        timeConstraint:{anchor:'sleep',offsetMinutes:-90,durationMinutes:45,flexibility:'compressible'},
+        tasks:[{id:'flow',name:'Gentle Flow Sequence',minutes:30,optional:false},{id:'savasana',name:'Savasana',minutes:15,optional:true}],
+        conflicts:['dawn-athletics'],synergies:['sleep-ritual'],tags:['evening','flexibility'],origin:'curated',modules:[]},
+      {id:'bodyweight-express',kind:'routine-module',name:'Bodyweight Express',icon:'🔥',
+        category:'fitness',archetype:['shift-worker','flex'],
+        description:'Quick no-equipment workout that fits anywhere.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:20,flexibility:'movable'},
+        tasks:[{id:'circuit',name:'Bodyweight Circuit',minutes:15,optional:false},{id:'stretch',name:'Quick Stretch',minutes:5,optional:false}],
+        conflicts:[],synergies:[],tags:['quick','anywhere'],origin:'curated',modules:[]},
+      // ── Mind ──
+      {id:'morning-meditation',kind:'routine-module',name:'Morning Meditation',icon:'🧘‍♂️',
+        category:'mind',archetype:['early-bird','structured','flex'],
+        description:'Guided or silent meditation to set daily intention.',
+        timeConstraint:{anchor:'wake',offsetMinutes:15,durationMinutes:20,flexibility:'compressible'},
+        tasks:[{id:'sit',name:'Seated Meditation',minutes:15,optional:false},{id:'intention',name:'Set Daily Intention',minutes:5,optional:false}],
+        conflicts:[],synergies:['morning-pages','stoic-reflection'],tags:['morning','mindfulness'],origin:'curated',modules:[]},
+      {id:'deep-reading-hour',kind:'routine-module',name:'Deep Reading Hour',icon:'📚',
+        category:'mind',archetype:['night-owl','structured','early-bird'],
+        description:'Focused reading block — books, papers, long-form articles.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:60,flexibility:'compressible'},
+        tasks:[{id:'read',name:'Deep Reading',minutes:50,optional:false},{id:'notes',name:'Reading Notes',minutes:10,optional:true}],
+        conflicts:[],synergies:['puzzle-block'],tags:['focus','learning'],origin:'curated',modules:[]},
+      {id:'market-intelligence',kind:'routine-module',name:'Market Intelligence Hour',icon:'📰',
+        category:'mind',archetype:['early-bird','structured'],
+        description:'Scan news, markets, and industry developments.',
+        timeConstraint:{anchor:'wake',offsetMinutes:60,durationMinutes:45,flexibility:'compressible'},
+        tasks:[{id:'scan',name:'News & Market Scan',minutes:30,optional:false},{id:'notes',name:'Key Takeaway Notes',minutes:15,optional:true}],
+        conflicts:[],synergies:['deep-reading-hour'],tags:['morning','markets','news'],origin:'curated',modules:[]},
+      {id:'puzzle-block',kind:'routine-module',name:'Puzzle Block',icon:'🧩',
+        category:'mind',archetype:['flex','night-owl'],
+        description:'Brain training — puzzles, logic games, problem sets.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:30,flexibility:'movable'},
+        tasks:[{id:'puzzle',name:'Solve Puzzles',minutes:25,optional:false},{id:'review',name:'Review Solutions',minutes:5,optional:true}],
+        conflicts:[],synergies:['deep-reading-hour'],tags:['cognitive','games'],origin:'curated',modules:[]},
+      // ── Hygiene ──
+      {id:'full-morning-prep',kind:'routine-module',name:'Full Morning Prep',icon:'🪥',
+        category:'hygiene',archetype:['early-bird','structured'],
+        description:'Complete morning hygiene routine.',
+        timeConstraint:{anchor:'wake',offsetMinutes:5,durationMinutes:30,flexibility:'compressible'},
+        tasks:[{id:'teeth',name:'Brush & Floss',minutes:5,optional:false},{id:'shower',name:'Shower',minutes:15,optional:false},{id:'skincare',name:'Skincare',minutes:10,optional:true}],
+        conflicts:[],synergies:['cold-shower-protocol'],tags:['morning','routine'],origin:'curated',modules:[]},
+      {id:'quick-refresh',kind:'routine-module',name:'Quick Refresh',icon:'💧',
+        category:'hygiene',archetype:['shift-worker','flex','night-owl'],
+        description:'Minimal hygiene reset — splash, teeth, go.',
+        timeConstraint:{anchor:'wake',offsetMinutes:5,durationMinutes:10,flexibility:'rigid'},
+        tasks:[{id:'teeth',name:'Brush Teeth',minutes:3,optional:false},{id:'face',name:'Face Wash',minutes:3,optional:false},{id:'deodorant',name:'Deodorant',minutes:2,optional:false}],
+        conflicts:[],synergies:[],tags:['quick','minimal'],origin:'curated',modules:[]},
+      {id:'evening-wind-down',kind:'routine-module',name:'Evening Wind-Down',icon:'🌙',
+        category:'hygiene',archetype:['early-bird','structured','flex'],
+        description:'Pre-sleep hygiene and relaxation routine.',
+        timeConstraint:{anchor:'sleep',offsetMinutes:-45,durationMinutes:30,flexibility:'compressible'},
+        tasks:[{id:'teeth',name:'Brush & Floss',minutes:5,optional:false},{id:'skincare',name:'Evening Skincare',minutes:10,optional:true},{id:'prep',name:'Prep Tomorrow',minutes:15,optional:true}],
+        conflicts:[],synergies:['sleep-ritual'],tags:['evening','routine'],origin:'curated',modules:[]},
+      // ── Nutrition ──
+      {id:'meal-prep-block',kind:'routine-module',name:'Meal Prep Block',icon:'🍳',
+        category:'nutrition',archetype:['structured','early-bird'],
+        description:'Dedicated time for cooking and meal preparation.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:60,flexibility:'movable'},
+        tasks:[{id:'prep',name:'Prep Ingredients',minutes:20,optional:false},{id:'cook',name:'Cook',minutes:30,optional:false},{id:'store',name:'Store & Clean',minutes:10,optional:false}],
+        conflicts:[],synergies:['mindful-eating'],tags:['cooking','health'],origin:'curated',modules:[]},
+      {id:'mindful-eating',kind:'routine-module',name:'Mindful Eating',icon:'🥗',
+        category:'nutrition',archetype:['flex','structured','early-bird','night-owl','shift-worker'],
+        description:'Sit down, eat slowly, no screens.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:30,flexibility:'movable'},
+        tasks:[{id:'eat',name:'Mindful Meal',minutes:25,optional:false},{id:'log',name:'Log Nutrition',minutes:5,optional:true}],
+        conflicts:[],synergies:['meal-prep-block'],tags:['nutrition','mindfulness'],origin:'curated',modules:[]},
+      {id:'fasting-window',kind:'routine-module',name:'Fasting Window Manager',icon:'⏰',
+        category:'nutrition',archetype:['early-bird','structured'],
+        description:'Track and maintain intermittent fasting window.',
+        timeConstraint:{anchor:'wake',offsetMinutes:0,durationMinutes:15,flexibility:'rigid'},
+        tasks:[{id:'check',name:'Check Fast Status',minutes:5,optional:false},{id:'plan',name:'Plan Eating Window',minutes:10,optional:false}],
+        conflicts:[],synergies:['mindful-eating'],tags:['fasting','discipline'],origin:'curated',modules:[]},
+      // ── Work ──
+      {id:'deep-focus-sprint',kind:'routine-module',name:'Deep Focus Sprint',icon:'🎯',
+        category:'work',archetype:['early-bird','structured','night-owl'],
+        description:'90-minute deep work block — no interruptions.',
+        timeConstraint:{anchor:'wake',offsetMinutes:120,durationMinutes:90,flexibility:'compressible'},
+        tasks:[{id:'setup',name:'Clear Desk & Set Timer',minutes:5,optional:false},{id:'work',name:'Deep Work Block',minutes:75,optional:false},{id:'break',name:'Recovery Break',minutes:10,optional:false}],
+        conflicts:[],synergies:['morning-meditation'],tags:['focus','pomodoro','productivity'],origin:'curated',modules:[]},
+      {id:'creative-block',kind:'routine-module',name:'Creative Block',icon:'🖌️',
+        category:'work',archetype:['night-owl','flex'],
+        description:'Open-ended creative work — design, writing, brainstorming.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:60,flexibility:'compressible'},
+        tasks:[{id:'create',name:'Creative Work',minutes:50,optional:false},{id:'capture',name:'Capture Ideas',minutes:10,optional:false}],
+        conflicts:[],synergies:['morning-pages'],tags:['creative','open-ended'],origin:'curated',modules:[]},
+      {id:'admin-hour',kind:'routine-module',name:'Admin Hour',icon:'📋',
+        category:'work',archetype:['flex','structured'],
+        description:'Handle email, messages, scheduling, errands.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:60,flexibility:'movable'},
+        tasks:[{id:'email',name:'Process Email',minutes:20,optional:false},{id:'tasks',name:'Task Triage',minutes:20,optional:false},{id:'errands',name:'Errands & Calls',minutes:20,optional:true}],
+        conflicts:[],synergies:[],tags:['admin','maintenance'],origin:'curated',modules:[]},
+      {id:'standup-sync',kind:'routine-module',name:'Standup Sync',icon:'📡',
+        category:'work',archetype:['structured'],
+        description:'Daily standup or team sync meeting.',
+        timeConstraint:{anchor:'fixed',offsetMinutes:0,durationMinutes:15,flexibility:'rigid',fixedTime:'09:00'},
+        tasks:[{id:'standup',name:'Team Standup',minutes:15,optional:false}],
+        conflicts:[],synergies:['admin-hour'],tags:['team','meeting'],origin:'curated',modules:[]},
+      // ── Social ──
+      {id:'family-dinner-protocol',kind:'routine-module',name:'Family Dinner Protocol',icon:'🍽️',
+        category:'social',archetype:['early-bird','structured','flex'],
+        description:'Protected family dinner time — phones away.',
+        timeConstraint:{anchor:'fixed',offsetMinutes:0,durationMinutes:60,flexibility:'rigid',fixedTime:'18:00'},
+        tasks:[{id:'cook',name:'Prepare Together',minutes:20,optional:true},{id:'eat',name:'Family Meal',minutes:30,optional:false},{id:'talk',name:'Table Conversation',minutes:10,optional:false}],
+        conflicts:[],synergies:['meal-prep-block'],tags:['family','evening'],origin:'curated',modules:[]},
+      {id:'community-check-in',kind:'routine-module',name:'Community Check-In',icon:'🫂',
+        category:'social',archetype:['flex','structured','shift-worker'],
+        description:'Connect with friends, mentors, or community.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:30,flexibility:'movable'},
+        tasks:[{id:'reach',name:'Reach Out',minutes:15,optional:false},{id:'respond',name:'Respond to Messages',minutes:15,optional:false}],
+        conflicts:[],synergies:[],tags:['relationships','community'],origin:'curated',modules:[]},
+      {id:'mentorship-hour',kind:'routine-module',name:'Mentorship Hour',icon:'🎓',
+        category:'social',archetype:['structured','flex'],
+        description:'Teaching, coaching, or being coached.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:60,flexibility:'movable'},
+        tasks:[{id:'session',name:'Mentorship Session',minutes:50,optional:false},{id:'notes',name:'Session Notes',minutes:10,optional:false}],
+        conflicts:[],synergies:['community-check-in'],tags:['learning','teaching'],origin:'curated',modules:[]},
+      // ── Rest ──
+      {id:'power-nap',kind:'routine-module',name:'Power Nap',icon:'💤',
+        category:'rest',archetype:['shift-worker','night-owl','flex'],
+        description:'Short recovery nap — 20 minutes max.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:25,flexibility:'rigid'},
+        tasks:[{id:'nap',name:'Power Nap',minutes:20,optional:false},{id:'wake',name:'Wake & Rehydrate',minutes:5,optional:false}],
+        conflicts:['deep-focus-sprint'],synergies:[],tags:['recovery','energy'],origin:'curated',modules:[]},
+      {id:'digital-detox',kind:'routine-module',name:'Digital Detox',icon:'📵',
+        category:'rest',archetype:['flex','structured','early-bird'],
+        description:'No screens. Read, walk, think, or do nothing.',
+        timeConstraint:{anchor:'sleep',offsetMinutes:-120,durationMinutes:60,flexibility:'compressible'},
+        tasks:[{id:'disconnect',name:'All Screens Off',minutes:5,optional:false},{id:'activity',name:'Analog Activity',minutes:50,optional:false},{id:'reflect',name:'Brief Reflection',minutes:5,optional:true}],
+        conflicts:[],synergies:['evening-wind-down','sleep-ritual'],tags:['recovery','analog'],origin:'curated',modules:[]},
+      {id:'sleep-ritual',kind:'routine-module',name:'Sleep Ritual',icon:'🛏️',
+        category:'rest',archetype:['early-bird','structured','night-owl'],
+        description:'Consistent pre-sleep routine for quality rest.',
+        timeConstraint:{anchor:'sleep',offsetMinutes:-30,durationMinutes:25,flexibility:'rigid'},
+        tasks:[{id:'prep',name:'Prepare Sleep Environment',minutes:10,optional:false},{id:'journal',name:'Gratitude or Brain Dump',minutes:10,optional:true},{id:'settle',name:'Lights Out Routine',minutes:5,optional:false}],
+        conflicts:[],synergies:['evening-wind-down','digital-detox'],tags:['sleep','evening'],origin:'curated',modules:[]},
+      // ── Creative ──
+      {id:'morning-pages',kind:'routine-module',name:'Morning Pages',icon:'📝',
+        category:'creative',archetype:['early-bird','flex'],
+        description:'Stream-of-consciousness writing — 3 pages, no editing.',
+        timeConstraint:{anchor:'wake',offsetMinutes:20,durationMinutes:30,flexibility:'compressible'},
+        tasks:[{id:'write',name:'Write 3 Pages',minutes:25,optional:false},{id:'close',name:'Close & File',minutes:5,optional:false}],
+        conflicts:[],synergies:['morning-meditation'],tags:['writing','morning'],origin:'curated',modules:[]},
+      {id:'sketch-design-block',kind:'routine-module',name:'Sketch & Design Block',icon:'✏️',
+        category:'creative',archetype:['night-owl','flex'],
+        description:'Visual creative work — sketching, wireframes, art.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:60,flexibility:'compressible'},
+        tasks:[{id:'sketch',name:'Sketching / Design',minutes:50,optional:false},{id:'review',name:'Review & Photograph',minutes:10,optional:true}],
+        conflicts:[],synergies:['creative-block'],tags:['visual','art'],origin:'curated',modules:[]},
+      {id:'music-practice',kind:'routine-module',name:'Music Practice',icon:'🎵',
+        category:'creative',archetype:['flex','night-owl','structured'],
+        description:'Instrument practice or music production.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:45,flexibility:'compressible'},
+        tasks:[{id:'warmup',name:'Scales & Warmup',minutes:10,optional:false},{id:'practice',name:'Focused Practice',minutes:30,optional:false},{id:'improv',name:'Free Play',minutes:5,optional:true}],
+        conflicts:[],synergies:[],tags:['music','art'],origin:'curated',modules:[]},
+      // ── Utility (single-task atomics) ──
+      {id:'cold-shower-protocol',kind:'routine-module',name:'Cold Shower Protocol',icon:'🥶',
+        category:'fitness',archetype:['early-bird','structured'],
+        description:'Cold exposure for recovery and mental clarity.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:5,flexibility:'rigid'},
+        tasks:[{id:'cold',name:'Cold Shower (2-3 min)',minutes:5,optional:false}],
+        conflicts:[],synergies:['dawn-athletics','full-morning-prep'],tags:['cold','recovery'],origin:'curated',modules:[]},
+      {id:'stoic-reflection',kind:'routine-module',name:'Stoic Reflection',icon:'📜',
+        category:'mind',archetype:['early-bird','structured'],
+        description:'Evening or morning journaling in the Stoic tradition.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:15,flexibility:'movable'},
+        tasks:[{id:'reflect',name:'Journal 3 Reflections',minutes:15,optional:false}],
+        conflicts:[],synergies:['morning-meditation','morning-pages'],tags:['journaling','philosophy'],origin:'curated',modules:[]},
+      {id:'executive-athletics',kind:'routine-module',name:'Executive Athletics',icon:'🏃‍♂️',
+        category:'fitness',archetype:['early-bird','structured'],
+        description:'Structured cardio and strength for busy schedules.',
+        timeConstraint:{anchor:'wake',offsetMinutes:45,durationMinutes:45,flexibility:'compressible'},
+        tasks:[{id:'cardio',name:'Cardio Block',minutes:20,optional:false},{id:'strength',name:'Strength Training',minutes:20,optional:false},{id:'cool',name:'Cool Down',minutes:5,optional:true}],
+        conflicts:[],synergies:['cold-shower-protocol'],tags:['morning','executive'],origin:'curated',modules:[]},
+      {id:'late-night-deep-work',kind:'routine-module',name:'Late Night Deep Work',icon:'🦉',
+        category:'work',archetype:['night-owl'],
+        description:'Peak creative/analytical hours for night owls.',
+        timeConstraint:{anchor:'sleep',offsetMinutes:-180,durationMinutes:120,flexibility:'compressible'},
+        tasks:[{id:'work',name:'Deep Work Session',minutes:100,optional:false},{id:'wrap',name:'Wrap Up & Notes',minutes:20,optional:false}],
+        conflicts:['dawn-athletics','executive-athletics'],synergies:['sleep-ritual'],tags:['night','focus'],origin:'curated',modules:[]},
+      // ── Compound Modules (kind: "routine-compound") ──
+      {id:'stoic-morning',kind:'routine-compound',name:'Stoic Morning',icon:'🏛️',
+        category:'mind',archetype:['early-bird','structured'],
+        description:'Meditation, journaling, and cold exposure — the Stoic starter.',
+        timeConstraint:{anchor:'wake',offsetMinutes:10,durationMinutes:40,flexibility:'compressible'},
+        tasks:[],conflicts:[],synergies:['dawn-athletics'],tags:['morning','discipline'],origin:'curated',
+        modules:['morning-meditation','stoic-reflection','cold-shower-protocol']},
+      {id:'scholars-block',kind:'routine-compound',name:"Scholar's Block",icon:'📖',
+        category:'mind',archetype:['structured','night-owl','early-bird'],
+        description:'Deep reading, note review, and puzzle solving.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:90,flexibility:'compressible'},
+        tasks:[],conflicts:[],synergies:['deep-focus-sprint'],tags:['learning','focus'],origin:'curated',
+        modules:['deep-reading-hour','puzzle-block']},
+      {id:'athletes-circuit',kind:'routine-compound',name:"Athlete's Circuit",icon:'🏆',
+        category:'fitness',archetype:['early-bird','structured'],
+        description:'Full workout with cold exposure finisher.',
+        timeConstraint:{anchor:'wake',offsetMinutes:30,durationMinutes:65,flexibility:'compressible'},
+        tasks:[],conflicts:['late-night-deep-work'],synergies:['meal-prep-block'],tags:['morning','intense'],origin:'curated',
+        modules:['dawn-athletics','cold-shower-protocol']},
+      {id:'creative-flow',kind:'routine-compound',name:'Creative Flow',icon:'🎭',
+        category:'creative',archetype:['flex','night-owl'],
+        description:'Morning pages, sketching, and music — full creative session.',
+        timeConstraint:{anchor:'relative',offsetMinutes:0,durationMinutes:135,flexibility:'compressible'},
+        tasks:[],conflicts:[],synergies:['deep-reading-hour'],tags:['creative','immersive'],origin:'curated',
+        modules:['morning-pages','sketch-design-block','music-practice']},
+      {id:'caretakers-rotation',kind:'routine-compound',name:"Caretaker's Rotation",icon:'🏠',
+        category:'social',archetype:['structured','flex'],
+        description:'Meal prep, family dinner, and evening wind-down together.',
+        timeConstraint:{anchor:'fixed',offsetMinutes:0,durationMinutes:150,flexibility:'compressible',fixedTime:'16:30'},
+        tasks:[],conflicts:[],synergies:['mindful-eating'],tags:['family','evening','care'],origin:'curated',
+        modules:['meal-prep-block','family-dinner-protocol','evening-wind-down']}
+    ];
+
+    // ── ADR-011: Archetype Starter Decks ──────────────────────────────────────
+    const STARTER_DECKS=[
+      {id:'dawn-commander',kind:'routine-deck',name:'Dawn Commander',icon:'🌅',
+        archetype:'early-bird',
+        description:'4-5 AM wake → workout → cold shower → deep work → structured day',
+        cards:['dawn-athletics','cold-shower-protocol','deep-focus-sprint','morning-meditation','full-morning-prep','family-dinner-protocol','sleep-ritual'],
+        defaultWakeTime:'04:30',defaultSleepTime:'21:00'},
+      {id:'lunar-operator',kind:'routine-deck',name:'Lunar Operator',icon:'🌙',
+        archetype:'night-owl',
+        description:'No set wake, day compresses around available hours, evening creative peak',
+        cards:['evening-yoga','deep-reading-hour','creative-block','late-night-deep-work','quick-refresh','sleep-ritual'],
+        defaultWakeTime:'11:00',defaultSleepTime:'03:00'},
+      {id:'rotating-sentinel',kind:'routine-deck',name:'Rotating Sentinel',icon:'🔄',
+        archetype:'shift-worker',
+        description:'Adapts to rotating schedules, sleep anchors shift dynamically',
+        cards:['bodyweight-express','quick-refresh','meal-prep-block','power-nap','community-check-in','sleep-ritual'],
+        defaultWakeTime:'06:00',defaultSleepTime:'22:00'},
+      {id:'adaptive-flow',kind:'routine-deck',name:'Adaptive Flow',icon:'🌊',
+        archetype:'flex',
+        description:'Minimal time anchors, modules float to available slots',
+        cards:['midday-movement','mindful-eating','admin-hour','digital-detox','puzzle-block','community-check-in'],
+        defaultWakeTime:'08:00',defaultSleepTime:'23:00'},
+      {id:'iron-schedule',kind:'routine-deck',name:'Iron Schedule',icon:'🧱',
+        archetype:'structured',
+        description:'Every hour accounted for, rigid time blocks, military precision',
+        cards:['full-morning-prep','deep-focus-sprint','standup-sync','meal-prep-block','family-dinner-protocol','evening-wind-down','sleep-ritual'],
+        defaultWakeTime:'05:30',defaultSleepTime:'21:30'}
+    ];
+
+    // ── ADR-011: Composition Engine ───────────────────────────────────────────
+    // Pure JS, zero external deps, file:// safe. No crypto.subtle.
+    function getModuleById(id){return MODULE_REGISTRY.find(function(m){return m.id===id})}
+    function getDeckById(id){return STARTER_DECKS.find(function(d){return d.id===id})}
+
+    function resolveModules(moduleIds){
+      // Expand compounds into their atomic modules, preserving order
+      var result=[];
+      moduleIds.forEach(function(mid){
+        var m=getModuleById(mid);
+        if(!m)return;
+        if(m.kind==='routine-compound'&&m.modules&&m.modules.length>0){
+          m.modules.forEach(function(aid){if(result.indexOf(aid)===-1)result.push(aid)});
+        }else{
+          if(result.indexOf(mid)===-1)result.push(mid);
+        }
+      });
+      return result;
+    }
+
+    function timeToMinutes(t){
+      var p=t.split(':');return parseInt(p[0],10)*60+parseInt(p[1],10);
+    }
+    function minutesToTime(m){
+      var h=Math.floor(((m%1440)+1440)%1440/60);
+      var min=((m%1440)+1440)%1440%60;
+      return (h<10?'0':'')+h+':'+(min<10?'0':'')+min;
+    }
+
+    function composeSchedule(selectedModuleIds,wakeTime,sleepTime){
+      var wakeMin=timeToMinutes(wakeTime);
+      var sleepMin=timeToMinutes(sleepTime);
+      // Handle overnight (sleep after midnight)
+      var availableMin=sleepMin>wakeMin?(sleepMin-wakeMin):((1440-wakeMin)+sleepMin);
+
+      // Resolve compounds
+      var atomicIds=resolveModules(selectedModuleIds);
+      var modules=atomicIds.map(getModuleById).filter(Boolean);
+
+      // Separate by anchor type
+      var fixed=[],wakeAnchored=[],sleepAnchored=[],movable=[];
+      modules.forEach(function(m){
+        var tc=m.timeConstraint;
+        if(tc.anchor==='fixed')fixed.push(m);
+        else if(tc.anchor==='wake')wakeAnchored.push(m);
+        else if(tc.anchor==='sleep')sleepAnchored.push(m);
+        else movable.push(m);
+      });
+
+      // Sort wake-anchored by offset, sleep-anchored by offset (most negative first)
+      wakeAnchored.sort(function(a,b){return a.timeConstraint.offsetMinutes-b.timeConstraint.offsetMinutes});
+      sleepAnchored.sort(function(a,b){return a.timeConstraint.offsetMinutes-b.timeConstraint.offsetMinutes});
+
+      // Calculate total required time
+      var totalRequired=modules.reduce(function(sum,m){return sum+m.timeConstraint.durationMinutes},0);
+
+      // Compression factor if needed
+      var compressionRatio=1;
+      if(totalRequired>availableMin){
+        var rigidTotal=modules.filter(function(m){return m.timeConstraint.flexibility==='rigid'}).reduce(function(s,m){return s+m.timeConstraint.durationMinutes},0);
+        var compressibleTotal=totalRequired-rigidTotal;
+        var availableForCompressible=availableMin-rigidTotal;
+        if(compressibleTotal>0&&availableForCompressible>0){
+          compressionRatio=Math.max(0.5,availableForCompressible/compressibleTotal);
+        }
+      }
+
+      function getDuration(m){
+        var dur=m.timeConstraint.durationMinutes;
+        if(m.timeConstraint.flexibility!=='rigid'&&compressionRatio<1){
+          dur=Math.max(10,Math.round(dur*compressionRatio));
+        }
+        return dur;
+      }
+
+      var slots=[];
+      var occupied=[]; // [{start,end}] in minutes-from-midnight
+
+      function addSlot(m,startMin){
+        var dur=getDuration(m);
+        var endMin=startMin+dur;
+        var compressed=compressionRatio<1&&m.timeConstraint.flexibility!=='rigid';
+        slots.push({moduleId:m.id,startTime:minutesToTime(startMin),endTime:minutesToTime(endMin),
+          startMin:startMin,endMin:endMin,compressed:compressed,category:m.category});
+        occupied.push({start:startMin,end:endMin});
+      }
+
+      // 1. Place fixed-time modules
+      fixed.forEach(function(m){
+        var ft=m.timeConstraint.fixedTime||'09:00';
+        addSlot(m,timeToMinutes(ft));
+      });
+
+      // 2. Place wake-anchored
+      wakeAnchored.forEach(function(m){
+        var start=wakeMin+m.timeConstraint.offsetMinutes;
+        addSlot(m,start);
+      });
+
+      // 3. Place sleep-anchored (offset is negative minutes before sleep)
+      sleepAnchored.forEach(function(m){
+        var start=sleepMin+m.timeConstraint.offsetMinutes;
+        addSlot(m,start);
+      });
+
+      // 4. Fill movable modules into gaps
+      var movableQueue=movable.slice();
+      if(movableQueue.length>0){
+        // Find gaps between occupied slots
+        var sorted=slots.slice().sort(function(a,b){return a.startMin-b.startMin});
+        var cursor=wakeMin;
+        movableQueue.forEach(function(m){
+          var dur=getDuration(m);
+          // Find first gap that fits
+          var placed=false;
+          var gaps=[];
+          var c=wakeMin;
+          sorted.forEach(function(s){if(s.startMin>c)gaps.push({start:c,end:s.startMin});c=Math.max(c,s.endMin)});
+          gaps.push({start:c,end:wakeMin+availableMin});
+          for(var i=0;i<gaps.length;i++){
+            if(gaps[i].end-gaps[i].start>=dur){
+              addSlot(m,gaps[i].start);
+              sorted=slots.slice().sort(function(a,b){return a.startMin-b.startMin});
+              placed=true;break;
+            }
+          }
+          if(!placed){
+            // Place at end anyway
+            var lastEnd=sorted.length>0?sorted[sorted.length-1].endMin:wakeMin;
+            addSlot(m,lastEnd);
+          }
+        });
+      }
+
+      // Sort final slots by start time
+      slots.sort(function(a,b){return a.startMin-b.startMin});
+
+      // Detect conflicts
+      var conflicts=[];
+      // Time overlap conflicts
+      for(var i=0;i<slots.length;i++){
+        for(var j=i+1;j<slots.length;j++){
+          if(slots[i].endMin>slots[j].startMin){
+            conflicts.push({type:'overlap',a:slots[i].moduleId,b:slots[j].moduleId});
+          }
+        }
+      }
+      // Declared incompatibility conflicts
+      atomicIds.forEach(function(mid){
+        var m=getModuleById(mid);if(!m)return;
+        (m.conflicts||[]).forEach(function(cid){
+          if(atomicIds.indexOf(cid)!==-1){
+            // Avoid duplicate pair
+            var key=mid<cid?mid+':'+cid:cid+':'+mid;
+            if(!conflicts.some(function(c){return c.type==='incompatible'&&c.key===key})){
+              conflicts.push({type:'incompatible',a:mid,b:cid,key:key});
+            }
+          }
+        });
+      });
+
+      // Collect synergy suggestions
+      var suggestions=[];
+      atomicIds.forEach(function(mid){
+        var m=getModuleById(mid);if(!m)return;
+        (m.synergies||[]).forEach(function(sid){
+          if(atomicIds.indexOf(sid)===-1&&getModuleById(sid)){
+            suggestions.push({from:mid,suggest:sid,name:getModuleById(sid).name});
+          }
+        });
+      });
+
+      // Clean internal fields from slots
+      var cleanSlots=slots.map(function(s){
+        return {moduleId:s.moduleId,startTime:s.startTime,endTime:s.endTime,compressed:s.compressed,category:s.category};
+      });
+
+      return {
+        wakeTime:wakeTime,sleepTime:sleepTime,
+        slots:cleanSlots,
+        unresolvedConflicts:conflicts,
+        synergySuggestions:suggestions,
+        compressionRatio:compressionRatio,
+        totalMinutes:totalRequired,
+        availableMinutes:availableMin
+      };
+    }
+
+    // Compute D&D-style attributes from category XP (ADR-011 Stream↔Attribute mapping Option C)
+    function computeAttributes(creditLog){
+      var catXP={fitness:0,mind:0,hygiene:0,nutrition:0,work:0,social:0,rest:0,creative:0};
+      if(creditLog){
+        Object.keys(creditLog).forEach(function(date){
+          var batch=creditLog[date];
+          if(batch&&batch.credits){
+            batch.credits.forEach(function(c){
+              if(c.category&&catXP.hasOwnProperty(c.category))catXP[c.category]+=c.xp||0;
+            });
+          }
+        });
+      }
+      // Map categories → attributes (Option C: display layer)
+      return {
+        STR:catXP.fitness,
+        CON:catXP.hygiene+catXP.nutrition+catXP.rest,
+        INT:catXP.mind+Math.floor(catXP.work*0.5),
+        WIS:Math.ceil(catXP.work*0.5)+catXP.creative,
+        CHA:catXP.social,
+        DEX:Math.floor(catXP.creative*0.5)+Math.floor(catXP.fitness*0.3)
+      };
+    }
 
     function renderGalleryCarousel(){
       // Backward-compat wrapper: exitAliasMode() and exitRecoveryMode() both call
