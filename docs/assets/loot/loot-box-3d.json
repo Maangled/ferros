@@ -8,8 +8,9 @@
   "description": "Project manifest for the baseline loot chest assembly used by Forge and game arenas.",
   "notes": "This file defines the project hierarchy, saved render target, and simple state presets. The assembled 3D chest lives in a separate render asset.",
   "defaultState": "Open",
-  "renderFile": "projects/loot-box-assembly.html?control=demo",
-  "standaloneRenderFile": "projects/loot-box-assembly.html",
+  "renderFile": "projects/loot-box-assembly-v2.html",
+  "standaloneRenderFile": "projects/loot-box-assembly-v2.html",
+  "legacyRenderFile": "projects/loot-box-assembly.html?control=demo",
   "tags": ["loot", "container", "assembly", "project"],
   "components": [
     {
@@ -17,45 +18,113 @@
       "name": "Box Body",
       "file": "parts/box-body.html",
       "role": "container",
-      "slot": "base-shell"
+      "slot": "base-shell",
+      "transform": {}
     },
     {
       "id": "barrel-lid",
       "name": "Barrel Vault Lid",
       "file": "parts/barrel-lid.html",
       "role": "lid",
-      "slot": "top-shell"
+      "slot": "top-shell",
+      "group": "lid",
+      "transform": {}
     },
     {
-      "id": "edge-bracket",
-      "name": "Edge Bracket",
+      "id": "edge-bracket-fl",
+      "name": "Edge Bracket (Front Left)",
       "file": "parts/edge-bracket.html",
       "role": "structural",
       "slot": "corner-reinforcement",
-      "instances": 4
+      "transform": { "tx": -100, "tz": 65, "scale": 0.125 }
     },
     {
-      "id": "lid-band",
-      "name": "Lid Band",
-      "file": "parts/lid-band.html",
-      "role": "decorative",
-      "slot": "lid-strapping",
-      "instances": 2
+      "id": "edge-bracket-fr",
+      "name": "Edge Bracket (Front Right)",
+      "file": "parts/edge-bracket.html",
+      "role": "structural",
+      "slot": "corner-reinforcement",
+      "instanceOf": "edge-bracket-fl",
+      "transform": { "tx": 100, "tz": 65, "ry": 180, "scale": 0.125 }
     },
     {
-      "id": "hinge",
-      "name": "Strap Hinge",
+      "id": "edge-bracket-bl",
+      "name": "Edge Bracket (Back Left)",
+      "file": "parts/edge-bracket.html",
+      "role": "structural",
+      "slot": "corner-reinforcement",
+      "instanceOf": "edge-bracket-fl",
+      "transform": { "tx": -100, "tz": -65, "ry": 180, "scale": 0.125 }
+    },
+    {
+      "id": "edge-bracket-br",
+      "name": "Edge Bracket (Back Right)",
+      "file": "parts/edge-bracket.html",
+      "role": "structural",
+      "slot": "corner-reinforcement",
+      "instanceOf": "edge-bracket-fl",
+      "transform": { "tx": 100, "tz": -65, "scale": 0.125 }
+    },
+    {
+      "id": "hinge-l",
+      "name": "Strap Hinge (Left)",
       "file": "parts/hinge.html",
       "role": "mechanism",
       "slot": "rear-joint",
-      "instances": 2
+      "group": "lid",
+      "transform": { "tx": -43, "tz": -65, "scale": 0.25 }
+    },
+    {
+      "id": "hinge-r",
+      "name": "Strap Hinge (Right)",
+      "file": "parts/hinge.html",
+      "role": "mechanism",
+      "slot": "rear-joint",
+      "group": "lid",
+      "instanceOf": "hinge-l",
+      "transform": { "tx": 57, "tz": -65, "scale": 0.25 }
+    },
+    {
+      "id": "lid-band-l",
+      "name": "Lid Band (Left)",
+      "file": "parts/lid-band.html",
+      "role": "decorative",
+      "slot": "lid-strapping",
+      "group": "lid",
+      "transform": {}
+    },
+    {
+      "id": "lid-band-r",
+      "name": "Lid Band (Right)",
+      "file": "parts/lid-band.html",
+      "role": "decorative",
+      "slot": "lid-strapping",
+      "group": "lid",
+      "instanceOf": "lid-band-l",
+      "transform": { "ry": 180 }
     },
     {
       "id": "lock-plate",
       "name": "Lock Plate",
       "file": "parts/lock-plate.html",
       "role": "mechanism",
-      "slot": "front-lock"
+      "slot": "front-lock",
+      "transform": { "tz": 64, "scale": 0.333 }
+    }
+  ],
+  "groups": [
+    {
+      "id": "lid",
+      "parent": null,
+      "transform": { "ty": -30, "tz": -2 },
+      "pivot": { "x": 0, "y": 0, "z": -65 },
+      "stateTransforms": {
+        "Odds": { "rx": 72 },
+        "Open": { "rx": 72 },
+        "Common": { "rx": 72 },
+        "Epic": { "rx": 72 },
+        "Legendary": { "rx": 72 }
+      }
     }
   ],
   "rules": [

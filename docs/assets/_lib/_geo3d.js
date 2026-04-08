@@ -1,4 +1,4 @@
-/* _geo3d.js — FERROS Vertex Geometry Renderer v1.2.1
+/* _geo3d.js — FERROS Vertex Geometry Renderer v2.0.0
  *
  * Reads window.FERROS_GEO (array of face definitions with vertex positions)
  * and creates CSS 3D divs with matrix3d transforms.
@@ -19,41 +19,22 @@
  * Coordinates: origin at center of bounding box.
  *   X = right, Y = down (CSS convention), Z = toward viewer.
  *   Units = CSS pixels.
+ *
+ * Public API (window.FERROS_GEO3D):
+ *   .createScene(container)         → origin node (preserve-3d, zero-size)
+ *   .render(faces, origin, opts?)   → array of face divs
+ *   .ensureDebugStyle()             → injects debug-normal CSS once
+ *
+ * Legacy auto-boot: if window.FERROS_GEO and .part-geo exist at load time,
+ * renders automatically (backward-compatible with all existing part files).
  */
 (function() {
   'use strict';
 
-  var faces = window.FERROS_GEO;
-  if (!faces || !faces.length) return;
-
-  var geo = document.querySelector('.part-geo');
-  if (!geo) return;
-
-  /* Container at world origin — zero size so part-geo's
-     transform-origin lands at (0,0,0) = geometry center. */
-  var origin = document.createElement('div');
-  origin.style.cssText =
-    'width:0;height:0;position:relative;transform-style:preserve-3d;';
-  geo.appendChild(origin);
-
-    var debugStyleId = 'ferros-geo3d-debug-style';
-    if (!document.getElementById(debugStyleId)) {
-      var debugStyle = document.createElement('style');
-      debugStyle.id = debugStyleId;
-      debugStyle.textContent =
-        '.part-geo .geo3d-normal{opacity:0;pointer-events:none;transition:opacity 0.18s ease;}' +
-        '.part-geo[data-debug-normals="true"] .geo3d-normal{opacity:0.95;}' +
-        '.part-geo[data-debug-normals="true"] .geo3d-normal::after{opacity:1;}' +
-        '.part-geo .geo3d-normal::after{' +
-          'content:"";position:absolute;right:-6px;top:50%;margin-top:-4px;' +
-          'border-top:4px solid transparent;border-bottom:4px solid transparent;' +
-          'border-left:7px solid rgba(255,108,108,0.95);opacity:0;' +
-        '}';
-      document.head.appendChild(debugStyle);
-    }
-
   var BLEED = 0.6;   /* local px overlap to hide AA seams */
   var BIAS  = 0.01;  /* tiny normal nudge to reduce z-fight */
+
+  /* ─── helpers ─────────────────────────────────────────── */
 
   function dot(ax, ay, az, bx, by, bz) {
     return ax * bx + ay * by + az * bz;
@@ -62,6 +43,28 @@
   function fmt(n) {
     return Number(n.toFixed(3));
   }
+
+  /* ─── debug-normal CSS (injected once) ───────────────── */
+
+  var debugStyleId = 'ferros-geo3d-debug-style';
+
+  function ensureDebugStyle() {
+    if (document.getElementById(debugStyleId)) return;
+    var s = document.createElement('style');
+    s.id = debugStyleId;
+    s.textContent =
+      '.geo3d-normal{opacity:0;pointer-events:none;transition:opacity 0.18s ease;}' +
+      '[data-debug-normals="true"] .geo3d-normal{opacity:0.95;}' +
+      '[data-debug-normals="true"] .geo3d-normal::after{opacity:1;}' +
+      '.geo3d-normal::after{' +
+        'content:"";position:absolute;right:-6px;top:50%;margin-top:-4px;' +
+        'border-top:4px solid transparent;border-bottom:4px solid transparent;' +
+        'border-left:7px solid rgba(255,108,108,0.95);opacity:0;' +
+      '}';
+    document.head.appendChild(s);
+  }
+
+  /* ─── normal-indicator line ──────────────────────────── */
 
   function addNormalIndicator(originNode, center, nx, ny, nz, ux, uy, uz, faceW, faceH) {
     var lineLen = Math.max(18, Math.min(42, Math.min(faceW, faceH) * 0.35));
@@ -103,7 +106,9 @@
     originNode.appendChild(line);
   }
 
-  faces.forEach(function(f) {
+  /* ─── core: render one face into an origin node ──────── */
+
+  function renderFace(originNode, f) {
     var v = f.verts;
 
     /* Edge vectors: e = v1-v0 (width dir), g = v3-v0 (height dir) */
@@ -199,12 +204,82 @@
       (f.color ? 'background:' + f.color + ';' : '') +
       (clip ? 'clip-path:' + clip + ';' : '');
 
-    origin.appendChild(div);
+    originNode.appendChild(div);
 
-    addNormalIndicator(origin, [
+    addNormalIndicator(originNode, [
       (v[0][0] + v[1][0] + v[2][0] + v[3][0]) / 4,
       (v[0][1] + v[1][1] + v[2][1] + v[3][1]) / 4,
       (v[0][2] + v[1][2] + v[2][2] + v[3][2]) / 4
     ], nx, ny, nz, ux, uy, uz, faceW, faceH);
+
+    return div;
+  }
+
+  /* ─── public API ─────────────────────────────────────── */
+
+  /**
+   * Create a zero-size preserve-3d origin node inside a container.
+   * All geometry rendered into this origin shares a single 3D space.
+   * @param {HTMLElement} container — must have transform-style: preserve-3d
+   * @returns {HTMLElement} the origin node
+   */
+  function createScene(container) {
+    var origin = document.createElement('div');
+    origin.style.cssText =
+      'width:0;height:0;position:relative;transform-style:preserve-3d;';
+    container.appendChild(origin);
+    return origin;
+  }
+
+  /**
+   * Render an array of FERROS_GEO faces into an origin node.
+   * @param {Array} faces — FERROS_GEO face definitions
+   * @param {HTMLElement} origin — the scene origin node from createScene()
+   * @returns {Array<HTMLElement>} the created face divs
+   */
+  function render(faces, origin) {
+    if (!faces || !faces.length) return [];
+    ensureDebugStyle();
+    var divs = [];
+    faces.forEach(function(f) {
+      divs.push(renderFace(origin, f));
+    });
+    return divs;
+  }
+
+  /* ─── expose namespace ───────────────────────────────── */
+
+  window.FERROS_GEO3D = {
+    createScene: createScene,
+    render: render,
+    ensureDebugStyle: ensureDebugStyle
+  };
+
+  /* ─── geometry extraction protocol ─────────────────── */
+  /* Parent compositor can request raw FERROS_GEO data from
+     part iframes via postMessage. This avoids DOM parsing. */
+
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'ferros:geo-request') {
+      var geo = window.FERROS_GEO;
+      if (geo) {
+        e.source.postMessage({
+          type: 'ferros:geo-response',
+          requestId: e.data.requestId,
+          faces: geo
+        }, e.origin === 'null' ? '*' : e.origin);
+      }
+    }
   });
+
+  /* ─── legacy auto-boot ───────────────────────────────── */
+
+  var faces = window.FERROS_GEO;
+  if (!faces || !faces.length) return;
+
+  var geo = document.querySelector('.part-geo');
+  if (!geo) return;
+
+  var origin = createScene(geo);
+  render(faces, origin);
 })();

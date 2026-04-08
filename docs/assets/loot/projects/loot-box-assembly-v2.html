@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS Asset: 3D Loot Chest (V2 Compositor)</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 30%, rgba(74,144,217,0.14), transparent 28%),
+      linear-gradient(180deg, #0a0c10 0%, #06080d 100%);
+  }
+
+  body {
+    position: relative;
+    isolation: isolate;
+    contain: layout paint style;
+  }
+
+  .assembly-scene {
+    position: relative;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    perspective: var(--arena-perspective, 1400px);
+    transform: translate(var(--arena-pan-x, 0px), var(--arena-pan-y, 0px));
+    isolation: isolate;
+    contain: layout paint;
+  }
+
+  .assembly-target {
+    width: 0; height: 0;
+    transform-style: preserve-3d;
+    will-change: transform;
+    transform:
+      translateZ(var(--arena-z, 0px))
+      scale(var(--arena-scale, 1))
+      rotateX(var(--base-rx, -20deg))
+      rotateY(var(--base-ry, 30deg));
+  }
+</style>
+</head>
+<body data-arena-scale="1" data-arena-rx="-20" data-arena-ry="30">
+
+<div class="assembly-scene" id="scene">
+  <div class="assembly-target" id="target"></div>
+</div>
+
+<!-- Core scripts -->
+<script src="../../_lib/_geo3d.js?v=2.0.1"></script>
+<script src="../../_core/geo-source.js?v=2.0.0"></script>
+<script src="../../_core/compositor.js?v=2.0.0"></script>
+
+<script>
+(function() {
+  'use strict';
+
+  var sceneEl = document.getElementById('scene');
+  var targetEl = document.getElementById('target');
+
+  /* ── Arena guest protocol ── */
+  var scale = parseFloat(document.body.getAttribute('data-arena-scale')) || 1;
+  var initRx = parseFloat(document.body.getAttribute('data-arena-rx')) || -20;
+  var initRy = parseFloat(document.body.getAttribute('data-arena-ry')) || 30;
+  var wireStyle = null;
+  var compositorScene = null;
+  var pendingStateLabel = null;
+
+  function stateLabelFromPayload(payload) {
+    if (!payload || !payload.pose) return null;
+    var poseToState = {
+      closed: 'Closed',
+      preview: 'Odds',
+      open: 'Open',
+      revealed: payload.rarity
+        ? payload.rarity.charAt(0).toUpperCase() + payload.rarity.slice(1)
+        : 'Open'
+    };
+    return poseToState[payload.pose] || 'Closed';
+  }
+
+  function setSceneState(label) {
+    if (!label) return;
+    if (!compositorScene) {
+      pendingStateLabel = label;
+      return;
+    }
+    pendingStateLabel = null;
+    compositorScene.setState(label);
+  }
+
+  function reportReady() {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'arena:ready',
+        scale: scale,
+        rx: initRx,
+        ry: initRy,
+        title: document.title || 'FERROS Asset: 3D Loot Chest'
+      }, '*');
+    }
+  }
+
+  window.addEventListener('message', function(e) {
+    var data = e.data;
+    if (!data || !data.type) return;
+
+    /* Camera control */
+    if (data.type === 'arena:update') {
+      var totalRx = data.rx != null ? data.rx : initRx;
+      var totalRy = data.ry != null ? data.ry : initRy;
+      var zoom = data.zoom || scale || 1;
+      var rel = zoom / (scale || 1);
+      var panX = data.panX || 0;
+      var panY = data.panY || 0;
+      if (!isFinite(rel) || rel <= 0) rel = 1;
+
+      sceneEl.style.setProperty('--arena-pan-x', panX + 'px');
+      sceneEl.style.setProperty('--arena-pan-y', panY + 'px');
+      targetEl.style.setProperty('--base-rx', totalRx + 'deg');
+      targetEl.style.setProperty('--base-ry', totalRy + 'deg');
+
+      if (data.projMode === 'iso') {
+        sceneEl.style.setProperty('--arena-perspective', '8000px');
+        targetEl.style.setProperty('--arena-z', '0px');
+        targetEl.style.setProperty('--arena-scale', rel.toFixed(4));
+      } else {
+        sceneEl.style.setProperty('--arena-perspective', '1400px');
+        targetEl.style.setProperty('--arena-scale', '1');
+        targetEl.style.setProperty('--arena-z', (Math.log(rel) * 900).toFixed(3) + 'px');
+      }
+    }
+
+    /* Smooth transitions */
+    if (data.type === 'arena:transition') {
+      sceneEl.style.transition = data.value || '';
+      targetEl.style.transition = data.value || '';
+    }
+
+    /* Wireframe mode */
+    if (data.type === 'arena:wireframe') {
+      if (data.value && !wireStyle) {
+        wireStyle = document.createElement('style');
+        wireStyle.textContent =
+          '.assembly-target * { background: transparent !important; ' +
+          'box-shadow: inset 0 0 0 1px rgba(74,144,217,0.35) !important; ' +
+          'filter: none !important; border: none !important; }';
+        document.head.appendChild(wireStyle);
+      } else if (!data.value && wireStyle) {
+        wireStyle.remove();
+        wireStyle = null;
+      }
+    }
+
+    /* Debug normals */
+    if (data.type === 'arena:debug-normals') {
+      targetEl.setAttribute('data-debug-normals', data.value ? 'true' : 'false');
+    }
+
+    /* State change from parent (via ferros:update) */
+    if (data.type === 'ferros:update') {
+      var payload = data.payload || data;
+      setSceneState(stateLabelFromPayload(payload));
+    }
+  });
+
+  /* ── Load manifest and compose ── */
+
+  if (window.location.protocol === 'file:') {
+    console.warn('[compositor-v2] file:// origin detected; redirecting to legacy assembly because browsers block fetch() and iframe composition for local file origins.');
+    window.location.replace('loot-box-assembly.html?control=demo');
+    return;
+  }
+
+  /* Resolve manifest URL relative to this file */
+  var manifestUrl = '../loot-box-3d.json';
+
+  fetch(manifestUrl, { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(manifest) {
+      /* Set base URL for part file resolution */
+      manifest._baseUrl = '../';
+
+      return window.FERROS_COMPOSITOR.compose(manifest, targetEl)
+        .then(function(scene) {
+          return { manifest: manifest, scene: scene };
+        });
+    })
+    .then(function(result) {
+      var manifest = result.manifest;
+      var scene = result.scene;
+      compositorScene = scene;
+
+      /* Apply default state if specified */
+      var defaultState = manifest.defaultState || 'Closed';
+      var params = new URLSearchParams(window.location.search);
+      var pose = params.get('pose');
+      if (pose) {
+        var poseMap = { closed: 'Closed', preview: 'Odds', open: 'Open' };
+        defaultState = poseMap[pose] || defaultState;
+      }
+      setSceneState(defaultState);
+      if (pendingStateLabel) {
+        setSceneState(pendingStateLabel);
+      }
+
+      /* Report ready to arena */
+      reportReady();
+    })
+    .catch(function(err) {
+      console.error('[compositor-v2]', err);
+      /* Still report ready so the arena doesn't hang */
+      reportReady();
+    });
+})();
+</script>
+</body>
+</html>

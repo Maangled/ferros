@@ -32,6 +32,21 @@ body {
   backdrop-filter: blur(12px);
 }
 
+body.project-direct-view .forge-nav,
+body.project-direct-view .forge-panel,
+body.project-direct-view .forge-status {
+  backdrop-filter: none;
+}
+
+body.project-direct-view .forge-panel {
+  background: rgba(14, 18, 28, 0.92);
+}
+
+body.project-direct-view .forge-status,
+body.project-direct-view .forge-nav {
+  background: rgba(10, 12, 16, 0.94);
+}
+
 .forge-nav {
   position: absolute;
   top: 0;
@@ -130,24 +145,44 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.panel-header:hover {
+  background: linear-gradient(90deg, rgba(74,144,217,0.2), transparent);
+}
+
+/* ── Global dark scrollbar theme ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(58, 90, 143, 0.35) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(58, 90, 143, 0.35);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 144, 217, 0.45);
 }
 
 .panel-scroll {
   flex: 1;
-  overflow: hidden;
-}
-
-.panel-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.panel-scroll::-webkit-scrollbar-thumb {
-  background: var(--border-accent);
-  border-radius: 999px;
+  overflow-y: auto;
 }
 
 .catalog-stack {
-  height: 100%;
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -286,8 +321,8 @@ body {
 .forge-viewport {
   position: absolute;
   inset: 0;
-  position: relative;
   overflow: hidden;
+  isolation: isolate;
   background:
     radial-gradient(circle at 50% 30%, rgba(74,144,217,0.14), transparent 28%),
     linear-gradient(180deg, #0a0c10 0%, #06080d 100%);
@@ -298,6 +333,22 @@ body {
   height: 100%;
   border: none;
   display: block;
+  background: #06080d;
+}
+
+body.project-direct-view .forge-viewport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+body.project-direct-view .forge-viewport iframe {
+  width: 1200px;
+  height: 800px;
+  flex: 0 0 auto;
+  transform: scale(var(--iframe-scale, 1));
+  transform-origin: center center;
 }
 
 .viewport-empty {
@@ -445,31 +496,7 @@ body {
   color: var(--text-dim);
 }
 
-.panel-toggle {
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  border: 1px solid rgba(58, 90, 143, 0.24);
-  background: rgba(17, 21, 32, 0.68);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
 
-.panel-toggle:hover {
-  color: var(--text-primary);
-  border-color: rgba(74, 144, 217, 0.4);
-}
-
-.panel-toggle-icon {
-  transition: transform 0.15s ease;
-}
-
-.panel-collapsed .panel-toggle-icon {
-  transform: rotate(180deg);
-}
 
 .forge-panel.panel-collapsed {
   opacity: 0.22;
@@ -579,9 +606,6 @@ body {
   <aside class="forge-panel corner-tl" id="panel-bag">
     <div class="panel-header">
       <span class="panel-title-text">🎒 Bag</span>
-      <button class="panel-toggle" type="button" aria-label="Toggle bag panel">
-        <span class="panel-toggle-icon">&#8249;</span>
-      </button>
     </div>
     <div class="panel-scroll panel-body-content">
       <div class="catalog-stack" id="catalog"></div>
@@ -601,9 +625,6 @@ body {
   <aside class="forge-panel corner-tr" id="panel-inspector">
     <div class="panel-header">
       <span class="panel-title-text">🔍 Inspector</span>
-      <button class="panel-toggle" type="button" aria-label="Toggle inspector panel">
-        <span class="panel-toggle-icon">&#8250;</span>
-      </button>
     </div>
     <div class="panel-scroll panel-body-content">
       <section class="inspector-section">
@@ -651,9 +672,6 @@ body {
   <aside class="forge-panel corner-bl panel-collapsed" id="panel-tools">
     <div class="panel-header">
       <span class="panel-title-text">🔧 Tools</span>
-      <button class="panel-toggle" type="button" aria-label="Toggle tools panel">
-        <span class="panel-toggle-icon">&#8249;</span>
-      </button>
     </div>
     <div class="panel-scroll panel-body-content">
       <div style="padding: 16px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">
@@ -665,9 +683,6 @@ body {
   <aside class="forge-panel corner-br panel-collapsed" id="panel-assistant">
     <div class="panel-header">
       <span class="panel-title-text">💬 Assistant</span>
-      <button class="panel-toggle" type="button" aria-label="Toggle assistant panel">
-        <span class="panel-toggle-icon">&#8250;</span>
-      </button>
     </div>
     <div class="panel-scroll panel-body-content">
       <div style="padding: 16px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">
@@ -738,16 +753,37 @@ body {
         description: 'Project manifest for the baseline loot chest assembly used by Forge and game arenas.',
         notes: 'This file defines the project hierarchy, saved render target, and simple state presets. The assembled 3D chest lives in a separate render asset.',
         defaultState: 'Open',
-        renderFile: 'projects/loot-box-assembly.html?control=demo',
-        standaloneRenderFile: 'projects/loot-box-assembly.html',
+        renderFile: 'projects/loot-box-assembly-v2.html',
+        standaloneRenderFile: 'projects/loot-box-assembly-v2.html',
+        legacyRenderFile: 'projects/loot-box-assembly.html?control=demo',
         tags: ['loot', 'container', 'assembly', 'project'],
         components: [
-          { id: 'box-body', name: 'Box Body', file: 'parts/box-body.html', role: 'container', slot: 'base-shell' },
-          { id: 'barrel-lid', name: 'Barrel Vault Lid', file: 'parts/barrel-lid.html', role: 'lid', slot: 'top-shell' },
-          { id: 'edge-bracket', name: 'Edge Bracket', file: 'parts/edge-bracket.html', role: 'structural', slot: 'corner-reinforcement', instances: 4 },
-          { id: 'lid-band', name: 'Lid Band', file: 'parts/lid-band.html', role: 'decorative', slot: 'lid-strapping', instances: 2 },
-          { id: 'hinge', name: 'Strap Hinge', file: 'parts/hinge.html', role: 'mechanism', slot: 'rear-joint', instances: 2 },
-          { id: 'lock-plate', name: 'Lock Plate', file: 'parts/lock-plate.html', role: 'mechanism', slot: 'front-lock' }
+          { id: 'box-body', name: 'Box Body', file: 'parts/box-body.html', role: 'container', slot: 'base-shell', transform: {} },
+          { id: 'barrel-lid', name: 'Barrel Vault Lid', file: 'parts/barrel-lid.html', role: 'lid', slot: 'top-shell', group: 'lid', transform: {} },
+          { id: 'edge-bracket-fl', name: 'Edge Bracket (Front Left)', file: 'parts/edge-bracket.html', role: 'structural', slot: 'corner-reinforcement', transform: { tx: -100, tz: 65, scale: 0.125 } },
+          { id: 'edge-bracket-fr', name: 'Edge Bracket (Front Right)', file: 'parts/edge-bracket.html', role: 'structural', slot: 'corner-reinforcement', instanceOf: 'edge-bracket-fl', transform: { tx: 100, tz: 65, ry: 180, scale: 0.125 } },
+          { id: 'edge-bracket-bl', name: 'Edge Bracket (Back Left)', file: 'parts/edge-bracket.html', role: 'structural', slot: 'corner-reinforcement', instanceOf: 'edge-bracket-fl', transform: { tx: -100, tz: -65, ry: 180, scale: 0.125 } },
+          { id: 'edge-bracket-br', name: 'Edge Bracket (Back Right)', file: 'parts/edge-bracket.html', role: 'structural', slot: 'corner-reinforcement', transform: { tx: 100, tz: -65, scale: 0.125 } },
+          { id: 'hinge-l', name: 'Strap Hinge (Left)', file: 'parts/hinge.html', role: 'mechanism', slot: 'rear-joint', group: 'lid', transform: { tx: -43, tz: -65, scale: 0.25 } },
+          { id: 'hinge-r', name: 'Strap Hinge (Right)', file: 'parts/hinge.html', role: 'mechanism', slot: 'rear-joint', group: 'lid', instanceOf: 'hinge-l', transform: { tx: 57, tz: -65, scale: 0.25 } },
+          { id: 'lid-band-l', name: 'Lid Band (Left)', file: 'parts/lid-band.html', role: 'decorative', slot: 'lid-strapping', group: 'lid', transform: {} },
+          { id: 'lid-band-r', name: 'Lid Band (Right)', file: 'parts/lid-band.html', role: 'decorative', slot: 'lid-strapping', group: 'lid', instanceOf: 'lid-band-l', transform: { ry: 180 } },
+          { id: 'lock-plate', name: 'Lock Plate', file: 'parts/lock-plate.html', role: 'mechanism', slot: 'front-lock', transform: { tz: 64, scale: 0.333 } }
+        ],
+        groups: [
+          {
+            id: 'lid',
+            parent: null,
+            transform: { ty: -30, tz: -2 },
+            pivot: { x: 0, y: 0, z: -65 },
+            stateTransforms: {
+              Odds: { rx: 72 },
+              Open: { rx: 72 },
+              Common: { rx: 72 },
+              Epic: { rx: 72 },
+              Legendary: { rx: 72 }
+            }
+          }
         ],
         rules: [
           'The body owns the occupied volume and the lid hinges against the rear edge.',
@@ -790,6 +826,21 @@ body {
   var viewerManifest = document.getElementById('viewer-manifest');
   var viewerRender = document.getElementById('viewer-render');
   var statusSource = document.getElementById('status-source');
+  var inspectorScroll = document.querySelector('.corner-tr .panel-scroll');
+  var viewportEl = document.querySelector('.forge-viewport');
+
+  /* Fixed-size iframe scaling: keep project iframe at 1200×800 and CSS-scale to fit */
+  function updateIframeScale() {
+    if (!document.body.classList.contains('project-direct-view') || !viewportEl) return;
+    var vw = viewportEl.clientWidth;
+    var vh = viewportEl.clientHeight;
+    if (vw <= 0 || vh <= 0) return;
+    var s = Math.min(vw / 1200, vh / 800);
+    viewportEl.style.setProperty('--iframe-scale', s.toFixed(4));
+  }
+  if (window.ResizeObserver && viewportEl) {
+    new ResizeObserver(updateIframeScale).observe(viewportEl);
+  }
 
   var activeAsset = null;
   var pendingPayload = null;
@@ -806,7 +857,7 @@ body {
       return Promise.resolve(cloneData(fallbackValue));
     }
 
-    return fetch(path).then(function(response) {
+    return fetch(path, { cache: 'no-store' }).then(function(response) {
       if (!response.ok) {
         throw new Error('HTTP ' + response.status);
       }
@@ -927,8 +978,16 @@ body {
 
   function resolveProjectAsset(asset, manifest) {
     var manifestUrl = new URL(asset.file, window.location.href);
-    var renderUrl = new URL(manifest.renderFile, manifestUrl);
-    var standaloneRenderUrl = new URL(manifest.standaloneRenderFile || manifest.renderFile, manifestUrl);
+    var renderPath = manifest.renderFile;
+    var standaloneRenderPath = manifest.standaloneRenderFile || manifest.renderFile;
+
+    if (isFileProtocol && manifest.legacyRenderFile) {
+      renderPath = manifest.legacyRenderFile;
+      standaloneRenderPath = manifest.legacyRenderFile;
+    }
+
+    var renderUrl = new URL(renderPath, manifestUrl);
+    var standaloneRenderUrl = new URL(standaloneRenderPath, manifestUrl);
     var components = manifest.components || [];
     var states = manifest.states || [];
 
@@ -959,7 +1018,7 @@ body {
       return Promise.resolve(resolveProjectAsset(asset, cloneData(FILE_FALLBACKS.manifests[asset.file])));
     }
 
-    return fetch(asset.file)
+    return fetch(asset.file, { cache: 'no-store' })
       .then(function(response) {
         if (!response.ok) {
           throw new Error('HTTP ' + response.status);
@@ -976,6 +1035,10 @@ body {
     for (var i = 0; i < items.length; i++) {
       items[i].classList.toggle('active', items[i].dataset.assetId === id);
     }
+  }
+
+  function resetInspectorScroll() {
+    if (inspectorScroll) inspectorScroll.scrollTop = 0;
   }
 
   function renderInspector(asset) {
@@ -1065,6 +1128,9 @@ body {
     activeAsset = asset;
     pendingPayload = null;
     pendingPoseLabel = 'default';
+    resetInspectorScroll();
+    document.body.classList.toggle('project-direct-view', asset.viewer === 'direct');
+    updateIframeScale();
 
     var controls = asset.states || asset.controls || [];
     if (controls.length) {
@@ -1104,12 +1170,17 @@ body {
       statusSelection.textContent = 'loading project';
       statusViewer.textContent = 'viewer: manifest';
       hudRight.textContent = asset.name + ' / manifest';
+      resetInspectorScroll();
+      document.body.classList.add('project-direct-view');
+      updateIframeScale();
       loadProjectManifest(asset)
         .then(function(resolved) {
           loadResolvedAsset(resolved);
         })
         .catch(function(error) {
           activeAsset = asset;
+          resetInspectorScroll();
+          document.body.classList.remove('project-direct-view');
           setActiveItem(asset.id);
           renderInspector(asset);
           frame.style.display = 'none';
@@ -1155,6 +1226,7 @@ body {
       return;
     }
 
+    document.body.classList.remove('project-direct-view');
     emptyState.classList.remove('hidden');
     frame.style.display = 'none';
     statusSelection.textContent = 'no assets loaded';
@@ -1167,13 +1239,13 @@ body {
     panelEl.classList.toggle('panel-collapsed');
   }
 
-  var panelToggles = document.querySelectorAll('.panel-toggle');
-  for (var t = 0; t < panelToggles.length; t++) {
-    (function(btn) {
-      btn.addEventListener('click', function() {
-        togglePanel(btn.closest('.forge-panel'));
+  var panelHeaders = document.querySelectorAll('.panel-header');
+  for (var t = 0; t < panelHeaders.length; t++) {
+    (function(hdr) {
+      hdr.addEventListener('click', function() {
+        togglePanel(hdr.closest('.forge-panel'));
       });
-    })(panelToggles[t]);
+    })(panelHeaders[t]);
   }
 })();
 </script>

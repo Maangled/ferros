@@ -55,6 +55,10 @@
     "standaloneRenderFile": {
       "type": "string"
     },
+    "legacyRenderFile": {
+      "type": "string",
+      "description": "Path to the pre-compositor monolithic render file, kept as fallback."
+    },
     "tags": {
       "type": "array",
       "items": {
@@ -66,6 +70,12 @@
       "minItems": 1,
       "items": {
         "$ref": "#/$defs/component"
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/group"
       }
     },
     "rules": {
@@ -83,6 +93,59 @@
     }
   },
   "$defs": {
+    "transform": {
+      "type": "object",
+      "description": "3D transform relative to parent. CSS px for translation, degrees for rotation. Rotation order: X → Y → Z.",
+      "additionalProperties": false,
+      "properties": {
+        "tx": { "type": "number", "default": 0 },
+        "ty": { "type": "number", "default": 0 },
+        "tz": { "type": "number", "default": 0 },
+        "rx": { "type": "number", "default": 0 },
+        "ry": { "type": "number", "default": 0 },
+        "rz": { "type": "number", "default": 0 },
+        "scale": { "type": "number", "default": 1, "exclusiveMinimum": 0 }
+      }
+    },
+    "pivot": {
+      "type": "object",
+      "description": "Transform-origin offset from the group's local origin. Defines the axis of rotation for articulated joints.",
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number", "default": 0 },
+        "y": { "type": "number", "default": 0 },
+        "z": { "type": "number", "default": 0 }
+      }
+    },
+    "group": {
+      "type": "object",
+      "description": "Articulated group with its own transform, pivot, and state-driven transforms. Components reference groups by ID.",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "parent": {
+          "type": ["string", "null"],
+          "description": "ID of parent group, or null/omitted for root-level groups."
+        },
+        "transform": {
+          "$ref": "#/$defs/transform"
+        },
+        "pivot": {
+          "$ref": "#/$defs/pivot"
+        },
+        "stateTransforms": {
+          "type": "object",
+          "description": "Map of state label → transform override applied to this group when that state is active.",
+          "additionalProperties": {
+            "$ref": "#/$defs/transform"
+          }
+        }
+      }
+    },
     "component": {
       "type": "object",
       "additionalProperties": false,
@@ -114,9 +177,16 @@
           "type": "string",
           "minLength": 1
         },
-        "instances": {
-          "type": "integer",
-          "minimum": 1
+        "group": {
+          "type": "string",
+          "description": "ID of the group this component belongs to. Omit for root-level (body) components."
+        },
+        "instanceOf": {
+          "type": "string",
+          "description": "ID of the base component this is a placed instance of. Enables geometry deduplication — the compositor loads geometry once and clones."
+        },
+        "transform": {
+          "$ref": "#/$defs/transform"
         }
       }
     },
