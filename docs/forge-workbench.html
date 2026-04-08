@@ -839,7 +839,14 @@ body.project-direct-view .forge-viewport iframe {
     viewportEl.style.setProperty('--iframe-scale', s.toFixed(4));
   }
   if (window.ResizeObserver && viewportEl) {
-    new ResizeObserver(updateIframeScale).observe(viewportEl);
+    var _resizeRAFId = null;
+    new ResizeObserver(function() {
+      if (_resizeRAFId) return;
+      _resizeRAFId = requestAnimationFrame(function() {
+        _resizeRAFId = null;
+        updateIframeScale();
+      });
+    }).observe(viewportEl);
   }
 
   var activeAsset = null;
