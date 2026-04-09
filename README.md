@@ -10,6 +10,60 @@ It is not a Linux distribution, not a container runtime, and not a research prot
 
 ---
 
+## 📈 Project Progress
+
+**Overall FERROS Ecosystem** `█░░░░░░░░░░░░░░░░░░░` **1%**
+
+<details>
+<summary>📊 Detailed Project Progress</summary>
+
+### 🖥️ FERROS Core OS — Overall: ~1%
+
+| Component | Progress |
+|-----------|----------|
+| UEFI Bootloader | `█░░░░░░░░░░░░░░░░░░░` 1% |
+| Kernel (x86_64) | `█░░░░░░░░░░░░░░░░░░░` 1% |
+| Kernel (ARM/AArch64) | `░░░░░░░░░░░░░░░░░░░░` 0% |
+| Kernel (RISC-V) | `░░░░░░░░░░░░░░░░░░░░` 0% |
+| Memory Manager | `░░░░░░░░░░░░░░░░░░░░` 0% |
+| Filesystem Driver | `░░░░░░░░░░░░░░░░░░░░` 0% |
+| HTML/CSS Renderer | `█░░░░░░░░░░░░░░░░░░░` 1% |
+| Framebuffer/Graphics | `░░░░░░░░░░░░░░░░░░░░` 0% |
+| Phase 0 Conformance | `█░░░░░░░░░░░░░░░░░░░` 1% |
+
+---
+
+### 🌐 Online Platform / Web Projects
+
+| Project | Progress | Notes |
+|---------|----------|-------|
+| **The Forge** | `▓░░░░░░░░░░░░░░░░░░░` 2% | Architecture started; no creation functionality yet |
+| **Personal Profile** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/personal-profile.html`; needs agent-driven user system |
+| **Trading Arena** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/algo-trading-arena.html` |
+| **Showcase / Landing Page** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/ferros-showcase.html` |
+| **Agent Command Center** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/agent-command-center.html` |
+| **Home HUD Dashboard** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/home-hud-dashboard.html` |
+| **Schedule Ledger** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/schedule-ledger.html` |
+
+> `▓` (2%) vs `█` (1%) — slightly higher fill to distinguish early progress differences.
+
+---
+
+### 🔧 Shared Infrastructure
+
+| Component | Progress | Notes |
+|-----------|----------|-------|
+| **User/Identity System** | `█░░░░░░░░░░░░░░░░░░░` 1% | Consent-first, cross-device, alias modes — high complexity, long timeline |
+| **Templates & Profiles** | `█░░░░░░░░░░░░░░░░░░░` 1% | Template profiles exist; need major expansion |
+| **Assets, Cards & Decks** | `█░░░░░░░░░░░░░░░░░░░` 1% | Card systems referenced in Trading Arena; barely started |
+| **Agent Integration** | `█░░░░░░░░░░░░░░░░░░░` 1% | Primary platform functionality; blocked on user system |
+
+</details>
+
+> *Progress is updated manually. Most projects are in early architecture/prototype phase. The primary bottleneck is the user/identity system — the platform's main functionality (agent-driven content updates) depends on it.*
+
+---
+
 ## Founding Blueprint
 
 📄 **[`ferros-blueprint.html`](./ferros-blueprint.html)** — The founding architecture board, styled as a dark-theme command-center dashboard. Open this file locally in any browser. It is self-contained with no external dependencies.
