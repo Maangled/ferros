@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/card.schema.json",
+  "title": "FERROS Card",
+  "description": "Canonical schema for the atomic FERROS object (ADR-010). A Card is the smallest unit of content, interaction, or identity in the system. Cards carry their own rendering logic reference, state, and identity hash.",
+  "type": "object",
+  "required": ["id", "kind", "name", "version"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique identifier, URL-safe slug"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["card"],
+      "description": "Always 'card' for atomic objects"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing version number. Each edit creates a new version."
+    },
+    "contentHash": {
+      "type": ["string", "null"],
+      "description": "SHA-256 or djb2 hash of the card's content for integrity verification. Null if not yet computed."
+    },
+    "renderFile": {
+      "type": "string",
+      "description": "Relative path to the HTML file that renders this card"
+    },
+    "role": {
+      "type": "string",
+      "description": "Semantic role: 'container', 'lid', 'structural', 'decorative', 'mechanism', 'profile', 'schedule', 'achievement', etc."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "attribution": { "$ref": "#/$defs/attribution" },
+    "state": { "$ref": "#/$defs/cardState" },
+    "transform": { "$ref": "#/$defs/transform" },
+    "metadata": {
+      "type": "object",
+      "description": "Card-type-specific metadata. Not constrained — varies by card role.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "attribution": {
+      "type": "object",
+      "description": "Links this card to a profile identity",
+      "properties": {
+        "createdBy": { "type": ["string", "null"], "description": "Genesis hash of the creating profile, or null for system cards" },
+        "createdAt": { "type": ["string", "null"], "format": "date-time" },
+        "linkedTo": { "type": ["string", "null"], "description": "Genesis hash of the owning profile. Null for unlinked/system cards." }
+      }
+    },
+    "cardState": {
+      "type": "object",
+      "description": "Current interactive state of the card. Separate from content to allow view/instance state without mutating the card itself.",
+      "properties": {
+        "preset": { "type": "string", "description": "Named state preset (e.g., 'Open', 'Closed', 'Hover')" },
+        "control": { "type": "string", "default": "demo", "description": "Control mode: 'demo', 'interactive', 'static'" },
+        "pose": { "type": "object", "description": "Arbitrary pose data for the current state" }
+      }
+    },
+    "transform": {
+      "type": "object",
+      "description": "3D spatial transform. CSS px for translation, degrees for rotation.",
+      "additionalProperties": false,
+      "properties": {
+        "tx": { "type": "number", "default": 0 },
+        "ty": { "type": "number", "default": 0 },
+        "tz": { "type": "number", "default": 0 },
+        "rx": { "type": "number", "default": 0 },
+        "ry": { "type": "number", "default": 0 },
+        "rz": { "type": "number", "default": 0 },
+        "scale": { "type": "number", "default": 1, "exclusiveMinimum": 0 }
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$comment": "Golden fixture: .ferros-log from a recovery session. Use this to test recovery import. Attribution is 'self', all entries are self-attributed.",
+  "ferrosVersion": "1.0",
+  "logType": "recovery-session",
+  "recovery": {
+    "profileName": "Test Pioneer",
+    "genesisHash": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    "attribution": "self",
+    "integrityWarning": false
+  },
+  "sessionStart": "2026-04-10T18:00:00.000Z",
+  "sessionEnd": "2026-04-10T19:00:00.000Z",
+  "entries": [
+    {
+      "ts": "2026-04-10T18:10:00.000Z",
+      "text": "Reviewed schedule on library computer",
+      "type": "activity",
+      "seal": null
+    },
+    {
+      "ts": "2026-04-10T18:45:00.000Z",
+      "text": "Added note about tomorrow's meeting",
+      "type": "journal",
+      "seal": null
+    }
+  ],
+  "entryCount": 2,
+  "claimInstructions": "Import this file on your home FERROS instance to merge these recovery session logs into your profile."
+}

@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/audit-record.schema.json",
+  "title": "FERROS Audit Record",
+  "description": "Canonical schema for action/audit log entries. Used in .ferros-log export files (alias and recovery sessions), agent action trails, and future cross-surface audit logs.",
+  "type": "object",
+  "required": ["ferrosVersion", "logType", "sessionStart", "entries"],
+  "additionalProperties": false,
+  "properties": {
+    "ferrosVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "logType": {
+      "type": "string",
+      "enum": ["alias-session", "recovery-session", "agent-action"],
+      "description": "Type of audit log"
+    },
+    "sessionStart": { "type": "string", "format": "date-time" },
+    "sessionEnd": { "type": ["string", "null"], "format": "date-time" },
+    "alias": {
+      "$ref": "#/$defs/aliasInfo",
+      "description": "Present only for alias-session logType"
+    },
+    "recovery": {
+      "$ref": "#/$defs/recoveryInfo",
+      "description": "Present only for recovery-session logType"
+    },
+    "agent": {
+      "$ref": "#/$defs/agentInfo",
+      "description": "Present only for agent-action logType"
+    },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "entryCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Redundant count for quick validation"
+    },
+    "claimInstructions": {
+      "type": "string",
+      "description": "Human-readable instructions for importing this log"
+    }
+  },
+  "$defs": {
+    "aliasInfo": {
+      "type": "object",
+      "required": ["id", "name", "attribution"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "icon": { "type": "string" },
+        "class": { "type": "string" },
+        "attribution": {
+          "type": "string",
+          "enum": ["unlinked", "claimed"],
+          "description": "'unlinked' until claimed; 'claimed' after merge into real profile"
+        }
+      }
+    },
+    "recoveryInfo": {
+      "type": "object",
+      "required": ["attribution"],
+      "additionalProperties": false,
+      "properties": {
+        "profileName": { "type": "string" },
+        "genesisHash": { "type": "string" },
+        "attribution": { "const": "self" },
+        "integrityWarning": {
+          "type": "boolean",
+          "description": "True if the loaded profile had a broken seal chain"
+        }
+      }
+    },
+    "agentInfo": {
+      "type": "object",
+      "required": ["agentId", "role"],
+      "properties": {
+        "agentId": { "type": "string" },
+        "role": {
+          "type": "string",
+          "enum": ["feature", "bugfix", "documentation", "architecture"],
+          "description": "Agent role per AGENT_GUIDE.md"
+        },
+        "permissionGrant": { "type": "string", "description": "Human-readable consent prompt that was accepted" },
+        "targetSurface": { "type": "string", "description": "Which FERROS surface this action targets" }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "required": ["ts", "text", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "ts": { "type": "string", "format": "date-time" },
+        "text": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["activity", "journal", "system", "agent-action"],
+          "description": "Entry classification"
+        },
+        "seal": {
+          "type": ["string", "null"],
+          "description": "djb2 or SHA-256 hash of content+timestamp for per-entry tamper evidence"
+        },
+        "reversible": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this action can be rolled back (agent actions only)"
+        },
+        "rollbackData": {
+          "type": ["object", "null"],
+          "description": "Data needed to reverse this action"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/schedule-event.schema.json",
+  "title": "FERROS Schedule Event",
+  "description": "Canonical schema for calendar events and task entries consumed by the Schedule Ledger. Events come from template schedules (ADR-004), routine modules (ADR-011), or user-created entries.",
+  "type": "object",
+  "required": ["id", "kind", "label", "time"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["event", "task", "block", "routine"],
+      "description": "event = calendar entry, task = completable item, block = time block from template, routine = ADR-011 module instance"
+    },
+    "label": { "type": "string", "minLength": 1 },
+    "time": {
+      "type": "string",
+      "pattern": "^\\d{2}:\\d{2}$",
+      "description": "HH:MM 24-hour start time"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date (YYYY-MM-DD). Null for recurring/template events."
+    },
+    "durationMin": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Duration in minutes"
+    },
+    "stream": {
+      "type": "string",
+      "enum": ["A", "B", "C"],
+      "description": "Which attribute stream this event contributes to"
+    },
+    "attribute": {
+      "type": "string",
+      "enum": ["Discipline", "Knowledge", "Craft", "Governance", "Wellness", "Community"],
+      "description": "Primary attribute this event exercises"
+    },
+    "source": { "$ref": "#/$defs/eventSource" },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether task/routine has been marked complete"
+    },
+    "completedAt": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "xpReward": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "XP awarded on completion"
+    },
+    "recurrence": { "$ref": "#/$defs/recurrence" }
+  },
+  "$defs": {
+    "eventSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["template", "module", "user"],
+          "description": "Where this event came from"
+        },
+        "templateId": { "type": "string", "description": "Template profile ID if source is template" },
+        "moduleId": { "type": "string", "description": "Routine module ID if source is module (ADR-011)" },
+        "deckId": { "type": "string", "description": "Starter deck ID if part of a composed schedule" }
+      },
+      "required": ["type"]
+    },
+    "recurrence": {
+      "type": "object",
+      "properties": {
+        "frequency": { "type": "string", "enum": ["daily", "weekly", "weekdays", "custom"] },
+        "days": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 6 },
+          "description": "Days of week (0=Sunday) for weekly/custom recurrence"
+        }
+      },
+      "required": ["frequency"]
+    }
+  }
+}

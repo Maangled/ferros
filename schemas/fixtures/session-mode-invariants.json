@@ -1,0 +1,21 @@
+{
+  "$comment": "Golden fixture: session mode state. When a user declines the Trade Window, session mode activates. No localStorage writes. No exit artifact. This fixture documents the invariants that must hold.",
+  "mode": "session",
+  "invariants": {
+    "localStorageWrites": 0,
+    "sessionStorageKeys": ["session_declined"],
+    "exitArtifact": null,
+    "bodyClass": null,
+    "saveProfileReturnsEarly": true,
+    "tradeWindowAccepted": false,
+    "stageFlowAccessible": true,
+    "explanation": "Session mode users can still proceed through the Stage 0→1→2→3 flow. They see all UI. But saveProfile() returns early, so nothing persists. Closing the tab loses everything."
+  },
+  "testAssertions": [
+    "localStorage.getItem('ferros_profile') === null after full session",
+    "localStorage.getItem('ferros_seal_chain') === null after full session",
+    "User can complete Stage 0→1→2→3 without error",
+    "No .ferros-log file is downloadable",
+    "sessionMode variable is true throughout session"
+  ]
+}

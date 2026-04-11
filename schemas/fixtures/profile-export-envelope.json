@@ -1,0 +1,97 @@
+{
+  "$comment": "Golden fixture: export envelope wrapping a full profile. This is the format produced by the Portability panel export button. Importing this in a fresh browser must produce an identical working profile.",
+  "profile": {
+    "meta": {
+      "version": "1.0",
+      "created": "2026-04-10T09:00:00.000Z",
+      "lastModified": "2026-04-10T09:15:00.000Z",
+      "assistanceLevel": 1,
+      "genesisHash": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "currentSeal": "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
+      "sealCount": 3,
+      "stage": 3,
+      "anchoredToLedger": false,
+      "ledgerTxHash": null
+    },
+    "identity": {
+      "name": "Test Pioneer",
+      "avatar": "shield",
+      "class": "Architect",
+      "streamAffinity": "A",
+      "title": "Newcomer",
+      "joinedDate": "2026-04-10T09:00:00.000Z",
+      "streakDays": 1,
+      "longestStreak": 1,
+      "archetype": "structured-research",
+      "wakeTime": "07:00",
+      "sleepTime": "23:00",
+      "categoryInterests": ["knowledge", "craft"]
+    },
+    "attributes": {
+      "Discipline": { "level": 1, "xp": 50, "xpToNext": 100, "color": "amber", "icon": "💪" },
+      "Knowledge": { "level": 2, "xp": 10, "xpToNext": 200, "color": "blue", "icon": "📘" },
+      "Craft": { "level": 1, "xp": 0, "xpToNext": 100, "color": "cyan", "icon": "🔨" },
+      "Governance": { "level": 1, "xp": 0, "xpToNext": 100, "color": "purple", "icon": "⚖️" },
+      "Wellness": { "level": 1, "xp": 0, "xpToNext": 100, "color": "green", "icon": "🌿" },
+      "Community": { "level": 1, "xp": 0, "xpToNext": 100, "color": "pink", "icon": "🤝" }
+    },
+    "skills": { "A": [], "B": [], "C": [] },
+    "achievements": [
+      { "id": "genesis_pioneer", "name": "Genesis Pioneer", "desc": "Became a FERROS pioneer", "icon": "🏆", "unlocked": true, "unlockedAt": "2026-04-10T09:05:00.000Z" },
+      { "id": "first_protocol", "name": "First Protocol", "desc": "Completed your first protocol", "icon": "📋", "unlocked": true, "unlockedAt": "2026-04-10T09:12:00.000Z" }
+    ],
+    "journal": [
+      { "ts": "2026-04-10T09:05:00.000Z", "text": "Profile created — Genesis Pioneer unlocked", "type": "system" },
+      { "ts": "2026-04-10T09:12:00.000Z", "text": "First protocol sealed — Discipline +50 XP", "type": "system" }
+    ],
+    "credentials": [],
+    "sealChain": [
+      {
+        "taskId": "genesis",
+        "seal": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+        "previousSeal": "genesis",
+        "timestamp": "2026-04-10T09:05:00.000Z",
+        "data": { "event": "profile_created", "name": "Test Pioneer" }
+      },
+      {
+        "taskId": "character_creation",
+        "seal": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+        "previousSeal": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+        "timestamp": "2026-04-10T09:10:00.000Z",
+        "data": { "event": "character_sealed", "class": "Architect", "stream": "A" }
+      },
+      {
+        "taskId": "first_protocol",
+        "seal": "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
+        "previousSeal": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+        "timestamp": "2026-04-10T09:12:00.000Z",
+        "data": { "event": "protocol_completed", "xpAwarded": 100, "attribute": "Discipline" }
+      }
+    ]
+  },
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "previousSeal": "genesis",
+      "timestamp": "2026-04-10T09:05:00.000Z",
+      "data": { "event": "profile_created", "name": "Test Pioneer" }
+    },
+    {
+      "taskId": "character_creation",
+      "seal": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+      "previousSeal": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "timestamp": "2026-04-10T09:10:00.000Z",
+      "data": { "event": "character_sealed", "class": "Architect", "stream": "A" }
+    },
+    {
+      "taskId": "first_protocol",
+      "seal": "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
+      "previousSeal": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+      "timestamp": "2026-04-10T09:12:00.000Z",
+      "data": { "event": "protocol_completed", "xpAwarded": 100, "attribute": "Discipline" }
+    }
+  ],
+  "exportedAt": "2026-04-10T09:20:00.000Z",
+  "ferrosVersion": "1.0"
+}

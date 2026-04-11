@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/identity.schema.json",
+  "title": "FERROS Identity / Session Model",
+  "description": "Canonical schema for session state across the 4 mutually exclusive session modes (ADR-005). This is NOT stored as-is — it describes the runtime invariants each mode must satisfy.",
+  "type": "object",
+  "required": ["mode", "storagePolicy", "exitArtifact"],
+  "additionalProperties": false,
+  "oneOf": [
+    { "$ref": "#/$defs/fullProfileMode" },
+    { "$ref": "#/$defs/sessionMode" },
+    { "$ref": "#/$defs/aliasMode" },
+    { "$ref": "#/$defs/recoveryMode" }
+  ],
+  "$defs": {
+    "fullProfileMode": {
+      "type": "object",
+      "properties": {
+        "mode": { "const": "full-profile" },
+        "identityType": { "const": "real" },
+        "storagePolicy": {
+          "type": "object",
+          "properties": {
+            "localStorage": { "const": true },
+            "sessionStorage": { "const": false }
+          },
+          "required": ["localStorage", "sessionStorage"]
+        },
+        "exitArtifact": { "const": null },
+        "bodyClass": { "type": "string", "pattern": "^level-\\d+$" }
+      },
+      "required": ["mode", "identityType", "storagePolicy", "exitArtifact"]
+    },
+    "sessionMode": {
+      "type": "object",
+      "properties": {
+        "mode": { "const": "session" },
+        "identityType": { "const": "none" },
+        "storagePolicy": {
+          "type": "object",
+          "properties": {
+            "localStorage": { "const": false, "description": "NEVER writes to localStorage" },
+            "sessionStorage": { "const": true, "description": "session_declined flag only" }
+          },
+          "required": ["localStorage", "sessionStorage"]
+        },
+        "exitArtifact": { "const": null },
+        "bodyClass": { "const": null }
+      },
+      "required": ["mode", "identityType", "storagePolicy", "exitArtifact"]
+    },
+    "aliasMode": {
+      "type": "object",
+      "properties": {
+        "mode": { "const": "alias" },
+        "identityType": { "const": "pseudonymous" },
+        "storagePolicy": {
+          "type": "object",
+          "properties": {
+            "localStorage": { "const": false, "description": "NEVER writes to localStorage" },
+            "sessionStorage": { "const": true, "description": "alias_session data, tab-scoped" }
+          },
+          "required": ["localStorage", "sessionStorage"]
+        },
+        "exitArtifact": { "const": ".ferros-log" },
+        "bodyClass": { "const": "alias-mode" },
+        "aliasSession": { "$ref": "#/$defs/aliasSession" }
+      },
+      "required": ["mode", "identityType", "storagePolicy", "exitArtifact", "aliasSession"]
+    },
+    "recoveryMode": {
+      "type": "object",
+      "properties": {
+        "mode": { "const": "recovery" },
+        "identityType": { "const": "real" },
+        "storagePolicy": {
+          "type": "object",
+          "properties": {
+            "localStorage": { "const": false, "description": "NEVER writes to localStorage — CRITICAL" },
+            "sessionStorage": { "const": false, "description": "NEVER writes to sessionStorage — JS vars only" }
+          },
+          "required": ["localStorage", "sessionStorage"]
+        },
+        "exitArtifact": { "const": ".ferros-log" },
+        "bodyClass": { "const": "recovery-mode" }
+      },
+      "required": ["mode", "identityType", "storagePolicy", "exitArtifact"]
+    },
+    "aliasSession": {
+      "type": "object",
+      "required": ["aliasCode", "aliasName", "startedAt", "logs"],
+      "additionalProperties": false,
+      "properties": {
+        "aliasCode": { "type": "string", "pattern": "^[a-z]+-[0-9a-f]{4}$", "description": "Deterministic: first-word + 4-char hex stub" },
+        "aliasName": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "logs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/aliasLogEntry" }
+        }
+      }
+    },
+    "aliasLogEntry": {
+      "type": "object",
+      "required": ["ts", "text", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "ts": { "type": "string", "format": "date-time" },
+        "text": { "type": "string" },
+        "type": { "type": "string", "enum": ["activity", "journal"] },
+        "seal": { "type": ["string", "null"], "description": "djb2 or SHA-256 hash of content+timestamp" }
+      }
+    },
+    "mutualExclusivity": {
+      "description": "CONTRACT: Only one mode may be active at any time. Entering one mode MUST clear all others. The saveProfile() guard (if sessionMode || aliasMode || recoveryMode) return; prevents localStorage writes in non-full-profile modes. DO NOT REMOVE THIS GUARD."
+    }
+  }
+}

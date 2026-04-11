@@ -1,0 +1,91 @@
+{
+  "$comment": "Golden fixture: card and deck for the Forge→Runtime round-trip test (Journey 3). A card is created/edited in Forge, rendered in Runtime, and exported/imported without loss.",
+  "card": {
+    "id": "test-bracket",
+    "kind": "card",
+    "name": "Test Edge Bracket",
+    "version": 1,
+    "contentHash": null,
+    "renderFile": "parts/edge-bracket.html",
+    "role": "structural",
+    "tags": ["loot", "structural", "test"],
+    "attribution": {
+      "createdBy": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "createdAt": "2026-04-10T10:00:00.000Z",
+      "linkedTo": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+    },
+    "state": {
+      "preset": "default",
+      "control": "interactive"
+    },
+    "transform": {
+      "tx": -100,
+      "ty": 0,
+      "tz": 65,
+      "rx": 0,
+      "ry": 0,
+      "rz": 0,
+      "scale": 0.125
+    },
+    "metadata": {
+      "slot": "corner-reinforcement"
+    }
+  },
+  "deck": {
+    "id": "test-assembly",
+    "kind": "deck",
+    "name": "Test Loot Box Assembly",
+    "version": 1,
+    "contentHash": null,
+    "role": "project",
+    "description": "Test deck for Forge→Runtime round-trip validation",
+    "tags": ["loot", "test"],
+    "attribution": {
+      "createdBy": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "createdAt": "2026-04-10T10:05:00.000Z",
+      "linkedTo": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+    },
+    "cards": [
+      {
+        "cardId": "test-bracket",
+        "slot": "corner-reinforcement",
+        "transform": { "tx": -100, "tz": 65, "scale": 0.125 }
+      }
+    ],
+    "renderFile": "projects/loot-box-assembly-v2.html",
+    "defaultState": "Open",
+    "states": [
+      { "name": "Open", "control": "demo", "pose": { "lidAngle": -110 } },
+      { "name": "Closed", "control": "demo", "pose": { "lidAngle": 0 } }
+    ]
+  },
+  "runtimeMessages": {
+    "init": {
+      "type": "ferros:init",
+      "config": {
+        "control": "interactive"
+      }
+    },
+    "update": {
+      "type": "ferros:update",
+      "payload": {
+        "state": "Open",
+        "pose": { "lidAngle": -110 }
+      }
+    },
+    "expectedEvent": {
+      "type": "ferros:event",
+      "asset": "test-assembly",
+      "event": "state-changed",
+      "payload": { "state": "Open" }
+    }
+  },
+  "testAssertions": [
+    "Card loaded in Forge Inspector shows transform tx=-100, tz=65, scale=0.125",
+    "Card rendered in Runtime viewport matches Forge Inspector values",
+    "ferros:init message sets control mode to 'interactive'",
+    "ferros:update with state 'Open' produces pose lidAngle=-110",
+    "Exported card JSON re-imported produces identical transform and state values",
+    "Exported deck JSON re-imported produces identical card list and state presets"
+  ]
+}

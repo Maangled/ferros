@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/deck.schema.json",
+  "title": "FERROS Deck",
+  "description": "Canonical schema for a composed collection of Cards (ADR-010). A Deck is the primary unit of composition: a project is a deck, an application is a deck of executable cards, a hand is the user's active deck.",
+  "type": "object",
+  "required": ["id", "kind", "name", "version", "cards"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["deck"]
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "contentHash": {
+      "type": ["string", "null"],
+      "description": "Hash of the deck's card list and ordering for integrity verification"
+    },
+    "role": {
+      "type": "string",
+      "description": "Semantic role: 'project', 'application', 'hand', 'collection', 'starter-deck', etc."
+    },
+    "description": { "type": "string" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "attribution": {
+      "type": "object",
+      "properties": {
+        "createdBy": { "type": ["string", "null"] },
+        "createdAt": { "type": ["string", "null"], "format": "date-time" },
+        "linkedTo": { "type": ["string", "null"] }
+      }
+    },
+    "cards": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/cardReference" },
+      "description": "Ordered list of card references in this deck"
+    },
+    "renderFile": {
+      "type": "string",
+      "description": "Optional: path to an HTML file that renders the full assembled deck"
+    },
+    "defaultState": {
+      "type": "string",
+      "description": "Named state preset for the deck's initial render"
+    },
+    "states": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/deckState" }
+    }
+  },
+  "$defs": {
+    "cardReference": {
+      "type": "object",
+      "required": ["cardId"],
+      "additionalProperties": false,
+      "properties": {
+        "cardId": { "type": "string", "description": "ID of the card in this deck slot" },
+        "slot": { "type": "string", "description": "Named slot position within the deck" },
+        "group": { "type": "string", "description": "Named group for coordinated animations/transforms" },
+        "instanceOf": { "type": "string", "description": "If this is a mirrored instance of another card in the deck" },
+        "transform": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tx": { "type": "number", "default": 0 },
+            "ty": { "type": "number", "default": 0 },
+            "tz": { "type": "number", "default": 0 },
+            "rx": { "type": "number", "default": 0 },
+            "ry": { "type": "number", "default": 0 },
+            "rz": { "type": "number", "default": 0 },
+            "scale": { "type": "number", "default": 1, "exclusiveMinimum": 0 }
+          }
+        }
+      }
+    },
+    "deckState": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "control": { "type": "string" },
+        "pose": { "type": "object" },
+        "payload": { "type": "object" }
+      }
+    }
+  }
+}

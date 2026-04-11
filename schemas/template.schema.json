@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/template.schema.json",
+  "title": "FERROS Template Profile",
+  "description": "Canonical schema for template profiles used in Profile Gallery and alias identity pool (ADR-004). All templates are hardcoded inline — no external dependencies.",
+  "type": "object",
+  "required": ["id", "name", "icon", "aliasClass", "tagline", "stream", "archetype", "templateSchedule"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "URL-safe slug, unique across all templates"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "icon": { "type": "string", "description": "Single emoji character" },
+    "aliasClass": {
+      "type": "string",
+      "enum": ["Architect", "Engineer", "Scholar", "Artisan", "Healer", "Guardian", "Guided", "Community"]
+    },
+    "tagline": { "type": "string", "maxLength": 120, "description": "One-sentence characterization" },
+    "stream": { "type": "string", "enum": ["A", "B", "C"] },
+    "archetype": {
+      "type": "string",
+      "description": "Schedule archetype ID linking to routine module system (ADR-011)"
+    },
+    "aliasCode": {
+      "type": "string",
+      "pattern": "^[a-z]+-[0-9a-f]{4}$",
+      "description": "Deterministic: first-word of name + 4-char hex stub. Optional — computed at runtime if not present."
+    },
+    "fictionalOrReal": {
+      "type": "string",
+      "enum": ["real", "fictional"],
+      "description": "Whether the template is based on a historical/real or fictional person"
+    },
+    "description": {
+      "type": "string",
+      "description": "1–2 sentence bio. Optional in Phase 0."
+    },
+    "hardcodedVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semver for the template definition"
+    },
+    "ledgerPointer": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Forward-compatibility hook for future ledger storage. Always null in Phase 0."
+    },
+    "templateSchedule": { "$ref": "#/$defs/templateSchedule" }
+  },
+  "$defs": {
+    "templateSchedule": {
+      "type": "object",
+      "required": ["blocks"],
+      "additionalProperties": false,
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/scheduleBlock" }
+        }
+      }
+    },
+    "scheduleBlock": {
+      "type": "object",
+      "required": ["time", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "time": { "type": "string", "pattern": "^\\d{2}:\\d{2}$", "description": "HH:MM 24-hour format" },
+        "label": { "type": "string", "minLength": 1 },
+        "stream": { "type": "string", "enum": ["A", "B", "C"], "description": "Optional stream override for this block" },
+        "durationMin": { "type": "integer", "minimum": 1, "description": "Duration in minutes. Optional — derived from next block if absent." }
+      }
+    }
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/profile.schema.json",
+  "title": "FERROS Profile",
+  "description": "Canonical schema for a FERROS user profile stored in localStorage under ferros_profile. Version 2.",
+  "type": "object",
+  "required": ["meta", "identity", "attributes", "skills", "achievements", "journal", "credentials", "sealChain"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": { "$ref": "#/$defs/meta" },
+    "identity": { "$ref": "#/$defs/identity" },
+    "attributes": { "$ref": "#/$defs/attributes" },
+    "skills": { "$ref": "#/$defs/skills" },
+    "achievements": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/achievement" }
+    },
+    "journal": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/journalEntry" }
+    },
+    "credentials": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/credential" }
+    },
+    "sealChain": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/seal" }
+    }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "required": ["version", "created", "lastModified", "assistanceLevel", "genesisHash", "currentSeal", "sealCount", "stage"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
+        "created": { "type": ["string", "null"], "format": "date-time" },
+        "lastModified": { "type": ["string", "null"], "format": "date-time" },
+        "assistanceLevel": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "genesisHash": { "type": ["string", "null"] },
+        "currentSeal": { "type": ["string", "null"] },
+        "sealCount": { "type": "integer", "minimum": 0 },
+        "stage": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "anchoredToLedger": { "type": "boolean", "default": false },
+        "ledgerTxHash": { "type": ["string", "null"], "default": null }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "required": ["name", "avatar", "class", "streamAffinity", "title", "joinedDate", "streakDays", "longestStreak"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "class": { "type": "string", "enum": ["Architect", "Engineer", "Scholar", "Artisan", "Healer", "Guardian", "Guided", "Community"] },
+        "streamAffinity": { "type": "string", "enum": ["A", "B", "C"] },
+        "title": { "type": "string" },
+        "joinedDate": { "type": ["string", "null"], "format": "date-time" },
+        "streakDays": { "type": "integer", "minimum": 0 },
+        "longestStreak": { "type": "integer", "minimum": 0 },
+        "archetype": { "type": "string" },
+        "wakeTime": { "type": "string" },
+        "sleepTime": { "type": "string" },
+        "categoryInterests": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "attribute": {
+      "type": "object",
+      "required": ["level", "xp", "xpToNext", "color", "icon"],
+      "additionalProperties": false,
+      "properties": {
+        "level": { "type": "integer", "minimum": 1 },
+        "xp": { "type": "integer", "minimum": 0 },
+        "xpToNext": { "type": "integer", "minimum": 1 },
+        "color": { "type": "string" },
+        "icon": { "type": "string" }
+      }
+    },
+    "attributes": {
+      "type": "object",
+      "required": ["Discipline", "Knowledge", "Craft", "Governance", "Wellness", "Community"],
+      "additionalProperties": false,
+      "properties": {
+        "Discipline": { "$ref": "#/$defs/attribute" },
+        "Knowledge": { "$ref": "#/$defs/attribute" },
+        "Craft": { "$ref": "#/$defs/attribute" },
+        "Governance": { "$ref": "#/$defs/attribute" },
+        "Wellness": { "$ref": "#/$defs/attribute" },
+        "Community": { "$ref": "#/$defs/attribute" }
+      }
+    },
+    "skills": {
+      "type": "object",
+      "required": ["A", "B", "C"],
+      "additionalProperties": false,
+      "properties": {
+        "A": { "type": "array", "items": { "type": "string" } },
+        "B": { "type": "array", "items": { "type": "string" } },
+        "C": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "achievement": {
+      "type": "object",
+      "required": ["id", "name", "desc", "icon", "unlocked"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "name": { "type": "string" },
+        "desc": { "type": "string" },
+        "icon": { "type": "string" },
+        "unlocked": { "type": "boolean" },
+        "unlockedAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "journalEntry": {
+      "type": "object",
+      "required": ["ts", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "ts": { "type": "string", "format": "date-time" },
+        "text": { "type": "string" },
+        "type": { "type": "string", "enum": ["activity", "journal", "system"], "default": "journal" },
+        "seal": { "type": ["string", "null"] }
+      }
+    },
+    "credential": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "issuedAt": { "type": ["string", "null"], "format": "date-time" },
+        "data": { "type": "object" }
+      }
+    },
+    "seal": {
+      "type": "object",
+      "required": ["taskId", "seal", "previousSeal", "timestamp", "data"],
+      "additionalProperties": false,
+      "properties": {
+        "taskId": { "type": "string" },
+        "seal": { "type": "string" },
+        "previousSeal": { "type": "string", "description": "'genesis' for the first seal, otherwise the seal hash of the prior entry" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "data": { "description": "Arbitrary JSON-serializable task data" }
+      }
+    }
+  }
+}
