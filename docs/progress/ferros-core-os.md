@@ -8,7 +8,9 @@
 
 This spec tracks the operating-system side of FERROS as defined by `README.md` and `docs/architecture-overview.md`. It covers the boot-to-render path required for Phase 0, where the future system must render `ferros-blueprint.html` natively without relying on a browser engine.
 
-## Hardware Target Matrix
+## Hardware Target Matrix Summary
+
+This is a planning summary only. [docs/core-hardware-targets.md](./../core-hardware-targets.md) is the authoritative device-class reference for FERROS hardware roles and target status.
 
 | Class | Example Hardware | Near-Term Role | FERROS Status |
 |------|-------------------|----------------|---------------|
@@ -44,7 +46,7 @@ This spec tracks the operating-system side of FERROS as defined by `README.md` a
 |---|------|-------------|-------|
 | 10% | Boot target defined | Boot flow, kernel entry assumptions, and Phase 0 component boundaries are documented in repo docs | ☐ |
 | 20% | x86_64/QEMU contract fixed | UEFI handoff contract, framebuffer assumptions, and x86_64-first validation path are documented explicitly | ☐ |
-| 30% | Hardware target matrix documented | Device classes, runtime roles, and the difference between OS targets and ecosystem devices are documented | ☐ |
+| 30% | Hardware target matrix documented | Device classes, runtime roles, and the difference between OS targets and ecosystem devices are documented in `docs/core-hardware-targets.md` | ☐ |
 | 40% | Device-class assumptions defined | Minimal storage, display, and runtime assumptions are documented for x86_64 targets, ARM edge nodes, and micro-node peripherals | ☐ |
 | 50% | Emulated Phase 0 render contract | The full boot, parse, layout, and render path is testable in emulation without depending on service infrastructure | ☐ |
 | 60% | First real x86_64 reference machine selected | One concrete desktop or server-class x86_64 machine is selected as the first real bring-up target | ☐ |

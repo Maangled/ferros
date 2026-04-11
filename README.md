@@ -157,7 +157,7 @@ All of the following are implemented in `docs/personal-profile.html`:
 - Text is rendered with a readable embedded font at native resolution
 - Colors, borders, gradients, and panel layout match the specification
 - No external network access is required
-- The system runs on QEMU/KVM and at least one reference hardware target
+- The system runs on QEMU/KVM and at least one real x86_64 reference hardware target, with ARM/AArch64 documented as the migration path after initial bring-up
 
 ---
 
