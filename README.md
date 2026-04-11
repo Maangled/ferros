@@ -174,14 +174,23 @@ ferros/
     │   ├── ADR-002-smart-contract-boundaries.md
     │   ├── ADR-003-alias-system.md
     │   ├── ADR-004-template-profile-specification.md
-    │   └── ADR-005-cross-device-identity-and-session-modes.md
+    │   ├── ADR-005-cross-device-identity-and-session-modes.md
+    │   ├── ADR-006-level-zero-adaptive-onboarding.md
+    │   ├── ADR-007-single-file-system.md
+    │   ├── ADR-008-modular-rendering-system.md
+    │   ├── ADR-009-four-corner-docking-layout.md
+    │   ├── ADR-010-cards-and-decks-nomenclature.md
+    │   └── ADR-011-routine-module-system.md
     ├── AGENT_GUIDE.md                     # Agent working guide — read before touching code
     ├── agent-command-center.html          # Agent task/command management UI
     ├── architecture-overview.md           # Prose architecture summary
+    ├── core-hardware-targets.md           # Device classes and hardware target model
     ├── deployment-roadmap.html            # Phase roadmap visualization
     ├── ferros-showcase.html               # Public showcase / landing page
+    ├── forge-workbench.html               # Forge authoring workbench prototype
     ├── home-hud-dashboard.html            # Smart home HUD prototype
     ├── personal-profile.html              # Personal progression profile (PRIMARY PROTOTYPE)
+    ├── progress/                          # Progress specs and milestone gates
     ├── schedule-ledger.html               # Schedule/habit ledger prototype
     └── algo-trading-arena.html            # Gamified algorithmic trading platform example
 ```
@@ -199,10 +208,11 @@ These self-contained HTML documents serve as both design targets and milestone v
 | [`docs/ferros-showcase.html`](./docs/ferros-showcase.html) | Public showcase website — a "ferros.dev" landing page with interactive architecture diagram, phase roadmap, boot sequence animation, and contributor guide |
 | [`docs/agent-command-center.html`](./docs/agent-command-center.html) | Web-based agent coordination platform — replaces Discord integration from botgen-rust; combines chat, agent governance, live operations console, Kanban project board, and IoT home integration |
 | [`docs/home-hud-dashboard.html`](./docs/home-hud-dashboard.html) | FERROS Home HUD Dashboard — the primary kiosk/screen interface for a FERROS-powered home; real-time clock, schedule panel, device controls, agent activity feed, and consent queue |
-| [`docs/schedule-ledger.html`](./docs/schedule-ledger.html) | Personal Schedule Ledger — newspaper-themed interactive schedule editor with My Feed viewer, 5-step editor wizard, visual map (year/week/day views), and localStorage persistence |
+| [`docs/forge-workbench.html`](./docs/forge-workbench.html) | FERROS Forge workbench — local-first authoring surface for Cards, Decks, and Bag-style asset browsing |
+| [`docs/schedule-ledger.html`](./docs/schedule-ledger.html) | Personal Schedule Ledger — current scheduling prototype; calendar structure first, ledger/feed presentation second |
 | [`docs/personal-profile.html`](./docs/personal-profile.html) | RPG-style personal progression dashboard with skill trees, achievements, XP tracking, and ADA-conscious assistance levels (Guided → Director) |
 | [`docs/deployment-roadmap.html`](./docs/deployment-roadmap.html) | Technical deployment roadmap with concrete timelines, hardware plans, Gantt chart, interactive cost calculator, and risk register for the 7-home cluster |
-| [`docs/algo-trading-arena.html`](./docs/algo-trading-arena.html) | AI-centric gamified algorithmic trading platform — card-based stock trading (Marvel Snap + Runeterra), lottery scratchers, idle mechanics, Genesis creatures, loot boxes, NFT ticket gallery, and AI trading agents |
+| [`docs/algo-trading-arena.html`](./docs/algo-trading-arena.html) | Current shared arena prototype — today it mixes the emerging Arena Runtime layer with the Battle Arena game-specific surface |
 
 ---
 
@@ -210,6 +220,8 @@ These self-contained HTML documents serve as both design targets and milestone v
 
 - [`docs/architecture-overview.md`](./docs/architecture-overview.md) — System architecture reference (OS layers + Phase 0 prototype)
 - [`docs/AGENT_GUIDE.md`](./docs/AGENT_GUIDE.md) — Agent working guide: bug log, architecture constraints, anti-patterns
+- [`docs/core-hardware-targets.md`](./docs/core-hardware-targets.md) — Hardware target matrix for full FERROS OS targets, Linux-first edge nodes, and FERROS-compatible peripherals
+- [`docs/progress/PROGRESS.md`](./docs/progress/PROGRESS.md) — Planning baseline for progress, milestone gates, and cross-system dependencies
 
 ### Architecture Decision Records (ADRs)
 
@@ -221,6 +233,12 @@ These self-contained HTML documents serve as both design targets and milestone v
 | [ADR-003](./docs/adr/ADR-003-alias-system.md) | Alias System |
 | [ADR-004](./docs/adr/ADR-004-template-profile-specification.md) | Template Profile Specification |
 | [ADR-005](./docs/adr/ADR-005-cross-device-identity-and-session-modes.md) | Cross-Device Identity & Session Modes |
+| [ADR-006](./docs/adr/ADR-006-level-zero-adaptive-onboarding.md) | Level Zero — Adaptive Onboarding & Robot Assistant Architecture |
+| [ADR-007](./docs/adr/ADR-007-single-file-system.md) | Single File System (SFS) — From Kernel to Interface in One Artifact |
+| [ADR-008](./docs/adr/ADR-008-modular-rendering-system.md) | Modular Rendering System |
+| [ADR-009](./docs/adr/ADR-009-four-corner-docking-layout.md) | Four-Corner Docking Layout System |
+| [ADR-010](./docs/adr/ADR-010-cards-and-decks-nomenclature.md) | Cards and Decks Nomenclature |
+| [ADR-011](./docs/adr/ADR-011-routine-module-system.md) | Routine Module System |
 
 ---
 
