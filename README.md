@@ -37,13 +37,14 @@ It is not a Linux distribution, not a container runtime, and not a research prot
 
 | Project | Progress | Notes |
 |---------|----------|-------|
-| **The Forge** | `▓░░░░░░░░░░░░░░░░░░░` 2% | Architecture started; no creation functionality yet |
-| **Personal Profile** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/personal-profile.html`; needs agent-driven user system |
-| **Trading Arena** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/algo-trading-arena.html` |
+| **The Forge** | `▓░░░░░░░░░░░░░░░░░░░` 2% | Authoring system is taking shape; cards/decks exist conceptually, but local assembly is still early |
+| **Arena Runtime** | `█░░░░░░░░░░░░░░░░░░░` 1% | Reusable portal/runtime layer is emerging inside `docs/algo-trading-arena.html`, but is not separated yet |
+| **Battle Arena** | `█░░░░░░░░░░░░░░░░░░░` 1% | Game-specific prototype currently shares the same overloaded surface in `docs/algo-trading-arena.html` |
+| **Personal Profile** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/personal-profile.html`; remains the portable identity and progression root |
 | **Showcase / Landing Page** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/ferros-showcase.html` |
 | **Agent Command Center** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/agent-command-center.html` |
 | **Home HUD Dashboard** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/home-hud-dashboard.html` |
-| **Schedule Ledger** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/schedule-ledger.html` |
+| **Schedule Ledger** | `█░░░░░░░░░░░░░░░░░░░` 1% | Current prototype exists in `docs/schedule-ledger.html`; planning model is calendar first, ledger/feed second |
 
 > `▓` (2%) vs `█` (1%) — slightly higher fill to distinguish early progress differences.
 
@@ -59,6 +60,8 @@ It is not a Linux distribution, not a container runtime, and not a research prot
 | **Agent Integration** | `█░░░░░░░░░░░░░░░░░░░` 1% | Primary platform functionality; blocked on user system |
 
 </details>
+
+📋 **[Detailed Progress Specs](./docs/progress/PROGRESS.md)** — milestone gates and dependency tracking for every project
 
 > *Progress is updated manually. Most projects are in early architecture/prototype phase. The primary bottleneck is the user/identity system — the platform's main functionality (agent-driven content updates) depends on it.*
 

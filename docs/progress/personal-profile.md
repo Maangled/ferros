@@ -6,22 +6,22 @@
 
 ## What This Is
 
-This spec tracks the RPG-style progression dashboard implemented in `docs/personal-profile.html`. It is the active Phase 0 development surface and already contains onboarding, consent handling, session modes, template profiles, portability flows, and the seal-chain-backed progression model documented in the ADR set.
+This spec tracks the portable identity and progression root implemented in `docs/personal-profile.html`. It is the active Phase 0 development surface and already contains onboarding, consent handling, session modes, portability flows, and the seal-chain-backed model that other FERROS surfaces are expected to consume.
 
 ## Milestone Gates
 
 | % | Gate | Deliverables | Done? |
 |---|------|-------------|-------|
-| 10% | Genesis shell | Genesis page, staged onboarding shell, and local file-open compatibility exist in one standalone HTML file | ☐ |
-| 20% | Consent boundary | Trade Window, session decline flow, and guarded persistence model are implemented and repo-visible | ☐ |
-| 30% | Identity modes | Full profile, session mode, alias mode, and recovery mode are implemented with distinct storage rules | ☐ |
-| 40% | Progression integrity | Seal-chain creation, verification, and fallback hashing are implemented in ways that work on `file://` | ☐ |
-| 50% | Self-serve onboarding | A user can open the file locally and complete onboarding into the dashboard without extra instructions or services | ☐ |
-| 60% | Portability flows | Export, import, alias-log claim, and recovery-session artifacts are implemented and repo-visible | ☐ |
-| 70% | Template profile system | Template profiles, alias selection, and seeded schedules are implemented against documented schema rules | ☐ |
-| 80% | Guided onboarding refinement | Adaptive onboarding, gated reveals, and robot-helper behaviors align with the active ADR set | ☐ |
-| 90% | Consistency audit | Achievement triggers, progression locks, and session-mode protections are documented and internally consistent | ☐ |
-| 100% | Production / Complete | Personal Profile delivers a stable, portable, consent-first progression surface with documented behavior across all supported session modes | ☐ |
+| 10% | Consent-safe shell | Genesis shell, staged onboarding, and `file://` compatibility exist without violating the consent model | ☐ |
+| 20% | Onboarding cannot soft-lock | The consent path, stage flow, and critical entry interactions are robust enough that new users can always progress | ☐ |
+| 30% | Portable identity modes | Full profile, session, alias, and recovery identity modes work with distinct storage and attribution rules | ☐ |
+| 40% | Module and Deck identity layer | Template, module, Card, and Deck identity concepts are available for reuse by other FERROS surfaces | ☐ |
+| 50% | Completed-profile onboarding | A user can arrive and end up with a basically complete, useful profile quickly without backend services | ☐ |
+| 60% | Calendar consumption | Calendar or schedule systems can consume profile defaults, preferences, and composition data | ☐ |
+| 70% | External prefill path | External integrations can prefill or hydrate profile data through documented contracts | ☐ |
+| 80% | Verification and claims | Verification status, claims, and portable proof flows are documented and repo-visible | ☐ |
+| 90% | Consistency audit | Achievement triggers, progression locks, and session protections are reviewed for internal consistency | ☐ |
+| 100% | Production / Complete | Personal Profile is a production portable identity root for consent, progression, attribution, and verification | ☐ |
 
 ## Dependencies
 
@@ -33,9 +33,10 @@ This spec tracks the RPG-style progression dashboard implemented in `docs/person
 - `docs/adr/ADR-004-template-profile-specification.md` — template schema baseline.
 - `docs/adr/ADR-005-cross-device-identity-and-session-modes.md` — four-mode identity architecture.
 - `docs/adr/ADR-006-level-zero-adaptive-onboarding.md` — adaptive onboarding and robot-helper constraints.
+- `docs/adr/ADR-011-routine-module-system.md` — modules, starter decks, and schedule composition direction.
 
 ## Current Blockers
 
 - `docs/AGENT_GUIDE.md` still calls for a bug sweep, achievements audit, and template expansion.
 - The broader identity system remains an ecosystem bottleneck for cross-surface integration.
-- Some future-ledger and sync hooks remain explicitly TBD rather than implemented in this repo.
+- Profile interoperability contracts for calendar, runtime, and external systems are still only partially defined.
