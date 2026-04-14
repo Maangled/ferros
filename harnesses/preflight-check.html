@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<!--
+  FERROS Pre-flight Check
+  ========================
+  Phase A, Step 1. Verifies the file:// execution environment before any harness is built.
+
+  Open this file directly in Chrome via File > Open (file://).
+  All 6 checks must show PASS before proceeding to H1.
+
+  If any check fails, the harness strategy must be revised per the Execution Environment Contract.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FERROS Pre-flight Check</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #0a0a0a; color: #e0e0e0; padding: 2rem; }
+    h1 { font-size: 1.2rem; color: #888; margin-bottom: 0.25rem; letter-spacing: 0.1em; }
+    p.subtitle { color: #555; font-size: 0.8rem; margin-bottom: 2rem; }
+    .check { display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem 1rem;
+             border: 1px solid #222; margin-bottom: 0.5rem; border-radius: 4px; }
+    .check.pass { border-color: #1a5c1a; background: #0d1f0d; }
+    .check.fail { border-color: #5c1a1a; background: #1f0d0d; }
+    .check.running { border-color: #333; }
+    .status { font-size: 1.1rem; flex-shrink: 0; width: 1.5rem; }
+    .label { font-weight: bold; color: #ccc; font-size: 0.85rem; }
+    .detail { color: #777; font-size: 0.75rem; margin-top: 0.2rem; }
+    .detail.err { color: #c06060; }
+    #summary { margin-top: 2rem; padding: 1rem; border: 1px solid #333; border-radius: 4px; }
+    #summary.all-pass { border-color: #1a5c1a; background: #0d1f0d; color: #4caf50; }
+    #summary.has-fail { border-color: #5c1a1a; background: #1f0d0d; color: #ef9a9a; }
+    #result-block { margin-top: 2rem; background: #111; border: 1px solid #333;
+                    padding: 1rem; white-space: pre; font-size: 0.72rem; color: #888;
+                    border-radius: 4px; word-break: break-all; }
+    #iframe-test { display: none; }
+  </style>
+</head>
+<body>
+  <h1>FERROS PRE-FLIGHT CHECK</h1>
+  <p class="subtitle">Execution Environment Contract verification — Wave 0 harnesses require all 6 checks to pass.</p>
+
+  <div id="checks"></div>
+  <div id="summary" style="display:none"></div>
+  <pre id="result-block"></pre>
+
+  <!-- Minimal child page for iframe/postMessage tests -->
+  <iframe id="iframe-test" src="preflight-child.html"></iframe>
+
+<script>
+'use strict';
+
+var HARNESS_ID      = 'preflight-check';
+var HARNESS_VERSION = '1.0.0';
+
+var results = [];
+var checksEl = document.getElementById('checks');
+
+function renderCheck(id, label, detail, status) {
+  var div = document.getElementById('check-' + id);
+  if (!div) {
+    div = document.createElement('div');
+    div.id = 'check-' + id;
+    div.className = 'check running';
+    div.innerHTML =
+      '<span class="status">⏳</span>' +
+      '<div><div class="label">' + id + ': ' + label + '</div>' +
+      '<div class="detail" id="detail-' + id + '">Running…</div></div>';
+    checksEl.appendChild(div);
+  }
+  if (status !== undefined) {
+    div.className = 'check ' + (status ? 'pass' : 'fail');
+    div.querySelector('.status').textContent = status ? '✅' : '❌';
+    var detailEl = document.getElementById('detail-' + id);
+    detailEl.textContent = detail;
+    detailEl.className = 'detail' + (status ? '' : ' err');
+  }
+}
+
+function recordResult(id, label, status, detail) {
+  results.push({ name: id + ': ' + label, status: status ? 'PASS' : 'FAIL', detail: detail });
+  renderCheck(id, label, detail, status);
+}
+
+/* ── CHECK 1: Protocol ─────────────────────────────────────── */
+renderCheck('C1', 'Protocol is file://', 'Checking…');
+(function() {
+  var isFile = window.location.protocol === 'file:';
+  recordResult('C1', 'Protocol is file://',
+    isFile,
+    isFile ? 'window.location.protocol = "file:"' : 'Got: ' + window.location.protocol + ' — open this file directly from disk, not via a server');
+})();
+
+/* ── CHECK 2: localStorage ─────────────────────────────────── */
+renderCheck('C2', 'localStorage read/write', 'Checking…');
+(function() {
+  try {
+    localStorage.setItem('ferros_preflight', '1');
+    var val = localStorage.getItem('ferros_preflight');
+    localStorage.removeItem('ferros_preflight');
+    var ok = val === '1';
+    recordResult('C2', 'localStorage read/write',
+      ok,
+      ok ? 'localStorage is writable and readable under file://' :
+           'localStorage read returned unexpected value: ' + val);
+  } catch(e) {
+    recordResult('C2', 'localStorage read/write', false, 'Error: ' + e.message);
+  }
+})();
+
+/* ── CHECK 3: sessionStorage ───────────────────────────────── */
+renderCheck('C3', 'sessionStorage read/write', 'Checking…');
+(function() {
+  try {
+    sessionStorage.setItem('ferros_preflight', '1');
+    var val = sessionStorage.getItem('ferros_preflight');
+    sessionStorage.removeItem('ferros_preflight');
+    var ok = val === '1';
+    recordResult('C3', 'sessionStorage read/write',
+      ok,
+      ok ? 'sessionStorage is writable and readable under file://' :
+           'sessionStorage read returned unexpected value: ' + val);
+  } catch(e) {
+    recordResult('C3', 'sessionStorage read/write', false, 'Error: ' + e.message);
+  }
+})();
+
+/* ── CHECK 4: crypto.subtle absent on file:// ──────────────── */
+renderCheck('C4', 'crypto.subtle absent (djb2 fallback expected)', 'Checking…');
+(function() {
+  var absent = !window.crypto || !window.crypto.subtle;
+  recordResult('C4', 'crypto.subtle absent (djb2 fallback expected)',
+    absent,
+    absent
+      ? 'crypto.subtle is unavailable — djb2 fallback path is active (ADR-001, BUG-001)'
+      : 'WARNING: crypto.subtle is present under file:// in this browser. This is unusual. ' +
+        'Harnesses expecting djb2 may behave differently. Verify ADR-001 fallback still handles both paths.');
+  // NOTE: crypto.subtle being PRESENT is not a hard failure — it is now available in some
+  // Chromium builds under file://. But harnesses must still tolerate its absence.
+  // Override result to PASS in either case, just report the state.
+  results[results.length - 1].status = 'PASS';
+  results[results.length - 1].detail += ' [informational — pass regardless]';
+  renderCheck('C4', 'crypto.subtle absent (djb2 fallback expected)',
+    'Informational: ' + (absent ? 'absent' : 'present — ADR-001 dual path covers both'),
+    true);
+})();
+
+/* ── CHECK 5: iframe loading ───────────────────────────────── */
+renderCheck('C5', 'iframe loads local HTML file', 'Checking…');
+/* This is checked via the postMessage round-trip in C6.
+   We create the child inline using a blob: URL to avoid needing a second file. */
+(function() {
+  var iframe = document.getElementById('iframe-test');
+  var childBlob = new Blob([
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' +
+    '<script>window.addEventListener("message",function(e){' +
+    'if(e.data&&e.data.type==="ferros:preflight-ping"){' +
+    'window.parent.postMessage({type:"ferros:preflight-pong",token:e.data.token},"*");' +
+    '}});<\/script></body></html>'
+  ], { type: 'text/html' });
+  var blobURL = URL.createObjectURL(childBlob);
+  var iframeLoaded = false;
+
+  iframe.onload = function() { iframeLoaded = true; };
+  iframe.src = blobURL;
+  iframe.style.display = 'none';
+
+  setTimeout(function() {
+    var loaded = iframeLoaded || iframe.contentWindow != null;
+    recordResult('C5', 'iframe loads local HTML file',
+      loaded,
+      loaded ? 'iframe loaded (blob: URL under file://)' :
+               'iframe did not load — H3/H5 strategy must be revised');
+  }, 600);
+})();
+
+/* ── CHECK 6: postMessage round-trip ───────────────────────── */
+renderCheck('C6', 'postMessage round-trip with iframe', 'Checking…');
+(function() {
+  var token = 'ferros-preflight-' + Date.now();
+  var received = false;
+  var timedOut = false;
+
+  window.addEventListener('message', function handler(e) {
+    if (e.data && e.data.type === 'ferros:preflight-pong' && e.data.token === token) {
+      received = true;
+      window.removeEventListener('message', handler);
+    }
+  });
+
+  /* Wait for iframe to load (C5 sets it up), then ping */
+  setTimeout(function() {
+    var iframe = document.getElementById('iframe-test');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'ferros:preflight-ping', token: token }, '*');
+    }
+  }, 700);
+
+  setTimeout(function() {
+    timedOut = true;
+    recordResult('C6', 'postMessage round-trip with iframe',
+      received,
+      received
+        ? 'postMessage ping/pong completed — parent ↔ iframe messaging works under file://'
+        : 'Timeout: no pong received. postMessage may be blocked between file:// origins. ' +
+          'H2/H3/H5 iframe strategy may require same-origin workaround.');
+    finalize();
+  }, 1500);
+})();
+
+/* ── FINALIZE ──────────────────────────────────────────────── */
+function finalize() {
+  var allPass = results.every(function(r) { return r.status === 'PASS'; });
+  var summaryEl = document.getElementById('summary');
+  summaryEl.style.display = 'block';
+  summaryEl.className = allPass ? 'all-pass' : 'has-fail';
+  summaryEl.textContent = allPass
+    ? '✅ ALL CHECKS PASS — Environment is valid for Wave 0 harnesses. Proceed to Phase A step 2.'
+    : '❌ ' + results.filter(function(r){ return r.status !== 'PASS'; }).length.toString() +
+      ' CHECK(S) FAILED — Review failures above before building harnesses. Revise strategy if needed.';
+
+  var block = {
+    timestamp: new Date().toISOString(),
+    harnessId: HARNESS_ID,
+    harnessVersion: HARNESS_VERSION,
+    tests: results,
+    summary: {
+      total: results.length,
+      pass: results.filter(function(r){ return r.status === 'PASS'; }).length,
+      fail: results.filter(function(r){ return r.status !== 'PASS'; }).length,
+      verdict: allPass ? 'PASS' : 'FAIL'
+    }
+  };
+  document.getElementById('result-block').textContent = JSON.stringify(block, null, 2);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>H1 — FERROS Contract Validator</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:24px;font-size:13px;line-height:1.5}
+  h1{font-size:1.1rem;color:#58a6ff;margin-bottom:4px}
+  .meta{color:#8b949e;font-size:.85rem;margin-bottom:20px}
+  h2{font-size:.9rem;color:#8b949e;letter-spacing:2px;text-transform:uppercase;margin:24px 0 8px;border-bottom:1px solid #21262d;padding-bottom:4px}
+  .test{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #161b22}
+  .badge{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:3px;min-width:44px;text-align:center;flex-shrink:0;margin-top:1px}
+  .pass{background:#1a4731;color:#3fb950}
+  .fail{background:#4a1a1a;color:#f85149}
+  .skip{background:#2d2a14;color:#d29922}
+  .test-name{color:#e6edf3;flex:1}
+  .test-detail{color:#8b949e;font-size:.8rem;margin-top:2px}
+  .test-error{color:#f85149;font-size:.8rem;margin-top:2px;word-break:break-word}
+  #result-block{margin-top:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px}
+  #result-block pre{font-size:.78rem;color:#e6edf3;white-space:pre-wrap;word-break:break-word}
+  .summary-bar{display:flex;gap:16px;margin-top:16px;padding:12px;border-radius:4px}
+  .summary-bar.all-pass{background:#1a4731;color:#3fb950}
+  .summary-bar.has-fail{background:#4a1a1a;color:#f85149}
+  .summary-bar.has-skip{background:#2d2a14;color:#d29922}
+  .summary-stat{font-weight:700}
+  .fail-loud{background:#7a1a1a;border:2px solid #f85149;border-radius:4px;padding:8px 12px;margin-top:16px;color:#ffa198;font-weight:700}
+</style>
+</head>
+<body>
+<h1>H1 — FERROS Contract Validator</h1>
+<div class="meta">Harness version 1.0 &nbsp;|&nbsp; Gates: C1-C7, V3a (structural) &nbsp;|&nbsp; Run on file:// in Chrome</div>
+
+<div id="groups"></div>
+<div class="summary-bar" id="summary-bar"></div>
+<div id="result-block"><pre id="result-json">running...</pre></div>
+
+<script src="_constants.js"></script>
+<script>
+/* ==========================================================================
+   FERROS CONTRACT VALIDATOR  —  subset validator for FERROS JSON schemas
+   Implements a STRICT SUBSET of JSON Schema Draft 2020-12.
+   Any keyword encountered during schema processing that is not in VALIDATE_KEYWORDS
+   or META_KEYWORDS triggers a FAIL-LOUD error (not a warning).
+   ========================================================================== */
+
+// Keywords that trigger validation logic when found in a (sub-)schema
+var VALIDATE_KEYWORDS = [
+  'type','properties','required','additionalProperties',
+  'items','minLength','maxLength','pattern',
+  'enum','const','minimum','maximum','minItems',
+  'oneOf','$ref'
+];
+
+// Keywords that are known/expected in schemas but produce no validation behaviour
+var META_KEYWORDS = [
+  '$schema','$id','$defs','title','description',
+  'default','format','examples'
+];
+
+var ALL_KNOWN_KEYWORDS = VALIDATE_KEYWORDS.concat(META_KEYWORDS);
+
+/* --------------------------------------------------------------------------
+   validate(data, schema, rootSchema) → { valid: bool, errors: string[] }
+   rootSchema: the top-level schema object (for $ref resolution)
+   -------------------------------------------------------------------------- */
+function validate(data, schema, rootSchema) {
+  if (rootSchema === undefined) rootSchema = schema;
+  var errors = [];
+
+  // FAIL-LOUD: detect unsupported keywords
+  if (schema && typeof schema === 'object' && !Array.isArray(schema)) {
+    var keys = Object.keys(schema);
+    for (var ki = 0; ki < keys.length; ki++) {
+      var k = keys[ki];
+      if (ALL_KNOWN_KEYWORDS.indexOf(k) === -1) {
+        return {
+          valid: false,
+          errors: ['FAIL-LOUD: unsupported JSON Schema keyword "' + k + '" found in schema — validator does not support this keyword. Either remove it or extend the validator.'],
+          failLoud: true
+        };
+      }
+    }
+  }
+
+  // $ref — local #/$defs/ only
+  if (schema.$ref !== undefined) {
+    var ref = schema.$ref;
+    if (ref.indexOf('#/$defs/') !== 0) {
+      return { valid: false, errors: ['FAIL-LOUD: $ref "' + ref + '" is not a local #/$defs/ reference — only local $defs are supported.'], failLoud: true };
+    }
+    var defName = ref.slice(8); // strip '#/$defs/'
+    if (!rootSchema.$defs || !rootSchema.$defs[defName]) {
+      return { valid: false, errors: ['$ref resolution failed: "$defs.' + defName + '" not found in root schema'] };
+    }
+    // Merge ONLY the $ref target — do not carry outer schema keywords (they were already handled or don't apply)
+    return validate(data, rootSchema.$defs[defName], rootSchema);
+  }
+
+  // type
+  if (schema.type !== undefined) {
+    var types = Array.isArray(schema.type) ? schema.type : [schema.type];
+    var typeOk = false;
+    for (var ti = 0; ti < types.length; ti++) {
+      var t = types[ti];
+      if (t === 'null'    && data === null)             { typeOk = true; break; }
+      if (t === 'string'  && typeof data === 'string')  { typeOk = true; break; }
+      if (t === 'boolean' && typeof data === 'boolean') { typeOk = true; break; }
+      if (t === 'integer' && typeof data === 'number' && data === Math.floor(data)) { typeOk = true; break; }
+      if (t === 'number'  && typeof data === 'number')  { typeOk = true; break; }
+      if (t === 'array'   && Array.isArray(data))       { typeOk = true; break; }
+      if (t === 'object'  && typeof data === 'object' && data !== null && !Array.isArray(data)) { typeOk = true; break; }
+    }
+    if (!typeOk) {
+      errors.push('type: expected ' + JSON.stringify(schema.type) + ', got ' + (data === null ? 'null' : Array.isArray(data) ? 'array' : typeof data));
+    }
+  }
+
+  // enum
+  if (schema.enum !== undefined) {
+    var enumOk = false;
+    for (var ei = 0; ei < schema.enum.length; ei++) {
+      if (deepEqual(data, schema.enum[ei])) { enumOk = true; break; }
+    }
+    if (!enumOk) errors.push('enum: value ' + JSON.stringify(data) + ' not in ' + JSON.stringify(schema.enum));
+  }
+
+  // const
+  if (schema.const !== undefined) {
+    if (!deepEqual(data, schema.const)) {
+      errors.push('const: expected ' + JSON.stringify(schema.const) + ', got ' + JSON.stringify(data));
+    }
+  }
+
+  // String keywords
+  if (typeof data === 'string') {
+    if (schema.minLength !== undefined && data.length < schema.minLength) {
+      errors.push('minLength: ' + data.length + ' < ' + schema.minLength);
+    }
+    if (schema.maxLength !== undefined && data.length > schema.maxLength) {
+      errors.push('maxLength: ' + data.length + ' > ' + schema.maxLength);
+    }
+    if (schema.pattern !== undefined) {
+      try {
+        var rx = new RegExp(schema.pattern);
+        if (!rx.test(data)) {
+          errors.push('pattern: "' + data + '" does not match /' + schema.pattern + '/');
+        }
+      } catch (e) {
+        errors.push('pattern: invalid regex "' + schema.pattern + '": ' + e.message);
+      }
+    }
+  }
+
+  // Number / integer keywords
+  if (typeof data === 'number') {
+    if (schema.minimum !== undefined && data < schema.minimum) {
+      errors.push('minimum: ' + data + ' < ' + schema.minimum);
+    }
+    if (schema.maximum !== undefined && data > schema.maximum) {
+      errors.push('maximum: ' + data + ' > ' + schema.maximum);
+    }
+  }
+
+  // Array keywords
+  if (Array.isArray(data)) {
+    if (schema.minItems !== undefined && data.length < schema.minItems) {
+      errors.push('minItems: ' + data.length + ' < ' + schema.minItems);
+    }
+    if (schema.items !== undefined) {
+      for (var ii = 0; ii < data.length; ii++) {
+        var itemResult = validate(data[ii], schema.items, rootSchema);
+        if (!itemResult.valid) {
+          for (var ie = 0; ie < itemResult.errors.length; ie++) {
+            errors.push('items[' + ii + ']: ' + itemResult.errors[ie]);
+          }
+          if (itemResult.failLoud) return { valid: false, errors: errors, failLoud: true };
+        }
+      }
+    }
+  }
+
+  // Object keywords
+  if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+    // required
+    if (schema.required !== undefined) {
+      for (var ri = 0; ri < schema.required.length; ri++) {
+        var reqKey = schema.required[ri];
+        if (!Object.prototype.hasOwnProperty.call(data, reqKey)) {
+          errors.push('required: missing property "' + reqKey + '"');
+        }
+      }
+    }
+
+    // properties
+    var propKeys = schema.properties ? Object.keys(schema.properties) : [];
+    if (schema.properties !== undefined) {
+      for (var pi = 0; pi < propKeys.length; pi++) {
+        var pk = propKeys[pi];
+        if (Object.prototype.hasOwnProperty.call(data, pk)) {
+          var pResult = validate(data[pk], schema.properties[pk], rootSchema);
+          if (!pResult.valid) {
+            for (var pe = 0; pe < pResult.errors.length; pe++) {
+              errors.push(pk + ': ' + pResult.errors[pe]);
+            }
+            if (pResult.failLoud) return { valid: false, errors: errors, failLoud: true };
+          }
+        }
+      }
+    }
+
+    // additionalProperties: false
+    if (schema.additionalProperties === false) {
+      var dataKeys = Object.keys(data);
+      for (var di = 0; di < dataKeys.length; di++) {
+        var dk = dataKeys[di];
+        if (propKeys.indexOf(dk) === -1) {
+          errors.push('additionalProperties: unexpected key "' + dk + '"');
+        }
+      }
+    }
+  }
+
+  // oneOf — exactly one must match
+  if (schema.oneOf !== undefined) {
+    var oneOfPassed = 0;
+    var oneOfErrors = [];
+    for (var oi = 0; oi < schema.oneOf.length; oi++) {
+      var oResult = validate(data, schema.oneOf[oi], rootSchema);
+      if (oResult.failLoud) return { valid: false, errors: oResult.errors, failLoud: true };
+      if (oResult.valid) {
+        oneOfPassed++;
+      } else {
+        oneOfErrors.push('[' + oi + '] ' + oResult.errors.slice(0,2).join('; '));
+      }
+    }
+    if (oneOfPassed !== 1) {
+      errors.push('oneOf: expected exactly 1 match, got ' + oneOfPassed +
+        ' (candidates failed: ' + oneOfErrors.join(' / ') + ')');
+    }
+  }
+
+  return { valid: errors.length === 0, errors: errors };
+}
+
+/* deepEqual: structural equality for primitives and plain objects/arrays */
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== typeof b) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    if (a.length !== b.length) return false;
+    for (var i = 0; i < a.length; i++) if (!deepEqual(a[i], b[i])) return false;
+    return true;
+  }
+  if (typeof a === 'object') {
+    var ak = Object.keys(a), bk = Object.keys(b);
+    if (ak.length !== bk.length) return false;
+    for (var j = 0; j < ak.length; j++) if (!deepEqual(a[ak[j]], b[ak[j]])) return false;
+    return true;
+  }
+  return false;
+}
+
+/* Recursively collect all keyword names from a schema object */
+function collectKeywords(obj, out) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+  var keys = Object.keys(obj);
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    out[k] = true;
+    collectKeywords(obj[k], out);
+  }
+}
+
+/* Strip fixture meta-keys before validating data against a schema */
+function stripFixtureMeta(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  var copy = {};
+  var keys = Object.keys(obj);
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (k === '$comment' || k === '_invalidReason') continue;
+    copy[k] = obj[k];
+  }
+  return copy;
+}
+
+/* ==========================================================================
+   TEST RUNNER
+   ========================================================================== */
+
+var allTests = [];
+var groups = [];
+
+function addGroup(label) {
+  var g = { label: label, tests: [] };
+  groups.push(g);
+  return g;
+}
+
+function runTest(group, name, fn) {
+  var t = { name: name, status: 'skip', detail: '', error: '' };
+  try {
+    var r = fn();
+    t.status = r.pass ? 'pass' : 'fail';
+    t.detail = r.detail || '';
+    t.error   = r.error  || '';
+  } catch (e) {
+    t.status = 'fail';
+    t.error  = 'Uncaught exception: ' + e.message;
+  }
+  group.tests.push(t);
+  allTests.push(t);
+  return t;
+}
+
+/* ==========================================================================
+   GROUP 1 — Schema keyword audit
+   Each FERROS schema must only contain keywords from ALL_KNOWN_KEYWORDS.
+   ========================================================================== */
+var g1 = addGroup('Group 1 — Schema keyword audit (7 expected PASS)');
+
+for (var si = 0; si < FERROS_SCHEMAS.length; si++) {
+  (function(entry) {
+    runTest(g1, 'Keyword audit: ' + entry.name, function() {
+      var kw = {};
+      collectKeywords(entry.schema, kw);
+      var found = Object.keys(kw);
+      var unknown = [];
+      for (var i = 0; i < found.length; i++) {
+        if (ALL_KNOWN_KEYWORDS.indexOf(found[i]) === -1) unknown.push(found[i]);
+      }
+      if (unknown.length > 0) {
+        return { pass: false, error: 'FAIL-LOUD — unsupported keywords: ' + unknown.join(', ') };
+      }
+      return { pass: true, detail: found.filter(function(k){ return VALIDATE_KEYWORDS.indexOf(k) !== -1; }).join(', ') };
+    });
+  })(FERROS_SCHEMAS[si]);
+}
+
+/* ==========================================================================
+   GROUP 2 — Golden fixture positive validation (expect PASS)
+   ========================================================================== */
+var g2 = addGroup('Group 2 — Golden fixture positive validation (3 expected PASS)');
+
+// 2a: full-profile-stage3 → SCHEMA_PROFILE
+runTest(g2, 'full-profile-stage3 validates against SCHEMA_PROFILE', function() {
+  var data = stripFixtureMeta(FIXTURE_FULL_PROFILE_STAGE3);
+  var r = validate(data, SCHEMA_PROFILE);
+  if (r.valid) return { pass: true, detail: 'all required fields present, no extra keys, nested $refs resolved' };
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+// 2b: card sub-object → SCHEMA_CARD
+runTest(g2, 'card-deck-roundtrip.card validates against SCHEMA_CARD', function() {
+  var data = FIXTURE_CARD_DECK_ROUNDTRIP.card;
+  if (!data) return { pass: false, error: 'fixture.card is absent' };
+  var r = validate(data, SCHEMA_CARD);
+  if (r.valid) return { pass: true, detail: 'card object matches SCHEMA_CARD' };
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') };
+});
+
+// 2c: deck sub-object → SCHEMA_DECK
+runTest(g2, 'card-deck-roundtrip.deck validates against SCHEMA_DECK', function() {
+  var data = FIXTURE_CARD_DECK_ROUNDTRIP.deck;
+  if (!data) return { pass: false, error: 'fixture.deck is absent' };
+  var r = validate(data, SCHEMA_DECK);
+  if (r.valid) return { pass: true, detail: 'deck object matches SCHEMA_DECK' };
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') };
+});
+
+/* ==========================================================================
+   GROUP 3 — Negative fixture validation (expect FAIL)
+   ========================================================================== */
+var g3 = addGroup('Group 3 — Negative fixture validation (1 expected FAIL)');
+
+// 3a: invalid-dual-session-mode → must FAIL SCHEMA_IDENTITY (oneOf constraint)
+runTest(g3, 'SCHEMA_IDENTITY rejects invalid-dual-session-mode (oneOf violation)', function() {
+  var data = stripFixtureMeta(FIXTURE_INVALID_DUAL_SESSION_MODE);
+  var r = validate(data, SCHEMA_IDENTITY);
+  if (!r.valid) {
+    var hasOneOf = r.errors.some(function(e){ return e.indexOf('oneOf') !== -1; });
+    return {
+      pass: true,
+      detail: 'correctly rejected. oneOf error present: ' + hasOneOf + '. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_IDENTITY incorrectly accepted invalid alias mode with localStorage=true' };
+});
+
+/* ==========================================================================
+   GROUP 4 — Negative fixture classification (semantic, tested in H4)
+   These are classified PASS in H1 because schema can only do structural checks.
+   ========================================================================== */
+var g4 = addGroup('Group 4 — Semantic failures classified (not detectable by JSON Schema)');
+
+// 4a: invalid-broken-seal-chain — schema validates fine; semantic check is H4's job
+runTest(g4, 'SCHEMA_PROFILE accepts broken-seal-chain (chain break is semantic, tested in H4)', function() {
+  var data = stripFixtureMeta(FIXTURE_INVALID_BROKEN_SEAL_CHAIN);
+  var r = validate(data, SCHEMA_PROFILE);
+  if (r.valid) {
+    return { pass: true, detail: 'PASS (expected): schema validates structure, not chain integrity. H4 owns STORAGE_SEAL_CHAIN_BROKEN.' };
+  }
+  // Document why it failed — the fixture still has extra meta keys after stripping $comment/_invalidReason?
+  return { pass: false, error: 'unexpected schema rejection — investigate: ' + r.errors.slice(0,3).join(' | ') };
+});
+
+// 4b: invalid-corrupted-export — extract profile, validate meta (missing version IS caught)
+runTest(g4, 'SCHEMA_PROFILE rejects corrupted-export.profile (meta.version missing)', function() {
+  var envelope = stripFixtureMeta(FIXTURE_INVALID_CORRUPTED_EXPORT);
+  if (!envelope.profile) return { pass: false, error: 'fixture.profile sub-object absent' };
+  var data = envelope.profile;
+  var r = validate(data, SCHEMA_PROFILE);
+  if (!r.valid) {
+    var hasMeta = r.errors.some(function(e){ return e.indexOf('version') !== -1; });
+    return {
+      pass: true,
+      detail: 'correctly rejected. version-related error: ' + hasMeta + '. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'schema incorrectly accepted profile with missing meta.version — review profile.schema.json $defs.meta.required' };
+});
+
+/* ==========================================================================
+   RENDER RESULTS
+   ========================================================================== */
+
+var passed = 0, failed = 0, skipped = 0;
+for (var ti = 0; ti < allTests.length; ti++) {
+  if (allTests[ti].status === 'pass') passed++;
+  else if (allTests[ti].status === 'fail') failed++;
+  else skipped++;
+}
+
+var groupsEl = document.getElementById('groups');
+for (var gi = 0; gi < groups.length; gi++) {
+  var grp = groups[gi];
+  var h2 = document.createElement('h2');
+  h2.textContent = grp.label;
+  groupsEl.appendChild(h2);
+
+  for (var ti2 = 0; ti2 < grp.tests.length; ti2++) {
+    var t2 = grp.tests[ti2];
+    var row = document.createElement('div');
+    row.className = 'test';
+    var badge = document.createElement('span');
+    badge.className = 'badge ' + t2.status;
+    badge.textContent = t2.status.toUpperCase();
+    var info = document.createElement('div');
+    info.style.flex = '1';
+    var nameEl = document.createElement('div');
+    nameEl.className = 'test-name';
+    nameEl.textContent = t2.name;
+    info.appendChild(nameEl);
+    if (t2.detail) {
+      var dEl = document.createElement('div');
+      dEl.className = 'test-detail';
+      dEl.textContent = t2.detail;
+      info.appendChild(dEl);
+    }
+    if (t2.error) {
+      var eEl = document.createElement('div');
+      eEl.className = 'test-error';
+      eEl.textContent = t2.error;
+      info.appendChild(eEl);
+    }
+    row.appendChild(badge);
+    row.appendChild(info);
+    groupsEl.appendChild(row);
+  }
+}
+
+var overallStatus = failed > 0 ? 'FAIL' : (skipped > 0 ? 'SKIP' : 'PASS');
+var summaryBar = document.getElementById('summary-bar');
+summaryBar.className = 'summary-bar ' + (failed > 0 ? 'has-fail' : (skipped > 0 ? 'has-skip' : 'all-pass'));
+summaryBar.innerHTML =
+  '<span class="summary-stat">' + overallStatus + '</span>' +
+  ' &nbsp;|&nbsp; ' + passed + ' passed, ' + failed + ' failed, ' + skipped + ' skipped' +
+  ' &nbsp;|&nbsp; Total: ' + allTests.length + ' tests';
+
+var resultObj = {
+  timestamp: new Date().toISOString(),
+  harnessId: 'H1',
+  harnessVersion: '1.0',
+  status: overallStatus,
+  summary: { total: allTests.length, passed: passed, failed: failed, skipped: skipped },
+  gates: {
+    C1_schema_keyword_coverage: 'SUPPORTED: type,properties,required,additionalProperties,items,minLength,maxLength,pattern,enum,const,minimum,maximum,minItems,oneOf,$ref',
+    C2_unsupported_keyword_behaviour: 'FAIL-LOUD — validator returns {valid:false,failLoud:true} immediately',
+    C3_ref_scope: 'LOCAL ONLY — #/$defs/<name> resolved from rootSchema.$defs',
+    C4_type_coercion: 'NONE — null/array/object/string/number/integer/boolean checked strictly',
+    C5_format_enforcement: 'INFORMATIONAL — format keyword acknowledged, not validated',
+    C6_oneOf_semantics: 'STRICT — exactly 1 must match, validator recurses into each branch',
+    C7_negative_fixture_detection: groups[2].tests.map(function(t){ return t.name + ': ' + t.status; })
+  },
+  tests: allTests.map(function(t){ return { name: t.name, status: t.status, detail: t.detail, error: t.error }; })
+};
+
+document.getElementById('result-json').textContent = JSON.stringify(resultObj, null, 2);
+</script>
+</body>
+</html>

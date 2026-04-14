@@ -830,7 +830,7 @@
       </div>
       <div class="trade-note">Unlike most websites, we're not collecting anything. Your data stays in THIS browser on THIS computer, sealed with cryptographic hashes that make it tamper-evident. We're making fun of cookie consent screens because we literally have nothing to consent to.</div>
       <div class="trade-btns">
-        <button class="trade-btn-accept" onclick="acceptTrade()">✅ Accept Trade</button>
+        <button class="trade-btn-accept" data-test="trade-window-accept" onclick="acceptTrade()">✅ Accept Trade</button>
         <button class="trade-btn-decline" onclick="enterSessionMode()">❌ Decline</button>
       </div>
     </div>
@@ -1313,7 +1313,7 @@
             </div>
           </div>
         </div>
-        <button class="proceed-btn" id="stage1-btn" onclick="completeStage1()">Complete Setup &#8594;</button>
+        <button class="proceed-btn" id="stage1-btn" data-test="stage1-submit" onclick="completeStage1()">Complete Setup &#8594;</button>
       </div>
     </div>
   </div>
@@ -1469,14 +1469,14 @@
           <div class="panel-body">
             <div class="section-title">Export</div>
             <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:10px">Downloads your full profile including seal chain, achievements, XP, and settings.</p>
-            <button class="portability-export-btn" onclick="exportProfile()">&#128190; Export Profile</button>
+            <button class="portability-export-btn" data-test="export-profile" onclick="exportProfile()">&#128190; Export Profile</button>
             <div class="portability-note">&#128161; Save to a USB drive to carry your profile between computers. Your data is yours.</div>
             <hr class="divider">
             <div class="section-title">Import</div>
             <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:10px">Select a previously exported FERROS profile JSON file.</p>
             <label class="field-label" for="import-file-input">&#128194; Import Profile</label>
-            <input type="file" id="import-file-input" accept=".json" class="field-input" />
-            <button class="portability-export-btn" style="margin-top:10px" onclick="handleImportClick()">Import</button>
+            <input type="file" id="import-file-input" data-test="import-file-input" accept=".json" class="field-input" />
+            <button class="portability-export-btn" data-test="import-trigger" style="margin-top:10px" onclick="handleImportClick()">Import</button>
             <hr class="divider">
             <div class="claim-section-title">&#128206; Claim Alias Log</div>
             <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:10px">Did you log activity under an alias on another device? Import that .ferros-log file here to claim those entries and merge them into your profile.</p>
@@ -1791,7 +1791,7 @@
         // Boot animation: play cinematic intro for first-time visitors.
         // Skipped if: user already has a profile (exists=true falls through to Stage 3/N branch),
         // they explicitly skipped in this session, or they are returning to Stage 0 (exists=true).
-        if(!exists&&!sessionStorage.getItem('ferros_boot_skipped')){
+        if(!exists&&!window.FERROS_TEST_MODE&&!sessionStorage.getItem('ferros_boot_skipped')){
           runBootAnimation();
         }
       }
@@ -1917,7 +1917,7 @@
       const grid=$('template-picker-grid');if(!grid)return;
       grid.innerHTML=TEMPLATE_PROFILES.map(p=>{
         const badgeColor=CLASS_BADGE_COLOR[p.aliasClass]||'cyan';
-        return '<div class="template-picker-card" id="tpcard-'+esc(p.id)+'" onclick="selectTemplate(\''+esc(p.id)+'\')">'
+        return '<div class="template-picker-card" id="tpcard-'+esc(p.id)+'" data-test="template-card-'+esc(p.id)+'" onclick="selectTemplate(\''+esc(p.id)+'\')">'
           +'<span class="template-picker-card-icon">'+p.icon+'</span>'
           +'<div class="template-picker-card-name">'+esc(p.name)+'</div>'
           +'<span class="badge '+badgeColor+'">'+esc(p.aliasClass)+'</span>'

@@ -1,0 +1,18 @@
+{
+  "$comment": "NEGATIVE FIXTURE — must FAIL identity.schema.json validation. A session state object claiming two mutually exclusive modes simultaneously. The identity schema uses oneOf which only allows one mode branch. This object satisfies neither branch because it has mode='alias' but also localStorage=true (which only full-profile allows). Expected validation error: oneOf constraint violated — exactly one branch must match.",
+  "mode": "alias",
+  "identityType": "pseudonymous",
+  "storagePolicy": {
+    "localStorage": true,
+    "sessionStorage": true
+  },
+  "exitArtifact": ".ferros-log",
+  "bodyClass": "alias-mode",
+  "aliasSession": {
+    "aliasCode": "nikola-50a9",
+    "aliasName": "Nikola Tesla",
+    "startedAt": "2026-04-13T10:00:00.000Z",
+    "logs": []
+  },
+  "_invalidReason": "alias mode claims localStorage=true, which is only valid for full-profile mode. This violates the ADR-005 storage policy for alias mode and the oneOf constraint in identity.schema.json."
+}

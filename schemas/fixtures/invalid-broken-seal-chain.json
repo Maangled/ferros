@@ -1,0 +1,60 @@
+{
+  "$comment": "NEGATIVE FIXTURE — must FAIL profile.schema.json validation for the sealChain field, AND must be rejected by H2 round-trip-harness with error code STORAGE_SEAL_CHAIN_BROKEN. Seal index 1 references a previousSeal that does not match seal index 0's seal hash. This simulates a tampered or corrupted seal chain.",
+  "meta": {
+    "version": "1.0",
+    "created": "2026-04-13T10:00:00.000Z",
+    "lastModified": "2026-04-13T10:05:00.000Z",
+    "assistanceLevel": 1,
+    "genesisHash": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    "currentSeal": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    "sealCount": 2,
+    "stage": 1,
+    "anchoredToLedger": false,
+    "ledgerTxHash": null
+  },
+  "identity": {
+    "name": "Broken Chain User",
+    "avatar": "shield",
+    "class": "Architect",
+    "streamAffinity": "A",
+    "title": "Newcomer",
+    "joinedDate": "2026-04-13T10:00:00.000Z",
+    "streakDays": 0,
+    "longestStreak": 0,
+    "archetype": "structured-research",
+    "wakeTime": "08:00",
+    "sleepTime": "22:00",
+    "categoryInterests": []
+  },
+  "attributes": {
+    "Discipline": { "level": 1, "xp": 0, "xpToNext": 100, "color": "amber", "icon": "💪" },
+    "Knowledge":  { "level": 1, "xp": 0, "xpToNext": 100, "color": "blue",  "icon": "📘" },
+    "Craft":      { "level": 1, "xp": 0, "xpToNext": 100, "color": "cyan",   "icon": "🔨" },
+    "Governance": { "level": 1, "xp": 0, "xpToNext": 100, "color": "purple", "icon": "⚖️" },
+    "Wellness":   { "level": 1, "xp": 0, "xpToNext": 100, "color": "green",  "icon": "🌿" },
+    "Community":  { "level": 1, "xp": 0, "xpToNext": 100, "color": "pink",   "icon": "🤝" }
+  },
+  "skills": { "A": [], "B": [], "C": [] },
+  "achievements": [],
+  "journal": [],
+  "credentials": [],
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal":         "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "previousSeal": "genesis",
+      "timestamp":    "2026-04-13T10:00:00.000Z",
+      "nonce":        1,
+      "data": { "event": "profile_created", "name": "Broken Chain User" }
+    },
+    {
+      "taskId": "first_protocol",
+      "seal":         "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "previousSeal": "00000000000000000000000000000000000000000000000000000000000000ff",
+      "timestamp":    "2026-04-13T10:05:00.000Z",
+      "nonce":        2,
+      "data": { "event": "protocol_sealed" }
+    }
+  ],
+  "_invalidReason": "sealChain[1].previousSeal ('00000000...ff') does not match sealChain[0].seal ('a1b2c3...b2'). Chain integrity is broken. Import must reject with STORAGE_SEAL_CHAIN_BROKEN. meta.currentSeal also does not match sealChain[0].seal, adding a second integrity violation."
+}

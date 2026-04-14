@@ -38,16 +38,16 @@ Must exist before building surfaces.
 
 | # | Capability | Status | Artifact |
 |---|-----------|--------|----------|
-| C1 | Identity/session schema versioned with fixtures | ⬜ | `schemas/identity.schema.json` |
-| C2 | Profile schema versioned with fixtures | ⬜ | `schemas/profile.schema.json` |
-| C3 | Template schema versioned with fixtures | ⬜ | `schemas/template.schema.json` |
-| C4 | Card schema versioned with fixtures | ⬜ | `schemas/card.schema.json` |
-| C5 | Deck schema versioned with fixtures | ⬜ | `schemas/deck.schema.json` |
-| C6 | Schedule event schema versioned with fixtures | ⬜ | `schemas/schedule-event.schema.json` |
-| C7 | Audit record schema versioned with fixtures | ⬜ | `schemas/audit-record.schema.json` |
-| C8 | Runtime host contract v1 (init/update/error/lifecycle) | ⬜ | `docs/contracts/runtime-host-v1.md` |
-| C9 | Storage rules (what goes where, migration, corruption handling) | ⬜ | `docs/contracts/storage-rules.md` |
-| C10 | Permission model skeleton (who can do what, consent capture) | ⬜ | `docs/contracts/permission-model.md` |
+| C1 | Identity/session schema versioned with fixtures | ✅ | `schemas/identity.schema.json` |
+| C2 | Profile schema versioned with fixtures | ✅ | `schemas/profile.schema.json` |
+| C3 | Template schema versioned with fixtures | ✅ | `schemas/template.schema.json` |
+| C4 | Card schema versioned with fixtures | ✅ | `schemas/card.schema.json` |
+| C5 | Deck schema versioned with fixtures | ✅ | `schemas/deck.schema.json` |
+| C6 | Schedule event schema versioned with fixtures | ✅ | `schemas/schedule-event.schema.json` |
+| C7 | Audit record schema versioned with fixtures | ✅ | `schemas/audit-record.schema.json` |
+| C8 | Runtime host contract v1 (init/update/error/lifecycle) | ✅ | `docs/contracts/runtime-host-v1.md` |
+| C9 | Storage rules (what goes where, migration, corruption handling) | ✅ | `docs/contracts/storage-rules.md` |
+| C10 | Permission model skeleton (who can do what, consent capture) | ✅ | `docs/contracts/permission-model.md` |
 
 **Wave 0 exit:** C1–C10 complete. Schemas versioned. Fixtures pass validation.
 
@@ -59,14 +59,15 @@ One real end-to-end loop works locally.
 |---|-----------|--------|---------|
 | V1 | Template → Profile creation completes without soft-lock | ⬜ | Journey 1 |
 | V2 | Export → Import produces identical profile in fresh browser | ⬜ | Journey 1 |
-| V3 | All 4 session modes work with deterministic fixtures | ⬜ | Journey 1 + 2 |
+| V3a | All 4 valid session modes complete expected flows (H2 round-trip) | ⬜ | Journey 1 + 2 |
+| V3b | Invalid session mode combinations rejected with correct error codes (H4 negative) | ⬜ | Journey 1 + 2 |
 | V4 | Alias session → export → claim → XP merge works | ⬜ | Journey 2 |
 | V5 | Card loads in Forge → editable → renders in Runtime | ⬜ | Journey 3 |
 | V6 | Runtime init/update/event loop completes | ⬜ | Journey 3 |
 | V7 | Card round-trip export/import preserves all parameters | ⬜ | Journey 3 |
-| V8 | One browser e2e test suite passes for the vertical slice | ⬜ | All journeys |
+| V8 | Phase 0 acceptance harness (H5) proves Journey 1 end-to-end: create→export→clear→import→render→assert | ⬜ | All journeys |
 
-**Wave 1 exit:** V1–V8 complete. All 3 user journeys work end-to-end. One e2e test passes.
+**Wave 1 exit:** V1–V8 complete (V3 split into V3a + V3b). All 3 user journeys work end-to-end. H5 acceptance harness passes.
 
 ### Tier 3 — First Consumers (Wave 2)
 

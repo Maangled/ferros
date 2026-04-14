@@ -1,0 +1,53 @@
+{
+  "$comment": "NEGATIVE FIXTURE — must be rejected by H2 round-trip-harness on import. The export envelope is structurally valid but has a version mismatch: the envelope's ferrosVersion is '0.9' (a past major version) and the profile's meta.version is missing entirely. Expected import failure: STORAGE_VERSION_MISSING (meta.version absent). A secondary check would produce STORAGE_VERSION_MISMATCH if the version were present but wrong. Both error paths should be tested.",
+  "ferrosVersion": "0.9",
+  "exportedAt": "2026-04-13T10:00:00.000Z",
+  "profile": {
+    "meta": {
+      "created": "2026-04-13T09:00:00.000Z",
+      "lastModified": "2026-04-13T09:05:00.000Z",
+      "assistanceLevel": 2,
+      "genesisHash": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+      "currentSeal": "c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
+      "sealCount": 1,
+      "stage": 1
+    },
+    "identity": {
+      "name": "Version Zero User",
+      "avatar": "star",
+      "class": "Scholar",
+      "streamAffinity": "B",
+      "title": "Newcomer",
+      "joinedDate": "2026-04-13T09:00:00.000Z",
+      "streakDays": 0,
+      "longestStreak": 0,
+      "archetype": "deep-study",
+      "wakeTime": "09:00",
+      "sleepTime": "23:00",
+      "categoryInterests": ["knowledge"]
+    },
+    "attributes": {
+      "Discipline": { "level": 1, "xp": 0, "xpToNext": 100, "color": "amber", "icon": "💪" },
+      "Knowledge":  { "level": 1, "xp": 0, "xpToNext": 100, "color": "blue",  "icon": "📘" },
+      "Craft":      { "level": 1, "xp": 0, "xpToNext": 100, "color": "cyan",   "icon": "🔨" },
+      "Governance": { "level": 1, "xp": 0, "xpToNext": 100, "color": "purple", "icon": "⚖️" },
+      "Wellness":   { "level": 1, "xp": 0, "xpToNext": 100, "color": "green",  "icon": "🌿" },
+      "Community":  { "level": 1, "xp": 0, "xpToNext": 100, "color": "pink",   "icon": "🤝" }
+    },
+    "skills": { "A": [], "B": [], "C": [] },
+    "achievements": [],
+    "journal": [],
+    "credentials": [],
+    "sealChain": [
+      {
+        "taskId": "genesis",
+        "seal":         "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+        "previousSeal": "genesis",
+        "timestamp":    "2026-04-13T09:00:00.000Z",
+        "nonce":        1,
+        "data": { "event": "profile_created", "name": "Version Zero User" }
+      }
+    ]
+  },
+  "_invalidReason": "meta.version field is absent from the profile object. Import must reject with STORAGE_VERSION_MISSING before any other validation. Secondary: ferrosVersion '0.9' is an older major version that does not match the current schema version '1.0', which would produce STORAGE_VERSION_MISMATCH."
+}
