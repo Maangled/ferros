@@ -830,7 +830,7 @@
       </div>
       <div class="trade-note">Unlike most websites, we're not collecting anything. Your data stays in THIS browser on THIS computer, sealed with cryptographic hashes that make it tamper-evident. We're making fun of cookie consent screens because we literally have nothing to consent to.</div>
       <div class="trade-btns">
-        <button class="trade-btn-accept" data-test="trade-window-accept" onclick="acceptTrade()">✅ Accept Trade</button>
+        <button id="trade-accept-btn" class="trade-btn-accept" data-test="trade-window-accept" onclick="acceptTrade()">✅ Accept Trade</button>
         <button class="trade-btn-decline" onclick="enterSessionMode()">❌ Decline</button>
       </div>
     </div>
@@ -2523,7 +2523,7 @@
         showModal('&#10060; Invalid Recovery Log','<p>&#10060; Invalid recovery log — missing profile identity fields.</p>');return
       }
       const sessionKey=data.sessionStart||'';
-      const logId=isRecovery?(data.profile.genesisHash+'-'+sessionKey):(data.alias.id+'-'+sessionKey);
+      const logId=data.sessionId||(isRecovery?(data.profile.genesisHash+'-'+sessionKey):(data.alias.id+'-'+sessionKey));
       const journal=profile.journal||[];
       if(journal.some(j=>j.claimId===logId)){
         showModal('&#9888; Already Claimed','<p>&#9888;&#65039; This log has already been claimed into your profile.</p>');return
@@ -2579,7 +2579,7 @@
     function confirmAliasClaim(data,hasIntegrityWarning){
       if(!canMutateDurableState()){showModal('&#10060; Cannot Claim','<p>Log claims are not available in the current session mode.</p>');_pendingAliasClaimData=null;return}
       const isRecovery=data.logType==='recovery-session';
-      const claimId=isRecovery?(data.profile.genesisHash+'-'+(data.sessionStart||'')):(data.alias.id+'-'+(data.sessionStart||''));
+      const claimId=data.sessionId||(isRecovery?(data.profile.genesisHash+'-'+(data.sessionStart||'')):(data.alias.id+'-'+(data.sessionStart||'')));
       pushAuditEntry(isRecovery?'recovery-claimed':'alias-claimed',{claimId:claimId,entryCount:data.entries.length});
       const now=new Date().toISOString();
       const genesisHash=(profile.meta&&profile.meta.genesisHash)||null;

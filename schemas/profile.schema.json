@@ -26,8 +26,12 @@
     "sealChain": {
       "type": "array",
       "items": { "$ref": "#/$defs/seal" }
+    },
+    "auditTrail": {
+      "type": "array",
+      "description": "C10 bounded audit ring buffer. Cap: 1000 entries, FIFO eviction.",
+      "items": { "$ref": "#/$defs/auditEntry" }
     }
-  },
   "$defs": {
     "meta": {
       "type": "object",
@@ -146,6 +150,16 @@
         "data": { "description": "Arbitrary JSON-serializable task data" },
         "hashAlgorithm": { "type": "string", "enum": ["sha256", "djb2"], "description": "Algorithm used to compute this seal hash" },
         "nonce": { "type": ["integer", "number"], "description": "Random nonce consumed during seal computation, persisted for deterministic re-verification" }
+      }
+    },
+    "auditEntry": {
+      "type": "object",
+      "required": ["ts", "action"],
+      "additionalProperties": false,
+      "properties": {
+        "ts": { "type": "string", "format": "date-time" },
+        "action": { "type": "string", "enum": ["seal-added", "profile-saved", "profile-imported", "alias-claimed", "recovery-claimed"] },
+        "detail": { "description": "Optional action-specific data", "type": ["object", "null"] }
       }
     }
   }
