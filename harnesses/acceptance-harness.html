@@ -36,6 +36,7 @@
 <div class="summary-bar" id="summary-bar"></div>
 <div id="result-block"><pre id="result-json">running...</pre></div>
 
+<script src="../docs/assets/_core/ferros-core.js"></script>
 <script>
 /* ==========================================================================
    H5 — FERROS ACCEPTANCE HARNESS
@@ -56,56 +57,11 @@
     10. Identity name from import matches original
    ========================================================================== */
 
-var IMPORT_CURRENT_VERSION = '1.0';
+var IMPORT_CURRENT_VERSION = FerrosCore.VERSION;
 
-/* ── REFERENCE IMPORT VALIDATOR (mirrors C9 storage-rules.md) ── */
+/* ── REFERENCE IMPORT VALIDATOR (delegates to FerrosCore) ── */
 function ferrosValidateImport(raw) {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return { ok: false, code: 'STORAGE_JSON_INVALID', detail: 'not a JSON object' };
-  }
-  if (!raw.profile) {
-    return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: 'profile absent from envelope' };
-  }
-  var p = raw.profile;
-  if (!p.meta) {
-    return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: 'profile.meta absent' };
-  }
-  if (p.meta.version === undefined || p.meta.version === null || p.meta.version === '') {
-    return { ok: false, code: 'STORAGE_VERSION_MISSING' };
-  }
-  var importMajor = parseInt(String(p.meta.version).split('.')[0], 10);
-  var currentMajor = parseInt(String(IMPORT_CURRENT_VERSION).split('.')[0], 10);
-  if (isNaN(importMajor) || importMajor !== currentMajor) {
-    return { ok: false, code: 'STORAGE_VERSION_MISMATCH',
-      detail: 'import=' + p.meta.version + ' current=' + IMPORT_CURRENT_VERSION };
-  }
-  if (!p.meta.genesisHash) {
-    return { ok: false, code: 'STORAGE_GENESIS_MISSING' };
-  }
-  var chain = (raw.sealChain !== undefined) ? raw.sealChain : (p.sealChain || null);
-  if (!chain || !Array.isArray(chain)) {
-    return { ok: false, code: 'STORAGE_SEAL_CHAIN_MISSING' };
-  }
-  if (chain.length > 0 && chain[0].previousSeal !== 'genesis') {
-    return { ok: false, code: 'STORAGE_SEAL_CHAIN_INVALID_ROOT',
-      detail: 'chain[0].previousSeal=' + chain[0].previousSeal };
-  }
-  for (var i = 1; i < chain.length; i++) {
-    if (chain[i].previousSeal !== chain[i-1].seal) {
-      return { ok: false, code: 'STORAGE_SEAL_CHAIN_BROKEN', detail: 'broken at index ' + i };
-    }
-  }
-  var id = p.identity;
-  if (!id || !id.name || id.name.trim() === '') {
-    return { ok: false, code: 'STORAGE_IDENTITY_MISSING' };
-  }
-  var required = ['meta','identity','attributes','skills','achievements','journal'];
-  for (var j = 0; j < required.length; j++) {
-    if (!p[required[j]]) {
-      return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: required[j] + ' absent' };
-    }
-  }
-  return { ok: true };
+  return FerrosCore.validateImport(raw);
 }
 
 /* ── RENDER HELPERS ── */

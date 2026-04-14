@@ -1618,7 +1618,7 @@
         Wellness:  {level:1,xp:0,xpToNext:100,color:'green', icon:'&#127807;'},
         Community: {level:1,xp:0,xpToNext:100,color:'pink',  icon:'&#129309;'}
       },
-      skills:{A:[],B:[],C:[]},achievements:[],journal:[],credentials:[],sealChain:[]
+      skills:{A:[],B:[],C:[]},achievements:[],journal:[],credentials:[],sealChain:[],auditTrail:[]
     };
 
     let profile=null, sealChain=[], selectedAssistLevel=1, selectedAvatar='shield', selectedClass='Architect', selectedStream='A';
@@ -1654,10 +1654,23 @@
       return FerrosCore.canMutateDurableState({tradeWindowAccepted:_tradeWindowAccepted,sessionMode:sessionMode,aliasMode:aliasMode,recoveryMode:recoveryMode});
     }
 
+    // ── Audit Ring Buffer ─────────────────────────────────────────────────────
+    // Bounded FIFO ring buffer per C10 retention rule. Cap: 1000 entries.
+    var AUDIT_TRAIL_CAP=1000;
+    function pushAuditEntry(action,detail){
+      if(!profile)return;
+      profile.auditTrail=profile.auditTrail||[];
+      profile.auditTrail.push({ts:new Date().toISOString(),action:action,detail:detail||null});
+      if(profile.auditTrail.length>AUDIT_TRAIL_CAP){
+        profile.auditTrail=profile.auditTrail.slice(profile.auditTrail.length-AUDIT_TRAIL_CAP);
+      }
+    }
+
     function saveProfile(){
       if(!canMutateDurableState())return;
       profile.meta.lastModified=new Date().toISOString();
       profile.sealChain=sealChain;
+      pushAuditEntry('profile-saved',{sealCount:sealChain.length});
       try{
         localStorage.setItem('ferros_profile',JSON.stringify(profile));
         localStorage.setItem('ferros_seal_chain',JSON.stringify(sealChain));
@@ -1687,6 +1700,7 @@
       profile.meta.sealCount=sealChain.length;
       profile.meta.currentSeal=entry.seal;
       if(sealChain.length===1)profile.meta.genesisHash=entry.seal;
+      pushAuditEntry('seal-added',{taskId:taskId,seal:entry.seal});
       return entry.seal;
     }
     function verifyChain(chain){return FerrosCore.verifyChain(chain)}
@@ -1760,6 +1774,8 @@
       if(!profile.creditLog)profile.creditLog={};
       // Initialize bag
       if(!profile.bag)profile.bag=[];
+      // Initialize auditTrail (C10 ring buffer)
+      if(!profile.auditTrail)profile.auditTrail=[];
       // Bump schema version
       if(!profile.meta)profile.meta={};
       profile.meta.schemaVersion=2;
@@ -2336,6 +2352,8 @@
       closeModal();
       profile=data.profile;
       sealChain=data.sealChain;
+      profile.auditTrail=profile.auditTrail||[];
+      pushAuditEntry('profile-imported',{version:profile.meta&&profile.meta.version,sealCount:sealChain.length});
       saveProfile();
       renderDashboard();updateVerificationPanel();
       showXPToast('&#128230;','Profile imported successfully!');
@@ -2458,8 +2476,10 @@
     function downloadAliasLog(){
       const now=new Date().toISOString();
       const date=now.slice(0,10);
+      const sid=aliasProfile.id+'-'+(_aliasSessionStart||'');
       const log={
         ferrosVersion:'1.0',logType:'alias-session',
+        sessionId:sid,
         alias:{id:aliasProfile.id,name:aliasProfile.name,icon:aliasProfile.icon,class:aliasProfile.class,attribution:'unlinked'},
         sessionStart:_aliasSessionStart,sessionEnd:now,
         entries:aliasJournal.map(e=>({ts:e.ts,text:e.text,type:'activity'})),
@@ -2560,6 +2580,7 @@
       if(!canMutateDurableState()){showModal('&#10060; Cannot Claim','<p>Log claims are not available in the current session mode.</p>');_pendingAliasClaimData=null;return}
       const isRecovery=data.logType==='recovery-session';
       const claimId=isRecovery?(data.profile.genesisHash+'-'+(data.sessionStart||'')):(data.alias.id+'-'+(data.sessionStart||''));
+      pushAuditEntry(isRecovery?'recovery-claimed':'alias-claimed',{claimId:claimId,entryCount:data.entries.length});
       const now=new Date().toISOString();
       const genesisHash=(profile.meta&&profile.meta.genesisHash)||null;
       let summaryEntry,mergedEntries;
@@ -2719,9 +2740,11 @@
         const result=await computeHash(content);
         return{ts:e.ts,text:e.text,type:'activity',seal:result.hash};
       }));
+      const sid=genesisHash+'-'+(_recoverySessionStart||'');
       const log={
         ferrosVersion:'1.0',
         logType:'recovery-session',
+        sessionId:sid,
         profile:{id:rawName,genesisHash:genesisHash,attribution:'self'},
         sessionStart:_recoverySessionStart,
         sessionEnd:now,

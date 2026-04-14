@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>H6 — FERROS UI Acceptance Harness (Black-Box)</h1>
-<div class="meta">Manual-run UI harness &nbsp;|&nbsp; Drives real UI via button clicks in iframe &nbsp;|&nbsp; No internal function calls &nbsp;|&nbsp; Run on file:// in Chrome</div>
+<div class="meta">Manual-run UI harness &nbsp;|&nbsp; Drives real UI via button clicks in iframe &nbsp;|&nbsp; Asserts only visible DOM and localStorage &nbsp;|&nbsp; Run on file:// in Chrome</div>
 
 <h2>Instructions</h2>
 <div style="color:#8b949e;margin-bottom:16px;font-size:.85rem">
@@ -50,9 +50,10 @@
 /* ==========================================================================
    H6 — BLACK-BOX UI ACCEPTANCE HARNESS
    ==========================================================================
-   Unlike H5 which calls contentWindow functions directly, this harness
-   interacts ONLY through the DOM — clicking buttons, reading visible text,
-   and checking element visibility. This validates the actual user experience.
+   This harness interacts ONLY through the DOM — clicking buttons, reading
+   visible text, and checking element visibility — plus localStorage as the
+   external persistence boundary. No contentWindow function calls. No reads
+   of internal JS variables (profile, sealChain, FerrosCore).
 
    Journey: Clear → Load → Accept Trade → Complete Stage 0 → Verify Dashboard
 
@@ -115,13 +116,9 @@ function getDoc() {
   return document.getElementById('sut').contentDocument;
 }
 
-function getWin() {
-  return document.getElementById('sut').contentWindow;
-}
-
 async function runJourney() {
   results = [];
-  var doc, win;
+  var doc;
 
   // Clear localStorage before starting
   try { localStorage.clear(); } catch(e) {}
@@ -130,12 +127,11 @@ async function runJourney() {
   var iframe = document.getElementById('sut');
   iframe.src = '../docs/personal-profile.html#testmode';
 
-  // Wait for iframe to load
+  // Wait for iframe DOM to be ready (check via visible element, not internal JS variable)
   var loaded = await waitFor(function() {
     try {
       doc = getDoc();
-      win = getWin();
-      return doc && doc.readyState === 'complete' && win.profile !== undefined;
+      return doc && doc.readyState === 'complete' && doc.getElementById('trade-overlay');
     } catch(e) { return false; }
   }, 8000);
 
@@ -151,13 +147,14 @@ async function runJourney() {
   var noProfile = !localStorage.getItem('ferros_profile');
   addResult('A: Pre-Consent', 'No profile in localStorage before consent', noProfile);
 
-  // ── Group B: Accept Trade Window ──
+  // ── Group B: Accept Trade Window (DOM only — no win.acceptTrade fallback) ──
   var acceptBtn = doc.getElementById('trade-accept-btn');
+  addResult('B: Trade Window', 'Trade accept button found in DOM', !!acceptBtn, acceptBtn ? 'id=trade-accept-btn' : 'Button not found — cannot proceed');
   if (acceptBtn) {
     acceptBtn.click();
   } else {
-    // Fallback: call via contentWindow
-    win.acceptTrade && win.acceptTrade();
+    addResult('B: Trade Window', 'Trade overlay dismissed after accept', false, 'Skipped — no accept button found');
+    return;
   }
 
   await waitFor(function() {
@@ -212,13 +209,22 @@ async function runJourney() {
     addResult('C: Stage 0', 'Stage 0 complete button found', false, 'Could not locate a complete/continue button');
   }
 
-  // Wait for seal chain to have at least 1 entry
+  // Wait for genesis seal by checking localStorage (external boundary, not internal state)
   var sealed = await waitFor(function() {
-    try { return win.sealChain && win.sealChain.length >= 1; } catch(e) { return false; }
+    try {
+      var raw = localStorage.getItem('ferros_seal_chain');
+      if (!raw) return false;
+      var chain = JSON.parse(raw);
+      return Array.isArray(chain) && chain.length >= 1;
+    } catch(e) { return false; }
   }, 5000);
-  addResult('C: Stage 0', 'Genesis seal created', sealed, sealed ? 'sealChain.length=' + win.sealChain.length : 'No seals after timeout');
+  var sealDetail = '';
+  if (sealed) {
+    try { var sc = JSON.parse(localStorage.getItem('ferros_seal_chain')); sealDetail = 'sealChain.length=' + sc.length; } catch(e) {}
+  }
+  addResult('C: Stage 0', 'Genesis seal created (localStorage)', sealed, sealed ? sealDetail : 'No seals in localStorage after timeout');
 
-  // ── Group D: Profile persisted ──
+  // ── Group D: Profile persisted (localStorage only) ──
   var profileStored = !!localStorage.getItem('ferros_profile');
   addResult('D: Persistence', 'Profile saved to localStorage', profileStored);
 
@@ -229,24 +235,32 @@ async function runJourney() {
     addResult('D: Persistence', 'Profile has genesisHash', !!(stored.meta && stored.meta.genesisHash), 'genesisHash=' + (stored.meta ? stored.meta.genesisHash : 'missing'));
   }
 
-  // ── Group E: FerrosCore loaded ──
-  var coreLoaded = !!(win.FerrosCore);
-  addResult('E: FerrosCore', 'FerrosCore loaded in monolith', coreLoaded);
+  // ── Group E: FerrosCore loaded (check via DOM — ferros-core.js adds a <script> tag) ──
+  var coreScriptFound = false;
+  try {
+    var scripts = doc.querySelectorAll('script[src]');
+    for (var si = 0; si < scripts.length; si++) {
+      if (scripts[si].src && scripts[si].src.indexOf('ferros-core.js') !== -1) {
+        coreScriptFound = true;
+        break;
+      }
+    }
+  } catch(e) {}
+  addResult('E: FerrosCore', 'ferros-core.js <script> tag present in monolith', coreScriptFound);
 
-  if (coreLoaded) {
-    addResult('E: FerrosCore', 'FerrosCore.VERSION is "1.0"', win.FerrosCore.VERSION === '1.0', 'VERSION=' + win.FerrosCore.VERSION);
-    addResult('E: FerrosCore', 'FerrosCore.TEMPLATE_PROFILES populated', win.FerrosCore.TEMPLATE_PROFILES && win.FerrosCore.TEMPLATE_PROFILES.length > 0, 'count=' + (win.FerrosCore.TEMPLATE_PROFILES ? win.FerrosCore.TEMPLATE_PROFILES.length : 0));
-    addResult('E: FerrosCore', 'FerrosCore.computeHash is function', typeof win.FerrosCore.computeHash === 'function');
-    addResult('E: FerrosCore', 'FerrosCore.verifyChain is function', typeof win.FerrosCore.verifyChain === 'function');
-    addResult('E: FerrosCore', 'FerrosCore.validateImport is function', typeof win.FerrosCore.validateImport === 'function');
-  }
-
-  // ── Group F: Seal metadata ──
-  if (win.sealChain && win.sealChain.length > 0) {
-    var firstSeal = win.sealChain[0];
-    addResult('F: Seal Metadata', 'First seal has hashAlgorithm', !!firstSeal.hashAlgorithm, 'hashAlgorithm=' + firstSeal.hashAlgorithm);
-    addResult('F: Seal Metadata', 'First seal has nonce', firstSeal.nonce !== undefined && firstSeal.nonce !== null, 'nonce=' + firstSeal.nonce);
-    addResult('F: Seal Metadata', 'hashAlgorithm is sha256 or djb2', firstSeal.hashAlgorithm === 'sha256' || firstSeal.hashAlgorithm === 'djb2');
+  // ── Group F: Seal metadata (check via localStorage persisted chain) ──
+  if (sealed) {
+    try {
+      var chainData = JSON.parse(localStorage.getItem('ferros_seal_chain'));
+      if (chainData && chainData.length > 0) {
+        var firstSeal = chainData[0];
+        addResult('F: Seal Metadata', 'First seal has hashAlgorithm', !!firstSeal.hashAlgorithm, 'hashAlgorithm=' + firstSeal.hashAlgorithm);
+        addResult('F: Seal Metadata', 'First seal has nonce', firstSeal.nonce !== undefined && firstSeal.nonce !== null, 'nonce=' + firstSeal.nonce);
+        addResult('F: Seal Metadata', 'hashAlgorithm is sha256 or djb2', firstSeal.hashAlgorithm === 'sha256' || firstSeal.hashAlgorithm === 'djb2');
+      }
+    } catch(e) {
+      addResult('F: Seal Metadata', 'Could not parse seal chain from localStorage', false, e.message);
+    }
   }
 
   renderResults();

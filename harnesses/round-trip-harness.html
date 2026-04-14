@@ -37,73 +37,18 @@
 <div id="result-block"><pre id="result-json">running...</pre></div>
 
 <script src="_constants.js"></script>
+<script src="../docs/assets/_core/ferros-core.js"></script>
 <script>
 /* ==========================================================================
-   FERROS IMPORT REFERENCE VALIDATOR  —  canonical reference implementation
-   of C9 import rejection rules I-1 through I-9.
-   Rule I-10 (file size) is enforced at the FileReader layer, not modeled here.
-   CURRENT_VERSION must match profile schema version and exportProfile() output.
+   FERROS IMPORT REFERENCE VALIDATOR  —  now delegates to FerrosCore.
+   FerrosCore.validateImport implements C9 import rejection rules I-1..I-9.
+   IMPORT_CURRENT_VERSION aliases FerrosCore.VERSION for backward compat.
    ========================================================================== */
 
-var IMPORT_CURRENT_VERSION = '1.0';
+var IMPORT_CURRENT_VERSION = FerrosCore.VERSION;
 
 function ferrosValidateImport(raw) {
-  // raw: parsed JSON object (I-9: caller must handle JSON.parse failure)
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return { ok: false, code: 'STORAGE_JSON_INVALID', detail: 'not a JSON object' };
-  }
-  // I-8a: profile field required at envelope level
-  if (!raw.profile) {
-    return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: 'profile absent from envelope' };
-  }
-  var p = raw.profile;
-  if (!p.meta) {
-    return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: 'profile.meta absent' };
-  }
-  // I-1: meta.version field absent (must be checked FIRST — fail fast)
-  if (p.meta.version === undefined || p.meta.version === null || p.meta.version === '') {
-    return { ok: false, code: 'STORAGE_VERSION_MISSING' };
-  }
-  // I-2: version MAJOR does not match current
-  var importMajor = parseInt(String(p.meta.version).split('.')[0], 10);
-  var currentMajor = parseInt(String(IMPORT_CURRENT_VERSION).split('.')[0], 10);
-  if (isNaN(importMajor) || importMajor !== currentMajor) {
-    return { ok: false, code: 'STORAGE_VERSION_MISMATCH',
-      detail: 'import=' + p.meta.version + ' current=' + IMPORT_CURRENT_VERSION };
-  }
-  // I-3: genesisHash absent or null
-  if (!p.meta.genesisHash) {
-    return { ok: false, code: 'STORAGE_GENESIS_MISSING' };
-  }
-  // I-4: sealChain absent or not array (envelope level takes precedence)
-  var chain = (raw.sealChain !== undefined) ? raw.sealChain : (p.sealChain || null);
-  if (!chain || !Array.isArray(chain)) {
-    return { ok: false, code: 'STORAGE_SEAL_CHAIN_MISSING' };
-  }
-  // I-5: sealChain[0].previousSeal !== "genesis"
-  if (chain.length > 0 && chain[0].previousSeal !== 'genesis') {
-    return { ok: false, code: 'STORAGE_SEAL_CHAIN_INVALID_ROOT',
-      detail: 'sealChain[0].previousSeal="' + chain[0].previousSeal + '"' };
-  }
-  // I-6: any sealChain[i].previousSeal !== sealChain[i-1].seal for i > 0
-  for (var i = 1; i < chain.length; i++) {
-    if (chain[i].previousSeal !== chain[i-1].seal) {
-      return { ok: false, code: 'STORAGE_SEAL_CHAIN_BROKEN',
-        detail: 'at index ' + i + ': previousSeal="' + chain[i].previousSeal + '" expected="' + chain[i-1].seal + '"' };
-    }
-  }
-  // I-7: identity.name absent or empty
-  if (!p.identity || !p.identity.name || !String(p.identity.name).trim()) {
-    return { ok: false, code: 'STORAGE_IDENTITY_MISSING' };
-  }
-  // I-8b: other required profile fields
-  var req8 = ['meta', 'identity', 'attributes', 'skills', 'achievements', 'journal', 'credentials'];
-  for (var ri = 0; ri < req8.length; ri++) {
-    if (!p[req8[ri]]) {
-      return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: req8[ri] + ' absent from profile' };
-    }
-  }
-  return { ok: true, code: null };
+  return FerrosCore.validateImport(raw);
 }
 
 /* Strip fixture annotation keys before passing to validator */
