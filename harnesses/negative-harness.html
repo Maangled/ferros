@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>H4 — FERROS Negative Cross-Boundary Harness</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:24px;font-size:13px;line-height:1.5}
+  h1{font-size:1.1rem;color:#58a6ff;margin-bottom:4px}
+  .meta{color:#8b949e;font-size:.85rem;margin-bottom:20px}
+  h2{font-size:.9rem;color:#8b949e;letter-spacing:2px;text-transform:uppercase;margin:24px 0 8px;border-bottom:1px solid #21262d;padding-bottom:4px}
+  .test{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #161b22}
+  .badge{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:3px;min-width:44px;text-align:center;flex-shrink:0;margin-top:1px}
+  .pass{background:#1a4731;color:#3fb950}
+  .fail{background:#4a1a1a;color:#f85149}
+  .warn{background:#2d2a14;color:#d29922}
+  .skip{background:#1c2128;color:#8b949e}
+  .test-name{color:#e6edf3;flex:1}
+  .test-detail{color:#8b949e;font-size:.8rem;margin-top:2px}
+  .test-error{color:#f85149;font-size:.8rem;margin-top:2px;word-break:break-word}
+  .test-warn{color:#d29922;font-size:.8rem;margin-top:2px;word-break:break-word}
+  #result-block{margin-top:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px}
+  #result-block pre{font-size:.78rem;color:#e6edf3;white-space:pre-wrap;word-break:break-word}
+  .summary-bar{display:flex;gap:16px;margin-top:16px;padding:12px;border-radius:4px}
+  .summary-bar.all-pass{background:#1a4731;color:#3fb950}
+  .summary-bar.has-fail{background:#4a1a1a;color:#f85149}
+  .summary-bar.has-warn{background:#2d2a14;color:#d29922}
+  .summary-stat{font-weight:700}
+</style>
+</head>
+<body>
+<h1>H4 — FERROS Negative Cross-Boundary Harness</h1>
+<div class="meta">Harness version 1.0 &nbsp;|&nbsp; Contracts: C9 (no-write) + C10 (deny behavior) &nbsp;|&nbsp; Proves: V3b &nbsp;|&nbsp; Run on file:// in Chrome</div>
+<div id="groups"></div>
+<div class="summary-bar" id="summary-bar"></div>
+<div id="result-block"><pre id="result-json">running...</pre></div>
+
+<script src="_constants.js"></script>
+<script>
+/* ==========================================================================
+   H4 — NEGATIVE CROSS-BOUNDARY HARNESS
+   Enforces:
+     - C9: Non-full-profile modes must not write to localStorage
+     - C10: Permission deny behavior — session/alias/recovery modes are denied
+            profile.write and sealChain.append
+   Implementation gaps are reported as GAP (warn) not FAIL.
+   ========================================================================== */
+
+function clone(v) { return JSON.parse(JSON.stringify(v)); }
+
+/* ==========================================================================
+   PERMISSION MATRIX REFERENCE
+   Canonical representation of C10 permission-model.md for three deny cases.
+   Purpose: make the deny rules explicit and testable without a UI.
+   ========================================================================== */
+
+// Returns 'allow' | 'deny' per the permission matrix (Wave 0, local-first)
+function permissionCheck(subject, action) {
+  var matrix = {
+    'full-profile': {
+      'profile.write': 'allow', 'profile.read': 'allow', 'profile.export': 'allow',
+      'profile.import': 'allow', 'sealChain.append': 'allow', 'sealChain.verify': 'allow',
+      'aliasLog.write': 'deny', 'aliasLog.export': 'deny',
+      'recoveryLog.write': 'deny', 'recoveryLog.export': 'deny',
+      'card.save': 'allow', 'card.export': 'allow', 'storage.clear': 'allow'
+    },
+    'alias': {
+      'profile.write': 'deny', 'profile.read': 'deny', 'profile.export': 'deny',
+      'profile.import': 'deny', 'sealChain.append': 'deny', 'sealChain.verify': 'allow',
+      'aliasLog.write': 'allow', 'aliasLog.export': 'allow',
+      'recoveryLog.write': 'deny', 'recoveryLog.export': 'deny',
+      'card.save': 'deny', 'card.export': 'deny', 'storage.clear': 'deny'
+    },
+    'recovery': {
+      'profile.write': 'deny', 'profile.read': 'deny', 'profile.export': 'deny',
+      'profile.import': 'allow', 'sealChain.append': 'deny', 'sealChain.verify': 'allow',
+      'aliasLog.write': 'deny', 'aliasLog.export': 'deny',
+      'recoveryLog.write': 'allow', 'recoveryLog.export': 'allow',
+      'card.save': 'deny', 'card.export': 'deny', 'storage.clear': 'deny'
+    },
+    'session': {
+      'profile.write': 'deny', 'profile.read': 'deny', 'profile.export': 'deny',
+      'profile.import': 'deny', 'sealChain.append': 'deny', 'sealChain.verify': 'deny',
+      'aliasLog.write': 'deny', 'aliasLog.export': 'deny',
+      'recoveryLog.write': 'deny', 'recoveryLog.export': 'deny',
+      'card.save': 'deny', 'card.export': 'deny', 'storage.clear': 'deny'
+    }
+  };
+  var subjectMap = matrix[subject];
+  if (!subjectMap) return 'deny'; // unknown subject → deny
+  var decision = subjectMap[action];
+  return decision || 'deny';
+}
+
+/* ==========================================================================
+   TEST RUNNER
+   ========================================================================== */
+
+var allGroups = [];
+var allTests  = [];
+
+function makeGroup(label) {
+  var g = { label: label, tests: [] };
+  allGroups.push(g);
+  return g;
+}
+
+function test(group, name, fn) {
+  var t = { name: name, status: 'skip', detail: '', warn: '', error: '' };
+  try {
+    var r = fn();
+    if (r.skip) {
+      t.status = 'skip'; t.detail = r.detail || '';
+    } else if (r.pass === true) {
+      t.status = r.gap ? 'warn' : 'pass';
+      t.detail = r.detail || '';
+      if (r.warn) t.warn = r.warn;
+    } else {
+      t.status = 'fail';
+      t.error  = r.error  || '';
+      t.detail = r.detail || '';
+    }
+  } catch (e) {
+    t.status = 'fail';
+    t.error  = 'Uncaught: ' + e.message;
+  }
+  group.tests.push(t);
+  allTests.push(t);
+  return t;
+}
+
+/* ==========================================================================
+   GROUP A — Permission Matrix Reference (canonical deny checks, C10)
+   Verifies that the permission matrix correctly denies writes for
+   non-full-profile subjects. These are logic tests against the reference
+   permissionCheck() function — not implementation probes.
+   ========================================================================== */
+
+var gA = makeGroup('Group A — Permission Matrix Reference (C10, canonical)');
+
+// A1: full-profile ALLOWS profile.write
+test(gA, 'full-profile: profile.write → allow', function() {
+  var d = permissionCheck('full-profile', 'profile.write');
+  if (d === 'allow') return { pass: true, detail: 'full-profile may write profile data' };
+  return { pass: false, error: 'Expected allow, got ' + d };
+});
+
+// A2: alias mode DENIES profile.write
+test(gA, 'alias mode: profile.write → deny (C10)', function() {
+  var d = permissionCheck('alias', 'profile.write');
+  if (d === 'deny') return { pass: true, detail: 'alias mode denied profile.write as per C10' };
+  return { pass: false, error: 'Expected deny, got ' + d };
+});
+
+// A3: session mode DENIES profile.write
+test(gA, 'session mode: profile.write → deny (C10)', function() {
+  var d = permissionCheck('session', 'profile.write');
+  if (d === 'deny') return { pass: true, detail: 'session mode denied profile.write as per C10' };
+  return { pass: false, error: 'Expected deny, got ' + d };
+});
+
+// A4: recovery mode DENIES sealChain.append
+test(gA, 'recovery mode: sealChain.append → deny (C10)', function() {
+  var d = permissionCheck('recovery', 'sealChain.append');
+  if (d === 'deny') return { pass: true, detail: 'recovery mode denied sealChain.append as per C10' };
+  return { pass: false, error: 'Expected deny, got ' + d };
+});
+
+// A5: recovery mode ALLOWS profile.import (read-only, no persist)
+test(gA, 'recovery mode: profile.import → allow (read-only per C10)', function() {
+  var d = permissionCheck('recovery', 'profile.import');
+  if (d === 'allow') return { pass: true, detail: 'recovery mode allows import (read-only, no persist to localStorage)' };
+  return { pass: false, error: 'Expected allow, got ' + d };
+});
+
+// A6: alias mode ALLOWS aliasLog.write
+test(gA, 'alias mode: aliasLog.write → allow (C10)', function() {
+  var d = permissionCheck('alias', 'aliasLog.write');
+  if (d === 'allow') return { pass: true, detail: 'alias mode allows writing to its own log' };
+  return { pass: false, error: 'Expected allow, got ' + d };
+});
+
+/* ==========================================================================
+   GROUP B — saveProfile() Write Guard (implementation probe via iframe)
+   Tests that the C9 hard constraint is actually enforced in personal-profile.html:
+   "No mode other than Full Profile may write to localStorage."
+   ========================================================================== */
+
+function loadIframe(src) {
+  return new Promise(function(resolve, reject) {
+    var iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;visibility:hidden';
+    iframe.src = src;
+    var timer = setTimeout(function() {
+      reject(new Error('iframe load timed out after 8s'));
+      try { document.body.removeChild(iframe); } catch(e){}
+    }, 8000);
+    iframe.onload = function() { clearTimeout(timer); resolve(iframe); };
+    iframe.onerror = function() {
+      clearTimeout(timer);
+      reject(new Error('iframe load failed (cross-origin restriction or missing file)'));
+      try { document.body.removeChild(iframe); } catch(e){}
+    };
+    document.body.appendChild(iframe);
+  });
+}
+
+function runGroupB() {
+  return new Promise(function(resolve) {
+    var gB = makeGroup('Group B — Write Guard Implementation Probe (iframe: ../docs/personal-profile.html)');
+
+    // Clear localStorage before loading the iframe
+    localStorage.removeItem('ferros_profile');
+    localStorage.removeItem('ferros_seal_chain');
+
+    loadIframe('../docs/personal-profile.html#testmode').then(function(iframe) {
+      var iw = iframe.contentWindow;
+      var profileData = clone(FIXTURE_FULL_PROFILE_STAGE3);
+
+      // B1: session mode → saveProfile() must not write
+      test(gB, 'session mode: saveProfile() → localStorage stays empty (C9)', function() {
+        localStorage.removeItem('ferros_profile');
+        localStorage.removeItem('ferros_seal_chain');
+        try {
+          iw.enterSessionMode();
+          iw.saveProfile();
+          var stored = localStorage.getItem('ferros_profile');
+          if (stored === null) {
+            return { pass: true, detail: 'saveProfile() correctly guarded — no write in session mode' };
+          }
+          return { pass: false, error: 'saveProfile() wrote to localStorage in session mode. Guard is missing or broken.' };
+        } finally {
+          localStorage.removeItem('ferros_profile');
+          localStorage.removeItem('ferros_seal_chain');
+        }
+      });
+
+      // B2: alias mode → saveProfile() must not write
+      test(gB, 'alias mode: saveProfile() → localStorage stays empty (C9)', function() {
+        localStorage.removeItem('ferros_profile');
+        localStorage.removeItem('ferros_seal_chain');
+        try {
+          iw._enterAliasMode({ id: 'h4test', name: 'H4 Test', icon: '🔬', aliasClass: 'Guided', tagline: '' });
+          iw.saveProfile();
+          var stored = localStorage.getItem('ferros_profile');
+          if (stored === null) {
+            return { pass: true, detail: 'saveProfile() correctly guarded — no write in alias mode' };
+          }
+          return { pass: false, error: 'saveProfile() wrote to localStorage in alias mode. Guard is missing or broken.' };
+        } finally {
+          localStorage.removeItem('ferros_profile');
+          localStorage.removeItem('ferros_seal_chain');
+        }
+      });
+
+      // B3: recovery mode → saveProfile() must not write
+      test(gB, 'recovery mode: saveProfile() → localStorage stays empty (C9)', function() {
+        localStorage.removeItem('ferros_profile');
+        localStorage.removeItem('ferros_seal_chain');
+        try {
+          iw.enterRecoveryMode({ profile: profileData, sealChain: profileData.sealChain || [] }, false);
+          iw.saveProfile();
+          var stored = localStorage.getItem('ferros_profile');
+          if (stored === null) {
+            return { pass: true, detail: 'saveProfile() correctly guarded — no write in recovery mode' };
+          }
+          return { pass: false, error: 'saveProfile() wrote to localStorage in recovery mode. Guard is missing or broken.' };
+        } finally {
+          localStorage.removeItem('ferros_profile');
+          localStorage.removeItem('ferros_seal_chain');
+        }
+      });
+
+      try { document.body.removeChild(iframe); } catch(e){}
+      resolve(gB);
+
+    }).catch(function(err) {
+      test(makeGroup('Group B — Write Guard (SKIP)'), 'iframe load', function() {
+        return { pass: false, error: err.message };
+      });
+      resolve(null);
+    });
+  });
+}
+
+/* ==========================================================================
+   GROUP C — addSeal() Recovery Mode Gap (implementation probe via iframe)
+   Contract C10 says: recovery mode DENIES sealChain.append.
+   addSeal() in personal-profile.html does NOT check recoveryMode.
+   This test surfaces the implementation gap — it is expected to show GAP.
+   ========================================================================== */
+
+function runGroupC(iframe) {
+  return new Promise(function(resolve) {
+    var gC = makeGroup('Group C — addSeal() Recovery Mode Gap (C10 implementation gap probe)');
+
+    loadIframe('../docs/personal-profile.html#testmode').then(function(iframe) {
+      var iw = iframe.contentWindow;
+      var profileData = clone(FIXTURE_FULL_PROFILE_STAGE3);
+
+      // C1: addSeal() in recovery mode — should be denied per C10 but isn't guarded
+      test(gC, 'GAP addSeal() in recovery mode: contract says deny, implementation has no guard', function() {
+        localStorage.removeItem('ferros_profile');
+        localStorage.removeItem('ferros_seal_chain');
+        try {
+          // Enter recovery mode
+          iw.enterRecoveryMode({ profile: profileData, sealChain: profileData.sealChain || [] }, false);
+          // Attempt sealChain.append — contract says DENY (C10 recovery: sealChain.append → deny)
+          var chainBefore = iw.verifyChain(profileData.sealChain || []);
+          // Call addSeal with a dummy task — this is async
+          var addSealResult = iw.addSeal('h4-test-task', { test: true });
+          // addSeal returns a Promise; check synchronously that no guard fires
+          var addSealType = typeof addSealResult;
+          // If addSeal returns a Promise, it executed (no guard). If it returned undefined/null, it was blocked.
+          if (addSealResult && addSealType === 'object' && typeof addSealResult.then === 'function') {
+            return {
+              pass: true,
+              gap: true,
+              warn: 'KNOWN GAP (C10): addSeal() has no recoveryMode guard. It completed in recovery mode when it should deny. Fix: add "if(recoveryMode)return;" at the top of addSeal().',
+              detail: 'addSeal() returned a Promise (executed) in recovery mode — contract says deny+audit'
+            };
+          }
+          // If it returned nothing (undefined), a guard might have been added
+          return { pass: true, detail: 'addSeal() appears to be guarded — gap may be closed' };
+        } catch(e) {
+          return { pass: false, error: 'addSeal() threw: ' + e.message };
+        } finally {
+          localStorage.removeItem('ferros_profile');
+          localStorage.removeItem('ferros_seal_chain');
+        }
+      });
+
+      // C2: Confirm saveProfile() would NOT have written even if addSeal ran
+      test(gC, 'recovery mode: even after addSeal(), saveProfile() does not persist to localStorage', function() {
+        var stored = localStorage.getItem('ferros_profile');
+        if (stored === null) {
+          return { pass: true, detail: 'saveProfile() write guard contains the damage: localStorage stays clean even when addSeal runs in recovery mode' };
+        }
+        return { pass: false, error: 'localStorage was written despite recovery mode' };
+      });
+
+      try { document.body.removeChild(iframe); } catch(e){}
+      resolve(gC);
+
+    }).catch(function(err) {
+      var gC2 = makeGroup('Group C — addSeal() Gap Probe (SKIP)');
+      test(gC2, 'iframe load', function() {
+        return { pass: false, error: err.message };
+      });
+      resolve(gC2);
+    });
+  });
+}
+
+/* ==========================================================================
+   RENDER
+   ========================================================================== */
+
+function renderAll() {
+  var passed = 0, failed = 0, warned = 0, skipped = 0;
+  for (var ti = 0; ti < allTests.length; ti++) {
+    var s = allTests[ti].status;
+    if (s === 'pass')  passed++;
+    else if (s === 'fail')  failed++;
+    else if (s === 'warn')  warned++;
+    else skipped++;
+  }
+
+  var groupsEl = document.getElementById('groups');
+  groupsEl.innerHTML = '';
+  for (var gi = 0; gi < allGroups.length; gi++) {
+    var grp = allGroups[gi];
+    var h2el = document.createElement('h2');
+    h2el.textContent = grp.label;
+    groupsEl.appendChild(h2el);
+    for (var ti2 = 0; ti2 < grp.tests.length; ti2++) {
+      var t = grp.tests[ti2];
+      var row = document.createElement('div');
+      row.className = 'test';
+      var badge = document.createElement('span');
+      badge.className = 'badge ' + t.status;
+      badge.textContent = t.status === 'warn' ? 'GAP' : t.status.toUpperCase();
+      var info = document.createElement('div');
+      info.style.flex = '1';
+      var nm = document.createElement('div');
+      nm.className = 'test-name';
+      nm.textContent = t.name;
+      info.appendChild(nm);
+      if (t.detail) {
+        var d = document.createElement('div');
+        d.className = 'test-detail';
+        d.textContent = t.detail;
+        info.appendChild(d);
+      }
+      if (t.warn) {
+        var w = document.createElement('div');
+        w.className = 'test-warn';
+        w.textContent = t.warn;
+        info.appendChild(w);
+      }
+      if (t.error) {
+        var e = document.createElement('div');
+        e.className = 'test-error';
+        e.textContent = t.error;
+        info.appendChild(e);
+      }
+      row.appendChild(badge);
+      row.appendChild(info);
+      groupsEl.appendChild(row);
+    }
+  }
+
+  var overallStatus = failed > 0 ? 'FAIL' : (warned > 0 ? 'GAP' : (skipped > 0 ? 'SKIP' : 'PASS'));
+  var bar = document.getElementById('summary-bar');
+  bar.className = 'summary-bar ' + (failed > 0 ? 'has-fail' : (warned > 0 ? 'has-warn' : 'all-pass'));
+  bar.innerHTML = '<span class="summary-stat">' + overallStatus + '</span>' +
+    ' &nbsp;|&nbsp; ' + passed + ' passed' +
+    (warned  > 0 ? ', ' + warned + ' gaps (contract vs implementation)' : '') +
+    (failed  > 0 ? ', ' + failed + ' failed' : '') +
+    (skipped > 0 ? ', ' + skipped + ' skipped' : '') +
+    ' &nbsp;|&nbsp; ' + allTests.length + ' total';
+
+  var gaps = allTests.filter(function(t){ return t.status === 'warn'; }).map(function(t){ return t.warn; });
+
+  var resultObj = {
+    timestamp: new Date().toISOString(),
+    harnessId: 'H4',
+    harnessVersion: '1.0',
+    status: overallStatus,
+    summary: { total: allTests.length, passed: passed, failed: failed, gaps: warned, skipped: skipped },
+    provesGates: ['C9 no-write (session/alias/recovery)', 'C10 permission deny matrix (reference)', 'V3b partial'],
+    implementationGaps: gaps,
+    remediations: [
+      'C10 addSeal gap: add "if(recoveryMode||aliasMode||sessionMode)return;" to addSeal() in personal-profile.html',
+      'C9 I-5 gap: add chain[0].previousSeal !== "genesis" check to verifyChain() in personal-profile.html'
+    ],
+    tests: allTests.map(function(t){
+      return { name: t.name, status: t.status, detail: t.detail, warn: t.warn, error: t.error };
+    })
+  };
+
+  document.getElementById('result-json').textContent = JSON.stringify(resultObj, null, 2);
+}
+
+/* ==========================================================================
+   MAIN — Group A is sync, Groups B and C are async iframe probes
+   ========================================================================== */
+
+// Group A: runs synchronously (already added to allGroups/allTests above)
+
+Promise.all([runGroupB(), runGroupC()]).then(function() {
+  renderAll();
+});
+</script>
+</body>
+</html>

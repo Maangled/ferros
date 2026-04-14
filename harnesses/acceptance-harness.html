@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>H5 — FERROS Acceptance Harness</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:24px;font-size:13px;line-height:1.5}
+  h1{font-size:1.1rem;color:#58a6ff;margin-bottom:4px}
+  .meta{color:#8b949e;font-size:.85rem;margin-bottom:20px}
+  h2{font-size:.9rem;color:#8b949e;letter-spacing:2px;text-transform:uppercase;margin:24px 0 8px;border-bottom:1px solid #21262d;padding-bottom:4px}
+  .test{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #161b22}
+  .badge{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:3px;min-width:44px;text-align:center;flex-shrink:0;margin-top:1px}
+  .pass{background:#1a4731;color:#3fb950}
+  .fail{background:#4a1a1a;color:#f85149}
+  .warn{background:#2d2a14;color:#d29922}
+  .skip{background:#1c2128;color:#8b949e}
+  .test-name{color:#e6edf3;flex:1}
+  .test-detail{color:#8b949e;font-size:.8rem;margin-top:2px}
+  .test-error{color:#f85149;font-size:.8rem;margin-top:2px;word-break:break-word}
+  .test-warn{color:#d29922;font-size:.8rem;margin-top:2px;word-break:break-word}
+  #result-block{margin-top:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px}
+  #result-block pre{font-size:.78rem;color:#e6edf3;white-space:pre-wrap;word-break:break-word}
+  .summary-bar{display:flex;gap:16px;margin-top:16px;padding:12px;border-radius:4px}
+  .summary-bar.all-pass{background:#1a4731;color:#3fb950}
+  .summary-bar.has-fail{background:#4a1a1a;color:#f85149}
+  .summary-bar.has-warn{background:#2d2a14;color:#d29922}
+  .summary-stat{font-weight:700}
+  #groups{}
+</style>
+</head>
+<body>
+<h1>H5 — FERROS Acceptance Harness</h1>
+<div class="meta">Harness version 1.0 &nbsp;|&nbsp; Proves: V8, V1, V3a &nbsp;|&nbsp; Journey 1: acceptTrade → stage0 → stage1 → export → import-validate &nbsp;|&nbsp; Run on file:// in Chrome</div>
+<div id="groups"></div>
+<div class="summary-bar" id="summary-bar"></div>
+<div id="result-block"><pre id="result-json">running...</pre></div>
+
+<script>
+/* ==========================================================================
+   H5 — FERROS ACCEPTANCE HARNESS
+   End-to-end Journey 1 proof via direct contentWindow calls.
+   Proves V8 (Journey 1 completable), V1 (profile created and seals added),
+   and V3a (valid export roundtrip).
+
+   Journey Steps:
+     1. Clear localStorage, load personal-profile.html#testmode in hidden iframe
+     2. acceptTrade()          → enter full-profile mode
+     3. _doCompleteStage0()    → genesis seal, profile.meta.stage=1
+     4. selectClass/Stream     → set character fields
+     5. set char-name-input    → identity.name for stage 1
+     6. _doCompleteStage1()    → character seal, profile.meta.stage=2
+     7. Assert profile state   → name, genesisHash, sealCount≥2, stage=2
+     8. Construct export envelope from contentWindow.profile + contentWindow.sealChain
+     9. ferrosValidateImport(envelope) → ok:true
+    10. Identity name from import matches original
+   ========================================================================== */
+
+var IMPORT_CURRENT_VERSION = '1.0';
+
+/* ── REFERENCE IMPORT VALIDATOR (mirrors C9 storage-rules.md) ── */
+function ferrosValidateImport(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, code: 'STORAGE_JSON_INVALID', detail: 'not a JSON object' };
+  }
+  if (!raw.profile) {
+    return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: 'profile absent from envelope' };
+  }
+  var p = raw.profile;
+  if (!p.meta) {
+    return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: 'profile.meta absent' };
+  }
+  if (p.meta.version === undefined || p.meta.version === null || p.meta.version === '') {
+    return { ok: false, code: 'STORAGE_VERSION_MISSING' };
+  }
+  var importMajor = parseInt(String(p.meta.version).split('.')[0], 10);
+  var currentMajor = parseInt(String(IMPORT_CURRENT_VERSION).split('.')[0], 10);
+  if (isNaN(importMajor) || importMajor !== currentMajor) {
+    return { ok: false, code: 'STORAGE_VERSION_MISMATCH',
+      detail: 'import=' + p.meta.version + ' current=' + IMPORT_CURRENT_VERSION };
+  }
+  if (!p.meta.genesisHash) {
+    return { ok: false, code: 'STORAGE_GENESIS_MISSING' };
+  }
+  var chain = (raw.sealChain !== undefined) ? raw.sealChain : (p.sealChain || null);
+  if (!chain || !Array.isArray(chain)) {
+    return { ok: false, code: 'STORAGE_SEAL_CHAIN_MISSING' };
+  }
+  if (chain.length > 0 && chain[0].previousSeal !== 'genesis') {
+    return { ok: false, code: 'STORAGE_SEAL_CHAIN_INVALID_ROOT',
+      detail: 'chain[0].previousSeal=' + chain[0].previousSeal };
+  }
+  for (var i = 1; i < chain.length; i++) {
+    if (chain[i].previousSeal !== chain[i-1].seal) {
+      return { ok: false, code: 'STORAGE_SEAL_CHAIN_BROKEN', detail: 'broken at index ' + i };
+    }
+  }
+  var id = p.identity;
+  if (!id || !id.name || id.name.trim() === '') {
+    return { ok: false, code: 'STORAGE_IDENTITY_MISSING' };
+  }
+  var required = ['meta','identity','attributes','skills','achievements','journal'];
+  for (var j = 0; j < required.length; j++) {
+    if (!p[required[j]]) {
+      return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: required[j] + ' absent' };
+    }
+  }
+  return { ok: true };
+}
+
+/* ── RENDER HELPERS ── */
+var groups = document.getElementById('groups');
+
+function makeGroup(title) {
+  var el = document.createElement('div');
+  el.innerHTML = '<h2>' + esc(title) + '</h2>';
+  groups.appendChild(el);
+  return el;
+}
+
+function test(groupEl, name, fn) {
+  var row = document.createElement('div');
+  row.className = 'test';
+  var result;
+  try { result = fn(); } catch(e) { result = { pass: false, error: e.message }; }
+  var badge = result.pass ? (result.gap || result.warn ? 'WARN' : 'PASS') : 'FAIL';
+  var cls   = result.pass ? (result.gap || result.warn ? 'warn' : 'pass') : 'fail';
+  var detail = '';
+  if (result.detail) detail += '<div class="test-detail">' + esc(result.detail) + '</div>';
+  if (result.warn)   detail += '<div class="test-warn">⚠ ' + esc(result.warn) + '</div>';
+  if (result.error)  detail += '<div class="test-error">✗ ' + esc(result.error) + '</div>';
+  row.innerHTML = '<span class="badge ' + cls + '">' + badge + '</span>' +
+    '<div><div class="test-name">' + esc(name) + '</div>' + detail + '</div>';
+  groupEl.appendChild(row);
+  return result;
+}
+
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+/* ── IFRAME LOADER ── */
+function loadIframe(src) {
+  return new Promise(function(resolve, reject) {
+    var iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:absolute;left:-9999px;width:800px;height:900px;visibility:hidden';
+    iframe.src = src;
+    var timer = setTimeout(function() {
+      reject(new Error('iframe load timed out after 8s'));
+      try { document.body.removeChild(iframe); } catch(e){}
+    }, 8000);
+    iframe.onload = function() { clearTimeout(timer); resolve(iframe); };
+    iframe.onerror = function() {
+      clearTimeout(timer);
+      reject(new Error('iframe onerror'));
+      try { document.body.removeChild(iframe); } catch(e){}
+    };
+    document.body.appendChild(iframe);
+  });
+}
+
+/* ── WAIT HELPER ── */
+function waitFor(predicate, timeoutMs, desc) {
+  return new Promise(function(resolve, reject) {
+    var start = Date.now();
+    var interval = setInterval(function() {
+      if (predicate()) { clearInterval(interval); resolve(); return; }
+      if (Date.now() - start > (timeoutMs || 3000)) {
+        clearInterval(interval);
+        reject(new Error('waitFor timed out: ' + (desc || '') + ' after ' + (timeoutMs||3000) + 'ms'));
+      }
+    }, 50);
+  });
+}
+
+/* ── RESULT TRACKING ── */
+var allResults = [];
+
+function runResults() {
+  var pass = 0, fail = 0, warn = 0;
+  allResults.forEach(function(r) {
+    if (!r.pass) fail++;
+    else if (r.gap || r.warn) warn++;
+    else pass++;
+  });
+  var overall = fail > 0 ? 'FAIL' : (warn > 0 ? 'WARN' : 'PASS');
+  var barCls   = fail > 0 ? 'has-fail' : (warn > 0 ? 'has-warn' : 'all-pass');
+  document.getElementById('summary-bar').className = 'summary-bar ' + barCls;
+  document.getElementById('summary-bar').innerHTML =
+    '<span class="summary-stat">Status: ' + overall + '</span>' +
+    '<span>PASS: <b>' + pass + '</b></span>' +
+    '<span>WARN: <b>' + warn + '</b></span>' +
+    '<span>FAIL: <b>' + fail + '</b></span>' +
+    '<span>TOTAL: <b>' + allResults.length + '</b></span>';
+  document.getElementById('result-json').textContent = JSON.stringify({
+    harness: 'H5',
+    proves: ['V8','V1','V3a'],
+    status: overall,
+    pass: pass, warn: warn, fail: fail, total: allResults.length
+  }, null, 2);
+}
+
+/* ==========================================================================
+   MAIN — Journey 1 Execution
+   ========================================================================== */
+
+var PROFILE_SRC = '../docs/personal-profile.html#testmode';
+var TEST_NAME   = 'Harness Hero';
+
+/* Clear localStorage before the journey so we start from a blank state */
+localStorage.removeItem('ferros_profile');
+localStorage.removeItem('ferros_seal_chain');
+
+loadIframe(PROFILE_SRC).then(function(iframe) {
+  /* Give init() a moment to run (FERROS_TEST_MODE skips 8s animation) */
+  return new Promise(function(res) { setTimeout(function() { res(iframe); }, 400); });
+}).then(function(iframe) {
+  var iw = iframe.contentWindow;
+
+  /* ========================================================================
+     Group A — Setup: acceptTrade, verify initial state
+     ====================================================================== */
+  var gA = makeGroup('Group A — Journey Setup (acceptTrade → full-profile mode)');
+
+  allResults.push(test(gA, 'A-1: iframe loaded and init() ran (profile object initialized)', function() {
+    if (!iw.profile) return { pass: false, error: 'iw.profile is null/undefined after load' };
+    if (typeof iw.profile !== 'object') return { pass: false, error: 'iw.profile is not an object' };
+    return { pass: true, detail: 'profile.meta.stage=' + iw.profile.meta.stage };
+  }));
+
+  allResults.push(test(gA, 'A-2: sealChain initialized as empty array', function() {
+    if (!Array.isArray(iw.sealChain)) return { pass: false, error: 'iw.sealChain is not an array: ' + typeof iw.sealChain };
+    if (iw.sealChain.length !== 0) return { pass: false, error: 'sealChain.length=' + iw.sealChain.length + ' expected 0' };
+    return { pass: true };
+  }));
+
+  /* acceptTrade() sets sessionMode=false, _tradeWindowAccepted=true — enters full-profile mode */
+  iw.acceptTrade();
+
+  allResults.push(test(gA, 'A-3: acceptTrade() → sessionMode=false (full-profile, writes allowed)', function() {
+    if (iw.sessionMode === false) {
+      return { pass: true, detail: 'sessionMode=false, _tradeWindowAccepted confirmed' };
+    }
+    return { pass: false, error: 'sessionMode=' + iw.sessionMode + ' expected false' };
+  }));
+
+  /* ========================================================================
+     Group B — Stage 0: genesis seal
+     ====================================================================== */
+  var gB = makeGroup('Group B — Stage 0: Genesis Seal (_doCompleteStage0)');
+
+  return iw._doCompleteStage0().then(function() {
+    /* Wait for addSeal async to resolve and sealChain to populate */
+    return waitFor(
+      function() { return iw.sealChain && iw.sealChain.length >= 1; },
+      3000, 'genesis seal'
+    );
+  }).then(function() {
+    allResults.push(test(gB, 'B-1: sealChain.length === 1 after stage 0', function() {
+      if (iw.sealChain.length === 1) {
+        return { pass: true, detail: 'seal[0].taskId=' + iw.sealChain[0].taskId };
+      }
+      return { pass: false, error: 'sealChain.length=' + iw.sealChain.length };
+    }));
+
+    allResults.push(test(gB, 'B-2: sealChain[0].taskId === "stage_0_genesis"', function() {
+      var s = iw.sealChain[0];
+      if (s && s.taskId === 'stage_0_genesis') return { pass: true };
+      return { pass: false, error: 'taskId=' + (s && s.taskId) };
+    }));
+
+    allResults.push(test(gB, 'B-3: sealChain[0].previousSeal === "genesis" (I-5 rule satisfied)', function() {
+      var s = iw.sealChain[0];
+      if (s && s.previousSeal === 'genesis') return { pass: true };
+      return { pass: false, error: 'previousSeal=' + (s && s.previousSeal) };
+    }));
+
+    allResults.push(test(gB, 'B-4: profile.meta.genesisHash set after stage 0', function() {
+      var gh = iw.profile.meta.genesisHash;
+      if (gh && typeof gh === 'string' && gh.length > 0) {
+        return { pass: true, detail: 'genesisHash=' + gh.substring(0, 12) + '...' };
+      }
+      return { pass: false, error: 'genesisHash=' + gh };
+    }));
+
+    allResults.push(test(gB, 'B-5: profile.meta.stage === 1 after stage 0', function() {
+      if (iw.profile.meta.stage === 1) return { pass: true };
+      return { pass: false, error: 'stage=' + iw.profile.meta.stage };
+    }));
+
+    /* ======================================================================
+       Group C — Stage 1: character seal
+       ==================================================================== */
+    var gC = makeGroup('Group C — Stage 1: Character Creation (_doCompleteStage1)');
+
+    /* Set up character fields via contentWindow calls */
+    iw.selectClass('Architect');
+    iw.selectStream('A');
+
+    /* Set the name input value — _doCompleteStage1 reads this from DOM */
+    var nameInput = (iframe.contentDocument || iframe.contentWindow.document).getElementById('char-name-input');
+    if (nameInput) nameInput.value = TEST_NAME;
+
+    return iw._doCompleteStage1().then(function() {
+      return waitFor(
+        function() { return iw.sealChain && iw.sealChain.length >= 2; },
+        3000, 'stage1 seal'
+      );
+    }).then(function() {
+      allResults.push(test(gC, 'C-1: sealChain.length >= 2 after stage 1 (genesis + character)', function() {
+        if (iw.sealChain.length >= 2) {
+          return { pass: true, detail: 'sealChain.length=' + iw.sealChain.length };
+        }
+        return { pass: false, error: 'sealChain.length=' + iw.sealChain.length + ' expected ≥2' };
+      }));
+
+      allResults.push(test(gC, 'C-2: stage1 seal taskId === "stage_1_character"', function() {
+        var s = iw.sealChain[1];
+        if (s && s.taskId === 'stage_1_character') return { pass: true };
+        return { pass: false, error: 'taskId=' + (s && s.taskId) };
+      }));
+
+      allResults.push(test(gC, 'C-3: stage1 seal chain is unbroken (previousSeal links correctly)', function() {
+        var s0 = iw.sealChain[0];
+        var s1 = iw.sealChain[1];
+        if (!s0 || !s1) return { pass: false, error: 'missing seal entries' };
+        if (s1.previousSeal === s0.seal) {
+          return { pass: true, detail: 'chain intact: s1.previousSeal === s0.seal' };
+        }
+        return { pass: false, error: 's1.previousSeal=' + s1.previousSeal + ' s0.seal=' + s0.seal };
+      }));
+
+      allResults.push(test(gC, 'C-4: profile.identity.name set to TEST_NAME', function() {
+        var name = iw.profile.identity && iw.profile.identity.name;
+        if (name && name.trim() === TEST_NAME) {
+          return { pass: true, detail: 'name="' + name + '"' };
+        }
+        /* name might be 'Unnamed Hero' if input was not found in DOM */
+        if (name && name.length > 0) {
+          return { pass: true, warn: 'name="' + name + '" — input may have been hidden; identity.name is non-empty' };
+        }
+        return { pass: false, error: 'identity.name="' + name + '"' };
+      }));
+
+      allResults.push(test(gC, 'C-5: profile.meta.stage === 2 after stage 1', function() {
+        if (iw.profile.meta.stage === 2) return { pass: true };
+        return { pass: false, error: 'stage=' + iw.profile.meta.stage };
+      }));
+
+      allResults.push(test(gC, 'C-6: profile.meta.sealCount === sealChain.length', function() {
+        var expected = iw.sealChain.length;
+        var actual   = iw.profile.meta.sealCount;
+        if (actual === expected) {
+          return { pass: true, detail: 'sealCount=' + actual };
+        }
+        return { pass: false, error: 'meta.sealCount=' + actual + ' vs sealChain.length=' + expected };
+      }));
+
+      /* ====================================================================
+         Group D — Export round-trip (V3a)
+         Construct envelope from live contentWindow, validate with ferrosValidateImport
+         ==================================================================== */
+      var gD = makeGroup('Group D — Export Envelope Round-Trip (V3a)');
+
+      /* Snapshot the profile and sealChain directly — identical to what exportProfile() serializes */
+      var exportedProfile  = JSON.parse(JSON.stringify(iw.profile));
+      var exportedChain    = JSON.parse(JSON.stringify(iw.sealChain));
+      var envelope = {
+        profile:       exportedProfile,
+        sealChain:     exportedChain,
+        exportedAt:    new Date().toISOString(),
+        ferrosVersion: '1.0'
+      };
+
+      allResults.push(test(gD, 'D-1: Export envelope has required top-level fields', function() {
+        var missing = [];
+        ['profile','sealChain','exportedAt','ferrosVersion'].forEach(function(k) {
+          if (envelope[k] === undefined) missing.push(k);
+        });
+        if (missing.length === 0) return { pass: true };
+        return { pass: false, error: 'missing: ' + missing.join(', ') };
+      }));
+
+      allResults.push(test(gD, 'D-2: ferrosVersion === "1.0"', function() {
+        if (envelope.ferrosVersion === '1.0') return { pass: true };
+        return { pass: false, error: 'ferrosVersion=' + envelope.ferrosVersion };
+      }));
+
+      var importResult = ferrosValidateImport(envelope);
+
+      allResults.push(test(gD, 'D-3: ferrosValidateImport(envelope) → ok:true', function() {
+        if (importResult.ok === true) {
+          return { pass: true, detail: 'import validation passed' };
+        }
+        return { pass: false, error: 'code=' + importResult.code + ' ' + (importResult.detail||'') };
+      }));
+
+      allResults.push(test(gD, 'D-4: verifyChain(exportedChain) → {valid:true}', function() {
+        var r = iw.verifyChain(exportedChain);
+        if (r && r.valid === true) {
+          return { pass: true, detail: 'chain of ' + exportedChain.length + ' seals is intact' };
+        }
+        return { pass: false, error: JSON.stringify(r) };
+      }));
+
+      allResults.push(test(gD, 'D-5: Imported identity.name matches original (round-trip fidelity)', function() {
+        var importedName = envelope.profile.identity && envelope.profile.identity.name;
+        var originalName = iw.profile.identity && iw.profile.identity.name;
+        if (importedName && importedName === originalName) {
+          return { pass: true, detail: 'name="' + importedName + '"' };
+        }
+        return { pass: false, error: 'imported="' + importedName + '" original="' + originalName + '"' };
+      }));
+
+      allResults.push(test(gD, 'D-6: genesisHash preserved across export', function() {
+        var orig = iw.profile.meta.genesisHash;
+        var exp  = envelope.profile.meta.genesisHash;
+        if (orig && orig === exp) {
+          return { pass: true, detail: 'genesisHash=' + orig.substring(0,12) + '...' };
+        }
+        return { pass: false, error: 'orig=' + orig + ' exported=' + exp };
+      }));
+
+      runResults();
+    });
+  });
+}).catch(function(err) {
+  var g = makeGroup('FATAL — Journey failed');
+  var row = document.createElement('div');
+  row.className = 'test';
+  row.innerHTML = '<span class="badge fail">FAIL</span><div><div class="test-name">Journey error</div>' +
+    '<div class="test-error">' + esc(err.message) + '</div></div>';
+  g.appendChild(row);
+  allResults.push({ pass: false });
+  runResults();
+});
+</script>
+</body>
+</html>

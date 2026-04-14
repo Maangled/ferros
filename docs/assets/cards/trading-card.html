@@ -633,6 +633,8 @@ function esc(str) {
   window.onFerrosInit = function(config) {
     // Cards are pre-rendered in HTML; runtime handles control mode update
     bindCardEvents();
+    // Contract C8 §4.1: asset MUST emit ready after init completes
+    rt.emit('ready', { control: rt.control() });
   };
 
   window.onFerrosUpdate = function(payload) {

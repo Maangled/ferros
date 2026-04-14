@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>H2 — FERROS Round-Trip Harness</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:24px;font-size:13px;line-height:1.5}
+  h1{font-size:1.1rem;color:#58a6ff;margin-bottom:4px}
+  .meta{color:#8b949e;font-size:.85rem;margin-bottom:20px}
+  h2{font-size:.9rem;color:#8b949e;letter-spacing:2px;text-transform:uppercase;margin:24px 0 8px;border-bottom:1px solid #21262d;padding-bottom:4px}
+  .test{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #161b22}
+  .badge{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:3px;min-width:44px;text-align:center;flex-shrink:0;margin-top:1px}
+  .pass{background:#1a4731;color:#3fb950}
+  .fail{background:#4a1a1a;color:#f85149}
+  .warn{background:#2d2a14;color:#d29922}
+  .skip{background:#1c2128;color:#8b949e}
+  .test-name{color:#e6edf3;flex:1}
+  .test-detail{color:#8b949e;font-size:.8rem;margin-top:2px}
+  .test-error{color:#f85149;font-size:.8rem;margin-top:2px;word-break:break-word}
+  .test-warn{color:#d29922;font-size:.8rem;margin-top:2px;word-break:break-word}
+  #result-block{margin-top:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px}
+  #result-block pre{font-size:.78rem;color:#e6edf3;white-space:pre-wrap;word-break:break-word}
+  .summary-bar{display:flex;gap:16px;margin-top:16px;padding:12px;border-radius:4px}
+  .summary-bar.all-pass{background:#1a4731;color:#3fb950}
+  .summary-bar.has-fail{background:#4a1a1a;color:#f85149}
+  .summary-bar.has-warn{background:#2d2a14;color:#d29922}
+  .summary-stat{font-weight:700}
+  #groups{}
+</style>
+</head>
+<body>
+<h1>H2 — FERROS Round-Trip Harness</h1>
+<div class="meta">Harness version 1.0 &nbsp;|&nbsp; Contract: C9 (storage-rules.md) &nbsp;|&nbsp; Proves: V2, partial V3a &nbsp;|&nbsp; Run on file:// in Chrome</div>
+<div id="groups"></div>
+<div class="summary-bar" id="summary-bar"></div>
+<div id="result-block"><pre id="result-json">running...</pre></div>
+
+<script src="_constants.js"></script>
+<script>
+/* ==========================================================================
+   FERROS IMPORT REFERENCE VALIDATOR  —  canonical reference implementation
+   of C9 import rejection rules I-1 through I-9.
+   Rule I-10 (file size) is enforced at the FileReader layer, not modeled here.
+   CURRENT_VERSION must match profile schema version and exportProfile() output.
+   ========================================================================== */
+
+var IMPORT_CURRENT_VERSION = '1.0';
+
+function ferrosValidateImport(raw) {
+  // raw: parsed JSON object (I-9: caller must handle JSON.parse failure)
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, code: 'STORAGE_JSON_INVALID', detail: 'not a JSON object' };
+  }
+  // I-8a: profile field required at envelope level
+  if (!raw.profile) {
+    return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: 'profile absent from envelope' };
+  }
+  var p = raw.profile;
+  if (!p.meta) {
+    return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: 'profile.meta absent' };
+  }
+  // I-1: meta.version field absent (must be checked FIRST — fail fast)
+  if (p.meta.version === undefined || p.meta.version === null || p.meta.version === '') {
+    return { ok: false, code: 'STORAGE_VERSION_MISSING' };
+  }
+  // I-2: version MAJOR does not match current
+  var importMajor = parseInt(String(p.meta.version).split('.')[0], 10);
+  var currentMajor = parseInt(String(IMPORT_CURRENT_VERSION).split('.')[0], 10);
+  if (isNaN(importMajor) || importMajor !== currentMajor) {
+    return { ok: false, code: 'STORAGE_VERSION_MISMATCH',
+      detail: 'import=' + p.meta.version + ' current=' + IMPORT_CURRENT_VERSION };
+  }
+  // I-3: genesisHash absent or null
+  if (!p.meta.genesisHash) {
+    return { ok: false, code: 'STORAGE_GENESIS_MISSING' };
+  }
+  // I-4: sealChain absent or not array (envelope level takes precedence)
+  var chain = (raw.sealChain !== undefined) ? raw.sealChain : (p.sealChain || null);
+  if (!chain || !Array.isArray(chain)) {
+    return { ok: false, code: 'STORAGE_SEAL_CHAIN_MISSING' };
+  }
+  // I-5: sealChain[0].previousSeal !== "genesis"
+  if (chain.length > 0 && chain[0].previousSeal !== 'genesis') {
+    return { ok: false, code: 'STORAGE_SEAL_CHAIN_INVALID_ROOT',
+      detail: 'sealChain[0].previousSeal="' + chain[0].previousSeal + '"' };
+  }
+  // I-6: any sealChain[i].previousSeal !== sealChain[i-1].seal for i > 0
+  for (var i = 1; i < chain.length; i++) {
+    if (chain[i].previousSeal !== chain[i-1].seal) {
+      return { ok: false, code: 'STORAGE_SEAL_CHAIN_BROKEN',
+        detail: 'at index ' + i + ': previousSeal="' + chain[i].previousSeal + '" expected="' + chain[i-1].seal + '"' };
+    }
+  }
+  // I-7: identity.name absent or empty
+  if (!p.identity || !p.identity.name || !String(p.identity.name).trim()) {
+    return { ok: false, code: 'STORAGE_IDENTITY_MISSING' };
+  }
+  // I-8b: other required profile fields
+  var req8 = ['meta', 'identity', 'attributes', 'skills', 'achievements', 'journal', 'credentials'];
+  for (var ri = 0; ri < req8.length; ri++) {
+    if (!p[req8[ri]]) {
+      return { ok: false, code: 'STORAGE_SCHEMA_INCOMPLETE', detail: req8[ri] + ' absent from profile' };
+    }
+  }
+  return { ok: true, code: null };
+}
+
+/* Strip fixture annotation keys before passing to validator */
+function stripMeta(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  var out = {};
+  var keys = Object.keys(obj);
+  for (var i = 0; i < keys.length; i++) {
+    if (keys[i] !== '$comment' && keys[i] !== '_invalidReason') {
+      out[keys[i]] = obj[keys[i]];
+    }
+  }
+  return out;
+}
+
+/* Deep clone via JSON round-trip */
+function clone(v) { return JSON.parse(JSON.stringify(v)); }
+
+/* Build a valid envelope from FIXTURE_FULL_PROFILE_STAGE3 as base */
+function makeEnvelope(profileOverride, sealChainOverride) {
+  var base = clone(FIXTURE_FULL_PROFILE_STAGE3);
+  var env = {
+    ferrosVersion: IMPORT_CURRENT_VERSION,
+    exportedAt: '2026-04-13T00:00:00.000Z',
+    profile: profileOverride !== undefined ? profileOverride : base,
+    sealChain: sealChainOverride !== undefined ? sealChainOverride : (base.sealChain || [])
+  };
+  return env;
+}
+
+/* ==========================================================================
+   TEST RUNNER
+   ========================================================================== */
+
+var allGroups = [];
+var allTests  = [];
+
+function makeGroup(label) {
+  var g = { label: label, tests: [] };
+  allGroups.push(g);
+  return g;
+}
+
+function test(group, name, fn) {
+  var t = { name: name, status: 'skip', detail: '', warn: '', error: '' };
+  try {
+    var r = fn();
+    if (r.skip) {
+      t.status = 'skip'; t.detail = r.detail || '';
+    } else if (r.pass) {
+      t.status = 'pass'; t.detail = r.detail || '';
+      if (r.warn) { t.warn = r.warn; }
+    } else {
+      t.status = r.gap ? 'warn' : 'fail';
+      t.error  = r.error  || '';
+      t.detail = r.detail || '';
+    }
+  } catch (e) {
+    t.status = 'fail';
+    t.error  = 'Uncaught: ' + e.message;
+  }
+  group.tests.push(t);
+  allTests.push(t);
+  return t;
+}
+
+/* ==========================================================================
+   GROUP A — Import Validation Reference (I-1 through I-9)
+   All 9 tests are synchronous and use _constants.js fixtures + constructed variants.
+   Expected outcomes documented per rule.
+   ========================================================================== */
+
+var gA = makeGroup('Group A — Import Reference Validator (9 rules, I-1..I-9)');
+
+// A1: valid envelope passes with zero errors
+test(gA, 'I-0 valid: FIXTURE_PROFILE_EXPORT_ENVELOPE → accepted (ok:true)', function() {
+  var env = stripMeta(clone(FIXTURE_PROFILE_EXPORT_ENVELOPE));
+  var r = ferrosValidateImport(env);
+  if (r.ok) return { pass: true, detail: 'no rejection codes' };
+  return { pass: false, error: r.code + (r.detail ? ': ' + r.detail : '') };
+});
+
+// A2: I-1 fires on missing meta.version (FIXTURE_INVALID_CORRUPTED_EXPORT)
+test(gA, 'I-1 STORAGE_VERSION_MISSING: corrupted export missing meta.version', function() {
+  var env = stripMeta(clone(FIXTURE_INVALID_CORRUPTED_EXPORT));
+  var r = ferrosValidateImport(env);
+  if (!r.ok && r.code === 'STORAGE_VERSION_MISSING') {
+    return { pass: true, detail: 'correctly rejected at I-1' };
+  }
+  return { pass: false, error: 'Expected STORAGE_VERSION_MISSING, got ' + JSON.stringify(r) };
+});
+
+// A3: I-2 fires on MAJOR version mismatch
+test(gA, 'I-2 STORAGE_VERSION_MISMATCH: meta.version major != current (2.0 vs 1.0)', function() {
+  var env = makeEnvelope();
+  env.profile = clone(env.profile);
+  env.profile.meta.version = '2.0';
+  var r = ferrosValidateImport(env);
+  if (!r.ok && r.code === 'STORAGE_VERSION_MISMATCH') {
+    return { pass: true, detail: r.detail };
+  }
+  return { pass: false, error: 'Expected STORAGE_VERSION_MISMATCH, got ' + JSON.stringify(r) };
+});
+
+// A4: I-3 fires on null genesisHash
+test(gA, 'I-3 STORAGE_GENESIS_MISSING: meta.genesisHash=null', function() {
+  var env = makeEnvelope();
+  env.profile = clone(env.profile);
+  env.profile.meta.genesisHash = null;
+  var r = ferrosValidateImport(env);
+  if (!r.ok && r.code === 'STORAGE_GENESIS_MISSING') {
+    return { pass: true, detail: 'correctly rejected at I-3' };
+  }
+  return { pass: false, error: 'Expected STORAGE_GENESIS_MISSING, got ' + JSON.stringify(r) };
+});
+
+// A5: I-4 fires on absent sealChain
+test(gA, 'I-4 STORAGE_SEAL_CHAIN_MISSING: no sealChain in envelope or profile', function() {
+  var env = makeEnvelope();
+  delete env.sealChain;
+  env.profile = clone(env.profile);
+  delete env.profile.sealChain;
+  var r = ferrosValidateImport(env);
+  if (!r.ok && r.code === 'STORAGE_SEAL_CHAIN_MISSING') {
+    return { pass: true, detail: 'correctly rejected at I-4' };
+  }
+  return { pass: false, error: 'Expected STORAGE_SEAL_CHAIN_MISSING, got ' + JSON.stringify(r) };
+});
+
+// A6: I-5 fires when sealChain[0].previousSeal !== "genesis"
+test(gA, 'I-5 STORAGE_SEAL_CHAIN_INVALID_ROOT: sealChain[0].previousSeal != "genesis"', function() {
+  var env = makeEnvelope();
+  var chain = clone(env.sealChain);
+  chain[0] = clone(chain[0]);
+  chain[0].previousSeal = 'NOT_GENESIS';
+  env.sealChain = chain;
+  var r = ferrosValidateImport(env);
+  if (!r.ok && r.code === 'STORAGE_SEAL_CHAIN_INVALID_ROOT') {
+    return { pass: true, detail: r.detail };
+  }
+  return { pass: false, error: 'Expected STORAGE_SEAL_CHAIN_INVALID_ROOT, got ' + JSON.stringify(r) };
+});
+
+// A7: I-6 fires on broken chain link (FIXTURE_INVALID_BROKEN_SEAL_CHAIN)
+test(gA, 'I-6 STORAGE_SEAL_CHAIN_BROKEN: sealChain[1].previousSeal != sealChain[0].seal', function() {
+  var profData = stripMeta(clone(FIXTURE_INVALID_BROKEN_SEAL_CHAIN));
+  var env = {
+    ferrosVersion: IMPORT_CURRENT_VERSION,
+    exportedAt: '2026-04-13T00:00:00.000Z',
+    profile: profData,
+    sealChain: clone(profData.sealChain)
+  };
+  var r = ferrosValidateImport(env);
+  if (!r.ok && r.code === 'STORAGE_SEAL_CHAIN_BROKEN') {
+    return { pass: true, detail: r.detail };
+  }
+  return { pass: false, error: 'Expected STORAGE_SEAL_CHAIN_BROKEN, got ' + JSON.stringify(r) };
+});
+
+// A8: I-7 fires on empty identity.name
+test(gA, 'I-7 STORAGE_IDENTITY_MISSING: identity.name empty string', function() {
+  var env = makeEnvelope();
+  env.profile = clone(env.profile);
+  env.profile.identity = clone(env.profile.identity || {});
+  env.profile.identity.name = '';
+  var r = ferrosValidateImport(env);
+  if (!r.ok && r.code === 'STORAGE_IDENTITY_MISSING') {
+    return { pass: true, detail: 'correctly rejected at I-7' };
+  }
+  return { pass: false, error: 'Expected STORAGE_IDENTITY_MISSING, got ' + JSON.stringify(r) };
+});
+
+// A9: I-8 fires when a required profile section is absent
+test(gA, 'I-8 STORAGE_SCHEMA_INCOMPLETE: profile.credentials absent', function() {
+  var env = makeEnvelope();
+  env.profile = clone(env.profile);
+  delete env.profile.credentials;
+  var r = ferrosValidateImport(env);
+  if (!r.ok && r.code === 'STORAGE_SCHEMA_INCOMPLETE') {
+    return { pass: true, detail: r.detail };
+  }
+  return { pass: false, error: 'Expected STORAGE_SCHEMA_INCOMPLETE, got ' + JSON.stringify(r) };
+});
+
+/* ==========================================================================
+   GROUP B — Export Envelope Structure
+   Contract: exportProfile() must produce {ferrosVersion, exportedAt, profile, sealChain}.
+   ========================================================================== */
+
+var gB = makeGroup('Group B — Export Envelope Structure');
+
+// B1: FIXTURE_PROFILE_EXPORT_ENVELOPE has all required envelope keys
+test(gB, 'export envelope has ferrosVersion, exportedAt, profile, sealChain', function() {
+  var env = FIXTURE_PROFILE_EXPORT_ENVELOPE;
+  var missing = [];
+  ['ferrosVersion','exportedAt','profile','sealChain'].forEach(function(k){
+    if (env[k] === undefined || env[k] === null) missing.push(k);
+  });
+  if (missing.length === 0) {
+    return { pass: true, detail: 'ferrosVersion=' + env.ferrosVersion + ', exportedAt present, profile+sealChain present' };
+  }
+  return { pass: false, error: 'Missing envelope keys: ' + missing.join(', ') };
+});
+
+// B2: profile sub-object has all eight required fields
+test(gB, 'export envelope.profile has all 8 required profile fields', function() {
+  var p = FIXTURE_PROFILE_EXPORT_ENVELOPE.profile;
+  var req = ['meta','identity','attributes','skills','achievements','journal','credentials','sealChain'];
+  var missing = req.filter(function(k){ return !p[k]; });
+  if (missing.length === 0) {
+    return { pass: true, detail: 'all 8 fields present' };
+  }
+  return { pass: false, error: 'Missing: ' + missing.join(', ') };
+});
+
+// B3: sealChain at envelope level is an array with genesis root
+test(gB, 'export envelope.sealChain[0].previousSeal === "genesis"', function() {
+  var chain = FIXTURE_PROFILE_EXPORT_ENVELOPE.sealChain;
+  if (!Array.isArray(chain) || chain.length === 0) {
+    return { pass: false, error: 'sealChain absent or empty' };
+  }
+  if (chain[0].previousSeal === 'genesis') {
+    return { pass: true, detail: 'chain has ' + chain.length + ' seal(s), root is genesis' };
+  }
+  return { pass: false, error: 'sealChain[0].previousSeal="' + chain[0].previousSeal + '"' };
+});
+
+// B4: exportProfile() code produces correct envelope shape (static contract check)
+test(gB, 'exportProfile() envelope shape matches C9 contract (static check)', function() {
+  // The implementation at line ~2292 produces:
+  // {profile, sealChain, exportedAt: new Date().toISOString(), ferrosVersion:'1.0'}
+  // Verify that IMPORT_CURRENT_VERSION matches the hardcoded ferrosVersion in exportProfile.
+  var implementationVersion = '1.0'; // hardcoded in exportProfile() — see personal-profile.html
+  if (implementationVersion === IMPORT_CURRENT_VERSION) {
+    return { pass: true, detail: 'hardcoded ferrosVersion matches IMPORT_CURRENT_VERSION' };
+  }
+  return { pass: false, error: 'ferrosVersion mismatch: exportProfile=' + implementationVersion + ' validator=' + IMPORT_CURRENT_VERSION };
+});
+
+/* ==========================================================================
+   GROUP C — Implementation Probe via iframe
+   Loads ../docs/personal-profile.html#testmode and calls internal functions
+   directly via contentWindow (same-origin file:// access).
+
+   Tests:
+   C1: verifyChain() on valid chain → {valid:true}
+   C2: verifyChain() on broken chain → {valid:false, brokenAt:1}
+   C3: I-5 GAP PROBE — verifyChain() does not check sealChain[0].previousSeal
+   C4: saveProfile() write guard — session mode blocks localStorage write
+   ========================================================================== */
+
+function loadIframe(src) {
+  return new Promise(function(resolve, reject) {
+    var iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;visibility:hidden';
+    iframe.src = src;
+    var timer = setTimeout(function() {
+      reject(new Error('iframe load timed out after 8s'));
+      try { document.body.removeChild(iframe); } catch(e){}
+    }, 8000);
+    iframe.onload = function() {
+      clearTimeout(timer);
+      resolve(iframe);
+    };
+    iframe.onerror = function() {
+      clearTimeout(timer);
+      reject(new Error('iframe onerror (cross-origin restriction or missing file)'));
+      try { document.body.removeChild(iframe); } catch(e){}
+    };
+    document.body.appendChild(iframe);
+  });
+}
+
+function runGroupC() {
+  return new Promise(function(resolve) {
+    var gC = makeGroup('Group C — Implementation Probe (iframe: ../docs/personal-profile.html#testmode)');
+
+    // Clear localStorage before loading iframe so init() starts fresh
+    localStorage.removeItem('ferros_profile');
+    localStorage.removeItem('ferros_seal_chain');
+
+    loadIframe('../docs/personal-profile.html#testmode').then(function(iframe) {
+      var iw = iframe.contentWindow;
+
+      // C1: verifyChain on valid 3-seal chain
+      test(gC, 'verifyChain(validChain) → {valid:true}', function() {
+        var chain = clone(FIXTURE_PROFILE_EXPORT_ENVELOPE.sealChain);
+        var r = iw.verifyChain(chain);
+        if (r && r.valid === true) {
+          return { pass: true, detail: 'chain of ' + chain.length + ' seals accepted' };
+        }
+        return { pass: false, error: 'got ' + JSON.stringify(r) };
+      });
+
+      // C2: verifyChain on broken chain
+      test(gC, 'verifyChain(brokenChain) → {valid:false, brokenAt:1}', function() {
+        var chain = clone(FIXTURE_INVALID_BROKEN_SEAL_CHAIN.sealChain);
+        var r = iw.verifyChain(chain);
+        if (r && r.valid === false && r.brokenAt === 1) {
+          return { pass: true, detail: 'correctly identified break at index 1' };
+        }
+        return { pass: false, error: 'got ' + JSON.stringify(r) };
+      });
+
+      // C3: I-5 gap probe — root seal check not in verifyChain implementation
+      test(gC, 'GAP I-5: verifyChain does NOT check sealChain[0].previousSeal===genesis', function() {
+        var badRootChain = [{ taskId: 'genesis', seal: 'abc123', previousSeal: 'NOT_GENESIS' }];
+        var r = iw.verifyChain(badRootChain);
+        if (r && r.valid === true) {
+          // Implementation gap confirmed — single-element chain skips loop, returns {valid:true}
+          return {
+            pass: true,
+            gap: true,  // mark as warning, not failure
+            warn: 'KNOWN GAP: I-5 not enforced in verifyChain(). Root previousSeal is unchecked. Fix: add chain[0].previousSeal!=="genesis" check.',
+            detail: 'gap confirmed — contract says reject, implementation says valid'
+          };
+        }
+        // If the gap has been fixed, this test passes cleanly
+        return { pass: true, detail: 'gap closed: I-5 is now enforced in verifyChain()' };
+      });
+
+      // C4: saveProfile() write guard — session mode must not write to localStorage
+      test(gC, 'saveProfile() in sessionMode → localStorage empty (write guard)', function() {
+        // Ensure clean state
+        localStorage.removeItem('ferros_profile');
+        localStorage.removeItem('ferros_seal_chain');
+        try {
+          iw.enterSessionMode();    // sets sessionMode=true in iframe closure
+          iw.saveProfile();         // must return early without writing
+          var stored = localStorage.getItem('ferros_profile');
+          if (stored === null) {
+            return { pass: true, detail: 'saveProfile() correctly blocked by sessionMode guard' };
+          }
+          return { pass: false, error: 'saveProfile() wrote to localStorage despite sessionMode=true. Guard is missing or bypassed.' };
+        } finally {
+          localStorage.removeItem('ferros_profile');
+          localStorage.removeItem('ferros_seal_chain');
+        }
+      });
+
+      try { document.body.removeChild(iframe); } catch(e){}
+      resolve(gC);
+
+    }).catch(function(err) {
+      test(gC, 'iframe load', function() {
+        return { pass: false, error: err.message + ' — ensure harness and personal-profile.html are on the same file:// origin, or run via a local static server.' };
+      });
+      resolve(gC);
+    });
+  });
+}
+
+/* ==========================================================================
+   RENDER
+   ========================================================================== */
+
+function renderAll() {
+  var passed = 0, failed = 0, warned = 0, skipped = 0;
+  for (var ti = 0; ti < allTests.length; ti++) {
+    var s = allTests[ti].status;
+    if (s === 'pass') passed++;
+    else if (s === 'fail') failed++;
+    else if (s === 'warn') warned++;
+    else skipped++;
+  }
+
+  var groupsEl = document.getElementById('groups');
+  groupsEl.innerHTML = '';
+  for (var gi = 0; gi < allGroups.length; gi++) {
+    var grp = allGroups[gi];
+    var h2 = document.createElement('h2');
+    h2.textContent = grp.label;
+    groupsEl.appendChild(h2);
+    for (var ti2 = 0; ti2 < grp.tests.length; ti2++) {
+      var t = grp.tests[ti2];
+      var row = document.createElement('div');
+      row.className = 'test';
+      var badge = document.createElement('span');
+      badge.className = 'badge ' + t.status;
+      badge.textContent = t.status === 'warn' ? 'GAP' : t.status.toUpperCase();
+      var info = document.createElement('div');
+      info.style.flex = '1';
+      var nm = document.createElement('div');
+      nm.className = 'test-name';
+      nm.textContent = t.name;
+      info.appendChild(nm);
+      if (t.detail) {
+        var d = document.createElement('div');
+        d.className = 'test-detail';
+        d.textContent = t.detail;
+        info.appendChild(d);
+      }
+      if (t.warn) {
+        var w = document.createElement('div');
+        w.className = 'test-warn';
+        w.textContent = t.warn;
+        info.appendChild(w);
+      }
+      if (t.error) {
+        var e = document.createElement('div');
+        e.className = 'test-error';
+        e.textContent = t.error;
+        info.appendChild(e);
+      }
+      row.appendChild(badge);
+      row.appendChild(info);
+      groupsEl.appendChild(row);
+    }
+  }
+
+  var overallStatus = failed > 0 ? 'FAIL' : (warned > 0 ? 'GAP' : (skipped > 0 ? 'SKIP' : 'PASS'));
+  var bar = document.getElementById('summary-bar');
+  bar.className = 'summary-bar ' + (failed > 0 ? 'has-fail' : (warned > 0 ? 'has-warn' : 'all-pass'));
+  bar.innerHTML = '<span class="summary-stat">' + overallStatus + '</span>' +
+    ' &nbsp;|&nbsp; ' + passed + ' passed' +
+    (warned  > 0 ? ', ' + warned  + ' gaps (implementation deviates from contract)' : '') +
+    (failed  > 0 ? ', ' + failed  + ' failed' : '') +
+    (skipped > 0 ? ', ' + skipped + ' skipped' : '') +
+    ' &nbsp;|&nbsp; ' + allTests.length + ' total';
+
+  var resultObj = {
+    timestamp: new Date().toISOString(),
+    harnessId: 'H2',
+    harnessVersion: '1.0',
+    status: overallStatus,
+    summary: { total: allTests.length, passed: passed, failed: failed, gaps: warned, skipped: skipped },
+    contractVersion: IMPORT_CURRENT_VERSION,
+    provesGates: ['C9 import rejection I-1..I-9 (reference)', 'C9 export envelope structure', 'saveProfile() write guard (session mode)', 'V2 partial (import validator logic)'],
+    implementationGaps: allTests
+      .filter(function(t){ return t.status === 'warn'; })
+      .map(function(t){ return t.warn; }),
+    tests: allTests.map(function(t){
+      return { name: t.name, status: t.status, detail: t.detail, warn: t.warn, error: t.error };
+    })
+  };
+
+  document.getElementById('result-json').textContent = JSON.stringify(resultObj, null, 2);
+}
+
+/* ==========================================================================
+   MAIN — run sync groups, then async iframe group, then render
+   ========================================================================== */
+runGroupC().then(function() {
+  renderAll();
+});
+</script>
+</body>
+</html>

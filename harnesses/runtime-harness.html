@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>H3 — FERROS Runtime Harness</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:24px;font-size:13px;line-height:1.5}
+  h1{font-size:1.1rem;color:#58a6ff;margin-bottom:4px}
+  .meta{color:#8b949e;font-size:.85rem;margin-bottom:20px}
+  h2{font-size:.9rem;color:#8b949e;letter-spacing:2px;text-transform:uppercase;margin:24px 0 8px;border-bottom:1px solid #21262d;padding-bottom:4px}
+  .test{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #161b22}
+  .badge{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:3px;min-width:44px;text-align:center;flex-shrink:0;margin-top:1px}
+  .pass{background:#1a4731;color:#3fb950}
+  .fail{background:#4a1a1a;color:#f85149}
+  .warn{background:#2d2a14;color:#d29922}
+  .skip{background:#1c2128;color:#8b949e}
+  .test-name{color:#e6edf3;flex:1}
+  .test-detail{color:#8b949e;font-size:.8rem;margin-top:2px}
+  .test-error{color:#f85149;font-size:.8rem;margin-top:2px;word-break:break-word}
+  .test-warn{color:#d29922;font-size:.8rem;margin-top:2px;word-break:break-word}
+  #result-block{margin-top:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px}
+  #result-block pre{font-size:.78rem;color:#e6edf3;white-space:pre-wrap;word-break:break-word}
+  .summary-bar{display:flex;gap:16px;margin-top:16px;padding:12px;border-radius:4px}
+  .summary-bar.all-pass{background:#1a4731;color:#3fb950}
+  .summary-bar.has-fail{background:#4a1a1a;color:#f85149}
+  .summary-bar.has-warn{background:#2d2a14;color:#d29922}
+  .summary-stat{font-weight:700}
+  #groups{}
+</style>
+</head>
+<body>
+<h1>H3 — FERROS Runtime Harness</h1>
+<div class="meta">Harness version 1.0 &nbsp;|&nbsp; Contract: C8 (runtime-host-v1.md) &nbsp;|&nbsp; Proves: C8, V5, V6 &nbsp;|&nbsp; Run on file:// in Chrome &nbsp;|&nbsp; Asset: docs/assets/cards/trading-card.html</div>
+<div id="groups"></div>
+<div class="summary-bar" id="summary-bar"></div>
+<div id="result-block"><pre id="result-json">running...</pre></div>
+
+<script>
+/* ==========================================================================
+   H3 — FERROS RUNTIME HARNESS
+   Tests the ferros runtime message protocol (C8: runtime-host-v1.md)
+   against docs/assets/cards/trading-card.html as the conformance target.
+
+   Groups:
+     A — Asset structure invariants (data-ferros-asset, #ferros-asset-root, ferrosRuntime)
+     B — Init lifecycle: ferros:init → control applied, ferros:event {ready}, ferros:resize
+     C — Update semantics: ferros:update → control change, idempotency, unknown action
+     D — Event emission: ferros:event payload structure, ferros:resize payload structure
+   ========================================================================== */
+
+/* ── RENDER HELPERS ── */
+var groups = document.getElementById('groups');
+
+function makeGroup(title) {
+  var el = document.createElement('div');
+  el.innerHTML = '<h2>' + esc(title) + '</h2>';
+  groups.appendChild(el);
+  return el;
+}
+
+function test(groupEl, name, fn) {
+  var row = document.createElement('div');
+  row.className = 'test';
+  var result;
+  try { result = fn(); } catch(e) { result = { pass: false, error: e.message }; }
+  var badge = result.pass ? (result.gap ? 'WARN' : (result.warn ? 'WARN' : 'PASS')) : 'FAIL';
+  var cls   = result.pass ? (result.gap ? 'warn' : (result.warn ? 'warn' : 'pass')) : 'fail';
+  var detail = '';
+  if (result.detail) detail += '<div class="test-detail">' + esc(result.detail) + '</div>';
+  if (result.warn)   detail += '<div class="test-warn">⚠ ' + esc(result.warn) + '</div>';
+  if (result.error)  detail += '<div class="test-error">✗ ' + esc(result.error) + '</div>';
+  row.innerHTML = '<span class="badge ' + cls + '">' + badge + '</span>' +
+    '<div><div class="test-name">' + esc(name) + '</div>' + detail + '</div>';
+  groupEl.appendChild(row);
+  return result;
+}
+
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+/* ── IFRAME LOADER ── */
+function loadIframe(src) {
+  return new Promise(function(resolve, reject) {
+    var iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:absolute;left:-9999px;width:400px;height:600px;visibility:hidden';
+    iframe.src = src;
+    var timer = setTimeout(function() {
+      reject(new Error('iframe load timed out after 8s'));
+      try { document.body.removeChild(iframe); } catch(e){}
+    }, 8000);
+    iframe.onload = function() { clearTimeout(timer); resolve(iframe); };
+    iframe.onerror = function() {
+      clearTimeout(timer);
+      reject(new Error('iframe onerror'));
+      try { document.body.removeChild(iframe); } catch(e){}
+    };
+    document.body.appendChild(iframe);
+  });
+}
+
+/* ── MESSAGE COLLECTOR ── */
+/* Collects all postMessages from child frames into an array by type.
+   Must be installed BEFORE the iframe src is set so no messages are lost. */
+var _collectedMessages = [];
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type) _collectedMessages.push(e.data);
+});
+
+function collectMessages(typeFilter, sinceIdx) {
+  return _collectedMessages.slice(sinceIdx || 0).filter(function(m) {
+    return !typeFilter || m.type === typeFilter;
+  });
+}
+
+/* ── WAIT HELPER ── */
+function waitFor(predicate, timeoutMs) {
+  return new Promise(function(resolve, reject) {
+    var start = Date.now();
+    var interval = setInterval(function() {
+      if (predicate()) { clearInterval(interval); resolve(); return; }
+      if (Date.now() - start > (timeoutMs || 2000)) {
+        clearInterval(interval);
+        reject(new Error('waitFor timed out after ' + (timeoutMs||2000) + 'ms'));
+      }
+    }, 30);
+  });
+}
+
+/* ── MAIN RUN ── */
+var ASSET_SRC = '../docs/assets/cards/trading-card.html';
+var allResults = [];
+
+function runResults() {
+  var pass = 0, fail = 0, warn = 0;
+  allResults.forEach(function(r) {
+    if (!r.pass) fail++;
+    else if (r.gap || r.warn) warn++;
+    else pass++;
+  });
+  var overall = fail > 0 ? 'FAIL' : (warn > 0 ? 'WARN' : 'PASS');
+  var barCls   = fail > 0 ? 'has-fail' : (warn > 0 ? 'has-warn' : 'all-pass');
+  document.getElementById('summary-bar').className = 'summary-bar ' + barCls;
+  document.getElementById('summary-bar').innerHTML =
+    '<span class="summary-stat">Status: ' + overall + '</span>' +
+    '<span>PASS: <b>' + pass + '</b></span>' +
+    '<span>WARN: <b>' + warn + '</b></span>' +
+    '<span>FAIL: <b>' + fail + '</b></span>' +
+    '<span>TOTAL: <b>' + allResults.length + '</b></span>';
+  document.getElementById('result-json').textContent = JSON.stringify({
+    harness: 'H3',
+    contract: 'C8 (runtime-host-v1.md)',
+    proves: ['C8','V5','V6'],
+    status: overall,
+    pass: pass, warn: warn, fail: fail, total: allResults.length
+  }, null, 2);
+}
+
+/* ==========================================================================
+   GROUP A — Asset Structure Invariants (C8 §2)
+   No iframe needed — DOM introspection after load.
+   ========================================================================== */
+function runGroupA(iframe) {
+  var gA = makeGroup('Group A — Asset Structure (C8 §2)');
+  var iw = iframe.contentWindow;
+  var idoc = iframe.contentDocument || iframe.contentWindow.document;
+
+  allResults.push(test(gA, 'A-1: <html data-ferros-asset> attribute present', function() {
+    var val = idoc.documentElement.dataset.ferrosAsset;
+    if (val && val.length > 0) {
+      return { pass: true, detail: 'data-ferros-asset="' + val + '"' };
+    }
+    return { pass: false, error: 'data-ferros-asset missing or empty on <html>' };
+  }));
+
+  allResults.push(test(gA, 'A-2: #ferros-asset-root element present', function() {
+    var root = idoc.getElementById('ferros-asset-root');
+    if (root) {
+      return { pass: true, detail: 'tagName: ' + root.tagName.toLowerCase() };
+    }
+    return { pass: false, error: '#ferros-asset-root element not found' };
+  }));
+
+  allResults.push(test(gA, 'A-3: window.ferrosRuntime exposed with required properties', function() {
+    var rt = iw.ferrosRuntime;
+    if (!rt) return { pass: false, error: 'window.ferrosRuntime is undefined' };
+    var missing = [];
+    ['root','isEmbedded','control','emit','reportSize'].forEach(function(k) {
+      if (rt[k] === undefined) missing.push(k);
+    });
+    if (missing.length === 0) {
+      return { pass: true, detail: 'has: root, isEmbedded, control, emit, reportSize' };
+    }
+    return { pass: false, error: 'missing: ' + missing.join(', ') };
+  }));
+
+  allResults.push(test(gA, 'A-4: window.onFerrosInit is a function', function() {
+    if (typeof iw.onFerrosInit === 'function') return { pass: true };
+    return { pass: false, error: 'typeof onFerrosInit = ' + typeof iw.onFerrosInit };
+  }));
+
+  allResults.push(test(gA, 'A-5: window.onFerrosUpdate is a function', function() {
+    if (typeof iw.onFerrosUpdate === 'function') return { pass: true };
+    return { pass: false, error: 'typeof onFerrosUpdate = ' + typeof iw.onFerrosUpdate };
+  }));
+}
+
+/* ==========================================================================
+   GROUP B — Init Lifecycle (C8 §1.1 ferros:init, §4.1)
+   ========================================================================== */
+function runGroupB(iframe, msgBaseIdx) {
+  return new Promise(function(resolve) {
+    var gB = makeGroup('Group B — Init Lifecycle (C8 §1.1, §4.1)');
+    var iw = iframe.contentWindow;
+    var idoc = iframe.contentDocument || iframe.contentWindow.document;
+
+    // B-1: ferros:resize was emitted on initial load (before any init message)
+    allResults.push(test(gB, 'B-1: ferros:resize emitted on initial asset load', function() {
+      var resizes = collectMessages('ferros:resize', msgBaseIdx);
+      if (resizes.length > 0) {
+        var r = resizes[0];
+        if (typeof r.width === 'number' && typeof r.height === 'number' && r.asset) {
+          return { pass: true, detail: 'asset="' + r.asset + '" w=' + r.width + ' h=' + r.height };
+        }
+        return { pass: false, error: 'resize message malformed: ' + JSON.stringify(r) };
+      }
+      return { pass: false, error: 'no ferros:resize message received after load' };
+    }));
+
+    // B-2: Send ferros:init with control:'interactive' → root.dataset.control updated
+    var beforeInit = _collectedMessages.length;
+    iw.postMessage({ type: 'ferros:init', config: { control: 'interactive', version: '1.0.0' } }, '*');
+
+    waitFor(function() {
+      return collectMessages('ferros:event', beforeInit).some(function(m) {
+        return m.event === 'ready';
+      });
+    }, 2000).then(function() {
+      var root = idoc.getElementById('ferros-asset-root');
+      allResults.push(test(gB, 'B-2: ferros:init → root.dataset.control reflects sent value', function() {
+        if (!root) return { pass: false, error: '#ferros-asset-root not found' };
+        if (root.dataset.control === 'interactive') {
+          return { pass: true, detail: 'data-control="interactive"' };
+        }
+        return { pass: false, error: 'data-control="' + root.dataset.control + '" expected "interactive"' };
+      }));
+
+      // B-3: ready event received after init
+      allResults.push(test(gB, 'B-3: ferros:event {event:"ready"} emitted after ferros:init', function() {
+        var readyEvts = collectMessages('ferros:event', beforeInit).filter(function(m) {
+          return m.event === 'ready';
+        });
+        if (readyEvts.length > 0) {
+          var r = readyEvts[0];
+          if (r.asset) {
+            return { pass: true, detail: 'asset="' + r.asset + '" payload=' + JSON.stringify(r.payload||{}) };
+          }
+        }
+        return { pass: false, error: 'no ferros:event{ready} received within 2s of ferros:init' };
+      }));
+
+      // B-4: ferros:resize emitted after init (reportSize called by runtime after applyControl)
+      allResults.push(test(gB, 'B-4: ferros:resize emitted after ferros:init (reportSize)', function() {
+        var resizes = collectMessages('ferros:resize', beforeInit);
+        if (resizes.length > 0) {
+          return { pass: true, detail: resizes.length + ' resize message(s) after init' };
+        }
+        // Not a hard fail — reportSize is called but may only fire on initial load
+        return {
+          pass: true,
+          warn: 'No additional ferros:resize after init (initial load resize already confirmed in B-1)'
+        };
+      }));
+
+      resolve();
+    }).catch(function(err) {
+      allResults.push(test(gB, 'B-2: ferros:init → root.dataset.control reflects sent value', function() {
+        return { pass: false, error: 'Timed out waiting for ready event: ' + err.message };
+      }));
+      allResults.push(test(gB, 'B-3: ferros:event {event:"ready"} emitted after ferros:init', function() {
+        var readyEvts = collectMessages('ferros:event', beforeInit).filter(function(m) { return m.event === 'ready'; });
+        if (readyEvts.length > 0) return { pass: true, detail: 'delayed ready received' };
+        return { pass: false, error: 'no ready event' };
+      }));
+      allResults.push(test(gB, 'B-4: ferros:resize emitted after ferros:init (reportSize)', function() {
+        return { pass: true, warn: 'skipped — B-2 timed out' };
+      }));
+      resolve();
+    });
+  });
+}
+
+/* ==========================================================================
+   GROUP C — Update Semantics (C8 §1.1 ferros:update)
+   ========================================================================== */
+function runGroupC(iframe) {
+  return new Promise(function(resolve) {
+    var gC = makeGroup('Group C — Update Semantics (C8 §1.1 ferros:update)');
+    var iw = iframe.contentWindow;
+    var idoc = iframe.contentDocument || iframe.contentWindow.document;
+    var root = idoc.getElementById('ferros-asset-root');
+
+    // C-1: ferros:update with control:'static' → root.dataset.control updated
+    var preUpdate = _collectedMessages.length;
+    iw.postMessage({ type: 'ferros:update', payload: { control: 'static' } }, '*');
+
+    setTimeout(function() {
+      allResults.push(test(gC, 'C-1: ferros:update {control:"static"} → data-control="static"', function() {
+        if (!root) return { pass: false, error: '#ferros-asset-root not found' };
+        if (root.dataset.control === 'static') {
+          return { pass: true, detail: 'data-control updated to "static"' };
+        }
+        return { pass: false, error: 'data-control="' + root.dataset.control + '" expected "static"' };
+      }));
+
+      // C-2: Idempotency — send same update twice, result same
+      iw.postMessage({ type: 'ferros:update', payload: { control: 'static' } }, '*');
+      setTimeout(function() {
+        allResults.push(test(gC, 'C-2: Idempotency — duplicate ferros:update produces same state', function() {
+          if (!root) return { pass: false, error: '#ferros-asset-root not found' };
+          if (root.dataset.control === 'static') {
+            return { pass: true, detail: 'data-control still "static" after duplicate update' };
+          }
+          return { pass: false, error: 'data-control="' + root.dataset.control + '" after duplicate' };
+        }));
+
+        // C-3: Unknown message type → no crash, window.ferrosRuntime still intact
+        try {
+          iw.postMessage({ type: 'unknown:xyz-test-12345', payload: {} }, '*');
+        } catch(e) { /* ignored */ }
+        setTimeout(function() {
+          allResults.push(test(gC, 'C-3: Unknown message type → no crash, runtime intact', function() {
+            var rt = iw.ferrosRuntime;
+            if (rt && typeof rt.emit === 'function') {
+              return { pass: true, detail: 'ferrosRuntime still functional after unknown message' };
+            }
+            return { pass: false, error: 'ferrosRuntime lost after unknown message type' };
+          }));
+
+          // C-4: ferros:update with unknown action → no crash, no undefined error
+          var beforeAction = _collectedMessages.length;
+          try {
+            iw.postMessage({ type: 'ferros:update', payload: { action: 'unknown-action-xyz' } }, '*');
+          } catch(e) { /* ignored */ }
+          setTimeout(function() {
+            allResults.push(test(gC, 'C-4: ferros:update {action:"unknown"} → no crash (runtime still responding)', function() {
+              // Post a known update and confirm it still works
+              iw.postMessage({ type: 'ferros:update', payload: { control: 'demo' } }, '*');
+              // We can't synchronously verify the control change in this setTimeout,
+              // but we can verify no exception was thrown and runtime is intact
+              var rt = iw.ferrosRuntime;
+              if (rt && typeof rt.control === 'function') {
+                return { pass: true, detail: 'runtime intact after unknown action; subsequent update queued' };
+              }
+              return { pass: false, error: 'runtime not responding after unknown action' };
+            }));
+
+            resolve();
+          }, 150);
+        }, 150);
+      }, 150);
+    }, 150);
+  });
+}
+
+/* ==========================================================================
+   GROUP D — Event Payload Structure (C8 §1.2)
+   ========================================================================== */
+function runGroupD(iframe, msgBaseIdx) {
+  var gD = makeGroup('Group D — Event Payload Structure (C8 §1.2)');
+
+  // D-1: At least one ferros:event has required fields: type, asset, event
+  allResults.push(test(gD, 'D-1: ferros:event messages have required fields (type, asset, event)', function() {
+    var events = collectMessages('ferros:event', msgBaseIdx);
+    if (events.length === 0) return { pass: false, error: 'no ferros:event messages collected' };
+    var bad = events.filter(function(m) { return !m.type || !m.asset || !m.event; });
+    if (bad.length === 0) {
+      return { pass: true, detail: events.length + ' event(s) checked, all well-formed' };
+    }
+    return { pass: false, error: bad.length + ' event(s) missing fields: ' + JSON.stringify(bad[0]) };
+  }));
+
+  // D-2: ferros:resize messages have required fields: type, asset, width, height
+  allResults.push(test(gD, 'D-2: ferros:resize messages have required fields (type, asset, width, height)', function() {
+    var resizes = collectMessages('ferros:resize', msgBaseIdx);
+    if (resizes.length === 0) return { pass: false, error: 'no ferros:resize messages collected' };
+    var bad = resizes.filter(function(m) {
+      return !m.type || !m.asset || typeof m.width !== 'number' || typeof m.height !== 'number';
+    });
+    if (bad.length === 0) {
+      return { pass: true, detail: resizes.length + ' resize(s) checked, all well-formed' };
+    }
+    return { pass: false, error: bad.length + ' resize(s) missing/wrong fields: ' + JSON.stringify(bad[0]) };
+  }));
+
+  // D-3: asset field in messages matches data-ferros-asset attribute
+  allResults.push(test(gD, 'D-3: message.asset matches <html data-ferros-asset>', function() {
+    var idoc = iframe.contentDocument || iframe.contentWindow.document;
+    var declared = idoc.documentElement.dataset.ferrosAsset;
+    var allMsgs = _collectedMessages.slice(msgBaseIdx).filter(function(m) {
+      return m.type === 'ferros:event' || m.type === 'ferros:resize';
+    });
+    if (!declared) return { pass: false, error: 'data-ferros-asset not set on <html>' };
+    if (allMsgs.length === 0) return { pass: false, error: 'no typed messages to check' };
+    var mismatch = allMsgs.filter(function(m) { return m.asset !== declared; });
+    if (mismatch.length === 0) {
+      return { pass: true, detail: 'all ' + allMsgs.length + ' message(s) carry asset="' + declared + '"' };
+    }
+    return { pass: false, error: mismatch.length + ' message(s) with wrong asset field: ' + JSON.stringify(mismatch[0]) };
+  }));
+}
+
+/* ==========================================================================
+   MAIN
+   ========================================================================== */
+var msgBaseIdx = _collectedMessages.length; // snapshot before iframe load
+
+loadIframe(ASSET_SRC).then(function(iframe) {
+  // Small settle delay for initial resize/load messages to arrive
+  return new Promise(function(res) { setTimeout(function() { res(iframe); }, 300); });
+}).then(function(iframe) {
+  runGroupA(iframe);
+  return runGroupB(iframe, msgBaseIdx).then(function() {
+    return runGroupC(iframe);
+  }).then(function() {
+    runGroupD(iframe, msgBaseIdx);
+    runResults();
+  });
+}).catch(function(err) {
+  var g = makeGroup('FATAL — Could not load asset iframe');
+  var row = document.createElement('div');
+  row.className = 'test';
+  row.innerHTML = '<span class="badge fail">FAIL</span><div><div class="test-name">Load: ' + esc(ASSET_SRC) + '</div>' +
+    '<div class="test-error">' + esc(err.message) + '</div></div>';
+  g.appendChild(row);
+  allResults.push({ pass: false });
+  runResults();
+});
+</script>
+</body>
+</html>

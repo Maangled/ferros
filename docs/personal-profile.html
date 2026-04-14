@@ -1585,6 +1585,8 @@
   </div>
 
   <script>
+    // Harness test-mode flag: load with URL hash containing "testmode" to skip boot animation.
+    if(location.hash.indexOf('testmode')!==-1){window.FERROS_TEST_MODE=true;}
     const AVATARS = ['wizard','shield','sword','star','fire','lion'];
     const AVATAR_EMOJI = {'wizard':'\u{1F9D9}','shield':'\u{1F6E1}\uFE0F','sword':'\u2694\uFE0F','star':'\u{1F31F}','fire':'\u{1F525}','lion':'\u{1F981}'};
     const AVATAR_HTML  = {'wizard':'&#129497;','shield':'&#128737;','sword':'&#9876;','star':'&#127775;','fire':'&#128293;','lion':'&#129409;'};
@@ -1677,6 +1679,7 @@
       return computeHash(payload);
     }
     async function addSeal(taskId,taskData){
+      if(recoveryMode||aliasMode)return;
       const prev=sealChain.length>0?sealChain[sealChain.length-1].seal:null;
       const seal=await sealTask(taskId,taskData,prev);
       sealChain.push({taskId,seal,previousSeal:prev||'genesis',timestamp:new Date().toISOString(),data:taskData});
@@ -1687,6 +1690,7 @@
     }
     function verifyChain(chain){
       if(!chain||chain.length===0)return{valid:true};
+      if(chain[0].previousSeal!=='genesis')return{valid:false,brokenAt:0};
       for(let i=1;i<chain.length;i++){if(chain[i].previousSeal!==chain[i-1].seal)return{valid:false,brokenAt:i}}
       return{valid:true};
     }
