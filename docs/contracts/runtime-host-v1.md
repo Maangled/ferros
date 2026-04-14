@@ -219,13 +219,28 @@ For v1: all assets assume `demo`, `interactive`, and `static` control modes are 
 
 ---
 
-## 8. Test Criteria
+## 9. Origin Validation
 
-The contract is validated when:
+FERROS must operate on both `file://` and `http(s)://` origins.
 
-1. An asset loaded in an iframe receives `ferros:init` and emits `ferros:event { ready }`
-2. A `ferros:update` changing state produces a matching `ferros:event { state-changed }`
-3. Sending the same `ferros:update` twice produces no additional state change events
-4. An unrecognized action produces `ferros:event { unsupported-action }` and no crash
-5. `ferros:resize` is emitted on init with correct dimensions
-6. The asset works on `file://` protocol with no exceptions
+| Protocol | `window.location.origin` | Validation Rule |
+|---|---|---|
+| `file://` | `"null"` | Always allowed — no origin restriction possible. `crypto.subtle` may be unavailable; djb2 fallback activates. |
+| `http://localhost` | `"http://localhost:PORT"` | Allowed for development. |
+| `https://` | Full origin string | Host must maintain an origin allowlist. Only allowlisted origins may embed assets. |
+
+### Migration: localhost → deployed domain
+
+When deploying from `localhost` to a production domain:
+
+1. Add the production origin to the host's allowlist.
+2. Verify `crypto.subtle` is available (it is on all modern `https://` contexts).
+3. Seal chain entries created on `file://` (djb2) remain valid — `hashAlgorithm` field distinguishes them during verification.
+
+### Test Criteria (Group D)
+
+| # | Test | Expected |
+|---|---|---|
+| D-1 | Asset loaded on `file://` — no origin check errors | Pass |
+| D-2 | Asset loaded on `http://localhost` — `ferros:init` succeeds | Pass |
+| D-3 | `window.location.origin === "null"` detected on `file://` protocol | Confirmed |

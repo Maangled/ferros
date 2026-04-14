@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ferros.local/schemas/profile.schema.json",
   "title": "FERROS Profile",
-  "description": "Canonical schema for a FERROS user profile stored in localStorage under ferros_profile. Version 2.",
+  "description": "Canonical schema for a FERROS user profile stored in localStorage under ferros_profile. Version 1.0 (Phase 0).",
   "type": "object",
   "required": ["meta", "identity", "attributes", "skills", "achievements", "journal", "credentials", "sealChain"],
   "additionalProperties": false,
@@ -136,14 +136,16 @@
     },
     "seal": {
       "type": "object",
-      "required": ["taskId", "seal", "previousSeal", "timestamp", "data"],
+      "required": ["taskId", "seal", "previousSeal", "timestamp", "data", "hashAlgorithm", "nonce"],
       "additionalProperties": false,
       "properties": {
         "taskId": { "type": "string" },
         "seal": { "type": "string" },
         "previousSeal": { "type": "string", "description": "'genesis' for the first seal, otherwise the seal hash of the prior entry" },
         "timestamp": { "type": "string", "format": "date-time" },
-        "data": { "description": "Arbitrary JSON-serializable task data" }
+        "data": { "description": "Arbitrary JSON-serializable task data" },
+        "hashAlgorithm": { "type": "string", "enum": ["sha256", "djb2"], "description": "Algorithm used to compute this seal hash" },
+        "nonce": { "type": ["integer", "number"], "description": "Random nonce consumed during seal computation, persisted for deterministic re-verification" }
       }
     }
   }

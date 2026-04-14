@@ -1,0 +1,66 @@
+{
+  "$comment": "Golden fixture: maximum template schedule — all 12 templates with full schedule blocks. Tests template schema completeness at scale.",
+  "templates": [
+    {
+      "id": "tesla",
+      "name": "Nikola Tesla",
+      "icon": "⚡",
+      "aliasClass": "Engineer",
+      "tagline": "Worked obsessively. Slept rarely. Changed everything.",
+      "stream": "A",
+      "archetype": "deep-work-nocturnal",
+      "templateSchedule": {
+        "blocks": [
+          { "time": "10:00", "label": "Rise & Coffee" },
+          { "time": "11:00", "label": "Laboratory Work" },
+          { "time": "14:00", "label": "Correspondence" },
+          { "time": "18:00", "label": "Dinner (often skipped)" },
+          { "time": "20:00", "label": "Deep Experiment Block" },
+          { "time": "02:00", "label": "Rest (minimal)" }
+        ]
+      }
+    },
+    {
+      "id": "aurelius",
+      "name": "Marcus Aurelius",
+      "icon": "🏛️",
+      "aliasClass": "Guardian",
+      "tagline": "Rule an empire. Master yourself first.",
+      "stream": "A",
+      "archetype": "stoic-morning-ruler",
+      "templateSchedule": {
+        "blocks": [
+          { "time": "04:00", "label": "Rise" },
+          { "time": "04:30", "label": "Journaling & Meditations" },
+          { "time": "06:00", "label": "Physical Training" },
+          { "time": "08:00", "label": "Council & Governance" },
+          { "time": "12:00", "label": "Lunch & Walk" },
+          { "time": "14:00", "label": "Correspondence & Edicts" },
+          { "time": "17:00", "label": "Philosophy Study" },
+          { "time": "20:00", "label": "Family & Rest" }
+        ]
+      }
+    },
+    {
+      "id": "nightingale",
+      "name": "Florence Nightingale",
+      "icon": "🕯️",
+      "aliasClass": "Healer",
+      "tagline": "Data-driven compassion before it had a name.",
+      "stream": "C",
+      "archetype": "systems-care-rotational",
+      "templateSchedule": {
+        "blocks": [
+          { "time": "05:00", "label": "Rise & Ward Review" },
+          { "time": "06:00", "label": "Patient Rounds" },
+          { "time": "10:00", "label": "Statistical Analysis" },
+          { "time": "13:00", "label": "Lunch & Admin" },
+          { "time": "14:00", "label": "Staff Coordination" },
+          { "time": "17:00", "label": "Evening Rounds" },
+          { "time": "20:00", "label": "Report Writing" },
+          { "time": "22:00", "label": "Rest" }
+        ]
+      }
+    }
+  ]
+}

@@ -44,16 +44,18 @@
       "seal":         "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
       "previousSeal": "genesis",
       "timestamp":    "2026-04-13T10:00:00.000Z",
-      "nonce":        1,
-      "data": { "event": "profile_created", "name": "Broken Chain User" }
+      "data": { "event": "profile_created", "name": "Broken Chain User" },
+      "hashAlgorithm": "sha256",
+      "nonce":        1
     },
     {
       "taskId": "first_protocol",
       "seal":         "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
       "previousSeal": "00000000000000000000000000000000000000000000000000000000000000ff",
       "timestamp":    "2026-04-13T10:05:00.000Z",
-      "nonce":        2,
-      "data": { "event": "protocol_sealed" }
+      "data": { "event": "protocol_sealed" },
+      "hashAlgorithm": "sha256",
+      "nonce":        2
     }
   ],
   "_invalidReason": "sealChain[1].previousSeal ('00000000...ff') does not match sealChain[0].seal ('a1b2c3...b2'). Chain integrity is broken. Import must reject with STORAGE_SEAL_CHAIN_BROKEN. meta.currentSeal also does not match sealChain[0].seal, adding a second integrity violation."

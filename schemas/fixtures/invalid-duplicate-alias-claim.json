@@ -1,0 +1,22 @@
+{
+  "$comment": "NEGATIVE FIXTURE — must be REJECTED when claiming an alias log with a sessionId that was already claimed. The sessionId matches one already in claimedAliasSessions. Claim must reject with CLAIM_DUPLICATE_SESSION.",
+  "ferrosVersion": "1.0",
+  "logType": "alias-session",
+  "sessionId": "tesla-2026-05-01T14:00:00.000Z",
+  "alias": {
+    "id": "tesla",
+    "name": "Nikola Tesla",
+    "icon": "⚡",
+    "class": "Engineer",
+    "attribution": "unlinked"
+  },
+  "sessionStart": "2026-05-01T14:00:00.000Z",
+  "sessionEnd": "2026-05-01T16:00:00.000Z",
+  "entries": [
+    { "ts": "2026-05-01T14:05:00.000Z", "text": "Started alias session as Tesla", "type": "activity" },
+    { "ts": "2026-05-01T15:30:00.000Z", "text": "Completed deep experiment block", "type": "activity" }
+  ],
+  "entryCount": 2,
+  "claimInstructions": "Import this file on your home FERROS instance to claim these logs and merge them into your profile.",
+  "_invalidReason": "sessionId 'tesla-2026-05-01T14:00:00.000Z' is assumed to already exist in the target profile's meta.claimedAliasSessions array. Second import must reject with CLAIM_DUPLICATE_SESSION."
+}

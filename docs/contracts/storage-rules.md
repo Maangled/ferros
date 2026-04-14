@@ -33,20 +33,28 @@ This contract defines exactly where FERROS data lives, how it is versioned, how 
 
 ## Profile Schema Versioning
 
-- Every profile in `localStorage` and every exported `.json` must have `meta.version` in `"MAJOR.MINOR"` semver format (e.g., `"1.0"`, `"2.0"`).
-- The current schema version is **`2.0`** (profile.schema.json v2.0).
+- Every profile in `localStorage` and every exported `.json` must have `meta.version` in `"MAJOR.MINOR"` semver format (e.g., `"1.0"`).
+- The current schema version is **`1.0`** (Phase 0 freeze).
+- `meta.version` is the single canonical version field. The internal `schemaVersion` marker used by the monolith's structural migration is an implementation detail, not a schema-level concept.
 - `meta.version` is read on import to determine compatibility.
 
 ### Version Compatibility Matrix
 
 | Stored version | Current version | Action |
 |---|---|---|
-| Same | Same | Accept |
-| Older MAJOR | Current | Reject with `STORAGE_VERSION_MISMATCH` — no silent migration in Wave 0 |
-| Newer MAJOR | Current | Reject with `STORAGE_VERSION_FUTURE` — cannot read future format |
+| `"1.0"` | `"1.0"` | Accept |
+| Older MAJOR (e.g. `"0.9"`) | `"1.0"` | Reject with `STORAGE_VERSION_MISMATCH` — no silent migration in Wave 0 |
+| Newer MAJOR (e.g. `"2.0"`) | `"1.0"` | Reject with `STORAGE_VERSION_FUTURE` — cannot read future format |
 | Missing `meta.version` | — | Reject with `STORAGE_VERSION_MISSING` |
 
-**Wave 0 rule:** No automatic migration. Import must reject any profile where `meta.version` does not exactly match the current schema version. This rule may be relaxed in H1 of the Hardening wave.
+**Wave 0 rule:** No automatic migration on import. Import must reject any profile where `meta.version` does not exactly match `"1.0"`. Post-Phase-0 upgrades to `"2.0"` require a dedicated offline upgrader/export-upgrader tool.
+
+### Post-Phase-0 Version Roadmap
+
+| Version | Target | Prerequisite |
+|---|---|---|
+| `"1.0"` | Phase 0 exit (current) | — |
+| `"2.0"` | Post-exit, after shared runtime core and real upgrader tool ship | Real export/import upgrader, compatibility tests |
 
 ---
 
@@ -73,11 +81,36 @@ The following conditions cause import to be **hard rejected** (import must fail 
 
 ## Export Rules
 
-- Export must serialize the current profile from `localStorage` (`ferros_profile`).
-- The export envelope must include: `ferrosVersion`, `exportedAt` (ISO timestamp), `profile` (the full profile object).
+- Export **must read from `localStorage`** (the last persisted state), not from in-memory variables. This ensures transactional consistency — the export always represents the most recently saved profile, not transient in-memory mutations.
+- The export envelope must include exactly: `{ ferrosVersion, exportedAt, profile, sealChain }`.
+  - `ferrosVersion`: the current schema version string (e.g., `"1.0"`).
+  - `exportedAt`: ISO 8601 timestamp of the export moment.
+  - `profile`: the full profile object.
+  - `sealChain`: the full seal chain array (mirrors `profile.sealChain` for backwards compatibility but is the authoritative copy).
 - The export file name must match the format: `ferros-profile-[sanitized-name]-[YYYY-MM-DD].json`.
 - `sanitized-name` = name lowercased, spaces replaced with `-`, non-alphanumeric removed.
 - `.ferros-log` files (alias/recovery) follow the naming rules in ADR-005.
+- **Phase 0:** Profile exports do not include cards or decks. Card/deck portability is a separate concern addressed in Wave 1+ (V5-V7).
+
+## Seal Entry Metadata
+
+Each seal chain entry must include the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `taskId` | string | Identifier for the sealed action |
+| `seal` | string | Computed hash value |
+| `previousSeal` | string | `"genesis"` for first seal, otherwise prior seal's hash |
+| `timestamp` | string (ISO 8601) | When the seal was created |
+| `data` | object | Arbitrary task-specific payload |
+| `hashAlgorithm` | string (`"sha256"` or `"djb2"`) | Algorithm used to compute the seal hash |
+| `nonce` | integer | Random nonce consumed during computation, persisted for deterministic re-verification |
+
+**Rationale:** Storing `hashAlgorithm` and `nonce` alongside every seal enables cross-context re-verification. Without them, a seal computed with SHA-256 on `https://` cannot be deterministically re-verified on `file://` (where only djb2 is available), because the random nonce used in computation would be lost.
+
+### Seal Chain Compaction (Future)
+
+Phase 0 stores the full seal chain with no compaction. Checkpoint/compaction (e.g., snapshot every N seals) is deferred to Wave 4 hardening (H5 performance budget).
 
 ---
 
@@ -114,3 +147,42 @@ On corrupt detection:
 | Session mode does not write to localStorage | H4 negative-harness.html |
 | Recovery mode writes nothing to any storage | H4 negative-harness.html |
 | Export envelope has required fields | H2 round-trip-harness.html |
+
+---
+
+## `.ferros-log` Envelope Format
+
+Alias and recovery session logs exported as `.ferros-log` files follow this canonical envelope:
+
+```json
+{
+  "ferrosVersion": "1.0",
+  "logType": "alias-session | recovery-session",
+  "sessionId": "<deterministic session identifier>",
+  "alias": { "id": "...", "name": "...", "icon": "...", "class": "...", "attribution": "unlinked" },
+  "sessionStart": "<ISO 8601>",
+  "sessionEnd": "<ISO 8601>",
+  "entries": [ ... ],
+  "claimInstructions": "..."
+}
+```
+
+### `sessionId` Semantics
+
+- `sessionId` is the **canonical claim-identity carrier**. It uniquely identifies this session log for de-duplication during claim.
+- **Uniqueness:** `sessionId` must be unique per session. Generated deterministically from `alias.id + sessionStart` or equivalent.
+- **Claim check:** On claim, the receiving profile checks `profile.meta.claimedAliasSessions` (array of previously claimed `sessionId` values). Duplicate `sessionId` → reject with `CLAIM_DUPLICATE_SESSION`.
+- **Audit records** may mirror `sessionId` secondarily, but the `.ferros-log` envelope is the primary carrier (not `audit-record.schema.json`).
+- See also C10 for consent/deny semantics on claim operations.
+
+---
+
+## Schedule-Event Schema Positioning
+
+The `schedule-event.schema.json` (C6) is a **future-consumer-only** schema in Phase 0. No runtime code currently produces or consumes C6-formatted events. Transformation from internal schedule block format to C6 event format is required before Wave 2 gate S1.
+
+---
+
+## Card/Deck Export Exclusion
+
+Phase 0 exports do not include cards or decks. There are no placeholder fields for card/deck data in the export envelope. Card/deck portability is a separate concern addressed in Wave 1+ (V5-V7). See ADR-010 for card/deck nomenclature.

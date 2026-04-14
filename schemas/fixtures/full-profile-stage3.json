@@ -55,21 +55,27 @@
       "seal": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
       "previousSeal": "genesis",
       "timestamp": "2026-04-10T09:05:00.000Z",
-      "data": { "event": "profile_created", "name": "Test Pioneer" }
+      "data": { "event": "profile_created", "name": "Test Pioneer" },
+      "hashAlgorithm": "sha256",
+      "nonce": 3141592653
     },
     {
       "taskId": "character_creation",
       "seal": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
       "previousSeal": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
       "timestamp": "2026-04-10T09:10:00.000Z",
-      "data": { "event": "character_sealed", "class": "Architect", "stream": "A" }
+      "data": { "event": "character_sealed", "class": "Architect", "stream": "A" },
+      "hashAlgorithm": "sha256",
+      "nonce": 2718281828
     },
     {
       "taskId": "first_protocol",
       "seal": "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
       "previousSeal": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
       "timestamp": "2026-04-10T09:12:00.000Z",
-      "data": { "event": "protocol_completed", "xpAwarded": 100, "attribute": "Discipline" }
+      "data": { "event": "protocol_completed", "xpAwarded": 100, "attribute": "Discipline" },
+      "hashAlgorithm": "sha256",
+      "nonce": 1618033988
     }
   ]
 }

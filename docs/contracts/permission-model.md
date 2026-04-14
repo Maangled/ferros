@@ -154,3 +154,24 @@ This contract's reject decisions map directly to C9 storage rules:
 - Cooling-off periods for permission changes
 - Multi-subject consent (joint actions)
 - On-chain audit anchoring
+
+---
+
+## Audit Record Retention
+
+In-memory audit entries are bounded by a **ring buffer** capped at **1000 entries**. When the buffer is full, the oldest entry is evicted (FIFO). This prevents unbounded memory growth in long-running sessions.
+
+- The 1000-entry cap is the Phase 0 ceiling. Post-Phase-0 may persist audit records to disk or chain.
+- Eviction is silent — no notification to the user.
+- Exported `.ferros-log` files contain only the entries accumulated during that specific session, not the ring buffer history.
+
+---
+
+## Claim Uniqueness
+
+When a user claims an alias or recovery log via the Portability panel:
+
+- The `sessionId` from the `.ferros-log` envelope is checked against `profile.meta.claimedAliasSessions`.
+- If the `sessionId` is already present → reject with `CLAIM_DUPLICATE_SESSION`. The entries are not merged.
+- If the `sessionId` is new → append to `claimedAliasSessions` and merge entries into the profile journal.
+- This ensures idempotent claims: importing the same log file twice has no effect.

@@ -1,0 +1,72 @@
+{
+  "$comment": "Golden fixture: mid-progression Stage 1 profile — character class chosen, one protocol done, no schedule yet.",
+  "meta": {
+    "version": "1.0",
+    "created": "2026-05-02T10:00:00.000Z",
+    "lastModified": "2026-05-02T10:30:00.000Z",
+    "assistanceLevel": 1,
+    "genesisHash": "1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa",
+    "currentSeal": "2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb",
+    "sealCount": 2,
+    "stage": 1,
+    "anchoredToLedger": false,
+    "ledgerTxHash": null
+  },
+  "identity": {
+    "name": "Mid Journey",
+    "avatar": "wizard",
+    "class": "Scholar",
+    "streamAffinity": "A",
+    "title": "Newcomer",
+    "joinedDate": "2026-05-02T10:00:00.000Z",
+    "streakDays": 0,
+    "longestStreak": 0,
+    "archetype": "structured-research",
+    "wakeTime": "07:00",
+    "sleepTime": "23:00",
+    "categoryInterests": ["mind", "work"]
+  },
+  "attributes": {
+    "Discipline": { "level": 1, "xp": 25, "xpToNext": 100, "color": "amber", "icon": "💪" },
+    "Knowledge":  { "level": 1, "xp": 50, "xpToNext": 100, "color": "blue",  "icon": "📘" },
+    "Craft":      { "level": 1, "xp": 0, "xpToNext": 100, "color": "cyan",   "icon": "🔨" },
+    "Governance": { "level": 1, "xp": 0, "xpToNext": 100, "color": "purple", "icon": "⚖️" },
+    "Wellness":   { "level": 1, "xp": 0, "xpToNext": 100, "color": "green",  "icon": "🌿" },
+    "Community":  { "level": 1, "xp": 0, "xpToNext": 100, "color": "pink",   "icon": "🤝" }
+  },
+  "skills": { "A": [], "B": [], "C": [] },
+  "achievements": [
+    { "id": "genesis_pioneer", "name": "Genesis Pioneer", "desc": "Became a FERROS pioneer", "icon": "🏆", "unlocked": true, "unlockedAt": "2026-05-02T10:00:00.000Z" },
+    { "id": "first_protocol", "name": "First Protocol", "desc": "Completed your first protocol", "icon": "📋", "unlocked": false },
+    { "id": "lvl5_disc", "name": "Disciplined", "desc": "Reach Discipline Level 5", "icon": "💪", "unlocked": false },
+    { "id": "lvl5_know", "name": "Scholar", "desc": "Reach Knowledge Level 5", "icon": "📘", "unlocked": false },
+    { "id": "seal_10", "name": "Chain Builder", "desc": "Create 10 seals", "icon": "🔗", "unlocked": false },
+    { "id": "streak_7", "name": "Week Warrior", "desc": "7-day streak", "icon": "🔥", "unlocked": false },
+    { "id": "all_streams", "name": "Polymath", "desc": "Have skills in all 3 streams", "icon": "🌟", "unlocked": false }
+  ],
+  "journal": [
+    { "ts": "2026-05-02T10:00:00.000Z", "text": "Profile created — Genesis Pioneer unlocked", "type": "system" },
+    { "ts": "2026-05-02T10:15:00.000Z", "text": "Character class chosen: Scholar (Stream A)", "type": "system" }
+  ],
+  "credentials": [],
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal": "1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa",
+      "previousSeal": "genesis",
+      "timestamp": "2026-05-02T10:00:00.000Z",
+      "data": { "event": "profile_created", "name": "Mid Journey" },
+      "hashAlgorithm": "sha256",
+      "nonce": 9876543210
+    },
+    {
+      "taskId": "character_creation",
+      "seal": "2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb",
+      "previousSeal": "1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa",
+      "timestamp": "2026-05-02T10:15:00.000Z",
+      "data": { "event": "character_sealed", "class": "Scholar", "stream": "A" },
+      "hashAlgorithm": "sha256",
+      "nonce": 5555555555
+    }
+  ]
+}

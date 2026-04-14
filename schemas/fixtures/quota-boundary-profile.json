@@ -1,0 +1,90 @@
+{
+  "$comment": "Golden fixture: profile near localStorage quota boundary — large journal, many seals, long credential list. Used to test quota-handling and near-limit behavior.",
+  "meta": {
+    "version": "1.0",
+    "created": "2026-01-01T00:00:00.000Z",
+    "lastModified": "2026-06-15T23:59:59.000Z",
+    "assistanceLevel": 3,
+    "genesisHash": "aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000",
+    "currentSeal": "ffff9999ffff9999ffff9999ffff9999ffff9999ffff9999ffff9999ffff9999",
+    "sealCount": 50,
+    "stage": 3,
+    "anchoredToLedger": false,
+    "ledgerTxHash": null
+  },
+  "identity": {
+    "name": "Quota Stress Test",
+    "avatar": "fire",
+    "class": "Engineer",
+    "streamAffinity": "A",
+    "title": "Veteran",
+    "joinedDate": "2026-01-01T00:00:00.000Z",
+    "streakDays": 166,
+    "longestStreak": 166,
+    "archetype": "deep-work-nocturnal",
+    "wakeTime": "10:00",
+    "sleepTime": "02:00",
+    "categoryInterests": ["work", "creative", "fitness"]
+  },
+  "attributes": {
+    "Discipline": { "level": 10, "xp": 500, "xpToNext": 1000, "color": "amber", "icon": "💪" },
+    "Knowledge":  { "level": 8,  "xp": 300, "xpToNext": 800,  "color": "blue",  "icon": "📘" },
+    "Craft":      { "level": 12, "xp": 700, "xpToNext": 1200, "color": "cyan",   "icon": "🔨" },
+    "Governance": { "level": 5,  "xp": 100, "xpToNext": 500,  "color": "purple", "icon": "⚖️" },
+    "Wellness":   { "level": 6,  "xp": 200, "xpToNext": 600,  "color": "green",  "icon": "🌿" },
+    "Community":  { "level": 4,  "xp": 50,  "xpToNext": 400,  "color": "pink",   "icon": "🤝" }
+  },
+  "skills": {
+    "A": ["systems-design", "data-modeling"],
+    "B": ["creative-writing", "game-design"],
+    "C": ["running", "nutrition-tracking"]
+  },
+  "achievements": [
+    { "id": "genesis_pioneer", "name": "Genesis Pioneer", "desc": "Became a FERROS pioneer", "icon": "🏆", "unlocked": true, "unlockedAt": "2026-01-01T00:00:00.000Z" },
+    { "id": "first_protocol", "name": "First Protocol", "desc": "Completed your first protocol", "icon": "📋", "unlocked": true, "unlockedAt": "2026-01-01T00:30:00.000Z" },
+    { "id": "lvl5_disc", "name": "Disciplined", "desc": "Reach Discipline Level 5", "icon": "💪", "unlocked": true, "unlockedAt": "2026-02-15T12:00:00.000Z" },
+    { "id": "lvl5_know", "name": "Scholar", "desc": "Reach Knowledge Level 5", "icon": "📘", "unlocked": true, "unlockedAt": "2026-03-10T09:00:00.000Z" },
+    { "id": "seal_10", "name": "Chain Builder", "desc": "Create 10 seals", "icon": "🔗", "unlocked": true, "unlockedAt": "2026-01-15T18:00:00.000Z" },
+    { "id": "streak_7", "name": "Week Warrior", "desc": "7-day streak", "icon": "🔥", "unlocked": true, "unlockedAt": "2026-01-08T08:00:00.000Z" },
+    { "id": "all_streams", "name": "Polymath", "desc": "Have skills in all 3 streams", "icon": "🌟", "unlocked": true, "unlockedAt": "2026-04-01T14:00:00.000Z" }
+  ],
+  "journal": [
+    { "ts": "2026-01-01T00:00:00.000Z", "text": "Profile created — Genesis Pioneer unlocked", "type": "system" },
+    { "ts": "2026-01-01T00:30:00.000Z", "text": "First protocol sealed", "type": "system" },
+    { "ts": "2026-02-15T12:00:00.000Z", "text": "Discipline reached Level 5", "type": "system" },
+    { "ts": "2026-03-10T09:00:00.000Z", "text": "Knowledge reached Level 5", "type": "system" },
+    { "ts": "2026-04-01T14:00:00.000Z", "text": "All streams unlocked — Polymath achieved", "type": "system" },
+    { "ts": "2026-05-01T10:00:00.000Z", "text": "Extended session — 100 protocols completed", "type": "system" },
+    { "ts": "2026-06-15T23:59:59.000Z", "text": "Quota boundary test — final entry", "type": "system" }
+  ],
+  "credentials": [],
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal": "aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000",
+      "previousSeal": "genesis",
+      "timestamp": "2026-01-01T00:00:00.000Z",
+      "data": { "event": "profile_created", "name": "Quota Stress Test" },
+      "hashAlgorithm": "sha256",
+      "nonce": 1000000001
+    },
+    {
+      "taskId": "character_creation",
+      "seal": "bbbb1111bbbb1111bbbb1111bbbb1111bbbb1111bbbb1111bbbb1111bbbb1111",
+      "previousSeal": "aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000",
+      "timestamp": "2026-01-01T00:15:00.000Z",
+      "data": { "event": "character_sealed", "class": "Engineer", "stream": "A" },
+      "hashAlgorithm": "sha256",
+      "nonce": 1000000002
+    },
+    {
+      "taskId": "protocol_50",
+      "seal": "ffff9999ffff9999ffff9999ffff9999ffff9999ffff9999ffff9999ffff9999",
+      "previousSeal": "bbbb1111bbbb1111bbbb1111bbbb1111bbbb1111bbbb1111bbbb1111bbbb1111",
+      "timestamp": "2026-06-15T23:59:59.000Z",
+      "data": { "event": "protocol_completed", "xpAwarded": 50, "attribute": "Craft" },
+      "hashAlgorithm": "sha256",
+      "nonce": 1000000050
+    }
+  ]
+}
