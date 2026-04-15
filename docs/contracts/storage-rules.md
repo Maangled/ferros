@@ -84,6 +84,8 @@ The following conditions cause import to be **hard rejected** (import must fail 
 | I-9 | JSON parse fails | `STORAGE_JSON_INVALID` |
 | I-10 | Import file exceeds 2 MB | `STORAGE_SIZE_EXCEEDED` |
 
+**I-10 scope note:** Size enforcement occurs at the file/blob import boundary before JSON parse. `FerrosCore.validateImport(raw)` validates parsed objects and therefore cannot enforce byte-size limits by itself.
+
 **On rejection:** Surface a human-readable error message containing the error code. Do not write any partial data to storage. Do not modify any existing profile data.
 
 ---

@@ -52,7 +52,7 @@
      5. set char-name-input    → identity.name for stage 1
      6. _doCompleteStage1()    → character seal, profile.meta.stage=2
      7. Assert profile state   → name, genesisHash, sealCount≥2, stage=2
-     8. Construct export envelope from contentWindow.profile + contentWindow.sealChain
+    8. Call exportProfile() and capture the real blob envelope payload
      9. ferrosValidateImport(envelope) → ok:true
     10. Identity name from import matches original
    ========================================================================== */
@@ -385,34 +385,35 @@ loadIframe(PROFILE_SRC).then(function(iframe) {
           return { pass: false, error: 'code=' + importResult.code + ' ' + (importResult.detail||'') };
         }));
 
-        allResults.push(test(gD, 'D-4: verifyChain(envelope.sealChain) → {valid:true}', function() {
-          var exportedChain = envelope.sealChain || [];
-          var r = iw.verifyChain(exportedChain);
-          if (r && r.valid === true) {
-            return { pass: true, detail: 'chain of ' + exportedChain.length + ' seals is intact' };
-          }
-          return { pass: false, error: JSON.stringify(r) };
-        }));
+        var exportedChain = envelope.sealChain || [];
+        return iw.FerrosCore.verifyChainFull(exportedChain).then(function(fullResult) {
+          allResults.push(test(gD, 'D-4: verifyChainFull(envelope.sealChain) → {valid:true}', function() {
+            if (fullResult && fullResult.valid === true) {
+              return { pass: true, detail: 'full verify passed for ' + exportedChain.length + ' seals' };
+            }
+            return { pass: false, error: JSON.stringify(fullResult) };
+          }));
 
-        allResults.push(test(gD, 'D-5: Imported identity.name matches original (round-trip fidelity)', function() {
-          var importedName = envelope.profile.identity && envelope.profile.identity.name;
-          var originalName = iw.profile.identity && iw.profile.identity.name;
-          if (importedName && importedName === originalName) {
-            return { pass: true, detail: 'name="' + importedName + '"' };
-          }
-          return { pass: false, error: 'imported="' + importedName + '" original="' + originalName + '"' };
-        }));
+          allResults.push(test(gD, 'D-5: Imported identity.name matches original (round-trip fidelity)', function() {
+            var importedName = envelope.profile.identity && envelope.profile.identity.name;
+            var originalName = iw.profile.identity && iw.profile.identity.name;
+            if (importedName && importedName === originalName) {
+              return { pass: true, detail: 'name="' + importedName + '"' };
+            }
+            return { pass: false, error: 'imported="' + importedName + '" original="' + originalName + '"' };
+          }));
 
-        allResults.push(test(gD, 'D-6: genesisHash preserved across export', function() {
-          var orig = iw.profile.meta.genesisHash;
-          var exp  = envelope.profile.meta.genesisHash;
-          if (orig && orig === exp) {
-            return { pass: true, detail: 'genesisHash=' + orig.substring(0,12) + '...' };
-          }
-          return { pass: false, error: 'orig=' + orig + ' exported=' + exp };
-        }));
+          allResults.push(test(gD, 'D-6: genesisHash preserved across export', function() {
+            var orig = iw.profile.meta.genesisHash;
+            var exp  = envelope.profile.meta.genesisHash;
+            if (orig && orig === exp) {
+              return { pass: true, detail: 'genesisHash=' + orig.substring(0,12) + '...' };
+            }
+            return { pass: false, error: 'orig=' + orig + ' exported=' + exp };
+          }));
 
-        runResults();
+          runResults();
+        });
       }).catch(function(err) {
         allResults.push(test(gD, 'D-0: exportProfile() produced downloadable JSON', function() {
           return { pass: false, error: 'Failed to capture export blob: ' + err.message };

@@ -76,9 +76,9 @@ Permission is modeled as a 4-tuple:
 
 When a permission is denied:
 1. The action **must not proceed** — not even partially.
-2. A `PERMISSION_DENIED` audit entry must be emitted to the active log (see Audit Emission below).
-3. A human-readable error must be surfaced to the UI (not silently swallowed).
-4. No data must be written to any storage as a side effect of the denied action.
+2. Durable state (`localStorage` / seal-chain persistence) must remain unchanged.
+3. User-facing deny feedback should be shown at UX boundary actions (e.g., import/claim flows). Internal low-level guards may short-circuit without their own modal.
+4. Audit emission follows the Wave 0 minimal shape described below; richer permission-decision audit records are deferred.
 
 ---
 
@@ -106,24 +106,23 @@ Audit events are emitted to the **in-memory audit trail** in Wave 0. Persistence
 ```json
 {
   "ts": "<ISO timestamp>",
-  "subject": "<full-profile | alias | recovery | session | agent>",
-  "action": "<action string>",
-  "resource": "<resource string>",
-  "decision": "<allow | deny>",
-  "reason": "<optional human-readable string>"
+  "action": "<seal-added | profile-saved | profile-imported | alias-claimed | recovery-claimed>",
+  "detail": "<optional object>"
 }
 ```
+
+Wave 0 runtime currently emits action-centric audit entries via `pushAuditEntry(action, detail)`.
+The richer permission decision schema (`subject/action/resource/decision/reason`) is a Wave 3+ target.
 
 ### Events That Must Emit Audit Entries
 
 | Event | Decision | When |
 |---|---|---|
-| alias session attempts `profile.write` | deny | Alias code calls `saveProfile()` |
-| recovery mode attempts `sealChain.append` | deny | Recovery mode calls `addSeal()` |
-| session mode attempts `profile.write` | deny | Session-declined user triggers `saveProfile()` |
-| profile imported successfully | allow | Import completes without error |
-| profile import rejected (any I-x rule) | deny | Import fails validation |
+| profile saved | allow | `saveProfile()` completes |
 | seal added to chain | allow | `addSeal()` completes |
+| profile imported successfully | allow | Import completes without error |
+| alias log claimed | allow | Alias claim merge completes |
+| recovery log claimed | allow | Recovery claim merge completes |
 
 ---
 
@@ -141,8 +140,8 @@ This contract's reject decisions map directly to C9 storage rules:
 
 | Rule | Enforced By |
 |---|---|
-| Alias mode denied `profile.write` emits audit entry | H4 negative-harness.html |
-| Recovery mode denied `sealChain.append` emits audit entry | H4 negative-harness.html |
+| Alias mode denied `profile.write` — nothing in localStorage | H4 negative-harness.html |
+| Recovery mode denied `sealChain.append` | H4 negative-harness.html |
 | Session mode denied `profile.write` — nothing in localStorage | H4 negative-harness.html |
 | Trade Window consent gate prevents all pre-consent writes | H5 acceptance-harness.html |
 

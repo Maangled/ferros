@@ -321,11 +321,11 @@ function runGroupC(iframe) {
         }
       });
 
-      // C2: Confirm saveProfile() would NOT have written even if addSeal ran
-      test(gC, 'recovery mode: even after addSeal(), saveProfile() does not persist to localStorage', function() {
+      // C2: Confirm saveProfile() remains blocked in recovery mode
+      test(gC, 'recovery mode: saveProfile() does not persist to localStorage', function() {
         var stored = localStorage.getItem('ferros_profile');
         if (stored === null) {
-          return { pass: true, detail: 'saveProfile() write guard contains the damage: localStorage stays clean even when addSeal runs in recovery mode' };
+          return { pass: true, detail: 'saveProfile() write guard holds: localStorage stays clean in recovery mode' };
         }
         return { pass: false, error: 'localStorage was written despite recovery mode' };
       });
@@ -334,7 +334,7 @@ function runGroupC(iframe) {
       resolve(gC);
 
     }).catch(function(err) {
-      var gC2 = makeGroup('Group C — addSeal() Gap Probe (SKIP)');
+      var gC2 = makeGroup('Group C — addSeal() Recovery Enforcement (SKIP)');
       test(gC2, 'iframe load', function() {
         return { pass: false, error: err.message };
       });
