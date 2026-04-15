@@ -32,6 +32,7 @@
       "description": "C10 bounded audit ring buffer. Cap: 1000 entries, FIFO eviction.",
       "items": { "$ref": "#/$defs/auditEntry" }
     }
+  },
   "$defs": {
     "meta": {
       "type": "object",
