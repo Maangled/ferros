@@ -344,6 +344,113 @@ function runGroupC(iframe) {
 }
 
 /* ==========================================================================
+   GROUP D — Allow-Path Audit Emission (implementation probe)
+   Verifies C10-documented allow-path audit entries for full-profile mode.
+   ========================================================================== */
+
+function runGroupD() {
+  return new Promise(function(resolve) {
+    var gD = makeGroup('Group D — Allow-Path Audit Emission (C10)');
+
+    localStorage.removeItem('ferros_profile');
+    localStorage.removeItem('ferros_seal_chain');
+
+    loadIframe('../docs/personal-profile.html#testmode').then(function(iframe) {
+      var iw = iframe.contentWindow;
+      var auditBefore = 0;
+
+      try {
+        iw.acceptTrade();
+        auditBefore = (iw.profile && Array.isArray(iw.profile.auditTrail)) ? iw.profile.auditTrail.length : 0;
+      } catch (e) {
+        test(gD, 'full-profile setup for allow-path audit checks', function() {
+          return { pass: false, error: 'Failed to enter full-profile mode: ' + e.message };
+        });
+        try { document.body.removeChild(iframe); } catch(err) {}
+        resolve(gD);
+        return;
+      }
+
+      var addSealResult;
+      try {
+        addSealResult = iw.addSeal('h4-allow-audit', { probe: true, harness: 'H4' });
+      } catch (e) {
+        test(gD, 'full-profile addSeal() invocation', function() {
+          return { pass: false, error: 'addSeal() threw in full-profile mode: ' + e.message };
+        });
+        try { document.body.removeChild(iframe); } catch(err) {}
+        resolve(gD);
+        return;
+      }
+
+      if (!(addSealResult && typeof addSealResult.then === 'function')) {
+        test(gD, 'full-profile addSeal() invocation', function() {
+          return { pass: false, error: 'addSeal() did not execute in full-profile mode (expected Promise)' };
+        });
+        try { document.body.removeChild(iframe); } catch(err) {}
+        resolve(gD);
+        return;
+      }
+
+      addSealResult.then(function() {
+        // saveProfile emits profile-saved audit entry in allow path.
+        iw.saveProfile();
+
+        test(gD, 'allow path: auditTrail exists and grows after addSeal+saveProfile', function() {
+          var trail = (iw.profile && Array.isArray(iw.profile.auditTrail)) ? iw.profile.auditTrail : null;
+          if (!trail) return { pass: false, error: 'profile.auditTrail missing or not an array' };
+          if (trail.length > auditBefore) return { pass: true, detail: 'auditTrail grew from ' + auditBefore + ' to ' + trail.length };
+          return { pass: false, error: 'auditTrail did not grow after allow-path operations' };
+        });
+
+        test(gD, 'allow path: auditTrail contains action="seal-added"', function() {
+          var trail = (iw.profile && Array.isArray(iw.profile.auditTrail)) ? iw.profile.auditTrail : [];
+          var has = trail.some(function(e){ return e && e.action === 'seal-added'; });
+          if (has) return { pass: true, detail: 'seal-added entry present' };
+          return { pass: false, error: 'No seal-added audit entry found' };
+        });
+
+        test(gD, 'allow path: auditTrail contains action="profile-saved"', function() {
+          var trail = (iw.profile && Array.isArray(iw.profile.auditTrail)) ? iw.profile.auditTrail : [];
+          var has = trail.some(function(e){ return e && e.action === 'profile-saved'; });
+          if (has) return { pass: true, detail: 'profile-saved entry present' };
+          return { pass: false, error: 'No profile-saved audit entry found' };
+        });
+
+        test(gD, 'allow path: persisted profile carries auditTrail', function() {
+          var raw = localStorage.getItem('ferros_profile');
+          if (!raw) return { pass: false, error: 'ferros_profile was not persisted in full-profile mode' };
+          var parsed;
+          try { parsed = JSON.parse(raw); } catch (e) { return { pass: false, error: 'Persisted profile JSON parse failed: ' + e.message }; }
+          if (!parsed || !Array.isArray(parsed.auditTrail)) return { pass: false, error: 'Persisted profile missing auditTrail array' };
+          if (parsed.auditTrail.length > 0) return { pass: true, detail: 'persisted auditTrail length=' + parsed.auditTrail.length };
+          return { pass: false, error: 'Persisted auditTrail is empty after allow-path operations' };
+        });
+
+        localStorage.removeItem('ferros_profile');
+        localStorage.removeItem('ferros_seal_chain');
+        try { document.body.removeChild(iframe); } catch(err) {}
+        resolve(gD);
+      }).catch(function(err) {
+        test(gD, 'full-profile addSeal() execution', function() {
+          return { pass: false, error: 'addSeal() Promise rejected: ' + err.message };
+        });
+        localStorage.removeItem('ferros_profile');
+        localStorage.removeItem('ferros_seal_chain');
+        try { document.body.removeChild(iframe); } catch(e) {}
+        resolve(gD);
+      });
+    }).catch(function(err) {
+      var gD2 = makeGroup('Group D — Allow-Path Audit Emission (SKIP)');
+      test(gD2, 'iframe load', function() {
+        return { pass: false, error: err.message };
+      });
+      resolve(gD2);
+    });
+  });
+}
+
+/* ==========================================================================
    RENDER
    ========================================================================== */
 
@@ -419,7 +526,7 @@ function renderAll() {
     harnessVersion: '1.0',
     status: overallStatus,
     summary: { total: allTests.length, passed: passed, failed: failed, gaps: warned, skipped: skipped },
-    provesGates: ['C9 no-write (session/alias/recovery)', 'C10 permission deny matrix (reference)', 'V3b partial'],
+    provesGates: ['C9 no-write (session/alias/recovery)', 'C10 permission deny matrix (reference)', 'C10 allow-path audit emission (full-profile save/seal)', 'V3b partial'],
     implementationGaps: gaps,
     remediations: [],
     tests: allTests.map(function(t){
@@ -431,12 +538,12 @@ function renderAll() {
 }
 
 /* ==========================================================================
-   MAIN — Group A is sync, Groups B and C are async iframe probes
-   ========================================================================== */
+  MAIN — Group A is sync, Groups B/C/D are async iframe probes
+  ========================================================================== */
 
 // Group A: runs synchronously (already added to allGroups/allTests above)
 
-Promise.all([runGroupB(), runGroupC()]).then(function() {
+Promise.all([runGroupB(), runGroupC(), runGroupD()]).then(function() {
   renderAll();
 });
 </script>
