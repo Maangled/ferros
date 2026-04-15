@@ -2302,8 +2302,12 @@
       setText('current-short',prof&&prof.meta&&prof.meta.currentSeal?prof.meta.currentSeal.slice(0,8)+'...':'\u2014');
     }
     async function runVerifyChain(){
-      const r=verifyChain(sealChain);
-      showModal(r.valid?'\u2713 Chain Verified':'\u26A0 Integrity Error','<p>'+(r.valid?'All '+sealChain.length+' seals are structurally consistent.':'Chain broken at seal #'+r.brokenAt+'. previousSeal reference mismatch.')+'</p>');
+      const r=await FerrosCore.verifyChainFull(sealChain);
+      const okMsg='All '+sealChain.length+' seals are structurally and cryptographically consistent.';
+      const failIdx=(typeof r.brokenAt==='number')?(r.brokenAt+1):'?';
+      const reason=r.reason?(' ('+r.reason+')'):'';
+      const failMsg='Chain failed full verification at seal #'+failIdx+reason+'.';
+      showModal(r.valid?'\u2713 Chain Verified':'\u26A0 Integrity Error','<p>'+(r.valid?okMsg:failMsg)+'</p>');
       updateVerificationPanel();
     }
     function anchorToLedger(){showModal('\u2693 Anchor to Ledger','<p>This action would submit your seal chain to a public blockchain ledger for permanent immutable record.</p><p><strong>Current seal:</strong> <code style="font-family:monospace;color:var(--accent-cyan);word-break:break-all">'+( profile.meta.currentSeal||'(none)')+'</code></p><p style="margin-top:12px">This feature is a placeholder pending ledger integration.</p>')}

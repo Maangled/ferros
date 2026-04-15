@@ -27,7 +27,16 @@ This contract defines exactly where FERROS data lives, how it is versioned, how 
 | Exported file (`.json`) | Profile export envelope | Portability panel | Full Profile only |
 | Exported file (`.ferros-log`) | Audit record | Log export | Alias Mode, Recovery Mode |
 
-**Hard constraint:** No mode other than Full Profile may write to `localStorage`. This is enforced at `saveProfile()` which has a guard at the top: `if (recoveryMode || sessionDeclined) return;`. This guard **must never be removed**.
+**Hard constraint:** No mode other than Full Profile may write to `localStorage`.
+
+Current enforcement is via a unified durable-write predicate (`canMutateDurableState`) that requires all of the following:
+
+- Trade Window consent accepted (`_tradeWindowAccepted === true`)
+- `sessionMode === false`
+- `aliasMode === false`
+- `recoveryMode === false`
+
+`saveProfile()`, `addSeal()`, import confirmation, and claim confirmation all gate mutations through this predicate. This guard model **must never be removed**.
 
 ---
 

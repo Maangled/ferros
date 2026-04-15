@@ -131,8 +131,9 @@ Audit events are emitted to the **in-memory audit trail** in Wave 0. Persistence
 
 This contract's reject decisions map directly to C9 storage rules:
 
-- `PERMISSION_DENIED` on `profile.write` for alias/recovery/session maps to the `saveProfile()` guard rule.
-- Import rejection codes `STORAGE_*` from C9 are treated as upstream errors, not permission decisions — they happen before permission is evaluated.
+- `profile.write` / `sealChain.append` mutation paths are gated by the unified durable-write predicate (`canMutateDurableState`) rather than per-call ad hoc checks.
+- The predicate requires Trade Window consent accepted and denies durable writes in `sessionMode`, `aliasMode`, and `recoveryMode`.
+- Import rejection codes `STORAGE_*` from C9 are treated as upstream validation errors, not permission decisions — they happen before mutation is evaluated.
 
 ---
 

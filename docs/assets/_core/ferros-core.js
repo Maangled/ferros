@@ -39,6 +39,34 @@
     return { hash: 'local-' + h.toString(16).padStart(8, '0'), algorithm: 'djb2' };
   };
 
+  // ── hashWithAlgorithm ─────────────────────────────────────────────────────
+  // Deterministic hash helper used by full-chain verification.
+  // Returns { ok: true, hash } or { ok: false, code }.
+  FerrosCore.hashWithAlgorithm = async function hashWithAlgorithm(data, algorithm) {
+    if (algorithm === 'sha256') {
+      if (!(root.crypto && root.crypto.subtle)) {
+        return { ok: false, code: 'SHA256_UNAVAILABLE' };
+      }
+      var enc = new TextEncoder().encode(data);
+      var buf = await root.crypto.subtle.digest('SHA-256', enc);
+      return {
+        ok: true,
+        hash: Array.from(new Uint8Array(buf)).map(function(b) {
+          return b.toString(16).padStart(2, '0');
+        }).join('')
+      };
+    }
+    if (algorithm === 'djb2') {
+      var h = 5381;
+      for (var i = 0; i < data.length; i++) {
+        h = ((h << 5) + h) ^ data.charCodeAt(i);
+        h = h >>> 0;
+      }
+      return { ok: true, hash: 'local-' + h.toString(16).padStart(8, '0') };
+    }
+    return { ok: false, code: 'UNKNOWN_HASH_ALGORITHM' };
+  };
+
   // ── createSealEntry ────────────────────────────────────────────────────────
   // Generates a complete seal entry with nonce, hashAlgorithm, and timestamp.
   // Returns { taskId, seal, previousSeal, timestamp, data, hashAlgorithm, nonce }
@@ -75,6 +103,40 @@
     if (chain[0].previousSeal !== 'genesis') return { valid: false, brokenAt: 0 };
     for (var i = 1; i < chain.length; i++) {
       if (chain[i].previousSeal !== chain[i - 1].seal) return { valid: false, brokenAt: i };
+    }
+    return { valid: true };
+  };
+
+  // ── verifyChainFull ───────────────────────────────────────────────────────
+  // Full verification: linkage + per-entry rehash using stored metadata.
+  // Returns { valid: boolean, brokenAt?: number, reason?: string }
+  FerrosCore.verifyChainFull = async function verifyChainFull(chain) {
+    var linkage = FerrosCore.verifyChain(chain);
+    if (!linkage.valid) {
+      return { valid: false, brokenAt: linkage.brokenAt, reason: 'LINKAGE_BROKEN' };
+    }
+    if (!chain || chain.length === 0) {
+      return { valid: true };
+    }
+    for (var i = 0; i < chain.length; i++) {
+      var e = chain[i] || {};
+      if (!e.taskId || !e.seal || !e.previousSeal || !e.timestamp || e.data === undefined || e.nonce === undefined || !e.hashAlgorithm) {
+        return { valid: false, brokenAt: i, reason: 'SEAL_FIELDS_MISSING' };
+      }
+      var payload = JSON.stringify({
+        taskId: e.taskId,
+        data: e.data,
+        previousSeal: e.previousSeal,
+        timestamp: e.timestamp,
+        nonce: e.nonce
+      });
+      var hashResult = await FerrosCore.hashWithAlgorithm(payload, e.hashAlgorithm);
+      if (!hashResult.ok) {
+        return { valid: false, brokenAt: i, reason: hashResult.code };
+      }
+      if (hashResult.hash !== e.seal) {
+        return { valid: false, brokenAt: i, reason: 'HASH_MISMATCH' };
+      }
     }
     return { valid: true };
   };

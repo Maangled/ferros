@@ -293,11 +293,11 @@ test(gB, 'exportProfile() envelope shape matches C9 contract (static check)', fu
    Loads ../docs/personal-profile.html#testmode and calls internal functions
    directly via contentWindow (same-origin file:// access).
 
-   Tests:
-   C1: verifyChain() on valid chain → {valid:true}
-   C2: verifyChain() on broken chain → {valid:false, brokenAt:1}
-   C3: I-5 GAP PROBE — verifyChain() does not check sealChain[0].previousSeal
-   C4: saveProfile() write guard — session mode blocks localStorage write
+  Tests:
+  C1: verifyChain() on valid chain → {valid:true}
+  C2: verifyChain() on broken chain → {valid:false, brokenAt:1}
+  C3: verifyChain() rejects non-genesis root
+  C4: saveProfile() write guard — session mode blocks localStorage write
    ========================================================================== */
 
 function loadIframe(src) {
@@ -353,21 +353,14 @@ function runGroupC() {
         return { pass: false, error: 'got ' + JSON.stringify(r) };
       });
 
-      // C3: I-5 gap probe — root seal check not in verifyChain implementation
-      test(gC, 'GAP I-5: verifyChain does NOT check sealChain[0].previousSeal===genesis', function() {
+      // C3: root seal check — verifyChain must reject non-genesis root
+      test(gC, 'I-5 enforce: verifyChain rejects sealChain[0].previousSeal !== "genesis"', function() {
         var badRootChain = [{ taskId: 'genesis', seal: 'abc123', previousSeal: 'NOT_GENESIS' }];
         var r = iw.verifyChain(badRootChain);
-        if (r && r.valid === true) {
-          // Implementation gap confirmed — single-element chain skips loop, returns {valid:true}
-          return {
-            pass: true,
-            gap: true,  // mark as warning, not failure
-            warn: 'KNOWN GAP: I-5 not enforced in verifyChain(). Root previousSeal is unchecked. Fix: add chain[0].previousSeal!=="genesis" check.',
-            detail: 'gap confirmed — contract says reject, implementation says valid'
-          };
+        if (r && r.valid === false && r.brokenAt === 0) {
+          return { pass: true, detail: 'correctly rejected at root' };
         }
-        // If the gap has been fixed, this test passes cleanly
-        return { pass: true, detail: 'gap closed: I-5 is now enforced in verifyChain()' };
+        return { pass: false, error: 'Expected {valid:false, brokenAt:0}, got ' + JSON.stringify(r) };
       });
 
       // C4: saveProfile() write guard — session mode must not write to localStorage

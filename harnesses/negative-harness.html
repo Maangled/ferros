@@ -284,44 +284,35 @@ function runGroupB() {
 }
 
 /* ==========================================================================
-   GROUP C — addSeal() Recovery Mode Gap (implementation probe via iframe)
-   Contract C10 says: recovery mode DENIES sealChain.append.
-   addSeal() in personal-profile.html does NOT check recoveryMode.
-   This test surfaces the implementation gap — it is expected to show GAP.
-   ========================================================================== */
+  GROUP C — addSeal() Recovery Mode Enforcement (implementation probe)
+  Contract C10 says: recovery mode DENIES sealChain.append.
+  This test verifies addSeal() is blocked in recovery mode.
+  ========================================================================== */
 
 function runGroupC(iframe) {
   return new Promise(function(resolve) {
-    var gC = makeGroup('Group C — addSeal() Recovery Mode Gap (C10 implementation gap probe)');
+    var gC = makeGroup('Group C — addSeal() Recovery Mode Enforcement (C10)');
 
     loadIframe('../docs/personal-profile.html#testmode').then(function(iframe) {
       var iw = iframe.contentWindow;
       var profileData = clone(FIXTURE_FULL_PROFILE_STAGE3);
 
-      // C1: addSeal() in recovery mode — should be denied per C10 but isn't guarded
-      test(gC, 'GAP addSeal() in recovery mode: contract says deny, implementation has no guard', function() {
+      // C1: addSeal() in recovery mode — should be denied per C10
+      test(gC, 'addSeal() in recovery mode is denied (no seal append)', function() {
         localStorage.removeItem('ferros_profile');
         localStorage.removeItem('ferros_seal_chain');
         try {
           // Enter recovery mode
           iw.enterRecoveryMode({ profile: profileData, sealChain: profileData.sealChain || [] }, false);
           // Attempt sealChain.append — contract says DENY (C10 recovery: sealChain.append → deny)
-          var chainBefore = iw.verifyChain(profileData.sealChain || []);
-          // Call addSeal with a dummy task — this is async
           var addSealResult = iw.addSeal('h4-test-task', { test: true });
-          // addSeal returns a Promise; check synchronously that no guard fires
-          var addSealType = typeof addSealResult;
-          // If addSeal returns a Promise, it executed (no guard). If it returned undefined/null, it was blocked.
-          if (addSealResult && addSealType === 'object' && typeof addSealResult.then === 'function') {
-            return {
-              pass: true,
-              gap: true,
-              warn: 'KNOWN GAP (C10): addSeal() has no recoveryMode guard. It completed in recovery mode when it should deny. Fix: add "if(recoveryMode)return;" at the top of addSeal().',
-              detail: 'addSeal() returned a Promise (executed) in recovery mode — contract says deny+audit'
-            };
+          if (addSealResult === undefined) {
+            return { pass: true, detail: 'addSeal() returned undefined under recovery mode guard' };
           }
-          // If it returned nothing (undefined), a guard might have been added
-          return { pass: true, detail: 'addSeal() appears to be guarded — gap may be closed' };
+          if (addSealResult && typeof addSealResult.then === 'function') {
+            return { pass: false, error: 'addSeal() executed in recovery mode (returned Promise) — expected deny' };
+          }
+          return { pass: false, error: 'Unexpected addSeal() return value: ' + String(addSealResult) };
         } catch(e) {
           return { pass: false, error: 'addSeal() threw: ' + e.message };
         } finally {
@@ -430,10 +421,7 @@ function renderAll() {
     summary: { total: allTests.length, passed: passed, failed: failed, gaps: warned, skipped: skipped },
     provesGates: ['C9 no-write (session/alias/recovery)', 'C10 permission deny matrix (reference)', 'V3b partial'],
     implementationGaps: gaps,
-    remediations: [
-      'C10 addSeal gap: add "if(recoveryMode||aliasMode||sessionMode)return;" to addSeal() in personal-profile.html',
-      'C9 I-5 gap: add chain[0].previousSeal !== "genesis" check to verifyChain() in personal-profile.html'
-    ],
+    remediations: [],
     tests: allTests.map(function(t){
       return { name: t.name, status: t.status, detail: t.detail, warn: t.warn, error: t.error };
     })
