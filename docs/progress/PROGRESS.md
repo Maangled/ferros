@@ -38,16 +38,16 @@ Must exist before building surfaces.
 
 | # | Capability | Artifact | Enforcement | Proof Harness |
 |---|-----------|----------|-------------|---------------|
-| C1 | Identity/session schema versioned with fixtures | ✅ | 🔧 built, pending run | `harnesses/ferros-contract-validator.html` |
-| C2 | Profile schema versioned with fixtures | ✅ | 🔧 built, pending run | `harnesses/ferros-contract-validator.html` |
-| C3 | Template schema versioned with fixtures | ✅ | 🔧 built, pending run | `harnesses/ferros-contract-validator.html` |
-| C4 | Card schema versioned with fixtures | ✅ | 🔧 built, pending run | `harnesses/ferros-contract-validator.html` |
-| C5 | Deck schema versioned with fixtures | ✅ | 🔧 built, pending run | `harnesses/ferros-contract-validator.html` |
-| C6 | Schedule event schema versioned with fixtures | ✅ | 🔧 built, pending run | `harnesses/ferros-contract-validator.html` |
-| C7 | Audit record schema versioned with fixtures | ✅ | 🔧 built, pending run | `harnesses/ferros-contract-validator.html` |
-| C8 | Runtime host contract v1 (init/update/error/lifecycle) | ✅ | 🔧 built, pending run | `harnesses/runtime-harness.html` |
-| C9 | Storage rules (what goes where, migration, corruption handling) | ✅ | 🔧 built, pending run | `harnesses/round-trip-harness.html` |
-| C10 | Permission model skeleton (who can do what, consent capture) | ✅ | 🔧 built, pending run | `harnesses/negative-harness.html` |
+| C1 | Identity/session schema versioned with fixtures | ✅ | ✅ | `harnesses/ferros-contract-validator.html` |
+| C2 | Profile schema versioned with fixtures | ✅ | ✅ | `harnesses/ferros-contract-validator.html` |
+| C3 | Template schema versioned with fixtures | ✅ | ✅ | `harnesses/ferros-contract-validator.html` |
+| C4 | Card schema versioned with fixtures | ✅ | ✅ | `harnesses/ferros-contract-validator.html` |
+| C5 | Deck schema versioned with fixtures | ✅ | ✅ | `harnesses/ferros-contract-validator.html` |
+| C6 | Schedule event schema versioned with fixtures | ✅ | ✅ | `harnesses/ferros-contract-validator.html` |
+| C7 | Audit record schema versioned with fixtures | ✅ | ✅ | `harnesses/ferros-contract-validator.html` |
+| C8 | Runtime host contract v1 (init/update/error/lifecycle) | ✅ | ✅ | `harnesses/runtime-harness.html` |
+| C9 | Storage rules (what goes where, migration, corruption handling) | ✅ | ✅ | `harnesses/round-trip-harness.html` |
+| C10 | Permission model skeleton (who can do what, consent capture) | ✅ | ✅ | `harnesses/negative-harness.html` |
 
 **Legend:** ✅ confirmed pass &nbsp;|&nbsp; 🔧 harness built — open in Chrome to confirm &nbsp;|&nbsp; ⬜ not yet
 
