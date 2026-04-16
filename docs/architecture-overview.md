@@ -317,5 +317,37 @@ Every data access must pass through the consent engine. Grants are:
 
 ---
 
+## Legacy Pattern Heritage
+
+FERROS inherits design patterns (not code) from three predecessor projects. See
+[ADR-013](./adr/ADR-013-legacy-integration-strategy.md) for the full integration strategy.
+
+### From botgen-rust (Discord bot platform)
+- **Agent lifecycle model**: init → handle_message → shutdown trait pattern. Informs the
+  AI Agent Hosting Layer and runtime host contract (C8).
+- **Command bus with audit trail**: Every action wrapped in a transaction with an audit
+  record. Informs the audit record schema (C7) and consent engine.
+- **Service dependency hygiene**: `core/` → `services/` → `bots/` layering with no cyclic
+  dependencies. Model for `ferros-core/` → `ferros-surfaces/` → applications.
+
+### From sheetgen-rust (architectural documentation backend)
+- **Schema-driven development**: YAML command definitions auto-generate tests. Evolved
+  into FERROS's JSON Schema → harness constant → enforcement gate pipeline.
+- **Three-layer decomposition**: `domain/` → `storage/` → `api/` separation. Canonical
+  pattern for FERROS Rust code (see [ADR-014](./adr/ADR-014-three-layer-decomposition.md)).
+- **Recursive dependency resolution**: Dependency graph builder with caching. Applies to
+  Card → Template → Identity chains in the Forge.
+
+### From workpace-rust (prototype card website)
+- **Anti-pattern: premature backend generation.** "Got too complicated having everything
+  generate from the Rust back end." FERROS uses HTML-first prototyping with contract-driven
+  development specifically to avoid this trap.
+- **Module surface mapping**: 16+ modules (home, hud, agents, voting, task_lists, etc.)
+  validated the surface decomposition that FERROS now implements as separate HTML files.
+- **WASM bridge**: Rust → WASM → browser pipeline. Potential intermediate step for
+  contract validators before the native OS renderer exists.
+
+---
+
 *See also: [`ferros-blueprint.html`](../ferros-blueprint.html) for the full founding
 specification and Phase 0 conformance test document.*

@@ -181,3 +181,24 @@ Individual module specs retain their detailed milestones and dependency lists. T
 | Agent Integration | Wave 3 (permissioned actions) | Blocked until identity contract passes | [agent-integration.md](./agent-integration.md) |
 | Agent Command Center | Wave 3 (permissioned actions) | Agent dispatch and audit surface | [agent-command-center.md](./agent-command-center.md) |
 | Home HUD Dashboard | Wave 3+ (deferred) | Device control requires later infrastructure | [home-hud.md](./home-hud.md) |
+
+---
+
+## Legacy Integration Tracking
+
+Patterns from predecessor repos are ported wave-by-wave per [ADR-013](../adr/ADR-013-legacy-integration-strategy.md).
+
+| # | Pattern | Source | Target Wave | Status |
+|---|---------|--------|-------------|--------|
+| L1 | Harness drift detection (extend generate-harness-constants.ps1) | sheetgen-rust YAML→test-gen | Wave 0 | ⬜ |
+| L2 | Agent trait spec for C8 runtime host | botgen-rust core/shared/agent.rs | Wave 3 | ⬜ |
+| L3 | Command bus architecture for C7 audit enforcement | botgen-rust architecture | Wave 3 | ⬜ |
+| L4 | Three-layer decomposition standard | sheetgen-rust src/{domain,storage,api} | Wave 1 | ⬜ Spec: ADR-014 (Proposed → Accepted on Wave 1 entry with first Rust code) |
+| L5 | Template engine for Forge card authoring | botgen-rust template_engine.rs | Wave 1 Track B | ⬜ |
+| L6 | Dependency graph for Card→Template chains | sheetgen-rust dependencies.rs | Wave 1 Track B | ⬜ |
+| L7 | Work queue patterns for Schedule Ledger | botgen-rust work queue docs | Wave 2 | ⬜ |
+| L8 | Voting/ranking for Arena | workpace-rust modules/voting | Wave 2 | ⬜ |
+| L9 | Full agent system + routing | botgen-rust services/agents + core/routing | Wave 3 | ⬜ |
+| L10 | WASM contract validators | workpace-rust build-wasm.sh | Research | ⬜ |
+
+**Rule:** Legacy items are only activated when their target wave is entered. Do not port ahead of the wave structure.
