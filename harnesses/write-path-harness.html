@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>H6 — FERROS Write-Path Harness</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:24px;font-size:13px;line-height:1.5}
+  h1{font-size:1.1rem;color:#58a6ff;margin-bottom:4px}
+  .meta{color:#8b949e;font-size:.85rem;margin-bottom:20px}
+  h2{font-size:.9rem;color:#8b949e;letter-spacing:2px;text-transform:uppercase;margin:24px 0 8px;border-bottom:1px solid #21262d;padding-bottom:4px}
+  .test{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #161b22}
+  .badge{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:3px;min-width:44px;text-align:center;flex-shrink:0;margin-top:1px}
+  .pass{background:#1a4731;color:#3fb950}
+  .fail{background:#4a1a1a;color:#f85149}
+  .test-name{color:#e6edf3;flex:1}
+  .test-detail{color:#8b949e;font-size:.8rem;margin-top:2px}
+  .test-error{color:#f85149;font-size:.8rem;margin-top:2px;word-break:break-word}
+  #result-block{margin-top:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px}
+  #result-block pre{font-size:.78rem;color:#e6edf3;white-space:pre-wrap;word-break:break-word}
+  .summary-bar{display:flex;gap:16px;margin-top:16px;padding:12px;border-radius:4px}
+  .summary-bar.all-pass{background:#1a4731;color:#3fb950}
+  .summary-bar.has-fail{background:#4a1a1a;color:#f85149}
+  .summary-stat{font-weight:700}
+</style>
+</head>
+<body>
+<h1>H6 — FERROS Write-Path Harness</h1>
+<p class="meta">Validates write-time profile shape enforcement (A1b), migration field coverage, and schema/runtime alignment.</p>
+
+<div id="groups"></div>
+<div class="summary-bar" id="summary-bar"></div>
+<div id="result-block"><pre id="result-json">running...</pre></div>
+
+<script src="_constants.js"></script>
+<script src="../docs/assets/_core/ferros-core.js"></script>
+<script>
+'use strict';
+
+var HARNESS_ID = 'write-path-harness';
+var HARNESS_VERSION = '1.0.0';
+
+var results = [];
+var groupsEl = document.getElementById('groups');
+
+function startGroup(id, title) {
+  var h = document.createElement('h2');
+  h.textContent = id + ' — ' + title;
+  groupsEl.appendChild(h);
+}
+
+function record(id, name, pass, detail) {
+  var div = document.createElement('div');
+  div.className = 'test';
+  div.innerHTML =
+    '<span class="badge ' + (pass ? 'pass' : 'fail') + '">' + (pass ? 'PASS' : 'FAIL') + '</span>' +
+    '<div><div class="test-name">' + id + ': ' + name + '</div>' +
+    '<div class="' + (pass ? 'test-detail' : 'test-error') + '">' + detail + '</div></div>';
+  groupsEl.appendChild(div);
+  results.push({ id: id, name: name, status: pass ? 'PASS' : 'FAIL', detail: detail });
+}
+
+// ── Build a valid baseline profile for testing ──────────────────────────────
+function makeValidProfile() {
+  return {
+    meta: {
+      version: '1.0', created: '2026-04-15T00:00:00.000Z', lastModified: '2026-04-15T00:00:00.000Z',
+      assistanceLevel: 1, genesisHash: 'aabbccdd', currentSeal: 'aabbccdd', sealCount: 1, stage: 1
+    },
+    identity: {
+      name: 'Test', avatar: 'shield', class: 'Architect', streamAffinity: 'A',
+      title: 'Newcomer', joinedDate: '2026-04-15T00:00:00.000Z', streakDays: 0, longestStreak: 0
+    },
+    attributes: {
+      Discipline: { level: 1, xp: 0, xpToNext: 100, color: 'amber', icon: '💪' },
+      Knowledge:  { level: 1, xp: 0, xpToNext: 100, color: 'blue',  icon: '📘' },
+      Craft:      { level: 1, xp: 0, xpToNext: 100, color: 'cyan',  icon: '🔨' },
+      Governance: { level: 1, xp: 0, xpToNext: 100, color: 'purple', icon: '⚖️' },
+      Wellness:   { level: 1, xp: 0, xpToNext: 100, color: 'green',  icon: '🌿' },
+      Community:  { level: 1, xp: 0, xpToNext: 100, color: 'pink',   icon: '🤝' }
+    },
+    skills: { A: [], B: [], C: [] },
+    achievements: [],
+    journal: [],
+    credentials: [],
+    sealChain: [{ taskId: 'genesis', seal: 'aabbccdd', previousSeal: 'genesis',
+                  timestamp: '2026-04-15T00:00:00.000Z', data: {}, hashAlgorithm: 'sha256', nonce: 1 }]
+  };
+}
+
+function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Group A — Shape validator: valid profiles accepted
+// ═══════════════════════════════════════════════════════════════════════════
+startGroup('A', 'Shape validator — valid profiles accepted');
+
+(function groupA() {
+  // A-1: Baseline valid profile
+  var p = makeValidProfile();
+  var r = FerrosCore.validateProfileShape(p);
+  record('A-1', 'Baseline valid profile accepted', r.ok === true, r.ok ? 'ok:true' : r.code + ': ' + r.detail);
+
+  // A-2: Profile with optional meta fields (claimedAliasSessions, xp, sealBroken, revision, schemaVersion)
+  var p2 = deepClone(p);
+  p2.meta.claimedAliasSessions = ['claim-1'];
+  p2.meta.xp = 100;
+  p2.meta.sealBroken = false;
+  p2.meta.revision = 5;
+  p2.meta.schemaVersion = 2;
+  var r2 = FerrosCore.validateProfileShape(p2);
+  record('A-2', 'Profile with all optional meta fields accepted', r2.ok === true,
+    r2.ok ? 'ok:true (5 optional meta fields)' : r2.code + ': ' + r2.detail);
+
+  // A-3: Profile with V2 migration fields (schedule, completions, creditLog, bag)
+  var p3 = deepClone(p);
+  p3.schedule = { archetype: 'flex', activeDeck: null, wakeTime: '07:00', sleepTime: '23:00', slots: [] };
+  p3.completions = {};
+  p3.creditLog = {};
+  p3.bag = [];
+  var r3 = FerrosCore.validateProfileShape(p3);
+  record('A-3', 'Migrated profile with schedule/completions/creditLog/bag accepted', r3.ok === true,
+    r3.ok ? 'ok:true (4 migration fields)' : r3.code + ': ' + r3.detail);
+
+  // A-4: Profile with identity.class null (Stage 0)
+  var p4 = deepClone(p);
+  p4.identity.class = null;
+  p4.identity.streamAffinity = null;
+  var r4 = FerrosCore.validateProfileShape(p4);
+  record('A-4', 'Stage 0 profile with null class/streamAffinity accepted', r4.ok === true,
+    r4.ok ? 'ok:true' : r4.code + ': ' + r4.detail);
+
+  // A-5: Profile with claim-type journal entries
+  var p5 = deepClone(p);
+  p5.journal = [
+    { ts: '2026-04-15T00:00:00.000Z', text: 'Claimed alias', type: 'claim-event', aliasId: 'a1', aliasName: 'Tesla', claimId: 'c1' },
+    { ts: '2026-04-15T00:00:00.000Z', text: 'Merged entry', type: 'claimed-alias', aliasId: 'a1', aliasName: 'Tesla', linkedTo: 'gen1', claimId: 'c1', sealBroken: false },
+    { ts: '2026-04-15T00:00:00.000Z', text: 'Recovery entry', type: 'claimed-recovery', linkedTo: 'gen1', claimId: 'c2', sealBroken: true }
+  ];
+  var r5 = FerrosCore.validateProfileShape(p5);
+  record('A-5', 'Profile with claim-type journal entries accepted', r5.ok === true,
+    r5.ok ? 'ok:true (3 claim journal types)' : r5.code + ': ' + r5.detail);
+
+  // A-6: Validate golden fixture full-profile-stage3
+  var gold = FIXTURE_FULL_PROFILE_STAGE3;
+  var r6 = FerrosCore.validateProfileShape(gold);
+  record('A-6', 'Golden fixture full-profile-stage3 accepted', r6.ok === true,
+    r6.ok ? 'ok:true' : r6.code + ': ' + r6.detail);
+
+  // A-7: Validate golden fixture minimal-stage0-profile
+  var min0 = FIXTURE_MINIMAL_STAGE0_PROFILE;
+  var r7 = FerrosCore.validateProfileShape(min0);
+  record('A-7', 'Golden fixture minimal-stage0-profile accepted', r7.ok === true,
+    r7.ok ? 'ok:true' : r7.code + ': ' + r7.detail);
+
+  // A-8: Validate golden fixture quota-boundary-profile
+  var quota = FIXTURE_QUOTA_BOUNDARY_PROFILE;
+  var r8 = FerrosCore.validateProfileShape(quota);
+  record('A-8', 'Golden fixture quota-boundary-profile accepted', r8.ok === true,
+    r8.ok ? 'ok:true' : r8.code + ': ' + r8.detail);
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Group B — Shape validator: invalid profiles rejected
+// ═══════════════════════════════════════════════════════════════════════════
+startGroup('B', 'Shape validator — invalid profiles rejected');
+
+(function groupB() {
+  // B-1: Undeclared top-level field
+  var p1 = deepClone(makeValidProfile());
+  p1.evilField = 'injected';
+  var r1 = FerrosCore.validateProfileShape(p1);
+  record('B-1', 'Undeclared top-level field rejected', r1.ok === false && r1.code === 'PROFILE_SHAPE_INVALID',
+    r1.ok ? 'FAIL: accepted when should reject' : r1.code + ': ' + r1.detail);
+
+  // B-2: Undeclared meta field (hackerField)
+  var p2 = deepClone(makeValidProfile());
+  p2.meta.hackerField = 'injected';
+  var r2 = FerrosCore.validateProfileShape(p2);
+  record('B-2', 'Undeclared meta field rejected', r2.ok === false && r2.code === 'PROFILE_SHAPE_INVALID',
+    r2.ok ? 'FAIL: accepted when should reject' : r2.code + ': ' + r2.detail);
+
+  // B-3: Negative fixture — invalid-forbidden-meta-field
+  var neg = FIXTURE_INVALID_FORBIDDEN_META_FIELD;
+  var r3 = FerrosCore.validateProfileShape(neg);
+  record('B-3', 'Negative fixture invalid-forbidden-meta-field rejected', r3.ok === false,
+    r3.ok ? 'FAIL: accepted when should reject' : r3.code + ': ' + r3.detail);
+
+  // B-4: Missing required field (meta)
+  var p4 = deepClone(makeValidProfile());
+  delete p4.meta;
+  var r4 = FerrosCore.validateProfileShape(p4);
+  record('B-4', 'Missing meta rejected', r4.ok === false,
+    r4.ok ? 'FAIL: accepted when should reject' : r4.code + ': ' + r4.detail);
+
+  // B-5: Invalid journal entry type
+  var p5 = deepClone(makeValidProfile());
+  p5.journal = [{ ts: '2026-04-15T00:00:00.000Z', text: 'test', type: 'invalid-type' }];
+  var r5 = FerrosCore.validateProfileShape(p5);
+  record('B-5', 'Invalid journal entry type rejected', r5.ok === false,
+    r5.ok ? 'FAIL: accepted when should reject' : r5.code + ': ' + r5.detail);
+
+  // B-6: Achievement missing id
+  var p6 = deepClone(makeValidProfile());
+  p6.achievements = [{ name: 'No ID' }];
+  var r6 = FerrosCore.validateProfileShape(p6);
+  record('B-6', 'Achievement missing id rejected', r6.ok === false,
+    r6.ok ? 'FAIL: accepted when should reject' : r6.code + ': ' + r6.detail);
+
+  // B-7: Not an object
+  var r7 = FerrosCore.validateProfileShape('not-an-object');
+  record('B-7', 'String input rejected', r7.ok === false,
+    r7.ok ? 'FAIL: accepted when should reject' : r7.code + ': ' + r7.detail);
+
+  // B-8: Null input
+  var r8 = FerrosCore.validateProfileShape(null);
+  record('B-8', 'Null input rejected', r8.ok === false,
+    r8.ok ? 'FAIL: accepted when should reject' : r8.code + ': ' + r8.detail);
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Group C — Load-time corruption detection (A2)
+// Tests run against the negative fixture data structures.
+// We cannot call loadProfile() directly (it lives in the monolith),
+// so we test the corruption conditions the same way loadProfile() does.
+// ═══════════════════════════════════════════════════════════════════════════
+startGroup('C', 'Load-time corruption detection (A2)');
+
+(function groupC() {
+  // Helper: simulate the corruption checks from loadProfile()
+  function checkCorruption(raw) {
+    // C1: JSON parse
+    var parsed;
+    try { parsed = JSON.parse(raw); } catch (e) {
+      return { corrupt: true, code: 'STORAGE_JSON_INVALID' };
+    }
+    // Seal chain resolution (profile.sealChain canonical)
+    var chain = Array.isArray(parsed.sealChain) ? parsed.sealChain : [];
+    // C2: genesis-stage mismatch
+    if (parsed.meta && parsed.meta.genesisHash === null && parsed.meta.stage > 0) {
+      return { corrupt: true, code: 'STORAGE_GENESIS_STAGE_MISMATCH' };
+    }
+    // C3: sealCount mismatch
+    if (parsed.meta && typeof parsed.meta.sealCount === 'number' && chain.length !== parsed.meta.sealCount) {
+      return { corrupt: true, code: 'STORAGE_SEAL_COUNT_MISMATCH' };
+    }
+    // C4: last-seal mismatch
+    if (parsed.meta && parsed.meta.currentSeal && chain.length > 0 && chain[chain.length - 1].seal !== parsed.meta.currentSeal) {
+      return { corrupt: true, code: 'STORAGE_LAST_SEAL_MISMATCH' };
+    }
+    return { corrupt: false, code: null };
+  }
+
+  // C-1: Invalid JSON
+  var r1 = checkCorruption('{not valid json!!!');
+  record('C-1', 'Invalid JSON detected', r1.corrupt && r1.code === 'STORAGE_JSON_INVALID',
+    r1.corrupt ? r1.code : 'FAIL: not detected');
+
+  // C-2: Genesis-stage mismatch (stage > 0, genesisHash null)
+  var p2 = deepClone(makeValidProfile());
+  p2.meta.genesisHash = null;
+  p2.meta.stage = 2;
+  var r2 = checkCorruption(JSON.stringify(p2));
+  record('C-2', 'Genesis-stage mismatch detected', r2.corrupt && r2.code === 'STORAGE_GENESIS_STAGE_MISMATCH',
+    r2.corrupt ? r2.code : 'FAIL: not detected');
+
+  // C-3: sealCount mismatch — negative fixture
+  var splitFixture = FIXTURE_INVALID_SPLIT_SAVE_STATE;
+  var r3 = checkCorruption(JSON.stringify(splitFixture));
+  record('C-3', 'Negative fixture split-save-state detected (sealCount mismatch)',
+    r3.corrupt && r3.code === 'STORAGE_SEAL_COUNT_MISMATCH',
+    r3.corrupt ? r3.code : 'FAIL: not detected');
+
+  // C-4: last-seal mismatch
+  var p4 = deepClone(makeValidProfile());
+  p4.meta.currentSeal = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+  p4.sealChain = [{ taskId: 'genesis', seal: '0000000000000000000000000000000000000000000000000000000000000000',
+    previousSeal: 'genesis', timestamp: '2026-04-15T00:00:00.000Z', data: {}, hashAlgorithm: 'sha256', nonce: 1 }];
+  p4.meta.sealCount = 1;
+  var r4 = checkCorruption(JSON.stringify(p4));
+  record('C-4', 'Last-seal mismatch detected', r4.corrupt && r4.code === 'STORAGE_LAST_SEAL_MISMATCH',
+    r4.corrupt ? r4.code : 'FAIL: not detected');
+
+  // C-5: Valid profile passes all corruption checks
+  var r5 = checkCorruption(JSON.stringify(makeValidProfile()));
+  record('C-5', 'Valid profile passes corruption checks', !r5.corrupt,
+    r5.corrupt ? 'FAIL: false positive — ' + r5.code : 'ok: no corruption');
+
+  // C-6: Stage 0 with null genesisHash passes (stage=0 is allowed)
+  var p6 = deepClone(makeValidProfile());
+  p6.meta.genesisHash = null;
+  p6.meta.stage = 0;
+  p6.meta.currentSeal = null;
+  p6.meta.sealCount = 0;
+  p6.sealChain = [];
+  var r6 = checkCorruption(JSON.stringify(p6));
+  record('C-6', 'Stage 0 with null genesis passes (not corrupt)', !r6.corrupt,
+    r6.corrupt ? 'FAIL: false positive — ' + r6.code : 'ok: stage 0 allowed');
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Group D — Shape normalization (A2)
+// Verifies that missing optional meta fields get safe defaults.
+// ═══════════════════════════════════════════════════════════════════════════
+startGroup('D', 'Shape normalization (A2)');
+
+(function groupD() {
+  // Helper: apply the same normalizer loadProfile() uses
+  function normalize(parsed) {
+    var p = deepClone(parsed);
+    if (p.meta) {
+      if (typeof p.meta.revision !== 'number') p.meta.revision = 0;
+      if (typeof p.meta.xp !== 'number') p.meta.xp = 0;
+      if (!Array.isArray(p.meta.claimedAliasSessions)) p.meta.claimedAliasSessions = [];
+      if (typeof p.meta.sealBroken !== 'boolean') p.meta.sealBroken = false;
+      if (typeof p.meta.schemaVersion !== 'number') p.meta.schemaVersion = 1;
+    }
+    return p;
+  }
+
+  // D-1: Legacy profile missing all optional meta fields gets defaults
+  var legacy = deepClone(makeValidProfile());
+  delete legacy.meta.revision;
+  delete legacy.meta.xp;
+  delete legacy.meta.claimedAliasSessions;
+  delete legacy.meta.sealBroken;
+  delete legacy.meta.schemaVersion;
+  var norm = normalize(legacy);
+  var d1pass = norm.meta.revision === 0 && norm.meta.xp === 0 &&
+    Array.isArray(norm.meta.claimedAliasSessions) && norm.meta.claimedAliasSessions.length === 0 &&
+    norm.meta.sealBroken === false && norm.meta.schemaVersion === 1;
+  record('D-1', 'Legacy profile gets all 5 default meta fields', d1pass,
+    d1pass ? 'revision=0, xp=0, claimedAliasSessions=[], sealBroken=false, schemaVersion=1' : 'FAIL: missing defaults');
+
+  // D-2: Profile that already has values is not overwritten
+  var existing = deepClone(makeValidProfile());
+  existing.meta.revision = 5;
+  existing.meta.xp = 250;
+  existing.meta.claimedAliasSessions = ['s1', 's2'];
+  existing.meta.sealBroken = true;
+  existing.meta.schemaVersion = 2;
+  var norm2 = normalize(existing);
+  var d2pass = norm2.meta.revision === 5 && norm2.meta.xp === 250 &&
+    norm2.meta.claimedAliasSessions.length === 2 && norm2.meta.sealBroken === true && norm2.meta.schemaVersion === 2;
+  record('D-2', 'Existing values not overwritten by normalizer', d2pass,
+    d2pass ? 'All 5 fields preserved' : 'FAIL: values overwritten');
+
+  // D-3: Normalized profile passes shape validation
+  var norm3 = normalize(deepClone(makeValidProfile()));
+  var r3 = FerrosCore.validateProfileShape(norm3);
+  record('D-3', 'Normalized profile passes shape validation', r3.ok === true,
+    r3.ok ? 'ok:true' : r3.code + ': ' + r3.detail);
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Summary
+// ═══════════════════════════════════════════════════════════════════════════
+(function summary() {
+  var pass = 0, fail = 0;
+  for (var i = 0; i < results.length; i++) {
+    if (results[i].status === 'PASS') pass++; else fail++;
+  }
+  var bar = document.getElementById('summary-bar');
+  bar.className = 'summary-bar ' + (fail === 0 ? 'all-pass' : 'has-fail');
+  bar.innerHTML = '<span class="summary-stat">' + pass + ' PASS</span>' +
+    '<span class="summary-stat">' + fail + ' FAIL</span>' +
+    '<span class="summary-stat">' + results.length + ' total</span>';
+
+  document.getElementById('result-json').textContent = JSON.stringify({
+    harness: HARNESS_ID,
+    version: HARNESS_VERSION,
+    timestamp: new Date().toISOString(),
+    pass: pass,
+    fail: fail,
+    total: results.length,
+    results: results
+  }, null, 2);
+})();
+</script>
+</body>
+</html>

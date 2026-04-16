@@ -129,15 +129,37 @@ Phase 0 stores the full seal chain with no compaction. Checkpoint/compaction (e.
 
 A profile in `localStorage` is considered **corrupt** if any of the following are true at load time:
 
-1. `ferros_profile` is non-null but fails `JSON.parse()`.
-2. `meta.genesisHash` is null and `meta.stage` > 0.
-3. `sealChain` array length does not equal `meta.sealCount`.
-4. `sealChain[n].seal` !== `meta.currentSeal` where n is the last seal.
+1. `ferros_profile` is non-null but fails `JSON.parse()`. → `STORAGE_JSON_INVALID`
+2. `meta.genesisHash` is null and `meta.stage` > 0. → `STORAGE_GENESIS_STAGE_MISMATCH`
+3. `sealChain` array length does not equal `meta.sealCount` (skip if `sealCount` is undefined for v1.0 backwards compatibility). → `STORAGE_SEAL_COUNT_MISMATCH`
+4. `sealChain[n].seal` !== `meta.currentSeal` where n is the last seal. → `STORAGE_LAST_SEAL_MISMATCH`
+
+**Enforcement scope:** These checks are enforced in `loadProfile()` at application startup — not only on import. Every time a profile is loaded from `localStorage`, all four corruption checks run before the profile is accepted into memory.
 
 On corrupt detection:
 - Show a recovery UI prompt. Do not overwrite.
-- Do not proceed to normal profile load.
+- Do not proceed to normal profile load. `loadProfile()` returns `false`.
 - Offer: (a) clear storage and start fresh, or (b) download the raw corrupt data for manual recovery.
+
+### Load-Time Shape Normalization
+
+After corruption checks pass, `loadProfile()` applies a minimal shape normalizer to default missing optional meta fields for backwards compatibility with v1.0 profiles:
+
+| Field | Default | Reason |
+|---|---|---|
+| `meta.revision` | `0` | Added in A1a for cross-tab coordination (B1) |
+| `meta.xp` | `0` | Added in A1a for alias claim XP tracking |
+| `meta.claimedAliasSessions` | `[]` | Added in A1a for alias dedupe |
+| `meta.sealBroken` | `false` | Added in A1a for seal integrity flag |
+| `meta.schemaVersion` | `1` | Added in A1a for structural migration guard |
+
+This normalizer is **not** a migration engine — it only provides safe defaults for recently-added optional fields so that downstream code does not need null checks.
+
+### Seal Chain Load Priority
+
+As of A2, `profile.sealChain` is the **canonical** source for the seal chain at load time. The separate `ferros_seal_chain` localStorage key is used as a **fallback only** — if `profile.sealChain` is missing or not an array, `loadProfile()` attempts to read `ferros_seal_chain` before resorting to an empty array.
+
+At write time, `saveProfile()` continues to write both `profile.sealChain` (as part of the profile envelope) and `ferros_seal_chain` (as a backup key) for one version cycle. The backup key will be removed in a future version.
 
 ---
 
@@ -146,6 +168,29 @@ On corrupt detection:
 - `localStorage.removeItem('ferros_profile')` and `localStorage.removeItem('ferros_seal_chain')` must only be called together (atomic conceptual pair), never independently.
 - `sessionStorage` may be cleared independently per key.
 - Harnesses that clear storage between test runs must remove both keys, never just one.
+
+---
+
+## Cross-Tab Coordination (B1)
+
+FERROS uses the browser's `storage` event to coordinate between tabs. The `storage` event fires in all **other** tabs when `localStorage` is modified — it does not fire in the tab that wrote the change.
+
+### Revision Counter
+
+`meta.revision` is an integer counter incremented by `saveProfile()` on every write. It serves as the canonical ordering mechanism for cross-tab conflict detection.
+
+### Reconciliation Rules
+
+When a `storage` event fires with `key === "ferros_profile"`:
+
+1. Parse the incoming profile from `event.newValue`.
+2. Compare `incoming.meta.revision` against `local.meta.revision`.
+3. If `incoming > local`: reload the profile via `loadProfile()`, refresh the UI, show a notification.
+4. If `incoming <= local`: ignore — the local tab has a newer or equal version.
+
+**Conflict resolution:** Last-write wins. There is no merge logic. Two tabs writing simultaneously will produce the highest revision, and the `storage` event will propagate that revision to the other tab.
+
+**Phase 0 limitation:** No real-time locking or distributed consensus. The revision counter approach is sufficient for a single-user, multi-tab scenario.
 
 ---
 
@@ -158,6 +203,9 @@ On corrupt detection:
 | Session mode does not write to localStorage | H4 negative-harness.html |
 | Recovery mode writes nothing to any storage | H4 negative-harness.html |
 | Export envelope has required fields | H2 round-trip-harness.html |
+| Write-time profile shape validation (A1b) | H6 write-path-harness.html |
+| Load-time corruption detection (A2) | H6 write-path-harness.html |
+| Load-time shape normalization (A2) | H6 write-path-harness.html |
 
 ---
 

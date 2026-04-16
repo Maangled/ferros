@@ -1,0 +1,81 @@
+{
+  "$schema": "https://ferros.local/schemas/profile.schema.json",
+  "_fixture": {
+    "purpose": "Seam fixture: profile.schedule.archetype references a valid template.archetype",
+    "seam": "profile → template (archetype cross-reference)",
+    "validates": [
+      "profile.schedule.archetype matches exactly one template.archetype",
+      "profile.identity.class matches the template.aliasClass",
+      "profile.identity.streamAffinity matches the template.stream"
+    ]
+  },
+  "meta": {
+    "version": "1.0",
+    "stage": 3,
+    "genesisHash": "abc123fedcba",
+    "createdAt": "2025-01-15T09:00:00Z",
+    "sealCount": 5,
+    "schemaVersion": 2,
+    "revision": 3,
+    "xp": 45,
+    "claimedAliasSessions": ["tesla-a1b2"],
+    "sealBroken": false
+  },
+  "identity": {
+    "name": "TestUser",
+    "class": "Engineer",
+    "streamAffinity": "A",
+    "archetype": "structured-research"
+  },
+  "attributes": {
+    "Discipline": 10,
+    "Knowledge": 8,
+    "Craft": 5,
+    "Governance": 3,
+    "Wellness": 4,
+    "Community": 2
+  },
+  "skills": [],
+  "achievements": [
+    {
+      "id": "alias-first-claim",
+      "name": "First Alias Claimed",
+      "desc": "Claimed a template alias session",
+      "icon": "⚡",
+      "unlocked": true,
+      "unlockedAt": "2025-01-15T10:00:00Z"
+    }
+  ],
+  "journal": [
+    {
+      "type": "claimed-alias",
+      "text": "Alias claimed: Tesla (tesla-a1b2)",
+      "ts": "2025-01-15T10:00:00Z",
+      "aliasId": "tesla",
+      "aliasName": "Nikola Tesla",
+      "claimId": "tesla-a1b2"
+    }
+  ],
+  "credentials": [],
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal": "genesis-seal-abc123",
+      "previousSeal": "genesis",
+      "timestamp": "2025-01-15T09:00:00Z",
+      "data": {},
+      "hashAlgorithm": "djb2",
+      "nonce": "f1a2b3c4"
+    }
+  ],
+  "schedule": {
+    "archetype": "structured-research",
+    "activeDeck": null,
+    "wakeTime": "06:00",
+    "sleepTime": "22:00",
+    "slots": []
+  },
+  "completions": {},
+  "creditLog": {},
+  "bag": []
+}

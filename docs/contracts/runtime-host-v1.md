@@ -1,9 +1,11 @@
 # Runtime Host Contract v1
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Draft  
 **Related ADRs:** ADR-008 (Modular Rendering System)  
 **Implementation:** `docs/assets/_core/_runtime.js`
+
+> **v1.1 addendum (A4):** Added nonce handshake for message authentication (§9.1). Additive — no breaking changes from v1.0.
 
 ---
 
@@ -223,11 +225,27 @@ For v1: all assets assume `demo`, `interactive`, and `static` control modes are 
 
 FERROS must operate on both `file://` and `http(s)://` origins.
 
+**Trust boundary caveat (A4):** Under `file://`, the C8 runtime host contract provides **conformance guarantees only**, not a security boundary. Any local HTML file can inject messages into the parent frame. The nonce handshake (§9.1) provides defense-in-depth but cannot be considered a hard security boundary on `file://`.
+
 | Protocol | `window.location.origin` | Validation Rule |
 |---|---|---|
 | `file://` | `"null"` | Always allowed — no origin restriction possible. `crypto.subtle` may be unavailable; djb2 fallback activates. |
 | `http://localhost` | `"http://localhost:PORT"` | Allowed for development. |
 | `https://` | Full origin string | Host must maintain an origin allowlist. Only allowlisted origins may embed assets. |
+
+### 9.1 Nonce Handshake (v1.1)
+
+To prevent unauthorized frames from injecting messages into the host, FERROS uses a per-asset nonce handshake:
+
+1. **Host generates nonce:** On iframe load, the host (`_embed.js`) generates a random nonce using `FerrosCore.generateRuntimeNonce()` and includes it in the `ferros:init` message as `msg.nonce`.
+2. **Asset stores nonce:** The asset runtime (`_runtime.js`) stores the nonce from `ferros:init` and includes it in every outbound `ferros:event` message as `msg.nonce`.
+3. **Host validates nonce:** On incoming `ferros:event` messages, the host validates `msg.nonce` against the stored nonce for that asset. Messages with missing or mismatched nonces are **silently rejected** (logged to console as a warning).
+
+**Validation helpers:**
+- `FerrosCore.generateRuntimeNonce()` — returns a 32-character hex string (128-bit random via `crypto.getRandomValues`, or `Math.random` fallback on `file://`).
+- `FerrosCore.validateRuntimeMessage(msg, expectedNonce)` — returns `true` if `msg.nonce === expectedNonce`.
+
+**Backward compatibility:** If no nonce was generated for an asset (e.g., legacy embedder without A4), nonce validation is skipped (no nonce stored → no rejection). This makes the handshake additive (v1.1) rather than breaking.
 
 ### Migration: localhost → deployed domain
 
@@ -244,3 +262,5 @@ When deploying from `localhost` to a production domain:
 | D-1 | Asset loaded on `file://` — no origin check errors | Pass |
 | D-2 | Asset loaded on `http://localhost` — `ferros:init` succeeds | Pass |
 | D-3 | `window.location.origin === "null"` detected on `file://` protocol | Confirmed |
+| D-4 | Message from hostile frame (wrong/missing nonce) → rejected by host | Pass |
+| D-5 | Message from valid asset (correct nonce) → accepted by host | Pass |

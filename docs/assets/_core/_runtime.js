@@ -22,6 +22,7 @@
   var isEmbedded = window.parent !== window;
   var params     = new URLSearchParams(window.location.search);
   var control    = params.get('control') || 'demo';
+  var _runtimeNonce = null; // A4: nonce from ferros:init, included in all outbound messages
 
   /* ═══ REDUCED MOTION ═══ */
   var mql = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -33,7 +34,8 @@
       type: 'ferros:event',
       asset: ASSET_NAME,
       event: event,
-      payload: payload
+      payload: payload,
+      nonce: _runtimeNonce
     };
     if (isEmbedded) {
       window.parent.postMessage(msg, '*');
@@ -63,6 +65,7 @@
     if (e.data.type === 'ferros:init') {
       var config = e.data.config || {};
       if (config.control) control = config.control;
+      if (e.data.nonce) _runtimeNonce = e.data.nonce; // A4: store nonce for outbound messages
       applyControl();
       if (typeof window.onFerrosInit === 'function') {
         window.onFerrosInit(config);

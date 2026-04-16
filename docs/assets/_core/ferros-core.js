@@ -207,6 +207,130 @@
     return { ok: true, code: null };
   };
 
+  // ── validateProfileShape ────────────────────────────────────────────────────
+  // Write-time shape validator. Rejects profiles with undeclared fields.
+  // Returns { ok: boolean, code: string|null, detail?: string }
+  FerrosCore.validateProfileShape = function validateProfileShape(p) {
+    if (!p || typeof p !== 'object' || Array.isArray(p)) {
+      return { ok: false, code: 'PROFILE_SHAPE_INVALID', detail: 'not a plain object' };
+    }
+
+    // Top-level allowed properties (profile.schema.json)
+    var topAllowed = ['meta','identity','attributes','skills','achievements','journal',
+      'credentials','sealChain','auditTrail','schedule','completions','creditLog','bag'];
+    var topKeys = Object.keys(p);
+    for (var i = 0; i < topKeys.length; i++) {
+      if (topAllowed.indexOf(topKeys[i]) === -1) {
+        return { ok: false, code: 'PROFILE_SHAPE_INVALID', detail: 'undeclared top-level field: ' + topKeys[i] };
+      }
+    }
+
+    // Required top-level fields
+    var topRequired = ['meta','identity','attributes','skills','achievements','journal','credentials','sealChain'];
+    for (var r = 0; r < topRequired.length; r++) {
+      if (p[topRequired[r]] === undefined || p[topRequired[r]] === null) {
+        return { ok: false, code: 'PROFILE_SHAPE_INVALID', detail: 'missing required field: ' + topRequired[r] };
+      }
+    }
+
+    // meta allowed properties
+    if (typeof p.meta !== 'object' || Array.isArray(p.meta)) {
+      return { ok: false, code: 'PROFILE_SHAPE_INVALID', detail: 'meta is not an object' };
+    }
+    var metaAllowed = ['version','created','lastModified','assistanceLevel','genesisHash',
+      'currentSeal','sealCount','stage','anchoredToLedger','ledgerTxHash',
+      'schemaVersion','claimedAliasSessions','xp','sealBroken','revision'];
+    var metaKeys = Object.keys(p.meta);
+    for (var m = 0; m < metaKeys.length; m++) {
+      if (metaAllowed.indexOf(metaKeys[m]) === -1) {
+        return { ok: false, code: 'PROFILE_SHAPE_INVALID', detail: 'undeclared meta field: ' + metaKeys[m] };
+      }
+    }
+
+    // meta required fields
+    var metaRequired = ['version','created','lastModified','assistanceLevel','genesisHash','currentSeal','sealCount','stage'];
+    for (var mr = 0; mr < metaRequired.length; mr++) {
+      if (p.meta[metaRequired[mr]] === undefined) {
+        return { ok: false, code: 'PROFILE_SHAPE_INVALID', detail: 'missing required meta field: ' + metaRequired[mr] };
+      }
+    }
+
+    // journal entry type validation (spot-check — validate each entry type is in enum)
+    var journalTypeEnum = ['activity','journal','system','claim-event','claimed-alias','claimed-recovery'];
+    if (Array.isArray(p.journal)) {
+      for (var j = 0; j < p.journal.length; j++) {
+        var jt = p.journal[j].type;
+        if (jt !== undefined && journalTypeEnum.indexOf(jt) === -1) {
+          return { ok: false, code: 'PROFILE_SHAPE_INVALID', detail: 'invalid journal entry type at index ' + j + ': ' + jt };
+        }
+      }
+    }
+
+    // achievement required fields
+    if (Array.isArray(p.achievements)) {
+      for (var a = 0; a < p.achievements.length; a++) {
+        var ach = p.achievements[a];
+        if (!ach.id || !ach.name) {
+          return { ok: false, code: 'PROFILE_SHAPE_INVALID', detail: 'achievement at index ' + a + ' missing id or name' };
+        }
+      }
+    }
+
+    return { ok: true, code: null };
+  };
+
+  // ── generateRuntimeNonce (A4) ──────────────────────────────────────────────
+  // Generates a random nonce string for message authentication.
+  // Uses crypto.getRandomValues when available, falls back to Math.random.
+  FerrosCore.generateRuntimeNonce = function generateRuntimeNonce() {
+    if (root.crypto && root.crypto.getRandomValues) {
+      var arr = new Uint8Array(16);
+      root.crypto.getRandomValues(arr);
+      return Array.from(arr).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    }
+    // Fallback for file:// without crypto
+    var s = '';
+    for (var i = 0; i < 32; i++) { s += Math.floor(Math.random() * 16).toString(16); }
+    return s;
+  };
+
+  // ── validateRuntimeMessage (A4) ────────────────────────────────────────────
+  // Returns true if the message contains a valid nonce matching the expected one.
+  // msg: the postMessage data object. expectedNonce: the nonce from ferros:init.
+  FerrosCore.validateRuntimeMessage = function validateRuntimeMessage(msg, expectedNonce) {
+    if (!msg || typeof msg !== 'object') return false;
+    if (!expectedNonce) return false;
+    return msg.nonce === expectedNonce;
+  };
+
+  // ── templateBlockToEvent (C1) ──────────────────────────────────────────────
+  // Transforms a template schedule block ({time, label}) into a C6 schedule-event.
+  // templateId: the template's ID (e.g. 'tesla'). blockIndex: 0-based index for ID gen.
+  // stream (optional): template's stream attribute.
+  FerrosCore.templateBlockToEvent = function templateBlockToEvent(block, templateId, blockIndex, stream) {
+    var evt = {
+      id: (templateId || 'tpl') + '-block-' + blockIndex,
+      kind: 'block',
+      label: block.label,
+      time: block.time,
+      source: { type: 'template', templateId: templateId || 'unknown' }
+    };
+    if (stream) evt.stream = stream;
+    return evt;
+  };
+
+  // ── templateToEvents (C1) ──────────────────────────────────────────────────
+  // Transforms an entire template's schedule blocks into an array of C6 events.
+  // template: object with {id, stream?, templateSchedule: {blocks: [{time, label}]}}.
+  FerrosCore.templateToEvents = function templateToEvents(template) {
+    if (!template || !template.templateSchedule || !Array.isArray(template.templateSchedule.blocks)) {
+      return [];
+    }
+    return template.templateSchedule.blocks.map(function(block, i) {
+      return FerrosCore.templateBlockToEvent(block, template.id, i, template.stream);
+    });
+  };
+
   // ── serializeExport ────────────────────────────────────────────────────────
   // Builds canonical export envelope.
   FerrosCore.serializeExport = function serializeExport(profile, sealChain) {

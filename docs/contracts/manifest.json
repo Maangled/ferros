@@ -1,7 +1,91 @@
 {
-  "$comment": "FERROS Contract Manifest — maps contract IDs to schemas, fixtures, and harnesses. Phase 0 scope.",
-  "version": "1.0",
+  "$comment": "FERROS Contract Manifest — maps contract IDs to schemas, fixtures, and harnesses. Phase 0 scope. IDs follow PROGRESS.md canonical taxonomy.",
+  "version": "1.1",
   "contracts": {
+    "C1": {
+      "name": "Identity / Session Schema",
+      "document": "docs/adr/ADR-005-cross-device-identity-and-session-modes.md",
+      "schemas": ["schemas/identity.schema.json"],
+      "fixtures": [
+        "schemas/fixtures/alias-session-log.json",
+        "schemas/fixtures/session-mode-invariants.json",
+        "schemas/fixtures/recovery-session-log.json"
+      ],
+      "harnesses": [
+        "harnesses/ferros-contract-validator.html",
+        "harnesses/negative-harness.html"
+      ],
+      "status": "active"
+    },
+    "C2": {
+      "name": "Profile Schema",
+      "document": "docs/contracts/storage-rules.md",
+      "schemas": ["schemas/profile.schema.json"],
+      "fixtures": [
+        "schemas/fixtures/full-profile-stage3.json",
+        "schemas/fixtures/minimal-stage0-profile.json",
+        "schemas/fixtures/mid-stage1-profile.json",
+        "schemas/fixtures/quota-boundary-profile.json",
+        "schemas/fixtures/profile-export-envelope.json",
+        "schemas/fixtures/invalid-forbidden-meta-field.json",
+        "schemas/fixtures/invalid-split-save-state.json",
+        "schemas/fixtures/profile-template-archetype-seam.json"
+      ],
+      "harnesses": [
+        "harnesses/ferros-contract-validator.html",
+        "harnesses/round-trip-harness.html",
+        "harnesses/write-path-harness.html",
+        "harnesses/semantic-fixture-linter.html"
+      ],
+      "status": "active"
+    },
+    "C3": {
+      "name": "Template Profile Specification",
+      "document": "docs/adr/ADR-004-template-profile-specification.md",
+      "schemas": ["schemas/template.schema.json"],
+      "fixtures": ["schemas/fixtures/maximum-template-schedule.json"],
+      "harnesses": ["harnesses/ferros-contract-validator.html"],
+      "status": "active"
+    },
+    "C4": {
+      "name": "Card Schema",
+      "document": "docs/adr/ADR-010-cards-and-decks-nomenclature.md",
+      "schemas": ["schemas/card.schema.json"],
+      "fixtures": [
+        "schemas/fixtures/card-deck-roundtrip.json",
+        "schemas/fixtures/deck-card-assembly-seam.json"
+      ],
+      "harnesses": ["harnesses/ferros-contract-validator.html", "harnesses/semantic-fixture-linter.html"],
+      "status": "active"
+    },
+    "C5": {
+      "name": "Deck Schema",
+      "document": "docs/adr/ADR-010-cards-and-decks-nomenclature.md",
+      "schemas": ["schemas/deck.schema.json"],
+      "fixtures": [
+        "schemas/fixtures/card-deck-roundtrip.json",
+        "schemas/fixtures/deck-card-assembly-seam.json"
+      ],
+      "harnesses": ["harnesses/ferros-contract-validator.html", "harnesses/semantic-fixture-linter.html"],
+      "status": "active"
+    },
+    "C6": {
+      "name": "Schedule Event Schema",
+      "document": null,
+      "schemas": ["schemas/schedule-event.schema.json"],
+      "fixtures": ["schemas/fixtures/schedule-event-source-seam.json"],
+      "harnesses": ["harnesses/semantic-fixture-linter.html"],
+      "status": "active",
+      "note": "C1 templateToEvents provides runtime transformation. Full consumer in Wave 2."
+    },
+    "C7": {
+      "name": "Audit Record Schema",
+      "document": null,
+      "schemas": ["schemas/audit-record.schema.json"],
+      "fixtures": [],
+      "harnesses": ["harnesses/ferros-contract-validator.html"],
+      "status": "active"
+    },
     "C8": {
       "name": "Runtime Host Contract",
       "document": "docs/contracts/runtime-host-v1.md",
@@ -28,12 +112,15 @@
         "schemas/fixtures/card-deck-roundtrip.json",
         "schemas/fixtures/invalid-broken-seal-chain.json",
         "schemas/fixtures/invalid-corrupted-export.json",
-        "schemas/fixtures/invalid-duplicate-alias-claim.json"
+        "schemas/fixtures/invalid-duplicate-alias-claim.json",
+        "schemas/fixtures/invalid-forbidden-meta-field.json",
+        "schemas/fixtures/invalid-split-save-state.json"
       ],
       "harnesses": [
         "harnesses/ferros-contract-validator.html",
         "harnesses/round-trip-harness.html",
-        "harnesses/negative-harness.html"
+        "harnesses/negative-harness.html",
+        "harnesses/write-path-harness.html"
       ],
       "status": "active"
     },
@@ -47,51 +134,21 @@
         "harnesses/acceptance-harness.html"
       ],
       "status": "active"
-    },
-    "C4": {
-      "name": "Template Profile Specification",
-      "document": "docs/adr/ADR-004-template-profile-specification.md",
-      "schemas": ["schemas/template.schema.json"],
-      "fixtures": ["schemas/fixtures/maximum-template-schedule.json"],
-      "harnesses": ["harnesses/ferros-contract-validator.html"],
-      "status": "active"
-    },
-    "C5": {
-      "name": "Cross-Device Identity and Session Modes",
-      "document": "docs/adr/ADR-005-cross-device-identity-and-session-modes.md",
-      "schemas": ["schemas/identity.schema.json"],
-      "fixtures": ["schemas/fixtures/alias-session-log.json"],
-      "harnesses": ["harnesses/negative-harness.html"],
-      "status": "active"
-    },
-    "C6": {
-      "name": "Schedule Event",
-      "document": null,
-      "schemas": ["schemas/schedule-event.schema.json"],
-      "fixtures": [],
-      "harnesses": [],
-      "status": "future-consumer-only",
-      "note": "No runtime consumer in Phase 0. Transformation to C6 events required before Wave 2 gate S1."
-    },
-    "C7": {
-      "name": "Card and Deck",
-      "document": "docs/adr/ADR-010-cards-and-decks-nomenclature.md",
-      "schemas": [
-        "schemas/card.schema.json",
-        "schemas/deck.schema.json"
-      ],
-      "fixtures": ["schemas/fixtures/card-deck-roundtrip.json"],
-      "harnesses": ["harnesses/ferros-contract-validator.html"],
-      "status": "active"
     }
   },
   "shared": {
     "ferrosCore": "docs/assets/_core/ferros-core.js",
+    "ferrosCoreApi": "docs/contracts/ferros-core-api.md",
+    "surfaceBootstrap": "docs/contracts/surface-bootstrap.md",
     "templates": "docs/assets/_core/templates.json",
     "constants": "harnesses/_constants.js",
     "generators": [
       "tools/generate-harness-constants.ps1",
       "tools/generate-ferros-core.ps1"
+    ],
+    "toolDocs": "tools/README.md",
+    "adrs": [
+      "docs/adr/ADR-012-schema-evolution-cascade.md"
     ]
   }
 }

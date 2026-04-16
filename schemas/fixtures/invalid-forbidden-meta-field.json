@@ -1,0 +1,48 @@
+{
+  "$comment": "Negative fixture: profile with an undeclared meta field. Must be rejected by validateProfileShape() with code PROFILE_SHAPE_INVALID.",
+  "expectedError": "PROFILE_SHAPE_INVALID",
+  "meta": {
+    "version": "1.0",
+    "created": "2026-04-15T00:00:00.000Z",
+    "lastModified": "2026-04-15T00:00:00.000Z",
+    "assistanceLevel": 1,
+    "genesisHash": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    "currentSeal": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    "sealCount": 1,
+    "stage": 1,
+    "hackerField": "this-should-not-exist"
+  },
+  "identity": {
+    "name": "Bad Actor",
+    "avatar": "shield",
+    "class": "Architect",
+    "streamAffinity": "A",
+    "title": "Newcomer",
+    "joinedDate": "2026-04-15T00:00:00.000Z",
+    "streakDays": 0,
+    "longestStreak": 0
+  },
+  "attributes": {
+    "Discipline": { "level": 1, "xp": 0, "xpToNext": 100, "color": "amber", "icon": "💪" },
+    "Knowledge":  { "level": 1, "xp": 0, "xpToNext": 100, "color": "blue",  "icon": "📘" },
+    "Craft":      { "level": 1, "xp": 0, "xpToNext": 100, "color": "cyan",  "icon": "🔨" },
+    "Governance": { "level": 1, "xp": 0, "xpToNext": 100, "color": "purple", "icon": "⚖️" },
+    "Wellness":   { "level": 1, "xp": 0, "xpToNext": 100, "color": "green",  "icon": "🌿" },
+    "Community":  { "level": 1, "xp": 0, "xpToNext": 100, "color": "pink",   "icon": "🤝" }
+  },
+  "skills": { "A": [], "B": [], "C": [] },
+  "achievements": [],
+  "journal": [],
+  "credentials": [],
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "previousSeal": "genesis",
+      "timestamp": "2026-04-15T00:00:00.000Z",
+      "data": { "event": "profile_created", "name": "Bad Actor" },
+      "hashAlgorithm": "sha256",
+      "nonce": 666
+    }
+  ]
+}

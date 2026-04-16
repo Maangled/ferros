@@ -1,0 +1,100 @@
+{
+  "_fixture": {
+    "purpose": "Seam fixture: deck.cards[].cardId references valid card.id values",
+    "seam": "deck → card (card-reference assembly)",
+    "validates": [
+      "Each cardReference.cardId in deck.cards matches a card.id in the companion cards array",
+      "Slot names are unique within the deck",
+      "Transform values are schema-conformant"
+    ]
+  },
+  "deck": {
+    "id": "forge-assembly-test",
+    "kind": "deck",
+    "name": "Forge Assembly Test Deck",
+    "version": 1,
+    "contentHash": null,
+    "role": "project",
+    "description": "Seam test: deck with 4 cards exercising all cardReference properties",
+    "tags": ["seam-test", "forge"],
+    "attribution": {
+      "createdBy": "abc123fedcba",
+      "createdAt": "2025-01-15T09:00:00Z",
+      "linkedTo": "abc123fedcba"
+    },
+    "cards": [
+      {
+        "cardId": "base-container",
+        "slot": "base",
+        "group": "structure"
+      },
+      {
+        "cardId": "lid-mechanism",
+        "slot": "top",
+        "group": "structure",
+        "transform": { "ty": -40, "rz": 0, "scale": 1 }
+      },
+      {
+        "cardId": "hinge-left",
+        "slot": "hinge-l",
+        "group": "mechanism",
+        "transform": { "tx": -20, "ty": -20, "tz": 0, "rx": 0, "ry": 0, "rz": 0, "scale": 1 }
+      },
+      {
+        "cardId": "decorative-plate",
+        "slot": "front-face",
+        "group": "decorative",
+        "instanceOf": "base-container",
+        "transform": { "tz": 5, "scale": 0.8 }
+      }
+    ],
+    "renderFile": "assets/cards/forge-assembly.html",
+    "defaultState": "Closed",
+    "states": [
+      { "name": "Closed", "control": "static" },
+      { "name": "Open", "control": "interactive" }
+    ]
+  },
+  "cards": [
+    {
+      "id": "base-container",
+      "kind": "card",
+      "name": "Base Container",
+      "version": 1,
+      "contentHash": null,
+      "renderFile": "assets/cards/base-container.html",
+      "role": "container",
+      "tags": ["structural"]
+    },
+    {
+      "id": "lid-mechanism",
+      "kind": "card",
+      "name": "Lid Mechanism",
+      "version": 1,
+      "contentHash": null,
+      "renderFile": "assets/cards/lid-mechanism.html",
+      "role": "lid",
+      "tags": ["mechanism"]
+    },
+    {
+      "id": "hinge-left",
+      "kind": "card",
+      "name": "Hinge Left",
+      "version": 1,
+      "contentHash": null,
+      "renderFile": "assets/cards/hinge-left.html",
+      "role": "mechanism",
+      "tags": ["mechanism", "hardware"]
+    },
+    {
+      "id": "decorative-plate",
+      "kind": "card",
+      "name": "Decorative Front Plate",
+      "version": 1,
+      "contentHash": null,
+      "renderFile": "assets/cards/decorative-plate.html",
+      "role": "decorative",
+      "tags": ["visual"]
+    }
+  ]
+}

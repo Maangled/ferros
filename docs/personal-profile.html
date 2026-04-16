@@ -1667,8 +1667,16 @@
     }
 
     function saveProfile(){
-      if(!canMutateDurableState())return;
+      if(!canMutateDurableState())return false;
+      // Write-time shape validation (A1b)
+      var shapeCheck=FerrosCore.validateProfileShape(profile);
+      if(!shapeCheck.ok){
+        console.error('Profile shape validation failed:',shapeCheck.code,shapeCheck.detail);
+        showModal('&#9888; Profile Error','<p>Your profile contains invalid data and could not be saved.</p><p>Detail: '+shapeCheck.detail+'</p>');
+        return false;
+      }
       profile.meta.lastModified=new Date().toISOString();
+      profile.meta.revision=(profile.meta.revision||0)+1; // B1: cross-tab coordination revision counter
       profile.sealChain=sealChain;
       pushAuditEntry('profile-saved',{sealCount:sealChain.length});
       try{
@@ -1677,13 +1685,53 @@
       }catch(e){
         if(e.name==='QuotaExceededError'||e.code===22){
           showModal('&#9888; Storage Full','<p>Your browser\'s localStorage quota has been exceeded. Your last change could not be saved.</p><p>Try exporting your profile and clearing old data, or use a browser with more storage available.</p>');
+          return false;
         }else{throw e}
       }
+      return true;
     }
     function loadProfile(){
-      const s=localStorage.getItem('ferros_profile');
-      if(s){profile=JSON.parse(s);const sc=localStorage.getItem('ferros_seal_chain');sealChain=sc?JSON.parse(sc):(profile.sealChain||[]);return true}
-      return false;
+      var raw=localStorage.getItem('ferros_profile');
+      if(!raw)return false;
+      // Corruption check C1: JSON parse
+      var parsed;
+      try{parsed=JSON.parse(raw)}catch(e){
+        showCorruptionModal('STORAGE_JSON_INVALID','Profile data is not valid JSON.');
+        return false;
+      }
+      // Flip load priority (A2): profile.sealChain canonical, ferros_seal_chain fallback
+      var chain=parsed.sealChain;
+      if(!Array.isArray(chain)){
+        var fallbackRaw=localStorage.getItem('ferros_seal_chain');
+        if(fallbackRaw){try{chain=JSON.parse(fallbackRaw)}catch(e2){chain=[]}}
+        else{chain=[]}
+      }
+      // Corruption check C2: genesis-stage mismatch
+      if(parsed.meta&&parsed.meta.genesisHash===null&&parsed.meta.stage>0){
+        showCorruptionModal('STORAGE_GENESIS_STAGE_MISMATCH','Profile has stage > 0 but no genesis hash.');
+        return false;
+      }
+      // Corruption check C3: sealCount mismatch (skip if sealCount undefined for v1.0 compat)
+      if(parsed.meta&&typeof parsed.meta.sealCount==='number'&&chain.length!==parsed.meta.sealCount){
+        showCorruptionModal('STORAGE_SEAL_COUNT_MISMATCH','Seal chain length ('+chain.length+') does not match meta.sealCount ('+parsed.meta.sealCount+').');
+        return false;
+      }
+      // Corruption check C4: last-seal mismatch
+      if(parsed.meta&&parsed.meta.currentSeal&&chain.length>0&&chain[chain.length-1].seal!==parsed.meta.currentSeal){
+        showCorruptionModal('STORAGE_LAST_SEAL_MISMATCH','Last seal in chain does not match meta.currentSeal.');
+        return false;
+      }
+      // Shape normalizer — default missing optional meta fields for backwards compat
+      if(parsed.meta){
+        if(typeof parsed.meta.revision!=='number')parsed.meta.revision=0;
+        if(typeof parsed.meta.xp!=='number')parsed.meta.xp=0;
+        if(!Array.isArray(parsed.meta.claimedAliasSessions))parsed.meta.claimedAliasSessions=[];
+        if(typeof parsed.meta.sealBroken!=='boolean')parsed.meta.sealBroken=false;
+        if(typeof parsed.meta.schemaVersion!=='number')parsed.meta.schemaVersion=1;
+      }
+      profile=parsed;
+      sealChain=chain;
+      return true;
     }
 
     // Delegate to FerrosCore — kept as local names for backward compatibility (harnesses call iw.computeHash etc.)
@@ -2400,6 +2448,28 @@
     function showModal(title,bodyHtml){$('modal-title').textContent=title;$('modal-body').innerHTML=bodyHtml;$('modal-overlay').style.display='flex'}
     function closeModal(){$('modal-overlay').style.display='none'}
     function closeModalOnBg(e){if(e.target===$('modal-overlay'))closeModal()}
+    function showCorruptionModal(code,detail){
+      var raw=localStorage.getItem('ferros_profile')||'';
+      var body='<p style="color:#f85149;font-weight:700">Corruption detected: '+code+'</p>'+
+        '<p>'+detail+'</p>'+
+        '<p style="margin-top:12px">Choose an option:</p>'+
+        '<div style="display:flex;gap:8px;margin-top:8px">'+
+        '<button onclick="downloadCorruptData()" style="flex:1;padding:8px;background:#21262d;color:#e6edf3;border:1px solid #30363d;border-radius:4px;cursor:pointer">Download Raw Data</button>'+
+        '<button onclick="clearCorruptAndRestart()" style="flex:1;padding:8px;background:#4a1a1a;color:#f85149;border:1px solid #f85149;border-radius:4px;cursor:pointer">Clear &amp; Start Fresh</button>'+
+        '</div>';
+      showModal('\u26a0 Profile Corrupted',body);
+      window._corruptRawData=raw;
+    }
+    function downloadCorruptData(){
+      var blob=new Blob([window._corruptRawData||''],{type:'application/json'});
+      var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+      a.download='ferros-corrupt-backup-'+new Date().toISOString().slice(0,10)+'.json';
+      a.click();URL.revokeObjectURL(a.href);
+    }
+    function clearCorruptAndRestart(){
+      localStorage.removeItem('ferros_profile');localStorage.removeItem('ferros_seal_chain');
+      closeModal();location.reload();
+    }
 
     // ── Alias System ──────────────────────────────────────────────────────────
     const ALIAS_PROFILES=[
@@ -2528,8 +2598,9 @@
       }
       const sessionKey=data.sessionStart||'';
       const logId=data.sessionId||(isRecovery?(data.profile.genesisHash+'-'+sessionKey):(data.alias.id+'-'+sessionKey));
-      const journal=profile.journal||[];
-      if(journal.some(j=>j.claimId===logId)){
+      // A3: dedupe via canonical claimedAliasSessions (not journal scan)
+      const claimed=profile.meta&&Array.isArray(profile.meta.claimedAliasSessions)?profile.meta.claimedAliasSessions:[];
+      if(claimed.indexOf(logId)!==-1){
         showModal('&#9888; Already Claimed','<p>&#9888;&#65039; This log has already been claimed into your profile.</p>');return
       }
       const sealsOk=await verifyAliasLogSeals(data.entries);
@@ -2554,32 +2625,6 @@
         showModal('&#128206; Claim Alias Log \u2014 '+esc(data.alias.name),bodyHtml);
       }
     }
-    function _finishAliasClaim(data,hasIntegrityWarning,claimId,xpGain,now){
-      const isRecovery=data.logType==='recovery-session';
-      profile.meta.claimedAliasSessions=profile.meta.claimedAliasSessions||[];
-      profile.meta.claimedAliasSessions.push(claimId);
-      if(data.entries.length>0){
-        profile.achievements=profile.achievements||[];
-        if(isRecovery){
-          if(!profile.achievements.find(function(a){return a.id==='claimed-recovery'})){
-            profile.achievements.push({id:'claimed-recovery',name:'&#128273; Recovery Claimed',earnedAt:now});
-          }
-        }else{
-          if(!profile.achievements.find(function(a){return a.id==='claimed-alias'})){
-            profile.achievements.push({id:'claimed-alias',name:'&#128206; Alias Claimed',earnedAt:now});
-          }
-        }
-      }
-      saveProfile();
-      renderDashboard();updateVerificationPanel();renderJournal();renderClaimedSessionsList();
-      closeModal();
-      _pendingAliasClaimData=null;
-      if(isRecovery){
-        showModal('&#128273; Recovery Log Claimed','<p>&#128273; Recovery log claimed! '+data.entries.length+' '+(data.entries.length===1?'entry':'entries')+' merged into your profile.</p><p style="color:var(--accent-cyan);font-weight:700">+'+xpGain+' XP \u2014 Recovery log claimed!</p>');
-      }else{
-        showModal('&#128206; Alias Log Claimed','<p>&#128206; Alias log claimed! '+data.entries.length+' '+(data.entries.length===1?'entry':'entries')+' merged into your profile.</p><p style="color:var(--accent-cyan);font-weight:700">+'+xpGain+' XP \u2014 Alias logs claimed!</p>');
-      }
-    }
     function confirmAliasClaim(data,hasIntegrityWarning){
       if(!canMutateDurableState()){showModal('&#10060; Cannot Claim','<p>Log claims are not available in the current session mode.</p>');_pendingAliasClaimData=null;return}
       const isRecovery=data.logType==='recovery-session';
@@ -2587,12 +2632,14 @@
       pushAuditEntry(isRecovery?'recovery-claimed':'alias-claimed',{claimId:claimId,entryCount:data.entries.length});
       const now=new Date().toISOString();
       const genesisHash=(profile.meta&&profile.meta.genesisHash)||null;
-      let summaryEntry,mergedEntries;
+      // A3: Build changeset — no profile mutations until seal succeeds
+      var changeset={};
+      var mergedEntries,summaryEntry;
       if(isRecovery){
         mergedEntries=data.entries.map(function(entry){
           return{ts:entry.ts||now,text:entry.text,type:'claimed-recovery',linkedTo:genesisHash,claimId:claimId,sealBroken:!!hasIntegrityWarning};
         });
-        const sessionDate=data.sessionStart?new Date(data.sessionStart).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+        var sessionDate=data.sessionStart?new Date(data.sessionStart).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
         summaryEntry={ts:now,text:'&#128273; Claimed '+data.entries.length+' recovery log '+(data.entries.length===1?'entry':'entries')+' from session on '+sessionDate+'.'+(hasIntegrityWarning?' &#9888;&#65039; Some entries had integrity warnings.':''),type:'claim-event',aliasId:'recovery',aliasName:data.profile.id||'Recovery',claimId:claimId};
       }else{
         mergedEntries=data.entries.map(function(entry){
@@ -2600,17 +2647,49 @@
         });
         summaryEntry={ts:now,text:'&#128206; Claimed '+data.entries.length+' log '+(data.entries.length===1?'entry':'entries')+' from alias session as "'+data.alias.name+'" ('+data.alias.id+').'+(hasIntegrityWarning?' &#9888;&#65039; Some entries had integrity warnings.':''),type:'claim-event',aliasId:data.alias.id,aliasName:data.alias.name,claimId:claimId};
       }
-      profile.journal=[summaryEntry].concat(mergedEntries).concat(profile.journal);
-      const xpGain=data.entries.length*15;
-      profile.meta.xp=(profile.meta.xp||0)+xpGain;
-      // FIX: use addSeal() instead of direct sealChain.push() to maintain chain integrity
-      const claimTaskId=isRecovery?'recovery-claim':'alias-claim';
-      const claimTaskData={claimId:claimId,count:data.entries.length,aliasId:isRecovery?(data.profile&&data.profile.id||'recovery'):data.alias.id};
+      changeset.journalPrepend=[summaryEntry].concat(mergedEntries);
+      changeset.xpGain=data.entries.length*15;
+      changeset.claimId=claimId;
+      if(data.entries.length>0){
+        var achId=isRecovery?'claimed-recovery':'claimed-alias';
+        var existingAch=profile.achievements||[];
+        if(!existingAch.find(function(a){return a.id===achId})){
+          changeset.achievement=isRecovery
+            ?{id:'claimed-recovery',name:'&#128273; Recovery Claimed',desc:'Claimed a recovery session log',icon:'&#128273;',unlocked:true,unlockedAt:now}
+            :{id:'claimed-alias',name:'&#128206; Alias Claimed',desc:'Claimed an alias session log',icon:'&#128206;',unlocked:true,unlockedAt:now};
+        }
+      }
+      var claimTaskId=isRecovery?'recovery-claim':'alias-claim';
+      var claimTaskData={claimId:claimId,count:data.entries.length,aliasId:isRecovery?(data.profile&&data.profile.id||'recovery'):data.alias.id};
       addSeal(claimTaskId,claimTaskData).then(function(){
-        _finishAliasClaim(data,hasIntegrityWarning,claimId,xpGain,now);
+        // Seal succeeded — apply changeset to profile
+        profile.journal=changeset.journalPrepend.concat(profile.journal);
+        profile.meta.xp=(profile.meta.xp||0)+changeset.xpGain;
+        profile.meta.claimedAliasSessions=profile.meta.claimedAliasSessions||[];
+        profile.meta.claimedAliasSessions.push(changeset.claimId);
+        if(changeset.achievement){
+          profile.achievements=profile.achievements||[];
+          profile.achievements.push(changeset.achievement);
+        }
+        if(!saveProfile()){
+          showModal('&#9888; Claim Failed','<p>Seal was created but saving failed. Your claim could not be persisted.</p>');
+          _pendingAliasClaimData=null;
+          return;
+        }
+        renderDashboard();updateVerificationPanel();renderJournal();renderClaimedSessionsList();
+        closeModal();
+        _pendingAliasClaimData=null;
+        var xpGain=changeset.xpGain;
+        if(isRecovery){
+          showModal('&#128273; Recovery Log Claimed','<p>&#128273; Recovery log claimed! '+data.entries.length+' '+(data.entries.length===1?'entry':'entries')+' merged into your profile.</p><p style="color:var(--accent-cyan);font-weight:700">+'+xpGain+' XP \u2014 Recovery log claimed!</p>');
+        }else{
+          showModal('&#128206; Alias Log Claimed','<p>&#128206; Alias log claimed! '+data.entries.length+' '+(data.entries.length===1?'entry':'entries')+' merged into your profile.</p><p style="color:var(--accent-cyan);font-weight:700">+'+xpGain+' XP \u2014 Alias logs claimed!</p>');
+        }
       }).catch(function(e){
+        // Seal failed — discard changeset, no profile mutations
         console.error('Failed to add claim seal:',e);
-        _finishAliasClaim(data,hasIntegrityWarning,claimId,xpGain,now);
+        showModal('&#9888; Claim Failed','<p>Could not create a seal for this claim. No changes have been made to your profile.</p>');
+        _pendingAliasClaimData=null;
       });
     }
     function renderClaimedSessionsList(){
@@ -3944,6 +4023,23 @@
     }
 
     window.addEventListener('DOMContentLoaded',init);
+
+    // B1: Cross-tab coordination — reload profile when another tab writes to localStorage
+    window.addEventListener('storage',function(e){
+      if(e.key!=='ferros_profile'||!e.newValue)return;
+      try{
+        var incoming=JSON.parse(e.newValue);
+        var incomingRev=(incoming.meta&&typeof incoming.meta.revision==='number')?incoming.meta.revision:0;
+        var localRev=(profile&&profile.meta&&typeof profile.meta.revision==='number')?profile.meta.revision:0;
+        if(incomingRev>localRev){
+          loadProfile();
+          if(profile.meta&&profile.meta.stage===3){
+            renderDashboard();updateVerificationPanel();renderJournal();
+          }
+          showModal('\u2139 Profile Updated','<p>Your profile was updated in another tab (revision '+incomingRev+'). This tab has been refreshed.</p>');
+        }
+      }catch(err){/* ignore parse errors from other tabs */}
+    });
   </script>
 </body>
 </html>

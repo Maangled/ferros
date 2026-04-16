@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>H7 — FERROS Semantic Fixture Linter</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:24px;font-size:13px;line-height:1.5}
+  h1{font-size:1.1rem;color:#58a6ff;margin-bottom:4px}
+  .meta{color:#8b949e;font-size:.85rem;margin-bottom:20px}
+  h2{font-size:.9rem;color:#8b949e;letter-spacing:2px;text-transform:uppercase;margin:24px 0 8px;border-bottom:1px solid #21262d;padding-bottom:4px}
+  .test{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #161b22}
+  .badge{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:3px;min-width:44px;text-align:center;flex-shrink:0;margin-top:1px}
+  .pass{background:#1a4731;color:#3fb950}
+  .fail{background:#4a1a1a;color:#f85149}
+  .skip{background:#1c2128;color:#8b949e}
+  .test-name{color:#e6edf3;flex:1}
+  .test-detail{color:#8b949e;font-size:.8rem;margin-top:2px}
+  .test-error{color:#f85149;font-size:.8rem;margin-top:2px;word-break:break-word}
+  #result-block{margin-top:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px}
+  #result-block pre{font-size:.78rem;color:#e6edf3;white-space:pre-wrap;word-break:break-word}
+  .summary-bar{display:flex;gap:16px;margin-top:16px;padding:12px;border-radius:4px}
+  .summary-bar.all-pass{background:#1a4731;color:#3fb950}
+  .summary-bar.has-fail{background:#4a1a1a;color:#f85149}
+  .summary-stat{font-weight:700}
+</style>
+</head>
+<body>
+<h1>H7 — FERROS Semantic Fixture Linter</h1>
+<div class="meta">Harness version 1.0 &nbsp;|&nbsp; Validates: fixture→schema conformance + cross-schema references &nbsp;|&nbsp; Run on file:// in Chrome</div>
+<div id="groups"></div>
+<div class="summary-bar" id="summary-bar"></div>
+<div id="result-block"><pre id="result-json">running...</pre></div>
+
+<script src="_constants.js"></script>
+<script src="../docs/assets/_core/ferros-core.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  var groups = document.getElementById('groups');
+  var results = [];
+
+  function addGroup(title) {
+    var h = document.createElement('h2');
+    h.textContent = title;
+    groups.appendChild(h);
+    return groups;
+  }
+
+  function addResult(name, pass, detail, error) {
+    var row = document.createElement('div');
+    row.className = 'test';
+    row.innerHTML = '<span class="badge ' + (pass ? 'pass' : 'fail') + '">' +
+      (pass ? 'PASS' : 'FAIL') + '</span><div><div class="test-name">' + name + '</div>' +
+      (detail ? '<div class="test-detail">' + detail + '</div>' : '') +
+      (error ? '<div class="test-error">' + error + '</div>' : '') + '</div>';
+    groups.appendChild(row);
+    results.push({ name: name, pass: pass, detail: detail || null, error: error || null });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
+
+  /** Strip fixture metadata keys (_fixture, $schema, $comment, _invalidReason) */
+  function stripMeta(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+    var out = {};
+    Object.keys(obj).forEach(function(k) {
+      if (k !== '_fixture' && k !== '$schema' && k !== '$comment' && k !== '_invalidReason') {
+        out[k] = obj[k];
+      }
+    });
+    return out;
+  }
+
+  /** Check required keys exist on obj */
+  function hasRequired(obj, keys) {
+    var missing = [];
+    keys.forEach(function(k) { if (!(k in obj)) missing.push(k); });
+    return missing;
+  }
+
+  /** Check no extra keys beyond allowed set */
+  function extraKeys(obj, allowed) {
+    var extras = [];
+    Object.keys(obj).forEach(function(k) { if (allowed.indexOf(k) === -1) extras.push(k); });
+    return extras;
+  }
+
+  /** Lightweight type check - returns true if value matches schema type descriptor */
+  function matchesType(value, typeDesc) {
+    if (Array.isArray(typeDesc)) {
+      return typeDesc.some(function(t) { return matchesSingleType(value, t); });
+    }
+    return matchesSingleType(value, typeDesc);
+  }
+
+  function matchesSingleType(value, t) {
+    if (t === 'null') return value === null;
+    if (t === 'string') return typeof value === 'string';
+    if (t === 'integer') return typeof value === 'number' && Number.isInteger(value);
+    if (t === 'number') return typeof value === 'number';
+    if (t === 'boolean') return typeof value === 'boolean';
+    if (t === 'object') return value !== null && typeof value === 'object' && !Array.isArray(value);
+    if (t === 'array') return Array.isArray(value);
+    return true;
+  }
+
+  /** Validate a pattern string against a value */
+  function matchesPattern(value, pattern) {
+    if (typeof value !== 'string') return false;
+    return new RegExp(pattern).test(value);
+  }
+
+  /** Validate enum membership */
+  function inEnum(value, enumArr) {
+    return enumArr.indexOf(value) !== -1;
+  }
+
+  // ── Schema-aware structural checks ───────────────────────
+
+  var VALID_ARCHETYPES = []; // Populated from TEMPLATE_PROFILES if available
+  if (typeof FerrosCore !== 'undefined' && FerrosCore.TEMPLATE_PROFILES) {
+    FerrosCore.TEMPLATE_PROFILES.forEach(function(t) {
+      if (t.archetype && VALID_ARCHETYPES.indexOf(t.archetype) === -1) {
+        VALID_ARCHETYPES.push(t.archetype);
+      }
+    });
+  }
+
+  var VALID_TEMPLATE_IDS = [];
+  if (typeof FerrosCore !== 'undefined' && FerrosCore.TEMPLATE_PROFILES) {
+    FerrosCore.TEMPLATE_PROFILES.forEach(function(t) {
+      VALID_TEMPLATE_IDS.push(t.id);
+    });
+  }
+
+  // ── GROUP A: Golden profile fixtures ──────────────────────
+
+  addGroup('A — Profile Fixture Shape');
+
+  var profileFixtures = [
+    { name: 'full-profile-stage3', data: typeof FIXTURE_FULL_PROFILE_STAGE3 !== 'undefined' ? FIXTURE_FULL_PROFILE_STAGE3 : null },
+    { name: 'mid-stage1-profile', data: typeof FIXTURE_MID_STAGE1_PROFILE !== 'undefined' ? FIXTURE_MID_STAGE1_PROFILE : null },
+    { name: 'minimal-stage0-profile', data: typeof FIXTURE_MINIMAL_STAGE0_PROFILE !== 'undefined' ? FIXTURE_MINIMAL_STAGE0_PROFILE : null },
+    { name: 'profile-template-archetype-seam', data: typeof FIXTURE_PROFILE_TEMPLATE_ARCHETYPE_SEAM !== 'undefined' ? FIXTURE_PROFILE_TEMPLATE_ARCHETYPE_SEAM : null },
+    { name: 'quota-boundary-profile', data: typeof FIXTURE_QUOTA_BOUNDARY_PROFILE !== 'undefined' ? FIXTURE_QUOTA_BOUNDARY_PROFILE : null }
+  ];
+
+  var profileRequired = ['meta', 'identity', 'attributes', 'skills', 'achievements', 'journal', 'credentials', 'sealChain'];
+  var profileAllowed = profileRequired.concat(['auditTrail', 'schedule', 'completions', 'creditLog', 'bag']);
+  var metaRequired = ['version', 'created', 'lastModified', 'assistanceLevel', 'genesisHash', 'currentSeal', 'sealCount', 'stage'];
+  var metaAllowed = metaRequired.concat(['anchoredToLedger', 'ledgerTxHash', 'schemaVersion', 'claimedAliasSessions', 'xp', 'sealBroken', 'revision']);
+
+  profileFixtures.forEach(function(f) {
+    if (!f.data) {
+      addResult('A: ' + f.name + ' — loaded', false, '', 'Fixture constant not found');
+      return;
+    }
+    var d = stripMeta(f.data);
+
+    // Required top-level keys
+    var missingTop = hasRequired(d, profileRequired);
+    addResult('A: ' + f.name + ' — required top-level keys', missingTop.length === 0,
+      profileRequired.length + ' required keys present',
+      missingTop.length ? 'Missing: ' + missingTop.join(', ') : null);
+
+    // No extra top-level keys
+    var extraTop = extraKeys(d, profileAllowed.concat(['_fixture', '$schema']));
+    addResult('A: ' + f.name + ' — no extra top-level keys', extraTop.length === 0,
+      null, extraTop.length ? 'Extra keys: ' + extraTop.join(', ') : null);
+
+    // Meta required keys
+    if (d.meta) {
+      var missingMeta = hasRequired(d.meta, metaRequired);
+      addResult('A: ' + f.name + ' — meta required keys', missingMeta.length === 0,
+        metaRequired.length + ' required keys present',
+        missingMeta.length ? 'Missing: ' + missingMeta.join(', ') : null);
+
+      var extraMeta = extraKeys(d.meta, metaAllowed);
+      addResult('A: ' + f.name + ' — no extra meta keys', extraMeta.length === 0,
+        null, extraMeta.length ? 'Extra keys: ' + extraMeta.join(', ') : null);
+    }
+
+    // Write-time shape validation
+    if (typeof FerrosCore !== 'undefined' && FerrosCore.validateProfileShape) {
+      var shape = FerrosCore.validateProfileShape(d);
+      var isNeg = f.name.indexOf('invalid-') === 0;
+      if (!isNeg) {
+        addResult('A: ' + f.name + ' — validateProfileShape', shape.ok,
+          'FerrosCore.validateProfileShape returned ok=' + shape.ok,
+          !shape.ok ? shape.detail : null);
+      }
+    }
+  });
+
+  // ── GROUP B: Card/Deck fixtures ───────────────────────────
+
+  addGroup('B — Card & Deck Fixture Shape');
+
+  var cardDeckFixtures = [
+    { name: 'card-deck-roundtrip', data: typeof FIXTURE_CARD_DECK_ROUNDTRIP !== 'undefined' ? FIXTURE_CARD_DECK_ROUNDTRIP : null },
+    { name: 'deck-card-assembly-seam', data: typeof FIXTURE_DECK_CARD_ASSEMBLY_SEAM !== 'undefined' ? FIXTURE_DECK_CARD_ASSEMBLY_SEAM : null }
+  ];
+
+  var cardRequired = ['id', 'kind', 'name', 'version'];
+  var deckRequired = ['id', 'kind', 'name', 'version', 'cards'];
+
+  cardDeckFixtures.forEach(function(f) {
+    if (!f.data) {
+      addResult('B: ' + f.name + ' — loaded', false, '', 'Fixture constant not found');
+      return;
+    }
+    var d = stripMeta(f.data);
+
+    // Deck validation
+    var deck = d.deck || d;
+    if (deck.kind === 'deck') {
+      var missDeck = hasRequired(deck, deckRequired);
+      addResult('B: ' + f.name + ' — deck required keys', missDeck.length === 0,
+        deckRequired.length + ' required keys',
+        missDeck.length ? 'Missing: ' + missDeck.join(', ') : null);
+
+      // Validate card references
+      if (Array.isArray(deck.cards)) {
+        var allHaveId = deck.cards.every(function(cr) { return cr && typeof cr.cardId === 'string'; });
+        addResult('B: ' + f.name + ' — all cardRefs have cardId', allHaveId,
+          deck.cards.length + ' card references checked');
+
+        // Cross-reference: if companion cards array exists, verify cardId references
+        if (Array.isArray(d.cards)) {
+          var cardIds = d.cards.map(function(c) { return c.id; });
+          var orphans = [];
+          deck.cards.forEach(function(cr) {
+            if (cardIds.indexOf(cr.cardId) === -1) orphans.push(cr.cardId);
+          });
+          addResult('B: ' + f.name + ' — deck→card cross-reference', orphans.length === 0,
+            'All ' + deck.cards.length + ' cardIds resolve to companion cards',
+            orphans.length ? 'Orphaned cardIds: ' + orphans.join(', ') : null);
+        }
+
+        // Unique slot names
+        var slots = deck.cards.filter(function(cr) { return cr.slot; }).map(function(cr) { return cr.slot; });
+        var uniqueSlots = slots.filter(function(s, i) { return slots.indexOf(s) === i; });
+        addResult('B: ' + f.name + ' — unique slot names', slots.length === uniqueSlots.length,
+          slots.length + ' slots, ' + uniqueSlots.length + ' unique',
+          slots.length !== uniqueSlots.length ? 'Duplicate slots found' : null);
+      }
+    }
+
+    // Card validation
+    var cards = Array.isArray(d.cards) ? d.cards : (d.kind === 'card' ? [d] : []);
+    cards.forEach(function(card, idx) {
+      var missCard = hasRequired(card, cardRequired);
+      addResult('B: ' + f.name + ' — card[' + idx + '] required keys', missCard.length === 0,
+        'Card: ' + (card.name || card.id),
+        missCard.length ? 'Missing: ' + missCard.join(', ') : null);
+
+      // ID pattern
+      if (card.id) {
+        var idOk = matchesPattern(card.id, '^[a-z0-9-]+$');
+        addResult('B: ' + f.name + ' — card[' + idx + '] id pattern', idOk,
+          'id=' + card.id, !idOk ? 'ID must match ^[a-z0-9-]+$' : null);
+      }
+    });
+  });
+
+  // ── GROUP C: Schedule Event fixtures ──────────────────────
+
+  addGroup('C — Schedule Event Fixture Shape');
+
+  var scheduleFixtures = [
+    { name: 'schedule-event-source-seam', data: typeof FIXTURE_SCHEDULE_EVENT_SOURCE_SEAM !== 'undefined' ? FIXTURE_SCHEDULE_EVENT_SOURCE_SEAM : null }
+  ];
+
+  var eventRequired = ['id', 'kind', 'label', 'time'];
+  var validKinds = ['event', 'task', 'block', 'routine'];
+  var validSourceTypes = ['template', 'module', 'user'];
+
+  scheduleFixtures.forEach(function(f) {
+    if (!f.data) {
+      addResult('C: ' + f.name + ' — loaded', false, '', 'Fixture constant not found');
+      return;
+    }
+    var d = stripMeta(f.data);
+    var events = d.events || (Array.isArray(d) ? d : [d]);
+
+    events.forEach(function(ev, idx) {
+      // Required keys
+      var missEv = hasRequired(ev, eventRequired);
+      addResult('C: ' + f.name + ' — event[' + idx + '] required keys', missEv.length === 0,
+        'id=' + (ev.id || '?'),
+        missEv.length ? 'Missing: ' + missEv.join(', ') : null);
+
+      // Kind enum
+      if (ev.kind) {
+        var kindOk = inEnum(ev.kind, validKinds);
+        addResult('C: ' + f.name + ' — event[' + idx + '] kind enum', kindOk,
+          'kind=' + ev.kind, !kindOk ? 'Must be one of: ' + validKinds.join(', ') : null);
+      }
+
+      // Time pattern
+      if (ev.time) {
+        var timeOk = matchesPattern(ev.time, '^\\d{2}:\\d{2}$');
+        addResult('C: ' + f.name + ' — event[' + idx + '] time format', timeOk,
+          'time=' + ev.time, !timeOk ? 'Must match HH:MM' : null);
+      }
+
+      // Source cross-reference
+      if (ev.source) {
+        var srcTypeOk = ev.source.type && inEnum(ev.source.type, validSourceTypes);
+        addResult('C: ' + f.name + ' — event[' + idx + '] source.type', srcTypeOk,
+          'source.type=' + ev.source.type,
+          !srcTypeOk ? 'Must be one of: ' + validSourceTypes.join(', ') : null);
+
+        // Template source → templateId exists
+        if (ev.source.type === 'template') {
+          var hasTid = typeof ev.source.templateId === 'string' && ev.source.templateId.length > 0;
+          addResult('C: ' + f.name + ' — event[' + idx + '] template source has templateId', hasTid,
+            'templateId=' + (ev.source.templateId || '(missing)'));
+
+          // Cross-check against known templates
+          if (hasTid && VALID_TEMPLATE_IDS.length > 0) {
+            var tidKnown = VALID_TEMPLATE_IDS.indexOf(ev.source.templateId) !== -1;
+            addResult('C: ' + f.name + ' — event[' + idx + '] templateId is known', tidKnown,
+              ev.source.templateId + (tidKnown ? ' found in TEMPLATE_PROFILES' : ''),
+              !tidKnown ? 'Not in TEMPLATE_PROFILES: ' + VALID_TEMPLATE_IDS.join(', ') : null);
+          }
+        }
+
+        // Module source → moduleId exists
+        if (ev.source.type === 'module') {
+          var hasMid = typeof ev.source.moduleId === 'string' && ev.source.moduleId.length > 0;
+          addResult('C: ' + f.name + ' — event[' + idx + '] module source has moduleId', hasMid,
+            'moduleId=' + (ev.source.moduleId || '(missing)'));
+        }
+      }
+    });
+  });
+
+  // ── GROUP D: Template fixture shape ───────────────────────
+
+  addGroup('D — Template Fixture Shape');
+
+  var templateFixtures = [
+    { name: 'maximum-template-schedule', data: typeof FIXTURE_MAXIMUM_TEMPLATE_SCHEDULE !== 'undefined' ? FIXTURE_MAXIMUM_TEMPLATE_SCHEDULE : null }
+  ];
+
+  var templateRequired = ['id', 'name', 'icon', 'aliasClass', 'tagline', 'stream', 'archetype', 'templateSchedule'];
+  var validClasses = ['Architect', 'Engineer', 'Scholar', 'Artisan', 'Healer', 'Guardian', 'Guided', 'Community'];
+  var validStreams = ['A', 'B', 'C'];
+
+  templateFixtures.forEach(function(f) {
+    if (!f.data) {
+      addResult('D: ' + f.name + ' — loaded', false, '', 'Fixture constant not found');
+      return;
+    }
+    var d = stripMeta(f.data);
+    var templates = d.templates || (Array.isArray(d) ? d : [d]);
+
+    templates.forEach(function(t, idx) {
+      var missT = hasRequired(t, templateRequired);
+      addResult('D: ' + f.name + ' — template[' + idx + '] required keys', missT.length === 0,
+        'name=' + (t.name || '?'),
+        missT.length ? 'Missing: ' + missT.join(', ') : null);
+
+      if (t.aliasClass) {
+        addResult('D: ' + f.name + ' — template[' + idx + '] aliasClass enum', inEnum(t.aliasClass, validClasses),
+          'aliasClass=' + t.aliasClass);
+      }
+
+      if (t.stream) {
+        addResult('D: ' + f.name + ' — template[' + idx + '] stream enum', inEnum(t.stream, validStreams),
+          'stream=' + t.stream);
+      }
+
+      if (t.id) {
+        addResult('D: ' + f.name + ' — template[' + idx + '] id pattern', matchesPattern(t.id, '^[a-z0-9-]+$'),
+          'id=' + t.id);
+      }
+
+      // Schedule blocks present
+      if (t.templateSchedule && Array.isArray(t.templateSchedule.blocks)) {
+        var blocks = t.templateSchedule.blocks;
+        var allBlocksOk = blocks.every(function(b) { return b.time && b.label; });
+        addResult('D: ' + f.name + ' — template[' + idx + '] blocks valid', allBlocksOk,
+          blocks.length + ' blocks, all have time+label');
+      }
+    });
+  });
+
+  // ── GROUP E: Cross-schema seam integrity ──────────────────
+
+  addGroup('E — Cross-Schema Seam Integrity');
+
+  // E1: profile-template-archetype-seam → archetype cross-ref
+  var archSeam = typeof FIXTURE_PROFILE_TEMPLATE_ARCHETYPE_SEAM !== 'undefined' ? FIXTURE_PROFILE_TEMPLATE_ARCHETYPE_SEAM : null;
+  if (archSeam) {
+    var archData = stripMeta(archSeam);
+    var profileArch = archData.schedule && archData.schedule.archetype;
+    if (profileArch && VALID_ARCHETYPES.length > 0) {
+      addResult('E: profile→template archetype cross-ref', VALID_ARCHETYPES.indexOf(profileArch) !== -1,
+        'schedule.archetype=' + profileArch + ' found in TEMPLATE_PROFILES',
+        VALID_ARCHETYPES.indexOf(profileArch) === -1 ? 'Not in known archetypes: ' + VALID_ARCHETYPES.join(', ') : null);
+    }
+    var identityArch = archData.identity && archData.identity.archetype;
+    if (identityArch && VALID_ARCHETYPES.length > 0) {
+      addResult('E: profile→template identity.archetype cross-ref', VALID_ARCHETYPES.indexOf(identityArch) !== -1,
+        'identity.archetype=' + identityArch + ' found in TEMPLATE_PROFILES',
+        VALID_ARCHETYPES.indexOf(identityArch) === -1 ? 'Not in known archetypes: ' + VALID_ARCHETYPES.join(', ') : null);
+    }
+
+    // Identity class ↔ template aliasClass
+    if (archData.identity && archData.identity.class) {
+      addResult('E: profile identity.class is valid aliasClass', inEnum(archData.identity.class, validClasses),
+        'identity.class=' + archData.identity.class);
+    }
+  }
+
+  // E2: deck-card-assembly-seam → all cardIds resolve
+  var deckSeam = typeof FIXTURE_DECK_CARD_ASSEMBLY_SEAM !== 'undefined' ? FIXTURE_DECK_CARD_ASSEMBLY_SEAM : null;
+  if (deckSeam) {
+    var deckData = stripMeta(deckSeam);
+    if (deckData.deck && Array.isArray(deckData.cards)) {
+      var knownIds = deckData.cards.map(function(c) { return c.id; });
+      var unresolvedRefs = [];
+      deckData.deck.cards.forEach(function(cr) {
+        if (knownIds.indexOf(cr.cardId) === -1) unresolvedRefs.push(cr.cardId);
+      });
+      addResult('E: deck→card all references resolve', unresolvedRefs.length === 0,
+        deckData.deck.cards.length + ' refs, ' + knownIds.length + ' cards',
+        unresolvedRefs.length ? 'Unresolved: ' + unresolvedRefs.join(', ') : null);
+
+      // instanceOf references resolve to a card in the same deck
+      deckData.deck.cards.forEach(function(cr) {
+        if (cr.instanceOf) {
+          var mirrorOk = knownIds.indexOf(cr.instanceOf) !== -1;
+          addResult('E: deck instanceOf=' + cr.instanceOf + ' resolves', mirrorOk,
+            'cardId=' + cr.cardId + ' mirrors ' + cr.instanceOf);
+        }
+      });
+    }
+  }
+
+  // E3: seal chain internal consistency in profile fixtures
+  profileFixtures.forEach(function(f) {
+    if (!f.data) return;
+    var d = stripMeta(f.data);
+    if (!Array.isArray(d.sealChain) || d.sealChain.length === 0) return;
+
+    // First seal must have previousSeal === 'genesis'
+    var firstOk = d.sealChain[0].previousSeal === 'genesis';
+    addResult('E: ' + f.name + ' — first seal is genesis', firstOk,
+      'previousSeal=' + d.sealChain[0].previousSeal);
+
+    // sealCount matches chain length (if sealCount defined)
+    if (d.meta && typeof d.meta.sealCount === 'number') {
+      var countMatch = d.meta.sealCount === d.sealChain.length;
+      addResult('E: ' + f.name + ' — sealCount matches chain', countMatch,
+        'sealCount=' + d.meta.sealCount + ', chain.length=' + d.sealChain.length);
+    }
+  });
+
+  // ── GROUP F: Negative fixture annotations ─────────────────
+
+  addGroup('F — Negative Fixtures Have Expected Error');
+
+  var negativeFixtures = [
+    { name: 'invalid-broken-seal-chain', data: typeof FIXTURE_INVALID_BROKEN_SEAL_CHAIN !== 'undefined' ? FIXTURE_INVALID_BROKEN_SEAL_CHAIN : null },
+    { name: 'invalid-corrupted-export', data: typeof FIXTURE_INVALID_CORRUPTED_EXPORT !== 'undefined' ? FIXTURE_INVALID_CORRUPTED_EXPORT : null },
+    { name: 'invalid-dual-session-mode', data: typeof FIXTURE_INVALID_DUAL_SESSION_MODE !== 'undefined' ? FIXTURE_INVALID_DUAL_SESSION_MODE : null },
+    { name: 'invalid-duplicate-alias-claim', data: typeof FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM !== 'undefined' ? FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM : null },
+    { name: 'invalid-forbidden-meta-field', data: typeof FIXTURE_INVALID_FORBIDDEN_META_FIELD !== 'undefined' ? FIXTURE_INVALID_FORBIDDEN_META_FIELD : null },
+    { name: 'invalid-split-save-state', data: typeof FIXTURE_INVALID_SPLIT_SAVE_STATE !== 'undefined' ? FIXTURE_INVALID_SPLIT_SAVE_STATE : null }
+  ];
+
+  negativeFixtures.forEach(function(f) {
+    if (!f.data) {
+      addResult('F: ' + f.name + ' — loaded', false, '', 'Fixture constant not found');
+      return;
+    }
+    // Negative fixtures MUST have _invalidReason or $comment explaining what's wrong
+    var hasAnnotation = f.data._invalidReason || f.data.$comment ||
+      (f.data._fixture && f.data._fixture.purpose);
+    addResult('F: ' + f.name + ' — has error annotation', !!hasAnnotation,
+      hasAnnotation ? (typeof hasAnnotation === 'string' ? hasAnnotation.substring(0, 80) : 'Has _fixture.purpose') : null,
+      !hasAnnotation ? 'Negative fixture lacks _invalidReason, $comment, or _fixture.purpose' : null);
+  });
+
+  // ── Summary ───────────────────────────────────────────────
+
+  var passed = results.filter(function(r) { return r.pass; }).length;
+  var failed = results.filter(function(r) { return !r.pass; }).length;
+  var total = results.length;
+
+  var bar = document.getElementById('summary-bar');
+  bar.className = 'summary-bar ' + (failed === 0 ? 'all-pass' : 'has-fail');
+  bar.innerHTML = '<span class="summary-stat">' + passed + '/' + total + ' PASSED</span>' +
+    (failed > 0 ? '<span class="summary-stat">' + failed + ' FAILED</span>' : ' — All semantic checks pass');
+
+  // Machine-readable JSON
+  var resultJson = {
+    harness: 'H7-semantic-fixture-linter',
+    version: '1.0',
+    timestamp: new Date().toISOString(),
+    total: total,
+    passed: passed,
+    failed: failed,
+    results: results
+  };
+  document.getElementById('result-json').textContent = JSON.stringify(resultJson, null, 2);
+})();
+</script>
+</body>
+</html>

@@ -55,6 +55,7 @@
   var iframes = {};       // assetName → iframe element
   var pendingQueue = {};  // assetName → [messages] (queued before iframe is ready)
   var readyAssets = {};   // assetName → true (set after first message received or load event)
+  var assetNonces = {};   // A4: assetName → nonce (generated on init, validated on events)
 
   function registerIframe(iframe) {
     var name = iframe.dataset.ferrosAsset;
@@ -120,7 +121,12 @@
         if (iframe.dataset.ferrosData) {
           try { config.data = JSON.parse(iframe.dataset.ferrosData); } catch(e) {}
         }
-        iframe.contentWindow.postMessage({ type: 'ferros:init', config: config }, '*');
+        // A4: generate nonce for this asset's communication channel
+        var nonce = (typeof FerrosCore !== 'undefined' && FerrosCore.generateRuntimeNonce)
+          ? FerrosCore.generateRuntimeNonce()
+          : Math.random().toString(36).slice(2);
+        if (name) assetNonces[name] = nonce;
+        iframe.contentWindow.postMessage({ type: 'ferros:init', config: config, nonce: nonce }, '*');
 
         // Mark as ready and flush any queued messages
         if (name) {
@@ -150,6 +156,12 @@
       var sourceAsset = e.data.asset;
       var eventName = e.data.event;
       var payload = e.data.payload;
+
+      // A4: validate nonce — reject messages without valid nonce
+      if (sourceAsset && assetNonces[sourceAsset] && e.data.nonce !== assetNonces[sourceAsset]) {
+        console.warn('[ferros-embed] Rejected message from "' + sourceAsset + '": invalid nonce');
+        return;
+      }
 
       // Mark source as ready (it sent us a message, so it's loaded)
       if (sourceAsset && !readyAssets[sourceAsset]) {

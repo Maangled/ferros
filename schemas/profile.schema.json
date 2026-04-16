@@ -31,6 +31,30 @@
       "type": "array",
       "description": "C10 bounded audit ring buffer. Cap: 1000 entries, FIFO eviction.",
       "items": { "$ref": "#/$defs/auditEntry" }
+    },
+    "schedule": {
+      "type": "object",
+      "description": "V2 migration field: user schedule state. Added by migrateProfileStructure().",
+      "properties": {
+        "archetype": { "type": ["string", "null"] },
+        "activeDeck": { "type": ["string", "null"] },
+        "wakeTime": { "type": "string" },
+        "sleepTime": { "type": "string" },
+        "slots": { "type": "array" }
+      }
+    },
+    "completions": {
+      "type": "object",
+      "description": "V2 migration field: protocol completion tracking. Added by migrateProfileStructure()."
+    },
+    "creditLog": {
+      "type": "object",
+      "description": "V2 migration field: XP credit history. Added by migrateProfileStructure()."
+    },
+    "bag": {
+      "type": "array",
+      "description": "V2 migration field: inventory bag. Added by migrateProfileStructure().",
+      "items": { "type": "object" }
     }
   },
   "$defs": {
@@ -48,7 +72,12 @@
         "sealCount": { "type": "integer", "minimum": 0 },
         "stage": { "type": "integer", "minimum": 0, "maximum": 4 },
         "anchoredToLedger": { "type": "boolean", "default": false },
-        "ledgerTxHash": { "type": ["string", "null"], "default": null }
+        "ledgerTxHash": { "type": ["string", "null"], "default": null },
+        "schemaVersion": { "type": "integer", "description": "Internal structural version used by migrateProfileStructure(). Distinct from meta.version (interchange version)." },
+        "claimedAliasSessions": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Canonical dedupe index for claimed alias/recovery log sessions." },
+        "xp": { "type": "integer", "minimum": 0, "default": 0, "description": "Cumulative XP from alias/recovery log claims." },
+        "sealBroken": { "type": "boolean", "default": false, "description": "True if imported profile had a broken seal chain." },
+        "revision": { "type": "integer", "minimum": 0, "default": 0, "description": "Monotonically increasing counter for cross-tab coordination." }
       }
     },
     "identity": {
@@ -58,13 +87,13 @@
       "properties": {
         "name": { "type": "string" },
         "avatar": { "type": "string" },
-        "class": { "type": "string", "enum": ["Architect", "Engineer", "Scholar", "Artisan", "Healer", "Guardian", "Guided", "Community"] },
-        "streamAffinity": { "type": "string", "enum": ["A", "B", "C"] },
+        "class": { "type": ["string", "null"], "enum": ["Architect", "Engineer", "Scholar", "Artisan", "Healer", "Guardian", "Guided", "Community", null] },
+        "streamAffinity": { "type": ["string", "null"], "enum": ["A", "B", "C", null] },
         "title": { "type": "string" },
         "joinedDate": { "type": ["string", "null"], "format": "date-time" },
         "streakDays": { "type": "integer", "minimum": 0 },
         "longestStreak": { "type": "integer", "minimum": 0 },
-        "archetype": { "type": "string" },
+        "archetype": { "type": ["string", "null"] },
         "wakeTime": { "type": "string" },
         "sleepTime": { "type": "string" },
         "categoryInterests": { "type": "array", "items": { "type": "string" } }
@@ -107,14 +136,14 @@
     },
     "achievement": {
       "type": "object",
-      "required": ["id", "name", "desc", "icon", "unlocked"],
+      "required": ["id", "name"],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "id": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
         "name": { "type": "string" },
-        "desc": { "type": "string" },
-        "icon": { "type": "string" },
-        "unlocked": { "type": "boolean" },
+        "desc": { "type": "string", "default": "" },
+        "icon": { "type": "string", "default": "" },
+        "unlocked": { "type": "boolean", "default": false },
         "unlockedAt": { "type": ["string", "null"], "format": "date-time" }
       }
     },
@@ -125,8 +154,13 @@
       "properties": {
         "ts": { "type": "string", "format": "date-time" },
         "text": { "type": "string" },
-        "type": { "type": "string", "enum": ["activity", "journal", "system"], "default": "journal" },
-        "seal": { "type": ["string", "null"] }
+        "type": { "type": "string", "enum": ["activity", "journal", "system", "claim-event", "claimed-alias", "claimed-recovery"], "default": "journal" },
+        "seal": { "type": ["string", "null"] },
+        "aliasId": { "type": ["string", "null"], "description": "Alias identifier for claimed entries." },
+        "aliasName": { "type": ["string", "null"], "description": "Alias display name for claimed entries." },
+        "linkedTo": { "type": ["string", "null"], "description": "Genesis hash of the claiming profile." },
+        "claimId": { "type": ["string", "null"], "description": "Unique claim session identifier." },
+        "sealBroken": { "type": "boolean", "description": "True if the source log had integrity warnings." }
       }
     },
     "credential": {

@@ -1,0 +1,49 @@
+{
+  "$comment": "Negative fixture: profile with sealCount/chain length mismatch. meta.sealCount says 3 but sealChain only has 1 entry. Must be detected as STORAGE_SEAL_COUNT_MISMATCH by loadProfile() corruption checks.",
+  "expectedError": "STORAGE_SEAL_COUNT_MISMATCH",
+  "meta": {
+    "version": "1.0",
+    "created": "2026-04-15T00:00:00.000Z",
+    "lastModified": "2026-04-15T01:00:00.000Z",
+    "assistanceLevel": 1,
+    "genesisHash": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    "currentSeal": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    "sealCount": 3,
+    "stage": 1,
+    "anchoredToLedger": false,
+    "ledgerTxHash": null
+  },
+  "identity": {
+    "name": "Corrupt User",
+    "avatar": "shield",
+    "class": "Architect",
+    "streamAffinity": "A",
+    "title": "Newcomer",
+    "joinedDate": "2026-04-15T00:00:00.000Z",
+    "streakDays": 0,
+    "longestStreak": 0
+  },
+  "attributes": {
+    "Discipline": { "level": 1, "xp": 0, "xpToNext": 100, "color": "amber", "icon": "💪" },
+    "Knowledge": { "level": 1, "xp": 0, "xpToNext": 100, "color": "blue", "icon": "📘" },
+    "Craft": { "level": 1, "xp": 0, "xpToNext": 100, "color": "cyan", "icon": "🔨" },
+    "Governance": { "level": 1, "xp": 0, "xpToNext": 100, "color": "purple", "icon": "⚖️" },
+    "Wellness": { "level": 1, "xp": 0, "xpToNext": 100, "color": "green", "icon": "🌿" },
+    "Community": { "level": 1, "xp": 0, "xpToNext": 100, "color": "pink", "icon": "🤝" }
+  },
+  "skills": { "A": [], "B": [], "C": [] },
+  "achievements": [],
+  "journal": [],
+  "credentials": [],
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "previousSeal": "genesis",
+      "timestamp": "2026-04-15T00:00:00.000Z",
+      "data": {},
+      "hashAlgorithm": "sha256",
+      "nonce": 1
+    }
+  ]
+}
