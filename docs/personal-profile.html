@@ -1643,6 +1643,13 @@
     // FIX: order must match HTML nav button DOM order (credentials before portability)
     const panelOrder=['character','attributes','skills','achievements','journal','credentials','portability'];
 
+    // Harness compatibility: expose in-memory state through window accessors.
+    // Top-level `let` bindings are not window properties, but harnesses inspect
+    // `contentWindow.profile` to verify allow-path audit behavior.
+    Object.defineProperty(window,'profile',{get:function(){return profile;},set:function(v){profile=v;},configurable:true});
+    Object.defineProperty(window,'sealChain',{get:function(){return sealChain;},set:function(v){sealChain=v;},configurable:true});
+    Object.defineProperty(window,'sessionMode',{get:function(){return sessionMode;},set:function(v){sessionMode=!!v;},configurable:true});
+
     function deepClone(o){return JSON.parse(JSON.stringify(o))}
     function $(id){return document.getElementById(id)}
     function setText(id,v){const e=$(id);if(e)e.textContent=v}
@@ -1740,16 +1747,20 @@
       const payload=JSON.stringify({taskId,data:taskData,previousSeal:previousSeal||'genesis',timestamp:new Date().toISOString(),nonce});
       return FerrosCore.computeHash(payload);
     }
-    async function addSeal(taskId,taskData){
+    function addSeal(taskId,taskData){
+      if(recoveryMode){
+        return;
+      }
       if(!canMutateDurableState())return;
       const prev=sealChain.length>0?sealChain[sealChain.length-1].seal:null;
-      const entry=await FerrosCore.createSealEntry(taskId,taskData,prev);
-      sealChain.push(entry);
-      profile.meta.sealCount=sealChain.length;
-      profile.meta.currentSeal=entry.seal;
-      if(sealChain.length===1)profile.meta.genesisHash=entry.seal;
-      pushAuditEntry('seal-added',{taskId:taskId,seal:entry.seal});
-      return entry.seal;
+      return FerrosCore.createSealEntry(taskId,taskData,prev).then(function(entry){
+        sealChain.push(entry);
+        profile.meta.sealCount=sealChain.length;
+        profile.meta.currentSeal=entry.seal;
+        if(sealChain.length===1)profile.meta.genesisHash=entry.seal;
+        pushAuditEntry('seal-added',{taskId:taskId,seal:entry.seal});
+        return entry.seal;
+      });
     }
     function verifyChain(chain){return FerrosCore.verifyChain(chain)}
 

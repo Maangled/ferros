@@ -48,7 +48,7 @@
 var VALIDATE_KEYWORDS = [
   'type','properties','required','additionalProperties',
   'items','minLength','maxLength','pattern',
-  'enum','const','minimum','maximum','minItems',
+  'enum','const','minimum','maximum','exclusiveMinimum','exclusiveMaximum','minItems',
   'oneOf','$ref'
 ];
 
@@ -159,6 +159,12 @@ function validate(data, schema, rootSchema) {
     }
     if (schema.maximum !== undefined && data > schema.maximum) {
       errors.push('maximum: ' + data + ' > ' + schema.maximum);
+    }
+    if (schema.exclusiveMinimum !== undefined && !(data > schema.exclusiveMinimum)) {
+      errors.push('exclusiveMinimum: ' + data + ' <= ' + schema.exclusiveMinimum);
+    }
+    if (schema.exclusiveMaximum !== undefined && !(data < schema.exclusiveMaximum)) {
+      errors.push('exclusiveMaximum: ' + data + ' >= ' + schema.exclusiveMaximum);
     }
   }
 

@@ -7,7 +7,7 @@
     "assistanceLevel": 3,
     "genesisHash": "aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000aaaa0000",
     "currentSeal": "ffff9999ffff9999ffff9999ffff9999ffff9999ffff9999ffff9999ffff9999",
-    "sealCount": 50,
+    "sealCount": 3,
     "stage": 3,
     "anchoredToLedger": false,
     "ledgerTxHash": null

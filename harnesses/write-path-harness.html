@@ -90,6 +90,18 @@ function makeValidProfile() {
 
 function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
 
+function stripFixtureMeta(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  var copy = {};
+  var keys = Object.keys(obj);
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (k === '$comment' || k === '_invalidReason' || k === '$schema' || k === '_fixture') continue;
+    copy[k] = obj[k];
+  }
+  return copy;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Group A — Shape validator: valid profiles accepted
 // ═══════════════════════════════════════════════════════════════════════════
@@ -142,19 +154,19 @@ startGroup('A', 'Shape validator — valid profiles accepted');
     r5.ok ? 'ok:true (3 claim journal types)' : r5.code + ': ' + r5.detail);
 
   // A-6: Validate golden fixture full-profile-stage3
-  var gold = FIXTURE_FULL_PROFILE_STAGE3;
+  var gold = stripFixtureMeta(FIXTURE_FULL_PROFILE_STAGE3);
   var r6 = FerrosCore.validateProfileShape(gold);
   record('A-6', 'Golden fixture full-profile-stage3 accepted', r6.ok === true,
     r6.ok ? 'ok:true' : r6.code + ': ' + r6.detail);
 
   // A-7: Validate golden fixture minimal-stage0-profile
-  var min0 = FIXTURE_MINIMAL_STAGE0_PROFILE;
+  var min0 = stripFixtureMeta(FIXTURE_MINIMAL_STAGE0_PROFILE);
   var r7 = FerrosCore.validateProfileShape(min0);
   record('A-7', 'Golden fixture minimal-stage0-profile accepted', r7.ok === true,
     r7.ok ? 'ok:true' : r7.code + ': ' + r7.detail);
 
   // A-8: Validate golden fixture quota-boundary-profile
-  var quota = FIXTURE_QUOTA_BOUNDARY_PROFILE;
+  var quota = stripFixtureMeta(FIXTURE_QUOTA_BOUNDARY_PROFILE);
   var r8 = FerrosCore.validateProfileShape(quota);
   record('A-8', 'Golden fixture quota-boundary-profile accepted', r8.ok === true,
     r8.ok ? 'ok:true' : r8.code + ': ' + r8.detail);
@@ -181,7 +193,7 @@ startGroup('B', 'Shape validator — invalid profiles rejected');
     r2.ok ? 'FAIL: accepted when should reject' : r2.code + ': ' + r2.detail);
 
   // B-3: Negative fixture — invalid-forbidden-meta-field
-  var neg = FIXTURE_INVALID_FORBIDDEN_META_FIELD;
+  var neg = stripFixtureMeta(FIXTURE_INVALID_FORBIDDEN_META_FIELD);
   var r3 = FerrosCore.validateProfileShape(neg);
   record('B-3', 'Negative fixture invalid-forbidden-meta-field rejected', r3.ok === false,
     r3.ok ? 'FAIL: accepted when should reject' : r3.code + ': ' + r3.detail);
