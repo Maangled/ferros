@@ -1,10 +1,14 @@
 # Phase 0 Definition
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Status:** Active  
-**Last updated:** 2026-04-11
+**Last updated:** 2026-04-17
 
 Phase 0 is complete when FERROS has a working local-first personal computing platform that proves the core contract loop: identity → authoring → rendering → persistence → portability. This document defines the exit criteria.
+
+> **Wave 0 Hardened Closure Bar (added 2026-04-17, PR 6):**  
+> Wave 0 is not complete at the original "schemas versioned + fixtures pass" bar.  
+> The hardened bar adds enforcement: H1–H4 gate harnesses must be **browser-green** on `file://`.
 
 ---
 
@@ -179,3 +183,49 @@ All Phase 0 work is bound by:
 - ADR-009 (Four-Corner Docking) — layout contract
 - ADR-010 (Cards & Decks Nomenclature) — vocabulary
 - ADR-011 (Routine Module System) — module/deck composition
+
+---
+
+## Wave 0 Hardened Exit Criteria (added 2026-04-17, PR 6)
+
+Wave 0 exit requires all four conditions to be true simultaneously:
+
+### 1. Artifact complete
+
+All schemas, fixtures, and generators exist and are consistent:
+- `schemas/identity.schema.json`, `profile.schema.json`, `template.schema.json`, `card.schema.json`, `deck.schema.json`, `schedule-event.schema.json`, `audit-record.schema.json`
+- `schemas/fixtures/` contains the full golden fixture corpus (19 fixtures as of PR 3)
+- `docs/assets/_core/ferros-core.js` is generated from `templates.json` and is the canonical shared runtime core
+- `harnesses/_constants.js` is generated from schemas and fixtures by `generate-harness-constants.ps1`
+
+### 2. Truthful enforcement
+
+H1–H4 gate harnesses prove C1–C10:
+
+| Gate harness | File | Contracts proved |
+|---|---|---|
+| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 (schema + fixture validation) |
+| H3 | `harnesses/runtime-harness.html` | C8 (nonce handshake, lifecycle, origin) |
+| H2 | `harnesses/round-trip-harness.html` | C9 (import rejection I-1..I-9, export envelope, round-trip) |
+| H4 | `harnesses/negative-harness.html` | C10 (deny probes, `canMutateDurableState`, `validateProfileShape`) |
+
+### 3. Deterministic freshness
+
+Running `tools/generate-harness-constants.ps1` and `tools/generate-ferros-core.ps1` against the current schemas and templates produces an empty diff. No harness constant or template entry is stale.
+
+### 4. Browser-green evidence
+
+H1–H4 are fully green when opened on `file://` in Chrome. No FAIL results. WARN results are acceptable only for known gaps documented in PROGRESS.md.
+
+---
+
+## Wave 0 Decisions Recorded
+
+| Decision | Rationale |
+|---|---|
+| Forward-only ADR remediation | Do not rewrite ADR history; append addenda only |
+| Harness H-numbers are harness IDs, not Tier 5 capability IDs | "H1–H4 gate" in harness context = `ferros-contract-validator`, `round-trip-harness`, `runtime-harness`, `negative-harness` |
+| `meta.version` is the single canonical version field | `schemaVersion` is an internal migration detail, not schema-level |
+| No automatic migration on import | Wave 0 must reject version mismatches; upgrader tool is Wave 1+ scope |
+| `ferros-core.js` is the only shared extraction | All other HTML files remain self-contained (ADR-007 single-file constraint) |
+| `FerrosCore.VERSION = "1.0"` is the version anchor | Do not change without a new ADR and `"2.0"` schema cut |

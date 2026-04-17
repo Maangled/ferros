@@ -198,11 +198,12 @@ When a `storage` event fires with `key === "ferros_profile"`:
 
 | Rule | Enforced By |
 |---|---|
-| Import rejection I-1 through I-10 | H2 round-trip-harness.html |
-| Seal chain broken on import (I-6) | H2 round-trip-harness.html |
-| Session mode does not write to localStorage | H4 negative-harness.html |
-| Recovery mode writes nothing to any storage | H4 negative-harness.html |
-| Export envelope has required fields | H2 round-trip-harness.html |
+| Import rejection I-1 through I-9 (FerrosCore-validated; I-10 size check enforced at surface before parse) | H2 round-trip-harness.html (Group A) |
+| Seal chain broken on import (I-6) | H2 round-trip-harness.html (Group A) |
+| True export → clear → import → assert round-trip | H2 round-trip-harness.html (Group D) |
+| Session mode does not write to localStorage | H4 negative-harness.html (Group A + E) |
+| Recovery mode writes nothing to any storage | H4 negative-harness.html (Group A + E) |
+| Export envelope has required fields (`ferrosVersion`, `exportedAt`, `profile`, `sealChain`) | H2 round-trip-harness.html (Group D) |
 | Write-time profile shape validation (A1b) | H6 write-path-harness.html |
 | Load-time corruption detection (A2) | H6 write-path-harness.html |
 | Load-time shape normalization (A2) | H6 write-path-harness.html |

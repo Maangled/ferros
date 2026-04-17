@@ -130,3 +130,38 @@ context, not `file://`).
 - [ADR-002: Smart Contract Boundaries](./ADR-002-smart-contract-boundaries.md)
 - FERROS Blueprint: Consent Engine design
 - FERROS Blueprint: Identity & Permission Layer
+
+---
+
+## Wave 0 Closure Addendum (2026-04-17)
+
+**Added:** PR 6 — Docs/ADR reconciliation
+
+### Baseline established
+
+Wave 0 PRs 1–5 collectively established the hardened contract closure baseline:
+
+- **PR 1 (#41):** Deterministic generators (`generate-harness-constants.ps1`, `generate-ferros-core.ps1`) and named inventory arrays in `_constants.js`. The L1 drift detection requirement from the legacy integration table is satisfied: regenerating constants produces an empty diff.
+- **PR 2 (#42):** Manifest hardening and fixture truth — `docs/contracts/manifest.json` maps all C1–C10 contracts to their schemas, fixtures, and harnesses.
+- **PR 3 (#43):** H1 (`ferros-contract-validator.html`) expanded to the full C1–C7 contract matrix.
+- **PR 4 (#44):** C8–C10 harness gaps closed — H3 nonce handshake, H2 true round-trip, H4 deny-code probes.
+- **PR 5 (#45):** Supporting harness alignment and shared-core boundary cleanup.
+
+### Harness numbering
+
+| Harness | File | Role | Gate level |
+|---------|------|------|------------|
+| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 schema + fixture validation | Gate (Wave 0 exit) |
+| H2 | `harnesses/round-trip-harness.html` | C9 storage rules — import/export round-trip | Gate (Wave 0 exit) |
+| H3 | `harnesses/runtime-harness.html` | C8 runtime host — nonce handshake lifecycle | Gate (Wave 0 exit) |
+| H4 | `harnesses/negative-harness.html` | C10 permission model — deny probes | Gate (Wave 0 exit) |
+| H5 | `harnesses/acceptance-harness.html` | Black-box acceptance (Journey 1) | Supporting |
+| H6 | `harnesses/write-path-harness.html` | Durable write-path / storage boundary | Supporting |
+| H7 | `harnesses/semantic-fixture-linter.html` | Cross-fixture semantic consistency | Supporting |
+| H8 | `harnesses/ui-acceptance-harness.html` | UI-facing acceptance (DOM / localStorage only) | Supporting |
+
+**H1–H4 are the Wave 0 gate harnesses** (must be green before Wave 0 is declared closed). H5–H8 are supporting proof harnesses that reinforce the gate harnesses but are not individually required for closure.
+
+### Deterministic freshness
+
+The deterministic generator requirement is enforced by: running `generate-harness-constants.ps1` and `generate-ferros-core.ps1` against the current schemas + templates and verifying the output diff is empty. This is the L1 drift detection check from the legacy integration table in ADR-013.

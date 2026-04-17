@@ -140,9 +140,12 @@ This contract's reject decisions map directly to C9 storage rules:
 
 | Rule | Enforced By |
 |---|---|
-| Alias mode denied `profile.write` — nothing in localStorage | H4 negative-harness.html |
-| Recovery mode denied `sealChain.append` | H4 negative-harness.html |
-| Session mode denied `profile.write` — nothing in localStorage | H4 negative-harness.html |
+| Alias mode denied `profile.write` — nothing in localStorage | H4 negative-harness.html (Group A + E-1) |
+| Recovery mode denied `sealChain.append` | H4 negative-harness.html (Group A + E-3) |
+| Session mode denied `profile.write` — nothing in localStorage | H4 negative-harness.html (Group A + E-2) |
+| `canMutateDurableState()` returns false for session/alias/recovery | H4 negative-harness.html (Group E — E-1, E-2, E-3) |
+| `canMutateDurableState()` returns true for full-profile mode | H4 negative-harness.html (Group E — E-4) |
+| `validateProfileShape()` rejects profiles with undeclared fields | H4 negative-harness.html (Group E — E-5) |
 | Trade Window consent gate prevents all pre-consent writes | H5 acceptance-harness.html |
 
 ---

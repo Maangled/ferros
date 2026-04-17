@@ -106,3 +106,31 @@ the source repos remain accessible.
 - [ADR-0001](./ADR-0001-start-new-do-not-fork.md) — the founding decision to build
   FERROS from scratch rather than forking any predecessor
 - [Legacy Repo Reference](../legacy/README.md)
+
+---
+
+## Wave 0 Closure Addendum (2026-04-17)
+
+**Added:** PR 6 — Docs/ADR reconciliation
+
+### Wave 0 closure state: no legacy ports
+
+Wave 0 (PRs 1–5) closed with **zero legacy ports**. No patterns from botgen-rust, sheetgen-rust, or workpace-rust were ported into Wave 0 scope. This is correct and intentional per the wave-aligned integration rule.
+
+The only Wave 0 legacy item was **L1 (harness drift detection)** from the tracking table, which was fulfilled indirectly: `tools/generate-harness-constants.ps1` and `tools/generate-ferros-core.ps1` implement deterministic regeneration, and a clean diff after regeneration is the drift detection check. No YAML→test auto-generation from sheetgen-rust was ported — the PowerShell generators serve the same function in the Wave 0 HTML-first context.
+
+### Boundary between Wave 0 contract spine and Wave 1+ legacy integration
+
+The Wave 0 contract spine is:
+
+```
+schemas/          (C1–C10 JSON schemas)
+schemas/fixtures/ (golden fixtures)
+docs/contracts/   (contract documents + manifest)
+docs/assets/_core/ferros-core.js  (shared IIFE core)
+harnesses/        (H1–H8 proof harnesses)
+```
+
+**No legacy patterns cross this boundary in Wave 0.** The first legacy port is L4 (three-layer decomposition from sheetgen-rust), which activates when the first Rust source file lands in Wave 1.
+
+The tracking table in PROGRESS.md (Legacy Integration Tracking section) remains the authoritative record of which legacy patterns are ready to port at which wave.

@@ -96,3 +96,25 @@ introduced, this ADR transitions to Accepted simultaneously.
   strategy; sheetgen-rust L4 in the tracking table
 - [ADR-0001](./ADR-0001-start-new-do-not-fork.md) — Rust from scratch; no forking of
   predecessor codebases
+
+---
+
+## Wave 0 Closure Addendum (2026-04-17)
+
+**Added:** PR 6 — Docs/ADR reconciliation
+
+### Three layers mapped to post-PR 5 file structure
+
+ADR-014 is **still Proposed** — no Rust source has landed. However, the three-layer concept already has a clear analog in the post-PR 5 HTML-first file structure:
+
+| Conceptual layer | ADR-014 target (Rust) | Post-PR 5 equivalent (HTML phase) |
+|------------------|-----------------------|-----------------------------------|
+| **Contract / domain layer** | `ferros-core/` crate | `schemas/` (JSON schemas) + `schemas/fixtures/` (golden fixtures) + `docs/contracts/` (contract docs + manifest) |
+| **Harness / enforcement layer** | Contract validators (generated from schemas) | `harnesses/H1–H8` HTML harnesses |
+| **Surface layer** | `ferros-surfaces/` | `docs/personal-profile.html` + `docs/assets/cards/trading-card.html` |
+
+The shared extraction `docs/assets/_core/ferros-core.js` maps to a proto–`ferros-core/` — it holds the domain logic (hash chain, import validation, permission predicate, export serialization) that will eventually live in the Rust `ferros-core/` crate.
+
+### Activation condition unchanged
+
+This ADR activates when the first Rust source file lands. Wave 1 (L4) is the trigger. Until then, the HTML-phase mapping above is informational only and does not impose any Rust crate structure.

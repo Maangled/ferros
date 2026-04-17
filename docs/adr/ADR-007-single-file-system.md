@@ -316,3 +316,32 @@ dynamics, not through corporate branding partnerships.
 - [ADR-0001: Start New, Do Not Fork](./ADR-0001-start-new-do-not-fork.md) — Rust from scratch
 - [ADR-001: Progression-Lock Pattern](./ADR-001-progression-lock-pattern.md) — Hash-chain user state (the SFS user state model)
 - [ADR-002: Smart Contract Boundaries](./ADR-002-smart-contract-boundaries.md) — Asset governance
+
+---
+
+## Wave 0 Closure Addendum (2026-04-17)
+
+**Added:** PR 6 — Docs/ADR reconciliation
+
+### Single-file constraint maintained in Wave 0
+
+Wave 0 (PRs 1–5) maintains the single-file constraint for all HTML surfaces. No surface HTML file requires an external framework, build pipeline, or network fetch.
+
+### `ferros-core.js` — the only shared extraction
+
+The only code shared across multiple HTML files is `docs/assets/_core/ferros-core.js`. This is the sole extraction from the Phase 0 single-file pattern:
+
+- **Format:** Classic-script IIFE — `window.FerrosCore`. No ESM, no CommonJS, no dynamic `import()`.
+- **Loading:** Via `<script src>` only. No `fetch()`, no `import()`, no module bundler.
+- **Constraints:** Zero external dependencies. Works on `file://` without modification.
+- **Reason for extraction:** Eliminates copy-paste duplication of contract logic (`validateImport`, `validateProfileShape`, `canMutateDurableState`, `serializeExport`, hash chain functions) that was previously inlined independently in each harness and page.
+
+All other pages (`personal-profile.html`, `trading-card.html`) and harnesses (`H1`–`H8`) remain self-contained HTML files.
+
+### All harnesses work on `file://`
+
+H1 through H8 are designed to open directly from disk with `file://` protocol in Chrome. They do not require a local server. The `ferros-core.js` IIFE loads via a relative `<script src>` path. No `fetch()` is used. `crypto.subtle` unavailability on `file://` is handled by the djb2 fallback in `FerrosCore.computeHash`.
+
+### Migration path position
+
+Wave 0 is at Phase 1 of the SFS migration path: single HTML files, each an asset prototype. The concatenation / embedding step (Phase 2) and WASM compilation (Phase 3) are Wave 1+ concerns.
