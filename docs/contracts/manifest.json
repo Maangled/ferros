@@ -9,7 +9,8 @@
       "fixtures": [
         "schemas/fixtures/alias-session-log.json",
         "schemas/fixtures/session-mode-invariants.json",
-        "schemas/fixtures/recovery-session-log.json"
+        "schemas/fixtures/recovery-session-log.json",
+        "schemas/fixtures/invalid-dual-session-mode.json"
       ],
       "harnesses": [
         "harnesses/ferros-contract-validator.html",
@@ -74,7 +75,7 @@
       "document": null,
       "schemas": ["schemas/schedule-event.schema.json"],
       "fixtures": ["schemas/fixtures/schedule-event-source-seam.json"],
-      "harnesses": ["harnesses/semantic-fixture-linter.html"],
+      "harnesses": ["harnesses/ferros-contract-validator.html", "harnesses/semantic-fixture-linter.html"],
       "status": "active",
       "note": "C1 templateToEvents provides runtime transformation. Full consumer in Wave 2."
     },
@@ -84,7 +85,8 @@
       "schemas": ["schemas/audit-record.schema.json"],
       "fixtures": [],
       "harnesses": ["harnesses/ferros-contract-validator.html"],
-      "status": "active"
+      "status": "active",
+      "note": "No dedicated fixture required for Wave 0 — audit record schema is structurally validated by H1 keyword audit only. Document reference deferred pending audit-record consumer in Wave 1."
     },
     "C8": {
       "name": "Runtime Host Contract",
