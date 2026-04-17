@@ -188,8 +188,7 @@ if (-not (Test-Path $outDir)) {
   New-Item -ItemType Directory -Path $outDir | Out-Null
 }
 
-$lines | Set-Content -Path $outPath -Encoding UTF8
-
+[System.IO.File]::WriteAllLines($outPath, $lines, [System.Text.UTF8Encoding]::new($false))
 Write-Host ""
 Write-Host "FERROS Harness Constants generated successfully." -ForegroundColor Green
 Write-Host "  Output:   $outPath"
