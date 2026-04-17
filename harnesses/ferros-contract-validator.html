@@ -420,7 +420,7 @@ runTest(g2, 'profile-template-archetype-seam — structural presence check (C2 s
   if (missing.length > 0) return { pass: false, error: 'structural check failed — missing keys: ' + missing.join(', ') };
   return {
     pass: true,
-    detail: 'PASS (structural only): seam fixture validates profile\u2192template archetype cross-reference. Full SCHEMA_PROFILE not applicable — attributes/identity/skills use seam-test shape. H7 owns seam validation.'
+    detail: 'PASS (structural only): seam fixture validates profile→template archetype cross-reference. Full SCHEMA_PROFILE not applicable — attributes/identity/skills use seam-test shape. H7 owns seam validation.'
   };
 });
 
@@ -521,7 +521,7 @@ runTest(g2, 'session-mode-invariants — structural presence check (C1 documenta
   if (!hasInvariants) return { pass: false, error: 'fixture missing top-level "invariants" object' };
   return {
     pass: true,
-    detail: 'PASS (structural only): documents C1 session mode invariants (mode=' + data.mode + '). Not a SCHEMA_IDENTITY instance \u2014 describes behavioral contracts, not runtime state. H3 owns runtime enforcement.'
+    detail: 'PASS (structural only): documents C1 session mode invariants (mode=' + data.mode + '). Not a SCHEMA_IDENTITY instance — describes behavioral contracts, not runtime state. H3 owns runtime enforcement.'
   };
 });
 
