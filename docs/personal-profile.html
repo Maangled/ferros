@@ -1673,6 +1673,12 @@
       }
     }
 
+    // ── Harness seam: saveProfile() ──────────────────────────────────────────
+    // Exposed to harnesses via contentWindow (H2, H5, H6). Writes profile and
+    // sealChain to localStorage if canMutateDurableState() passes. Returns false
+    // when write-path is blocked (sessionMode, aliasMode, recoveryMode) or when
+    // shape validation fails. Harnesses observe effects via localStorage reads or
+    // exported data rather than calling saveProfile() directly in most tests.
     function saveProfile(){
       if(!canMutateDurableState())return false;
       // Write-time shape validation (A1b)
@@ -1747,6 +1753,11 @@
       const payload=JSON.stringify({taskId,data:taskData,previousSeal:previousSeal||'genesis',timestamp:new Date().toISOString(),nonce});
       return FerrosCore.computeHash(payload);
     }
+    // ── Harness seam: addSeal() ───────────────────────────────────────────────
+    // Exposed to harnesses via contentWindow (H2, H5). Delegates seal creation
+    // to FerrosCore.createSealEntry(). Blocked in recoveryMode and when
+    // canMutateDurableState() is false. Mutates sealChain, profile.meta.sealCount,
+    // profile.meta.currentSeal, and (on first seal) profile.meta.genesisHash.
     function addSeal(taskId,taskData){
       if(recoveryMode){
         return;
@@ -1766,7 +1777,15 @@
 
     function showTradeDialog(onAccept){_tradeAcceptCb=onAccept;const o=$('trade-overlay');if(o)o.style.display='flex'}
     function closeTradeDialog(){const o=$('trade-overlay');if(o)o.style.display='none'}
+    // ── Harness seam: acceptTrade() ───────────────────────────────────────────
+    // Exposed to harnesses via contentWindow (H5, H6). Sets sessionMode=false and
+    // _tradeWindowAccepted=true, opening the durable write path. H5 calls this
+    // directly to enter full-profile mode before running the Journey 1 test suite.
     function acceptTrade(){sessionMode=false;_tradeWindowAccepted=true;closeTradeDialog();if(_tradeAcceptCb){const cb=_tradeAcceptCb;_tradeAcceptCb=null;cb()}}
+    // ── Harness seam: enterSessionMode() ────────────────────────────────────
+    // Exposed to harnesses via contentWindow (H5). Sets sessionMode=true, which
+    // blocks the durable write path. Used by H5 to verify that writes are
+    // correctly rejected when the user declines storage consent.
     function enterSessionMode(){
       if(aliasMode){aliasMode=false;aliasProfile=null;aliasJournal=[];_aliasSessionStart=null;document.body.classList.remove('alias-mode');const ab=$('alias-banner');if(ab)ab.style.display='none';}
       // FIX: capture whether Stage 0 is active before closing dialog so we can advance the setup flow
@@ -2370,6 +2389,10 @@
       updateVerificationPanel();
     }
     function anchorToLedger(){showModal('\u2693 Anchor to Ledger','<p>This action would submit your seal chain to a public blockchain ledger for permanent immutable record.</p><p><strong>Current seal:</strong> <code style="font-family:monospace;color:var(--accent-cyan);word-break:break-all">'+( profile.meta.currentSeal||'(none)')+'</code></p><p style="margin-top:12px">This feature is a placeholder pending ledger integration.</p>')}
+    // ── Harness seam: exportProfile() ────────────────────────────────────────
+    // Exposed to harnesses via contentWindow (H5). Reads persisted localStorage
+    // state (not in-memory variables) and triggers a JSON download. H5 intercepts
+    // URL.createObjectURL to capture the blob and validate the export envelope.
     function exportProfile(){
       // Transactional: export from persisted state, not in-memory variables
       const storedProfile=localStorage.getItem('ferros_profile');
@@ -2522,6 +2545,10 @@
       _enterAliasMode({id:sanitized,name:'Custom Alias',icon:'🎭',aliasClass:'Guided',tagline:'Custom alias via code.'});
     }
     function useAlias(id){const a=ALIAS_PROFILES.find(x=>x.id===id);if(a)_enterAliasMode(a)}
+    // ── Internal: _enterAliasMode() ─────────────────────────────────────────
+    // Internal function (_-prefixed to indicate non-public surface). Not directly
+    // exposed to harnesses. Called by useAlias() and useAliasCode() which are
+    // UI-triggered. H4 exercises alias-mode blocking via indirect paths.
     function _enterAliasMode(alias){
       closeAliasGallery();
       aliasMode=true;
@@ -2796,6 +2823,11 @@
       _pendingRecoveryData=data;
       showModal('\uD83D\uDD11 Enter Recovery Mode \u2014 '+esc(name),bodyHtml);
     }
+    // ── Harness seam: enterRecoveryMode() ────────────────────────────────────
+    // Exposed to harnesses via contentWindow (H4). Sets recoveryMode=true, which
+    // blocks addSeal() and saveProfile(). H4 calls this to verify that recovery
+    // mode correctly suppresses durable writes and that alias/session state is
+    // cleaned up. hasIntegrityWarning controls the banner text only.
     function enterRecoveryMode(data,hasIntegrityWarning){
       closeRecoveryPanel();
       closeModal();

@@ -8,7 +8,7 @@
   ╔══════════════════════════════════════════════════╗
   ║  FERROS ASSET: trading-card  v3.0.0             ║
   ║  Control Levels: DEMO | PREVIEW | PLAY           ║
-  ║  Dependencies: _core/_runtime.js v1.0.0          ║
+  ║  Dependencies: _core/_runtime.js v1.1.0 (A4)     ║
   ║                _lib/_shimmer.css v1.0.0          ║
   ║                _lib/_escape-html.js v1.0.0       ║
   ║  Rarity: common | uncommon | rare | epic |       ║
@@ -524,18 +524,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-/* @inline _core/_runtime.js */
+/* @inline _core/_runtime.js — v1.1 (A4 nonce handshake, runtime-host-v1.md §9.1) */
 (function() {
   'use strict';
-  var ASSET_NAME = document.documentElement.dataset.ferrosAsset || 'unknown-asset';
-  var root       = document.getElementById('ferros-asset-root');
-  var isEmbedded = window.parent !== window;
-  var params     = new URLSearchParams(window.location.search);
-  var control    = params.get('control') || 'demo';
+  var ASSET_NAME    = document.documentElement.dataset.ferrosAsset || 'unknown-asset';
+  var root          = document.getElementById('ferros-asset-root');
+  var isEmbedded    = window.parent !== window;
+  var params        = new URLSearchParams(window.location.search);
+  var control       = params.get('control') || 'demo';
+  var _runtimeNonce = null; // A4: nonce received from ferros:init, echoed in all outbound messages
   var mql = window.matchMedia('(prefers-reduced-motion: reduce)');
   function isReducedMotion() { return mql.matches; }
   function emit(event, payload) {
-    var msg = { type: 'ferros:event', asset: ASSET_NAME, event: event, payload: payload };
+    var msg = { type: 'ferros:event', asset: ASSET_NAME, event: event, payload: payload, nonce: _runtimeNonce };
     if (isEmbedded) window.parent.postMessage(msg, '*');
     if (root) root.dispatchEvent(new CustomEvent('ferros:event', { detail: msg, bubbles: true }));
   }
@@ -551,6 +552,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     if (e.data.type === 'ferros:init') {
       var config = e.data.config || {};
       if (config.control) control = config.control;
+      if (e.data.nonce) _runtimeNonce = e.data.nonce; // A4: store nonce for outbound message authentication
       applyControl();
       if (typeof window.onFerrosInit === 'function') window.onFerrosInit(config);
     }
