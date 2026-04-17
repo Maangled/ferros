@@ -36,6 +36,7 @@
 <div id="result-block"><pre id="result-json">running...</pre></div>
 
 <script src="_constants.js"></script>
+<script src="../docs/assets/_core/ferros-core.js"></script>
 <script>
 /* ==========================================================================
    H4 — NEGATIVE CROSS-BOUNDARY HARNESS
@@ -451,6 +452,75 @@ function runGroupD() {
 }
 
 /* ==========================================================================
+   GROUP E — FerrosCore Implementation-Level Deny Probes (C10)
+   Exercises the actual FerrosCore.canMutateDurableState() and
+   FerrosCore.validateProfileShape() functions that implement C10 deny behavior.
+   These are synchronous — no iframe required.
+   ========================================================================== */
+
+var gE = makeGroup('Group E — FerrosCore Deny-Behavior Probes (C10 implementation)');
+
+// Helper: build a flags object with defaults (full-profile) overridden by the provided overrides
+function makeFlagsConfig(overrides) {
+  var base = { tradeWindowAccepted: true, sessionMode: false, aliasMode: false, recoveryMode: false };
+  var keys = Object.keys(overrides);
+  for (var i = 0; i < keys.length; i++) { base[keys[i]] = overrides[keys[i]]; }
+  return base;
+}
+
+// E-1: session mode flags → canMutateDurableState returns false
+test(gE, 'E-1: canMutateDurableState({sessionMode:true}) → false (C10 session deny)', function() {
+  if (typeof FerrosCore === 'undefined' || !FerrosCore.canMutateDurableState) {
+    return { pass: false, error: 'FerrosCore.canMutateDurableState not available' };
+  }
+  var result = FerrosCore.canMutateDurableState(makeFlagsConfig({ tradeWindowAccepted: false, sessionMode: true }));
+  if (result === false) return { pass: true, detail: 'session mode correctly denied durable write' };
+  return { pass: false, error: 'Expected false, got ' + result };
+});
+
+// E-2: alias mode flags → canMutateDurableState returns false
+test(gE, 'E-2: canMutateDurableState({aliasMode:true}) → false (C10 alias deny)', function() {
+  if (typeof FerrosCore === 'undefined' || !FerrosCore.canMutateDurableState) {
+    return { pass: false, error: 'FerrosCore.canMutateDurableState not available' };
+  }
+  var result = FerrosCore.canMutateDurableState(makeFlagsConfig({ aliasMode: true }));
+  if (result === false) return { pass: true, detail: 'alias mode correctly denied durable write' };
+  return { pass: false, error: 'Expected false, got ' + result };
+});
+
+// E-3: recovery mode flags → canMutateDurableState returns false
+test(gE, 'E-3: canMutateDurableState({recoveryMode:true}) → false (C10 recovery deny)', function() {
+  if (typeof FerrosCore === 'undefined' || !FerrosCore.canMutateDurableState) {
+    return { pass: false, error: 'FerrosCore.canMutateDurableState not available' };
+  }
+  var result = FerrosCore.canMutateDurableState(makeFlagsConfig({ recoveryMode: true }));
+  if (result === false) return { pass: true, detail: 'recovery mode correctly denied durable write' };
+  return { pass: false, error: 'Expected false, got ' + result };
+});
+
+// E-4: full-profile flags → canMutateDurableState returns true (allow path)
+test(gE, 'E-4: canMutateDurableState({tradeWindowAccepted:true, all others false}) → true (allow)', function() {
+  if (typeof FerrosCore === 'undefined' || !FerrosCore.canMutateDurableState) {
+    return { pass: false, error: 'FerrosCore.canMutateDurableState not available' };
+  }
+  var result = FerrosCore.canMutateDurableState(makeFlagsConfig({}));
+  if (result === true) return { pass: true, detail: 'full-profile mode correctly allowed durable write' };
+  return { pass: false, error: 'Expected true, got ' + result };
+});
+
+// E-5: validateProfileShape rejects a profile with an undeclared field → PROFILE_SHAPE_INVALID
+test(gE, 'E-5: validateProfileShape(FIXTURE_INVALID_FORBIDDEN_META_FIELD) → PROFILE_SHAPE_INVALID', function() {
+  if (typeof FerrosCore === 'undefined' || !FerrosCore.validateProfileShape) {
+    return { pass: false, error: 'FerrosCore.validateProfileShape not available' };
+  }
+  var r = FerrosCore.validateProfileShape(FIXTURE_INVALID_FORBIDDEN_META_FIELD);
+  if (!r.ok && r.code === 'PROFILE_SHAPE_INVALID') {
+    return { pass: true, detail: 'rejected with PROFILE_SHAPE_INVALID: ' + (r.detail || '(no detail)') };
+  }
+  return { pass: false, error: 'Expected PROFILE_SHAPE_INVALID, got ok=' + r.ok + ' code=' + r.code };
+});
+
+/* ==========================================================================
    RENDER
    ========================================================================== */
 
@@ -526,7 +596,7 @@ function renderAll() {
     harnessVersion: '1.0',
     status: overallStatus,
     summary: { total: allTests.length, passed: passed, failed: failed, gaps: warned, skipped: skipped },
-    provesGates: ['C9 no-write (session/alias/recovery)', 'C10 permission deny matrix (reference)', 'C10 allow-path audit emission (full-profile save/seal)', 'V3b partial'],
+    provesGates: ['C9 no-write (session/alias/recovery)', 'C10 permission deny matrix (reference)', 'C10 canMutateDurableState deny probes (E-1/E-2/E-3)', 'C10 allow-path verified (E-4)', 'C10 validateProfileShape reject undeclared field (E-5)', 'C10 allow-path audit emission (full-profile save/seal)', 'V3b'],
     implementationGaps: gaps,
     remediations: [],
     tests: allTests.map(function(t){
@@ -538,10 +608,10 @@ function renderAll() {
 }
 
 /* ==========================================================================
-  MAIN — Group A is sync, Groups B/C/D are async iframe probes
+  MAIN — Groups A and E are sync, Groups B/C/D are async iframe probes
   ========================================================================== */
 
-// Group A: runs synchronously (already added to allGroups/allTests above)
+// Groups A and E run synchronously (already added to allGroups/allTests above)
 
 Promise.all([runGroupB(), runGroupC(), runGroupD()]).then(function() {
   renderAll();

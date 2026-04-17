@@ -277,15 +277,14 @@ test(gB, 'export envelope.sealChain[0].previousSeal === "genesis"', function() {
 });
 
 // B4: exportProfile() code produces correct envelope shape (static contract check)
-test(gB, 'exportProfile() envelope shape matches C9 contract (static check)', function() {
-  // The implementation at line ~2292 produces:
-  // {profile, sealChain, exportedAt: new Date().toISOString(), ferrosVersion:'1.0'}
-  // Verify that IMPORT_CURRENT_VERSION matches the hardcoded ferrosVersion in exportProfile.
-  var implementationVersion = '1.0'; // hardcoded in exportProfile() — see personal-profile.html
-  if (implementationVersion === IMPORT_CURRENT_VERSION) {
-    return { pass: true, detail: 'hardcoded ferrosVersion matches IMPORT_CURRENT_VERSION' };
+test(gB, 'exportProfile() ferrosVersion matches FerrosCore.VERSION (no hardcoded assumption)', function() {
+  // FerrosCore.serializeExport always uses FerrosCore.VERSION as ferrosVersion.
+  // Verify IMPORT_CURRENT_VERSION (= FerrosCore.VERSION) matches what serializeExport emits.
+  var env = FerrosCore.serializeExport(FIXTURE_PROFILE_EXPORT_ENVELOPE.profile, FIXTURE_PROFILE_EXPORT_ENVELOPE.sealChain);
+  if (env.ferrosVersion === IMPORT_CURRENT_VERSION) {
+    return { pass: true, detail: 'serializeExport().ferrosVersion === FerrosCore.VERSION === ' + env.ferrosVersion };
   }
-  return { pass: false, error: 'ferrosVersion mismatch: exportProfile=' + implementationVersion + ' validator=' + IMPORT_CURRENT_VERSION };
+  return { pass: false, error: 'serializeExport().ferrosVersion=' + env.ferrosVersion + ' !== IMPORT_CURRENT_VERSION=' + IMPORT_CURRENT_VERSION };
 });
 
 /* ==========================================================================
@@ -395,6 +394,118 @@ function runGroupC() {
 }
 
 /* ==========================================================================
+   GROUP D — True Round-Trip: export → clear → import → assert (C9)
+   Loads personal-profile.html#testmode, sets profile from fixture data,
+   uses FerrosCore.serializeExport() to get the envelope, clears localStorage,
+   restores profile from envelope, re-saves, and asserts key fields match.
+   ========================================================================== */
+
+function runGroupD() {
+  return new Promise(function(resolve) {
+    var gD = makeGroup('Group D — True Round-Trip: export → clear → import → assert (C9)');
+
+    localStorage.removeItem('ferros_profile');
+    localStorage.removeItem('ferros_seal_chain');
+
+    loadIframe('../docs/personal-profile.html#testmode').then(function(iframe) {
+      var iw = iframe.contentWindow;
+
+      // Enter full-profile mode (required for saveProfile to write)
+      iw.acceptTrade();
+
+      // Load fixture profile data via window accessors exposed in testmode
+      // stripMeta returns a new object (no need for outer clone)
+      var profileData = stripMeta(clone(FIXTURE_FULL_PROFILE_STAGE3));
+      var chainData   = clone(FIXTURE_FULL_PROFILE_STAGE3.sealChain || []);
+      iw.profile   = profileData;
+      iw.sealChain = chainData;
+
+      // D1: Initial save to localStorage
+      iw.saveProfile();
+      test(gD, 'D1: saveProfile() persists profile to localStorage (full-profile mode)', function() {
+        var raw = localStorage.getItem('ferros_profile');
+        if (!raw) return { pass: false, error: 'ferros_profile absent from localStorage after saveProfile()' };
+        return { pass: true, detail: 'ferros_profile written (' + raw.length + ' bytes)' };
+      });
+
+      // D2: Build export envelope via FerrosCore.serializeExport (mirrors exportProfile() logic)
+      var storedProfileRaw = localStorage.getItem('ferros_profile');
+      var storedChainRaw   = localStorage.getItem('ferros_seal_chain');
+      if (!storedProfileRaw) {
+        test(gD, 'D2–D4: round-trip skipped — initial save failed', function() {
+          return { pass: false, error: 'localStorage was empty after saveProfile(); remaining D tests skipped' };
+        });
+        localStorage.removeItem('ferros_profile');
+        localStorage.removeItem('ferros_seal_chain');
+        try { document.body.removeChild(iframe); } catch(e) {}
+        resolve(gD);
+        return;
+      }
+
+      var savedProfile = JSON.parse(storedProfileRaw);
+      var savedChain   = storedChainRaw ? JSON.parse(storedChainRaw) : [];
+      var envelope     = FerrosCore.serializeExport(savedProfile, savedChain);
+
+      test(gD, 'D2: serializeExport() produces valid C9 envelope structure', function() {
+        var missing = ['ferrosVersion','exportedAt','profile','sealChain'].filter(function(k) {
+          return envelope[k] === undefined || envelope[k] === null;
+        });
+        if (missing.length === 0) {
+          return { pass: true, detail: 'ferrosVersion=' + envelope.ferrosVersion + ', all 4 fields present' };
+        }
+        return { pass: false, error: 'Missing envelope keys: ' + missing.join(', ') };
+      });
+
+      // D3: Validate the envelope passes FerrosCore.validateImport
+      test(gD, 'D3: FerrosCore.validateImport(envelope) → ok:true', function() {
+        var r = FerrosCore.validateImport(envelope);
+        if (r.ok) return { pass: true, detail: 'import validation passed' };
+        return { pass: false, error: r.code + (r.detail ? ': ' + r.detail : '') };
+      });
+
+      // Clear localStorage — simulates the "clear before import" step
+      localStorage.removeItem('ferros_profile');
+      localStorage.removeItem('ferros_seal_chain');
+
+      // Restore profile and sealChain from the envelope (equivalent to confirmImport path)
+      iw.profile   = clone(envelope.profile);
+      iw.sealChain = clone(envelope.sealChain);
+      iw.saveProfile();
+
+      // D4: Assert key fields in localStorage match the exported snapshot
+      test(gD, 'D4: After export→clear→import: localStorage key fields match original', function() {
+        var raw = localStorage.getItem('ferros_profile');
+        if (!raw) return { pass: false, error: 'ferros_profile absent from localStorage after import+save' };
+        var imported;
+        try { imported = JSON.parse(raw); } catch(e) { return { pass: false, error: 'Parse failed: ' + e.message }; }
+        var diffs = [];
+        if (imported.meta.version    !== savedProfile.meta.version)    diffs.push('meta.version');
+        if (imported.meta.genesisHash !== savedProfile.meta.genesisHash) diffs.push('meta.genesisHash');
+        if (imported.identity.name   !== savedProfile.identity.name)   diffs.push('identity.name');
+        var importedChainRaw = localStorage.getItem('ferros_seal_chain');
+        var importedChain    = importedChainRaw ? JSON.parse(importedChainRaw) : [];
+        if (importedChain.length !== savedChain.length) diffs.push('sealChain.length');
+        if (diffs.length === 0) {
+          return { pass: true, detail: 'meta.version, genesisHash, identity.name, sealChain length all match after round-trip' };
+        }
+        return { pass: false, error: 'Fields differ after round-trip: ' + diffs.join(', ') };
+      });
+
+      localStorage.removeItem('ferros_profile');
+      localStorage.removeItem('ferros_seal_chain');
+      try { document.body.removeChild(iframe); } catch(e) {}
+      resolve(gD);
+
+    }).catch(function(err) {
+      test(gD, 'iframe load', function() {
+        return { pass: false, error: err.message + ' — ensure harness and personal-profile.html are on the same file:// origin.' };
+      });
+      resolve(gD);
+    });
+  });
+}
+
+/* ==========================================================================
    RENDER
    ========================================================================== */
 
@@ -469,7 +580,7 @@ function renderAll() {
     status: overallStatus,
     summary: { total: allTests.length, passed: passed, failed: failed, gaps: warned, skipped: skipped },
     contractVersion: IMPORT_CURRENT_VERSION,
-    provesGates: ['C9 import rejection I-1..I-9 (reference)', 'C9 export envelope structure', 'saveProfile() write guard (session mode)', 'V2 partial (import validator logic)'],
+    provesGates: ['C9 import rejection I-1..I-9 (reference)', 'C9 export envelope structure', 'C9 true round-trip (export→clear→import→assert)', 'saveProfile() write guard (session mode)', 'V2 full (import validator + round-trip)'],
     implementationGaps: allTests
       .filter(function(t){ return t.status === 'warn'; })
       .map(function(t){ return t.warn; }),
@@ -482,9 +593,11 @@ function renderAll() {
 }
 
 /* ==========================================================================
-   MAIN — run sync groups, then async iframe group, then render
+   MAIN — run sync groups, then async iframe groups, then render
    ========================================================================== */
 runGroupC().then(function() {
+  return runGroupD();
+}).then(function() {
   renderAll();
 });
 </script>
