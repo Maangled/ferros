@@ -9,7 +9,59 @@ This index tracks Phase 0 progress using **binary capability gates** — not per
 
 ---
 
-## How to Read This File
+## Wave 0 PR Tracker
+
+| PR | # | Merged | Scope |
+|----|---|--------|-------|
+| PR 1 — Deterministic generators + named inventory | #41 | ✅ 2026-04-13 | `generate-harness-constants.ps1`, `generate-ferros-core.ps1`, `_constants.js` named arrays |
+| PR 2 — Manifest hardening + fixture truth | #42 | ✅ 2026-04-14 | `manifest.json` C1–C10 entries, golden fixture corpus |
+| PR 3 — H1 full contract matrix | #43 | ✅ 2026-04-15 | `ferros-contract-validator.html` C1–C7 groups |
+| PR 4 — C8-C10 harness gaps | #44 | ✅ 2026-04-17 | H3 nonce handshake, H2 real round-trip, H4 deny probes |
+| PR 5 — Supporting harness alignment + shared-core cleanup | #45 | ✅ 2026-04-17 | `trading-card.html` nonce echo, H5–H8 role separation, `personal-profile.html` seams |
+| PR 6 — Docs/ADR reconciliation | — | 🔄 This PR | Contract docs, ferros-core-api.md, ADR addenda, PHASE-0-DEFINITION.md, PROGRESS.md |
+| PR 7 — Final closure verification | — | ⬜ Next | Regenerate → diff, run H1–H4, capture browser-green evidence |
+
+---
+
+## Wave 0 Harness Status
+
+> Run each harness by opening it in Chrome via `file://`. All harnesses load `ferros-core.js` via `<script src="../docs/assets/_core/ferros-core.js">`.
+
+| Harness | File | Contracts | Gate? | Expected status |
+|---------|------|-----------|-------|-----------------|
+| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 | ✅ Gate | All groups green |
+| H2 | `harnesses/round-trip-harness.html` | C9 | ✅ Gate | All groups green (including Group D round-trip) |
+| H3 | `harnesses/runtime-harness.html` | C8 | ✅ Gate | All groups green including D-5 nonce echo (fixed in PR 5) |
+| H4 | `harnesses/negative-harness.html` | C10 | ✅ Gate | All groups green including Group E deny probes |
+| H5 | `harnesses/acceptance-harness.html` | V1/V8 | Supporting | 🔧 Built — open in Chrome to confirm |
+| H6 | `harnesses/write-path-harness.html` | C9 write | Supporting | 🔧 Built — open in Chrome to confirm |
+| H7 | `harnesses/semantic-fixture-linter.html` | C2/C4/C5/C6 | Supporting | 🔧 Built — open in Chrome to confirm |
+| H8 | `harnesses/ui-acceptance-harness.html` | C10/UI | Supporting | 🔧 Built — open in Chrome to confirm |
+| Preflight | `harnesses/preflight-check.html` | C7/C8 inventory | Supporting | 🔧 Built — open in Chrome to confirm |
+
+---
+
+## Wave 0 Contract Coverage
+
+| Contract | Name | Artifact | Schema | Fixtures | Gate harness | Status |
+|---|---|---|---|---|---|---|
+| C1 | Identity/Session Schema | ✅ | `schemas/identity.schema.json` | 4 fixtures | H1 | ✅ |
+| C2 | Profile Schema | ✅ | `schemas/profile.schema.json` | 8 fixtures | H1, H2 | ✅ |
+| C3 | Template Profile | ✅ | `schemas/template.schema.json` | 1 fixture | H1 | ✅ |
+| C4 | Card Schema | ✅ | `schemas/card.schema.json` | 2 fixtures | H1 | ✅ |
+| C5 | Deck Schema | ✅ | `schemas/deck.schema.json` | 2 fixtures | H1 | ✅ |
+| C6 | Schedule Event Schema | ✅ | `schemas/schedule-event.schema.json` | 1 fixture | H1 | ✅ |
+| C7 | Audit Record Schema | ✅ | `schemas/audit-record.schema.json` | none (correct — see manifest note) | H1 | ✅ |
+| C8 | Runtime Host Contract | ✅ | `docs/contracts/runtime-host-v1.md` | none | H3 | ✅ |
+| C9 | Storage Rules | ✅ | `docs/contracts/storage-rules.md` | 11 fixtures | H2 | ✅ |
+| C10 | Permission Model | ✅ | `docs/contracts/permission-model.md` | none | H4 | ✅ |
+
+**Known gaps / deferred items:**
+- C7 has no dedicated test fixture — audit record schema is validated by keyword audit in H1 only. Full audit record fixture deferred pending Wave 1 consumer.
+- C6 schedule-event runtime consumption is deferred to Wave 2 (S1). `FerrosCore.templateToEvents()` provides the transformation bridge but no surface consumes it yet.
+- C8 origin validation on `file://` is enforcement-on-conformance only — not a hard security boundary (documented in runtime-host-v1.md §9).
+
+---
 
 - Each capability has two status dimensions: **Artifact** (file/spec exists) and **Enforcement** (a harness runs tests against it and passes). A capability is not complete until both ✅.
 - Capabilities are organized into **tiers** (contracts → vertical slice → consumers → permissioned actions → hardening).
@@ -96,6 +148,8 @@ Shared contracts serve more than one surface.
 
 ### Tier 5 — Hardening (Wave 4)
 
+> **Naming note:** The capability IDs below use `H1`–`H6` to reference Wave 4 hardening capabilities. These are **different from** the Wave 0 harness file IDs (H1–H8) used in the Wave 0 Harness Status table above. The harness file IDs are an artifact of their order of introduction and will be renamed in a future cleanup PR.
+
 | # | Capability | Status | Gate |
 |---|-----------|--------|------|
 | H1 | Schema migration rules implemented and tested | ⬜ | Storage |
@@ -103,7 +157,7 @@ Shared contracts serve more than one surface.
 | H3 | Import/export corruption handling tested | ⬜ | Portability |
 | H4 | Accessibility baseline checked | ⬜ | A11y |
 | H5 | Performance budgets defined and met for core flows | ⬜ | Perf |
-| H6 | Public docs match shipped behavior | ⬜ | Docs |
+| H6 | Public docs match shipped behavior | ✅ | Docs (Wave 0 PR 6 closes this for Wave 0 scope) |
 
 **Wave 4 exit:** H1–H6 complete. Platform is trustworthy for external users.
 
@@ -152,10 +206,10 @@ Twenty findings from the Phase 0 exit audit. Each is classified as **resolved** 
 | 14 | Fixture corpus too narrow | ✅ Resolved | D14 | 5 new fixtures, `_constants.js` regenerated |
 | 15 | No shared runtime core | ✅ Resolved | B6 | `ferros-core.js` IIFE, `window.FerrosCore` |
 | 16 | Monolith duplicates contract logic | ✅ Resolved | B6 | Monolith delegates to `FerrosCore.*` |
-| 17 | No black-box UI acceptance harness | ✅ Resolved | D15 | H6 uses DOM + localStorage only; no `contentWindow` state reads |
+| 17 | No black-box UI acceptance harness | ✅ Resolved | D15 | H8 uses DOM + localStorage only; no `contentWindow` state reads |
 | 18 | No contract manifest | ✅ Resolved | D16 | `docs/contracts/manifest.json` |
 | 19 | Contract/fixture co-location fragmented | ⬜ Deferred → Wave 1 | D16 | Manifest mitigates; physical reorg deferred |
-| 20 | Harnesses don't share core verification logic | ✅ Resolved | B6 | H2 + H5 load `ferros-core.js`, delegate to `FerrosCore.validateImport` |
+| 20 | Harnesses don't share core verification logic | ✅ Resolved | B6 | H2 + H5 load `ferros-core.js`, delegate to `FerrosCore.validateImport` + `FerrosCore.serializeExport` |
 
 **Totals:** 15 resolved, 1 hardened, 4 documented-and-deferred.
 

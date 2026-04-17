@@ -323,13 +323,29 @@ When the FERROS ledger is operational:
 - Fetching extended profile data from `ledgerPointer` (future — requires ledger infrastructure).
 - Template "cost" / bounty for alias use (future — see ADR-003 design notes).
 
----
-
 ## Addendum (2026-04-08): Superseded by ADR-011
 
 **ADR-011 (Routine Module System)** supersedes this ADR for routine/schedule selection. The `TEMPLATE_PROFILES` constant and its schema defined above are **preserved as the alias identity pool** — they are NOT removed. Alias codes (`nikola-50a9`, `frida-82a7`, etc.), `.ferros-log` claim flow (ADR-003), and session mode verification (ADR-005) all depend on `TEMPLATE_PROFILES` existing at runtime.
 
 The celebrity gallery is demoted from primary Stage 1 selection UX to a secondary "Browse Aliases" panel. New routine composition uses `MODULE_REGISTRY` and `STARTER_DECKS` (defined in ADR-011), which are separate data structures with no dependency on `TEMPLATE_PROFILES`.
+
+---
+
+## Wave 0 Closure Addendum (2026-04-17)
+
+**Added:** PR 6 — Docs/ADR reconciliation
+
+### Template validation is now dual-enforced
+
+Template profile conformance is enforced at two points after Wave 0 PRs 1–5:
+
+1. **Build-time (static):** `tools/generate-ferros-core.ps1` reads `docs/assets/_core/templates.json`, validates each template entry against the template schema (`schemas/template.schema.json`), and inlines the validated `TEMPLATE_PROFILES` array into `ferros-core.js`. A schema violation at build time causes the generator to fail before any output is written.
+
+2. **Runtime (dynamic):** H1 (`harnesses/ferros-contract-validator.html`) Group 1 runs schema validation of the `TEMPLATE_PROFILES` array embedded in `FerrosCore.TEMPLATE_PROFILES` against `schemas/template.schema.json`. This proves that the build-time-generated constant still conforms at test time.
+
+### Template → C6 transformation bridge
+
+`FerrosCore.templateToEvents(template)` and `FerrosCore.templateBlockToEvent(block, templateId, blockIndex, stream)` provide the C1 → C6 transformation bridge. These functions convert a template's `templateSchedule.blocks` array (C3 schema) into C6-conforming schedule event objects. H1 Group 5 verifies this transformation. Full C6 consumer integration is a Wave 2 gate (S1).
 
 ---
 
