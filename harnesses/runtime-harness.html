@@ -440,6 +440,8 @@ function runGroupD(iframe, msgBaseIdx) {
     var beforeSend = _collectedMessages.length;
     iframe.contentWindow.postMessage({ type: 'ferros:init', config: { control: 'demo' }, nonce: testNonce }, '*');
 
+    // 1500ms: allows one init→ready round-trip at typical iframe message latency
+    // (~300ms settle) plus a safety margin. Must stay under the overall 8s iframe timeout.
     waitFor(function() {
       return _collectedMessages.slice(beforeSend).some(function(m) {
         return m.type === 'ferros:event' && FerrosCore.validateRuntimeMessage(m, testNonce);

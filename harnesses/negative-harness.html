@@ -460,12 +460,20 @@ function runGroupD() {
 
 var gE = makeGroup('Group E — FerrosCore Deny-Behavior Probes (C10 implementation)');
 
+// Helper: build a flags object with defaults (full-profile) overridden by the provided overrides
+function makeFlagsConfig(overrides) {
+  var base = { tradeWindowAccepted: true, sessionMode: false, aliasMode: false, recoveryMode: false };
+  var keys = Object.keys(overrides);
+  for (var i = 0; i < keys.length; i++) { base[keys[i]] = overrides[keys[i]]; }
+  return base;
+}
+
 // E-1: session mode flags → canMutateDurableState returns false
 test(gE, 'E-1: canMutateDurableState({sessionMode:true}) → false (C10 session deny)', function() {
   if (typeof FerrosCore === 'undefined' || !FerrosCore.canMutateDurableState) {
     return { pass: false, error: 'FerrosCore.canMutateDurableState not available' };
   }
-  var result = FerrosCore.canMutateDurableState({ tradeWindowAccepted: false, sessionMode: true, aliasMode: false, recoveryMode: false });
+  var result = FerrosCore.canMutateDurableState(makeFlagsConfig({ tradeWindowAccepted: false, sessionMode: true }));
   if (result === false) return { pass: true, detail: 'session mode correctly denied durable write' };
   return { pass: false, error: 'Expected false, got ' + result };
 });
@@ -475,7 +483,7 @@ test(gE, 'E-2: canMutateDurableState({aliasMode:true}) → false (C10 alias deny
   if (typeof FerrosCore === 'undefined' || !FerrosCore.canMutateDurableState) {
     return { pass: false, error: 'FerrosCore.canMutateDurableState not available' };
   }
-  var result = FerrosCore.canMutateDurableState({ tradeWindowAccepted: true, sessionMode: false, aliasMode: true, recoveryMode: false });
+  var result = FerrosCore.canMutateDurableState(makeFlagsConfig({ aliasMode: true }));
   if (result === false) return { pass: true, detail: 'alias mode correctly denied durable write' };
   return { pass: false, error: 'Expected false, got ' + result };
 });
@@ -485,7 +493,7 @@ test(gE, 'E-3: canMutateDurableState({recoveryMode:true}) → false (C10 recover
   if (typeof FerrosCore === 'undefined' || !FerrosCore.canMutateDurableState) {
     return { pass: false, error: 'FerrosCore.canMutateDurableState not available' };
   }
-  var result = FerrosCore.canMutateDurableState({ tradeWindowAccepted: true, sessionMode: false, aliasMode: false, recoveryMode: true });
+  var result = FerrosCore.canMutateDurableState(makeFlagsConfig({ recoveryMode: true }));
   if (result === false) return { pass: true, detail: 'recovery mode correctly denied durable write' };
   return { pass: false, error: 'Expected false, got ' + result };
 });
@@ -495,7 +503,7 @@ test(gE, 'E-4: canMutateDurableState({tradeWindowAccepted:true, all others false
   if (typeof FerrosCore === 'undefined' || !FerrosCore.canMutateDurableState) {
     return { pass: false, error: 'FerrosCore.canMutateDurableState not available' };
   }
-  var result = FerrosCore.canMutateDurableState({ tradeWindowAccepted: true, sessionMode: false, aliasMode: false, recoveryMode: false });
+  var result = FerrosCore.canMutateDurableState(makeFlagsConfig({}));
   if (result === true) return { pass: true, detail: 'full-profile mode correctly allowed durable write' };
   return { pass: false, error: 'Expected true, got ' + result };
 });

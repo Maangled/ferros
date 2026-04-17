@@ -414,7 +414,8 @@ function runGroupD() {
       iw.acceptTrade();
 
       // Load fixture profile data via window accessors exposed in testmode
-      var profileData = clone(stripMeta(clone(FIXTURE_FULL_PROFILE_STAGE3)));
+      // stripMeta returns a new object (no need for outer clone)
+      var profileData = stripMeta(clone(FIXTURE_FULL_PROFILE_STAGE3));
       var chainData   = clone(FIXTURE_FULL_PROFILE_STAGE3.sealChain || []);
       iw.profile   = profileData;
       iw.sealChain = chainData;
