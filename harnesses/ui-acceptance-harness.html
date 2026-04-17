@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>H6 — FERROS UI Acceptance Harness</title>
+<title>H8 — FERROS UI Acceptance Harness</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:24px;font-size:13px;line-height:1.5}
@@ -28,8 +28,8 @@
 </style>
 </head>
 <body>
-<h1>H6 — FERROS UI Acceptance Harness (Black-Box)</h1>
-<div class="meta">Manual-run UI harness &nbsp;|&nbsp; Drives real UI via button clicks in iframe &nbsp;|&nbsp; Asserts only visible DOM and localStorage &nbsp;|&nbsp; Run on file:// in Chrome</div>
+<h1>H8 — FERROS UI Acceptance Harness (Black-Box)</h1>
+<div class="meta">H8 — UI-layer acceptance only &nbsp;|&nbsp; DOM-click + localStorage boundary &nbsp;|&nbsp; Does not re-run contract matrix (H1–H7 own that) &nbsp;|&nbsp; Manual-run | Run on file:// in Chrome</div>
 
 <h2>Instructions</h2>
 <div style="color:#8b949e;margin-bottom:16px;font-size:.85rem">
@@ -48,12 +48,16 @@
 
 <script>
 /* ==========================================================================
-   H6 — BLACK-BOX UI ACCEPTANCE HARNESS
+   H8 — BLACK-BOX UI ACCEPTANCE HARNESS
    ==========================================================================
    This harness interacts ONLY through the DOM — clicking buttons, reading
    visible text, and checking element visibility — plus localStorage as the
    external persistence boundary. No contentWindow function calls. No reads
    of internal JS variables (profile, sealChain, FerrosCore).
+
+   Scope: UI-layer behavior that H5 (acceptance-harness) does not own.
+   H5 owns the Journey 1 contract proof via contentWindow. H8 owns the
+   DOM-click path and visible state assertions.
 
    Journey: Clear → Load → Accept Trade → Complete Stage 0 → Verify Dashboard
 
