@@ -269,25 +269,42 @@ function deepEqual(a, b) {
   return false;
 }
 
-/* Recursively collect all keyword names from a schema object */
+/* Recursively collect all keyword names from a schema object.
+   Skips treating keys inside 'properties' and '$defs' maps as schema keywords
+   (those keys are property/definition names, not schema vocabulary). */
 function collectKeywords(obj, out) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
   var keys = Object.keys(obj);
   for (var i = 0; i < keys.length; i++) {
     var k = keys[i];
     out[k] = true;
-    collectKeywords(obj[k], out);
+    // 'properties' and '$defs' map property/definition names to sub-schemas.
+    // Don't add those names as keywords — recurse into the sub-schema values directly.
+    if (k === 'properties' || k === '$defs') {
+      var mapObj = obj[k];
+      if (mapObj && typeof mapObj === 'object' && !Array.isArray(mapObj)) {
+        var mapKeys = Object.keys(mapObj);
+        for (var mi = 0; mi < mapKeys.length; mi++) {
+          collectKeywords(mapObj[mapKeys[mi]], out);
+        }
+      }
+    } else {
+      collectKeywords(obj[k], out);
+    }
   }
 }
 
-/* Strip fixture meta-keys before validating data against a schema */
+/* Strip fixture meta-keys before validating data against a schema.
+   Strips: $comment, _invalidReason, _fixture, $schema (top-level annotation),
+   expectedError, expect — these are fixture-only annotations, not schema data. */
 function stripFixtureMeta(obj) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
   var copy = {};
   var keys = Object.keys(obj);
   for (var i = 0; i < keys.length; i++) {
     var k = keys[i];
-    if (k === '$comment' || k === '_invalidReason') continue;
+    if (k === '$comment' || k === '_invalidReason' || k === '_fixture' ||
+        k === '$schema' || k === 'expectedError' || k === 'expect') continue;
     copy[k] = obj[k];
   }
   return copy;
@@ -349,9 +366,9 @@ for (var si = 0; si < FERROS_SCHEMAS.length; si++) {
 /* ==========================================================================
    GROUP 2 — Golden fixture positive validation (expect PASS)
    ========================================================================== */
-var g2 = addGroup('Group 2 — Golden fixture positive validation (3 expected PASS)');
+var g2 = addGroup('Group 2 — Golden fixture positive validation (15 expected PASS)');
 
-// 2a: full-profile-stage3 → SCHEMA_PROFILE
+// 2a: full-profile-stage3 → SCHEMA_PROFILE (C2)
 runTest(g2, 'full-profile-stage3 validates against SCHEMA_PROFILE', function() {
   var data = stripFixtureMeta(FIXTURE_FULL_PROFILE_STAGE3);
   var r = validate(data, SCHEMA_PROFILE);
@@ -359,7 +376,55 @@ runTest(g2, 'full-profile-stage3 validates against SCHEMA_PROFILE', function() {
   return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
 });
 
-// 2b: card sub-object → SCHEMA_CARD
+// 2b: minimal-stage0-profile → SCHEMA_PROFILE (C2)
+runTest(g2, 'minimal-stage0-profile validates against SCHEMA_PROFILE', function() {
+  var data = stripFixtureMeta(FIXTURE_MINIMAL_STAGE0_PROFILE);
+  var r = validate(data, SCHEMA_PROFILE);
+  if (r.valid) return { pass: true, detail: 'Stage 0 minimal profile — genesis seal only, null class/streamAffinity' };
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+// 2c: mid-stage1-profile → SCHEMA_PROFILE (C2)
+runTest(g2, 'mid-stage1-profile validates against SCHEMA_PROFILE', function() {
+  var data = stripFixtureMeta(FIXTURE_MID_STAGE1_PROFILE);
+  var r = validate(data, SCHEMA_PROFILE);
+  if (r.valid) return { pass: true, detail: 'Stage 1 mid-progression profile — character class chosen, one protocol completed' };
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+// 2d: quota-boundary-profile → SCHEMA_PROFILE (C2)
+runTest(g2, 'quota-boundary-profile validates against SCHEMA_PROFILE', function() {
+  var data = stripFixtureMeta(FIXTURE_QUOTA_BOUNDARY_PROFILE);
+  var r = validate(data, SCHEMA_PROFILE);
+  if (r.valid) return { pass: true, detail: 'Stage 3 quota-stress profile — large journal, high attribute levels, full skills' };
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+// 2e: profile-export-envelope — extract .profile → SCHEMA_PROFILE (C2/C9)
+runTest(g2, 'profile-export-envelope.profile validates against SCHEMA_PROFILE', function() {
+  var envelope = stripFixtureMeta(FIXTURE_PROFILE_EXPORT_ENVELOPE);
+  if (!envelope.profile) return { pass: false, error: 'fixture.profile sub-object absent' };
+  var data = envelope.profile;
+  var r = validate(data, SCHEMA_PROFILE);
+  if (r.valid) return { pass: true, detail: 'export envelope inner profile validated — C9 portability shape confirmed' };
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+// 2f: profile-template-archetype-seam — structural presence check (seam fixture, not a full profile)
+// Attributes/identity/skills use seam-test shapes; full SCHEMA_PROFILE not applicable.
+// H7 (semantic-fixture-linter) owns cross-schema seam validation.
+runTest(g2, 'profile-template-archetype-seam — structural presence check (C2 seam fixture)', function() {
+  var data = stripFixtureMeta(FIXTURE_PROFILE_TEMPLATE_ARCHETYPE_SEAM);
+  var requiredKeys = ['meta', 'identity', 'attributes', 'skills', 'sealChain'];
+  var missing = requiredKeys.filter(function(k) { return !Object.prototype.hasOwnProperty.call(data, k); });
+  if (missing.length > 0) return { pass: false, error: 'structural check failed — missing keys: ' + missing.join(', ') };
+  return {
+    pass: true,
+    detail: 'PASS (structural only): seam fixture validates profile\u2192template archetype cross-reference. Full SCHEMA_PROFILE not applicable — attributes/identity/skills use seam-test shape. H7 owns seam validation.'
+  };
+});
+
+// 2g: card-deck-roundtrip.card → SCHEMA_CARD (C4)
 runTest(g2, 'card-deck-roundtrip.card validates against SCHEMA_CARD', function() {
   var data = FIXTURE_CARD_DECK_ROUNDTRIP.card;
   if (!data) return { pass: false, error: 'fixture.card is absent' };
@@ -368,7 +433,7 @@ runTest(g2, 'card-deck-roundtrip.card validates against SCHEMA_CARD', function()
   return { pass: false, error: r.errors.slice(0, 5).join(' | ') };
 });
 
-// 2c: deck sub-object → SCHEMA_DECK
+// 2h: card-deck-roundtrip.deck → SCHEMA_DECK (C5)
 runTest(g2, 'card-deck-roundtrip.deck validates against SCHEMA_DECK', function() {
   var data = FIXTURE_CARD_DECK_ROUNDTRIP.deck;
   if (!data) return { pass: false, error: 'fixture.deck is absent' };
@@ -377,10 +442,93 @@ runTest(g2, 'card-deck-roundtrip.deck validates against SCHEMA_DECK', function()
   return { pass: false, error: r.errors.slice(0, 5).join(' | ') };
 });
 
+// 2i: deck-card-assembly-seam — each item in cards[] → SCHEMA_CARD (C4)
+runTest(g2, 'deck-card-assembly-seam.cards[] each validates against SCHEMA_CARD', function() {
+  var fixture = stripFixtureMeta(FIXTURE_DECK_CARD_ASSEMBLY_SEAM);
+  var cards = fixture.cards;
+  if (!Array.isArray(cards) || cards.length === 0) return { pass: false, error: 'fixture.cards array absent or empty' };
+  var errors = [];
+  for (var i = 0; i < cards.length; i++) {
+    var r = validate(cards[i], SCHEMA_CARD);
+    if (!r.valid) errors.push('cards[' + i + '] (' + (cards[i].id || '?') + '): ' + r.errors.slice(0, 2).join('; '));
+  }
+  if (errors.length === 0) return { pass: true, detail: 'all ' + cards.length + ' cards conform to SCHEMA_CARD' };
+  return { pass: false, error: errors.join(' | ') };
+});
+
+// 2j: deck-card-assembly-seam.deck → SCHEMA_DECK (C5)
+runTest(g2, 'deck-card-assembly-seam.deck validates against SCHEMA_DECK', function() {
+  var fixture = stripFixtureMeta(FIXTURE_DECK_CARD_ASSEMBLY_SEAM);
+  var data = fixture.deck;
+  if (!data) return { pass: false, error: 'fixture.deck is absent' };
+  var r = validate(data, SCHEMA_DECK);
+  if (r.valid) return { pass: true, detail: 'seam deck (4 card slots) matches SCHEMA_DECK' };
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') };
+});
+
+// 2k: maximum-template-schedule — each item in templates[] → SCHEMA_TEMPLATE (C3)
+runTest(g2, 'maximum-template-schedule.templates[] each validates against SCHEMA_TEMPLATE', function() {
+  var fixture = stripFixtureMeta(FIXTURE_MAXIMUM_TEMPLATE_SCHEDULE);
+  var templates = fixture.templates;
+  if (!Array.isArray(templates) || templates.length === 0) return { pass: false, error: 'fixture.templates array absent or empty' };
+  var errors = [];
+  for (var i = 0; i < templates.length; i++) {
+    var r = validate(templates[i], SCHEMA_TEMPLATE);
+    if (!r.valid) errors.push('templates[' + i + '] (' + (templates[i].id || '?') + '): ' + r.errors.slice(0, 2).join('; '));
+  }
+  if (errors.length === 0) return { pass: true, detail: 'all ' + templates.length + ' templates conform to SCHEMA_TEMPLATE' };
+  return { pass: false, error: errors.join(' | ') };
+});
+
+// 2l: schedule-event-source-seam — each item in events[] → SCHEMA_SCHEDULE_EVENT (C6)
+runTest(g2, 'schedule-event-source-seam.events[] each validates against SCHEMA_SCHEDULE_EVENT', function() {
+  var fixture = stripFixtureMeta(FIXTURE_SCHEDULE_EVENT_SOURCE_SEAM);
+  var events = fixture.events;
+  if (!Array.isArray(events) || events.length === 0) return { pass: false, error: 'fixture.events array absent or empty' };
+  var errors = [];
+  for (var i = 0; i < events.length; i++) {
+    var r = validate(events[i], SCHEMA_SCHEDULE_EVENT);
+    if (!r.valid) errors.push('events[' + i + '] (' + (events[i].id || '?') + '): ' + r.errors.slice(0, 2).join('; '));
+  }
+  if (errors.length === 0) return { pass: true, detail: 'all ' + events.length + ' events conform to SCHEMA_SCHEDULE_EVENT' };
+  return { pass: false, error: errors.join(' | ') };
+});
+
+// 2m: alias-session-log → SCHEMA_AUDIT_RECORD (C1)
+runTest(g2, 'alias-session-log validates against SCHEMA_AUDIT_RECORD', function() {
+  var data = stripFixtureMeta(FIXTURE_ALIAS_SESSION_LOG);
+  var r = validate(data, SCHEMA_AUDIT_RECORD);
+  if (r.valid) return { pass: true, detail: 'alias session log — logType=alias-session, 3 entries, aliasInfo present' };
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+// 2n: recovery-session-log → SCHEMA_AUDIT_RECORD (C1)
+runTest(g2, 'recovery-session-log validates against SCHEMA_AUDIT_RECORD', function() {
+  var data = stripFixtureMeta(FIXTURE_RECOVERY_SESSION_LOG);
+  var r = validate(data, SCHEMA_AUDIT_RECORD);
+  if (r.valid) return { pass: true, detail: 'recovery session log — logType=recovery-session, 2 entries, recoveryInfo present' };
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+// 2o: session-mode-invariants — structural presence check (C1 documentation fixture)
+// This fixture documents behavioral invariants, not a schema instance of SCHEMA_IDENTITY.
+// H3 owns runtime C8 enforcement; H1 confirms structural presence of expected invariant keys.
+runTest(g2, 'session-mode-invariants — structural presence check (C1 documentation fixture)', function() {
+  var data = stripFixtureMeta(FIXTURE_SESSION_MODE_INVARIANTS);
+  var hasMode = typeof data.mode === 'string';
+  var hasInvariants = data.invariants && typeof data.invariants === 'object';
+  if (!hasMode) return { pass: false, error: 'fixture missing top-level "mode" field' };
+  if (!hasInvariants) return { pass: false, error: 'fixture missing top-level "invariants" object' };
+  return {
+    pass: true,
+    detail: 'PASS (structural only): documents C1 session mode invariants (mode=' + data.mode + '). Not a SCHEMA_IDENTITY instance \u2014 describes behavioral contracts, not runtime state. H3 owns runtime enforcement.'
+  };
+});
+
 /* ==========================================================================
-   GROUP 3 — Negative fixture validation (expect FAIL)
+   GROUP 3 — Negative fixture schema rejection (expect PASS — schema correctly rejects)
    ========================================================================== */
-var g3 = addGroup('Group 3 — Negative fixture validation (1 expected FAIL)');
+var g3 = addGroup('Group 3 — Negative fixture schema rejection (4 expected PASS)');
 
 // 3a: invalid-dual-session-mode → must FAIL SCHEMA_IDENTITY (oneOf constraint)
 runTest(g3, 'SCHEMA_IDENTITY rejects invalid-dual-session-mode (oneOf violation)', function() {
@@ -396,25 +544,23 @@ runTest(g3, 'SCHEMA_IDENTITY rejects invalid-dual-session-mode (oneOf violation)
   return { pass: false, error: 'SCHEMA_IDENTITY incorrectly accepted invalid alias mode with localStorage=true' };
 });
 
-/* ==========================================================================
-   GROUP 4 — Negative fixture classification (semantic, tested in H4)
-   These are classified PASS in H1 because schema can only do structural checks.
-   ========================================================================== */
-var g4 = addGroup('Group 4 — Semantic failures classified (not detectable by JSON Schema)');
-
-// 4a: invalid-broken-seal-chain — schema validates fine; semantic check is H4's job
-runTest(g4, 'SCHEMA_PROFILE accepts broken-seal-chain (chain break is semantic, tested in H4)', function() {
-  var data = stripFixtureMeta(FIXTURE_INVALID_BROKEN_SEAL_CHAIN);
+// 3b: invalid-forbidden-meta-field → must FAIL SCHEMA_PROFILE (additionalProperties on meta.hackerField)
+runTest(g3, 'SCHEMA_PROFILE rejects invalid-forbidden-meta-field (meta.hackerField additionalProperties)', function() {
+  var data = stripFixtureMeta(FIXTURE_INVALID_FORBIDDEN_META_FIELD);
   var r = validate(data, SCHEMA_PROFILE);
-  if (r.valid) {
-    return { pass: true, detail: 'PASS (expected): schema validates structure, not chain integrity. H4 owns STORAGE_SEAL_CHAIN_BROKEN.' };
+  if (!r.valid) {
+    var hasAdditional = r.errors.some(function(e){ return e.indexOf('additionalProperties') !== -1; });
+    return {
+      pass: true,
+      detail: 'correctly rejected. additionalProperties error present: ' + hasAdditional + '. Errors: ' + r.errors.slice(0,3).join(' | ')
+    };
   }
-  // Document why it failed — the fixture still has extra meta keys after stripping $comment/_invalidReason?
-  return { pass: false, error: 'unexpected schema rejection — investigate: ' + r.errors.slice(0,3).join(' | ') };
+  return { pass: false, error: 'SCHEMA_PROFILE incorrectly accepted profile with meta.hackerField — additionalProperties:false not enforced on meta' };
 });
 
-// 4b: invalid-corrupted-export — extract profile, validate meta (missing version IS caught)
-runTest(g4, 'SCHEMA_PROFILE rejects corrupted-export.profile (meta.version missing)', function() {
+// 3c: invalid-corrupted-export — extract .profile → must FAIL SCHEMA_PROFILE (meta.version missing)
+// (moved from Group 4 — this IS a schema-level rejection, not semantic-only)
+runTest(g3, 'SCHEMA_PROFILE rejects corrupted-export.profile (meta.version missing)', function() {
   var envelope = stripFixtureMeta(FIXTURE_INVALID_CORRUPTED_EXPORT);
   if (!envelope.profile) return { pass: false, error: 'fixture.profile sub-object absent' };
   var data = envelope.profile;
@@ -427,6 +573,48 @@ runTest(g4, 'SCHEMA_PROFILE rejects corrupted-export.profile (meta.version missi
     };
   }
   return { pass: false, error: 'schema incorrectly accepted profile with missing meta.version — review profile.schema.json $defs.meta.required' };
+});
+
+// 3d: invalid-duplicate-alias-claim → SCHEMA_AUDIT_RECORD rejects (sessionId is an unexpected field)
+// Primary invalidity is semantic (duplicate session detection, CLAIM_DUPLICATE_SESSION owned by H2).
+// Schema also rejects because sessionId is not a declared property and audit-record has additionalProperties:false.
+runTest(g3, 'SCHEMA_AUDIT_RECORD rejects invalid-duplicate-alias-claim (unexpected sessionId field)', function() {
+  var data = stripFixtureMeta(FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM);
+  var r = validate(data, SCHEMA_AUDIT_RECORD);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected (additionalProperties: sessionId not declared in audit-record.schema.json). Primary invalidity is semantic — CLAIM_DUPLICATE_SESSION detection owned by H2 import logic. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_AUDIT_RECORD should reject sessionId as an undeclared field (additionalProperties:false) — investigate audit-record.schema.json' };
+});
+
+/* ==========================================================================
+   GROUP 4 — Semantic failures classified (not detectable by JSON Schema alone)
+   Schema PASSES these fixtures; the actual invalidity is runtime/semantic.
+   ========================================================================== */
+var g4 = addGroup('Group 4 — Semantic failures classified (not detectable by JSON Schema)');
+
+// 4a: invalid-broken-seal-chain — schema validates fine; chain break is semantic (H4 owns)
+runTest(g4, 'SCHEMA_PROFILE accepts broken-seal-chain (chain break is semantic, tested in H4)', function() {
+  var data = stripFixtureMeta(FIXTURE_INVALID_BROKEN_SEAL_CHAIN);
+  var r = validate(data, SCHEMA_PROFILE);
+  if (r.valid) {
+    return { pass: true, detail: 'PASS (expected): schema validates structure, not chain integrity. H4 owns STORAGE_SEAL_CHAIN_BROKEN.' };
+  }
+  return { pass: false, error: 'unexpected schema rejection — investigate: ' + r.errors.slice(0,3).join(' | ') };
+});
+
+// 4b: invalid-split-save-state — schema validates fine; sealCount/chain mismatch is semantic (H2 owns)
+// meta.sealCount=3 but sealChain has only 1 entry — not detectable by JSON Schema alone.
+runTest(g4, 'SCHEMA_PROFILE accepts invalid-split-save-state (sealCount mismatch is semantic, H2 owns)', function() {
+  var data = stripFixtureMeta(FIXTURE_INVALID_SPLIT_SAVE_STATE);
+  var r = validate(data, SCHEMA_PROFILE);
+  if (r.valid) {
+    return { pass: true, detail: 'PASS (expected): schema validates structure only. sealCount=3 but sealChain has 1 entry — mismatch is runtime/semantic, not schema-detectable. H2 owns STORAGE_SEAL_COUNT_MISMATCH.' };
+  }
+  return { pass: false, error: 'unexpected schema rejection — sealCount mismatch should be semantic only: ' + r.errors.slice(0,3).join(' | ') };
 });
 
 /* ==========================================================================
@@ -499,7 +687,12 @@ var resultObj = {
     C4_type_coercion: 'NONE — null/array/object/string/number/integer/boolean checked strictly',
     C5_format_enforcement: 'INFORMATIONAL — format keyword acknowledged, not validated',
     C6_oneOf_semantics: 'STRICT — exactly 1 must match, validator recurses into each branch',
-    C7_negative_fixture_detection: groups[2].tests.map(function(t){ return t.name + ': ' + t.status; })
+    C7_negative_fixture_detection: groups[2].tests.map(function(t){ return t.name + ': ' + t.status; }),
+    coverage: {
+      golden_fixtures_tested: FERROS_GOLDEN_FIXTURES.length,
+      negative_fixtures_tested: FERROS_NEGATIVE_FIXTURES.length,
+      schemas_covered: FERROS_SCHEMAS.length
+    }
   },
   tests: allTests.map(function(t){ return { name: t.name, status: t.status, detail: t.detail, error: t.error }; })
 };
