@@ -1677,8 +1677,8 @@
     // Exposed to harnesses via contentWindow (H2, H5, H6). Writes profile and
     // sealChain to localStorage if canMutateDurableState() passes. Returns false
     // when write-path is blocked (sessionMode, aliasMode, recoveryMode) or when
-    // shape validation fails. Not part of the public API — harnesses must not
-    // call this directly; they test its effects via localStorage or exported data.
+    // shape validation fails. Harnesses observe effects via localStorage reads or
+    // exported data rather than calling saveProfile() directly in most tests.
     function saveProfile(){
       if(!canMutateDurableState())return false;
       // Write-time shape validation (A1b)
@@ -2546,9 +2546,9 @@
     }
     function useAlias(id){const a=ALIAS_PROFILES.find(x=>x.id===id);if(a)_enterAliasMode(a)}
     // ── Internal: _enterAliasMode() ─────────────────────────────────────────
-    // Internal function (name-mangled with _ to signal non-public surface).
-    // Not directly exposed to harnesses. Called by useAlias() and useAliasCode()
-    // which are UI-triggered. H4 exercises alias-mode blocking via indirect paths.
+    // Internal function (_-prefixed to indicate non-public surface). Not directly
+    // exposed to harnesses. Called by useAlias() and useAliasCode() which are
+    // UI-triggered. H4 exercises alias-mode blocking via indirect paths.
     function _enterAliasMode(alias){
       closeAliasGallery();
       aliasMode=true;

@@ -259,8 +259,9 @@ renderCheck('C8', 'Wave 0 required file inventory', 'Checking…');
 })();
 
 /* ── ASYNC COMPLETION GATE ─────────────────────────────────── */
-/* C6 and C7 are async; C1–C5 and C8 are synchronous.
-   finalize() is called once both async checks report. */
+/* C6 and C7 are async (timers/script-load callbacks).
+   C1–C5 and C8 are synchronous and record results immediately.
+   finalize() is called once both async checks (C6, C7) have reported. */
 var _asyncPending = 2;
 function _checkDone() {
   _asyncPending--;
