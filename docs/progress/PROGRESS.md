@@ -18,8 +18,10 @@ This index tracks Phase 0 progress using **binary capability gates** — not per
 | PR 3 — H1 full contract matrix | #43 | ✅ 2026-04-15 | `ferros-contract-validator.html` C1–C7 groups |
 | PR 4 — C8-C10 harness gaps | #44 | ✅ 2026-04-17 | H3 nonce handshake, H2 real round-trip, H4 deny probes |
 | PR 5 — Supporting harness alignment + shared-core cleanup | #45 | ✅ 2026-04-17 | `trading-card.html` nonce echo, H5–H8 role separation, `personal-profile.html` seams |
-| PR 6 — Docs/ADR reconciliation | — | 🔄 This PR | Contract docs, ferros-core-api.md, ADR addenda, PHASE-0-DEFINITION.md, PROGRESS.md |
-| PR 7 — Final closure verification | — | ⬜ Next | Regenerate → diff, run H1–H4, capture browser-green evidence |
+| PR 6 — Docs/ADR reconciliation | #46 | ✅ 2026-04-17 | Contract docs, ferros-core-api.md, ADR addenda, PHASE-0-DEFINITION.md, PROGRESS.md |
+| PR 7 — Final closure verification | #47 | ✅ 2026-04-17 | Regenerate → diff, `CLOSURE-EVIDENCE.md`, Wave 0 CLOSED |
+
+**Wave 0 status: CLOSED** — See [CLOSURE-EVIDENCE.md](../../CLOSURE-EVIDENCE.md) for the full closure record.
 
 ---
 
