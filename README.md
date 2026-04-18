@@ -186,6 +186,7 @@ ferros/
     ├── architecture-overview.md           # Prose architecture summary
     ├── core-hardware-targets.md           # Device classes and hardware target model
     ├── deployment-roadmap.html            # Phase roadmap visualization
+    ├── ferros-project-map.html            # Interactive project map (stream mindmap, scoreboard, CEO journey)
     ├── ferros-showcase.html               # Public showcase / landing page
     ├── forge-workbench.html               # Forge authoring workbench prototype
     ├── home-hud-dashboard.html            # Smart home HUD prototype
@@ -205,6 +206,7 @@ These self-contained HTML documents serve as both design targets and milestone v
 
 | File | Description |
 |------|-------------|
+| [**`docs/ferros-project-map.html`**](./docs/ferros-project-map.html) | **🗺️ Interactive Project Map** — navigable mindmap/dashboard of the entire FERROS project: stream architecture with SVG data-flow diagram, file/surface map, capability scoreboard (all 44 caps), and CEO persona journey walkthrough |
 | [`docs/ferros-showcase.html`](./docs/ferros-showcase.html) | Public showcase website — a "ferros.dev" landing page with interactive architecture diagram, phase roadmap, boot sequence animation, and contributor guide |
 | [`docs/agent-command-center.html`](./docs/agent-command-center.html) | Web-based agent coordination platform — replaces Discord integration from botgen-rust; combines chat, agent governance, live operations console, Kanban project board, and IoT home integration |
 | [`docs/home-hud-dashboard.html`](./docs/home-hud-dashboard.html) | FERROS Home HUD Dashboard — the primary kiosk/screen interface for a FERROS-powered home; real-time clock, schedule panel, device controls, agent activity feed, and consent queue |
@@ -218,6 +220,7 @@ These self-contained HTML documents serve as both design targets and milestone v
 
 ## Documentation
 
+- [`docs/ferros-project-map.html`](./docs/ferros-project-map.html) — **Interactive project map**: stream architecture, file map, capability scoreboard, CEO journey
 - [`docs/architecture-overview.md`](./docs/architecture-overview.md) — System architecture reference (OS layers + Phase 0 prototype)
 - [`docs/AGENT_GUIDE.md`](./docs/AGENT_GUIDE.md) — Agent working guide: bug log, architecture constraints, anti-patterns
 - [`docs/core-hardware-targets.md`](./docs/core-hardware-targets.md) — Hardware target matrix for full FERROS OS targets, Linux-first edge nodes, and FERROS-compatible peripherals

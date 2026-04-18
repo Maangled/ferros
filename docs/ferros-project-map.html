@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS — Interactive Project Map</title>
+<style>
+/* ─── CSS Variables ─────────────────────────────────────────────────────── */
+:root {
+  --bg-base:        #0a0e17;
+  --bg-panel:       #0f1520;
+  --bg-card:        #141c2a;
+  --bg-card-alt:    #192030;
+  --bg-highlight:   #1e2840;
+  --border-dim:     #1e2a3a;
+  --border-accent:  #2a3f5f;
+  --border-bright:  #3a5a8f;
+  --text-primary:   #e2e8f0;
+  --text-secondary: #8fa0b8;
+  --text-dim:       #4a5a6e;
+  --text-code:      #7eb8e8;
+
+  --stream-a:       #22d3ee;  /* cyan */
+  --stream-a-dim:   #164e63;
+  --stream-b:       #f59e0b;  /* amber */
+  --stream-b-dim:   #78350f;
+  --stream-c:       #a78bfa;  /* purple */
+  --stream-c-dim:   #4c1d95;
+  --stream-d:       #34d399;  /* green */
+  --stream-d-dim:   #065f46;
+  --stream-e:       #f87171;  /* red/orange */
+  --stream-e-dim:   #7f1d1d;
+
+  --status-done:    #34d399;
+  --status-built:   #f59e0b;
+  --status-todo:    #4a5a6e;
+
+  --font-mono: 'Courier New', Courier, monospace;
+}
+
+/* ─── Reset & Base ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+a { color: var(--text-code); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { cursor: pointer; border: none; background: none; color: inherit; font: inherit; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 4px; }
+
+/* ─── Animations ────────────────────────────────────────────────────────── */
+@keyframes fadeIn   { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes glow     { 0%,100% { box-shadow: 0 0 4px 0 currentColor; } 50% { box-shadow: 0 0 12px 2px currentColor; } }
+@keyframes pulse    { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+@keyframes drawLine { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
+
+/* ─── Top Bar ───────────────────────────────────────────────────────────── */
+#topbar {
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 48px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar-brand {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--stream-a);
+  letter-spacing: 2px;
+  margin-right: 24px;
+  white-space: nowrap;
+}
+.topbar-brand span { color: var(--text-secondary); font-weight: 400; }
+.nav-tabs {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+.nav-tab {
+  padding: 6px 14px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.nav-tab:hover { background: var(--bg-highlight); color: var(--text-primary); }
+.nav-tab.active {
+  background: var(--bg-highlight);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--stream-a);
+}
+
+/* ─── Summary Strip ─────────────────────────────────────────────────────── */
+#summary-strip {
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 8px 16px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.summary-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.summary-stat .val {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.summary-stat .val.done { color: var(--status-done); }
+.summary-stat .val.built { color: var(--status-built); }
+.progress-bar-wrap {
+  flex: 1;
+  min-width: 120px;
+  height: 4px;
+  background: var(--border-dim);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+.stream-mini-bars {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.mini-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+}
+.mini-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ─── Main Content ──────────────────────────────────────────────────────── */
+#main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px 16px;
+}
+
+/* ─── Views ─────────────────────────────────────────────────────────────── */
+.view { display: none; animation: fadeIn 0.2s ease; }
+.view.active { display: block; }
+
+/* ─── Stream Map View ───────────────────────────────────────────────────── */
+.map-container {
+  position: relative;
+  min-height: 600px;
+}
+.map-svg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.map-svg .conn-line {
+  fill: none;
+  stroke-width: 1.5;
+  opacity: 0.5;
+  stroke-dasharray: 6 4;
+}
+.map-svg .conn-line.solid { stroke-dasharray: none; }
+.map-svg .conn-label {
+  font-size: 10px;
+  fill: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+.map-svg marker path { fill: inherit; }
+.stream-nodes {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: auto auto;
+  gap: 16px;
+  padding: 20px;
+}
+.stream-node {
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+  background: var(--bg-card);
+  padding: 16px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  position: relative;
+}
+.stream-node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.stream-node.expanded {
+  box-shadow: 0 0 0 2px currentColor;
+}
+.stream-node[data-stream="A"] { color: var(--stream-a); border-color: var(--stream-a-dim); }
+.stream-node[data-stream="B"] { color: var(--stream-b); border-color: var(--stream-b-dim); }
+.stream-node[data-stream="C"] { color: var(--stream-c); border-color: var(--stream-c-dim); }
+.stream-node[data-stream="D"] { color: var(--stream-d); border-color: var(--stream-d-dim); }
+.stream-node[data-stream="E"] { color: var(--stream-e); border-color: var(--stream-e-dim); }
+.stream-node[data-stream="A"]:hover { border-color: var(--stream-a); }
+.stream-node[data-stream="B"]:hover { border-color: var(--stream-b); }
+.stream-node[data-stream="C"]:hover { border-color: var(--stream-c); }
+.stream-node[data-stream="D"]:hover { border-color: var(--stream-d); }
+.stream-node[data-stream="E"]:hover { border-color: var(--stream-e); }
+
+.node-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.node-badge {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: currentColor;
+}
+.node-badge span { color: var(--bg-base); }
+.node-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+.node-subtitle {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+.node-progress {
+  margin-top: 8px;
+}
+.node-progress-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-dim);
+  overflow: hidden;
+}
+.node-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.8;
+  transition: width 0.4s ease;
+}
+.node-progress-label {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.node-status-chips {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  background: var(--bg-highlight);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-dim);
+}
+.chip.done    { background: #052e16; color: var(--status-done);  border-color: #166534; }
+.chip.built   { background: #451a03; color: var(--status-built); border-color: #92400e; }
+.chip.planned { background: #1e1b4b; color: #818cf8; border-color: #3730a3; }
+.expand-hint {
+  margin-top: 10px;
+  font-size: 10px;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+/* ─── Stream Detail Panel ───────────────────────────────────────────────── */
+.stream-detail {
+  display: none;
+  grid-column: 1 / -1;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 4px;
+  animation: fadeIn 0.2s ease;
+}
+.stream-detail.visible { display: block; }
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.detail-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.detail-subtitle { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.detail-close {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--bg-highlight);
+  color: var(--text-secondary);
+  font-size: 11px;
+  transition: background 0.15s;
+}
+.detail-close:hover { background: var(--border-accent); color: var(--text-primary); }
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 800px) { .detail-grid { grid-template-columns: 1fr; } }
+
+.detail-section { }
+.detail-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.wave-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.wave-table th, .wave-table td {
+  padding: 5px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-dim);
+}
+.wave-table th { color: var(--text-dim); font-weight: 500; }
+.wave-table td { color: var(--text-secondary); }
+.wave-table td:first-child { font-family: var(--font-mono); color: var(--text-code); }
+.cap-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.cap-list li { font-size: 11px; color: var(--text-secondary); display: flex; gap: 6px; align-items: flex-start; }
+.cap-list li .cap-id { font-family: var(--font-mono); color: var(--text-code); font-size: 10px; flex-shrink: 0; min-width: 28px; }
+.artifact-list { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.artifact-list li { font-size: 11px; font-family: var(--font-mono); color: var(--text-code); }
+.dep-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.dep-tag {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  border: 1px solid var(--border-accent);
+  color: var(--text-secondary);
+}
+
+/* ─── Dependency flow area ──────────────────────────────────────────────── */
+.dep-flow-section {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.dep-flow-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.dep-flow-svg-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.dep-flow-svg-wrap svg { display: block; min-width: 600px; }
+
+/* ─── File Map View ─────────────────────────────────────────────────────── */
+.file-map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.file-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin: 20px 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-dim);
+  grid-column: 1 / -1;
+}
+.file-card {
+  border: 1px solid var(--border-accent);
+  border-radius: 6px;
+  background: var(--bg-card);
+  padding: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+}
+.file-card.ghost {
+  border-style: dashed;
+  opacity: 0.7;
+}
+.file-card:hover {
+  border-color: var(--border-bright);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+.file-card-stream {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.file-card-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-code);
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+.file-card-desc { font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; }
+.file-card-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.file-size {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.file-status-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-dim);
+  color: var(--text-secondary);
+}
+.planned-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.infra-group {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 12px;
+}
+.infra-group-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.infra-item {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-code);
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border-dim);
+}
+.infra-item:last-child { border-bottom: none; }
+.infra-item .infra-desc { font-family: sans-serif; color: var(--text-secondary); margin-left: 8px; }
+
+/* ─── Scoreboard View ───────────────────────────────────────────────────── */
+.scoreboard-header {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.score-summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 100px;
+}
+.score-summary-num {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+}
+.score-summary-label { font-size: 11px; color: var(--text-secondary); }
+.tier-section { margin-bottom: 24px; }
+.tier-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.tier-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.tier-progress-text { font-size: 11px; color: var(--text-secondary); margin-left: auto; font-family: var(--font-mono); }
+.cap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.cap-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  transition: border-color 0.15s;
+}
+.cap-card:hover { border-color: var(--border-bright); }
+.cap-card.status-done  { border-left: 3px solid var(--status-done); }
+.cap-card.status-built { border-left: 3px solid var(--status-built); }
+.cap-card.status-todo  { border-left: 3px solid var(--status-todo); }
+.cap-card-id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-code);
+  min-width: 32px;
+  flex-shrink: 0;
+}
+.cap-card-body { flex: 1; min-width: 0; }
+.cap-card-name { font-size: 11px; color: var(--text-primary); margin-bottom: 4px; }
+.cap-card-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.cap-stream-tag {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-weight: 700;
+}
+.cap-status-icon { font-size: 12px; margin-left: auto; flex-shrink: 0; }
+.cap-proof { font-size: 10px; font-family: var(--font-mono); color: var(--text-dim); }
+
+/* ─── CEO Journey View ──────────────────────────────────────────────────── */
+.journey-intro {
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border-left: 4px solid var(--stream-b);
+}
+.journey-intro-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+.journey-intro-text { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+.journey-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  padding-left: 32px;
+}
+.journey-timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--border-accent);
+}
+.journey-step {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+  padding: 16px;
+  animation: fadeIn 0.3s ease;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.journey-step:hover { border-color: var(--border-bright); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+.journey-step-dot {
+  position: absolute;
+  left: -27px;
+  top: 18px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--stream-b);
+  border: 2px solid var(--bg-base);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--bg-base);
+  z-index: 1;
+}
+.journey-step-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.journey-step-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.journey-step-surface {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-code);
+  margin-top: 2px;
+}
+.journey-step-cap {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  background: var(--stream-b-dim);
+  color: var(--stream-b);
+  border: 1px solid var(--stream-b-dim);
+  white-space: nowrap;
+}
+.journey-step-body { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+.journey-step-body ol { padding-left: 16px; margin-top: 8px; }
+.journey-step-body ol li { margin-bottom: 4px; }
+.journey-contracts {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.journey-contract-chip {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--bg-highlight);
+  border: 1px solid var(--border-accent);
+  color: var(--text-dim);
+}
+.code-block {
+  background: var(--bg-base);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-code);
+  margin-top: 8px;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.5;
+}
+.session-mode-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
+.session-mode-table th, .session-mode-table td {
+  padding: 5px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-dim);
+}
+.session-mode-table th { color: var(--text-dim); font-weight: 500; }
+.session-mode-table td { color: var(--text-secondary); }
+.session-mode-table td:first-child { font-family: var(--font-mono); color: var(--text-code); }
+
+/* ─── Utilities ─────────────────────────────────────────────────────────── */
+.text-done  { color: var(--status-done); }
+.text-built { color: var(--status-built); }
+.text-todo  { color: var(--status-todo); }
+.mono { font-family: var(--font-mono); }
+.section-intro {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  max-width: 760px;
+}
+.view-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.view-title-icon { font-size: 18px; }
+</style>
+</head>
+<body>
+
+<!-- ─── Top Navigation Bar ──────────────────────────────────────────────── -->
+<div id="topbar">
+  <div class="topbar-brand">FERROS <span>Project Map</span></div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-view="stream-map">🗺️ Stream Map</button>
+    <button class="nav-tab" data-view="file-map">📁 File Map</button>
+    <button class="nav-tab" data-view="scoreboard">📊 Scoreboard</button>
+    <button class="nav-tab" data-view="ceo-journey">👤 CEO Journey</button>
+  </nav>
+</div>
+
+<!-- ─── Summary Strip ────────────────────────────────────────────────────── -->
+<div id="summary-strip">
+  <div class="summary-stat"><span>Total</span><span class="val mono" id="stat-total">—</span></div>
+  <div class="summary-stat"><span>Done ✅</span><span class="val done mono" id="stat-done">—</span></div>
+  <div class="summary-stat"><span>Built 🔧</span><span class="val built mono" id="stat-built">—</span></div>
+  <div class="summary-stat"><span>Pending ⬜</span><span class="val mono" id="stat-todo">—</span></div>
+  <div style="flex:1; min-width:140px;">
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-bottom:3px;">
+      <span>Overall Progress</span><span id="stat-pct">—</span>
+    </div>
+    <div class="progress-bar-wrap" style="height:6px;">
+      <div class="progress-bar-fill" id="overall-bar" style="background: linear-gradient(90deg, var(--status-done), var(--status-built)); width:0%;"></div>
+    </div>
+  </div>
+  <div class="stream-mini-bars" id="stream-mini-bars"></div>
+</div>
+
+<!-- ─── Main Content ──────────────────────────────────────────────────────── -->
+<div id="main">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       VIEW: STREAM MAP
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div id="view-stream-map" class="view active">
+    <div class="view-title"><span class="view-title-icon">🗺️</span> Stream Architecture Map</div>
+    <p class="section-intro">
+      Five parallel streams advancing FERROS from contracts through identity, creative pipeline, consumer surfaces, and native OS rendering.
+      Click any stream node to expand its detail panel. Arrows show data flow between streams.
+    </p>
+
+    <!-- Dependency flow diagram using SVG -->
+    <div class="dep-flow-section">
+      <div class="dep-flow-title">Data Flow Between Streams</div>
+      <div class="dep-flow-svg-wrap">
+        <svg viewBox="0 0 760 220" height="220" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#8fa0b8" opacity="0.7"/>
+            </marker>
+            <marker id="arr-dashed" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#4a5a6e" opacity="0.6"/>
+            </marker>
+          </defs>
+
+          <!-- Stream nodes -->
+          <!-- A: x=50, y=85 -->
+          <rect x="10" y="70" width="120" height="48" rx="6" fill="#0f1520" stroke="#22d3ee" stroke-width="1.5"/>
+          <text x="70" y="91" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700" font-family="monospace">Stream A</text>
+          <text x="70" y="106" text-anchor="middle" fill="#8fa0b8" font-size="9">Contracts &amp; Backend</text>
+
+          <!-- B: x=280, y=45 -->
+          <rect x="240" y="20" width="120" height="48" rx="6" fill="#0f1520" stroke="#f59e0b" stroke-width="1.5"/>
+          <text x="300" y="41" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700" font-family="monospace">Stream B</text>
+          <text x="300" y="56" text-anchor="middle" fill="#8fa0b8" font-size="9">Identity Cockpit</text>
+
+          <!-- C: x=280, y=145 -->
+          <rect x="240" y="130" width="120" height="48" rx="6" fill="#0f1520" stroke="#a78bfa" stroke-width="1.5"/>
+          <text x="300" y="151" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700" font-family="monospace">Stream C</text>
+          <text x="300" y="166" text-anchor="middle" fill="#8fa0b8" font-size="9">Creative Pipeline</text>
+
+          <!-- D: x=510, y=95 -->
+          <rect x="470" y="80" width="120" height="48" rx="6" fill="#0f1520" stroke="#34d399" stroke-width="1.5"/>
+          <text x="530" y="101" text-anchor="middle" fill="#34d399" font-size="11" font-weight="700" font-family="monospace">Stream D</text>
+          <text x="530" y="116" text-anchor="middle" fill="#8fa0b8" font-size="9">Consumer Surfaces</text>
+
+          <!-- E: x=640, y=168 -->
+          <rect x="620" y="150" width="120" height="48" rx="6" fill="#0f1520" stroke="#f87171" stroke-width="1.5"/>
+          <text x="680" y="171" text-anchor="middle" fill="#f87171" font-size="11" font-weight="700" font-family="monospace">Stream E</text>
+          <text x="680" y="186" text-anchor="middle" fill="#8fa0b8" font-size="9">Core OS &amp; Native</text>
+
+          <!-- Connections (solid) -->
+          <!-- A → B: frozen schemas v1.0.0 -->
+          <path d="M130 82 C185 82 210 44 240 44" stroke="#22d3ee" stroke-width="1.5" fill="none" stroke-opacity="0.6" marker-end="url(#arr)"/>
+          <text x="178" y="73" fill="#22d3ee" font-size="8" font-family="monospace" opacity="0.8">schemas v1.0.0</text>
+
+          <!-- A → C: frozen schemas v1.0.0 -->
+          <path d="M130 112 C185 112 210 154 240 154" stroke="#22d3ee" stroke-width="1.5" fill="none" stroke-opacity="0.6" marker-end="url(#arr)"/>
+          <text x="165" y="145" fill="#22d3ee" font-size="8" font-family="monospace" opacity="0.8">schemas v1.0.0</text>
+
+          <!-- B → D: profile data, schedule events -->
+          <path d="M360 44 C415 44 450 90 470 98" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-opacity="0.6" marker-end="url(#arr)"/>
+          <text x="390" y="62" fill="#f59e0b" font-size="8" font-family="monospace" opacity="0.8">profile + schedule</text>
+
+          <!-- C → D: card fixtures, deck manifests -->
+          <path d="M360 160 C415 160 450 118 470 112" stroke="#a78bfa" stroke-width="1.5" fill="none" stroke-opacity="0.6" marker-end="url(#arr)"/>
+          <text x="387" y="152" fill="#a78bfa" font-size="8" font-family="monospace" opacity="0.8">cards + decks</text>
+
+          <!-- B → C: identity contracts -->
+          <path d="M300 68 L300 130" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-opacity="0.5" stroke-dasharray="5 3" marker-end="url(#arr-dashed)"/>
+          <text x="304" y="104" fill="#f59e0b" font-size="8" font-family="monospace" opacity="0.7">identity</text>
+
+          <!-- A -.-> E: conformance target (dashed) -->
+          <path d="M130 102 C260 102 460 174 620 174" stroke="#4a5a6e" stroke-width="1" fill="none" stroke-dasharray="5 4" marker-end="url(#arr-dashed)"/>
+          <text x="340" y="196" fill="#4a5a6e" font-size="8" font-family="monospace">web fixture corpus (conformance)</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Stream Nodes Grid -->
+    <div class="stream-nodes" id="stream-nodes-grid">
+
+      <!-- Stream A -->
+      <div class="stream-node" data-stream="A" id="node-A" onclick="toggleDetail('A')">
+        <div class="node-header">
+          <div class="node-badge"><span>A</span></div>
+          <div>
+            <div class="node-title">Contracts &amp; Backend Infrastructure</div>
+            <div class="node-subtitle">The bedrock — schemas, contracts, ferros-core.js</div>
+          </div>
+        </div>
+        <div class="node-status-chips">
+          <span class="chip done">Wave 0 ✅ CLOSED</span>
+          <span class="chip built">Wave 1 🔧 active</span>
+        </div>
+        <div class="node-progress">
+          <div class="node-progress-bar"><div class="node-progress-fill" style="width:75%;"></div></div>
+          <div class="node-progress-label"><span>C1–C10 ✅ + H6</span><span>11/15 caps</span></div>
+        </div>
+        <div class="expand-hint">Click to expand ▾</div>
+      </div>
+
+      <!-- Stream B -->
+      <div class="stream-node" data-stream="B" id="node-B" onclick="toggleDetail('B')">
+        <div class="node-header">
+          <div class="node-badge"><span>B</span></div>
+          <div>
+            <div class="node-title">Identity Cockpit</div>
+            <div class="node-subtitle">Profile + Schedule Ledger + Agent Command Center</div>
+          </div>
+        </div>
+        <div class="node-status-chips">
+          <span class="chip built">Wave 1a 🔧 active</span>
+          <span class="chip">V1 🔧 built</span>
+          <span class="chip">V3a/V3b 🔧</span>
+        </div>
+        <div class="node-progress">
+          <div class="node-progress-bar"><div class="node-progress-fill" style="width:30%;"></div></div>
+          <div class="node-progress-label"><span>4 built, rest ⬜</span><span>V1,V3a,V3b,V8</span></div>
+        </div>
+        <div class="expand-hint">Click to expand ▾</div>
+      </div>
+
+      <!-- Stream C -->
+      <div class="stream-node" data-stream="C" id="node-C" onclick="toggleDetail('C')">
+        <div class="node-header">
+          <div class="node-badge"><span>C</span></div>
+          <div>
+            <div class="node-title">Creative Pipeline</div>
+            <div class="node-subtitle">Forge Workbench + Arena Runtime</div>
+          </div>
+        </div>
+        <div class="node-status-chips">
+          <span class="chip">Wave 1 ⬜ entry ready</span>
+          <span class="chip">V5–V7 ⬜</span>
+        </div>
+        <div class="node-progress">
+          <div class="node-progress-bar"><div class="node-progress-fill" style="width:5%;"></div></div>
+          <div class="node-progress-label"><span>schemas ✅ frozen</span><span>0/5 active caps</span></div>
+        </div>
+        <div class="expand-hint">Click to expand ▾</div>
+      </div>
+
+      <!-- Detail panel placeholder for top row — inserted by JS -->
+      <div class="stream-detail" id="detail-A" data-stream="A"></div>
+      <div class="stream-detail" id="detail-B" data-stream="B"></div>
+      <div class="stream-detail" id="detail-C" data-stream="C"></div>
+
+      <!-- Stream D -->
+      <div class="stream-node" data-stream="D" id="node-D" onclick="toggleDetail('D')">
+        <div class="node-header">
+          <div class="node-badge"><span>D</span></div>
+          <div>
+            <div class="node-title">Consumer Surfaces</div>
+            <div class="node-subtitle">Showcase · Battle Arena · Trading</div>
+          </div>
+        </div>
+        <div class="node-status-chips">
+          <span class="chip">Wave 2 ⬜ blocked by B+C</span>
+          <span class="planned">Scaffolding OK now</span>
+        </div>
+        <div class="node-progress">
+          <div class="node-progress-bar"><div class="node-progress-fill" style="width:3%;"></div></div>
+          <div class="node-progress-label"><span>prototypes exist</span><span>S2,S3,S4 ⬜</span></div>
+        </div>
+        <div class="expand-hint">Click to expand ▾</div>
+      </div>
+
+      <!-- Stream E -->
+      <div class="stream-node" data-stream="E" id="node-E" onclick="toggleDetail('E')">
+        <div class="node-header">
+          <div class="node-badge"><span>E</span></div>
+          <div>
+            <div class="node-title">Core OS &amp; Native Rendering</div>
+            <div class="node-subtitle">UEFI bootloader · Kernel · Conformance suite</div>
+          </div>
+        </div>
+        <div class="node-status-chips">
+          <span class="chip">Research track ⬜</span>
+          <span class="chip">R1–R3 not started</span>
+        </div>
+        <div class="node-progress">
+          <div class="node-progress-bar"><div class="node-progress-fill" style="width:1%;"></div></div>
+          <div class="node-progress-label"><span>Independent track</span><span>0/3 caps</span></div>
+        </div>
+        <div class="expand-hint">Click to expand ▾</div>
+      </div>
+
+      <div class="stream-detail" id="detail-D" data-stream="D"></div>
+      <div class="stream-detail" id="detail-E" data-stream="E"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       VIEW: FILE MAP
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div id="view-file-map" class="view">
+    <div class="view-title"><span class="view-title-icon">📁</span> File &amp; Surface Map</div>
+    <p class="section-intro">
+      Every file in the FERROS repo, organized by stream ownership. Ghost/dashed cards = planned but not yet built.
+    </p>
+
+    <div class="file-map-grid" id="file-map-grid">
+      <!-- Injected by JS -->
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       VIEW: SCOREBOARD
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div id="view-scoreboard" class="view">
+    <div class="view-title"><span class="view-title-icon">📊</span> Capability Scoreboard</div>
+    <p class="section-intro">
+      All 45 capabilities from PROGRESS.md, grouped by tier. Color-coded by status: <span class="text-done">✅ done</span>, <span class="text-built">🔧 built/pending run</span>, <span class="text-todo">⬜ not started</span>.
+    </p>
+    <div class="scoreboard-header" id="scoreboard-header"></div>
+    <div id="scoreboard-tiers"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       VIEW: CEO JOURNEY
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div id="view-ceo-journey" class="view">
+    <div class="view-title"><span class="view-title-icon">👤</span> CEO Persona Journey</div>
+    <div class="journey-intro">
+      <div class="journey-intro-title">Meet Alex Ferros — CEO of FERROS</div>
+      <div class="journey-intro-text">
+        Alex is sophisticated but busy. They want to know: <em>What am I signing up for? Who owns this data? Can I leave and take my stuff with me? Can I delegate to bots without losing control?</em><br><br>
+        FERROS answers all four questions before Alex completes onboarding. This walkthrough grounds the entire Identity Cockpit (Stream B) in a concrete, day-one user journey.
+      </div>
+    </div>
+    <div class="journey-timeline" id="journey-timeline">
+      <!-- Injected by JS -->
+    </div>
+  </div>
+
+</div><!-- /#main -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════════════════════════════ */
+
+var STREAMS = {
+  A: {
+    label: 'Contracts & Backend Infrastructure',
+    sub: 'The bedrock — schemas, contracts, ferros-core.js',
+    color: '#22d3ee',
+    purpose: 'Be the bedrock. Every other stream builds on contracts defined here. Contracts-first means the schema is the truth. Binary gates, not percentages — a contract either passes or it doesn\'t.',
+    status: 'Wave 0 CLOSED (PR #47). Wave 1 hardening active.',
+    waves: [
+      { wave:'0', goal:'Contract spine', entry:'Now', exit:'C1–C10 all pass ✅', status:'✅ CLOSED' },
+      { wave:'1', goal:'Hardening & deferred items', entry:'Wave 0 closed', exit:'Deferred items resolved or versioned', status:'🔧 active' },
+      { wave:'2+', goal:'Schema evolution', entry:'Wave 1 closed', exit:'Migration rules proven (H1)', status:'⬜' }
+    ],
+    capabilities: ['C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','H1','H2','H3','H5','H6','L1','L4','L10','S4'],
+    artifacts: [
+      'schemas/*.schema.json (7 schemas)',
+      'schemas/fixtures/ (19 fixtures)',
+      'docs/contracts/manifest.json',
+      'docs/contracts/storage-rules.md',
+      'docs/contracts/permission-model.md',
+      'docs/contracts/runtime-host-v1.md',
+      'docs/assets/_core/ferros-core.js'
+    ],
+    depends: [],
+    provides: ['Schemas (C1–C7)', 'Contract docs (C8–C10)', 'ferros-core.js API', 'Fixture corpus (19 fixtures)']
+  },
+  B: {
+    label: 'Identity Cockpit',
+    sub: 'Profile + Schedule Ledger + Agent Center',
+    color: '#f59e0b',
+    purpose: 'The CEO\'s desk. Three surfaces unified as one cockpit: Personal Profile (who you are), Schedule Ledger (what you\'re doing), Agent Command Center (who you\'re directing). They are three facets of a single operational layer.',
+    status: 'Wave 1a active. Profile shell exists; Ledger and Agent Center are prototypes.',
+    waves: [
+      { wave:'1a', goal:'Profile shell functional', entry:'Stream A schemas frozen ✅', exit:'Template → Profile creation (V1)', status:'🔧 active' },
+      { wave:'1b', goal:'Export/import proven', entry:'V1 complete', exit:'V2, V3a, V3b done', status:'⬜' },
+      { wave:'1c', goal:'Session modes proven', entry:'V2+V3 done', exit:'V4 (alias/claim) + V8 acceptance', status:'⬜' },
+      { wave:'2a', goal:'Ledger consumes profile', entry:'Wave 1 exit', exit:'Schedule Ledger reads profile (S1)', status:'⬜' },
+      { wave:'2b', goal:'Agent center logs directives', entry:'S1 done', exit:'Agent directives logged (P1 precursor)', status:'⬜' },
+      { wave:'3', goal:'Agent actions wired', entry:'P1 precursor', exit:'One agent action executes (P1)', status:'⬜' }
+    ],
+    capabilities: ['V1','V2','V3a','V3b','V4','V8','S1','P1','P2','P3','H3','L2','L3','L7','L9'],
+    artifacts: [
+      'docs/personal-profile.html (Profile)',
+      'docs/schedule-ledger.html (Ledger)',
+      'docs/agent-command-center.html (Agents)',
+      'Profile objects → profile.schema.json',
+      'Schedule events → schedule-event.schema.json',
+      'Audit log → audit-record.schema.json',
+      'Export envelopes (portability tokens)'
+    ],
+    depends: ['Stream A schemas (C1–C7, C9, C10)'],
+    provides: ['Profile objects → Streams C, D', 'Schedule events → Stream D', 'Session context → all surfaces', 'Audit log → Stream D']
+  },
+  C: {
+    label: 'Creative Pipeline',
+    sub: 'Forge Workbench + Arena Runtime',
+    color: '#a78bfa',
+    purpose: 'The content factory. Cards are created in the Forge and rendered in the Arena Runtime. Producer and consumer of the same schema — kept in one stream so they never drift apart.',
+    status: 'Wave 1 entry ready. Forge and Arena Runtime are early prototypes; card round-trip (V5) is the gate.',
+    waves: [
+      { wave:'1a', goal:'Card round-trip', entry:'Stream A schemas frozen ✅', exit:'Card loads in Forge → renders in Runtime (V5)', status:'⬜' },
+      { wave:'1b', goal:'Runtime loop', entry:'V5 done', exit:'init/update/event loop (V6)', status:'⬜' },
+      { wave:'1c', goal:'Card portability', entry:'V6 done', exit:'Card round-trip export/import (V7)', status:'⬜' },
+      { wave:'2', goal:'Deck assembly', entry:'V7 done', exit:'Deck consumed by Battle Arena (S2)', status:'⬜' },
+      { wave:'3', goal:'Forge → Runtime pipeline', entry:'S2 done', exit:'Forge exports directly to Arena Runtime', status:'⬜' }
+    ],
+    capabilities: ['V5','V6','V7','S2','L5','L6'],
+    artifacts: [
+      'docs/forge-workbench.html (Forge)',
+      'docs/algo-trading-arena.html (Arena Runtime)',
+      'Card objects → card.schema.json',
+      'Deck manifests → deck.schema.json',
+      'Golden card/deck fixtures',
+      'Arena Runtime (iframe rendering host)'
+    ],
+    depends: ['Stream A schemas (C4, C5, C8)', 'Stream B identity (profileId for card attribution)'],
+    provides: ['Card/deck fixtures → Stream D', 'Arena Runtime → Stream D', 'Golden fixtures → Stream E conformance']
+  },
+  D: {
+    label: 'Consumer Surfaces',
+    sub: 'Showcase · Battle Arena · Trading',
+    color: '#34d399',
+    purpose: 'Prove the system works for real users. Consumer surfaces read contracts and render assets — they don\'t create them. If Streams A–C are the factory floor, Stream D is the showroom.',
+    status: 'Wave 2 entry blocked until V1–V8 (Stream B) and V5–V7 (Stream C) complete. Scaffolding can begin now.',
+    waves: [
+      { wave:'2a', goal:'Showcase reads real status', entry:'V1 done (Stream B)', exit:'Showcase shows live capability gates (S3)', status:'⬜' },
+      { wave:'2b', goal:'Battle Arena consumes Runtime', entry:'S2 done (Stream C)', exit:'Arena works via Runtime contract', status:'⬜' },
+      { wave:'2c', goal:'Shared contracts frozen', entry:'S2+S3 done', exit:'Contracts at v1 for local-first use (S4)', status:'⬜' },
+      { wave:'3', goal:'Trading surface', entry:'S4 done', exit:'Profile-linked card trading flow', status:'⬜ planned' }
+    ],
+    capabilities: ['S2','S3','S4','L8'],
+    artifacts: [
+      'docs/ferros-showcase.html (Showcase)',
+      'docs/algo-trading-arena.html (Battle Arena)',
+      'Trading surface (planned)',
+      'Live capability status feeds',
+      'Battle game on Arena Runtime'
+    ],
+    depends: ['Stream A (contract truth, ferros-core.js)', 'Stream B (profile/identity, schedule events)', 'Stream C (card/deck assets, Arena Runtime)'],
+    provides: ['Live capability status (proof the contracts are real)', 'Card battle game', 'Trading UI']
+  },
+  E: {
+    label: 'Core OS & Native Rendering',
+    sub: 'UEFI bootloader · Kernel · Conformance suite',
+    color: '#f87171',
+    purpose: 'The long game. FERROS is not a website — it\'s an operating system. Prove the native path exists: ferros-blueprint.html → native rendering → hardware boot. Runs parallel to all other streams; nothing blocks it.',
+    status: 'Research track, Wave R0 (architecture planning). No Rust source tree yet.',
+    waves: [
+      { wave:'R1', goal:'Renderer conformance suite', entry:'Anytime (A fixtures exist ✅)', exit:'Suite exists; web reference screenshots captured', status:'⬜' },
+      { wave:'R2', goal:'QEMU bring-up proven', entry:'R1 useful, not required', exit:'QEMU boots to a FERROS surface', status:'⬜' },
+      { wave:'R3', goal:'Native/web parity', entry:'R1 + R2', exit:'Native output matches web fixture corpus', status:'⬜' }
+    ],
+    capabilities: ['R1','R2','R3','L10'],
+    artifacts: [
+      'QEMU boot image (planned)',
+      'Conformance test suite (planned)',
+      'Web reference screenshots (planned)',
+      'Parity report native vs web (planned)',
+      'ARM migration docs (planned)'
+    ],
+    depends: ['Stream A fixture corpus (as conformance target)'],
+    provides: ['Boot image', 'Conformance suite results', 'Native/web parity evidence']
+  }
+};
+
+var CAPABILITIES = [
+  // Tier 1 — Contracts (Wave 0) → Stream A
+  { id:'C1',  name:'Identity/session schema versioned with fixtures', stream:'A', status:'done',  tier:'Tier 1 — Contracts', proof:'H1' },
+  { id:'C2',  name:'Profile schema versioned with fixtures',          stream:'A', status:'done',  tier:'Tier 1 — Contracts', proof:'H1,H2' },
+  { id:'C3',  name:'Template schema versioned with fixtures',         stream:'A', status:'done',  tier:'Tier 1 — Contracts', proof:'H1' },
+  { id:'C4',  name:'Card schema versioned with fixtures',             stream:'A', status:'done',  tier:'Tier 1 — Contracts', proof:'H1' },
+  { id:'C5',  name:'Deck schema versioned with fixtures',             stream:'A', status:'done',  tier:'Tier 1 — Contracts', proof:'H1' },
+  { id:'C6',  name:'Schedule event schema versioned with fixtures',   stream:'A', status:'done',  tier:'Tier 1 — Contracts', proof:'H1' },
+  { id:'C7',  name:'Audit record schema versioned with fixtures',     stream:'A', status:'done',  tier:'Tier 1 — Contracts', proof:'H1' },
+  { id:'C8',  name:'Runtime host contract v1',                        stream:'A', status:'done',  tier:'Tier 1 — Contracts', proof:'H3' },
+  { id:'C9',  name:'Storage rules',                                   stream:'A', status:'done',  tier:'Tier 1 — Contracts', proof:'H2,H6' },
+  { id:'C10', name:'Permission model skeleton',                       stream:'A', status:'done',  tier:'Tier 1 — Contracts', proof:'H4' },
+  // Tier 2 — Vertical Slice (Wave 1) → Streams B and C
+  { id:'V1',  name:'Template → Profile creation completes',           stream:'B', status:'built', tier:'Tier 2 — Vertical Slice', proof:'' },
+  { id:'V2',  name:'Export → Import round-trip (identical)',          stream:'B', status:'todo',  tier:'Tier 2 — Vertical Slice', proof:'' },
+  { id:'V3a', name:'All 4 session modes work',                        stream:'B', status:'built', tier:'Tier 2 — Vertical Slice', proof:'' },
+  { id:'V3b', name:'Invalid session mode rejection',                  stream:'B', status:'built', tier:'Tier 2 — Vertical Slice', proof:'' },
+  { id:'V4',  name:'Alias session → export → claim → XP merge',      stream:'B', status:'todo',  tier:'Tier 2 — Vertical Slice', proof:'' },
+  { id:'V5',  name:'Card loads in Forge → renders in Runtime',        stream:'C', status:'todo',  tier:'Tier 2 — Vertical Slice', proof:'' },
+  { id:'V6',  name:'Runtime init/update/event loop completes',        stream:'C', status:'todo',  tier:'Tier 2 — Vertical Slice', proof:'H3' },
+  { id:'V7',  name:'Card round-trip export/import',                   stream:'C', status:'todo',  tier:'Tier 2 — Vertical Slice', proof:'' },
+  { id:'V8',  name:'Phase 0 acceptance harness (H5)',                 stream:'B', status:'built', tier:'Tier 2 — Vertical Slice', proof:'H5' },
+  // Tier 3 — First Consumers (Wave 2)
+  { id:'S1',  name:'Schedule Ledger reads profile/template data',     stream:'B', status:'todo',  tier:'Tier 3 — First Consumers', proof:'' },
+  { id:'S2',  name:'Battle Arena consumes Arena Runtime',             stream:'D', status:'todo',  tier:'Tier 3 — First Consumers', proof:'' },
+  { id:'S3',  name:'Showcase reads real capability status',           stream:'D', status:'todo',  tier:'Tier 3 — First Consumers', proof:'' },
+  { id:'S4',  name:'Shared contracts frozen at v1',                   stream:'A', status:'todo',  tier:'Tier 3 — First Consumers', proof:'' },
+  // Tier 4 — Permissioned Actions (Wave 3)
+  { id:'P1',  name:'Agent-triggered action flow with audit trail',    stream:'B', status:'todo',  tier:'Tier 4 — Permissioned Actions', proof:'' },
+  { id:'P2',  name:'Identity/consent enforced across ≥2 surfaces',   stream:'B', status:'todo',  tier:'Tier 4 — Permissioned Actions', proof:'' },
+  { id:'P3',  name:'Action contract versioned and tested',            stream:'B', status:'todo',  tier:'Tier 4 — Permissioned Actions', proof:'' },
+  // Tier 5 — Hardening (Wave 4)
+  { id:'H1',  name:'Schema migration rules tested',                   stream:'A', status:'todo',  tier:'Tier 5 — Hardening', proof:'' },
+  { id:'H2',  name:'Cross-browser support validated',                 stream:'A', status:'todo',  tier:'Tier 5 — Hardening', proof:'' },
+  { id:'H3',  name:'Import/export corruption handling',               stream:'A', status:'todo',  tier:'Tier 5 — Hardening', proof:'' },
+  { id:'H4',  name:'Accessibility baseline',                          stream:'*', status:'todo',  tier:'Tier 5 — Hardening', proof:'' },
+  { id:'H5',  name:'Performance budgets defined and met',             stream:'*', status:'todo',  tier:'Tier 5 — Hardening', proof:'' },
+  { id:'H6',  name:'Public docs match shipped behavior',              stream:'A', status:'done',  tier:'Tier 5 — Hardening', proof:'' },
+  // Research — Core OS → Stream E
+  { id:'R1',  name:'Renderer conformance suite',                      stream:'E', status:'todo',  tier:'Research — Core OS', proof:'' },
+  { id:'R2',  name:'QEMU bring-up proven',                            stream:'E', status:'todo',  tier:'Research — Core OS', proof:'' },
+  { id:'R3',  name:'Native rendering vs web fixture corpus',          stream:'E', status:'todo',  tier:'Research — Core OS', proof:'' },
+  // Legacy Integration
+  { id:'L1',  name:'Harness drift detection',                         stream:'A', status:'todo',  tier:'Legacy Integration', proof:'' },
+  { id:'L2',  name:'Agent trait spec for C8',                         stream:'B', status:'todo',  tier:'Legacy Integration', proof:'' },
+  { id:'L3',  name:'Command bus architecture for C7',                 stream:'B', status:'todo',  tier:'Legacy Integration', proof:'' },
+  { id:'L4',  name:'Three-layer decomposition',                       stream:'A', status:'todo',  tier:'Legacy Integration', proof:'' },
+  { id:'L5',  name:'Template engine for Forge',                       stream:'C', status:'todo',  tier:'Legacy Integration', proof:'' },
+  { id:'L6',  name:'Dependency graph for Card→Template',              stream:'C', status:'todo',  tier:'Legacy Integration', proof:'' },
+  { id:'L7',  name:'Work queue for Schedule Ledger',                  stream:'B', status:'todo',  tier:'Legacy Integration', proof:'' },
+  { id:'L8',  name:'Voting/ranking for Arena',                        stream:'D', status:'todo',  tier:'Legacy Integration', proof:'' },
+  { id:'L9',  name:'Full agent system + routing',                     stream:'B', status:'todo',  tier:'Legacy Integration', proof:'' },
+  { id:'L10', name:'WASM contract validators',                        stream:'A', status:'todo',  tier:'Legacy Integration', proof:'' }
+];
+
+var FILES = [
+  // Existing HTML surfaces
+  { name:'docs/personal-profile.html',       stream:'B', size:'294KB', desc:'Personal progression profile — primary prototype', status:'exists', link:true },
+  { name:'docs/schedule-ledger.html',         stream:'B', size:'47KB',  desc:'Schedule / habit ledger', status:'exists', link:true },
+  { name:'docs/agent-command-center.html',    stream:'B', size:'79KB',  desc:'Agent task / command management UI', status:'exists', link:true },
+  { name:'docs/forge-workbench.html',         stream:'C', size:'38KB',  desc:'Forge card authoring workbench prototype', status:'exists', link:true },
+  { name:'docs/algo-trading-arena.html',      stream:'D', size:'173KB', desc:'Gamified trading arena — houses Arena Runtime prototype', status:'exists', link:true },
+  { name:'docs/ferros-showcase.html',         stream:'D', size:'77KB',  desc:'Public showcase / landing page', status:'exists', link:true },
+  { name:'docs/home-hud-dashboard.html',      stream:'B', size:'50KB',  desc:'Smart home HUD prototype (deferred)', status:'deferred', link:true },
+  { name:'docs/deployment-roadmap.html',      stream:'*', size:'56KB',  desc:'Phase roadmap visualization', status:'exists', link:true },
+  { name:'ferros-blueprint.html',             stream:'E', size:'~200KB',desc:'Founding spec — Phase 0 conformance test (read-only)', status:'exists', link:true },
+  { name:'docs/ferros-project-map.html',      stream:'*', size:'—',     desc:'This file — interactive project map', status:'exists', link:false },
+  // Planned surfaces
+  { name:'Trading Surface',                   stream:'D', size:'—',     desc:'Profile-linked card trading (Wave 3+)', status:'planned', link:false },
+  { name:'Battle Arena (standalone)',          stream:'D', size:'—',     desc:'Separated from algo-trading-arena, built on Arena Runtime', status:'planned', link:false },
+  { name:'Conformance Suite',                 stream:'E', size:'—',     desc:'Native renderer conformance harness (R1)', status:'planned', link:false },
+  { name:'Native Renderer',                   stream:'E', size:'—',     desc:'QEMU boot + HTML/CSS renderer (R2/R3)', status:'planned', link:false }
+];
+
+var INFRA = [
+  { group:'Stream A — Schemas', items:[
+    'schemas/identity.schema.json',
+    'schemas/profile.schema.json',
+    'schemas/template.schema.json',
+    'schemas/card.schema.json',
+    'schemas/deck.schema.json',
+    'schemas/schedule-event.schema.json',
+    'schemas/audit-record.schema.json'
+  ]},
+  { group:'Stream A — Fixtures (19)', items:[
+    'schemas/fixtures/*.json (13 golden + 6 negative)',
+    'schemas/fixtures/card-deck-roundtrip.json',
+    'schemas/fixtures/deck-card-assembly-seam.json'
+  ]},
+  { group:'Stream A — Harnesses (9)', items:[
+    'harnesses/ferros-contract-validator.html (H1)',
+    'harnesses/round-trip-harness.html (H2)',
+    'harnesses/runtime-harness.html (H3)',
+    'harnesses/negative-harness.html (H4)',
+    'harnesses/acceptance-harness.html (H5)',
+    'harnesses/write-path-harness.html (H6)',
+    'harnesses/semantic-fixture-linter.html (H7)',
+    'harnesses/ui-acceptance-harness.html (H8)',
+    'harnesses/preflight-check.html'
+  ]},
+  { group:'Stream A — Tools', items:[
+    'tools/generate-ferros-core.ps1',
+    'tools/generate-harness-constants.ps1'
+  ]},
+  { group:'Stream A — Core JS', items:[
+    'docs/assets/_core/ferros-core.js (window.FerrosCore)'
+  ]},
+  { group:'Stream A — Contracts', items:[
+    'docs/contracts/manifest.json',
+    'docs/contracts/storage-rules.md',
+    'docs/contracts/permission-model.md',
+    'docs/contracts/runtime-host-v1.md',
+    'docs/contracts/ferros-core-api.md'
+  ]}
+];
+
+var JOURNEY_STEPS = [
+  {
+    num: 1,
+    title: 'Profile Creation: Template → Profile',
+    surface: 'docs/personal-profile.html',
+    capability: 'V1',
+    body: 'Alex opens <code>personal-profile.html</code> in Chrome via <code>file://</code>. The genesis shell presents: <strong>"Choose a starting template."</strong> Alex selects <strong>"CEO / Operator"</strong> — a template that pre-populates role, timezone preferences, and a starter routine module.',
+    steps: [
+      'Open personal-profile.html via file://',
+      'Consent step presented: what data is stored, where (localStorage), and how to export',
+      'Select "CEO / Operator" template (ceo-operator archetype from templates.json)',
+      'Enter display name: Alex Ferros',
+      'FerrosCore.saveProfile() writes initial object — seal chain begins via computeHash()',
+      'Profile card appears: name, template archetype, stage 0, XP: 0 — cockpit is live'
+    ],
+    code: 'Template: "ceo-operator" → templateToProfile()\n  profile.schemaVersion = "2.0"\n  profile.stage = 0\n  profile.sessionMode = "full"\n  computeHash(genesis) → profile.sealChain[0]\n  saveProfile() → localStorage["ferros_profile"]',
+    contracts: ['C2 Profile Schema', 'C3 Template Schema', 'C9 Storage Rules']
+  },
+  {
+    num: 2,
+    title: 'First Schedule Entry',
+    surface: 'docs/schedule-ledger.html',
+    capability: 'S1 (precursor)',
+    body: 'Alex navigates to the Schedule Ledger. It reads their profile from localStorage. Alex creates two items: a meeting and a task. Both are attributed to Alex\'s profile ID.',
+    steps: [
+      'FerrosCore.loadProfile() reads "ferros_profile" from localStorage',
+      'Empty calendar shown — Ledger knows it\'s Alex via profile',
+      'Create meeting: "Investor call — Thursday 2pm — 45 min" (type: meeting)',
+      'Create task: "Review Q1 contracts — due Friday EOD" (type: task)',
+      'Both events saved using profile timezone preference from template',
+      'Week view shows two items, both attributed to alex-ferros-id'
+    ],
+    code: 'Schedule event (meeting):\n{ eventId: "evt_001", profileId: "alex-ferros-id",\n  type: "meeting", title: "Investor call",\n  startTime: "2026-04-23T14:00:00Z", duration: 45,\n  schemaVersion: "1.0" }\n\nSchedule event (task):\n{ eventId: "evt_002", profileId: "alex-ferros-id",\n  type: "task", title: "Review Q1 contracts",\n  dueDate: "2026-04-25", schemaVersion: "1.0" }',
+    contracts: ['C6 Schedule Event Schema', 'C9 Storage Rules', 'C2 Profile (profileId linkage)']
+  },
+  {
+    num: 3,
+    title: 'First Agent Directive',
+    surface: 'docs/agent-command-center.html',
+    capability: 'P1 precursor',
+    body: 'Alex navigates to the Agent Command Center. It confirms full session mode. Alex issues a directive to ContentBot — which is <strong>logged, not executed</strong>. The audit trail is built before the agents are wired (Wave 3).',
+    steps: [
+      'Agent Center reads profile, confirms sessionMode = "full" via canMutateDurableState()',
+      'Agent roster shown: ContentBot — status: idle',
+      'Alex issues directive: "ContentBot — generate Q1 summary card for the Forge"',
+      'FerrosCore.pushAuditEntry() writes the audit record (not executed)',
+      'Directive appears in log with status: "Logged — pending agent connection"',
+      'Accountability precedes action — the permission model is proven before any execution'
+    ],
+    code: '{ "recordId": "audit_001",\n  "profileId": "alex-ferros-id",\n  "action": "agent_directive",\n  "agentId": "content-bot-01",\n  "directive": "generate Q1 summary card",\n  "timestamp": "2026-04-18T10:30:00Z",\n  "sessionMode": "full",\n  "schemaVersion": "1.0" }',
+    contracts: ['C7 Audit Record Schema', 'C10 Permission Model', 'C9 Storage Rules']
+  },
+  {
+    num: 4,
+    title: 'Export / Import Cycle (Portability)',
+    surface: 'docs/personal-profile.html',
+    capability: 'V2',
+    body: 'Alex verifies portability: exports their profile to a JSON file, clears localStorage, and imports it back in a fresh browser. Everything is identical — name, stage, XP, seal chain, schedule events, agent audit log.',
+    steps: [
+      'Click "Export Profile" on the Profile surface',
+      'FerrosCore.serializeExport() reads from localStorage and creates portable envelope',
+      'Downloads as ferros-profile-alex-ferros.json',
+      'Open fresh browser profile / clear localStorage',
+      'Click "Import Profile" and select the downloaded file',
+      'FerrosCore.validateImport() runs: schema check, seal chain integrity, corruption detection',
+      'Profile loads — name, stage, template, XP, schedule events, audit log: all identical'
+    ],
+    code: 'Export envelope:\n{ "exportVersion": "1.0",\n  "profileId": "alex-ferros-id",\n  "exportedAt": "2026-04-18T10:35:00Z",\n  "profile": { /* full profile object */ },\n  "sealChain": [ /* all seals */ ] }',
+    contracts: ['C2 Profile Schema', 'C9 Storage Rules (export envelope)', 'C10 Consent Model']
+  },
+  {
+    num: 5,
+    title: 'Return Visit — Session Restore',
+    surface: 'docs/personal-profile.html',
+    capability: 'V3a',
+    body: 'Alex closes the browser and returns the next day. The Profile surface restores their full state from localStorage with no re-onboarding. Session mode = "full". Identity continuity is proven by the seal chain.',
+    steps: [
+      'Browser closed and reopened the next day',
+      'personal-profile.html loads — FerrosCore.loadProfile() finds saved state',
+      'Session mode detected: "full" (Alex\'s own device, trusted browser)',
+      'Profile restores: name, stage, XP, seal chain — no re-onboarding',
+      'Schedule Ledger and Agent Command Center also restore from same profile context',
+      'Seal chain proves: this is the same profile from Step 1 — not tampered'
+    ],
+    code: null,
+    contracts: ['C1 Identity/Session Schema', 'C10 Permission Model'],
+    sessionModes: [
+      { mode:'full',     when:'Alex\'s own device, trusted browser', storage:'Full localStorage',       perms:'Read + write' },
+      { mode:'alias',    when:'Alex on a shared machine',            storage:'Session-only storage',     perms:'Limited write' },
+      { mode:'recovery', when:'Alex lost device, importing export',  storage:'Import-then-full',         perms:'Full (after recovery)' },
+      { mode:'guest',    when:'Alex demoing on someone else\'s machine', storage:'No storage',           perms:'Read-only' }
+    ]
+  }
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════════════════ */
+
+function streamColor(s) {
+  var m = { A:'--stream-a', B:'--stream-b', C:'--stream-c', D:'--stream-d', E:'--stream-e', '*':'--text-secondary' };
+  return 'var(' + (m[s] || '--text-secondary') + ')';
+}
+function streamColorHex(s) {
+  var m = { A:'#22d3ee', B:'#f59e0b', C:'#a78bfa', D:'#34d399', E:'#f87171', '*':'#8fa0b8' };
+  return m[s] || '#8fa0b8';
+}
+function streamDimHex(s) {
+  var m = { A:'#164e63', B:'#78350f', C:'#4c1d95', D:'#065f46', E:'#7f1d1d', '*':'#1e2a3a' };
+  return m[s] || '#1e2a3a';
+}
+function statusIcon(s) {
+  return s === 'done' ? '✅' : s === 'built' ? '🔧' : '⬜';
+}
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUMMARY STRIP
+═══════════════════════════════════════════════════════════════════════════ */
+
+function buildSummary() {
+  var total = CAPABILITIES.length;
+  var done  = CAPABILITIES.filter(function(c){ return c.status === 'done'; }).length;
+  var built = CAPABILITIES.filter(function(c){ return c.status === 'built'; }).length;
+  var todo  = total - done - built;
+  var pct   = Math.round((done + built * 0.5) / total * 100);
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-done').textContent  = done;
+  document.getElementById('stat-built').textContent = built;
+  document.getElementById('stat-todo').textContent  = todo;
+  document.getElementById('stat-pct').textContent   = pct + '%';
+  document.getElementById('overall-bar').style.width = pct + '%';
+
+  // Per-stream mini bars
+  var bars = document.getElementById('stream-mini-bars');
+  var streams = ['A','B','C','D','E'];
+  bars.innerHTML = '';
+  streams.forEach(function(s) {
+    var caps = CAPABILITIES.filter(function(c){ return c.stream === s; });
+    var d = caps.filter(function(c){ return c.status === 'done'; }).length;
+    var b = caps.filter(function(c){ return c.status === 'built'; }).length;
+    var tot = caps.length;
+    var p = tot > 0 ? Math.round((d + b * 0.5) / tot * 100) : 0;
+    var item = document.createElement('div');
+    item.className = 'mini-bar-item';
+    item.innerHTML = '<div class="mini-dot" style="background:' + streamColorHex(s) + '"></div>'
+      + '<span style="color:var(--text-secondary)">' + s + '</span>'
+      + '<div class="progress-bar-wrap" style="width:40px;"><div class="progress-bar-fill" style="background:' + streamColorHex(s) + ';width:' + p + '%;"></div></div>'
+      + '<span style="color:var(--text-dim);font-family:var(--font-mono)">' + p + '%</span>';
+    bars.appendChild(item);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STREAM DETAIL PANELS
+═══════════════════════════════════════════════════════════════════════════ */
+
+var expandedStream = null;
+
+function toggleDetail(streamId) {
+  var node = document.getElementById('node-' + streamId);
+  var detail = document.getElementById('detail-' + streamId);
+
+  if (expandedStream && expandedStream !== streamId) {
+    var prevDetail = document.getElementById('detail-' + expandedStream);
+    var prevNode   = document.getElementById('node-' + expandedStream);
+    prevDetail.classList.remove('visible');
+    prevNode.classList.remove('expanded');
+  }
+
+  if (expandedStream === streamId) {
+    detail.classList.remove('visible');
+    node.classList.remove('expanded');
+    expandedStream = null;
+    return;
+  }
+
+  // Build detail content
+  if (!detail.dataset.built) {
+    detail.innerHTML = buildDetailHTML(streamId);
+    detail.dataset.built = '1';
+  }
+
+  detail.classList.add('visible');
+  node.classList.add('expanded');
+  expandedStream = streamId;
+
+  // Scroll into view
+  setTimeout(function() {
+    detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 50);
+}
+
+function buildDetailHTML(streamId) {
+  var s = STREAMS[streamId];
+  var col = streamColorHex(streamId);
+  var dimCol = streamDimHex(streamId);
+
+  var caps = CAPABILITIES.filter(function(c){ return c.stream === streamId; });
+  var done  = caps.filter(function(c){ return c.status === 'done'; }).length;
+  var built = caps.filter(function(c){ return c.status === 'built'; }).length;
+
+  var waveRows = s.waves.map(function(w) {
+    return '<tr><td>' + esc(w.wave) + '</td><td style="color:var(--text-primary)">' + esc(w.goal) + '</td><td>' + esc(w.entry) + '</td><td>' + esc(w.exit) + '</td><td>' + esc(w.status) + '</td></tr>';
+  }).join('');
+
+  var capItems = caps.map(function(c) {
+    return '<li><span class="cap-id">' + esc(c.id) + '</span><span>' + esc(c.name) + '</span><span style="margin-left:auto;flex-shrink:0;">' + statusIcon(c.status) + '</span></li>';
+  }).join('');
+
+  var artifacts = s.artifacts.map(function(a) {
+    return '<li>' + esc(a) + '</li>';
+  }).join('');
+
+  var depTags = (s.depends.length === 0 ? '<span style="color:var(--text-dim)">None — independent</span>' :
+    s.depends.map(function(d){ return '<span class="dep-tag">' + esc(d) + '</span>'; }).join(''));
+
+  var provTags = s.provides.map(function(d){ return '<span class="dep-tag" style="border-color:' + col + ';color:' + col + '">' + esc(d) + '</span>'; }).join('');
+
+  return '<div class="detail-header">'
+    + '<div class="node-badge" style="color:' + col + ';background:' + dimCol + ';width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-weight:700;">' + streamId + '</div>'
+    + '<div><div class="detail-title">' + esc(s.label) + '</div><div class="detail-subtitle">' + esc(s.sub) + ' · ' + esc(s.status) + '</div></div>'
+    + '<button class="detail-close" onclick="toggleDetail(\'' + streamId + '\')">✕ Close</button>'
+    + '</div>'
+    + '<p style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">' + esc(s.purpose) + '</p>'
+    + '<div class="detail-grid">'
+
+    + '<div class="detail-section" style="grid-column:1/-1">'
+    + '<div class="detail-section-title">Wave Structure</div>'
+    + '<table class="wave-table"><thead><tr><th>Wave</th><th>Goal</th><th>Entry</th><th>Exit Criteria</th><th>Status</th></tr></thead><tbody>' + waveRows + '</tbody></table>'
+    + '</div>'
+
+    + '<div class="detail-section">'
+    + '<div class="detail-section-title">Capabilities (' + done + ' done, ' + built + ' built)</div>'
+    + '<ul class="cap-list">' + (capItems || '<li style="color:var(--text-dim)">Capabilities owned by multiple streams</li>') + '</ul>'
+    + '</div>'
+
+    + '<div class="detail-section">'
+    + '<div class="detail-section-title">Key Artifacts</div>'
+    + '<ul class="artifact-list">' + artifacts + '</ul>'
+    + '</div>'
+
+    + '<div class="detail-section">'
+    + '<div class="detail-section-title">Depends On</div>'
+    + '<div class="dep-tags">' + depTags + '</div>'
+    + '</div>'
+
+    + '<div class="detail-section">'
+    + '<div class="detail-section-title">Provides To Other Streams</div>'
+    + '<div class="dep-tags">' + provTags + '</div>'
+    + '</div>'
+
+    + '</div>'; // detail-grid
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FILE MAP
+═══════════════════════════════════════════════════════════════════════════ */
+
+function buildFileMap() {
+  var grid = document.getElementById('file-map-grid');
+  var html = '';
+
+  // Existing surfaces section
+  html += '<div class="file-section-title">HTML Surfaces — Existing</div>';
+  FILES.filter(function(f){ return f.status !== 'planned'; }).forEach(function(f) {
+    html += buildFileCard(f);
+  });
+
+  // Planned surfaces
+  html += '<div class="file-section-title">HTML Surfaces — Planned (Dashed = Not Yet Built)</div>';
+  FILES.filter(function(f){ return f.status === 'planned'; }).forEach(function(f) {
+    html += buildFileCard(f);
+  });
+
+  // Infra sections
+  INFRA.forEach(function(group) {
+    html += '<div class="file-section-title">' + esc(group.group) + '</div>';
+    html += '<div class="infra-group" style="grid-column:1/-1">';
+    group.items.forEach(function(item) {
+      html += '<div class="infra-item"><span class="mono" style="color:var(--text-code)">' + esc(item) + '</span></div>';
+    });
+    html += '</div>';
+  });
+
+  grid.innerHTML = html;
+}
+
+function buildFileCard(f) {
+  var col = streamColorHex(f.stream);
+  var dimCol = streamDimHex(f.stream);
+  var isPlanned = f.status === 'planned';
+  var isDeferred = f.status === 'deferred';
+  var ghost = isPlanned || isDeferred ? ' ghost' : '';
+
+  var streamLabel = f.stream === '*' ? 'DOCS' : 'Stream ' + f.stream;
+  var statusBadge = isPlanned ? 'planned' : (isDeferred ? 'deferred' : 'exists');
+  var statusLabel = isPlanned ? '⬜ Planned' : (isDeferred ? '⏸ Deferred' : '✅ Exists');
+
+  return '<div class="file-card' + ghost + '">'
+    + '<div class="file-card-stream" style="background:' + dimCol + ';color:' + col + '">' + esc(streamLabel) + '</div>'
+    + '<div class="file-card-name">' + esc(f.name) + '</div>'
+    + '<div class="file-card-desc">' + esc(f.desc) + '</div>'
+    + '<div class="file-card-meta">'
+    + (f.size !== '—' ? '<span class="file-size">' + esc(f.size) + '</span>' : '')
+    + '<span class="file-status-badge">' + statusLabel + '</span>'
+    + (isPlanned ? '<span class="planned-label">ghost card — vision item</span>' : '')
+    + '</div>'
+    + '</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCOREBOARD
+═══════════════════════════════════════════════════════════════════════════ */
+
+function buildScoreboard() {
+  var total = CAPABILITIES.length;
+  var done  = CAPABILITIES.filter(function(c){ return c.status === 'done'; }).length;
+  var built = CAPABILITIES.filter(function(c){ return c.status === 'built'; }).length;
+  var todo  = total - done - built;
+
+  var headerEl = document.getElementById('scoreboard-header');
+  headerEl.innerHTML = [
+    { num: total, label: 'Total Capabilities', color: 'var(--text-primary)' },
+    { num: done,  label: 'Done ✅', color: 'var(--status-done)' },
+    { num: built, label: 'Built 🔧', color: 'var(--status-built)' },
+    { num: todo,  label: 'Not Started ⬜', color: 'var(--text-secondary)' }
+  ].map(function(s) {
+    return '<div class="score-summary-card"><div class="score-summary-num" style="color:' + s.color + '">' + s.num + '</div><div class="score-summary-label">' + esc(s.label) + '</div></div>';
+  }).join('');
+
+  // Group by tier
+  var tierOrder = [
+    'Tier 1 — Contracts',
+    'Tier 2 — Vertical Slice',
+    'Tier 3 — First Consumers',
+    'Tier 4 — Permissioned Actions',
+    'Tier 5 — Hardening',
+    'Research — Core OS',
+    'Legacy Integration'
+  ];
+
+  var tiersEl = document.getElementById('scoreboard-tiers');
+  tiersEl.innerHTML = tierOrder.map(function(tier) {
+    var caps = CAPABILITIES.filter(function(c){ return c.tier === tier; });
+    var tierDone  = caps.filter(function(c){ return c.status === 'done'; }).length;
+    var tierBuilt = caps.filter(function(c){ return c.status === 'built'; }).length;
+    var tierPct = caps.length ? Math.round((tierDone + tierBuilt * 0.5) / caps.length * 100) : 0;
+
+    var cards = caps.map(function(c) {
+      var streamCol = streamColorHex(c.stream);
+      var streamDim = streamDimHex(c.stream);
+      var cls = 'status-' + c.status;
+      var proofHtml = c.proof ? '<span class="cap-proof">' + esc(c.proof) + '</span>' : '';
+      return '<div class="cap-card ' + cls + '">'
+        + '<div class="cap-card-id">' + esc(c.id) + '</div>'
+        + '<div class="cap-card-body">'
+        + '<div class="cap-card-name">' + esc(c.name) + '</div>'
+        + '<div class="cap-card-meta">'
+        + '<span class="cap-stream-tag" style="background:' + streamDim + ';color:' + streamCol + '">' + (c.stream === '*' ? 'ALL' : c.stream) + '</span>'
+        + proofHtml
+        + '<span class="cap-status-icon">' + statusIcon(c.status) + '</span>'
+        + '</div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+
+    return '<div class="tier-section">'
+      + '<div class="tier-header">'
+      + '<div class="tier-title">' + esc(tier) + '</div>'
+      + '<div class="progress-bar-wrap" style="width:80px;"><div class="progress-bar-fill" style="background:var(--status-done);width:' + tierPct + '%;"></div></div>'
+      + '<div class="tier-progress-text">' + tierDone + '/' + caps.length + ' done</div>'
+      + '</div>'
+      + '<div class="cap-grid">' + cards + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CEO JOURNEY
+═══════════════════════════════════════════════════════════════════════════ */
+
+function buildJourney() {
+  var el = document.getElementById('journey-timeline');
+  el.innerHTML = JOURNEY_STEPS.map(function(step) {
+    var stepsHtml = step.steps.map(function(s, i) {
+      return '<li>' + esc(s) + '</li>';
+    }).join('');
+
+    var codeHtml = step.code
+      ? '<div class="code-block">' + esc(step.code) + '</div>'
+      : '';
+
+    var sessionHtml = '';
+    if (step.sessionModes) {
+      sessionHtml = '<table class="session-mode-table"><thead><tr><th>Mode</th><th>When</th><th>Storage</th><th>Permissions</th></tr></thead><tbody>'
+        + step.sessionModes.map(function(m) {
+          return '<tr><td>' + esc(m.mode) + '</td><td>' + esc(m.when) + '</td><td>' + esc(m.storage) + '</td><td>' + esc(m.perms) + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+
+    var contractChips = step.contracts.map(function(c) {
+      return '<span class="journey-contract-chip">' + esc(c) + '</span>';
+    }).join('');
+
+    return '<div class="journey-step">'
+      + '<div class="journey-step-dot">' + step.num + '</div>'
+      + '<div class="journey-step-header">'
+      + '<div><div class="journey-step-title">Step ' + step.num + ' — ' + esc(step.title) + '</div><div class="journey-step-surface">' + esc(step.surface) + '</div></div>'
+      + '<div class="journey-step-cap">' + esc(step.capability) + '</div>'
+      + '</div>'
+      + '<div class="journey-step-body">'
+      + '<p>' + step.body + '</p>'
+      + '<ol>' + stepsHtml + '</ol>'
+      + codeHtml
+      + sessionHtml
+      + '</div>'
+      + '<div class="journey-contracts" style="margin-top:12px;"><span style="font-size:10px;color:var(--text-dim);margin-right:4px;">Contracts:</span>' + contractChips + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB NAVIGATION
+═══════════════════════════════════════════════════════════════════════════ */
+
+var built = {};
+
+function showView(viewId) {
+  document.querySelectorAll('.nav-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.view === viewId);
+  });
+  document.querySelectorAll('.view').forEach(function(v) {
+    v.classList.toggle('active', v.id === 'view-' + viewId);
+  });
+
+  if (!built[viewId]) {
+    built[viewId] = true;
+    if (viewId === 'file-map')    buildFileMap();
+    if (viewId === 'scoreboard')  buildScoreboard();
+    if (viewId === 'ceo-journey') buildJourney();
+  }
+}
+
+document.querySelectorAll('.nav-tab').forEach(function(tab) {
+  tab.addEventListener('click', function() { showView(tab.dataset.view); });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════════════════ */
+
+buildSummary();
+built['stream-map'] = true;
+</script>
+</body>
+</html>
