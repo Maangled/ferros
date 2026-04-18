@@ -196,7 +196,7 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
   fill: var(--text-secondary);
   font-family: var(--font-mono);
 }
-.map-svg marker path { }
+.map-svg marker path { fill: inherit; }
 .stream-nodes {
   position: relative;
   display: grid;
@@ -312,7 +312,7 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
 .stream-detail {
   display: none;
   grid-column: 1 / -1;
-  background: var(--bg-card-alt, #192030);
+  background: var(--bg-card-alt);
   border: 1px solid var(--border-accent);
   border-radius: 8px;
   padding: 20px;
@@ -964,7 +964,7 @@ button { cursor: pointer; border: none; background: none; color: inherit; font: 
   <div id="view-scoreboard" class="view">
     <div class="view-title"><span class="view-title-icon">📊</span> Capability Scoreboard</div>
     <p class="section-intro">
-      All 44 capabilities from PROGRESS.md, grouped by tier. Color-coded by status: <span class="text-done">✅ done</span>, <span class="text-built">🔧 built/pending run</span>, <span class="text-todo">⬜ not started</span>.
+      All 45 capabilities from PROGRESS.md, grouped by tier. Color-coded by status: <span class="text-done">✅ done</span>, <span class="text-built">🔧 built/pending run</span>, <span class="text-todo">⬜ not started</span>.
     </p>
     <div class="scoreboard-header" id="scoreboard-header"></div>
     <div id="scoreboard-tiers"></div>
