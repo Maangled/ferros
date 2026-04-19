@@ -21,7 +21,7 @@ This index tracks Phase 0 progress using **binary capability gates** — not per
 | PR 6 — Docs/ADR reconciliation | #46 | ✅ 2026-04-17 | Contract docs, ferros-core-api.md, ADR addenda, PHASE-0-DEFINITION.md, PROGRESS.md |
 | PR 7 — Final closure verification | #47 | ✅ 2026-04-17 | Regenerate → diff, `CLOSURE-EVIDENCE.md`, Wave 0 CLOSED |
 
-**Wave 0 status: CLOSED** — Re-verified on 2026-04-18 after H3/runtime contract alignment and deterministic generator hardening. See [CLOSURE-EVIDENCE.md](../../CLOSURE-EVIDENCE.md) for the full closure record.
+**Wave 0 status: CLOSED** — Re-verified on 2026-04-18 after H3/runtime contract alignment and deterministic generator hardening. See [CLOSURE-EVIDENCE.md](../../CLOSURE-EVIDENCE.md) for the full closure record. **Next: Streams B and C enter Wave 1 in parallel per the [streams architecture](../streams/STREAMS-OVERVIEW.md).**
 
 ---
 
@@ -185,6 +185,8 @@ Shared contracts serve more than one surface.
 | **3** | Permissioned actions | S1–S4 pass | P1–P3 pass |
 | **4** | Hardening | P1–P3 pass | H1–H6 pass |
 | **Research** | Core OS (parallel track) | Anytime | R1–R3 pass |
+
+**Parallelization:** Starting after Wave 0 closure, work advances via the [five-stream architecture](../streams/STREAMS-OVERVIEW.md). Streams B (Identity Cockpit) and C (Creative Pipeline) enter Wave 1 in parallel. Stream D (Consumer Surfaces) enters Wave 2 once B and C produce their artifacts. Stream E (Core OS) proceeds independently. The wave table above describes sequential dependencies; the streams system describes how those waves execute in parallel.
 
 ---
 

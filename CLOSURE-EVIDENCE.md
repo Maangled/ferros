@@ -6,6 +6,8 @@ This file is the permanent record that Wave 0 closure was verified. It documents
 deterministic regeneration results, verified gate harness outcomes, contract coverage,
 artifact inventory, known gaps, and human verification instructions.
 
+This closure gates the entry of Streams B (Identity Cockpit) and C (Creative Pipeline) into Wave 1 per the [streams architecture](docs/streams/STREAMS-OVERVIEW.md).
+
 ---
 
 ## Section 1: Generator Freshness
