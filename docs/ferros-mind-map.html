@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS &#8212; Mind of the Pharaoh</title>
+<style>
+:root {
+  --bg-base: #0a0c10;
+  --bg-panel: #111520;
+  --bg-card: #161b28;
+  --bg-card-alt: #1a2035;
+  --bg-highlight: #1e2840;
+  --border-dim: #1e2a3a;
+  --border-accent: #2a3f5f;
+  --border-bright: #3a5a8f;
+  --text-primary: #e8edf5;
+  --text-secondary: #8fa0b8;
+  --text-dim: #5a6a80;
+  --text-code: #7eb8e8;
+  --accent-blue: #4a90d9;
+  --accent-cyan: #2dd4bf;
+  --accent-green: #34d399;
+  --accent-amber: #f59e0b;
+  --accent-red: #f87171;
+  --accent-purple: #a78bfa;
+  --accent-pink: #f472b6;
+  --accent-orange: #fb923c;
+  --gradient-header: linear-gradient(135deg, #0d1b35 0%, #0a1525 50%, #091020 100%);
+  --gradient-card: linear-gradient(145deg, #161b28 0%, #111520 100%);
+  --gradient-accent: linear-gradient(90deg, #4a90d9 0%, #2dd4bf 100%);
+  --shadow-panel: 0 4px 24px rgba(0,0,0,0.6);
+  --shadow-card: 0 2px 12px rgba(0,0,0,0.4);
+  --radius-panel: 12px;
+  --radius-card: 8px;
+  --radius-badge: 4px;
+  --font-mono: 'Courier New', Courier, monospace;
+  --pylon-gold: #c9a227;
+  --hieroglyph-dim: rgba(201,162,39,0.2);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background-color:var(--bg-base);color:var(--text-primary);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;min-height:100vh;padding-bottom:80px}
+a{color:var(--accent-blue);text-decoration:none}
+a:hover{color:var(--accent-cyan);text-decoration:underline}
+
+/* Header */
+.site-header{background:var(--gradient-header);border-bottom:2px solid var(--pylon-gold);padding:40px 0 32px;position:relative;overflow:hidden}
+.site-header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,162,39,0.12) 0%, transparent 70%);pointer-events:none}
+.header-inner{max-width:1400px;margin:0 auto;padding:0 24px;display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.header-brand{display:flex;flex-direction:column;gap:4px}
+.header-codename{font-size:0.72rem;font-family:var(--font-mono);letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-amber);margin-bottom:6px}
+.header-title{font-size:2.6rem;font-weight:900;letter-spacing:-0.02em;background:linear-gradient(90deg, var(--accent-amber), var(--accent-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header-subtitle{font-size:1rem;color:var(--text-secondary);margin-top:6px}
+.header-hieroglyph{font-size:3rem;opacity:0.6;align-self:center}
+.header-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+.header-nav a{color:var(--text-secondary);font-size:0.8rem;padding:5px 12px;border:1px solid var(--border-dim);border-radius:var(--radius-badge);transition:all 0.2s}
+.header-nav a:hover{color:var(--accent-cyan);border-color:var(--accent-cyan);text-decoration:none}
+
+/* Controls */
+.controls-bar{background:var(--bg-panel);border-bottom:1px solid var(--border-dim);padding:12px 0;position:sticky;top:0;z-index:100}
+.controls-inner{max-width:1400px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.search-box{flex:1;min-width:180px;max-width:340px;background:var(--bg-card);border:1px solid var(--border-accent);border-radius:var(--radius-card);padding:7px 12px;color:var(--text-primary);font-size:0.88rem;outline:none}
+.search-box::placeholder{color:var(--text-dim)}
+.search-box:focus{border-color:var(--accent-amber);box-shadow:0 0 0 2px rgba(201,162,39,0.15)}
+.filter-group{display:flex;gap:6px;flex-wrap:wrap}
+.filter-btn{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:var(--radius-badge);padding:5px 12px;color:var(--text-secondary);font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.18s;white-space:nowrap}
+.filter-btn:hover,.filter-btn.active{border-color:var(--accent-amber);color:var(--accent-amber);background:rgba(201,162,39,0.1)}
+.filter-btn.fa.active{background:rgba(52,211,153,0.1);border-color:var(--accent-green);color:var(--accent-green)}
+.filter-btn.fb.active{background:rgba(74,144,217,0.1);border-color:var(--accent-blue);color:var(--accent-blue)}
+.filter-btn.fv.active{background:rgba(167,139,250,0.1);border-color:var(--accent-purple);color:var(--accent-purple)}
+.controls-count{font-size:0.78rem;color:var(--text-dim);margin-left:auto;white-space:nowrap}
+
+/* Legend */
+.legend-bar{background:var(--bg-panel);padding:9px 0;border-bottom:1px solid var(--border-dim)}
+.legend-inner{max-width:1400px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:0.78rem}
+.legend-item{display:flex;align-items:center;gap:6px;color:var(--text-secondary)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-weight:700;font-size:0.7rem}
+.badge-active{background:rgba(52,211,153,0.12);color:var(--accent-green);border:1px solid rgba(52,211,153,0.35)}
+.badge-blueprint{background:rgba(74,144,217,0.12);color:var(--accent-blue);border:1px solid rgba(74,144,217,0.35)}
+.badge-vision{background:rgba(167,139,250,0.12);color:var(--accent-purple);border:1px solid rgba(167,139,250,0.35)}
+.legend-sep{color:var(--border-accent)}
+
+/* Main */
+.main{max-width:1400px;margin:0 auto;padding:32px 24px 0}
+
+/* Pharaoh Hub */
+.pharaoh-hub{display:flex;flex-direction:column;align-items:center;margin-bottom:40px}
+.pharaoh-cartouche{position:relative;background:linear-gradient(145deg,#1a1500,#0a0c10);border:2px solid var(--pylon-gold);border-radius:60px;padding:24px 56px;text-align:center;box-shadow:0 0 40px rgba(201,162,39,0.3),0 0 80px rgba(201,162,39,0.1),var(--shadow-panel);max-width:480px;width:100%}
+.pharaoh-cartouche::before,.pharaoh-cartouche::after{content:'';position:absolute;top:50%;transform:translateY(-50%);width:20px;height:3px;background:var(--pylon-gold)}
+.pharaoh-cartouche::before{left:-20px}
+.pharaoh-cartouche::after{right:-20px}
+.pharaoh-glyph{font-size:2rem;margin-bottom:4px}
+.pharaoh-name{font-size:2rem;font-weight:900;letter-spacing:0.15em;color:var(--accent-amber);text-shadow:0 0 20px rgba(201,162,39,0.5);font-family:var(--font-mono)}
+.pharaoh-title{font-size:0.76rem;color:var(--text-secondary);letter-spacing:0.1em;text-transform:uppercase;margin-top:4px}
+.pharaoh-desc{font-size:0.86rem;color:var(--text-dim);margin-top:8px}
+.hub-connector{width:2px;height:28px;background:linear-gradient(to bottom,var(--pylon-gold),transparent)}
+
+/* Stats */
+.stats-bar{max-width:1400px;margin:0 auto 28px;padding:0 24px;display:flex;gap:12px;flex-wrap:wrap}
+.stat-pill{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:20px;padding:6px 16px;display:flex;align-items:center;gap:8px;font-size:0.82rem}
+.stat-num{font-weight:900;font-family:var(--font-mono)}
+.stat-num.g{color:var(--accent-green)}.stat-num.b{color:var(--accent-blue)}.stat-num.p{color:var(--accent-purple)}.stat-num.a{color:var(--accent-amber)}
+.stat-label{color:var(--text-dim)}
+
+/* Inscription band */
+.inscription{text-align:center;padding:14px 24px;font-size:1.3rem;letter-spacing:7px;color:var(--hieroglyph-dim);border-top:1px solid var(--border-dim);border-bottom:1px solid var(--border-dim);margin:28px 0;overflow:hidden}
+
+/* Domains grid */
+.domains-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:28px}
+.domain-branch{background:var(--bg-panel);border:1px solid var(--border-dim);border-radius:var(--radius-panel);overflow:hidden;transition:box-shadow 0.2s}
+.domain-branch:hover{box-shadow:var(--shadow-panel)}
+.domain-branch.hidden{display:none}
+
+/* Domain header */
+.domain-header{padding:14px 18px;border-bottom:1px solid var(--border-dim);display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;position:relative}
+.domain-header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.games .domain-header::after{background:linear-gradient(90deg,var(--accent-red),transparent)}
+.finance .domain-header::after{background:linear-gradient(90deg,var(--accent-green),transparent)}
+.governance .domain-header::after{background:linear-gradient(90deg,var(--accent-blue),transparent)}
+.daily-life .domain-header::after{background:linear-gradient(90deg,var(--accent-cyan),transparent)}
+.knowledge .domain-header::after{background:linear-gradient(90deg,var(--accent-amber),transparent)}
+.health .domain-header::after{background:linear-gradient(90deg,var(--accent-pink),transparent)}
+.engineering .domain-header::after{background:linear-gradient(90deg,var(--accent-orange),transparent)}
+.work .domain-header::after{background:linear-gradient(90deg,var(--accent-purple),transparent)}
+.storage .domain-header::after{background:linear-gradient(90deg,var(--accent-cyan),transparent)}
+.ferros-meta .domain-header::after{background:linear-gradient(90deg,var(--accent-amber),transparent)}
+.active-temples .domain-header::after{background:linear-gradient(90deg,var(--accent-green),transparent)}
+
+.domain-icon-wrap{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.games .domain-icon-wrap{background:rgba(248,113,113,0.15)}
+.finance .domain-icon-wrap{background:rgba(52,211,153,0.15)}
+.governance .domain-icon-wrap{background:rgba(74,144,217,0.15)}
+.daily-life .domain-icon-wrap{background:rgba(45,212,191,0.15)}
+.knowledge .domain-icon-wrap{background:rgba(245,158,11,0.15)}
+.health .domain-icon-wrap{background:rgba(244,114,182,0.15)}
+.engineering .domain-icon-wrap{background:rgba(251,146,60,0.15)}
+.work .domain-icon-wrap{background:rgba(167,139,250,0.15)}
+.storage .domain-icon-wrap{background:rgba(45,212,191,0.15)}
+.ferros-meta .domain-icon-wrap{background:rgba(201,162,39,0.15)}
+.active-temples .domain-icon-wrap{background:rgba(52,211,153,0.15)}
+
+.domain-title-group{flex:1}
+.domain-title{font-size:0.95rem;font-weight:700}
+.domain-count{font-size:0.7rem;color:var(--text-dim);font-family:var(--font-mono)}
+.domain-toggle{color:var(--text-dim);font-size:0.85rem;transition:transform 0.2s}
+.domain-branch.collapsed .domain-toggle{transform:rotate(-90deg)}
+
+/* Nodes */
+.domain-nodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;padding:14px}
+.domain-branch.collapsed .domain-nodes{display:none}
+
+/* Cartouche node */
+.cartouche{position:relative;background:var(--bg-card);border:1px solid var(--border-dim);border-radius:30px;padding:11px 15px;cursor:pointer;transition:all 0.18s;display:flex;flex-direction:column;gap:5px}
+.cartouche:hover{border-color:var(--accent-amber);box-shadow:0 0 12px rgba(201,162,39,0.2);transform:translateY(-2px)}
+.cartouche.active-temple:hover{border-color:var(--accent-green);box-shadow:0 0 12px rgba(52,211,153,0.22)}
+.cartouche.selected{border-color:var(--accent-amber);background:rgba(201,162,39,0.07);box-shadow:0 0 16px rgba(201,162,39,0.28)}
+.cartouche.hidden{display:none}
+.cartouche-bar{width:55%;height:2px;background:var(--border-dim);border-radius:1px;margin:0 auto 2px;transition:background 0.18s}
+.cartouche:hover .cartouche-bar{background:var(--accent-amber)}
+.cartouche.active-temple:hover .cartouche-bar{background:var(--accent-green)}
+.cartouche-glyph{font-size:1.15rem;text-align:center}
+.cartouche-name{font-size:0.8rem;font-weight:700;color:var(--text-primary);line-height:1.3}
+.cartouche-footer{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px}
+.status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.status-dot.active{background:var(--accent-green);box-shadow:0 0 4px var(--accent-green)}
+.status-dot.blueprint{background:var(--accent-blue)}
+.status-dot.vision{background:var(--accent-purple)}
+.xp-icon{font-size:0.62rem;color:var(--accent-amber);opacity:0.7}
+
+/* Detail panel */
+.detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:none;backdrop-filter:blur(2px)}
+.detail-overlay.open{display:block}
+.detail-panel{position:fixed;top:0;right:-480px;bottom:0;width:460px;max-width:100vw;background:var(--bg-panel);border-left:1px solid var(--border-accent);z-index:501;transition:right 0.28s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column;overflow:hidden}
+.detail-panel.open{right:0}
+.detail-panel-header{padding:18px 22px 14px;border-bottom:1px solid var(--border-dim);background:var(--gradient-header);position:relative;flex-shrink:0}
+.detail-panel-header.ca{border-top:3px solid var(--accent-green)}
+.detail-panel-header.cb{border-top:3px solid var(--accent-blue)}
+.detail-panel-header.cv{border-top:3px solid var(--accent-purple)}
+.panel-glyph{font-size:1.8rem;margin-bottom:4px}
+.panel-name{font-size:1.25rem;font-weight:900;color:var(--text-primary)}
+.panel-domain{font-size:0.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-top:2px}
+.panel-close{position:absolute;top:14px;right:14px;background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:0.95rem;padding:4px 10px;transition:all 0.14s}
+.panel-close:hover{border-color:var(--accent-red);color:var(--accent-red)}
+.detail-panel-body{flex:1;overflow-y:auto;padding:18px 22px}
+.d-section{margin-bottom:18px}
+.d-label{font-size:0.66rem;font-family:var(--font-mono);letter-spacing:0.15em;text-transform:uppercase;color:var(--accent-amber);margin-bottom:5px}
+.d-text{font-size:0.86rem;color:var(--text-secondary);line-height:1.6}
+.d-status-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.achieve-block{background:rgba(201,162,39,0.06);border:1px solid rgba(201,162,39,0.2);border-radius:var(--radius-card);padding:11px 13px;margin-top:5px}
+.achieve-hdr{display:flex;align-items:center;gap:7px;font-size:0.76rem;font-weight:700;color:var(--accent-amber);margin-bottom:5px}
+.achieve-skills{display:flex;gap:5px;flex-wrap:wrap}
+.skill-tag{background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:20px;padding:2px 9px;font-size:0.7rem;color:var(--accent-amber)}
+.decentral-block{background:rgba(74,144,217,0.06);border:1px solid rgba(74,144,217,0.2);border-radius:var(--radius-card);padding:11px 13px;margin-top:5px}
+.decentral-hdr{display:flex;align-items:center;gap:7px;font-size:0.76rem;font-weight:700;color:var(--accent-cyan);margin-bottom:4px}
+.decentral-text{font-size:0.82rem;color:var(--text-secondary)}
+.visit-link{display:inline-flex;align-items:center;gap:6px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:6px;padding:7px 14px;color:var(--accent-green);font-size:0.82rem;font-weight:600;transition:all 0.16s;margin-top:8px}
+.visit-link:hover{background:rgba(52,211,153,0.2);text-decoration:none;color:var(--accent-green)}
+
+/* Footer */
+.site-footer{background:var(--gradient-header);border-top:2px solid var(--pylon-gold);padding:28px 0 20px;margin-top:60px;text-align:center}
+.footer-glyphs{font-size:1.1rem;letter-spacing:6px;color:var(--hieroglyph-dim);margin-bottom:10px}
+.footer-brand{font-size:1.7rem;font-weight:900;letter-spacing:0.1em;font-family:var(--font-mono);background:var(--gradient-accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.footer-tagline{font-size:0.78rem;color:var(--text-dim);font-style:italic;margin-top:5px}
+.footer-meta{font-size:0.72rem;color:var(--text-dim);font-family:var(--font-mono);margin-top:3px}
+
+/* Responsive */
+@media(max-width:768px){
+  .header-inner{flex-direction:column}
+  .header-title{font-size:1.8rem}
+  .domains-grid{grid-template-columns:1fr}
+  .detail-panel{width:100%}
+  .pharaoh-cartouche{padding:18px 36px}
+  .pharaoh-cartouche::before,.pharaoh-cartouche::after{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-brand">
+      <div class="header-codename">FERROS &middot; Mind of the Pharaoh &middot; v0.1</div>
+      <div class="header-title">FERROS MIND MAP</div>
+      <div class="header-subtitle">The Sovereign Vision &mdash; Every use case, every domain, every future temple</div>
+      <nav class="header-nav">
+        <a href="home-hud-dashboard.html">&#127968; HUD</a>
+        <a href="personal-profile.html">&#128100; Profile</a>
+        <a href="schedule-ledger.html">&#128197; Schedule</a>
+        <a href="agent-command-center.html">&#129302; Agents</a>
+        <a href="algo-trading-arena.html">&#128200; Trading</a>
+        <a href="forge-workbench.html">&#9874;&#65039; Forge</a>
+        <a href="ferros-showcase.html">&#127760; Showcase</a>
+        <a href="ferros-project-map.html">&#128506; Project Map</a>
+      </nav>
+    </div>
+    <div class="header-hieroglyph">&#x130C0;</div>
+  </div>
+</header>
+
+<div class="controls-bar">
+  <div class="controls-inner">
+    <input type="text" class="search-box" id="searchBox" placeholder="Search the mind map&hellip;" oninput="filterNodes()">
+    <div class="filter-group">
+      <button class="filter-btn active" id="filter-all" onclick="setFilter('all')">All</button>
+      <button class="filter-btn fa" id="filter-active" onclick="setFilter('active')">&#127963;&#65039; Active Temples</button>
+      <button class="filter-btn fb" id="filter-blueprint" onclick="setFilter('blueprint')">&#9876;&#65039; Blueprints</button>
+      <button class="filter-btn fv" id="filter-vision" onclick="setFilter('vision')">&#128065;&#65039; Visions</button>
+    </div>
+    <div class="controls-count" id="nodeCount">Loading&hellip;</div>
+  </div>
+</div>
+
+<div class="legend-bar">
+  <div class="legend-inner">
+    <span class="legend-item"><span class="badge badge-active">&#127963;&#65039; Active Temple</span>Already built &amp; linked</span>
+    <span class="legend-sep">&middot;</span>
+    <span class="legend-item"><span class="badge badge-blueprint">&#9876;&#65039; Blueprint</span>Planned &amp; in design</span>
+    <span class="legend-sep">&middot;</span>
+    <span class="legend-item"><span class="badge badge-vision">&#128065;&#65039; Vision</span>Future sovereign territory</span>
+    <span class="legend-sep">&middot;</span>
+    <span class="legend-item">XP = Achievement feeds your profile</span>
+    <span class="legend-sep">&middot;</span>
+    <span class="legend-item">Click any node for full details</span>
+  </div>
+</div>
+
+<main class="main">
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-pill"><span class="stat-num g" id="sa">6</span><span class="stat-label">Active Temples</span></div>
+    <div class="stat-pill"><span class="stat-num b" id="sb">0</span><span class="stat-label">Blueprints</span></div>
+    <div class="stat-pill"><span class="stat-num p" id="sv">0</span><span class="stat-label">Visions</span></div>
+    <div class="stat-pill"><span class="stat-num a" id="st">0</span><span class="stat-label">Total Use Cases</span></div>
+  </div>
+
+  <div class="pharaoh-hub">
+    <div class="pharaoh-cartouche">
+      <div class="pharaoh-glyph">&#x130C0; &#x130ED; &#x131A3;</div>
+      <div class="pharaoh-name">FERROS</div>
+      <div class="pharaoh-title">The Sovereign Operating System &middot; The Pharaoh</div>
+      <div class="pharaoh-desc">Memory safe. Consent first. Locally sovereign. Distributed by design. Agent-ready.</div>
+    </div>
+    <div class="hub-connector"></div>
+    <div style="font-size:0.72rem;color:var(--text-dim);font-family:var(--font-mono);letter-spacing:0.1em;text-transform:uppercase">All Domains Radiate Below</div>
+  </div>
+
+  <div class="inscription" aria-hidden="true">&#x130C0; &#x130ED; &#x131A3; &#x131F3; &#x1329D; &#x1343F; &#x13000; &#x13077; &#x130A7; &#x130C0; &#x130ED; &#x131A3; &#x131F3; &#x1329D; &#x1343F; &#x13000; &#x13077; &#x130A7;</div>
+
+  <div class="domains-grid" id="domainsGrid"></div>
+</main>
+
+<div class="detail-overlay" id="detailOverlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detailPanel">
+  <div class="detail-panel-header" id="panelHeader">
+    <div class="panel-glyph" id="panelGlyph"></div>
+    <div class="panel-name" id="panelName"></div>
+    <div class="panel-domain" id="panelDomain"></div>
+    <button class="panel-close" onclick="closeDetail()">&#10005;</button>
+  </div>
+  <div class="detail-panel-body" id="panelBody"></div>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-glyphs">&#x130C0; &#x130ED; &#x131A3; &#x131F3; &#x1329D; &#x1343F; &#x13000; &#x13077; &#x130A7;</div>
+  <div class="footer-brand">FERROS</div>
+  <div class="footer-tagline">Memory safe. Consent first. Locally sovereign. Distributed by design. Agent-ready.</div>
+  <div class="footer-meta">Mind of the Pharaoh v0.1 &middot; 2026 &middot; Project Nomos</div>
+</footer>
+
+<script>
+const DOMAINS=[{id:"active-temples",icon:"&#127963;&#65039;",cls:"active-temples",title:"Active Temples",sub:"Already Built \u2014 Click to Visit",nodes:[{id:"profile",g:"&#x13000;",name:"Personal Profile",status:"active",link:"personal-profile.html",what:"Your sovereign identity on FERROS. Tracks achievements, abilities, skill levels, and personal progression \u2014 stored on your own hardware.",why:"Your identity and data belong to you. No platform owns your reputation. Your achievements are cryptographically yours forever.",d:"No corporation owns your identity. Your progression data is stored locally, verifiable by anyone you choose to share with.",xp:["Identity XP","Self-Knowledge","Sovereignty Score","Profile Mastery"]},{id:"schedule",g:"&#x131F3;",name:"Schedule Ledger",status:"active",link:"schedule-ledger.html",what:"A newspaper-aesthetic calendar and time management ledger. Plan your days, track commitments, and log your time like a sovereign record-keeper.",why:"Your calendar data reveals your entire life. It should never leave your hardware.",d:"No cloud service reads your schedule. No algorithm mines your meetings. Your time records are yours alone.",xp:["Time Mastery","Planning XP","Discipline Score","Punctuality Badge"]},{id:"agents",g:"&#x130ED;",name:"Agent Command Center",status:"active",link:"agent-command-center.html",what:"Deploy, manage, and compete AI agents from your own FERROS server. The AI arena where you control your own artificial intelligence workforce.",why:"AI agents running on your hardware means no data leakage to cloud providers. Your agent strategies remain proprietary.",d:"Run your AI on your own hardware. No API keys sent to third parties. Sovereign artificial intelligence.",xp:["AI Commander","Strategy XP","Agent Mastery","Automation Score"]},{id:"trading",g:"&#x131A3;",name:"Algo-Trading Arena",status:"active",link:"algo-trading-arena.html",what:"Stock and crypto trading interface with algorithmic strategy support. Build, test, and deploy trading algorithms from your sovereign financial command center.",why:"Your trading strategies are intellectual property. Running them locally protects your edge from data brokers.",d:"Your trading algorithms never touch external servers. Verifiable, auditable, locally sovereign finance.",xp:["Market Mastery","Financial IQ","Strategy XP","Risk Management"]},{id:"forge",g:"&#x1312C;",name:"The Forge",status:"active",link:"forge-workbench.html",what:"AI-assisted 3D modeling workbench. Design, iterate, and create 3D models with integrated AI assistance \u2014 all running on your own FERROS server.",why:"Your creative designs are your IP. No cloud service should own your design data or train on your work.",d:"Your 3D designs stay on your hardware. AI assistance without surrendering creative ownership.",xp:["3D Mastery","Creative XP","Engineering Score","Design Achievements"]},{id:"hud",g:"&#x1329D;",name:"Home HUD Dashboard",status:"active",link:"home-hud-dashboard.html",what:"The central command dashboard for your FERROS node. System status, quick access to all modules, real-time metrics, and your personal control panel.",why:"Your home operations hub should be entirely under your control, not dependent on cloud connectivity.",d:"Your entire digital life accessible from a single sovereign dashboard on your own hardware.",xp:["System Admin","Awareness Score","Control Mastery","Efficiency XP"]}]},{id:"games",icon:"&#9876;&#65039;",cls:"games",title:"Games & Competition",sub:"Sovereign Play \u2014 Tamper-Proof Engines",nodes:[{id:"chess",g:"&#9820;",name:"Chess",status:"blueprint",what:"P2P chess on your own FERROS server. The engine is tamper-proof and verifiable by both players. Run your own analysis bots, save every game to your profile achievements. No third-party website needed.",why:"When you play chess online, you trust the platform has not modified the engine. FERROS makes the engine cryptographically verifiable by both parties.",d:"Both players verify the engine. No website owns the game data. Analysis bots run on your hardware.",xp:["Strategic Thinking","Pattern Recognition","Chess ELO","Tactical XP"]},{id:"card-games",g:"&#127183;",name:"Card Games",status:"blueprint",what:"Poker, solitaire, trading card games \u2014 all with cryptographically verifiable shuffles. Prove fairness without trusting a third-party server.",why:"Card game randomness requires trust in the shuffler. Cryptographic proofs eliminate that need entirely.",d:"Verifiable shuffle proofs. No casino backend. P2P card play with mathematical fairness guarantees.",xp:["Probability XP","Game Theory","Card Mastery","Bluffing Score"]},{id:"board-games",g:"&#127922;",name:"Board Games",status:"blueprint",what:"Go, checkers, backgammon, Settlers-style games \u2014 all sovereign and P2P. Host game sessions from your FERROS node for friends to join directly.",why:"Board game servers go offline, close, or change rules. Your FERROS server never dies unless you shut it down.",d:"Your game server, your rules, forever. Games saved to chain for verifiable history.",xp:["Strategic XP","Spatial Reasoning","Multi-player Score","Game Historian"]},{id:"video-games",g:"&#127918;",name:"Video Games & Esports",status:"vision",what:"Game server hosting, tournament brackets, verifiable rankings, esports management. Run your own game server and compete with verified integrity.",why:"Game company servers can be shut down, manipulated, or monetized against players. Sovereign servers end that dependency.",d:"Host your own game servers. Verifiable rankings on-chain. Tournament brackets with tamper-proof results.",xp:["Reflexes Score","Competitive XP","Tournament Rank","Gaming Mastery"]},{id:"puzzles",g:"&#129513;",name:"Puzzles & Brain Training",status:"blueprint",what:"Sudoku, crosswords, logic puzzles, memory games \u2014 all feeding into your ability system. Each solved puzzle increments your cognitive score.",why:"Brain training apps collect your performance data to sell. Your cognitive progress data belongs on your profile.",d:"Your brain training data is yours. Cognitive progression feeds your sovereign profile, not a corporate database.",xp:["Logic Score","Memory XP","Pattern Mastery","Cognitive Rank"]}]},{id:"finance",icon:"&#128176;",cls:"finance",title:"Finance & Commerce",sub:"Sovereign Money \u2014 Trustless Trade",nodes:[{id:"taxes",g:"&#129534;",name:"Taxes",status:"blueprint",what:"Personal tax preparation, filing assistance, receipt storage, and tax history. Organize your financial obligations with sovereign data.",why:"Your tax data is among the most sensitive information you have. It should never be stored on a third-party server.",d:"Your tax records on your hardware. Cryptographic receipts prove filings without surrendering data to SaaS services.",xp:["Financial Literacy","Compliance Score","Record Keeping","Tax Mastery"]},{id:"personal-finance",g:"&#128202;",name:"Personal Finance",status:"blueprint",what:"Budgeting, expense tracking, savings goals, net worth dashboard. Full financial picture running locally on your FERROS server.",why:"Budgeting apps sell your spending data to advertisers. Your financial habits are deeply private.",d:"Your spending patterns never leave your hardware. Full financial intelligence without corporate surveillance.",xp:["Financial IQ","Savings Score","Budget Mastery","Wealth XP"]},{id:"payments",g:"&#128184;",name:"Payment Systems",status:"blueprint",what:"P2P payments, invoicing, and payment processing interfaces. Send and receive value directly between FERROS nodes.",why:"Payment processors take fees, impose restrictions, and monitor transactions. P2P trustless payments eliminate the middleman.",d:"Direct value transfer between nodes. No payment processor controls your money. Cryptographic settlement.",xp:["Transaction XP","Financial Network","Commerce Score","Payment Mastery"]},{id:"personal-stores",g:"&#127978;",name:"Personal Stores",status:"blueprint",what:"Sell goods and services directly from your FERROS server. Your sovereign e-commerce store with no platform fees or deplatforming risk.",why:"Marketplaces take 10-30% fees, can ban you arbitrarily, and own your customer relationships. FERROS gives you full ownership.",d:"No platform can shut down your store. Customer relationships belong to you. Zero censorship of legal trade.",xp:["Merchant XP","Entrepreneurship","Sales Score","Store Mastery"]},{id:"company-stores",g:"&#127970;",name:"Company Stores",status:"vision",what:"Business e-commerce on decentralized infrastructure. Enterprise-level store management running on FERROS nodes.",why:"Businesses are vulnerable to payment processor deplatforming. Sovereign commerce infrastructure protects business continuity.",d:"Uncensorable business operations. Smart contract-enforced commerce rules. No single point of failure.",xp:["Business Mastery","Enterprise XP","Revenue Score","Commerce Rank"]},{id:"stock-interfaces",g:"&#128200;",name:"Stock Interfaces",status:"blueprint",what:"Market data aggregation, portfolio tracking, and stock analysis tools running on your FERROS node.",why:"Brokerage platforms own your trading history and can restrict access. Sovereign data means your portfolio analysis is always available.",d:"Your investment data locally stored. Market analysis without feeding data to financial surveillance networks.",xp:["Market Analysis","Investment XP","Financial IQ","Portfolio Score"]},{id:"crypto",g:"&#8383;",name:"Crypto Wallets & DEX",status:"blueprint",what:"Native crypto wallet interfaces, decentralized exchange connections, DeFi protocol access \u2014 all running through your FERROS node.",why:"Custodial wallets mean someone else holds your keys. FERROS is non-custodial by design.",d:"Your keys, your coins. Non-custodial by design. DEX access without KYC surveillance.",xp:["Crypto Mastery","DeFi Score","Wallet Security","Blockchain XP"]},{id:"banking",g:"&#127970;",name:"Banking Dashboard",status:"vision",what:"Account aggregation, transaction history, and banking interface running locally. Connect bank feeds to your sovereign financial command center.",why:"Aggregating bank data locally instead of through cloud services means your complete financial picture stays private.",d:"Your bank data aggregated locally. No FinTech middlemen with full view of your financial life.",xp:["Banking IQ","Financial Control","Account Mastery","Liquidity Score"]}]},{id:"governance",icon:"&#128499;&#65039;",cls:"governance",title:"Governance & Civic",sub:"Trustless Democracy \u2014 The Most Urgent Domain",nodes:[{id:"voting",g:"&#x1329D;",name:"Voting",status:"vision",what:"Verifiable, auditable, trustless election systems. This is the domain that needs decentralization the most \u2014 the integrity of democracy itself.",why:"Centralized voting systems require blind trust in election administrators. Cryptographic voting provides mathematical proof of ballot integrity while preserving anonymity.",d:"FERROS provides tamper-proof ballots with cryptographic anonymity. The most important application of trustless systems ever conceived.",xp:["Civic Duty","Democracy XP","Sovereignty Score","Participation Badge"]},{id:"campaigns",g:"&#128240;",name:"Campaigns",status:"blueprint",what:"Political campaign management with newspaper aesthetic already designed. Manage candidate profiles, voter outreach, donation tracking, and messaging \u2014 all sovereign.",why:"Campaign data managed by corporate platforms can be censored, leaked, or weaponized. Sovereign campaign infrastructure protects democratic participation.",d:"Uncensorable campaign infrastructure. Donor records on your hardware. Democratic participation without Big Tech gatekeeping.",xp:["Civic Leadership","Communication XP","Persuasion Score","Political IQ"]},{id:"ministry",g:"&#9962;",name:"Ministry",status:"blueprint",what:"Church and community organization management. Member records, event scheduling, donation tracking, sermon archives, and community coordination.",why:"Faith communities data belongs to the community. Corporate software has disrupted many organizations with data breaches.",d:"Congregation data controlled by the congregation. Decentralized community organization with no outside authority.",xp:["Community XP","Leadership Score","Service Mastery","Ministry Badge"]},{id:"analytics",g:"&#128201;",name:"Data Analytics",status:"blueprint",what:"Sovereign analytics \u2014 run your own data analysis without shipping your data to Google Analytics, Mixpanel, or other surveillance services.",why:"Analytics platforms harvest your user data to build profiles on your audience. Sovereign analytics lets you understand your users without surveillance.",d:"Your data processed on your hardware. No third-party data brokers. Analytics without corporate surveillance.",xp:["Data Science XP","Analytics Mastery","Insight Score","Statistical IQ"]},{id:"policy",g:"&#128220;",name:"Policy Tracking",status:"vision",what:"Track legislation, government transparency records, policy changes, and civic information. Your sovereign civic intelligence dashboard.",why:"Civic information should be freely accessible and organized. FERROS lets you aggregate and analyze government data independently.",d:"Independent civic monitoring without dependence on government portals or media platforms.",xp:["Political IQ","Civic Awareness","Research XP","Transparency Score"]}]},{id:"daily-life",icon:"&#127968;",cls:"daily-life",title:"Daily Life",sub:"The Sovereign Everyday",nodes:[{id:"car-maintenance",g:"&#128295;",name:"Car Maintenance",status:"blueprint",what:"Service records, maintenance reminders, parts inventory, mechanic logs, and vehicle history \u2014 all on your FERROS node.",why:"Your vehicle service history is private data. Apps that track your car data sell it to insurance companies and advertisers.",d:"Your car data stays with you. No insurance spy networks. Complete vehicle ownership extends to data ownership.",xp:["Mechanical XP","Maintenance Score","Vehicle Mastery","DIY Badge"]},{id:"weather",g:"&#127782;&#65039;",name:"Weather",status:"blueprint",what:"Local weather dashboards, historical data, personal weather station integration, and climate tracking for your location.",why:"Weather apps are among the most aggressive location data collectors. Running local weather aggregation preserves your location privacy.",d:"No location tracking required. Pull weather data from public APIs without sharing your precise location with weather corporations.",xp:["Environmental XP","Science Score","Data Mastery","Observer Badge"]},{id:"news",g:"&#128240;",name:"News",status:"blueprint",what:"Sovereign news aggregation from sources you choose. No algorithm manipulates what you see. Pure RSS and direct feeds with the FERROS newspaper aesthetic.",why:"Algorithmic news feeds are engineered to maximize engagement and outrage, not to inform. Sovereign news consumption breaks the manipulation loop.",d:"Your news feed curated by you. No algorithm decides what you know. Decentralized media consumption.",xp:["Current Events IQ","Media Literacy","Research XP","Informed Citizen"]},{id:"sports",g:"&#127942;",name:"Sports",status:"blueprint",what:"Sports scores, stats, fantasy leagues, coaching tools, team management, and training tracking \u2014 all from your sovereign sports center.",why:"Sports apps bundle tracking, ads, and data harvesting. Your sporting life data belongs with your other health and activity data.",d:"Your athletic data on your hardware. Sovereign fantasy leagues with smart contract payouts.",xp:["Athletic XP","Coaching Score","Sports IQ","Performance Badge"]},{id:"ride-sharing",g:"&#128664;",name:"Ride Sharing",status:"vision",what:"Decentralized ride sharing platform with no corporate middleman. Direct driver-to-passenger connections with trustless payment.",why:"Uber and Lyft take 25-30% of every fare, dictate terms to both parties, and own all the data. P2P ride sharing eliminates the predatory middleman.",d:"Direct driver-passenger connections. Smart contract payments. No corporation taking 30% of local transportation.",xp:["Transport XP","Local Economy","Efficiency Score","Community Badge"]},{id:"communications",g:"&#128172;",name:"Communications",status:"blueprint",what:"Messaging, email, and video calls \u2014 all end-to-end encrypted and running on your FERROS server. True private communications.",why:"Every major communication platform reads your messages and mines your relationships. FERROS enables genuine private communication.",d:"True E2E encryption. Messages stored on your hardware. No surveillance capitalism in your conversations.",xp:["Communication XP","Privacy Score","Network Mastery","Encryption Badge"]},{id:"personal-computing",g:"&#128187;",name:"Personal Computing",status:"blueprint",what:"File management, text editing, calculators, note-taking, and general computing tools running natively on FERROS.",why:"Even basic computing apps are becoming subscription services that spy on your files. FERROS restores computing sovereignty.",d:"Your files on your hardware. Basic computing tools without surveillance. True digital ownership.",xp:["Computing XP","Digital Literacy","Tech Mastery","Productivity Score"]},{id:"cards",g:"&#127183;",name:"Cards",status:"blueprint",what:"Greeting cards, business cards, and digital card creation tools. Design and send sovereign digital cards directly from your FERROS node.",why:"Card services store your social connections and personal messages. Simple creative tools should not require cloud surveillance.",d:"Send cards P2P between FERROS nodes. Your social expressions stored on your hardware.",xp:["Creative XP","Social Score","Design Mastery","Relationship Badge"]}]},{id:"knowledge",icon:"&#128218;",cls:"knowledge",title:"Knowledge & Education",sub:"Every Wikipedia Page Becomes a FERROS Temple",nodes:[{id:"math",g:"&#8721;",name:"Math",status:"blueprint",what:"Calculators, graphing tools, equation solvers, and structured math learning modules. Every solved problem feeds your mathematical ability score.",why:"Math ability is foundational. Tracking genuine mathematical progress through problem-solving creates verifiable cognitive achievements.",d:"Your mathematical progress stored in your sovereign profile. Learning without surveillance or data harvesting.",xp:["Mathematical XP","Logic Score","Problem Solving","Calculation Mastery"]},{id:"science",g:"&#128300;",name:"Science",status:"blueprint",what:"Lab notebooks, experiment tracking, data visualization, and scientific methodology tools. Do science and have it feed your profile.",why:"Scientific progress should be tracked and rewarded. FERROS makes every experiment a verifiable achievement.",d:"Your research data owned by you. Collaborate without surrendering IP to research platforms.",xp:["Scientific Method","Research XP","Discovery Score","Lab Mastery"]},{id:"history",g:"&#x13307;",name:"History",status:"blueprint",what:"General history explorer with timeline views, geographic maps, and chronological navigation. Learning history builds knowledge achievements.",why:"Historical knowledge is sovereign knowledge. Understanding the past is a fundamental human right and skill.",d:"Decentralized historical archives resistant to revisionism. Your historical knowledge verified and owned by you.",xp:["Historical IQ","Context Score","Timeline Mastery","Civilization XP"]},{id:"wwi",g:"&#127894;&#65039;",name:"WWI History",status:"vision",what:"Dedicated WWI archive and learning module. Battles, timelines, leaders, causes, effects \u2014 deep-dive historical content that builds knowledge achievements.",why:"Specialized historical knowledge deserves specialized tools. WWI shaped the modern world and is poorly understood.",d:"Uncensorable historical records. Deep-dive archives owned by learners, not publishers.",xp:["WWI Expert","Military History","Geopolitics XP","Historical Depth"]},{id:"wwii",g:"&#9889;",name:"WWII History",status:"vision",what:"Dedicated WWII archive and learning module. The most documented conflict in history, organized into sovereign, explorable knowledge.",why:"WWII history contains critical lessons about governance, technology, and human nature. It should be freely accessible and deeply understood.",d:"Sovereign historical archives. WWII knowledge that cannot be revised by platform policies.",xp:["WWII Expert","Strategic History","Modern World XP","Conflict Analysis"]},{id:"specific-histories",g:"&#128220;",name:"Specific Histories",status:"vision",what:"Any historical topic \u2014 Egyptian history, Roman Empire, Industrial Revolution, Cold War \u2014 gets its own explorable FERROS page.",why:"Specialized knowledge should be deeply rewarded. FERROS can create achievement pathways for any domain of human knowledge.",d:"The entirety of human history organized into sovereign, achievement-rewarding knowledge pages.",xp:["Specialist XP","Deep Research","Historical Breadth","Scholar Score"]},{id:"wiki-pages",g:"&#x1340E;",name:"Wikipedia-Style Pages",status:"vision",what:"Every topic that has a Wikipedia page could have a FERROS page where learning builds abilities and achievements. The entire catalog of human knowledge becomes a progression system.",why:"Wikipedia is read but never rewarded. FERROS turns knowledge consumption into verified, rewarded intellectual achievement.",d:"Decentralized knowledge where reading and learning builds verifiable, sovereign credentials.",xp:["Knowledge XP","Breadth Score","Depth Score","Scholar Rank"]},{id:"research",g:"&#128301;",name:"Research Labs",status:"vision",what:"Collaborative research environments, paper management, citation tracking, and experiment coordination running on FERROS infrastructure.",why:"Academic research is dominated by closed-access journals and surveillance infrastructure. FERROS can liberate scientific collaboration.",d:"Open research on sovereign infrastructure. Peer collaboration without institutional gatekeepers.",xp:["Research Mastery","Publication XP","Collaboration Score","Academic Rank"]}]},{id:"health",icon:"&#127973;",cls:"health",title:"Health & Care",sub:"Sovereign Health \u2014 The Most Private Domain",nodes:[{id:"medical-charts",g:"&#129658;",name:"Medical Charts",status:"vision",what:"Personal health records and medical data stored on your own FERROS server. Your complete medical history in your hands.",why:"Medical data is the most sensitive personal information. Data breaches of centralized medical records affect millions. Your health data belongs to you.",d:"Your medical records on your hardware. Share with doctors you choose. No insurance company surveillance without consent.",xp:["Health Literacy","Self-Awareness XP","Medical IQ","Wellness Score"]},{id:"biomedical",g:"&#129516;",name:"Biomedical",status:"vision",what:"Biomedical research tools, data management, genomic analysis, and life sciences data processing running on sovereign infrastructure.",why:"Biomedical research on centralized infrastructure creates massive data concentration risks. Distributed research is more resilient.",d:"Distributed biomedical research without single points of failure or corporate control of life-saving data.",xp:["Biomedical XP","Research Score","Life Sciences IQ","Discovery Badge"]},{id:"funeral-homes",g:"&#128370;&#65039;",name:"Funeral Homes",status:"vision",what:"Service management, memorial pages, arrangement tracking, and obituary creation for funeral service businesses.",why:"Funeral service data involves the most sensitive life moments. Local-first software protects grieving families from data misuse.",d:"Memorial data on local hardware. Grieving families information protected from corporate data brokers.",xp:["Community Service","Memorial Score","Compassion XP","Service Mastery"]},{id:"homeless-shelters",g:"&#127968;",name:"Homeless Shelters",status:"vision",what:"Resource tracking, bed availability, service coordination, case management, and intake records for homeless shelters and social services.",why:"Vulnerable populations data is especially sensitive. Shelter management software should be locally controlled by the shelters themselves.",d:"Client data controlled by the shelter, not SaaS vendors. Better privacy for the most vulnerable users.",xp:["Social Service XP","Community Impact","Humanitarian Score","Advocacy Badge"]},{id:"animal-shelters",g:"&#128062;",name:"Animal Shelters",status:"vision",what:"Adoption listings, animal health records, volunteer coordination, donor management, and outcome tracking for animal shelters.",why:"Non-profit shelters waste money on SaaS software fees that could save more animals. Sovereign software changes that.",d:"Free, sovereign shelter management software. Data owned by the shelter. No SaaS subscription fees draining rescue resources.",xp:["Animal Care XP","Compassion Score","Rescue Badge","Community Service"]}]},{id:"engineering",icon:"&#127959;&#65039;",cls:"engineering",title:"Engineering & Design",sub:"Build Everything \u2014 Own Everything",nodes:[{id:"architecture",g:"&#127963;&#65039;",name:"Architecture",status:"vision",what:"Building design, floor plan creation, 3D visualization, and architectural project management \u2014 all in your FERROS workbench.",why:"Architectural designs are proprietary IP. Cloud-based CAD tools claim rights to user work. FERROS ensures your designs are yours.",d:"Your architectural IP on your hardware. Design without surrendering ownership to cloud CAD providers.",xp:["Architecture XP","Spatial Design","Planning Score","Building Mastery"]},{id:"mechanical-eng",g:"&#9881;&#65039;",name:"Mechanical Engineering",status:"vision",what:"CAD tools, FEM simulations, mechanical design interfaces, and component libraries for mechanical engineering workflows.",why:"Mechanical designs are valuable IP. Proprietary CAD cloud services own your file formats and can hold your work hostage.",d:"Your CAD files in open formats on your hardware. No subscription ransom on your own designs.",xp:["Mechanical XP","Engineering Score","Simulation Mastery","Design Badge"]},{id:"electrical-eng",g:"&#9889;",name:"Electrical Engineering",status:"vision",what:"Circuit design, schematic editors, PCB layout tools, and electrical simulation interfaces.",why:"Circuit designs contain trade secrets. Cloud EDA tools expose your schematics to service provider surveillance.",d:"Your schematics on your hardware. Open-format circuit files owned entirely by you.",xp:["Electrical XP","Circuit Score","PCB Mastery","Electronics Badge"]},{id:"civil-eng",g:"&#127751;",name:"Civil Engineering",status:"vision",what:"Infrastructure planning, site analysis, structural calculation tools, and civil project management.",why:"Civil infrastructure data has national security implications. Sovereign tools keep critical design data locally controlled.",d:"Infrastructure designs on sovereign hardware. National security through distributed, locally-controlled design tools.",xp:["Civil Engineering XP","Infrastructure Score","Planning Mastery","Build Badge"]},{id:"software-eng",g:"&#128187;",name:"Software Engineering",status:"blueprint",what:"IDE interfaces, version control dashboards, CI/CD pipeline management, and code review tools \u2014 all running on your FERROS node.",why:"Your source code is your most valuable digital asset. Cloud IDEs and version control hosts have full access to your proprietary code.",d:"Your source code on your hardware. Self-hosted version control. Sovereign CI/CD pipelines.",xp:["Coding XP","Software Score","Architecture Mastery","Dev Rank"]},{id:"chemical-eng",g:"&#9879;&#65039;",name:"Chemical Engineering",status:"vision",what:"Process design, material databases, chemical simulation, and safety management for chemical engineering workflows.",why:"Chemical formulations and process designs are among the highest-value industrial secrets. Local-first tools are essential.",d:"Your chemical IP on your hardware. No industrial espionage via cloud service backdoors.",xp:["Chemical XP","Process Score","Safety Mastery","Formula Badge"]},{id:"rockets",g:"&#128640;",name:"Rockets",status:"vision",what:"Rocket design interfaces, trajectory calculation tools, propulsion simulation, and mission planning \u2014 from hobby rocketry to orbital vehicles.",why:"Rocket designs have regulatory and national security considerations. Sovereign design tools keep this data out of corporate and foreign hands.",d:"Sovereign rocket design tools. From model rockets to orbital systems \u2014 your designs stay on your hardware.",xp:["Aerospace XP","Rocket Science","Trajectory Mastery","Launch Badge"]},{id:"space-habitats",g:"&#127756;",name:"Outer Space Dwellings",status:"vision",what:"Habitat design, life support system planning, space colony architecture, and orbital facility management tools.",why:"Space habitat design is the most critical engineering frontier. Sovereign tools ensure this knowledge belongs to humanity, not corporations.",d:"Space habitat designs owned by their creators. Decentralized space architecture for humanity future.",xp:["Space Architecture","Life Support XP","Colony Design","Frontier Badge"]},{id:"cars-trailers",g:"&#128667;",name:"Cars & Trailers",status:"vision",what:"Vehicle design, fleet management, custom vehicle configuration tools, and trailer/hauling system design.",why:"Vehicle design data is increasingly harvested by manufacturers for surveillance and telemetry. Sovereign design tools push back.",d:"Your vehicle designs on your hardware. Fleet management without manufacturer surveillance backdoors.",xp:["Vehicle Design XP","Mechanical Score","Fleet Mastery","Transport Badge"]}]},{id:"work",icon:"&#128188;",cls:"work",title:"Work & Economy",sub:"Sovereign Labor \u2014 Trustless Commerce",nodes:[{id:"bounty-boards",g:"&#127919;",name:"Bounty Boards",status:"blueprint",what:"Decentralized job bounties and freelance task marketplace. Post and claim work directly between FERROS nodes with smart contract payment escrow.",why:"Freelance platforms take 20-30% fees and can ban workers arbitrarily. P2P bounties with smart contract escrow eliminate the middleman.",d:"Work directly between parties. Smart contract escrow ensures payment. No platform taking 30% of your labor.",xp:["Freelance XP","Task Completion","Reputation Score","Bounty Hunter"]},{id:"job-boards",g:"&#128203;",name:"Job Boards",status:"blueprint",what:"Employment listings, resume management, and hiring pipeline tools. Post jobs or find work without a corporate middleman reading your resume.",why:"Job boards sell your resume data and career trajectory to data brokers. Your employment search is private.",d:"Your resume data owned by you. Connect with employers directly via FERROS nodes. No LinkedIn surveillance.",xp:["Career XP","Professional Score","Interview Mastery","Employment Badge"]},{id:"personal-websites",g:"&#127760;",name:"Personal Websites",status:"blueprint",what:"Host your own website directly from your FERROS server. Your personal presence on the web, running on your own hardware.",why:"Website hosting is fundamental digital sovereignty. Paying a hosting company creates a dependency and censorship vulnerability.",d:"Your website on your hardware. No hosting company can take it down. True digital presence sovereignty.",xp:["Web Mastery","Publishing XP","Digital Presence","Sovereignty Score"]},{id:"networking",g:"&#129306;",name:"Networking",status:"blueprint",what:"Professional networking and decentralized LinkedIn alternative. Build your professional network between FERROS nodes without corporate surveillance.",why:"LinkedIn owns your professional identity and sells your career data. Your professional network is yours.",d:"Your professional connections stored locally. Network between FERROS nodes. No algorithm throttling your reach.",xp:["Network Score","Professional XP","Reputation Mastery","Connection Badge"]},{id:"company-mgmt",g:"&#127959;&#65039;",name:"Company Management",status:"blueprint",what:"Business operations, team management, project coordination, and company administration tools on FERROS infrastructure.",why:"Business management SaaS tools have access to your most sensitive operational data. Sovereign business software closes that vulnerability.",d:"Your business operations on sovereign infrastructure. No SaaS vendor reading your internal company data.",xp:["Leadership XP","Management Score","Operations Mastery","Executive Badge"]}]},{id:"storage",icon:"&#128230;",cls:"storage",title:"Storage & Assets",sub:"Own Your Digital Estate",nodes:[{id:"file-storage",g:"&#128190;",name:"User File Storage",status:"blueprint",what:"Sovereign cloud storage running on your own FERROS hardware. All your files on your machine, accessible anywhere, controlled by you.",why:"Cloud storage providers read your files, train AI on them, and can delete your account. Your files belong on your hardware.",d:"Your files on your hardware. True cloud sovereignty. No Google or Apple reading your documents.",xp:["Organization XP","Storage Mastery","Data Hygiene","Sovereignty Score"]},{id:"images",g:"&#128444;&#65039;",name:"Images",status:"blueprint",what:"Photo management, galleries, editing tools, and image organization running on your FERROS node. Your sovereign photo library.",why:"Photo libraries are deeply personal. Cloud photo services use facial recognition, mine location data, and train AI on your images.",d:"Your photos on your hardware. No facial recognition surveillance. No AI training on your personal memories.",xp:["Photography XP","Creative Score","Gallery Mastery","Visual IQ"]},{id:"videos",g:"&#127916;",name:"Videos",status:"blueprint",what:"Video storage, streaming, and editing tools running on your FERROS server. Host and stream your own video content.",why:"Video platforms algorithmically censor, demonetize, and delete creator content. Self-hosted video is uncensorable.",d:"Host your own video content. No algorithmic demonetization. Your creative work survives platform shutdowns.",xp:["Video XP","Creative Score","Production Mastery","Streaming Badge"]},{id:"physical-assets",g:"&#127968;",name:"Physical Assets",status:"blueprint",what:"Inventory of real-world possessions, insurance records, maintenance logs, and valuation tracking for your physical estate.",why:"Asset tracking apps hold crucial insurance and ownership documentation. This data must be locally controlled and backed up by you.",d:"Your asset inventory on your hardware. Insurance documentation owned by you. Physical estate fully cataloged locally.",xp:["Asset Management","Organization XP","Wealth Tracking","Inventory Score"]},{id:"digital-assets",g:"&#128274;",name:"Digital Assets",status:"blueprint",what:"NFTs, digital certificates, licenses, credentials, and digital ownership records \u2014 your complete digital estate catalog.",why:"Digital assets need to be cataloged and managed just like physical assets. Your digital estate deserves sovereign management.",d:"Your digital assets cataloged on your hardware. NFT and credential management without third-party custodians.",xp:["Digital Estate XP","Asset Management","Certificate Score","Ownership Badge"]}]},{id:"ferros-meta",icon:"&#x130C0;",cls:"ferros-meta",title:"FERROS Meta",sub:"The System Managing Itself",nodes:[{id:"ferros-itself",g:"&#x130C0;",name:"FERROS Itself",status:"blueprint",what:"FERROS gets its own cards and contracts. The operating system is self-referential \u2014 it manages itself as a first-class citizen within its own system.",why:"An OS that cannot monitor and manage itself is incomplete. FERROS should be its own best customer.",d:"A truly sovereign OS must manage its own sovereignty. FERROS contracts governing FERROS itself.",xp:["System Mastery","OS Administration","Meta Awareness","Architect Badge"]},{id:"system-health",g:"&#128147;",name:"System Health",status:"blueprint",what:"Monitor your FERROS node with real-time performance dashboards, resource utilization, process management, and system alerts.",why:"System visibility is fundamental to sovereignty. You cannot control what you cannot observe.",d:"Full visibility into your own hardware. No mysterious background processes. Complete system transparency.",xp:["Admin XP","System Knowledge","Monitoring Score","Health Mastery"]},{id:"contract-explorer",g:"&#128203;",name:"Contract Explorer",status:"blueprint",what:"Browse and manage smart contracts running on your FERROS system. Audit what is executing, what has executed, and what is pending.",why:"Smart contracts running on your system should be fully visible and auditable by you. Transparency by design.",d:"Every contract on your system visible, auditable, and killable by you. Radical transparency in computation.",xp:["Contract Mastery","Code Audit XP","Transparency Score","Blockchain Badge"]},{id:"node-network",g:"&#127760;",name:"Node Network",status:"blueprint",what:"View connected FERROS nodes, network topology, peer relationships, and network health from your node perspective.",why:"Understanding your network is foundational to decentralized sovereignty. Know who you are connected to and why.",d:"Full network visibility from your node. Understand the decentralized fabric your FERROS node participates in.",xp:["Network XP","Topology Mastery","P2P Score","Mesh Badge"]}]}];
+
+let currentFilter='all',searchQuery='',selectedNode=null;
+
+function buildDomains(){
+  const grid=document.getElementById('domainsGrid');
+  grid.innerHTML='';
+  DOMAINS.forEach(domain=>{
+    const branch=document.createElement('div');
+    branch.className=`domain-branch ${domain.cls}`;
+    branch.id=`branch-${domain.id}`;
+    const hdr=document.createElement('div');
+    hdr.className='domain-header';
+    hdr.innerHTML=`<div class="domain-icon-wrap">${domain.icon}</div><div class="domain-title-group"><div class="domain-title">${domain.title}</div><div class="domain-count">${domain.nodes.length} use cases &middot; ${domain.sub}</div></div><div class="domain-toggle">&#9660;</div>`;
+    hdr.onclick=()=>branch.classList.toggle('collapsed');
+    const nodesDiv=document.createElement('div');
+    nodesDiv.className='domain-nodes';
+    nodesDiv.id=`nodes-${domain.id}`;
+    domain.nodes.forEach(node=>{
+      const card=document.createElement('div');
+      card.className=`cartouche${node.status==='active'?' active-temple':''}`;
+      card.id=`node-${node.id}`;
+      card.dataset.status=node.status;
+      card.dataset.search=(node.name+' '+node.what+' '+domain.title).toLowerCase();
+      card.innerHTML=`<div class="cartouche-glyph">${node.g}</div><div class="cartouche-name">${node.name}</div><div class="cartouche-footer"><span class="status-dot ${node.status}"></span><span class="xp-icon">XP</span></div><div class="cartouche-bar"></div>`;
+      card.onclick=e=>{e.stopPropagation();openDetail(node,domain);};
+      nodesDiv.appendChild(card);
+    });
+    branch.appendChild(hdr);
+    branch.appendChild(nodesDiv);
+    grid.appendChild(branch);
+  });
+  updateStats();
+}
+
+function setFilter(f){
+  currentFilter=f;
+  ['all','active','blueprint','vision'].forEach(x=>{
+    const b=document.getElementById(`filter-${x}`);
+    if(b)b.classList.toggle('active',x===f);
+  });
+  applyFilters();
+}
+
+function filterNodes(){
+  searchQuery=document.getElementById('searchBox').value.toLowerCase();
+  applyFilters();
+}
+
+function applyFilters(){
+  let count=0;
+  DOMAINS.forEach(domain=>{
+    const branch=document.getElementById(`branch-${domain.id}`);
+    let vis=false;
+    domain.nodes.forEach(node=>{
+      const card=document.getElementById(`node-${node.id}`);
+      if(!card)return;
+      const mf=currentFilter==='all'||node.status===currentFilter;
+      const ms=!searchQuery||card.dataset.search.includes(searchQuery);
+      if(mf&&ms){card.classList.remove('hidden');vis=true;count++;}
+      else card.classList.add('hidden');
+    });
+    if(branch)branch.classList.toggle('hidden',!vis);
+  });
+  document.getElementById('nodeCount').textContent=`${count} use case${count!==1?'s':''} visible`;
+}
+
+function updateStats(){
+  let a=0,b=0,v=0;
+  DOMAINS.forEach(d=>d.nodes.forEach(n=>{
+    if(n.status==='active')a++;
+    else if(n.status==='blueprint')b++;
+    else v++;
+  }));
+  document.getElementById('sa').textContent=a;
+  document.getElementById('sb').textContent=b;
+  document.getElementById('sv').textContent=v;
+  document.getElementById('st').textContent=a+b+v;
+  document.getElementById('nodeCount').textContent=`${a+b+v} use cases visible`;
+}
+
+function openDetail(node,domain){
+  if(selectedNode){const p=document.getElementById(`node-${selectedNode}`);if(p)p.classList.remove('selected');}
+  selectedNode=node.id;
+  const card=document.getElementById(`node-${node.id}`);
+  if(card)card.classList.add('selected');
+  const cMap={active:'ca',blueprint:'cb',vision:'cv'};
+  const sLabel={active:'&#127963;&#65039; Active Temple',blueprint:'&#9876;&#65039; Blueprint',vision:'&#128065;&#65039; Vision'};
+  const bCls={active:'badge-active',blueprint:'badge-blueprint',vision:'badge-vision'};
+  const ph=document.getElementById('panelHeader');
+  ph.className=`detail-panel-header ${cMap[node.status]}`;
+  document.getElementById('panelGlyph').innerHTML=node.g;
+  document.getElementById('panelName').textContent=node.name;
+  document.getElementById('panelDomain').innerHTML=`${domain.icon} ${domain.title}`;
+  const linkHtml=node.link?`<a class="visit-link" href="${node.link}" target="_blank">&#127963;&#65039; Visit Active Temple &#8594;</a>`:'';
+  document.getElementById('panelBody').innerHTML=`
+    <div class="d-status-row"><span class="badge ${bCls[node.status]}">${sLabel[node.status]}</span></div>
+    <div class="d-section"><div class="d-label">What It Is</div><div class="d-text">${node.what}</div>${linkHtml}</div>
+    <div class="d-section"><div class="decentral-block"><div class="decentral-hdr">&#128275; Why Decentralization Matters</div><div class="decentral-text">${node.d}</div></div></div>
+    <div class="d-section"><div class="d-label">Why FERROS Wins Here</div><div class="d-text">${node.why}</div></div>
+    <div class="d-section"><div class="achieve-block"><div class="achieve-hdr">&#127884; Achievement & Ability Connection</div><div class="achieve-skills">${node.xp.map(s=>`<span class="skill-tag">${s}</span>`).join('')}</div></div></div>
+  `;
+  document.getElementById('detailOverlay').classList.add('open');
+  document.getElementById('detailPanel').classList.add('open');
+}
+
+function closeDetail(){
+  if(selectedNode){const p=document.getElementById(`node-${selectedNode}`);if(p)p.classList.remove('selected');selectedNode=null;}
+  document.getElementById('detailOverlay').classList.remove('open');
+  document.getElementById('detailPanel').classList.remove('open');
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeDetail();
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();document.getElementById('searchBox').focus();}
+});
+
+buildDomains();
+</script>
+</body>
+</html>
