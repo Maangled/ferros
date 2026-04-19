@@ -397,6 +397,8 @@ All harnesses run in Chrome via `file://`. They load `ferros-core.js` from `docs
 
 > **Wave 0 is FROZEN as of PR #47.** Any new audit finding against Wave 0 contracts goes to the backlog — not to a Wave 0 reopener.
 
+Generator hardening and deterministic artifact regeneration were completed as a post-merge verification pass on 2026-04-18 (commit `2e1f7ce`). This was the final Wave 0 action before the stream split. All gate harnesses re-verified: H1 28/28, H2 21/21, H3 18/18, H4 20/20.
+
 The rule: once a wave closes, it stays closed. New findings become Wave N+1 items or stream-specific backlog items. This is how we stop the "audit → reopen → audit" cycle that was blocking all other progress.
 
 Schema versioning follows semantic versioning:
