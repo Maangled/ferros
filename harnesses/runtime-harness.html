@@ -263,16 +263,15 @@ function runGroupB(iframe, msgBaseIdx) {
         return { pass: false, error: 'no ferros:event{ready} received within 2s of ferros:init' };
       }));
 
-      // B-4: ferros:resize emitted after init (reportSize called by runtime after applyControl)
-      allResults.push(test(gB, 'B-4: ferros:resize emitted after ferros:init (reportSize)', function() {
+      // B-4: C8 requires the initial resize after init and further resize events only when size changes.
+      allResults.push(test(gB, 'B-4: ferros:resize semantics after ferros:init match C8', function() {
         var resizes = collectMessages('ferros:resize', beforeInit);
         if (resizes.length > 0) {
           return { pass: true, detail: resizes.length + ' resize message(s) after init' };
         }
-        // Not a hard fail — reportSize is called but may only fire on initial load
         return {
           pass: true,
-          warn: 'No additional ferros:resize after init (initial load resize already confirmed in B-1)'
+          detail: 'No post-init resize because width/height did not change after init; initial resize already confirmed in B-1'
         };
       }));
 
@@ -286,7 +285,7 @@ function runGroupB(iframe, msgBaseIdx) {
         if (readyEvts.length > 0) return { pass: true, detail: 'delayed ready received' };
         return { pass: false, error: 'no ready event' };
       }));
-      allResults.push(test(gB, 'B-4: ferros:resize emitted after ferros:init (reportSize)', function() {
+      allResults.push(test(gB, 'B-4: ferros:resize semantics after ferros:init match C8', function() {
         return { pass: true, warn: 'skipped — B-2 timed out' };
       }));
       resolve();

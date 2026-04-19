@@ -18,6 +18,19 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+function Normalize-JsonText {
+  param([string]$text)
+
+  if ($text.Length -gt 0 -and $text[0] -eq [char]0xFEFF) {
+    $text = $text.Substring(1)
+  }
+
+  $normalized = $text -replace "`r`n", "`n"
+  $normalized = $normalized -replace "`r", "`n"
+  $normalized = $normalized.TrimEnd("`r", "`n")
+  return $normalized -replace "`n", "`r`n"
+}
+
 $coreJs       = Join-Path $RepoRoot "docs\assets\_core\ferros-core.js"
 $templatesJson = Join-Path $RepoRoot "docs\assets\_core\templates.json"
 $templateSchema = Join-Path $RepoRoot "schemas\template.schema.json"
@@ -111,19 +124,24 @@ if ($errorCount -gt 0) {
 Write-Host "  Validated $($templates.Count) templates against schema." -ForegroundColor Cyan
 
 # ── Generate compact JSON for embedding ───────────────────────────────────────
-$compact = ($templates | ConvertTo-Json -Compress -Depth 10)
+$templateJson = Normalize-JsonText $rawTemplates
 
 # ── Inject into ferros-core.js ────────────────────────────────────────────────
 $coreContent = Get-Content -Path $coreJs -Raw -Encoding UTF8
 
 $placeholder = 'FerrosCore.TEMPLATE_PROFILES = [];'
-$replacement = "FerrosCore.TEMPLATE_PROFILES = $compact;"
+$replacement = "FerrosCore.TEMPLATE_PROFILES = $templateJson;"
 
 if ($coreContent -notmatch [regex]::Escape($placeholder)) {
   # Check if already populated (idempotent re-run)
   if ($coreContent -match 'FerrosCore\.TEMPLATE_PROFILES = \[') {
     # Replace existing populated line
-    $coreContent = $coreContent -replace 'FerrosCore\.TEMPLATE_PROFILES = \[.*?\];', $replacement
+    $coreContent = [regex]::Replace(
+      $coreContent,
+      'FerrosCore\.TEMPLATE_PROFILES = \[.*?\];',
+      $replacement,
+      [System.Text.RegularExpressions.RegexOptions]::Singleline
+    )
   } else {
     Write-Error "Could not find TEMPLATE_PROFILES placeholder in ferros-core.js"
     exit 1
@@ -132,7 +150,7 @@ if ($coreContent -notmatch [regex]::Escape($placeholder)) {
   $coreContent = $coreContent.Replace($placeholder, $replacement)
 }
 
-$coreContent | Set-Content -Path $coreJs -Encoding UTF8 -NoNewline
+[System.IO.File]::WriteAllText($coreJs, $coreContent, [System.Text.UTF8Encoding]::new($false))
 
 Write-Host ""
 Write-Host "FERROS Core bundle updated successfully." -ForegroundColor Green

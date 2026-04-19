@@ -1,91 +1,77 @@
 # Wave 0 Closure Evidence
 Generated: 2026-04-17 (PR 7)
+Refreshed: 2026-04-18 (post-merge verification + generator hardening)
 
 This file is the permanent record that Wave 0 closure was verified. It documents the final
-deterministic regeneration results, gate harness expectations, contract coverage, artifact
-inventory, known gaps, and human verification instructions.
+deterministic regeneration results, verified gate harness outcomes, contract coverage,
+artifact inventory, known gaps, and human verification instructions.
 
 ---
 
 ## Section 1: Generator Freshness
 
-Both generators were run against current source files as part of this PR. The results are
-committed to the repository.
+Both generators were re-run twice against current source files during the post-merge refresh
+on 2026-04-18. Verification environment: Windows PowerShell 5.1.26100.8115 on Windows,
+writing UTF-8 without BOM. The second run produced identical hashes for both generated
+artifacts, confirming deterministic output at this revision.
 
 ### `tools/generate-harness-constants.ps1` → `harnesses/_constants.js`
 
-**Result: DIFF — changes committed and explained here.**
+**Result: PASS — zero drift on repeat regeneration.**
 
-The regeneration produced a 21-line diff versus the previously committed version. All
-differences are cosmetic serialization changes introduced by the PowerShell `ConvertTo-Json`
-cmdlet on the current runtime (pwsh 7.x) versus the version used in prior PRs:
-
-1. **Unicode escape normalization** (14 affected lines): apostrophes and ampersands that were
-   previously encoded as `\u0027` and `\u0026` are now emitted as literal `'` and `&`
-   characters. The JSON is semantically identical — both representations are valid per RFC 8259.
-
-2. **ISO-8601 datetime format** (14 affected lines): fixture timestamps that were previously
-   serialized with explicit milliseconds (e.g., `2026-04-10T14:00:00.000Z`) are now serialized
-   without the `.000` fractional seconds suffix (e.g., `2026-04-10T14:00:00Z`). Both are valid
-   ISO-8601 and pass JSON Schema `format: date-time` validation.
-
-No schema, fixture, or inventory data changed. The named arrays (`FERROS_SCHEMAS`,
-`FERROS_GOLDEN_FIXTURES`, `FERROS_NEGATIVE_FIXTURES`) and all embedded JSON are functionally
-identical. This diff proves the generator ran cleanly and the output reflects the current
-PowerShell serializer behavior.
+The generator now validates schema and fixture files with `ConvertFrom-Json` but embeds
+normalized source JSON text directly instead of reserializing via `ConvertTo-Json`. This
+eliminates shell-specific drift in Unicode escape normalization, single-item array handling,
+datetime formatting, and serializer-specific output quirks. The committed `harnesses/_constants.js`
+is now the canonical, source-faithful generated artifact for the Wave 0 schema/fixture corpus.
 
 ### `tools/generate-ferros-core.ps1` → `docs/assets/_core/ferros-core.js`
 
-**Result: DIFF — changes committed and explained here.**
+**Result: PASS — zero drift on repeat regeneration.**
 
-The regeneration produced a 2-line diff:
-
-1. **BOM removal** (line 1): the previously committed file had a UTF-8 BOM (`\xEF\xBB\xBF`) at
-   the start, which was stripped by the current generator's `Set-Content -Encoding UTF8
-   -NoNewline` call. UTF-8 without BOM is the standard encoding for JavaScript files.
-
-2. **Unicode escape normalization in TEMPLATE_PROFILES** (line with `TEMPLATE_PROFILES`):
-   same as `_constants.js` — `\u0026` and `\u0027` replaced with literal `&` and `'`
-   characters in the embedded template JSON. Semantically identical.
-
-No template data, logic, or API surface changed. The 12 template profiles are identical.
-The BOM removal is a net improvement for cross-platform compatibility.
+The generator now validates `templates.json`, embeds normalized source JSON text directly into
+`FerrosCore.TEMPLATE_PROFILES`, and writes `ferros-core.js` as UTF-8 without BOM. No template
+data or API surface changed; only the generation path changed so the committed bundle is now
+byte-stable across repeat runs.
 
 ---
 
-## Section 2: Gate Harness Expected Results
+## Section 2: Gate Harness Verified Results
 
-These are the expected results when each gate harness is opened in Chrome via `file://`.
-All gate harnesses must show **ALL PASS, zero FAIL** for Wave 0 exit.
+These results were re-verified on 2026-04-18 in Chrome via `file://` after the H3/runtime
+contract alignment and generator hardening pass. All gate harnesses showed **PASS**, zero
+FAIL, and zero undocumented WARN.
 
-| Harness | File | Contract | Expected |
-|---------|------|----------|----------|
-| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 | ALL PASS, zero FAIL |
-| H2 | `harnesses/round-trip-harness.html` | C9 | ALL PASS, zero FAIL |
-| H3 | `harnesses/runtime-harness.html` | C8 | ALL PASS, zero FAIL (D-5 nonce echo green after PR 5) |
-| H4 | `harnesses/negative-harness.html` | C10 | ALL PASS, zero FAIL |
+| Harness | File | Contract | Verified Result |
+|---------|------|----------|-----------------|
+| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 | PASS — 28/28 |
+| H2 | `harnesses/round-trip-harness.html` | C9 | PASS — 21/21 |
+| H3 | `harnesses/runtime-harness.html` | C8 | PASS — 18/18 |
+| H4 | `harnesses/negative-harness.html` | C10 | PASS — 20/20 |
 
 **H1 — `ferros-contract-validator.html` (C1–C7)**
 Validates all 7 schemas against their fixtures using embedded JSON Schema validation.
-Expected: all groups A–G pass. Zero failures. C7 (audit record) validates the schema
-structure without a dedicated fixture — pass by structural check.
+Verified: all 28 checks passed. C7 (audit record) is covered structurally in H1 and through
+audit-log fixtures for alias/recovery flows.
 
 **H2 — `round-trip-harness.html` (C9)**
 Tests the full export → clear → import → assert round-trip via `FerrosCore.serializeExport()`
 and `FerrosCore.validateImport()`. Group D tests real persistence via iframe + `saveProfile()`.
-Expected: groups A–D all pass.
+Verified: all 21 checks passed, including Group D true round-trip.
 
 **H3 — `runtime-harness.html` (C8)**
 Tests the `ferros:init` / `ferros:event` / `ferros:error` lifecycle contract against
 `docs/assets/cards/trading-card.html`. D-5 nonce echo was fixed in PR 5 (trading-card.html
 now stores the nonce from `ferros:init` and echoes it in all outbound messages).
-Expected: groups A–D all pass including D-5.
+Verified: all 18 checks passed, including D-5 nonce echo. B-4 now follows the clarified C8
+resize rule: the asset must emit an initial resize after init, and further resize events are
+required only when rendered dimensions actually change.
 
 **H4 — `negative-harness.html` (C10)**
 Tests that `canMutateDurableState()` correctly denies writes in non-full-profile modes and
 `validateProfileShape()` correctly rejects malformed inputs. Group E added in PR 4 with 5 deny
 probe tests.
-Expected: groups A–E all pass.
+Verified: all 20 checks passed.
 
 ---
 
@@ -293,7 +279,7 @@ Steps for a human to independently verify Wave 0 closure at this commit:
 
 ### Prerequisites
 - Chrome (or Chromium) installed
-- PowerShell 7+ (`pwsh`) installed
+- Windows PowerShell 5.1+ or PowerShell 7+ installed
 - Git and a local clone of the repository at this commit
 
 ### Step 1: Clone the repository
@@ -307,7 +293,7 @@ git checkout <this-commit-sha>
 ### Step 2: Regenerate `_constants.js` and verify zero diff
 
 ```powershell
-pwsh -ExecutionPolicy Bypass -File tools/generate-harness-constants.ps1
+powershell -ExecutionPolicy Bypass -File tools/generate-harness-constants.ps1
 git diff harnesses/_constants.js
 ```
 
@@ -317,7 +303,7 @@ commit).
 ### Step 3: Regenerate `ferros-core.js` and verify zero diff
 
 ```powershell
-pwsh -ExecutionPolicy Bypass -File tools/generate-ferros-core.ps1
+powershell -ExecutionPolicy Bypass -File tools/generate-ferros-core.ps1
 git diff docs/assets/_core/ferros-core.js
 ```
 
@@ -339,7 +325,7 @@ file:///path/to/ferros/harnesses/negative-harness.html             (H4)
 For each harness, click **Run Tests** (or equivalent trigger) and verify:
 - All test groups show **PASS**
 - Zero **FAIL** results
-- The result summary shows the expected pass count
+- The result summary shows the expected verified count: H1 `28`, H2 `21`, H3 `18`, H4 `20`
 
 ### Step 5: Open preflight check
 

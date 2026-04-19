@@ -345,7 +345,248 @@
   // ── TEMPLATE_PROFILES ──────────────────────────────────────────────────────
   // Populated by generate-ferros-core.ps1 from templates.json.
   // Inline fallback preserved for standalone loading.
-  FerrosCore.TEMPLATE_PROFILES = [{"id":"tesla","name":"Nikola Tesla","icon":"⚡","aliasClass":"Engineer","tagline":"Worked obsessively. Slept rarely. Changed everything.","stream":"A","archetype":"deep-work-nocturnal","templateSchedule":{"blocks":[{"time":"10:00","label":"Rise & Coffee"},{"time":"11:00","label":"Laboratory Work"},{"time":"14:00","label":"Correspondence"},{"time":"18:00","label":"Dinner (often skipped)"},{"time":"20:00","label":"Deep Experiment Block"},{"time":"02:00","label":"Rest (minimal)"}]}},{"id":"kahlo","name":"Frida Kahlo","icon":"🎨","aliasClass":"Artisan","tagline":"Pain became pigment. Every canvas, a self-portrait.","stream":"B","archetype":"pain-driven-creative","templateSchedule":{"blocks":[{"time":"08:00","label":"Morning Pain Management"},{"time":"10:00","label":"Studio Setup"},{"time":"11:00","label":"Painting Session"},{"time":"15:00","label":"Rest & Recovery"},{"time":"17:00","label":"Writing & Reflection"},{"time":"20:00","label":"Social / Diego"}]}},{"id":"curie","name":"Marie Curie","icon":"☢️","aliasClass":"Scholar","tagline":"Two Nobel Prizes. Zero shortcuts.","stream":"A","archetype":"structured-research","templateSchedule":{"blocks":[{"time":"06:00","label":"Rise & Breakfast"},{"time":"07:00","label":"Laboratory"},{"time":"12:00","label":"Lunch & Brief Rest"},{"time":"13:00","label":"Continued Research"},{"time":"17:00","label":"Reading & Papers"},{"time":"20:00","label":"Evening Study"},{"time":"22:00","label":"Sleep"}]}},{"id":"aurelius","name":"Marcus Aurelius","icon":"🏛️","aliasClass":"Guardian","tagline":"Rule an empire. Master yourself first.","stream":"A","archetype":"stoic-morning-ruler","templateSchedule":{"blocks":[{"time":"04:00","label":"Rise"},{"time":"04:30","label":"Journaling & Meditations"},{"time":"06:00","label":"Physical Training"},{"time":"08:00","label":"Council & Governance"},{"time":"12:00","label":"Lunch & Walk"},{"time":"14:00","label":"Correspondence & Edicts"},{"time":"17:00","label":"Philosophy Study"},{"time":"20:00","label":"Family & Rest"}]}},{"id":"fry","name":"Philip J. Fry","icon":"📺","aliasClass":"Guided","tagline":"Slept 1000 years. Still figuring it out.","stream":"B","archetype":"flexible-chaotic","templateSchedule":{"blocks":[{"time":"11:00","label":"Wake Up (usually)"},{"time":"12:00","label":"Food (whatever's available)"},{"time":"14:00","label":"Something happens"},{"time":"17:00","label":"Hang out with Bender"},{"time":"20:00","label":"Pizza & TV"},{"time":"23:00","label":"Eventually sleep"}]}},{"id":"nightingale","name":"Florence Nightingale","icon":"🕯️","aliasClass":"Healer","tagline":"Data-driven compassion before it had a name.","stream":"C","archetype":"systems-care-rotational","templateSchedule":{"blocks":[{"time":"05:00","label":"Rise & Ward Review"},{"time":"06:00","label":"Patient Rounds"},{"time":"10:00","label":"Statistical Analysis"},{"time":"13:00","label":"Lunch & Admin"},{"time":"14:00","label":"Staff Coordination"},{"time":"17:00","label":"Evening Rounds"},{"time":"20:00","label":"Report Writing"},{"time":"22:00","label":"Rest"}]}},{"id":"lovelace","name":"Ada Lovelace","icon":"🔢","aliasClass":"Architect","tagline":"Wrote the first algorithm. The machine wasn't built yet.","stream":"A","archetype":"analytical-visionary","templateSchedule":{"blocks":[{"time":"09:00","label":"Rise (health permitting)"},{"time":"10:00","label":"Mathematical Correspondence"},{"time":"12:00","label":"Algorithm Development"},{"time":"15:00","label":"Tea & Social"},{"time":"16:00","label":"Writing & Notes"},{"time":"19:00","label":"Evening Calculations"},{"time":"22:00","label":"Rest"}]}},{"id":"malone","name":"Sam Malone","icon":"🍺","aliasClass":"Community","tagline":"Everyone knows your name. That's the whole point.","stream":"B","archetype":"service-flexible-shift","templateSchedule":{"blocks":[{"time":"10:00","label":"Open Cheers"},{"time":"12:00","label":"Lunch Rush"},{"time":"15:00","label":"Quiet Afternoon Prep"},{"time":"17:00","label":"Happy Hour Begins"},{"time":"21:00","label":"Evening Service"},{"time":"00:00","label":"Close & Clean"},{"time":"02:00","label":"Sleep"}]}},{"id":"turing","name":"Alan Turing","icon":"🖥️","aliasClass":"Engineer","tagline":"Broke codes. Built machines. Ran marathons.","stream":"A","archetype":"structured-research","templateSchedule":{"blocks":[{"time":"08:00","label":"Morning Run (5–10 miles)"},{"time":"09:30","label":"Codebreaking / Logic Work"},{"time":"12:00","label":"Lunch"},{"time":"13:00","label":"Chess & Puzzles"},{"time":"14:00","label":"Machine Design / Theory"},{"time":"18:00","label":"Lecture / Paper Writing"},{"time":"22:00","label":"Sleep"}]}},{"id":"darwin","name":"Charles Darwin","icon":"🦕","aliasClass":"Scholar","tagline":"Observed everything. Concluded slowly. Changed everything.","stream":"C","archetype":"structured-research","templateSchedule":{"blocks":[{"time":"07:00","label":"Early Walk"},{"time":"08:00","label":"Breakfast & Post"},{"time":"09:30","label":"Science Work (prime hours)"},{"time":"12:00","label":"Rest & Lunch"},{"time":"15:00","label":"Letters & Reading"},{"time":"16:00","label":"Walk (thinking time)"},{"time":"18:00","label":"Family Time"},{"time":"22:00","label":"Sleep"}]}},{"id":"woolf","name":"Virginia Woolf","icon":"📖","aliasClass":"Artisan","tagline":"Three hours of writing per day. The rest was living.","stream":"B","archetype":"pain-driven-creative","templateSchedule":{"blocks":[{"time":"09:30","label":"Writing (3 hrs, no interruptions)"},{"time":"12:30","label":"Lunch & Walk"},{"time":"14:00","label":"Rest / Reading"},{"time":"16:00","label":"Letters & Social"},{"time":"18:00","label":"Tea & Conversation"},{"time":"22:00","label":"Sleep"}]}},{"id":"jobs","name":"Steve Jobs","icon":"🍏","aliasClass":"Architect","tagline":"Design first. Ship second. Repeat.","stream":"B","archetype":"stoic-morning-ruler","templateSchedule":{"blocks":[{"time":"06:00","label":"Wake & Reflect"},{"time":"07:00","label":"Family Breakfast"},{"time":"09:00","label":"Design Review"},{"time":"12:00","label":"Walk Meeting"},{"time":"14:00","label":"Product Decisions"},{"time":"17:00","label":"Email & Calls"},{"time":"19:00","label":"Family Dinner"},{"time":"22:00","label":"Sleep"}]}}];
+  FerrosCore.TEMPLATE_PROFILES = [
+  {
+    "id": "tesla",
+    "name": "Nikola Tesla",
+    "icon": "⚡",
+    "aliasClass": "Engineer",
+    "tagline": "Worked obsessively. Slept rarely. Changed everything.",
+    "stream": "A",
+    "archetype": "deep-work-nocturnal",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "10:00", "label": "Rise & Coffee" },
+        { "time": "11:00", "label": "Laboratory Work" },
+        { "time": "14:00", "label": "Correspondence" },
+        { "time": "18:00", "label": "Dinner (often skipped)" },
+        { "time": "20:00", "label": "Deep Experiment Block" },
+        { "time": "02:00", "label": "Rest (minimal)" }
+      ]
+    }
+  },
+  {
+    "id": "kahlo",
+    "name": "Frida Kahlo",
+    "icon": "🎨",
+    "aliasClass": "Artisan",
+    "tagline": "Pain became pigment. Every canvas, a self-portrait.",
+    "stream": "B",
+    "archetype": "pain-driven-creative",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "08:00", "label": "Morning Pain Management" },
+        { "time": "10:00", "label": "Studio Setup" },
+        { "time": "11:00", "label": "Painting Session" },
+        { "time": "15:00", "label": "Rest & Recovery" },
+        { "time": "17:00", "label": "Writing & Reflection" },
+        { "time": "20:00", "label": "Social / Diego" }
+      ]
+    }
+  },
+  {
+    "id": "curie",
+    "name": "Marie Curie",
+    "icon": "☢️",
+    "aliasClass": "Scholar",
+    "tagline": "Two Nobel Prizes. Zero shortcuts.",
+    "stream": "A",
+    "archetype": "structured-research",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "06:00", "label": "Rise & Breakfast" },
+        { "time": "07:00", "label": "Laboratory" },
+        { "time": "12:00", "label": "Lunch & Brief Rest" },
+        { "time": "13:00", "label": "Continued Research" },
+        { "time": "17:00", "label": "Reading & Papers" },
+        { "time": "20:00", "label": "Evening Study" },
+        { "time": "22:00", "label": "Sleep" }
+      ]
+    }
+  },
+  {
+    "id": "aurelius",
+    "name": "Marcus Aurelius",
+    "icon": "🏛️",
+    "aliasClass": "Guardian",
+    "tagline": "Rule an empire. Master yourself first.",
+    "stream": "A",
+    "archetype": "stoic-morning-ruler",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "04:00", "label": "Rise" },
+        { "time": "04:30", "label": "Journaling & Meditations" },
+        { "time": "06:00", "label": "Physical Training" },
+        { "time": "08:00", "label": "Council & Governance" },
+        { "time": "12:00", "label": "Lunch & Walk" },
+        { "time": "14:00", "label": "Correspondence & Edicts" },
+        { "time": "17:00", "label": "Philosophy Study" },
+        { "time": "20:00", "label": "Family & Rest" }
+      ]
+    }
+  },
+  {
+    "id": "fry",
+    "name": "Philip J. Fry",
+    "icon": "📺",
+    "aliasClass": "Guided",
+    "tagline": "Slept 1000 years. Still figuring it out.",
+    "stream": "B",
+    "archetype": "flexible-chaotic",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "11:00", "label": "Wake Up (usually)" },
+        { "time": "12:00", "label": "Food (whatever's available)" },
+        { "time": "14:00", "label": "Something happens" },
+        { "time": "17:00", "label": "Hang out with Bender" },
+        { "time": "20:00", "label": "Pizza & TV" },
+        { "time": "23:00", "label": "Eventually sleep" }
+      ]
+    }
+  },
+  {
+    "id": "nightingale",
+    "name": "Florence Nightingale",
+    "icon": "🕯️",
+    "aliasClass": "Healer",
+    "tagline": "Data-driven compassion before it had a name.",
+    "stream": "C",
+    "archetype": "systems-care-rotational",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "05:00", "label": "Rise & Ward Review" },
+        { "time": "06:00", "label": "Patient Rounds" },
+        { "time": "10:00", "label": "Statistical Analysis" },
+        { "time": "13:00", "label": "Lunch & Admin" },
+        { "time": "14:00", "label": "Staff Coordination" },
+        { "time": "17:00", "label": "Evening Rounds" },
+        { "time": "20:00", "label": "Report Writing" },
+        { "time": "22:00", "label": "Rest" }
+      ]
+    }
+  },
+  {
+    "id": "lovelace",
+    "name": "Ada Lovelace",
+    "icon": "🔢",
+    "aliasClass": "Architect",
+    "tagline": "Wrote the first algorithm. The machine wasn't built yet.",
+    "stream": "A",
+    "archetype": "analytical-visionary",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "09:00", "label": "Rise (health permitting)" },
+        { "time": "10:00", "label": "Mathematical Correspondence" },
+        { "time": "12:00", "label": "Algorithm Development" },
+        { "time": "15:00", "label": "Tea & Social" },
+        { "time": "16:00", "label": "Writing & Notes" },
+        { "time": "19:00", "label": "Evening Calculations" },
+        { "time": "22:00", "label": "Rest" }
+      ]
+    }
+  },
+  {
+    "id": "malone",
+    "name": "Sam Malone",
+    "icon": "🍺",
+    "aliasClass": "Community",
+    "tagline": "Everyone knows your name. That's the whole point.",
+    "stream": "B",
+    "archetype": "service-flexible-shift",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "10:00", "label": "Open Cheers" },
+        { "time": "12:00", "label": "Lunch Rush" },
+        { "time": "15:00", "label": "Quiet Afternoon Prep" },
+        { "time": "17:00", "label": "Happy Hour Begins" },
+        { "time": "21:00", "label": "Evening Service" },
+        { "time": "00:00", "label": "Close & Clean" },
+        { "time": "02:00", "label": "Sleep" }
+      ]
+    }
+  },
+  {
+    "id": "turing",
+    "name": "Alan Turing",
+    "icon": "🖥️",
+    "aliasClass": "Engineer",
+    "tagline": "Broke codes. Built machines. Ran marathons.",
+    "stream": "A",
+    "archetype": "structured-research",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "08:00", "label": "Morning Run (5–10 miles)" },
+        { "time": "09:30", "label": "Codebreaking / Logic Work" },
+        { "time": "12:00", "label": "Lunch" },
+        { "time": "13:00", "label": "Chess & Puzzles" },
+        { "time": "14:00", "label": "Machine Design / Theory" },
+        { "time": "18:00", "label": "Lecture / Paper Writing" },
+        { "time": "22:00", "label": "Sleep" }
+      ]
+    }
+  },
+  {
+    "id": "darwin",
+    "name": "Charles Darwin",
+    "icon": "🦕",
+    "aliasClass": "Scholar",
+    "tagline": "Observed everything. Concluded slowly. Changed everything.",
+    "stream": "C",
+    "archetype": "structured-research",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "07:00", "label": "Early Walk" },
+        { "time": "08:00", "label": "Breakfast & Post" },
+        { "time": "09:30", "label": "Science Work (prime hours)" },
+        { "time": "12:00", "label": "Rest & Lunch" },
+        { "time": "15:00", "label": "Letters & Reading" },
+        { "time": "16:00", "label": "Walk (thinking time)" },
+        { "time": "18:00", "label": "Family Time" },
+        { "time": "22:00", "label": "Sleep" }
+      ]
+    }
+  },
+  {
+    "id": "woolf",
+    "name": "Virginia Woolf",
+    "icon": "📖",
+    "aliasClass": "Artisan",
+    "tagline": "Three hours of writing per day. The rest was living.",
+    "stream": "B",
+    "archetype": "pain-driven-creative",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "09:30", "label": "Writing (3 hrs, no interruptions)" },
+        { "time": "12:30", "label": "Lunch & Walk" },
+        { "time": "14:00", "label": "Rest / Reading" },
+        { "time": "16:00", "label": "Letters & Social" },
+        { "time": "18:00", "label": "Tea & Conversation" },
+        { "time": "22:00", "label": "Sleep" }
+      ]
+    }
+  },
+  {
+    "id": "jobs",
+    "name": "Steve Jobs",
+    "icon": "🍏",
+    "aliasClass": "Architect",
+    "tagline": "Design first. Ship second. Repeat.",
+    "stream": "B",
+    "archetype": "stoic-morning-ruler",
+    "templateSchedule": {
+      "blocks": [
+        { "time": "06:00", "label": "Wake & Reflect" },
+        { "time": "07:00", "label": "Family Breakfast" },
+        { "time": "09:00", "label": "Design Review" },
+        { "time": "12:00", "label": "Walk Meeting" },
+        { "time": "14:00", "label": "Product Decisions" },
+        { "time": "17:00", "label": "Email & Calls" },
+        { "time": "19:00", "label": "Family Dinner" },
+        { "time": "22:00", "label": "Sleep" }
+      ]
+    }
+  }
+];
 
   // ── Expose ─────────────────────────────────────────────────────────────────
   root.FerrosCore = FerrosCore;

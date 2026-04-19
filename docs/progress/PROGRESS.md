@@ -21,7 +21,7 @@ This index tracks Phase 0 progress using **binary capability gates** — not per
 | PR 6 — Docs/ADR reconciliation | #46 | ✅ 2026-04-17 | Contract docs, ferros-core-api.md, ADR addenda, PHASE-0-DEFINITION.md, PROGRESS.md |
 | PR 7 — Final closure verification | #47 | ✅ 2026-04-17 | Regenerate → diff, `CLOSURE-EVIDENCE.md`, Wave 0 CLOSED |
 
-**Wave 0 status: CLOSED** — See [CLOSURE-EVIDENCE.md](../../CLOSURE-EVIDENCE.md) for the full closure record.
+**Wave 0 status: CLOSED** — Re-verified on 2026-04-18 after H3/runtime contract alignment and deterministic generator hardening. See [CLOSURE-EVIDENCE.md](../../CLOSURE-EVIDENCE.md) for the full closure record.
 
 ---
 
@@ -29,12 +29,14 @@ This index tracks Phase 0 progress using **binary capability gates** — not per
 
 > Run each harness by opening it in Chrome via `file://`. All harnesses load `ferros-core.js` via `<script src="../docs/assets/_core/ferros-core.js">`.
 
-| Harness | File | Contracts | Gate? | Expected status |
+Fresh gate verification on 2026-04-18 in Chrome via `file://`: H1 `28/28`, H2 `21/21`, H3 `18/18`, H4 `20/20`.
+
+| Harness | File | Contracts | Gate? | Verified status |
 |---------|------|-----------|-------|-----------------|
-| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 | ✅ Gate | All groups green |
-| H2 | `harnesses/round-trip-harness.html` | C9 | ✅ Gate | All groups green (including Group D round-trip) |
-| H3 | `harnesses/runtime-harness.html` | C8 | ✅ Gate | All groups green including D-5 nonce echo (fixed in PR 5) |
-| H4 | `harnesses/negative-harness.html` | C10 | ✅ Gate | All groups green including Group E deny probes |
+| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 | ✅ Gate | PASS — 28/28 |
+| H2 | `harnesses/round-trip-harness.html` | C9 | ✅ Gate | PASS — 21/21 |
+| H3 | `harnesses/runtime-harness.html` | C8 | ✅ Gate | PASS — 18/18 (nonce echo green; resize semantics aligned to C8) |
+| H4 | `harnesses/negative-harness.html` | C10 | ✅ Gate | PASS — 20/20 |
 | H5 | `harnesses/acceptance-harness.html` | V1/V8 | Supporting | 🔧 Built — open in Chrome to confirm |
 | H6 | `harnesses/write-path-harness.html` | C9 write | Supporting | 🔧 Built — open in Chrome to confirm |
 | H7 | `harnesses/semantic-fixture-linter.html` | C2/C4/C5/C6 | Supporting | 🔧 Built — open in Chrome to confirm |

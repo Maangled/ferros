@@ -120,6 +120,11 @@ Emitted when the asset's rendered dimensions change.
 }
 ```
 
+**Semantics:** Assets MUST emit at least one `ferros:resize` during initial load after
+`ferros:init` is applied. After that, assets emit `ferros:resize` only when their rendered
+dimensions actually change. A control, pose, or state update that leaves width and height
+unchanged does not require an additional resize message.
+
 ---
 
 ## 2. Asset Requirements
@@ -183,6 +188,7 @@ Host                             Asset
 - `ferros:init` is sent ONCE per asset load
 - If the asset is already loaded and receives a second `ferros:init`, it MUST re-initialize cleanly (no zombie state)
 - The asset MUST emit `ferros:event { event: "ready" }` after init completes
+- The asset MUST emit an initial `ferros:resize` after init completes; subsequent resize messages are size-change driven
 
 ### 4.2 Error Semantics
 
