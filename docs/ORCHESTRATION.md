@@ -87,7 +87,7 @@ Every execution PR description **must** include the following traceability block
 
 | Field | What to write |
 |-------|---------------|
-| `Plan:` | The exact relative path to the stream plan file and section heading that authorises this work |
+| `Plan:` | The exact relative path to the stream plan file and section heading that authorizes this work |
 | `Plan PR:` | The PR number in which that plan was approved by @Maangled |
 | `Exit criteria closed:` | One or more exit-criteria IDs as defined in `docs/streams/STREAMS-OVERVIEW.md` (e.g., `V1`, `V2`, `S1`) |
 | `Stream A contract dependency:` | The filename and full commit SHA of the Stream A schema or contract this PR depends on, or the literal string `none` if there is no dependency |
