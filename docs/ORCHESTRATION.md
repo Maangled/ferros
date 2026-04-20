@@ -120,7 +120,7 @@ After **each** stream's plan PR has been individually reviewed and approved, a s
 
 **Wave 1 Reconciliation Gate: OPEN** — Initiated 2026-04-20.
 
-- **Tracking issue:** [#53](https://github.com/Maangled/ferros/issues/53)
+- **Tracking issue:** [Reconciliation Gate — Wave 1 #53](https://github.com/Maangled/ferros/issues/53)
 - **Gate document:** [`docs/progress/reconciliation-gate-wave1.md`](./progress/reconciliation-gate-wave1.md)
 - **Total reconciliation items:** 20 (6 for A↔B, 5 for A↔C, 5 for B,C↔D, 4 for E↔A–D)
 - **Items verified:** 0 / 20

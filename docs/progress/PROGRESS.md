@@ -27,7 +27,7 @@ This index tracks Phase 0 progress using **binary capability gates** — not per
 
 ## Reconciliation Gate — Wave 1
 
-> **Status: OPEN** — Initiated 2026-04-20. Tracking issue: [#53](https://github.com/Maangled/ferros/issues/53).
+> **Status: OPEN** — Initiated 2026-04-20. Tracking issue: [Reconciliation Gate — Wave 1 #53](https://github.com/Maangled/ferros/issues/53).
 
 Per `docs/ORCHESTRATION.md` §4, a cross-stream reconciliation review must complete before any Wave 1 execution PR merges. The gate document with all 20 reconciliation items is at:
 
