@@ -116,6 +116,17 @@ After **each** stream's plan PR has been individually reviewed and approved, a s
 
 > A PR that merges before the `reconciliation-gate` issue is closed violates this policy and must be reverted.
 
+### Current reconciliation gate status
+
+**Wave 1 Reconciliation Gate: OPEN** — Initiated 2026-04-20.
+
+- **Tracking issue:** [#53](https://github.com/Maangled/ferros/issues/53)
+- **Gate document:** [`docs/progress/reconciliation-gate-wave1.md`](./progress/reconciliation-gate-wave1.md)
+- **Total reconciliation items:** 20 (6 for A↔B, 5 for A↔C, 5 for B,C↔D, 4 for E↔A–D)
+- **Items verified:** 0 / 20
+
+The gate document contains the specific checkboxes for each cross-stream check, with concrete references to schemas, contracts, and stream plan assumptions. All items must be verified before any Wave 1 execution PR merges.
+
 ---
 
 ## §5 Anti-Drift Controls

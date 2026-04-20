@@ -25,6 +25,25 @@ This index tracks Phase 0 progress using **binary capability gates** — not per
 
 ---
 
+## Reconciliation Gate — Wave 1
+
+> **Status: OPEN** — Initiated 2026-04-20. Tracking issue: [#53](https://github.com/Maangled/ferros/issues/53).
+
+Per `docs/ORCHESTRATION.md` §4, a cross-stream reconciliation review must complete before any Wave 1 execution PR merges. The gate document with all 20 reconciliation items is at:
+
+📋 **[`reconciliation-gate-wave1.md`](./reconciliation-gate-wave1.md)**
+
+| Check | Parties | Items | Status |
+|-------|---------|-------|--------|
+| B vs A schemas | A ↔ B | 6 | ⬜ Pending |
+| C vs A schemas | A ↔ C | 5 | ⬜ Pending |
+| D vs B+C artifacts | B, C ↔ D | 5 | ⬜ Pending |
+| E vs A–D assumptions | E ↔ A–D | 4 | ⬜ Pending |
+
+**Blocking rule:** No Wave 1 execution PR merges until this gate is closed.
+
+---
+
 ## Wave 0 Harness Status
 
 > Run each harness by opening it in Chrome via `file://`. All harnesses load `ferros-core.js` via `<script src="../docs/assets/_core/ferros-core.js">`.
