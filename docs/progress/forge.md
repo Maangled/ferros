@@ -34,6 +34,7 @@ This spec tracks The Forge as the FERROS authoring system represented today by `
 - `docs/adr/ADR-008-modular-rendering-system.md` — rendering and runtime composition contract for shared assets.
 - `docs/adr/ADR-009-four-corner-docking-layout.md` — layout semantics used by the workbench.
 - `docs/adr/ADR-010-cards-and-decks-nomenclature.md` — universal Card/Deck/Bag vocabulary.
+- `docs/adr/ADR-015-universal-parametric-authoring-workbench.md` — formalizes Forge as the base pattern for all domain-specific workbenches (architecture, materials, etc.) and establishes the HTML/CSS illusion strategy, durable contract boundary, and future Rust geometry layer expectations.
 - `docs/contracts/runtime-host-v1.md` — host-message seam the workbench uses for card preview sync.
 - `docs/progress/arena-runtime.md` — target runtime surface that Forge should eventually export into.
 
