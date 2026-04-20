@@ -27,7 +27,7 @@ This index tracks Phase 0 progress using **binary capability gates** — not per
 
 ## Reconciliation Gate — Wave 1
 
-> **Status: OPEN** — Initiated 2026-04-20. Tracking issue: [Reconciliation Gate — Wave 1 #53](https://github.com/Maangled/ferros/issues/53).
+> **Status: CLOSED** — Reviewer sign-off recorded 2026-04-19. Tracking issue: [Reconciliation Gate — Wave 1 #53](https://github.com/Maangled/ferros/issues/53).
 
 Per `docs/ORCHESTRATION.md` §4, a cross-stream reconciliation review must complete before any Wave 1 execution PR merges. The gate document with all 20 reconciliation items is at:
 
@@ -35,12 +35,14 @@ Per `docs/ORCHESTRATION.md` §4, a cross-stream reconciliation review must compl
 
 | Check | Parties | Items | Status |
 |-------|---------|-------|--------|
-| B vs A schemas | A ↔ B | 6 | ⬜ Pending |
-| C vs A schemas | A ↔ C | 5 | ⬜ Pending |
-| D vs B+C artifacts | B, C ↔ D | 5 | ⬜ Pending |
-| E vs A–D assumptions | E ↔ A–D | 4 | ⬜ Pending |
+| B vs A schemas | A ↔ B | 6 | ✅ Closed |
+| C vs A schemas | A ↔ C | 5 | ✅ Closed |
+| D vs B+C artifacts | B, C ↔ D | 5 | ✅ Closed |
+| E vs A–D assumptions | E ↔ A–D | 4 | ✅ Closed |
 
-**Blocking rule:** No Wave 1 execution PR merges until this gate is closed.
+**Result:** Reconciliation review is complete and no longer blocks Wave 1 execution PR merges.
+
+**Non-blocking hardening note:** The published consumer helpers `FerrosCore.loadProfile()`, `FerrosCore.pushAuditEntry()`, and `FerrosCore.saveProfile()` still merit a dedicated harness later, but that is no longer a reconciliation blocker.
 
 ---
 

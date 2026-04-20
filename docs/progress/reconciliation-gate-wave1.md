@@ -1,6 +1,6 @@
 # Reconciliation Gate — Wave 1
 
-> **Status:** OPEN — initiated 2026-04-20
+> **Status:** CLOSED — reviewer closure recorded 2026-04-19
 > **Tracking issue:** [Reconciliation Gate — Wave 1 #53](https://github.com/Maangled/ferros/issues/53)
 > **Authority:** `docs/ORCHESTRATION.md` §4
 > **Approver:** @Maangled
@@ -9,9 +9,11 @@
 
 ## Purpose
 
-This document is the formal Reconciliation Gate for Wave 1, as specified in `docs/ORCHESTRATION.md` §4. Before any Wave 1 execution PR merges, every cross-stream check below must be reviewed and resolved.
+This document is the formal Reconciliation Gate for Wave 1, as specified in `docs/ORCHESTRATION.md` §4. Before any Wave 1 execution PR merges, every cross-stream check below had to be reviewed and resolved.
 
 > A PR that merges before this reconciliation gate is closed violates ORCHESTRATION.md §4 and must be reverted.
+
+**Reviewer closure note (2026-04-19):** @Maangled signed off B-A.1 through B-A.6, C-A.1 through C-A.5, D-BC.1, D-BC.2, D-BC.3, D-BC.5, and E-AD.1 through E-AD.4 at repo-inspection level. D-BC.4 is resolved green under the deferred-dependency interpretation: Stream D may reference profile-linked inventory/progression concepts only as optional/deferred upstream artifacts, and Wave 2 implementations must tolerate `bag`, `schedule`, and related downstream fields being present but not yet populated.
 
 ---
 
@@ -46,23 +48,23 @@ Stream B surfaces (Personal Profile, Schedule Ledger, Agent Command Center) depe
 
 **Specific reconciliation items:**
 
-- [ ] **B-A.1** — Profile schema v1.0.0 `additionalProperties: false` constraint: Confirm B's Wave 1 plan does not require adding new top-level fields to the profile object beyond those already in `profile.schema.json` (`auditTrail`, `schedule`, `completions`, `creditLog`, `bag` are present as V2 migration fields).
-- [ ] **B-A.2** — Schedule event schema: Confirm B's plan for S1 (Schedule Ledger reads profile/template data) is compatible with the `schedule-event.schema.json` structure (`id`, `kind`, `label`, `time`, optional `date` / `durationMin` / `stream` / `attribute`, and `source`).
-- [ ] **B-A.3** — Audit record schema: Confirm B's plan distinguishes between the portable C7 `.ferros-log` envelope (`logType`, `agent`, `entries`) and the in-profile audit trail ring buffer in `profile.schema.json`. B may not silently widen either contract.
-- [ ] **B-A.4** — `FerrosCore` API surface: Confirm B's Wave 1 execution relies only on the published `FerrosCore` API methods in `docs/contracts/ferros-core-api.md`, including the shared `loadProfile()` / `saveProfile()` / `pushAuditEntry()` helpers. No surface may call internal functions or bypass the API.
-- [ ] **B-A.5** — Session mode mutual exclusivity: Confirm B's session mode handling (V3a, V3b) respects the `oneOf` constraint in `identity.schema.json` — exactly one mode active at any time.
-- [ ] **B-A.6** — Storage rules: Confirm B's Ledger and Agent Center surfaces do not create custom localStorage keys. Durable state must flow through `FerrosCore.saveProfile()` into the shared profile object (`schedule`, `completions`, audit trail) only.
+- [x] **B-A.1** — Profile schema v1.0.0 `additionalProperties: false` constraint: Confirm B's Wave 1 plan does not require adding new top-level fields to the profile object beyond those already in `profile.schema.json` (`auditTrail`, `schedule`, `completions`, `creditLog`, `bag` are present as V2 migration fields).
+- [x] **B-A.2** — Schedule event schema: Confirm B's plan for S1 (Schedule Ledger reads profile/template data) is compatible with the `schedule-event.schema.json` structure (`id`, `kind`, `label`, `time`, optional `date` / `durationMin` / `stream` / `attribute`, and `source`).
+- [x] **B-A.3** — Audit record schema: Confirm B's plan distinguishes between the portable C7 `.ferros-log` envelope (`logType`, `agent`, `entries`) and the in-profile audit trail ring buffer in `profile.schema.json`. B may not silently widen either contract.
+- [x] **B-A.4** — `FerrosCore` API surface: Confirm B's Wave 1 execution relies only on the published `FerrosCore` API methods in `docs/contracts/ferros-core-api.md`, including the shared `loadProfile()` / `saveProfile()` / `pushAuditEntry()` helpers. No surface may call internal functions or bypass the API.
+- [x] **B-A.5** — Session mode mutual exclusivity: Confirm B's session mode handling (V3a, V3b) respects the `oneOf` constraint in `identity.schema.json` — exactly one mode active at any time.
+- [x] **B-A.6** — Storage rules: Confirm B's Ledger and Agent Center surfaces do not create custom localStorage keys. Durable state must flow through `FerrosCore.saveProfile()` into the shared profile object (`schedule`, `completions`, audit trail) only.
 
-**Mechanical triage snapshot (2026-04-19, repo inspection only):**
+**Reviewer closure snapshot (2026-04-19):**
 
 | Item | Provisional state | Repo-backed note |
 |------|-------------------|------------------|
-| B-A.1 | Likely green | `schemas/profile.schema.json` is `additionalProperties: false` and already includes `auditTrail`, `schedule`, `completions`, `creditLog`, and `bag`. |
-| B-A.2 | Likely green | Stream B documentation has been normalized to the current `schedule-event.schema.json` shape. Remaining work is implementation in the Ledger surface, not contract-language mismatch. |
-| B-A.3 | Likely green | Stream B documentation now distinguishes the portable C7 audit-record envelope from the in-profile audit trail UX. Remaining work is implementation, not schema vocabulary mismatch. |
-| B-A.4 | Likely green | `ferros-core.js` now publishes `loadProfile()`, `saveProfile()`, and `pushAuditEntry()`, and the Stream B surfaces no longer rely on unpublished storage helpers. |
-| B-A.5 | Likely green | `schemas/identity.schema.json` keeps the `oneOf` exclusivity rule, and H1/H4/H5 all provide compatible evidence that only one mode should be active at a time. |
-| B-A.6 | Likely green | `docs/schedule-ledger.html` migrates legacy ledger keys into `profile.schedule` / `profile.completions` via `FerrosCore.saveProfile()`, and `docs/agent-command-center.html` no longer persists `acc-tab`. |
+| B-A.1 | Green | `schemas/profile.schema.json` is `additionalProperties: false` and already includes `auditTrail`, `schedule`, `completions`, `creditLog`, and `bag`. |
+| B-A.2 | Green | Stream B documentation is normalized to the current `schedule-event.schema.json` shape, and the Ledger now persists through the shared profile path. |
+| B-A.3 | Green | Stream B documentation distinguishes the portable C7 audit-record envelope from the in-profile audit trail UX, with no silent schema widening. |
+| B-A.4 | Green | `ferros-core.js` publishes `loadProfile()`, `saveProfile()`, and `pushAuditEntry()`, and the Stream B surfaces rely on the published API surface only. |
+| B-A.5 | Green | `schemas/identity.schema.json` keeps the `oneOf` exclusivity rule, and H1/H4/H5 provide compatible evidence that only one mode should be active at any time. |
+| B-A.6 | Green | `docs/schedule-ledger.html` migrates legacy ledger keys into `profile.schedule` / `profile.completions` via `FerrosCore.saveProfile()`, and `docs/agent-command-center.html` no longer persists `acc-tab`. |
 
 ---
 
@@ -80,21 +82,21 @@ Stream C surfaces (Forge, Arena Runtime) depend on the following Stream A contra
 
 **Specific reconciliation items:**
 
-- [ ] **C-A.1** — Card schema `additionalProperties: false`: Confirm C's Forge does not require card fields beyond those in `card.schema.json`. The `metadata` field (type: `object`, `additionalProperties: true`) is the designated extension point for card-type-specific data.
-- [ ] **C-A.2** — Deck `cards[]` references: Confirm C's deck assembly uses `cardReference` objects (`cardId`, `slot`, `group`, `instanceOf`, `transform`) as defined. No additional reference fields needed.
-- [ ] **C-A.3** — Runtime host contract: Confirm C's Arena Runtime implements the full C8 lifecycle (`ferros:init` → `ferros:event` → `ferros:update`) with nonce echo as verified by H3 (18/18 pass).
-- [ ] **C-A.4** — Card round-trip: Confirm C's Wave 1 card/deck round-trip validates against the frozen C4/C5 schemas and keeps any portability/export envelope inside Forge or a later dedicated contract. Wave 1 must not assume widened card/deck helpers on `FerrosCore`.
-- [ ] **C-A.5** — Template lineage: Confirm C's card archetype templates reference the same `templates.json` corpus as B's profile templates (no shadow template sets).
+- [x] **C-A.1** — Card schema `additionalProperties: false`: Confirm C's Forge does not require card fields beyond those in `card.schema.json`. The `metadata` field (type: `object`, `additionalProperties: true`) is the designated extension point for card-type-specific data.
+- [x] **C-A.2** — Deck `cards[]` references: Confirm C's deck assembly uses `cardReference` objects (`cardId`, `slot`, `group`, `instanceOf`, `transform`) as defined. No additional reference fields needed.
+- [x] **C-A.3** — Runtime host contract: Confirm C's Arena Runtime implements the full C8 lifecycle (`ferros:init` → `ferros:event` → `ferros:update`) with nonce echo as verified by H3 (18/18 pass).
+- [x] **C-A.4** — Card round-trip: Confirm C's Wave 1 card/deck round-trip validates against the frozen C4/C5 schemas and keeps any portability/export envelope inside Forge or a later dedicated contract. Wave 1 must not assume widened card/deck helpers on `FerrosCore`.
+- [x] **C-A.5** — Template lineage: Confirm C's card archetype templates reference the same `templates.json` corpus as B's profile templates (no shadow template sets).
 
-**Mechanical triage snapshot (2026-04-19, repo inspection only):**
+**Reviewer closure snapshot (2026-04-19):**
 
 | Item | Provisional state | Repo-backed note |
 |------|-------------------|------------------|
-| C-A.1 | Likely green | Stream C documentation has been normalized around the actual card/deck schemas, with card-type-specific data living under `metadata` and identity linkage under `attribution`. |
-| C-A.2 | Likely green | `schemas/deck.schema.json` already supports `cardReference` with `cardId`, `slot`, `group`, `instanceOf`, and `transform`, and the current seam fixtures do not assert any extra reference fields. |
+| C-A.1 | Green | Stream C documentation is normalized around the actual card/deck schemas, with card-type-specific data living under `metadata` and identity linkage under `attribution`. |
+| C-A.2 | Green | `schemas/deck.schema.json` already supports `cardReference` with `cardId`, `slot`, `group`, `instanceOf`, and `transform`, and the current seam fixtures do not assert any extra reference fields. |
 | C-A.3 | Green | H3 is live-pass in the current browser session (`18/18`), including nonce echo and the C8 lifecycle. |
-| C-A.4 | Likely green | Stream C is now explicitly framed around Forge-owned schema validation for card/deck round-trip, keeping `FerrosCore.serializeExport()` scoped to profile portability until a dedicated contract exists. |
-| C-A.5 | Likely green | Stream C points at `docs/assets/_core/templates.json`, `ferros-core.js` embeds `TEMPLATE_PROFILES`, and no shadow template corpus was found in the repo. |
+| C-A.4 | Green | Stream C is explicitly framed around Forge-owned schema validation for card/deck round-trip, keeping `FerrosCore.serializeExport()` scoped to profile portability until a dedicated contract exists. |
+| C-A.5 | Green | Stream C points at `docs/assets/_core/templates.json`, `ferros-core.js` embeds `TEMPLATE_PROFILES`, and no shadow template corpus was found in the repo. |
 
 ---
 
@@ -110,20 +112,20 @@ Stream D surfaces (Showcase, Battle Arena, Trading) consume artifacts from B and
 
 **Specific reconciliation items:**
 
-- [ ] **D-BC.1** — Showcase reads `manifest.json`: Confirm D's plan for S3 only reads the `status` field from `manifest.json` contracts and does not assume additional status metadata beyond `"active"`.
-- [ ] **D-BC.2** — Battle Arena uses C8 only: Confirm D's Battle Arena plan sends decks to the Runtime exclusively via `ferros:init` message and receives state via `ferros:event` / `ferros:update`. No custom message shapes.
-- [ ] **D-BC.3** — Consumer constraint: Confirm D does not define custom localStorage keys, private schemas, or bespoke storage. All data access is through `FerrosCore` API (Rule 1, Rule 2, Rule 3 from `STREAM-D-CONSUMER-SURFACES.md`).
-- [ ] **D-BC.4** — Profile data format: Confirm D's surfaces expect the `profile.schema.json` v1.0.0 shape and do not assume fields that B has not yet produced (e.g., D should not assume `schedule` or `bag` fields are populated until B's respective waves complete).
-- [ ] **D-BC.5** — Card/deck fixture availability: Confirm D's Wave 2 entry condition is correctly gated on Stream C producing card/deck fixtures (V5–V7) before D attempts to consume them.
+- [x] **D-BC.1** — Showcase reads `manifest.json`: Confirm D's plan for S3 only reads the `status` field from `manifest.json` contracts and does not assume additional status metadata beyond `"active"`.
+- [x] **D-BC.2** — Battle Arena uses C8 only: Confirm D's Battle Arena plan sends decks to the Runtime exclusively via `ferros:init` message and receives state via `ferros:event` / `ferros:update`. No custom message shapes.
+- [x] **D-BC.3** — Consumer constraint: Confirm D does not define custom localStorage keys, private schemas, or bespoke storage. All data access is through `FerrosCore` API (Rule 1, Rule 2, Rule 3 from `STREAM-D-CONSUMER-SURFACES.md`).
+- [x] **D-BC.4** — Profile data format: Confirm D's surfaces expect the `profile.schema.json` v1.0.0 shape and treat downstream fields such as `schedule`, `bag`, and related progression/inventory concepts as optional/deferred upstream artifacts until Stream B populates them.
+- [x] **D-BC.5** — Card/deck fixture availability: Confirm D's Wave 2 entry condition is correctly gated on Stream C producing card/deck fixtures (V5–V7) before D attempts to consume them.
 
-**Mechanical triage snapshot (2026-04-19, repo inspection only):**
+**Reviewer closure snapshot (2026-04-19):**
 
 | Item | Provisional state | Repo-backed note |
 |------|-------------------|------------------|
-| D-BC.1 | Likely green | `STREAM-D-CONSUMER-SURFACES.md` now constrains Showcase to the current manifest surface (`status` + existing manifest metadata). `ferros-showcase.html` implementation is still Wave 2 work, but the contract assumption is no longer wider than `manifest.json`. |
-| D-BC.2 | Likely green | The Stream D plan explicitly constrains Battle Arena to `ferros:init`, `ferros:event`, and `ferros:update` with no custom message shapes. Current code is still a prototype, so this is plan-aligned rather than implementation-proven. |
-| D-BC.3 | Likely green | The Stream D document repeats the consumer-only constraint set clearly. Current consumer surfaces are still scaffolding rather than divergent implementations. |
-| D-BC.4 | Pending decision | Stream D assumes profile-linked inventory/progression concepts, but B has not yet produced all downstream artifacts. Reviewer should decide whether this is acceptable deferred dependency language or an implicit field assumption. |
+| D-BC.1 | Green | `STREAM-D-CONSUMER-SURFACES.md` constrains Showcase to the current manifest surface (`status` + existing manifest metadata). `ferros-showcase.html` implementation remains Wave 2 work, but the contract assumption is not wider than `manifest.json`. |
+| D-BC.2 | Green | The Stream D plan constrains Battle Arena to `ferros:init`, `ferros:event`, and `ferros:update` with no custom message shapes. Current code is still a prototype, so this is plan-aligned rather than implementation-proven. |
+| D-BC.3 | Green | The Stream D document repeats the consumer-only constraint set clearly. Current consumer surfaces are still scaffolding rather than divergent implementations. |
+| D-BC.4 | Green | Resolved as acceptable deferred dependency language: Stream D may reference profile-linked inventory/progression concepts only as optional/deferred upstream artifacts. Wave 2 implementations must tolerate `bag`, `schedule`, and related downstream fields being present but not yet populated. |
 | D-BC.5 | Green | `STREAM-D-CONSUMER-SURFACES.md` explicitly gates Wave 2 entry on Stream C V5–V7 completion before D consumes those artifacts. |
 
 ---
@@ -134,37 +136,35 @@ Stream E is a parallel research track with explicit isolation rules (ORCHESTRATI
 
 **Specific reconciliation items:**
 
-- [ ] **E-AD.1** — No imposed requirements: Confirm E has not filed or imposed requirements that Streams A–D must implement. Per §6, E files requests — it does not impose.
-- [ ] **E-AD.2** — Fixture corpus as conformance target: Confirm E's R1 (renderer conformance suite) targets the Stream A fixture corpus as-is, without requiring modifications to the golden fixtures.
-- [ ] **E-AD.3** — No blocking constraints: Confirm E's research findings do not block any Wave 1 execution PR in Streams A–D. Any finding that should affect A–D must be filed as a GitHub issue per §6.
-- [ ] **E-AD.4** — `file://` compatibility: Confirm E's research does not introduce assumptions that conflict with the `file://` protocol compatibility requirement (AGENT_GUIDE.md constraint #1).
+- [x] **E-AD.1** — No imposed requirements: Confirm E has not filed or imposed requirements that Streams A–D must implement. Per §6, E files requests — it does not impose.
+- [x] **E-AD.2** — Fixture corpus as conformance target: Confirm E's R1 (renderer conformance suite) targets the Stream A fixture corpus as-is, without requiring modifications to the golden fixtures.
+- [x] **E-AD.3** — No blocking constraints: Confirm E's research findings do not block any Wave 1 execution PR in Streams A–D. Any finding that should affect A–D must be filed as a GitHub issue per §6.
+- [x] **E-AD.4** — `file://` compatibility: Confirm E's research does not introduce assumptions that conflict with the `file://` protocol compatibility requirement (AGENT_GUIDE.md constraint #1).
 
-**Mechanical triage snapshot (2026-04-19, repo inspection only):**
+**Reviewer closure snapshot (2026-04-19):**
 
 | Item | Provisional state | Repo-backed note |
 |------|-------------------|------------------|
-| E-AD.1 | Likely green | The repo docs keep Stream E as research-only and non-imposing. Reviewer may still want a GitHub issue scan before closing the checkbox. |
+| E-AD.1 | Green | The repo docs keep Stream E as research-only and non-imposing. |
 | E-AD.2 | Green | `STREAM-E-CORE-OS.md` explicitly treats the Stream A fixture corpus as the conformance target for R1/R3. |
 | E-AD.3 | Green | `STREAM-E-CORE-OS.md` and `ORCHESTRATION.md` both state that Stream E is non-blocking for A–D. |
 | E-AD.4 | Green | Stream E documentation explicitly preserves the `file://` compatibility constraint rather than relaxing it. |
 
 ---
 
-## Provisional Triage Summary
+## Reviewer Closure Summary
 
-This triage is preparation work only. The checkboxes above remain unchecked until @Maangled or a designated reviewer explicitly signs them off.
+Reviewer sign-off is recorded in this document.
 
-**Current provisional read (repo inspection only):**
+**Closure result (2026-04-19):**
 
-- Likely green / green: B-A.1, B-A.2, B-A.3, B-A.4, B-A.5, B-A.6, C-A.1, C-A.2, C-A.3, C-A.4, C-A.5, D-BC.1, D-BC.2, D-BC.3, D-BC.5, E-AD.1, E-AD.2, E-AD.3, E-AD.4
+- Green / signed off: B-A.1 through B-A.6, C-A.1 through C-A.5, D-BC.1 through D-BC.5, E-AD.1 through E-AD.4
 - Red / contract mismatch: none at repo-inspection level after the current cleanup pass
-- Pending reviewer decision: D-BC.4
+- Deferred-but-acceptable dependency language: D-BC.4 is green under the condition that Stream D treats downstream inventory/progression fields as optional until upstream artifacts exist
 
-This means the reconciliation gate is no longer an undifferentiated 20-item list. The highest-value closure path is now clear:
+This means the reconciliation gate is ready for closure and no longer blocks Wave 1 execution work on contract-alignment grounds.
 
-1. Review and sign off the now-aligned B, C, D, and E items.
-2. Resolve the single remaining reviewer-decision item (`D-BC.4`).
-3. Continue implementation work in Streams C and D without reopening the shared contract surface unless a new conflict appears.
+**Non-blocking hardening follow-up:** `FerrosCore.loadProfile()`, `FerrosCore.pushAuditEntry()`, and `FerrosCore.saveProfile()` are now published consumer helpers but are not yet covered by a dedicated harness. That remains a good hardening target, not a reconciliation blocker.
 
 ---
 
@@ -172,10 +172,10 @@ This means the reconciliation gate is no longer an undifferentiated 20-item list
 
 | Check | Parties | Status | Reviewer | Notes |
 |-------|---------|--------|----------|-------|
-| 1 — B vs A schemas | A ↔ B | ⬜ Pending | @Maangled | 6 items |
-| 2 — C vs A schemas | A ↔ C | ⬜ Pending | @Maangled | 5 items |
-| 3 — D vs B+C artifacts | B, C ↔ D | ⬜ Pending | @Maangled | 5 items |
-| 4 — E vs A–D assumptions | E ↔ A–D | ⬜ Pending | @Maangled | 4 items |
+| 1 — B vs A schemas | A ↔ B | ✅ Closed | @Maangled | 6 items signed off |
+| 2 — C vs A schemas | A ↔ C | ✅ Closed | @Maangled | 5 items signed off |
+| 3 — D vs B+C artifacts | B, C ↔ D | ✅ Closed | @Maangled | 5 items signed off; D-BC.4 resolved as deferred dependency language |
+| 4 — E vs A–D assumptions | E ↔ A–D | ✅ Closed | @Maangled | 4 items signed off |
 
 **Total reconciliation items: 20**
 
@@ -214,11 +214,10 @@ The FERROS consent model is verified through the following primitives, all of wh
 ## Process
 
 1. This document was created alongside GitHub issue [Reconciliation Gate — Wave 1 #53](https://github.com/Maangled/ferros/issues/53).
-2. @Maangled or a designated reviewer works through every checkbox in the four checks above.
-3. Each item is marked ✅ when verified or ❌ with a note if a conflict is found.
-4. If a conflict is found, a `cross-stream-conflict` issue is filed per ORCHESTRATION.md §5.
-5. **This reconciliation gate must be closed (all items verified) before any Wave 1 execution PR merges.**
+2. @Maangled reviewed every checkbox in the four checks above and signed them off on 2026-04-19.
+3. Any future cross-stream regression should reopen a targeted `cross-stream-conflict` issue per ORCHESTRATION.md §5 rather than silently reinterpreting the closed gate.
+4. **This reconciliation gate is closed. Wave 1 execution PRs are no longer blocked on reconciliation review.**
 
 ---
 
-*Gate document owner: @Maangled. Created: 2026-04-20. Authority: `docs/ORCHESTRATION.md` §4.*
+*Gate document owner: @Maangled. Created: 2026-04-19. Closed: 2026-04-19. Authority: `docs/ORCHESTRATION.md` §4.*
