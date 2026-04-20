@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FERROS — Architecture Design Lab</title>
+  <style>
+    /* =====================================================================
+       FERROS ARCHITECTURE DESIGN LAB
+       Standalone, no external dependencies.
+       Matches the FERROS blueprint dark-panel design system.
+    ===================================================================== */
+
+    /* ---- CSS Variables ---- */
+    :root {
+      --bg-base:        #0a0c10;
+      --bg-panel:       #111520;
+      --bg-card:        #161b28;
+      --bg-card-alt:    #1a2035;
+      --bg-highlight:   #1e2840;
+      --border-dim:     #1e2a3a;
+      --border-accent:  #2a3f5f;
+      --border-bright:  #3a5a8f;
+      --text-primary:   #e8edf5;
+      --text-secondary: #8fa0b8;
+      --text-dim:       #5a6a80;
+      --text-code:      #7eb8e8;
+      --accent-blue:    #4a90d9;
+      --accent-cyan:    #2dd4bf;
+      --accent-green:   #34d399;
+      --accent-amber:   #f59e0b;
+      --accent-red:     #f87171;
+      --accent-purple:  #a78bfa;
+      --accent-pink:    #f472b6;
+      --gradient-header: linear-gradient(135deg, #0d1b35 0%, #0a1525 50%, #091020 100%);
+      --gradient-card:   linear-gradient(145deg, #161b28 0%, #111520 100%);
+      --gradient-accent: linear-gradient(90deg, #4a90d9 0%, #2dd4bf 100%);
+      --shadow-panel:  0 4px 24px rgba(0, 0, 0, 0.6);
+      --shadow-card:   0 2px 12px rgba(0, 0, 0, 0.4);
+      --radius-panel:  12px;
+      --radius-card:   8px;
+      --radius-badge:  4px;
+      --font-mono: 'Courier New', Courier, monospace;
+    }
+
+    /* ---- Reset & Base ---- */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+                   Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 0 0 64px 0;
+    }
+
+    /* ---- Typography ---- */
+    h1, h2, h3, h4, h5, h6 {
+      line-height: 1.25;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    h1 { font-size: 2.4rem; }
+    h2 { font-size: 1.6rem; }
+    h3 { font-size: 1.2rem; }
+    h4 { font-size: 1rem; font-weight: 600; }
+
+    p { margin-bottom: 0.75rem; }
+    p:last-child { margin-bottom: 0; }
+
+    a {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+    a:hover {
+      color: var(--accent-cyan);
+      text-decoration: underline;
+    }
+
+    code, .mono {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      color: var(--text-code);
+      background: rgba(74, 144, 217, 0.08);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    ul, ol {
+      padding-left: 1.25rem;
+    }
+
+    li {
+      margin-bottom: 0.3rem;
+    }
+
+    /* ---- Layout ---- */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ---- Header ---- */
+    .site-header {
+      background: var(--gradient-header);
+      border-bottom: 1px solid var(--border-accent);
+      padding: 48px 0 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .site-header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(74, 144, 217, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    .header-identity {}
+
+    .header-codename {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      margin-bottom: 8px;
+    }
+
+    .header-title {
+      font-size: 3rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      background: var(--gradient-accent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+
+    .header-subtitle {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .header-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .version-badge {
+      background: rgba(74, 144, 217, 0.15);
+      border: 1px solid var(--border-bright);
+      border-radius: 20px;
+      padding: 4px 16px;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      color: var(--accent-blue);
+    }
+
+    .phase-badge {
+      background: rgba(45, 212, 191, 0.1);
+      border: 1px solid rgba(45, 212, 191, 0.3);
+      border-radius: 20px;
+      padding: 4px 16px;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+    }
+
+    .header-mission {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-dim);
+      border-left: 3px solid var(--accent-cyan);
+      border-radius: var(--radius-card);
+      padding: 16px 20px;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      font-style: italic;
+      line-height: 1.7;
+      max-width: 900px;
+    }
+
+    .header-tagline {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .tagline-item {
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .tagline-item::before {
+      content: '// ';
+      color: var(--accent-blue);
+    }
+
+    /* ---- Nav Bar ---- */
+    .nav-bar {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-dim);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 0;
+    }
+
+    .nav-inner {
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav-inner::-webkit-scrollbar { display: none; }
+
+    .nav-link {
+      display: inline-block;
+      padding: 12px 20px;
+      font-size: 0.82rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: color 0.2s, border-color 0.2s;
+      text-decoration: none;
+    }
+
+    .nav-link:hover {
+      color: var(--text-primary);
+      border-bottom-color: var(--accent-blue);
+      text-decoration: none;
+    }
+
+    /* ---- Main Content ---- */
+    .main-content {
+      padding-top: 32px;
+    }
+
+    /* ---- Section ---- */
+    .section {
+      margin-bottom: 48px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-dim);
+    }
+
+    .section-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .section-icon.blue   { background: rgba(74,  144, 217, 0.15); }
+    .section-icon.cyan   { background: rgba(45,  212, 191, 0.15); }
+    .section-icon.green  { background: rgba(52,  211, 153, 0.15); }
+    .section-icon.amber  { background: rgba(245, 158, 11,  0.15); }
+    .section-icon.red    { background: rgba(248, 113, 113, 0.15); }
+    .section-icon.purple { background: rgba(167, 139, 250, 0.15); }
+    .section-icon.pink   { background: rgba(244, 114, 182, 0.15); }
+
+    .section-title {
+      font-size: 1.3rem;
+      color: var(--text-primary);
+    }
+
+    .section-anchor {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      margin-left: auto;
+    }
+
+    /* ---- Panel ---- */
+    .panel {
+      background: var(--gradient-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-panel);
+      padding: 24px;
+      box-shadow: var(--shadow-panel);
+      margin-bottom: 20px;
+    }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+
+    /* ---- Cards Grid ---- */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .cards-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+      gap: 20px;
+    }
+
+    .cards-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    /* ---- Card ---- */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-card);
+      padding: 20px;
+      box-shadow: var(--shadow-card);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--border-accent);
+      box-shadow: 0 4px 20px rgba(74, 144, 217, 0.1);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .card-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card-body {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ---- Accent Card Borders ---- */
+    .card-blue   { border-left: 3px solid var(--accent-blue); }
+    .card-cyan   { border-left: 3px solid var(--accent-cyan); }
+    .card-green  { border-left: 3px solid var(--accent-green); }
+    .card-amber  { border-left: 3px solid var(--accent-amber); }
+    .card-red    { border-left: 3px solid var(--accent-red); }
+    .card-purple { border-left: 3px solid var(--accent-purple); }
+    .card-pink   { border-left: 3px solid var(--accent-pink); }
+
+    /* ---- Status Badge ---- */
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: var(--radius-badge);
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .badge-blue   { background: rgba(74,  144, 217, 0.15); color: var(--accent-blue);   border: 1px solid rgba(74,  144, 217, 0.25); }
+    .badge-cyan   { background: rgba(45,  212, 191, 0.12); color: var(--accent-cyan);   border: 1px solid rgba(45,  212, 191, 0.25); }
+    .badge-green  { background: rgba(52,  211, 153, 0.12); color: var(--accent-green);  border: 1px solid rgba(52,  211, 153, 0.25); }
+    .badge-amber  { background: rgba(245, 158, 11,  0.12); color: var(--accent-amber);  border: 1px solid rgba(245, 158, 11,  0.25); }
+    .badge-red    { background: rgba(248, 113, 113, 0.12); color: var(--accent-red);    border: 1px solid rgba(248, 113, 113, 0.25); }
+    .badge-purple { background: rgba(167, 139, 250, 0.12); color: var(--accent-purple); border: 1px solid rgba(167, 139, 250, 0.25); }
+    .badge-dim    { background: rgba(90,  106, 128, 0.12); color: var(--text-dim);      border: 1px solid rgba(90,  106, 128, 0.20); }
+
+    /* ---- Phase Roadmap ---- */
+    .roadmap-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .phase-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-card);
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .phase-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+
+    .phase-card.phase-active::before  { background: var(--gradient-accent); }
+    .phase-card.phase-planned::before { background: var(--border-accent); }
+    .phase-card.phase-future::before  { background: var(--border-dim); }
+
+    .phase-number {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      margin-bottom: 4px;
+    }
+
+    .phase-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .phase-desc {
+      font-size: 0.83rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .phase-status {
+      margin-top: 10px;
+    }
+
+    /* ---- Architecture Stack ---- */
+    .arch-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .arch-layer {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-card);
+      padding: 14px 18px;
+      position: relative;
+    }
+
+    .arch-layer::after {
+      content: '▼';
+      position: absolute;
+      bottom: -13px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--border-accent);
+      font-size: 0.7rem;
+      z-index: 1;
+    }
+
+    .arch-layer:last-child::after {
+      display: none;
+    }
+
+    .arch-layer-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      min-width: 140px;
+      flex-shrink: 0;
+    }
+
+    .arch-layer-desc {
+      font-size: 0.83rem;
+      color: var(--text-secondary);
+      flex: 1;
+    }
+
+    .arch-layer-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    /* ---- Risk Table ---- */
+    .risk-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.87rem;
+    }
+
+    .risk-table thead tr {
+      background: var(--bg-card-alt);
+      border-bottom: 2px solid var(--border-accent);
+    }
+
+    .risk-table th {
+      text-align: left;
+      padding: 10px 16px;
+      font-size: 0.78rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .risk-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-dim);
+      color: var(--text-secondary);
+      vertical-align: top;
+    }
+
+    .risk-table tbody tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .risk-table td:first-child {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* ---- Consent Prompts ---- */
+    .consent-examples {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 12px;
+    }
+
+    .consent-prompt {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-card);
+      padding: 16px 18px;
+    }
+
+    .consent-text {
+      font-size: 0.88rem;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .consent-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-allow {
+      background: rgba(52, 211, 153, 0.1);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      border-radius: 6px;
+      padding: 5px 18px;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      color: var(--accent-green);
+      cursor: pointer;
+    }
+
+    .btn-deny {
+      background: rgba(248, 113, 113, 0.08);
+      border: 1px solid rgba(248, 113, 113, 0.25);
+      border-radius: 6px;
+      padding: 5px 18px;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      color: var(--accent-red);
+      cursor: pointer;
+    }
+
+    /* ---- Migration / Timeline Steps ---- */
+    .migration-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+    }
+
+    .migration-step {
+      display: flex;
+      gap: 20px;
+      padding: 16px 0;
+    }
+
+    .migration-step-marker {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      width: 32px;
+    }
+
+    .migration-step-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      flex-shrink: 0;
+    }
+
+    .step-current  .migration-step-dot { background: rgba(245,158,11,0.2);  border: 2px solid var(--accent-amber);  color: var(--accent-amber); }
+    .step-middle   .migration-step-dot { background: rgba(74,144,217,0.15); border: 2px solid var(--accent-blue);   color: var(--accent-blue);  }
+    .step-target   .migration-step-dot { background: rgba(52,211,153,0.15); border: 2px solid var(--accent-green);  color: var(--accent-green); }
+
+    .migration-step-line {
+      width: 2px;
+      flex: 1;
+      background: var(--border-dim);
+      margin-top: 4px;
+    }
+
+    .migration-step-content {
+      flex: 1;
+      padding-bottom: 8px;
+    }
+
+    .migration-step-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .migration-step-desc {
+      font-size: 0.83rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ---- Criteria List ---- */
+    .criteria-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .criteria-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-dim);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .criteria-list li:last-child {
+      border-bottom: none;
+    }
+
+    .criteria-list li::before {
+      content: '◆';
+      color: var(--accent-cyan);
+      font-size: 0.6rem;
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+
+    /* ---- Highlight Box ---- */
+    .highlight-box {
+      background: rgba(74, 144, 217, 0.06);
+      border: 1px solid rgba(74, 144, 217, 0.2);
+      border-radius: var(--radius-card);
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+
+    .highlight-box p {
+      font-size: 0.92rem;
+      color: var(--text-secondary);
+    }
+
+    /* ---- Two-Column ---- */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    /* ---- Divider ---- */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border-dim);
+      margin: 32px 0;
+    }
+
+    /* ---- Footer ---- */
+    .site-footer {
+      margin-top: 64px;
+      padding: 32px 0;
+      border-top: 1px solid var(--border-dim);
+      background: var(--bg-panel);
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-brand {
+      font-size: 1rem;
+      font-weight: 700;
+      background: var(--gradient-accent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .footer-meta {
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+    }
+
+    .footer-tagline {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    /* ---- Command Card ---- */
+    .cmd-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-card);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-card);
+      transition: border-color 0.2s;
+    }
+
+    .cmd-card:hover {
+      border-color: var(--border-accent);
+    }
+
+    .cmd-name {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-code);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .cmd-params {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .cmd-params span {
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+    }
+
+    /* ---- Cropping Nesting ---- */
+    .crop-level {
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-card);
+      padding: 16px;
+      margin-bottom: 8px;
+      background: var(--bg-card);
+    }
+
+    .crop-level .crop-level {
+      background: var(--bg-card-alt);
+      margin-top: 10px;
+    }
+
+    .crop-level .crop-level .crop-level {
+      background: var(--bg-highlight);
+    }
+
+    .crop-level .crop-level .crop-level .crop-level {
+      background: rgba(74, 144, 217, 0.06);
+    }
+
+    .crop-level .crop-level .crop-level .crop-level .crop-level {
+      background: rgba(45, 212, 191, 0.05);
+    }
+
+    .crop-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .crop-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ---- Command Group ---- */
+    .cmd-group-title {
+      font-size: 0.85rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      margin-bottom: 12px;
+      margin-top: 20px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-dim);
+    }
+
+    .cmd-group-title:first-child {
+      margin-top: 0;
+    }
+
+    .cmd-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 900px) {
+      .header-title { font-size: 2rem; }
+      .cards-grid-3 { grid-template-columns: 1fr 1fr; }
+      .two-col      { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .header-top      { flex-direction: column; }
+      .header-meta     { align-items: flex-start; }
+      .cards-grid-3    { grid-template-columns: 1fr; }
+      .header-tagline  { gap: 12px; }
+    }
+
+    /* ---- Animations ---- */
+    @keyframes pulse-border {
+      0%, 100% { border-color: var(--border-accent); }
+      50%       { border-color: var(--border-bright); }
+    }
+
+    .phase-card.phase-active {
+      animation: pulse-border 3s ease-in-out infinite;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .section {
+      animation: fade-in 0.4s ease-out both;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================================================================
+       HEADER
+  ================================================================ -->
+  <header class="site-header">
+    <div class="container">
+      <div class="header-top">
+        <div class="header-identity">
+          <div class="header-codename">FERROS User Endpoint &nbsp;·&nbsp; Design Lab</div>
+          <h1 class="header-title">Architecture Design Lab</h1>
+          <div class="header-subtitle">Schema-Driven Building Design · Powered by Sheetgen + Botgen Agents</div>
+        </div>
+        <div class="header-meta">
+          <span class="version-badge">v0.1.0 · 2026</span>
+          <span class="phase-badge">M6 — Rendering Foundations</span>
+        </div>
+      </div>
+
+      <div class="header-mission">
+        Design buildings through structured drawing hierarchies, AI-assisted drafting, and agent-managed rendering.
+        Every AI action requires explicit user approval. Schema-driven automation meets human-first consent.
+      </div>
+
+      <div class="header-tagline">
+        <span class="tagline-item">Schema Driven</span>
+        <span class="tagline-item">Consent First</span>
+        <span class="tagline-item">Agent Managed</span>
+        <span class="tagline-item">CQRS Architecture</span>
+        <span class="tagline-item">Drawing Hierarchy</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================================================================
+       NAV BAR
+  ================================================================ -->
+  <nav class="nav-bar">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="nav-link" href="#overview">Overview</a>
+        <a class="nav-link" href="#hierarchy">Hierarchy</a>
+        <a class="nav-link" href="#commands">Commands</a>
+        <a class="nav-link" href="#rendering">Rendering</a>
+        <a class="nav-link" href="#agents">Agents</a>
+        <a class="nav-link" href="#templates">Templates</a>
+        <a class="nav-link" href="#cropping">Cropping</a>
+        <a class="nav-link" href="#workshop">Workshop</a>
+        <a class="nav-link" href="#roadmap">Roadmap</a>
+        <a class="nav-link" href="#risks">Risks</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ================================================================
+       MAIN CONTENT
+  ================================================================ -->
+  <main class="main-content">
+    <div class="container">
+
+      <!-- ============================================================
+           LAB OVERVIEW
+      ============================================================ -->
+      <section class="section" id="overview">
+        <div class="section-header">
+          <div class="section-icon cyan">🏛️</div>
+          <h2 class="section-title">Lab Overview</h2>
+          <span class="section-anchor">#overview</span>
+        </div>
+
+        <div class="highlight-box">
+          <p>
+            The <strong style="color: var(--text-primary);">Architecture Design Lab</strong> is the FERROS-native workspace for building design.
+            Users create and manage architectural drawings through a structured hierarchy—from workspace down to individual annotations—using
+            sheetgen's CQRS command bus and botgen's agent orchestration pipeline.
+          </p>
+          <p>
+            AI agents assist with drafting, rendering, and analysis, but <strong style="color: var(--accent-green);">every AI action requires explicit user approval</strong>.
+            The consent-first model ensures no automated drawing generation, rendering, or modification happens without your confirmation.
+          </p>
+          <p>
+            Backend: Axum REST API · CQRS via <code>POST /command/{name}</code> ·
+            <code>definitions.yaml</code> as authoritative command schema ·
+            PostgreSQL + SQLx persistence · Tigris asset storage.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           DRAWING HIERARCHY EXPLORER
+      ============================================================ -->
+      <section class="section" id="hierarchy">
+        <div class="section-header">
+          <div class="section-icon blue">📐</div>
+          <h2 class="section-title">Drawing Hierarchy Explorer</h2>
+          <span class="section-anchor">#hierarchy</span>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Sheetgen Domain Stack</div>
+          <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:16px;">
+            The sheetgen domain model is a strict top-down hierarchy. Each level contains the next, enforcing
+            structured ownership and cropping boundaries throughout the drawing pipeline.
+          </p>
+          <div class="arch-stack">
+            <div class="arch-layer">
+              <div class="arch-layer-name">📁 Workspace</div>
+              <div class="arch-layer-desc">Top-level organizational container. Groups related projects under a single user or team scope.</div>
+              <div class="arch-layer-tags"><span class="badge badge-cyan">Root</span></div>
+            </div>
+            <div class="arch-layer">
+              <div class="arch-layer-name">📋 Project</div>
+              <div class="arch-layer-desc">A building design project. Contains all sheets, drawings, and configuration for a single building or site.</div>
+              <div class="arch-layer-tags"><span class="badge badge-blue">Container</span></div>
+            </div>
+            <div class="arch-layer">
+              <div class="arch-layer-name">📄 Sheet</div>
+              <div class="arch-layer-desc">A printable drawing sheet with defined size, scale, and layout. Contains titleblocks and annotations.</div>
+              <div class="arch-layer-tags"><span class="badge badge-green">Template ✓</span></div>
+            </div>
+            <div class="arch-layer">
+              <div class="arch-layer-name">🏷️ Titleblock</div>
+              <div class="arch-layer-desc">Border and information block that frames the sheet. Crops viewports to its margins. Contains project metadata.</div>
+              <div class="arch-layer-tags"><span class="badge badge-green">Template ✓</span><span class="badge badge-amber">Crops → Viewport</span></div>
+            </div>
+            <div class="arch-layer">
+              <div class="arch-layer-name">🔲 Viewport</div>
+              <div class="arch-layer-desc">A rectangular window into a view. Defines the visible region and scale factor. Crops the view it contains.</div>
+              <div class="arch-layer-tags"><span class="badge badge-green">Template ✓</span><span class="badge badge-amber">Crops → View</span></div>
+            </div>
+            <div class="arch-layer">
+              <div class="arch-layer-name">👁️ View</div>
+              <div class="arch-layer-desc">A named perspective of the model (floor plan, elevation, section, detail). Crops drawings to its boundary.</div>
+              <div class="arch-layer-tags"><span class="badge badge-green">Template ✓</span><span class="badge badge-amber">Crops → Drawing</span></div>
+            </div>
+            <div class="arch-layer">
+              <div class="arch-layer-name">✏️ Drawing</div>
+              <div class="arch-layer-desc">The actual architectural drawing content — geometry, elements, layers. The base content that views display.</div>
+              <div class="arch-layer-tags"><span class="badge badge-green">Template ✓</span><span class="badge badge-purple">Content</span></div>
+            </div>
+            <div class="arch-layer">
+              <div class="arch-layer-name">📌 Annotation</div>
+              <div class="arch-layer-desc">Labels, dimensions, notes, symbols. Attaches at any level with single-parent constraint. Cropped by parent scope.</div>
+              <div class="arch-layer-tags"><span class="badge badge-dim">Any Level</span><span class="badge badge-purple">Single Parent</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           COMMAND CONSOLE
+      ============================================================ -->
+      <section class="section" id="commands">
+        <div class="section-header">
+          <div class="section-icon green">⌨️</div>
+          <h2 class="section-title">Command Console</h2>
+          <span class="section-anchor">#commands</span>
+        </div>
+
+        <div class="highlight-box">
+          <p>
+            All mutations flow through the CQRS command bus via <code>POST /command/{name}</code>.
+            The <code>definitions.yaml</code> file is the authoritative schema for all commands.
+            Status reflects the sheetgen MVP checklist milestones M1–M8.
+          </p>
+        </div>
+
+        <div class="panel">
+          <!-- Workspace Commands -->
+          <div class="cmd-group-title">Workspace Commands</div>
+          <div class="cmd-grid">
+            <div class="cmd-card">
+              <div class="cmd-name">workspaceCreate</div>
+              <div class="cmd-params">Params: <span>name, description?</span></div>
+              <span class="badge badge-green">✅ M1</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">workspaceList</div>
+              <div class="cmd-params">Params: <span>filter?, page?</span></div>
+              <span class="badge badge-green">✅ M1</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">workspaceUpdate</div>
+              <div class="cmd-params">Params: <span>workspace_id, name?, description?</span></div>
+              <span class="badge badge-green">✅ M2</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">workspaceDelete</div>
+              <div class="cmd-params">Params: <span>workspace_id</span></div>
+              <span class="badge badge-green">✅ M2</span>
+            </div>
+          </div>
+
+          <!-- Project Commands -->
+          <div class="cmd-group-title">Project Commands</div>
+          <div class="cmd-grid">
+            <div class="cmd-card">
+              <div class="cmd-name">projectCreate</div>
+              <div class="cmd-params">Params: <span>workspace_id, name, description?</span></div>
+              <span class="badge badge-green">✅ M1</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">projectList</div>
+              <div class="cmd-params">Params: <span>workspace_id, filter?</span></div>
+              <span class="badge badge-green">✅ M1</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">projectUpdate</div>
+              <div class="cmd-params">Params: <span>project_id, name?, description?</span></div>
+              <span class="badge badge-green">✅ M2</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">projectDelete</div>
+              <div class="cmd-params">Params: <span>project_id</span></div>
+              <span class="badge badge-green">✅ M2</span>
+            </div>
+          </div>
+
+          <!-- Sheet Commands -->
+          <div class="cmd-group-title">Sheet Commands</div>
+          <div class="cmd-grid">
+            <div class="cmd-card">
+              <div class="cmd-name">sheetCreate</div>
+              <div class="cmd-params">Params: <span>project_id, name, size, scale</span></div>
+              <span class="badge badge-green">✅ M3</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">sheetList</div>
+              <div class="cmd-params">Params: <span>project_id</span></div>
+              <span class="badge badge-green">✅ M3</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">sheetUpdate</div>
+              <div class="cmd-params">Params: <span>sheet_id, name?, size?, scale?</span></div>
+              <span class="badge badge-green">✅ M4</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">sheetDelete</div>
+              <div class="cmd-params">Params: <span>sheet_id</span></div>
+              <span class="badge badge-green">✅ M4</span>
+            </div>
+          </div>
+
+          <!-- Drawing Commands -->
+          <div class="cmd-group-title">Drawing Commands</div>
+          <div class="cmd-grid">
+            <div class="cmd-card">
+              <div class="cmd-name">drawingCreate2D</div>
+              <div class="cmd-params">Params: <span>view_id, type, elements[]</span></div>
+              <span class="badge badge-green">✅ M3</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">drawingUpdate</div>
+              <div class="cmd-params">Params: <span>drawing_id, elements[]</span></div>
+              <span class="badge badge-green">✅ M4</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">drawingDelete</div>
+              <div class="cmd-params">Params: <span>drawing_id</span></div>
+              <span class="badge badge-green">✅ M4</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">drawingExport</div>
+              <div class="cmd-params">Params: <span>drawing_id, format, resolution</span></div>
+              <span class="badge badge-amber">🟡 M6</span>
+            </div>
+          </div>
+
+          <!-- Template Commands -->
+          <div class="cmd-group-title">Template Commands</div>
+          <div class="cmd-grid">
+            <div class="cmd-card">
+              <div class="cmd-name">templateCreate</div>
+              <div class="cmd-params">Params: <span>source_id, type, name</span></div>
+              <span class="badge badge-amber">🟡 M6</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">templateClone</div>
+              <div class="cmd-params">Params: <span>template_id, target_parent_id</span></div>
+              <span class="badge badge-amber">🟡 M6</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">titleblockCreate</div>
+              <div class="cmd-params">Params: <span>sheet_id, margins, metadata</span></div>
+              <span class="badge badge-green">✅ M5</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">viewportCreate</div>
+              <div class="cmd-params">Params: <span>titleblock_id, bounds, scale</span></div>
+              <span class="badge badge-green">✅ M5</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">viewCreate</div>
+              <div class="cmd-params">Params: <span>viewport_id, type, boundary</span></div>
+              <span class="badge badge-green">✅ M5</span>
+            </div>
+          </div>
+
+          <!-- Annotation Commands -->
+          <div class="cmd-group-title">Annotation Commands</div>
+          <div class="cmd-grid">
+            <div class="cmd-card">
+              <div class="cmd-name">annotationCreate</div>
+              <div class="cmd-params">Params: <span>parent_id, parent_type, content, position</span></div>
+              <span class="badge badge-green">✅ M5</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">annotationUpdate</div>
+              <div class="cmd-params">Params: <span>annotation_id, content?, position?</span></div>
+              <span class="badge badge-green">✅ M5</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">annotationDelete</div>
+              <div class="cmd-params">Params: <span>annotation_id</span></div>
+              <span class="badge badge-green">✅ M5</span>
+            </div>
+          </div>
+
+          <!-- Undo Commands -->
+          <div class="cmd-group-title">Undo Commands</div>
+          <div class="cmd-grid">
+            <div class="cmd-card">
+              <div class="cmd-name">undoLast</div>
+              <div class="cmd-params">Params: <span>scope_id, scope_type</span></div>
+              <span class="badge badge-red">🔴 M7</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">undoMultiStep</div>
+              <div class="cmd-params">Params: <span>scope_id, steps</span></div>
+              <span class="badge badge-red">🔴 M7</span>
+            </div>
+            <div class="cmd-card">
+              <div class="cmd-name">redoLast</div>
+              <div class="cmd-params">Params: <span>scope_id, scope_type</span></div>
+              <span class="badge badge-red">🔴 M7</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           RENDERING PIPELINE
+      ============================================================ -->
+      <section class="section" id="rendering">
+        <div class="section-header">
+          <div class="section-icon purple">🎨</div>
+          <h2 class="section-title">Rendering Pipeline</h2>
+          <span class="section-anchor">#rendering</span>
+        </div>
+
+        <div class="highlight-box">
+          <p>
+            The rendering pipeline is powered by botgen's <strong style="color: var(--text-primary);">Rendering Service</strong>,
+            which compiles drawing hierarchies into exportable output through schema-driven generation of
+            floor plans, elevations, sections, and details.
+          </p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Render Flow</div>
+          <div class="migration-steps">
+            <div class="migration-step step-current">
+              <div class="migration-step-marker">
+                <div class="migration-step-dot">1</div>
+                <div class="migration-step-line"></div>
+              </div>
+              <div class="migration-step-content">
+                <div class="migration-step-title">Input — Domain Data Collection</div>
+                <div class="migration-step-desc">
+                  Gather drawing elements, style definitions, target resolution, and output format from the sheetgen domain model.
+                  Resolve all parent-child relationships and compute effective transforms.
+                </div>
+                <div style="margin-top:8px;">
+                  <span class="badge badge-blue">Elements</span>
+                  <span class="badge badge-cyan">Style</span>
+                  <span class="badge badge-dim">Resolution</span>
+                  <span class="badge badge-dim">Format</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="migration-step step-middle">
+              <div class="migration-step-marker">
+                <div class="migration-step-dot">2</div>
+                <div class="migration-step-line"></div>
+              </div>
+              <div class="migration-step-content">
+                <div class="migration-step-title">Layer Compilation</div>
+                <div class="migration-step-desc">
+                  Flatten the drawing hierarchy into ordered layers. Resolve z-ordering, visibility flags,
+                  and layer-level style overrides. Each drawing becomes a compositable layer in the render stack.
+                </div>
+                <div style="margin-top:8px;">
+                  <span class="badge badge-purple">Layer Stack</span>
+                  <span class="badge badge-blue">Z-Order</span>
+                  <span class="badge badge-dim">Visibility</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="migration-step step-middle">
+              <div class="migration-step-marker">
+                <div class="migration-step-dot">3</div>
+                <div class="migration-step-line"></div>
+              </div>
+              <div class="migration-step-content">
+                <div class="migration-step-title">Cropping Hierarchy Enforcement</div>
+                <div class="migration-step-desc">
+                  Apply the cropping chain: titleblocks crop viewports, viewports crop views, views crop drawings.
+                  Each boundary is computed and clipping masks are generated for the render compositor.
+                </div>
+                <div style="margin-top:8px;">
+                  <span class="badge badge-amber">Clip Masks</span>
+                  <span class="badge badge-blue">Boundary Calc</span>
+                  <span class="badge badge-dim">Containment</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="migration-step step-middle">
+              <div class="migration-step-marker">
+                <div class="migration-step-dot">4</div>
+                <div class="migration-step-line"></div>
+              </div>
+              <div class="migration-step-content">
+                <div class="migration-step-title">Annotation Overlay</div>
+                <div class="migration-step-desc">
+                  Render annotations at each hierarchy level. Sheet annotations overlay everything.
+                  Lower-level annotations are clipped to their parent scope. Text, dimensions, and symbols
+                  are rasterized with font and style settings.
+                </div>
+                <div style="margin-top:8px;">
+                  <span class="badge badge-green">Labels</span>
+                  <span class="badge badge-green">Dimensions</span>
+                  <span class="badge badge-dim">Symbols</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="migration-step step-target">
+              <div class="migration-step-marker">
+                <div class="migration-step-dot">5</div>
+              </div>
+              <div class="migration-step-content">
+                <div class="migration-step-title">Output — Export</div>
+                <div class="migration-step-desc">
+                  Composite all layers and annotations into the final output. Export to the requested format.
+                  Assets are stored in Tigris with metadata linking back to the source drawing hierarchy.
+                </div>
+                <div style="margin-top:8px;">
+                  <span class="badge badge-green">PNG</span>
+                  <span class="badge badge-cyan">SVG</span>
+                  <span class="badge badge-purple">PDF</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           AGENT INTEGRATION PANEL
+      ============================================================ -->
+      <section class="section" id="agents">
+        <div class="section-header">
+          <div class="section-icon amber">🤖</div>
+          <h2 class="section-title">Agent Integration Panel</h2>
+          <span class="section-anchor">#agents</span>
+        </div>
+
+        <div class="highlight-box">
+          <p>
+            The <strong style="color: var(--text-primary);">SheetgenAgent</strong> implements botgen's <code>Agent</code> trait,
+            connecting sheetgen's CommandBus to botgen's service mesh. Services are hot-swappable via trait adapters
+            (<code>DataStore</code>, <code>MessageBus</code>, <code>Identity</code>).
+          </p>
+        </div>
+
+        <div class="cards-grid">
+          <div class="card card-blue">
+            <div class="card-header">
+              <span class="card-icon">💾</span>
+              <span class="card-title">Database Service</span>
+            </div>
+            <div class="card-body">
+              PostgreSQL + SQLx persistence layer. Stores all domain entities, command history, and audit trails.
+              <div style="margin-top:8px;">
+                <span class="badge badge-blue">DataStore trait</span>
+                <span class="badge badge-dim">Hot-swappable</span>
+              </div>
+              <div style="margin-top:6px; font-size:0.8rem; color:var(--text-dim);">
+                Integration: Direct adapter from sheetgen's existing SQLx pool
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-cyan">
+            <div class="card-header">
+              <span class="card-icon">📦</span>
+              <span class="card-title">Storage Service</span>
+            </div>
+            <div class="card-body">
+              Tigris object storage for rendered assets, uploaded images, and template archives.
+              <div style="margin-top:8px;">
+                <span class="badge badge-cyan">S3-compatible</span>
+                <span class="badge badge-dim">Asset pipeline</span>
+              </div>
+              <div style="margin-top:6px; font-size:0.8rem; color:var(--text-dim);">
+                Integration: Tigris SDK adapter with presigned URL generation
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-purple">
+            <div class="card-header">
+              <span class="card-icon">🧠</span>
+              <span class="card-title">LLM Client</span>
+            </div>
+            <div class="card-body">
+              AI model interface for drawing analysis, command suggestion, and natural language interaction.
+              <div style="margin-top:8px;">
+                <span class="badge badge-purple">GPT / Claude</span>
+                <span class="badge badge-dim">Consent-gated</span>
+              </div>
+              <div style="margin-top:6px; font-size:0.8rem; color:var(--text-dim);">
+                Integration: Provider-agnostic trait with consent wrapping
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-green">
+            <div class="card-header">
+              <span class="card-icon">🎨</span>
+              <span class="card-title">Rendering Service</span>
+            </div>
+            <div class="card-body">
+              Schema-driven architectural drawing generation. Floor plans, elevations, sections, details.
+              <div style="margin-top:8px;">
+                <span class="badge badge-green">PNG/SVG/PDF</span>
+                <span class="badge badge-dim">Layer compositor</span>
+              </div>
+              <div style="margin-top:6px; font-size:0.8rem; color:var(--text-dim);">
+                Integration: Botgen Rendering Service with cropping pipeline
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-amber">
+            <div class="card-header">
+              <span class="card-icon">🌐</span>
+              <span class="card-title">Gateway Service</span>
+            </div>
+            <div class="card-body">
+              Discord frontend for conversational interaction. Handles message routing and channel management.
+              <div style="margin-top:8px;">
+                <span class="badge badge-amber">Discord</span>
+                <span class="badge badge-dim">MessageBus trait</span>
+              </div>
+              <div style="margin-top:6px; font-size:0.8rem; color:var(--text-dim);">
+                Integration: Serenity adapter with command parsing
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-pink">
+            <div class="card-header">
+              <span class="card-icon">🔀</span>
+              <span class="card-title">Routing Service</span>
+            </div>
+            <div class="card-body">
+              Maps incoming messages to agent commands. Resolves intent and dispatches to the correct handler.
+              <div style="margin-top:8px;">
+                <span class="badge badge-pink">Intent resolver</span>
+                <span class="badge badge-dim">Command dispatch</span>
+              </div>
+              <div style="margin-top:6px; font-size:0.8rem; color:var(--text-dim);">
+                Integration: CommandBus bridge from botgen to sheetgen
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-red">
+            <div class="card-header">
+              <span class="card-icon">🛡️</span>
+              <span class="card-title">Moderation Service</span>
+            </div>
+            <div class="card-body">
+              Content filtering, rate limiting, and safety checks. Ensures agent actions stay within bounds.
+              <div style="margin-top:8px;">
+                <span class="badge badge-red">Safety</span>
+                <span class="badge badge-dim">Rate limiting</span>
+              </div>
+              <div style="margin-top:6px; font-size:0.8rem; color:var(--text-dim);">
+                Integration: Middleware layer on all agent I/O
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           TEMPLATE LIBRARY
+      ============================================================ -->
+      <section class="section" id="templates">
+        <div class="section-header">
+          <div class="section-icon green">📋</div>
+          <h2 class="section-title">Template Library</h2>
+          <span class="section-anchor">#templates</span>
+        </div>
+
+        <div class="highlight-box">
+          <p>
+            Templates provide reusable starting points for common drawing configurations.
+            Workflow: <strong style="color: var(--text-primary);">Create base entity → Mark as template → Clone with children</strong>.
+            Template propagation logic lives in the command layer, not the database, ensuring consistency
+            and auditability of all template operations.
+          </p>
+        </div>
+
+        <div class="cards-grid">
+          <div class="card card-blue">
+            <div class="card-header">
+              <span class="card-icon">📄</span>
+              <span class="card-title">Sheet Templates</span>
+            </div>
+            <div class="card-body">
+              Predefined sheet sizes, scales, and layout configurations. Standard architectural sheet sizes
+              (A0–A4, ANSI A–E) with pre-configured margins and orientation.
+              <div style="margin-top:10px;">
+                <span class="badge badge-blue">Size</span>
+                <span class="badge badge-dim">Scale</span>
+                <span class="badge badge-dim">Margins</span>
+              </div>
+              <div style="margin-top:8px; font-size:0.8rem; color:var(--text-dim);">
+                Create base sheet → <code>templateCreate</code> → <code>templateClone</code> with titleblocks
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-cyan">
+            <div class="card-header">
+              <span class="card-icon">🏷️</span>
+              <span class="card-title">Titleblock Templates</span>
+            </div>
+            <div class="card-body">
+              Standard title block layouts with firm name, project info, revision history, and approval fields.
+              Controls margin boundaries that define the cropping region for viewports.
+              <div style="margin-top:10px;">
+                <span class="badge badge-cyan">Margins</span>
+                <span class="badge badge-dim">Metadata</span>
+                <span class="badge badge-dim">Revisions</span>
+              </div>
+              <div style="margin-top:8px; font-size:0.8rem; color:var(--text-dim);">
+                Create base titleblock → <code>templateCreate</code> → <code>templateClone</code> with metadata
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-green">
+            <div class="card-header">
+              <span class="card-icon">🔲</span>
+              <span class="card-title">Viewport Templates</span>
+            </div>
+            <div class="card-body">
+              Reusable viewport configurations with predefined bounds, scale factors, and positioning rules.
+              Controls the visible window into views.
+              <div style="margin-top:10px;">
+                <span class="badge badge-green">Bounds</span>
+                <span class="badge badge-dim">Scale</span>
+                <span class="badge badge-dim">Position</span>
+              </div>
+              <div style="margin-top:8px; font-size:0.8rem; color:var(--text-dim);">
+                Create base viewport → <code>templateCreate</code> → <code>templateClone</code> with views
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-purple">
+            <div class="card-header">
+              <span class="card-icon">👁️</span>
+              <span class="card-title">View Templates</span>
+            </div>
+            <div class="card-body">
+              Standard architectural views: floor plans, elevations, sections, details. Each defines the view type,
+              boundary, and default style configuration.
+              <div style="margin-top:10px;">
+                <span class="badge badge-purple">Floor Plan</span>
+                <span class="badge badge-dim">Elevation</span>
+                <span class="badge badge-dim">Section</span>
+              </div>
+              <div style="margin-top:8px; font-size:0.8rem; color:var(--text-dim);">
+                Create base view → <code>templateCreate</code> → <code>templateClone</code> with drawings
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-amber">
+            <div class="card-header">
+              <span class="card-icon">✏️</span>
+              <span class="card-title">Drawing Templates</span>
+            </div>
+            <div class="card-body">
+              Reusable drawing content with predefined elements, layer configurations, and style settings.
+              Common patterns for walls, doors, windows, stairs, and structural elements.
+              <div style="margin-top:10px;">
+                <span class="badge badge-amber">Elements</span>
+                <span class="badge badge-dim">Layers</span>
+                <span class="badge badge-dim">Styles</span>
+              </div>
+              <div style="margin-top:8px; font-size:0.8rem; color:var(--text-dim);">
+                Create base drawing → <code>templateCreate</code> → <code>templateClone</code> to target
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           CROPPING & LAYER SYSTEM
+      ============================================================ -->
+      <section class="section" id="cropping">
+        <div class="section-header">
+          <div class="section-icon pink">✂️</div>
+          <h2 class="section-title">Cropping &amp; Layer System</h2>
+          <span class="section-anchor">#cropping</span>
+        </div>
+
+        <div class="highlight-box">
+          <p>
+            The cropping hierarchy enforces strict visual containment at every level.
+            Annotations at each level are cropped to their parent scope, ensuring that drawing content
+            never visually leaks outside its designated boundary.
+          </p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Visual Containment Hierarchy</div>
+          <div class="crop-level">
+            <div class="crop-label">
+              📄 Sheet
+              <span class="badge badge-cyan">Top Level</span>
+            </div>
+            <div class="crop-desc">Sheet annotations overlay everything — they are never cropped. Title text, sheet numbers, and global notes render above all other content.</div>
+            <div class="crop-level">
+              <div class="crop-label">
+                🏷️ Titleblock
+                <span class="badge badge-blue">Margin Boundary</span>
+              </div>
+              <div class="crop-desc">Titleblock annotations respect margins. Border lines, firm info, and revision blocks are constrained to the titleblock region.</div>
+              <div class="crop-level">
+                <div class="crop-label">
+                  🔲 Viewport
+                  <span class="badge badge-amber">Viewport Crop</span>
+                </div>
+                <div class="crop-desc">Viewport annotations are cropped by the viewport boundary. Scale labels, viewport titles, and frame lines clip at the viewport edge.</div>
+                <div class="crop-level">
+                  <div class="crop-label">
+                    👁️ View
+                    <span class="badge badge-purple">View Crop</span>
+                  </div>
+                  <div class="crop-desc">View annotations are cropped by the view boundary. Section marks, elevation indicators, and callout bubbles clip at the view edge.</div>
+                  <div class="crop-level">
+                    <div class="crop-label">
+                      ✏️ Drawing
+                      <span class="badge badge-green">Content</span>
+                    </div>
+                    <div class="crop-desc">Drawing annotations are content-specific. Dimensions, material hatches, and element labels are bound to the drawing geometry they describe.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           ARCHIFUSION WORKSHOP MODE
+      ============================================================ -->
+      <section class="section" id="workshop">
+        <div class="section-header">
+          <div class="section-icon cyan">🎓</div>
+          <h2 class="section-title">Archifusion Workshop Mode</h2>
+          <span class="section-anchor">#workshop</span>
+        </div>
+
+        <div class="highlight-box">
+          <p>
+            The <strong style="color: var(--text-primary);">Archifusion Workshop</strong> is an educational mode from botgen
+            where students learn building design through hands-on interaction with an AI Architect NPC.
+            Every AI-powered action requires explicit consent — students maintain full control over their creative process.
+          </p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Workshop Flow</div>
+          <div class="migration-steps">
+            <div class="migration-step step-current">
+              <div class="migration-step-marker">
+                <div class="migration-step-dot">1</div>
+                <div class="migration-step-line"></div>
+              </div>
+              <div class="migration-step-content">
+                <div class="migration-step-title">Student Joins</div>
+                <div class="migration-step-desc">Student enters the workshop via Discord. A personal channel is created with isolated workspace.</div>
+              </div>
+            </div>
+            <div class="migration-step step-middle">
+              <div class="migration-step-marker">
+                <div class="migration-step-dot">2</div>
+                <div class="migration-step-line"></div>
+              </div>
+              <div class="migration-step-content">
+                <div class="migration-step-title">Architect AI NPC Deployed</div>
+                <div class="migration-step-desc">A SheetgenAgent instance is spawned as the student's personal Architect NPC, ready to assist with design guidance.</div>
+              </div>
+            </div>
+            <div class="migration-step step-middle">
+              <div class="migration-step-marker">
+                <div class="migration-step-dot">3</div>
+                <div class="migration-step-line"></div>
+              </div>
+              <div class="migration-step-content">
+                <div class="migration-step-title">Image Analysis</div>
+                <div class="migration-step-desc">Student uploads hand-drawn sketches. The LLM Client analyzes the image and suggests sheetgen commands to digitize the design.</div>
+              </div>
+            </div>
+            <div class="migration-step step-middle">
+              <div class="migration-step-marker">
+                <div class="migration-step-dot">4</div>
+                <div class="migration-step-line"></div>
+              </div>
+              <div class="migration-step-content">
+                <div class="migration-step-title">3D Model Visualization</div>
+                <div class="migration-step-desc">Digitized drawings are compiled into a 3D model preview. Students see their building take shape from multiple views.</div>
+              </div>
+            </div>
+            <div class="migration-step step-target">
+              <div class="migration-step-marker">
+                <div class="migration-step-dot">5</div>
+              </div>
+              <div class="migration-step-content">
+                <div class="migration-step-title">Build Guide Generation</div>
+                <div class="migration-step-desc">Sheetgen generates a complete build guide with annotated drawings, material lists, and construction sequences.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h3 style="font-size:0.95rem; color:var(--text-dim); margin-bottom:16px; margin-top:24px; text-transform:uppercase; letter-spacing:0.08em; font-family: var(--font-mono);">AI Action Consent Gates</h3>
+        <div class="consent-examples">
+          <div class="consent-prompt">
+            <div class="consent-text">Allow Architect AI to analyze your uploaded sketch and suggest drawing commands.</div>
+            <div class="consent-actions">
+              <button class="btn-allow">Allow</button>
+              <button class="btn-deny">Deny</button>
+            </div>
+          </div>
+          <div class="consent-prompt">
+            <div class="consent-text">Allow Architect AI to create a floor plan drawing from your sketch analysis.</div>
+            <div class="consent-actions">
+              <button class="btn-allow">Allow</button>
+              <button class="btn-deny">Deny</button>
+            </div>
+          </div>
+          <div class="consent-prompt">
+            <div class="consent-text">Allow Rendering Service to generate a 3D model preview from your drawings.</div>
+            <div class="consent-actions">
+              <button class="btn-allow">Allow</button>
+              <button class="btn-deny">Deny</button>
+            </div>
+          </div>
+          <div class="consent-prompt">
+            <div class="consent-text">Allow Architect AI to generate a build guide with material estimates for your project.</div>
+            <div class="consent-actions">
+              <button class="btn-allow">Allow</button>
+              <button class="btn-deny">Deny</button>
+            </div>
+          </div>
+          <div class="consent-prompt">
+            <div class="consent-text">Allow Architect AI to add structural annotations to your elevation drawing.</div>
+            <div class="consent-actions">
+              <button class="btn-allow">Allow</button>
+              <button class="btn-deny">Deny</button>
+            </div>
+          </div>
+          <div class="consent-prompt">
+            <div class="consent-text">Allow Rendering Service to export your complete sheet set as a PDF package.</div>
+            <div class="consent-actions">
+              <button class="btn-allow">Allow</button>
+              <button class="btn-deny">Deny</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           PROJECT ROADMAP
+      ============================================================ -->
+      <section class="section" id="roadmap">
+        <div class="section-header">
+          <div class="section-icon amber">🗺️</div>
+          <h2 class="section-title">Project Roadmap</h2>
+          <span class="section-anchor">#roadmap</span>
+        </div>
+
+        <div class="roadmap-grid">
+          <div class="phase-card phase-active">
+            <div class="phase-number">M1–M5</div>
+            <div class="phase-name">MVP GPT-Only</div>
+            <div class="phase-desc">Core domain model, CQRS command bus, workspace/project/sheet/drawing CRUD, annotations, titleblocks, viewports, views. GPT as the sole AI provider.</div>
+            <div class="phase-status"><span class="badge badge-green">✅ Complete</span></div>
+          </div>
+
+          <div class="phase-card phase-active">
+            <div class="phase-number">M6</div>
+            <div class="phase-name">Templates &amp; Rendering</div>
+            <div class="phase-desc">Template system (create, clone, propagate). Rendering service foundations. Export to PNG/SVG/PDF. Botgen integration with SheetgenAgent.</div>
+            <div class="phase-status"><span class="badge badge-amber">🟡 In Progress</span></div>
+          </div>
+
+          <div class="phase-card phase-planned">
+            <div class="phase-number">M7</div>
+            <div class="phase-name">Multi-Step Undo &amp; ACL</div>
+            <div class="phase-desc">Command history tracking. Multi-step undo/redo with scope isolation. Access control lists for workspaces, projects, and shared resources.</div>
+            <div class="phase-status"><span class="badge badge-red">🔴 Planned</span></div>
+          </div>
+
+          <div class="phase-card phase-planned">
+            <div class="phase-number">M8</div>
+            <div class="phase-name">Redis, Telemetry &amp; Stress</div>
+            <div class="phase-desc">Redis caching layer for hot paths. Structured telemetry and observability. Load testing and stress testing under concurrent usage patterns.</div>
+            <div class="phase-status"><span class="badge badge-red">🔴 Planned</span></div>
+          </div>
+
+          <div class="phase-card phase-future">
+            <div class="phase-number">M9–M11</div>
+            <div class="phase-name">Web UI &amp; Visual Editor</div>
+            <div class="phase-desc">Browser-based design workspace. Visual drawing editor with drag-and-drop. Real-time collaboration. Beta program for early adopters.</div>
+            <div class="phase-status"><span class="badge badge-dim">🔴 Future</span></div>
+          </div>
+
+          <div class="phase-card phase-future">
+            <div class="phase-number">M12+</div>
+            <div class="phase-name">v1.0 GA &amp; Beyond</div>
+            <div class="phase-desc">General availability release. Multi-tenant architecture. Plugin system for custom drawing tools, renderers, and AI providers. Community marketplace.</div>
+            <div class="phase-status"><span class="badge badge-dim">🔴 Future</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           RISK & CONSTRAINTS TABLE
+      ============================================================ -->
+      <section class="section" id="risks">
+        <div class="section-header">
+          <div class="section-icon red">⚠️</div>
+          <h2 class="section-title">Risk &amp; Constraints</h2>
+          <span class="section-anchor">#risks</span>
+        </div>
+
+        <div class="panel" style="padding: 0; overflow: hidden;">
+          <table class="risk-table">
+            <thead>
+              <tr>
+                <th>Risk</th>
+                <th>Source</th>
+                <th>Severity</th>
+                <th>Mitigation Strategy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Rendering complexity at scale</td>
+                <td><span class="badge badge-blue">Sheetgen</span></td>
+                <td><span class="badge badge-red">HIGH</span></td>
+                <td>Progressive rendering, resolution tiers, async export pipeline with queue management</td>
+              </tr>
+              <tr>
+                <td>Template propagation in command layer</td>
+                <td><span class="badge badge-blue">Sheetgen</span></td>
+                <td><span class="badge badge-red">HIGH</span></td>
+                <td>Comprehensive integration tests, command-level validation, audit trail for all template operations</td>
+              </tr>
+              <tr>
+                <td>Cropping hierarchy edge cases</td>
+                <td><span class="badge badge-blue">Sheetgen</span></td>
+                <td><span class="badge badge-amber">MEDIUM</span></td>
+                <td>Property-based testing for boundary conditions, visual regression tests for render output</td>
+              </tr>
+              <tr>
+                <td>Platform coupling (Discord dependency)</td>
+                <td><span class="badge badge-purple">Botgen</span></td>
+                <td><span class="badge badge-red">HIGH</span></td>
+                <td>Gateway trait abstraction, MessageBus interface decouples agent logic from transport</td>
+              </tr>
+              <tr>
+                <td>Service mesh migration complexity</td>
+                <td><span class="badge badge-purple">Botgen</span></td>
+                <td><span class="badge badge-amber">MEDIUM</span></td>
+                <td>Trait adapters for all services, incremental migration with dual-mode operation</td>
+              </tr>
+              <tr>
+                <td>Agent autonomy safety</td>
+                <td><span class="badge badge-purple">Botgen</span></td>
+                <td><span class="badge badge-red">HIGH</span></td>
+                <td>Consent-first model, all AI actions require explicit user approval, moderation middleware</td>
+              </tr>
+              <tr>
+                <td>LLM provider reliability</td>
+                <td><span class="badge badge-purple">Botgen</span></td>
+                <td><span class="badge badge-amber">MEDIUM</span></td>
+                <td>Provider-agnostic LLM trait, fallback chains, graceful degradation without AI features</td>
+              </tr>
+              <tr>
+                <td>Multi-step undo consistency</td>
+                <td><span class="badge badge-blue">Sheetgen</span></td>
+                <td><span class="badge badge-amber">MEDIUM</span></td>
+                <td>Event sourcing pattern, immutable command log, scope-isolated undo stacks</td>
+              </tr>
+              <tr>
+                <td>Asset storage costs</td>
+                <td><span class="badge badge-blue">Sheetgen</span></td>
+                <td><span class="badge badge-green">LOW</span></td>
+                <td>Tiered storage, lazy rendering, cache invalidation on domain changes</td>
+              </tr>
+              <tr>
+                <td>Workshop scalability (concurrent students)</td>
+                <td><span class="badge badge-purple">Botgen</span></td>
+                <td><span class="badge badge-amber">MEDIUM</span></td>
+                <td>Agent pooling, resource limits per session, Redis-backed session state in M8</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div><!-- /.container -->
+  </main>
+
+  <!-- ================================================================
+       FOOTER
+  ================================================================ -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">FERROS</div>
+        <div class="footer-tagline">Schema-driven building design. Consent first. Agent managed. Powered by Sheetgen + Botgen.</div>
+        <div class="footer-meta">Architecture Design Lab v0.1.0 · 2026 · FERROS User Endpoint</div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
