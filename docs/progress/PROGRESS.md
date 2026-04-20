@@ -257,6 +257,7 @@ Individual module specs retain their detailed milestones and dependency lists. T
 | Assets, Cards & Decks | Wave 1 (vertical slice) | Card/Deck object model and Forge round-trip | [assets-cards-decks.md](./assets-cards-decks.md) |
 | Arena Runtime | Wave 1 (vertical slice) | Separated runtime host layer | [arena-runtime.md](./arena-runtime.md) |
 | The Forge | Wave 1 (vertical slice) | Authoring surface for the card round-trip | [forge.md](./forge.md) |
+| Architecture Builder Lab | Wave 1 Exploration | Forge-pattern extension for parametric building authoring and Twin Architecture | [../builder-blueprint.md](../builder-blueprint.md) |
 | Schedule Ledger | Wave 2 (first consumer) | Proves shared contract consumption | [schedule-ledger.md](./schedule-ledger.md) |
 | Battle Arena | Wave 2 (first consumer) | Proves runtime can serve a second surface | [trading-arena.md](./trading-arena.md) |
 | Showcase / Landing Page | Wave 2 (first consumer) | Reads real capability status | [showcase.md](./showcase.md) |

@@ -44,3 +44,7 @@ This spec tracks The Forge as the FERROS authoring system represented today by `
 - V5 now covers one real card fixture, but multi-card local deck assembly remains a later step.
 - V7 card export/import portability is still open; this pass intentionally stopped at editable local preview.
 - Forge output contracts for broader templates or reusable runtime targets are still TBD.
+
+## Related Specs
+
+- [`docs/builder-blueprint.md`](../builder-blueprint.md) — Architecture Builder Lab direction spec. Documents the first Forge-pattern extension into a new domain (parametric building parts and assemblies), explains when HTML/CSS illusions are appropriate vs. a Rust-backed renderer, and includes a ready-to-use generator prompt for the architecture workbench page.
