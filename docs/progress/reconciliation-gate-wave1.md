@@ -145,7 +145,7 @@ The FERROS consent model is verified through the following primitives, all of wh
 | Primitive | Contract | Enforcement |
 |-----------|----------|-------------|
 | Trade Window acceptance | C10, C1 | `ferros_trade_accepted` flag gates localStorage writes |
-| `saveProfile()` guard | C9 | `if (recoveryMode \|\| sessionDeclined) return;` — security boundary |
+| `saveProfile()` guard | C9 | Guard rejects writes when `recoveryMode` or `sessionDeclined` is true — security boundary |
 | `canMutateDurableState()` | C10 | Returns `true` only in `full-profile` mode |
 | Session mode isolation | C1 | `oneOf` constraint in `identity.schema.json` — exactly one mode |
 | Seal chain integrity | C2 | `sealChain[]` append-only via `addSeal()` — no direct mutation |
