@@ -1,7 +1,7 @@
 # Reconciliation Gate — Wave 1
 
 > **Status:** OPEN — initiated 2026-04-20
-> **Tracking issue:** [#53](https://github.com/Maangled/ferros/issues/53)
+> **Tracking issue:** [Reconciliation Gate — Wave 1 #53](https://github.com/Maangled/ferros/issues/53)
 > **Authority:** `docs/ORCHESTRATION.md` §4
 > **Approver:** @Maangled
 
@@ -155,7 +155,7 @@ The FERROS consent model is verified through the following primitives, all of wh
 
 ## Process
 
-1. This document was created alongside GitHub issue [#53](https://github.com/Maangled/ferros/issues/53).
+1. This document was created alongside GitHub issue [Reconciliation Gate — Wave 1 #53](https://github.com/Maangled/ferros/issues/53).
 2. @Maangled or a designated reviewer works through every checkbox in the four checks above.
 3. Each item is marked ✅ when verified or ❌ with a note if a conflict is found.
 4. If a conflict is found, a `cross-stream-conflict` issue is filed per ORCHESTRATION.md §5.
