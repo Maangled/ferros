@@ -24,6 +24,9 @@ All functions and properties listed below are accessible on `window.FerrosCore` 
 | `canMutateDurableState` | function | H4 |
 | `validateImport` | function | H2 |
 | `validateProfileShape` | function | H4 |
+| `loadProfile` | function | Stream B, Stream D consumers |
+| `pushAuditEntry` | function | Stream B, Stream D consumers |
+| `saveProfile` | function | Stream B, Stream D consumers |
 | `generateRuntimeNonce` | function | H3 |
 | `validateRuntimeMessage` | function | H3 |
 | `templateBlockToEvent` | function | H1 |
@@ -119,6 +122,33 @@ Unified durable-write predicate (C9/C10). Returns `true` only when all of the fo
 - **Returns:** `boolean`
 - **Harnesses:** H4 (Group E — E-1 deny session, E-2 deny alias, E-3 deny recovery, E-4 allow full-profile)
 
+### Profile Persistence
+
+#### `loadProfile() → {ok, code?, detail?, profile?, sealChain?}`
+
+Shared localStorage loader for cross-surface consumers. Reads `ferros_profile`, falls back to `ferros_seal_chain` if `profile.sealChain` is absent, runs the same corruption checks described in C9, then applies the minimal optional-field normalizer used by the profile surface.
+
+- **Returns:** `{ ok: true, profile, sealChain }` or `{ ok: false, code, detail? }`
+- **Error codes:** `STORAGE_UNAVAILABLE`, `PROFILE_NOT_FOUND`, `STORAGE_JSON_INVALID`, `STORAGE_GENESIS_STAGE_MISMATCH`, `STORAGE_SEAL_COUNT_MISMATCH`, `STORAGE_LAST_SEAL_MISMATCH`
+- **Consumers:** Schedule Ledger, Stream D consumer surfaces
+
+#### `pushAuditEntry(profile, action, detail?) → {ok, code?, entry?, profile}`
+
+Appends a bounded FIFO audit entry to `profile.auditTrail` using the profile-schema action enum (`seal-added`, `profile-saved`, `profile-imported`, `alias-claimed`, `recovery-claimed`). This is the in-profile audit ring buffer, not the portable C7 `.ferros-log` envelope.
+
+- **Params:** `profile` (object), `action` (string), `detail?` (object | null)
+- **Returns:** `{ ok: true, entry, profile }` or `{ ok: false, code: 'PROFILE_REQUIRED' | 'AUDIT_ACTION_INVALID', detail? }`
+- **Consumers:** Personal Profile, consumer surfaces that append profile-scoped audit entries
+
+#### `saveProfile(profile, options) → {ok, code?, detail?, profile?, sealChain?}`
+
+Shared localStorage writer for consumer surfaces. Writes only when `canMutateDurableState(options.flags)` passes, validates the profile shape, updates `meta.lastModified` and `meta.revision`, writes both `ferros_profile` and `ferros_seal_chain`, and optionally appends a `profile-saved` audit entry.
+
+- **Params:** `profile` (object), `options` (`{ flags, sealChain?, skipAudit?, auditDetail? }`)
+- **Returns:** `{ ok: true, profile, sealChain }` or `{ ok: false, code, detail? }`
+- **Error codes:** `PROFILE_REQUIRED`, `STORAGE_UNAVAILABLE`, `DURABLE_WRITE_FLAGS_REQUIRED`, `DURABLE_WRITE_FORBIDDEN`, `PROFILE_SHAPE_INVALID`, `STORAGE_QUOTA_EXCEEDED`
+- **Consumers:** Schedule Ledger, Stream D consumer surfaces
+
 ### Runtime Messaging (A4 / C8)
 
 #### `generateRuntimeNonce() → string`
@@ -193,3 +223,5 @@ All harnesses use `<script src="../docs/assets/_core/ferros-core.js"></script>` 
 | H6 | `harnesses/write-path-harness.html` | `validateProfileShape`, `canMutateDurableState`, `VERSION` |
 | H7 | `harnesses/semantic-fixture-linter.html` | `VERSION` |
 | H8 | `harnesses/ui-acceptance-harness.html` | `VERSION` |
+
+`loadProfile`, `pushAuditEntry`, and `saveProfile` are consumer-surface helpers. They are published for Stream B and Stream D surfaces but are not yet directly exercised by a dedicated harness.

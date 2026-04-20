@@ -1200,7 +1200,7 @@ const MAX_CONSOLE_LINES      = 80;    // lines kept in the build console before 
 const TOAST_TITLE_MAX_LEN    = 30;    // chars of a task title shown in drag-drop toast
 const MAX_AGENT_NUMBER       = 99;    // upper bound for auto-generated agent ID suffix
 
-let activeTab     = localStorage.getItem('acc-tab') || 'comms';
+let activeTab     = 'comms';
 let activeChannel = 'general';
 let selectedAgent = null;
 let isLive        = false;
@@ -1242,7 +1242,6 @@ document.addEventListener('DOMContentLoaded', () => {
    ═══════════════════════════════════════════════════════════════════════════ */
 function switchTab(id, silent) {
   activeTab = id;
-  if (!silent) localStorage.setItem('acc-tab', id);
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + id));
 }

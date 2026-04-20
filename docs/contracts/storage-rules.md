@@ -38,6 +38,8 @@ Current enforcement is via a unified durable-write predicate (`canMutateDurableS
 
 `saveProfile()`, `addSeal()`, import confirmation, and claim confirmation all gate mutations through this predicate. This guard model **must never be removed**.
 
+Cross-surface consumers that need durable profile access must go through the published `FerrosCore.loadProfile()` / `FerrosCore.saveProfile()` helpers. They may not create companion `localStorage` keys outside the C9 contract.
+
 ---
 
 ## Profile Schema Versioning

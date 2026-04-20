@@ -151,7 +151,7 @@ Every step in the pipeline validates against the frozen Schema A contracts:
 |------|---------------|--------|
 | Card creation | `schemas/card.schema.json` (C4) | H1 (harness), plus Forge-owned schema validation against the published contract |
 | Deck assembly | `schemas/deck.schema.json` (C5) | H1 (harness), plus Forge-owned schema validation against the published contract |
-| Card export | Wave 1 contract decision pending | Current public `FerrosCore.serializeExport()` is profile-only (C9) |
+| Card export | Forge-owned portability envelope | Wave 1 keeps card/deck export local to Forge; `FerrosCore.serializeExport()` remains profile-only (C9) until a dedicated card/deck contract exists |
 | Runtime init | C8 Runtime Host Contract | H3 (harness), `ferros:init` message shape |
 | Fixture corpus | All schemas (C1–C7) | H1 gate harness |
 
@@ -159,7 +159,7 @@ Every step in the pipeline validates against the frozen Schema A contracts:
 
 | Fixture | Schema | Purpose |
 |---------|--------|---------|
-| `schemas/fixtures/card-deck-roundtrip.json` | C5, C9 | Proves deck export/import is clean |
+| `schemas/fixtures/card-deck-roundtrip.json` | C4, C5 | Proves card/deck round-trip preserves the published schema fields |
 | `schemas/fixtures/deck-card-assembly-seam.json` | C4, C5 | Proves card→deck linkage |
 
 ---
@@ -249,8 +249,8 @@ Current state: `docs/forge-workbench.html` is an early prototype showing the fou
 1. Load a card fixture from `schemas/fixtures/deck-card-assembly-seam.json` into the Forge inspector
 2. Render the card fields as editable inputs, bound to `schemas/card.schema.json`
 3. Wire the "Preview in Runtime" button to send `ferros:init` to the Runtime iframe
-4. Wire `FerrosCore.validateImport()` on save
-5. Wire `FerrosCore.computeHash()` for seal chain entry on first save
+4. Wire Forge-owned card/deck schema validation on save against C4/C5
+5. Wire `FerrosCore.computeHash()` to derive `contentHash` without widening the shared profile export contract
 
 This is targeted, concrete work that can be assigned to an agent immediately with no Stream A dependencies outstanding.
 

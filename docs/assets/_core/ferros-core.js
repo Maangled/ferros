@@ -17,6 +17,11 @@
   // ── Version ────────────────────────────────────────────────────────────────
   FerrosCore.VERSION = '1.0';
 
+  var PROFILE_STORAGE_KEY = 'ferros_profile';
+  var SEAL_CHAIN_STORAGE_KEY = 'ferros_seal_chain';
+  var AUDIT_TRAIL_CAP = 1000;
+  var AUDIT_ACTIONS = ['seal-added', 'profile-saved', 'profile-imported', 'alias-claimed', 'recovery-claimed'];
+
   // ── computeHash ────────────────────────────────────────────────────────────
   // Returns { hash: string, algorithm: 'sha256' | 'djb2' }
   FerrosCore.computeHash = async function computeHash(data) {
@@ -148,6 +153,189 @@
     return !!(flags.tradeWindowAccepted && !flags.sessionMode && !flags.aliasMode && !flags.recoveryMode);
   };
 
+  function getDurableStorage() {
+    try {
+      return root.localStorage || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function normalizeLoadedProfile(profile, sealChain) {
+    if (profile.meta) {
+      if (typeof profile.meta.revision !== 'number') profile.meta.revision = 0;
+      if (typeof profile.meta.xp !== 'number') profile.meta.xp = 0;
+      if (!Array.isArray(profile.meta.claimedAliasSessions)) profile.meta.claimedAliasSessions = [];
+      if (typeof profile.meta.sealBroken !== 'boolean') profile.meta.sealBroken = false;
+      if (typeof profile.meta.schemaVersion !== 'number') profile.meta.schemaVersion = 1;
+    }
+    profile.sealChain = Array.isArray(sealChain) ? sealChain : [];
+    if (!Array.isArray(profile.auditTrail)) profile.auditTrail = [];
+    if (!profile.schedule || typeof profile.schedule !== 'object' || Array.isArray(profile.schedule)) {
+      profile.schedule = {};
+    }
+    if (profile.schedule.archetype === undefined) {
+      profile.schedule.archetype = profile.identity && profile.identity.archetype ? profile.identity.archetype : null;
+    }
+    if (profile.schedule.activeDeck === undefined) profile.schedule.activeDeck = null;
+    if (profile.schedule.wakeTime === undefined) {
+      profile.schedule.wakeTime = profile.identity && profile.identity.wakeTime ? profile.identity.wakeTime : '07:00';
+    }
+    if (profile.schedule.sleepTime === undefined) {
+      profile.schedule.sleepTime = profile.identity && profile.identity.sleepTime ? profile.identity.sleepTime : '23:00';
+    }
+    if (!Array.isArray(profile.schedule.slots)) profile.schedule.slots = [];
+    if (!profile.completions || typeof profile.completions !== 'object' || Array.isArray(profile.completions)) {
+      profile.completions = {};
+    }
+    if (!profile.creditLog || typeof profile.creditLog !== 'object' || Array.isArray(profile.creditLog)) {
+      profile.creditLog = {};
+    }
+    if (!Array.isArray(profile.bag)) profile.bag = [];
+    return profile;
+  }
+
+  // ── loadProfile ────────────────────────────────────────────────────────────
+  // Shared localStorage loader for consumer surfaces.
+  // Returns { ok, code?, detail?, profile?, sealChain? }.
+  FerrosCore.loadProfile = function loadProfile() {
+    var storage = getDurableStorage();
+    if (!storage) {
+      return { ok: false, code: 'STORAGE_UNAVAILABLE' };
+    }
+    var raw = storage.getItem(PROFILE_STORAGE_KEY);
+    if (!raw) {
+      return { ok: false, code: 'PROFILE_NOT_FOUND' };
+    }
+
+    var parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      return { ok: false, code: 'STORAGE_JSON_INVALID', detail: 'Profile data is not valid JSON.' };
+    }
+
+    var chain = parsed.sealChain;
+    if (!Array.isArray(chain)) {
+      var fallbackRaw = storage.getItem(SEAL_CHAIN_STORAGE_KEY);
+      if (fallbackRaw) {
+        try {
+          chain = JSON.parse(fallbackRaw);
+        } catch (fallbackError) {
+          chain = [];
+        }
+      } else {
+        chain = [];
+      }
+    }
+
+    if (parsed.meta && parsed.meta.genesisHash === null && parsed.meta.stage > 0) {
+      return { ok: false, code: 'STORAGE_GENESIS_STAGE_MISMATCH', detail: 'Profile has stage > 0 but no genesis hash.' };
+    }
+    if (parsed.meta && typeof parsed.meta.sealCount === 'number' && chain.length !== parsed.meta.sealCount) {
+      return {
+        ok: false,
+        code: 'STORAGE_SEAL_COUNT_MISMATCH',
+        detail: 'Seal chain length (' + chain.length + ') does not match meta.sealCount (' + parsed.meta.sealCount + ').'
+      };
+    }
+    if (parsed.meta && parsed.meta.currentSeal && chain.length > 0 && chain[chain.length - 1].seal !== parsed.meta.currentSeal) {
+      return { ok: false, code: 'STORAGE_LAST_SEAL_MISMATCH', detail: 'Last seal in chain does not match meta.currentSeal.' };
+    }
+
+    normalizeLoadedProfile(parsed, chain);
+    return { ok: true, code: null, profile: parsed, sealChain: chain };
+  };
+
+  // ── pushAuditEntry ─────────────────────────────────────────────────────────
+  // Appends a bounded audit entry to the profile-scoped audit trail.
+  // Returns { ok, code?, entry?, profile }.
+  FerrosCore.pushAuditEntry = function pushAuditEntry(profile, action, detail) {
+    if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
+      return { ok: false, code: 'PROFILE_REQUIRED' };
+    }
+    if (AUDIT_ACTIONS.indexOf(action) === -1) {
+      return { ok: false, code: 'AUDIT_ACTION_INVALID', detail: action };
+    }
+    if (!Array.isArray(profile.auditTrail)) profile.auditTrail = [];
+    var entry = {
+      ts: new Date().toISOString(),
+      action: action,
+      detail: detail === undefined ? null : detail
+    };
+    profile.auditTrail.push(entry);
+    if (profile.auditTrail.length > AUDIT_TRAIL_CAP) {
+      profile.auditTrail = profile.auditTrail.slice(profile.auditTrail.length - AUDIT_TRAIL_CAP);
+    }
+    return { ok: true, code: null, entry: entry, profile: profile };
+  };
+
+  // ── saveProfile ────────────────────────────────────────────────────────────
+  // Shared localStorage writer for consumer surfaces.
+  // options: { sealChain?, flags, skipAudit?, auditDetail? }
+  // Returns { ok, code?, detail?, profile?, sealChain? }.
+  FerrosCore.saveProfile = function saveProfile(profile, options) {
+    if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
+      return { ok: false, code: 'PROFILE_REQUIRED' };
+    }
+
+    var storage = getDurableStorage();
+    if (!storage) {
+      return { ok: false, code: 'STORAGE_UNAVAILABLE' };
+    }
+
+    var opts = options || {};
+    if (!opts.flags) {
+      return { ok: false, code: 'DURABLE_WRITE_FLAGS_REQUIRED' };
+    }
+    if (!FerrosCore.canMutateDurableState(opts.flags)) {
+      return { ok: false, code: 'DURABLE_WRITE_FORBIDDEN' };
+    }
+
+    var sealChain = Array.isArray(opts.sealChain)
+      ? opts.sealChain
+      : (Array.isArray(profile.sealChain) ? profile.sealChain : []);
+
+    normalizeLoadedProfile(profile, sealChain);
+
+    var shapeCheck = FerrosCore.validateProfileShape(profile);
+    if (!shapeCheck.ok) {
+      return { ok: false, code: shapeCheck.code, detail: shapeCheck.detail };
+    }
+
+    profile.meta.lastModified = new Date().toISOString();
+    profile.meta.revision = (profile.meta.revision || 0) + 1;
+    profile.meta.sealCount = sealChain.length;
+    profile.meta.currentSeal = sealChain.length ? sealChain[sealChain.length - 1].seal : null;
+    if (sealChain.length === 1 && !profile.meta.genesisHash) {
+      profile.meta.genesisHash = sealChain[0].seal;
+    }
+    profile.sealChain = sealChain;
+
+    if (!opts.skipAudit) {
+      var auditResult = FerrosCore.pushAuditEntry(
+        profile,
+        'profile-saved',
+        opts.auditDetail || { sealCount: sealChain.length }
+      );
+      if (!auditResult.ok) {
+        return auditResult;
+      }
+    }
+
+    try {
+      storage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+      storage.setItem(SEAL_CHAIN_STORAGE_KEY, JSON.stringify(sealChain));
+    } catch (error) {
+      if (error.name === 'QuotaExceededError' || error.code === 22) {
+        return { ok: false, code: 'STORAGE_QUOTA_EXCEEDED' };
+      }
+      throw error;
+    }
+
+    return { ok: true, code: null, profile: profile, sealChain: sealChain };
+  };
+
   // ── validateImport ─────────────────────────────────────────────────────────
   // Reference import validator (C9-compliant).
   // Returns { ok: boolean, code: string|null, detail?: string }
@@ -262,6 +450,18 @@
         var jt = p.journal[j].type;
         if (jt !== undefined && journalTypeEnum.indexOf(jt) === -1) {
           return { ok: false, code: 'PROFILE_SHAPE_INVALID', detail: 'invalid journal entry type at index ' + j + ': ' + jt };
+        }
+      }
+    }
+
+    if (Array.isArray(p.auditTrail)) {
+      for (var at = 0; at < p.auditTrail.length; at++) {
+        var auditEntry = p.auditTrail[at];
+        if (!auditEntry || !auditEntry.ts || !auditEntry.action) {
+          return { ok: false, code: 'PROFILE_SHAPE_INVALID', detail: 'auditTrail entry at index ' + at + ' missing ts or action' };
+        }
+        if (AUDIT_ACTIONS.indexOf(auditEntry.action) === -1) {
+          return { ok: false, code: 'PROFILE_SHAPE_INVALID', detail: 'invalid auditTrail action at index ' + at + ': ' + auditEntry.action };
         }
       }
     }

@@ -280,6 +280,7 @@ h1,h2,h3,h4 { font-family: Georgia, 'Times New Roman', serif; }
   </div>
 </div>
 
+<script src="assets/_core/ferros-core.js"></script>
 <script>
 // ─── DEFAULT DATA ────────────────────────────────────────────────────────────
 const DEFAULT_DATA = {
@@ -320,15 +321,118 @@ const DEFAULT_DATA = {
 };
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-let scheduleData = JSON.parse(localStorage.getItem('ferros_schedule') || 'null') || JSON.parse(JSON.stringify(DEFAULT_DATA));
-let completions = JSON.parse(localStorage.getItem('ferros_completions') || '{}');
+const LEGACY_SCHEDULE_KEY = 'ferros_schedule';
+const LEGACY_COMPLETIONS_KEY = 'ferros_completions';
+const LEGACY_THEME_KEY = 'ferros_theme';
+
+function cloneData(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isLedgerData(value) {
+  return isPlainObject(value)
+    && Array.isArray(value.streams)
+    && Array.isArray(value.projects)
+    && Array.isArray(value.blocks)
+    && Array.isArray(value.protocols);
+}
+
+function readLegacyJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function removeLegacyKey(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    // Ignore storage cleanup failures on restricted browsers.
+  }
+}
+
+function resolveSharedProfileState() {
+  if (!window.FerrosCore || typeof FerrosCore.loadProfile !== 'function') {
+    return { ok: false, profile: null, sealChain: [] };
+  }
+  const result = FerrosCore.loadProfile();
+  if (!result.ok) {
+    return { ok: false, profile: null, sealChain: [] };
+  }
+  return result;
+}
+
+function resolveScheduleData(profileState, legacySchedule) {
+  if (profileState.ok && isLedgerData(profileState.profile.schedule && profileState.profile.schedule.ledger)) {
+    return cloneData(profileState.profile.schedule.ledger);
+  }
+  if (isLedgerData(legacySchedule)) {
+    return cloneData(legacySchedule);
+  }
+  return cloneData(DEFAULT_DATA);
+}
+
+function resolveCompletions(profileState, legacyCompletions) {
+  if (profileState.ok && isPlainObject(profileState.profile.completions)) {
+    return cloneData(profileState.profile.completions);
+  }
+  if (isPlainObject(legacyCompletions)) {
+    return cloneData(legacyCompletions);
+  }
+  return {};
+}
+
+function buildDurableFlags() {
+  return {
+    tradeWindowAccepted: sharedProfileState.ok,
+    sessionMode: false,
+    aliasMode: false,
+    recoveryMode: false
+  };
+}
+
+function cleanupLegacyLedgerKeys() {
+  removeLegacyKey(LEGACY_SCHEDULE_KEY);
+  removeLegacyKey(LEGACY_COMPLETIONS_KEY);
+  removeLegacyKey(LEGACY_THEME_KEY);
+}
+
+let sharedProfileState = resolveSharedProfileState();
+const legacyScheduleData = readLegacyJson(LEGACY_SCHEDULE_KEY, null);
+const legacyCompletionsData = readLegacyJson(LEGACY_COMPLETIONS_KEY, null);
+let scheduleData = resolveScheduleData(sharedProfileState, legacyScheduleData);
+let completions = resolveCompletions(sharedProfileState, legacyCompletionsData);
 let currentEditorStep = 0;
 let currentMapView = 'year';
 let currentDayView = 'Mon';
 
 function save() {
-  localStorage.setItem('ferros_schedule', JSON.stringify(scheduleData));
-  localStorage.setItem('ferros_completions', JSON.stringify(completions));
+  if (!sharedProfileState.ok || !window.FerrosCore || typeof FerrosCore.saveProfile !== 'function') {
+    return false;
+  }
+  const profile = sharedProfileState.profile;
+  profile.schedule = isPlainObject(profile.schedule) ? profile.schedule : {};
+  profile.schedule.ledger = cloneData(scheduleData);
+  profile.completions = cloneData(completions);
+  const result = FerrosCore.saveProfile(profile, {
+    sealChain: sharedProfileState.sealChain,
+    flags: buildDurableFlags(),
+    skipAudit: true
+  });
+  if (!result.ok) {
+    return false;
+  }
+  sharedProfileState = result;
+  cleanupLegacyLedgerKeys();
+  return true;
 }
 
 function todayKey() {
@@ -355,13 +459,18 @@ function streamBadge(sid) {
 
 // ─── THEME ───────────────────────────────────────────────────────────────────
 (function initTheme(){
-  const t = localStorage.getItem('ferros_theme') || 'light';
-  if(t==='dark') document.documentElement.setAttribute('data-theme','dark');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if(prefersDark) document.documentElement.setAttribute('data-theme','dark');
+  removeLegacyKey(LEGACY_THEME_KEY);
 })();
 function toggleTheme(){
   const cur = document.documentElement.getAttribute('data-theme');
-  if(cur==='dark'){ document.documentElement.removeAttribute('data-theme'); localStorage.setItem('ferros_theme','light'); }
-  else { document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('ferros_theme','dark'); }
+  if(cur==='dark'){ document.documentElement.removeAttribute('data-theme'); }
+  else { document.documentElement.setAttribute('data-theme','dark'); }
+}
+
+if ((legacyScheduleData || legacyCompletionsData) && sharedProfileState.ok) {
+  save();
 }
 
 // ─── TABS ────────────────────────────────────────────────────────────────────

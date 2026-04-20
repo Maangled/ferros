@@ -44,7 +44,7 @@ A consumer surface follows three rules:
 **What S3 requires:**
 
 1. Showcase reads `docs/contracts/manifest.json` at page load
-2. For each contract C1–C10, it displays the artifact status and enforcement status
+2. For each contract C1–C10, it displays the manifest's current `status` together with the contract name and evidence links already present in the manifest
 3. The display is not hardcoded — it reflects the actual manifest state
 4. If a contract status changes in the manifest, the Showcase updates automatically
 
@@ -112,8 +112,8 @@ Trading in FERROS is the same mechanism as profile portability. When two players
 
 1. Player A has a card in their profile inventory
 2. Player A exports the card (same as exporting a profile token)
-3. Player B imports the card — `FerrosCore.validateImport()` validates the card's schema and seal chain
-4. Player B's profile takes ownership — the card's `profileId` updates
+3. Player B validates the card or deck payload against `schemas/card.schema.json` / `schemas/deck.schema.json`, plus any attached provenance envelope
+4. Player B's profile takes ownership by accepting the asset into the profile bag and updating `attribution.linkedTo`, not by mutating a private `profileId` field
 5. An audit record logs the transfer on both sides
 
 This is not a blockchain. There's no distributed ledger. It's two local-first profiles exchanging a JSON object with schema validation and seal chain provenance. Simple, verifiable, offline-capable.
@@ -140,7 +140,7 @@ Stream D's entry condition: V1–V8 from Stream B complete, plus S2 requires V5�
 | S3 | Showcase reads live manifest | Stream B V1 ✅ | Showcase shows real gate status |
 | S4 | Shared contracts frozen at v1 | S2 + S3 done | All surfaces working on v1 contracts |
 
-**S4 Philosophy:** Freezing contracts at v1 for local-first use means: every surface in every stream agrees that `profile.schemaVersion = "2.0"`, `card.schemaVersion = "1.0"`, etc. are the canonical versions. From this point on, any schema change requires a migration rule. This is the stability guarantee that lets external developers build on FERROS with confidence.
+**S4 Philosophy:** Freezing contracts at v1 for local-first use means: every surface in every stream agrees on the published version markers already in the contracts, such as `profile.meta.version = "1.0"` and `card.version >= 1`. From this point on, any schema change requires a migration rule. This is the stability guarantee that lets external developers build on FERROS with confidence.
 
 ### Wave 3 — Permissioned Actions and Trading
 
@@ -207,7 +207,7 @@ Stream D does not have its own gate harnesses in Wave 0 or Wave 1. It uses the s
 |---------|---------|-------|
 | `showcase-acceptance-harness.html` | Verify Showcase reads live manifest | Gate (S3) |
 | `battle-arena-contract-harness.html` | Verify Battle Arena uses only C8 for Runtime communication | Gate (S2) |
-| `trading-round-trip-harness.html` | Verify card trade preserves all fields and updates profileId | Gate (Wave 3) |
+| `trading-round-trip-harness.html` | Verify card trade preserves all fields and updates profile bag ownership / attribution linkage | Gate (Wave 3) |
 
 These harnesses follow the same pattern as Stream A harnesses: they run in Chrome via `file://`, load `ferros-core.js`, and use binary pass/fail gates.
 
