@@ -37,7 +37,7 @@ It is not a Linux distribution, not a container runtime, and not a research prot
 
 | Project | Progress | Notes |
 |---------|----------|-------|
-| **The Forge** | `▓░░░░░░░░░░░░░░░░░░░` 2% | Authoring system is taking shape; cards/decks exist conceptually, but local assembly is still early |
+| **The Forge** | `▓░░░░░░░░░░░░░░░░░░░` 2% | Standalone workbench now supports card editing, local deck assembly, and JSON round-trip; broader export contracts are still early |
 | **Arena Runtime** | `█░░░░░░░░░░░░░░░░░░░` 1% | Reusable portal/runtime layer is emerging inside `docs/algo-trading-arena.html`, but is not separated yet |
 | **Battle Arena** | `█░░░░░░░░░░░░░░░░░░░` 1% | Game-specific prototype currently shares the same overloaded surface in `docs/algo-trading-arena.html` |
 | **Personal Profile** | `█░░░░░░░░░░░░░░░░░░░` 1% | Prototype in `docs/personal-profile.html`; remains the portable identity and progression root |

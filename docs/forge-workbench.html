@@ -585,10 +585,150 @@ body.project-direct-view .forge-viewport iframe {
   color: var(--text-dim);
 }
 
+.editor-actions {
+  margin-top: 10px;
+}
+
 .reference-list {
   margin: 0;
   padding-left: 18px;
   color: var(--text-secondary);
+}
+
+.asset-item.linked {
+  border-left-color: var(--accent-amber);
+  background: rgba(245,158,11,0.08);
+}
+
+.asset-item.dragging {
+  opacity: 0.55;
+}
+
+.deck-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.deck-state-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.deck-state-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-accent);
+  background: rgba(22, 27, 40, 0.8);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+}
+
+.deck-state-chip.active {
+  border-color: var(--accent-cyan);
+  color: var(--text-primary);
+}
+
+.deck-drop-zone {
+  border: 1px dashed var(--border-accent);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(10, 12, 16, 0.5);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-dim);
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.deck-drop-zone.drag-over {
+  border-color: var(--accent-cyan);
+  background: rgba(45,212,191,0.08);
+  color: var(--text-primary);
+}
+
+.deck-add-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.deck-card-list {
+  display: grid;
+  gap: 10px;
+}
+
+.deck-card-row {
+  border: 1px solid rgba(58, 90, 143, 0.18);
+  border-radius: 14px;
+  background: rgba(17, 21, 32, 0.52);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.deck-card-row.active {
+  border-color: var(--accent-cyan);
+  box-shadow: inset 0 0 0 1px rgba(45,212,191,0.12);
+}
+
+.deck-card-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.deck-card-row-meta {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.deck-card-row-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.deck-card-row-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+}
+
+.deck-row-controls {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.deck-row-button,
+.deck-preview-button {
+  min-width: 0;
+}
+
+.deck-card-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.deck-transform-summary {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+}
+
+.deck-empty-copy {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
 }
 
 
@@ -676,6 +816,11 @@ body.project-direct-view .forge-viewport iframe {
     grid-template-columns: 1fr;
   }
 
+  .deck-add-controls,
+  .deck-card-fields {
+    grid-template-columns: 1fr;
+  }
+
   .editor-field-wide {
     grid-column: auto;
   }
@@ -718,7 +863,7 @@ body.project-direct-view .forge-viewport iframe {
   <main class="forge-viewport">
     <div class="viewport-empty hidden" id="empty-state">
       <span class="empty-icon">&#9881;</span>
-      <span>Select an asset to view</span>
+      <span id="empty-state-copy">Select an asset to view</span>
     </div>
     <div class="vp-hud vp-hud-tl" id="hud-left">FERROS FORGE v0.4.0</div>
     <div class="vp-hud vp-hud-tr" id="hud-right">--</div>
@@ -762,8 +907,14 @@ body.project-direct-view .forge-viewport iframe {
       </section>
 
       <section class="inspector-section">
-        <div class="inspector-label">Card Fields</div>
+        <div class="inspector-label" id="editor-section-label">Card Fields</div>
         <div id="card-editor" class="inspector-empty">Select a card to edit schema-aligned fields.</div>
+        <div class="control-grid editor-actions" id="card-portability-actions">
+          <button class="control-button" type="button" id="card-export-btn" disabled>Download Card JSON</button>
+          <button class="control-button" type="button" id="card-import-btn" disabled>Import Card JSON</button>
+        </div>
+        <input id="card-import-input" type="file" accept="application/json,.json" hidden>
+        <div class="editor-status muted" id="card-portability-status">Card portability stays Forge-owned and local-only. Select a card to export or re-import it here.</div>
         <div class="editor-status muted" id="card-editor-status">Runtime preview stays at the host-message seam; select a card to edit schema fields.</div>
       </section>
 
@@ -817,12 +968,22 @@ body.project-direct-view .forge-viewport iframe {
 (function() {
   'use strict';
 
+  var CARD_ALLOWED_FIELDS = ['id', 'kind', 'name', 'version', 'contentHash', 'renderFile', 'role', 'tags', 'attribution', 'state', 'transform', 'metadata'];
+  var CARD_REQUIRED_FIELDS = ['id', 'kind', 'name', 'version'];
+  var CARD_ATTRIBUTION_FIELDS = ['createdBy', 'createdAt', 'linkedTo'];
+  var CARD_STATE_FIELDS = ['preset', 'control', 'pose'];
+  var CARD_TRANSFORM_FIELDS = ['tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'scale'];
+  var DECK_ALLOWED_FIELDS = ['id', 'kind', 'name', 'version', 'contentHash', 'role', 'description', 'tags', 'attribution', 'cards', 'renderFile', 'defaultState', 'states'];
+  var DECK_REQUIRED_FIELDS = ['id', 'kind', 'name', 'version', 'cards'];
+  var DECK_ATTRIBUTION_FIELDS = ['createdBy', 'createdAt', 'linkedTo'];
+  var CARD_REFERENCE_FIELDS = ['cardId', 'slot', 'group', 'instanceOf', 'transform'];
   var CARD_FIXTURE_PATH = '../schemas/fixtures/deck-card-assembly-seam.json';
   var CARD_PREVIEW_PATH = 'assets/cards/trading-card.html';
   var PART_INDEX_PATH = 'assets/loot/parts/index.json';
   var PROJECT_INDEX_PATH = 'assets/loot/projects/index.json';
   var isFileProtocol = window.location.protocol === 'file:';
   var CARDS = [];
+  var DECKS = [];
   var PARTS = [];
   var PROJECTS = [];
   var CARD_FIXTURE_DECK = null;
@@ -960,10 +1121,11 @@ body.project-direct-view .forge-viewport iframe {
   };
 
   var ARENA_BASE = 'assets/_core/arena.html?part=';
-  var ASSETS = CARDS.concat(PARTS, PROJECTS);
+  var ASSETS = CARDS.concat(DECKS, PARTS, PROJECTS);
 
   var frame = document.getElementById('viewer-frame');
   var emptyState = document.getElementById('empty-state');
+  var emptyStateCopy = document.getElementById('empty-state-copy');
   var catalog = document.getElementById('catalog');
   var hudRight = document.getElementById('hud-right');
   var statusSelection = document.getElementById('status-selection');
@@ -981,7 +1143,12 @@ body.project-direct-view .forge-viewport iframe {
   var controlsLabel = document.getElementById('controls-label');
   var controlGrid = document.getElementById('control-grid');
   var controlHelp = document.getElementById('control-help');
+  var editorSectionLabel = document.getElementById('editor-section-label');
   var cardEditor = document.getElementById('card-editor');
+  var cardExportButton = document.getElementById('card-export-btn');
+  var cardImportButton = document.getElementById('card-import-btn');
+  var cardImportInput = document.getElementById('card-import-input');
+  var cardPortabilityStatus = document.getElementById('card-portability-status');
   var cardEditorStatus = document.getElementById('card-editor-status');
   var viewerTargetLabel = document.getElementById('viewer-target-label');
   var arenaLink = document.getElementById('arena-link');
@@ -1012,6 +1179,8 @@ body.project-direct-view .forge-viewport iframe {
   }
 
   var activeAsset = null;
+  var activeWorkingDeck = null;
+  var activeDeckPreviewIndex = -1;
   var activeRuntimeNonce = null;
   var frameLoaded = false;
   var pendingInitConfig = null;
@@ -1022,6 +1191,14 @@ body.project-direct-view .forge-viewport iframe {
 
   function cloneData(value) {
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function hasOwn(value, key) {
+    return Object.prototype.hasOwnProperty.call(value, key);
+  }
+
+  function isPlainObject(value) {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
   }
 
   function escapeHtml(value) {
@@ -1072,8 +1249,51 @@ body.project-direct-view .forge-viewport iframe {
     cardEditorStatus.className = 'editor-status ' + (tone || 'muted');
   }
 
+  function setCardPortabilityStatus(message, tone) {
+    cardPortabilityStatus.textContent = message;
+    cardPortabilityStatus.className = 'editor-status ' + (tone || 'muted');
+  }
+
+  function setEmptyStateMessage(message) {
+    emptyStateCopy.textContent = message;
+  }
+
+  function updateCardPortabilityState(asset) {
+    var enabled = !!asset && (asset.kind === 'card' || asset.kind === 'deck');
+    cardExportButton.disabled = !enabled;
+    cardImportButton.disabled = !enabled;
+
+    if (!enabled) {
+      cardExportButton.textContent = 'Download Card JSON';
+      cardImportButton.textContent = 'Import Card JSON';
+      setCardPortabilityStatus('Card portability stays Forge-owned and local-only. Select a card to export or re-import it here.', 'muted');
+      return;
+    }
+
+    if (asset.kind === 'deck') {
+      cardExportButton.textContent = 'Download Deck JSON';
+      cardImportButton.textContent = 'Import Deck JSON';
+      if (asset.sourcePath && asset.sourcePath !== CARD_FIXTURE_PATH) {
+        setCardPortabilityStatus('Imported deck source: ' + asset.sourcePath, 'success');
+        return;
+      }
+      setCardPortabilityStatus('Download the active deck JSON or re-import a local deck file here.', 'muted');
+      return;
+    }
+
+    cardExportButton.textContent = 'Download Card JSON';
+    cardImportButton.textContent = 'Import Card JSON';
+
+    if (asset.sourcePath && asset.sourcePath !== CARD_FIXTURE_PATH) {
+      setCardPortabilityStatus('Imported card source: ' + asset.sourcePath, 'success');
+      return;
+    }
+
+    setCardPortabilityStatus('Download the active card JSON or re-import a local card file here.', 'muted');
+  }
+
   function formatJsonObject(value) {
-    var normalized = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    var normalized = isPlainObject(value) ? value : {};
     return JSON.stringify(normalized, null, 2);
   }
 
@@ -1091,6 +1311,661 @@ body.project-direct-view .forge-viewport iframe {
       setCardEditorStatus(label + ' must be a valid JSON object.', 'error');
       return null;
     }
+  }
+
+  function objectHasValues(value) {
+    return isPlainObject(value) && Object.keys(value).length > 0;
+  }
+
+  function ensureAllowedKeys(value, allowedKeys, label) {
+    var keys = Object.keys(value);
+    for (var i = 0; i < keys.length; i++) {
+      if (allowedKeys.indexOf(keys[i]) === -1) {
+        throw new Error(label + ' contains unsupported field "' + keys[i] + '".');
+      }
+    }
+  }
+
+  function validateNullableString(value, label) {
+    if (value !== null && typeof value !== 'string') {
+      throw new Error(label + ' must be a string or null.');
+    }
+  }
+
+  function validateTransformObject(transform, label) {
+    if (!isPlainObject(transform)) {
+      throw new Error(label + ' must be an object.');
+    }
+
+    ensureAllowedKeys(transform, CARD_TRANSFORM_FIELDS, label);
+
+    var transformKeys = Object.keys(transform);
+    for (var index = 0; index < transformKeys.length; index++) {
+      if (typeof transform[transformKeys[index]] !== 'number' || Number.isNaN(transform[transformKeys[index]])) {
+        throw new Error(label + '.' + transformKeys[index] + ' must be a number.');
+      }
+    }
+
+    if (hasOwn(transform, 'scale') && transform.scale <= 0) {
+      throw new Error(label + '.scale must be greater than 0.');
+    }
+
+    return cloneData(transform);
+  }
+
+  function validateImportedCard(card) {
+    if (!isPlainObject(card)) {
+      throw new Error('Imported card must be a JSON object.');
+    }
+
+    ensureAllowedKeys(card, CARD_ALLOWED_FIELDS, 'Card');
+
+    for (var i = 0; i < CARD_REQUIRED_FIELDS.length; i++) {
+      if (!hasOwn(card, CARD_REQUIRED_FIELDS[i])) {
+        throw new Error('Imported card missing required field "' + CARD_REQUIRED_FIELDS[i] + '".');
+      }
+    }
+
+    if (typeof card.id !== 'string' || !/^[a-z0-9-]+$/.test(card.id)) {
+      throw new Error('Card id must match ^[a-z0-9-]+$.');
+    }
+
+    if (card.kind !== 'card') {
+      throw new Error('Imported payload kind must be "card".');
+    }
+
+    if (typeof card.name !== 'string' || !card.name.trim()) {
+      throw new Error('Card name must be a non-empty string.');
+    }
+
+    if (!Number.isInteger(card.version) || card.version < 1) {
+      throw new Error('Card version must be an integer greater than or equal to 1.');
+    }
+
+    if (hasOwn(card, 'contentHash')) {
+      validateNullableString(card.contentHash, 'contentHash');
+    }
+
+    if (hasOwn(card, 'renderFile') && typeof card.renderFile !== 'string') {
+      throw new Error('renderFile must be a string.');
+    }
+
+    if (hasOwn(card, 'role') && typeof card.role !== 'string') {
+      throw new Error('role must be a string.');
+    }
+
+    if (hasOwn(card, 'tags')) {
+      if (!Array.isArray(card.tags)) {
+        throw new Error('tags must be an array of strings.');
+      }
+      for (var t = 0; t < card.tags.length; t++) {
+        if (typeof card.tags[t] !== 'string') {
+          throw new Error('tags must be an array of strings.');
+        }
+      }
+    }
+
+    if (hasOwn(card, 'attribution')) {
+      if (!isPlainObject(card.attribution)) {
+        throw new Error('attribution must be an object.');
+      }
+      ensureAllowedKeys(card.attribution, CARD_ATTRIBUTION_FIELDS, 'attribution');
+      if (hasOwn(card.attribution, 'createdBy')) validateNullableString(card.attribution.createdBy, 'attribution.createdBy');
+      if (hasOwn(card.attribution, 'createdAt')) validateNullableString(card.attribution.createdAt, 'attribution.createdAt');
+      if (hasOwn(card.attribution, 'linkedTo')) validateNullableString(card.attribution.linkedTo, 'attribution.linkedTo');
+    }
+
+    if (hasOwn(card, 'state')) {
+      if (!isPlainObject(card.state)) {
+        throw new Error('state must be an object.');
+      }
+      ensureAllowedKeys(card.state, CARD_STATE_FIELDS, 'state');
+      if (hasOwn(card.state, 'preset') && typeof card.state.preset !== 'string') {
+        throw new Error('state.preset must be a string.');
+      }
+      if (hasOwn(card.state, 'control') && typeof card.state.control !== 'string') {
+        throw new Error('state.control must be a string.');
+      }
+      if (hasOwn(card.state, 'pose') && !isPlainObject(card.state.pose)) {
+        throw new Error('state.pose must be an object.');
+      }
+    }
+
+    if (hasOwn(card, 'transform')) {
+      if (!isPlainObject(card.transform)) {
+        throw new Error('transform must be an object.');
+      }
+      ensureAllowedKeys(card.transform, CARD_TRANSFORM_FIELDS, 'transform');
+      var transformKeys = Object.keys(card.transform);
+      for (var k = 0; k < transformKeys.length; k++) {
+        if (typeof card.transform[transformKeys[k]] !== 'number' || Number.isNaN(card.transform[transformKeys[k]])) {
+          throw new Error('transform.' + transformKeys[k] + ' must be a number.');
+        }
+      }
+      if (hasOwn(card.transform, 'scale') && card.transform.scale <= 0) {
+        throw new Error('transform.scale must be greater than 0.');
+      }
+    }
+
+    if (hasOwn(card, 'metadata') && !isPlainObject(card.metadata)) {
+      throw new Error('metadata must be an object.');
+    }
+
+    var normalized = {
+      id: card.id,
+      kind: 'card',
+      name: card.name.trim(),
+      version: card.version
+    };
+
+    if (hasOwn(card, 'contentHash')) normalized.contentHash = card.contentHash;
+    if (hasOwn(card, 'renderFile')) normalized.renderFile = card.renderFile;
+    if (hasOwn(card, 'role')) normalized.role = card.role;
+    if (hasOwn(card, 'tags')) normalized.tags = card.tags.slice();
+    if (hasOwn(card, 'attribution')) normalized.attribution = cloneData(card.attribution);
+    if (hasOwn(card, 'state')) normalized.state = cloneData(card.state);
+    if (hasOwn(card, 'transform')) normalized.transform = cloneData(card.transform);
+    if (hasOwn(card, 'metadata')) normalized.metadata = cloneData(card.metadata);
+
+    return normalized;
+  }
+
+  function findCardAsset(id) {
+    for (var index = 0; index < CARDS.length; index++) {
+      if (CARDS[index].id === id) return CARDS[index];
+    }
+    return null;
+  }
+
+  function validateCardReferenceInContext(reference, indexLabel) {
+    var label = indexLabel || 'cards[]';
+    if (!isPlainObject(reference)) {
+      throw new Error(label + ' must be an object.');
+    }
+
+    ensureAllowedKeys(reference, CARD_REFERENCE_FIELDS, label);
+
+    if (typeof reference.cardId !== 'string' || !reference.cardId.trim()) {
+      throw new Error(label + '.cardId must be a non-empty string.');
+    }
+
+    if (!findCardAsset(reference.cardId)) {
+      throw new Error('Card "' + reference.cardId + '" is not present in the current Bag.');
+    }
+
+    var normalized = {
+      cardId: reference.cardId
+    };
+
+    if (hasOwn(reference, 'slot')) {
+      if (typeof reference.slot !== 'string') {
+        throw new Error(label + '.slot must be a string.');
+      }
+      normalized.slot = reference.slot;
+    }
+
+    if (hasOwn(reference, 'group')) {
+      if (typeof reference.group !== 'string') {
+        throw new Error(label + '.group must be a string.');
+      }
+      normalized.group = reference.group;
+    }
+
+    if (hasOwn(reference, 'instanceOf')) {
+      if (typeof reference.instanceOf !== 'string') {
+        throw new Error(label + '.instanceOf must be a string.');
+      }
+      normalized.instanceOf = reference.instanceOf;
+    }
+
+    if (hasOwn(reference, 'transform')) {
+      normalized.transform = validateTransformObject(reference.transform, label + '.transform');
+    }
+
+    return normalized;
+  }
+
+  function validateImportedDeck(deck) {
+    if (!isPlainObject(deck)) {
+      throw new Error('Imported deck must be a JSON object.');
+    }
+
+    ensureAllowedKeys(deck, DECK_ALLOWED_FIELDS, 'Deck');
+
+    for (var index = 0; index < DECK_REQUIRED_FIELDS.length; index++) {
+      if (!hasOwn(deck, DECK_REQUIRED_FIELDS[index])) {
+        throw new Error('Imported deck missing required field "' + DECK_REQUIRED_FIELDS[index] + '".');
+      }
+    }
+
+    if (typeof deck.id !== 'string' || !/^[a-z0-9-]+$/.test(deck.id)) {
+      throw new Error('Deck id must match ^[a-z0-9-]+$.');
+    }
+
+    if (deck.kind !== 'deck') {
+      throw new Error('Imported payload kind must be "deck".');
+    }
+
+    if (typeof deck.name !== 'string' || !deck.name.trim()) {
+      throw new Error('Deck name must be a non-empty string.');
+    }
+
+    if (!Number.isInteger(deck.version) || deck.version < 1) {
+      throw new Error('Deck version must be an integer greater than or equal to 1.');
+    }
+
+    if (!Array.isArray(deck.cards)) {
+      throw new Error('Deck cards must be an array.');
+    }
+
+    if (hasOwn(deck, 'contentHash')) {
+      validateNullableString(deck.contentHash, 'contentHash');
+    }
+
+    if (hasOwn(deck, 'role') && typeof deck.role !== 'string') {
+      throw new Error('role must be a string.');
+    }
+
+    if (hasOwn(deck, 'description') && typeof deck.description !== 'string') {
+      throw new Error('description must be a string.');
+    }
+
+    if (hasOwn(deck, 'tags')) {
+      if (!Array.isArray(deck.tags)) {
+        throw new Error('tags must be an array of strings.');
+      }
+      for (var tagIndex = 0; tagIndex < deck.tags.length; tagIndex++) {
+        if (typeof deck.tags[tagIndex] !== 'string') {
+          throw new Error('tags must be an array of strings.');
+        }
+      }
+    }
+
+    if (hasOwn(deck, 'attribution')) {
+      if (!isPlainObject(deck.attribution)) {
+        throw new Error('attribution must be an object.');
+      }
+      ensureAllowedKeys(deck.attribution, DECK_ATTRIBUTION_FIELDS, 'attribution');
+      if (hasOwn(deck.attribution, 'createdBy')) validateNullableString(deck.attribution.createdBy, 'attribution.createdBy');
+      if (hasOwn(deck.attribution, 'createdAt')) validateNullableString(deck.attribution.createdAt, 'attribution.createdAt');
+      if (hasOwn(deck.attribution, 'linkedTo')) validateNullableString(deck.attribution.linkedTo, 'attribution.linkedTo');
+    }
+
+    if (hasOwn(deck, 'renderFile') && typeof deck.renderFile !== 'string') {
+      throw new Error('renderFile must be a string.');
+    }
+
+    if (hasOwn(deck, 'defaultState') && typeof deck.defaultState !== 'string') {
+      throw new Error('defaultState must be a string.');
+    }
+
+    var normalized = {
+      id: deck.id,
+      kind: 'deck',
+      name: deck.name.trim(),
+      version: deck.version,
+      cards: []
+    };
+
+    if (hasOwn(deck, 'contentHash')) normalized.contentHash = deck.contentHash;
+    if (hasOwn(deck, 'role')) normalized.role = deck.role;
+    if (hasOwn(deck, 'description')) normalized.description = deck.description;
+    if (hasOwn(deck, 'tags')) normalized.tags = deck.tags.slice();
+    if (hasOwn(deck, 'attribution')) normalized.attribution = cloneData(deck.attribution);
+    if (hasOwn(deck, 'renderFile')) normalized.renderFile = deck.renderFile;
+    if (hasOwn(deck, 'defaultState')) normalized.defaultState = deck.defaultState;
+
+    for (var cardIndex = 0; cardIndex < deck.cards.length; cardIndex++) {
+      normalized.cards.push(validateCardReferenceInContext(deck.cards[cardIndex], 'cards[' + cardIndex + ']'));
+    }
+
+    if (hasOwn(deck, 'states')) {
+      if (!Array.isArray(deck.states)) {
+        throw new Error('states must be an array.');
+      }
+
+      normalized.states = [];
+      for (var stateIndex = 0; stateIndex < deck.states.length; stateIndex++) {
+        var state = deck.states[stateIndex];
+        if (!isPlainObject(state)) {
+          throw new Error('states[' + stateIndex + '] must be an object.');
+        }
+        if (typeof state.name !== 'string' || !state.name.trim()) {
+          throw new Error('states[' + stateIndex + '].name must be a non-empty string.');
+        }
+
+        var normalizedState = {
+          name: state.name
+        };
+
+        if (hasOwn(state, 'control')) {
+          if (typeof state.control !== 'string') {
+            throw new Error('states[' + stateIndex + '].control must be a string.');
+          }
+          normalizedState.control = state.control;
+        }
+
+        if (hasOwn(state, 'pose')) {
+          if (!isPlainObject(state.pose)) {
+            throw new Error('states[' + stateIndex + '].pose must be an object.');
+          }
+          normalizedState.pose = cloneData(state.pose);
+        }
+
+        if (hasOwn(state, 'payload')) {
+          if (!isPlainObject(state.payload)) {
+            throw new Error('states[' + stateIndex + '].payload must be an object.');
+          }
+          normalizedState.payload = cloneData(state.payload);
+        }
+
+        normalized.states.push(normalizedState);
+      }
+    }
+
+    return normalized;
+  }
+
+  function serializeCardAsset(asset) {
+    var card = {
+      id: asset.id,
+      kind: 'card',
+      name: asset.name,
+      version: asset.version
+    };
+
+    if (hasOwn(asset, 'contentHash')) {
+      card.contentHash = asset.contentHash;
+    }
+
+    if (typeof asset.schemaRenderFile === 'string' && asset.schemaRenderFile) {
+      card.renderFile = asset.schemaRenderFile;
+    }
+
+    if (typeof asset.role === 'string' && asset.role) {
+      card.role = asset.role;
+    }
+
+    if (Array.isArray(asset.tags) && asset.tags.length) {
+      card.tags = asset.tags.slice();
+    }
+
+    if (objectHasValues(asset.attribution)) {
+      card.attribution = cloneData(asset.attribution);
+    }
+
+    if (objectHasValues(asset.state)) {
+      card.state = cloneData(asset.state);
+    }
+
+    if (objectHasValues(asset.transform)) {
+      card.transform = cloneData(asset.transform);
+    }
+
+    if (objectHasValues(asset.metadata)) {
+      card.metadata = cloneData(asset.metadata);
+    }
+
+    return card;
+  }
+
+  function serializeDeckAsset(source) {
+    var deck = {
+      id: source.id,
+      kind: 'deck',
+      name: source.name,
+      version: source.version,
+      cards: Array.isArray(source.cards) ? cloneData(source.cards) : []
+    };
+
+    if (hasOwn(source, 'contentHash')) {
+      deck.contentHash = source.contentHash;
+    }
+
+    if (typeof source.role === 'string' && source.role) {
+      deck.role = source.role;
+    }
+
+    if (typeof source.description === 'string' && source.description) {
+      deck.description = source.description;
+    }
+
+    if (Array.isArray(source.tags) && source.tags.length) {
+      deck.tags = source.tags.slice();
+    }
+
+    if (objectHasValues(source.attribution)) {
+      deck.attribution = cloneData(source.attribution);
+    }
+
+    if (typeof source.renderFile === 'string' && source.renderFile) {
+      deck.renderFile = source.renderFile;
+    }
+
+    if (typeof source.defaultState === 'string' && source.defaultState) {
+      deck.defaultState = source.defaultState;
+    }
+
+    if (Array.isArray(source.states) && source.states.length) {
+      deck.states = cloneData(source.states);
+    }
+
+    return deck;
+  }
+
+  function buildDeckNote(deck, sourcePath) {
+    var count = Array.isArray(deck.cards) ? deck.cards.length : 0;
+    if (sourcePath && sourcePath !== CARD_FIXTURE_PATH) {
+      return 'Imported deck JSON with ' + count + ' card reference' + (count === 1 ? '' : 's') + ' loaded into Forge.';
+    }
+    return 'Fixture deck with ' + count + ' card reference' + (count === 1 ? '' : 's') + ' ready for local assembly.';
+  }
+
+  function buildDeckAsset(rawDeck, options) {
+    options = options || {};
+    var sourcePath = options.sourcePath || CARD_FIXTURE_PATH;
+    return {
+      id: rawDeck.id,
+      kind: 'deck',
+      name: rawDeck.name || titleCase(rawDeck.id),
+      version: rawDeck.version || 1,
+      contentHash: hasOwn(rawDeck, 'contentHash') ? rawDeck.contentHash : undefined,
+      icon: '\uD83E\uDDE9',
+      file: CARD_PREVIEW_PATH,
+      sourcePath: sourcePath,
+      dims: 'schema',
+      role: rawDeck.role || 'project',
+      viewer: 'deck',
+      notes: buildDeckNote(rawDeck, sourcePath),
+      description: rawDeck.description || 'Deck assembled locally from card references.',
+      tags: Array.isArray(rawDeck.tags) ? rawDeck.tags.slice() : [],
+      attribution: rawDeck.attribution && typeof rawDeck.attribution === 'object' ? cloneData(rawDeck.attribution) : {},
+      cards: Array.isArray(rawDeck.cards) ? cloneData(rawDeck.cards) : [],
+      renderFile: rawDeck.renderFile || '',
+      defaultState: rawDeck.defaultState || '',
+      states: Array.isArray(rawDeck.states) ? cloneData(rawDeck.states) : []
+    };
+  }
+
+  function syncDeckAssetState(asset, deck) {
+    asset.name = deck.name;
+    asset.version = deck.version;
+    asset.contentHash = hasOwn(deck, 'contentHash') ? deck.contentHash : undefined;
+    asset.role = deck.role || 'project';
+    asset.description = deck.description || '';
+    asset.tags = Array.isArray(deck.tags) ? deck.tags.slice() : [];
+    asset.attribution = deck.attribution && typeof deck.attribution === 'object' ? cloneData(deck.attribution) : {};
+    asset.cards = Array.isArray(deck.cards) ? cloneData(deck.cards) : [];
+    asset.renderFile = deck.renderFile || '';
+    asset.defaultState = deck.defaultState || '';
+    asset.states = Array.isArray(deck.states) ? cloneData(deck.states) : [];
+    asset.notes = buildDeckNote(deck, asset.sourcePath);
+  }
+
+  function syncCardReferencesFromDeck(deck) {
+    for (var cardIndex = 0; cardIndex < CARDS.length; cardIndex++) {
+      var refs = resolveCardReferences(deck, CARDS[cardIndex].id);
+      CARDS[cardIndex].deckRefs = refs;
+      CARDS[cardIndex].fixtureDeck = deck ? { id: deck.id, name: deck.name } : null;
+      if (refs.length) {
+        CARDS[cardIndex].notes = 'Card currently referenced by ' + refs.length + ' deck slot' + (refs.length === 1 ? '' : 's') + '.';
+      } else if (CARDS[cardIndex].sourcePath && CARDS[cardIndex].sourcePath !== CARD_FIXTURE_PATH) {
+        CARDS[cardIndex].notes = 'Imported card JSON loaded into Forge without a matching deck reference.';
+      } else {
+        CARDS[cardIndex].notes = 'Fixture card loaded from the deck/card seam artifact.';
+      }
+    }
+  }
+
+  function formatTransformSummary(transform) {
+    var summary = {
+      tx: 0,
+      ty: 0,
+      tz: 0,
+      scale: 1
+    };
+
+    if (isPlainObject(transform)) {
+      if (typeof transform.tx === 'number') summary.tx = transform.tx;
+      if (typeof transform.ty === 'number') summary.ty = transform.ty;
+      if (typeof transform.tz === 'number') summary.tz = transform.tz;
+      if (typeof transform.scale === 'number') summary.scale = transform.scale;
+    }
+
+    return 'tx ' + summary.tx + ' · ty ' + summary.ty + ' · tz ' + summary.tz + ' · scale ' + summary.scale;
+  }
+
+  function buildCardOptions(selectedId) {
+    var options = '';
+    for (var cardIndex = 0; cardIndex < CARDS.length; cardIndex++) {
+      options += '<option value="' + escapeHtml(CARDS[cardIndex].id) + '"' +
+        (CARDS[cardIndex].id === selectedId ? ' selected' : '') + '>' +
+        escapeHtml(CARDS[cardIndex].name + ' (' + CARDS[cardIndex].id + ')') + '</option>';
+    }
+    return options;
+  }
+
+  function downloadTextFile(filename, text, contentType) {
+    var blob = new Blob([text], { type: contentType });
+    var blobUrl = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  }
+
+  function exportActiveCard() {
+    if (!activeAsset || activeAsset.kind !== 'card') {
+      setCardPortabilityStatus('Select a card before exporting JSON.', 'error');
+      return;
+    }
+
+    var card = serializeCardAsset(activeAsset);
+    downloadTextFile(activeAsset.id + '.card.json', JSON.stringify(card, null, 2), 'application/json');
+    setCardPortabilityStatus('Downloaded local card JSON for ' + activeAsset.name + '.', 'success');
+  }
+
+  function exportActiveDeck() {
+    if (!activeAsset || activeAsset.kind !== 'deck') {
+      setCardPortabilityStatus('Select a deck before exporting JSON.', 'error');
+      return;
+    }
+
+    var deck = serializeDeckAsset(activeWorkingDeck || activeAsset);
+    downloadTextFile(deck.id + '.deck.json', JSON.stringify(deck, null, 2), 'application/json');
+    setCardPortabilityStatus('Downloaded local deck JSON for ' + deck.name + '.', 'success');
+  }
+
+  function importCardPayload(text, sourceLabel) {
+    if (!activeAsset || activeAsset.kind !== 'card') {
+      setCardPortabilityStatus('Select a card before importing JSON.', 'error');
+      return;
+    }
+
+    var parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (error) {
+      setCardPortabilityStatus('Imported file is not valid JSON.', 'error');
+      return;
+    }
+
+    var normalized;
+    try {
+      normalized = validateImportedCard(parsed);
+    } catch (error) {
+      setCardPortabilityStatus(error.message, 'error');
+      return;
+    }
+
+    for (var i = 0; i < CARDS.length; i++) {
+      if (CARDS[i] !== activeAsset && CARDS[i].id === normalized.id) {
+        setCardPortabilityStatus('Imported card id already exists in the Bag: ' + normalized.id + '.', 'error');
+        return;
+      }
+    }
+
+    var assetIndex = CARDS.indexOf(activeAsset);
+    if (assetIndex === -1) {
+      setCardPortabilityStatus('Active card is not part of the current Bag catalog.', 'error');
+      return;
+    }
+
+    var importedAsset = buildCardAsset(normalized, CARD_FIXTURE_DECK, { sourcePath: sourceLabel || 'local import' });
+    CARDS[assetIndex] = importedAsset;
+    refreshAssets();
+    rebuildCatalog();
+    loadResolvedAsset(importedAsset);
+    setCardPortabilityStatus('Imported card JSON from ' + (sourceLabel || 'local file') + ' into the inspector.', 'success');
+  }
+
+  function importDeckPayload(text, sourceLabel) {
+    if (!activeAsset || activeAsset.kind !== 'deck') {
+      setCardPortabilityStatus('Select a deck before importing JSON.', 'error');
+      return;
+    }
+
+    var parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (error) {
+      setCardPortabilityStatus('Imported file is not valid JSON.', 'error');
+      return;
+    }
+
+    var normalized;
+    try {
+      normalized = validateImportedDeck(parsed);
+    } catch (error) {
+      setCardPortabilityStatus(error.message, 'error');
+      return;
+    }
+
+    for (var assetIndex = 0; assetIndex < ASSETS.length; assetIndex++) {
+      if (ASSETS[assetIndex] !== activeAsset && ASSETS[assetIndex].id === normalized.id) {
+        setCardPortabilityStatus('Imported deck id already exists in the Bag: ' + normalized.id + '.', 'error');
+        return;
+      }
+    }
+
+    var deckIndex = DECKS.indexOf(activeAsset);
+    if (deckIndex === -1) {
+      setCardPortabilityStatus('Active deck is not part of the current Bag catalog.', 'error');
+      return;
+    }
+
+    var importedAsset = buildDeckAsset(normalized, { sourcePath: sourceLabel || 'local import' });
+    DECKS[deckIndex] = importedAsset;
+    activeWorkingDeck = serializeDeckAsset(importedAsset);
+    activeDeckPreviewIndex = activeWorkingDeck.cards.length ? 0 : -1;
+    syncCardReferencesFromDeck(activeWorkingDeck);
+    refreshAssets();
+    rebuildCatalog();
+    loadResolvedAsset(importedAsset);
+    setCardPortabilityStatus('Imported deck JSON from ' + (sourceLabel || 'local file') + ' into the inspector.', 'success');
   }
 
   function iconForCardRole(role) {
@@ -1117,26 +1992,31 @@ body.project-direct-view .forge-viewport iframe {
     return refs;
   }
 
-  function buildCardAsset(rawCard, deck) {
+  function buildCardAsset(rawCard, deck, options) {
+    options = options || {};
     var refs = resolveCardReferences(deck, rawCard.id);
     var state = rawCard.state && typeof rawCard.state === 'object' ? cloneData(rawCard.state) : {};
-    if (!state.control) state.control = 'interactive';
+    var isImportedSource = !!options.sourcePath && options.sourcePath !== CARD_FIXTURE_PATH;
+    var notes = refs.length
+      ? 'Fixture card currently referenced by ' + refs.length + ' deck slot' + (refs.length === 1 ? '' : 's') + '.'
+      : (isImportedSource
+        ? 'Imported card JSON loaded into Forge without a matching seam deck reference.'
+        : 'Fixture card loaded from the deck/card seam artifact.');
 
     return {
       id: rawCard.id,
       kind: 'card',
       name: rawCard.name || titleCase(rawCard.id),
       version: rawCard.version || 1,
+      contentHash: hasOwn(rawCard, 'contentHash') ? rawCard.contentHash : undefined,
       icon: iconForCardRole(rawCard.role),
       file: CARD_PREVIEW_PATH,
       schemaRenderFile: rawCard.renderFile || '',
-      sourcePath: CARD_FIXTURE_PATH,
+      sourcePath: options.sourcePath || CARD_FIXTURE_PATH,
       dims: 'schema',
       role: rawCard.role || 'card',
       viewer: 'runtime',
-      notes: refs.length
-        ? 'Fixture card currently referenced by ' + refs.length + ' deck slot' + (refs.length === 1 ? '' : 's') + '.'
-        : 'Fixture card loaded from the deck/card seam artifact.',
+      notes: notes,
       description: 'Schema-backed card preview bridged into the runtime host contract.',
       tags: Array.isArray(rawCard.tags) ? rawCard.tags.slice() : [],
       attribution: rawCard.attribution && typeof rawCard.attribution === 'object' ? cloneData(rawCard.attribution) : {},
@@ -1244,7 +2124,7 @@ body.project-direct-view .forge-viewport iframe {
   }
 
   function refreshAssets() {
-    ASSETS = CARDS.concat(PARTS, PROJECTS);
+    ASSETS = CARDS.concat(DECKS, PARTS, PROJECTS);
     assetCount.textContent = ASSETS.length + ' assets indexed';
   }
 
@@ -1271,6 +2151,7 @@ body.project-direct-view .forge-viewport iframe {
       button.type = 'button';
       button.className = 'asset-item';
       button.dataset.assetId = asset.id;
+      button.draggable = asset.kind === 'card';
       button.innerHTML =
         '<span class="asset-icon">' + asset.icon + '</span>' +
         '<span class="asset-copy">' +
@@ -1279,6 +2160,17 @@ body.project-direct-view .forge-viewport iframe {
           '<span class="asset-note">' + asset.notes + '</span>' +
         '</span>';
       button.addEventListener('click', makeLoader(asset.id));
+      if (asset.kind === 'card') {
+        button.addEventListener('dragstart', function(event) {
+          var dragId = event.currentTarget.dataset.assetId;
+          event.dataTransfer.setData('text/plain', dragId);
+          event.dataTransfer.effectAllowed = 'copy';
+          event.currentTarget.classList.add('dragging');
+        });
+        button.addEventListener('dragend', function(event) {
+          event.currentTarget.classList.remove('dragging');
+        });
+      }
       itemsWrap.appendChild(button);
     }
 
@@ -1301,8 +2193,8 @@ body.project-direct-view .forge-viewport iframe {
     if (PARTS.length) {
       catalog.appendChild(buildGroup('Parts', PARTS));
     }
-    if (PROJECTS.length) {
-      catalog.appendChild(buildGroup('Decks', PROJECTS));
+    if (DECKS.length || PROJECTS.length) {
+      catalog.appendChild(buildGroup('Decks', DECKS.concat(PROJECTS)));
     }
   }
 
@@ -1310,13 +2202,18 @@ body.project-direct-view .forge-viewport iframe {
     return loadJsonResource(CARD_FIXTURE_PATH, FILE_FALLBACKS.cardFixture)
       .then(function(fixture) {
         CARD_FIXTURE_DECK = fixture && fixture.deck ? fixture.deck : null;
+        DECKS = CARD_FIXTURE_DECK ? [buildDeckAsset(CARD_FIXTURE_DECK)] : [];
         CARDS = Array.isArray(fixture.cards)
           ? fixture.cards.map(function(card) { return buildCardAsset(card, CARD_FIXTURE_DECK); })
           : [];
+        if (CARD_FIXTURE_DECK) {
+          syncCardReferencesFromDeck(CARD_FIXTURE_DECK);
+        }
         refreshAssets();
         rebuildCatalog();
       })
       .catch(function(error) {
+        DECKS = [];
         CARDS = [];
         CARD_FIXTURE_DECK = null;
         refreshAssets();
@@ -1443,34 +2340,144 @@ body.project-direct-view .forge-viewport iframe {
     if (inspectorScroll) inspectorScroll.scrollTop = 0;
   }
 
+  function setLinkedCardItem(cardId) {
+    var items = catalog.querySelectorAll('.asset-item');
+    for (var index = 0; index < items.length; index++) {
+      var asset = findAsset(items[index].dataset.assetId);
+      items[index].classList.toggle('linked', !!asset && asset.kind === 'card' && asset.id === cardId);
+    }
+  }
+
+  function resolveDeckPreviewIndex(deck, requestedIndex) {
+    if (!deck || !Array.isArray(deck.cards) || !deck.cards.length) return -1;
+    if (typeof requestedIndex !== 'number' || requestedIndex < 0) return 0;
+    if (requestedIndex >= deck.cards.length) return deck.cards.length - 1;
+    return requestedIndex;
+  }
+
+  function renderDeckStateStrip(deck) {
+    if (!Array.isArray(deck.states) || !deck.states.length) {
+      return '<div class="deck-empty-copy">No deck state presets published for this deck yet.</div>';
+    }
+
+    var chips = '<div class="deck-state-strip">';
+    for (var index = 0; index < deck.states.length; index++) {
+      chips += '<span class="deck-state-chip' + (deck.defaultState === deck.states[index].name ? ' active' : '') + '">' +
+        escapeHtml(deck.states[index].name) +
+        (deck.states[index].control ? ' · ' + escapeHtml(deck.states[index].control) : '') +
+      '</span>';
+    }
+    chips += '</div>';
+    return chips;
+  }
+
+  function renderDeckCardRows(deck) {
+    if (!Array.isArray(deck.cards) || !deck.cards.length) {
+      return '<div class="deck-empty-copy">No card references yet. Drag a Card from the Bag or use the add controls below.</div>';
+    }
+
+    var rows = '';
+    for (var index = 0; index < deck.cards.length; index++) {
+      var reference = deck.cards[index];
+      var cardAsset = findCardAsset(reference.cardId);
+      rows += '<div class="deck-card-row' + (index === activeDeckPreviewIndex ? ' active' : '') + '" data-deck-row-index="' + index + '">' +
+        '<div class="deck-card-row-head">' +
+          '<button class="control-button deck-preview-button" type="button" data-deck-action="preview-row" data-deck-row-index="' + index + '">Preview</button>' +
+          '<div class="deck-card-row-meta">' +
+            '<div class="deck-card-row-title">' + escapeHtml(cardAsset ? cardAsset.name : reference.cardId) + '</div>' +
+            '<div class="deck-card-row-subtitle">' + escapeHtml(reference.cardId) + ' · slot ' + escapeHtml(reference.slot || '--') + '</div>' +
+          '</div>' +
+          '<div class="deck-row-controls">' +
+            '<button class="control-button deck-row-button" type="button" data-deck-action="move-up" data-deck-row-index="' + index + '"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
+            '<button class="control-button deck-row-button" type="button" data-deck-action="move-down" data-deck-row-index="' + index + '"' + (index === deck.cards.length - 1 ? ' disabled' : '') + '>↓</button>' +
+            '<button class="control-button deck-row-button" type="button" data-deck-action="remove-row" data-deck-row-index="' + index + '">✕</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="deck-card-fields">' +
+          '<label class="editor-field">' +
+            '<span class="editor-field-label">Card</span>' +
+            '<select class="editor-select" data-deck-row-field="cardId" data-deck-row-index="' + index + '">' + buildCardOptions(reference.cardId) + '</select>' +
+          '</label>' +
+          '<label class="editor-field">' +
+            '<span class="editor-field-label">Slot</span>' +
+            '<input class="editor-input" type="text" data-deck-row-field="slot" data-deck-row-index="' + index + '" value="' + escapeHtml(reference.slot || '') + '">' +
+          '</label>' +
+          '<label class="editor-field">' +
+            '<span class="editor-field-label">Group</span>' +
+            '<input class="editor-input" type="text" data-deck-row-field="group" data-deck-row-index="' + index + '" value="' + escapeHtml(reference.group || '') + '">' +
+          '</label>' +
+          '<label class="editor-field">' +
+            '<span class="editor-field-label">Instance Of</span>' +
+            '<input class="editor-input" type="text" data-deck-row-field="instanceOf" data-deck-row-index="' + index + '" value="' + escapeHtml(reference.instanceOf || '') + '">' +
+          '</label>' +
+        '</div>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Transform JSON</span>' +
+          '<textarea class="editor-textarea" data-deck-row-field="transform" data-deck-row-index="' + index + '">' + escapeHtml(formatJsonObject(isPlainObject(reference.transform) ? reference.transform : {})) + '</textarea>' +
+        '</label>' +
+        '<div class="deck-transform-summary">Transform summary: ' + escapeHtml(formatTransformSummary(reference.transform || {})) + '</div>' +
+      '</div>';
+    }
+
+    return rows;
+  }
+
   function renderInspector(asset) {
-    compositionLabel.textContent = asset.kind === 'card' ? 'Deck References' : 'Composition';
-    controlsLabel.textContent = asset.kind === 'card' ? 'Preview Controls' : 'Animation Presets';
-    viewerTargetLabel.textContent = asset.kind === 'card' ? 'Runtime Bridge' : 'Saved Render / Arena';
+    var deckData = asset.kind === 'deck' ? (activeWorkingDeck || serializeDeckAsset(asset)) : null;
+    compositionLabel.textContent = asset.kind === 'card' || asset.kind === 'deck' ? 'Deck References' : 'Composition';
+    controlsLabel.textContent = asset.kind === 'card' ? 'Preview Controls' : asset.kind === 'deck' ? 'Deck States' : 'Animation Presets';
+    viewerTargetLabel.textContent = asset.kind === 'card' ? 'Runtime Bridge' : asset.kind === 'deck' ? 'Deck Preview' : 'Saved Render / Arena';
+    editorSectionLabel.textContent = asset.kind === 'deck' ? 'Deck Assembly' : 'Card Fields';
     inspectorTitle.textContent = asset.name;
     metaTypeSubtitle.textContent = asset.kind;
     inspectorCopy.textContent = asset.kind === 'project'
       ? 'Manifest-defined project. Forge loads the saved render target and applies simple states from the project definition.'
+      : asset.kind === 'deck'
+        ? 'Fixture-backed deck. Forge assembles local card references, previews one referenced card through the runtime lane, and keeps portability local to this workbench.'
       : asset.kind === 'card'
         ? 'Fixture-backed card. Forge edits schema fields locally and adapts them into the runtime preview only at the host-message seam.'
       : 'Standalone part rendered through The Arena for isolated inspection.';
     inspectorNotes.textContent = asset.notes;
     metaRole.textContent = asset.role;
-    metaViewer.textContent = asset.kind === 'card' ? 'runtime bridge' : asset.viewer;
-    viewerManifest.textContent = asset.kind === 'card'
-      ? 'fixture: ' + (asset.sourcePath || '--')
+    metaViewer.textContent = asset.kind === 'card' ? 'runtime bridge' : asset.kind === 'deck' ? 'deck preview' : asset.viewer;
+    viewerManifest.textContent = asset.kind === 'card' || asset.kind === 'deck'
+      ? ((asset.sourcePath === CARD_FIXTURE_PATH ? 'fixture: ' : 'import: ') + (asset.sourcePath || '--'))
       : 'manifest: ' + (asset.manifestPath || '--');
     viewerRender.textContent = asset.kind === 'card'
       ? 'schema render: ' + (asset.schemaRenderFile || '--')
+      : asset.kind === 'deck'
+        ? 'deck render: ' + (asset.renderFile || '--')
       : 'render: ' + (asset.kind === 'project' ? asset.renderFile : asset.file);
-    arenaLink.textContent = asset.kind === 'card' ? 'Open runtime bridge preview' : 'Open current render target';
+    arenaLink.textContent = asset.kind === 'deck'
+      ? 'Open current deck preview target'
+      : asset.kind === 'card'
+        ? 'Open runtime bridge preview'
+      : 'Open current render target';
     arenaLink.href = asset.kind === 'project'
       ? asset.standaloneRenderFile
-      : asset.kind === 'card'
+      : asset.kind === 'card' || asset.kind === 'deck'
         ? asset.file
       : 'assets/_core/arena.html?part=' + encodeURIComponent(asset.file);
 
-    if (asset.kind === 'card') {
+    if (asset.kind === 'deck') {
+      if (deckData && deckData.cards.length) {
+        var deckRefs = '<ul class="reference-list">';
+        for (var deckIndex = 0; deckIndex < deckData.cards.length; deckIndex++) {
+          var deckCard = findCardAsset(deckData.cards[deckIndex].cardId);
+          deckRefs += '<li>' +
+            escapeHtml(deckCard ? deckCard.name : deckData.cards[deckIndex].cardId) +
+            ' -> slot ' + escapeHtml(deckData.cards[deckIndex].slot || '--') +
+            (deckData.cards[deckIndex].group ? ' / group ' + escapeHtml(deckData.cards[deckIndex].group) : '') +
+            '</li>';
+        }
+        deckRefs += '</ul>';
+        componentList.className = '';
+        componentList.innerHTML = deckRefs;
+      } else {
+        componentList.className = 'inspector-empty';
+        componentList.textContent = 'No card references yet. Add a card to begin local assembly.';
+      }
+    } else if (asset.kind === 'card') {
       if (asset.deckRefs && asset.deckRefs.length) {
         var refs = '<ul class="reference-list">';
         for (var r = 0; r < asset.deckRefs.length; r++) {
@@ -1502,6 +2509,7 @@ body.project-direct-view .forge-viewport iframe {
 
     renderControls(asset);
     renderCardEditor(asset);
+    updateCardPortabilityState(asset);
   }
 
   function renderControls(asset) {
@@ -1523,6 +2531,37 @@ body.project-direct-view .forge-viewport iframe {
           });
           controlGrid.appendChild(button);
         })(modes[m]);
+      }
+      return;
+    }
+
+    if (asset.kind === 'deck') {
+      var deckStates = activeWorkingDeck && Array.isArray(activeWorkingDeck.states) ? activeWorkingDeck.states : [];
+      controlHelp.textContent = 'Deck states remain deck-owned metadata in this pass. Selecting one updates local defaultState while preview stays on the referenced card lane.';
+
+      if (!deckStates.length) {
+        var noDeckStates = document.createElement('button');
+        noDeckStates.type = 'button';
+        noDeckStates.className = 'control-button';
+        noDeckStates.disabled = true;
+        noDeckStates.textContent = 'No deck states';
+        controlGrid.appendChild(noDeckStates);
+        statusPose.textContent = 'pose: ' + (activeWorkingDeck && activeWorkingDeck.defaultState ? String(activeWorkingDeck.defaultState).toLowerCase() : 'deck-preview');
+        return;
+      }
+
+      for (var deckStateIndex = 0; deckStateIndex < deckStates.length; deckStateIndex++) {
+        (function(state) {
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'control-button' + (activeWorkingDeck.defaultState === state.name ? ' active' : '');
+          button.textContent = state.name;
+          button.addEventListener('click', function() {
+            activeWorkingDeck.defaultState = state.name;
+            refreshDeckAssembly(asset, 'Default deck state updated locally.', 'success', false);
+          });
+          controlGrid.appendChild(button);
+        })(deckStates[deckStateIndex]);
       }
       return;
     }
@@ -1557,10 +2596,15 @@ body.project-direct-view .forge-viewport iframe {
   }
 
   function renderCardEditor(asset) {
+    if (asset.kind === 'deck') {
+      renderDeckEditor(asset);
+      return;
+    }
+
     if (asset.kind !== 'card') {
       cardEditor.className = 'inspector-empty';
       cardEditor.textContent = asset.kind === 'project'
-        ? 'Deck manifests are visible here, but V5 editing is limited to one real card fixture.'
+        ? 'Project manifests stay view-only in this pass; local deck assembly starts from the fixture-backed Deck entry.'
         : 'Parts stay in isolated inspection mode. Select a card to edit schema-aligned fields.';
       setCardEditorStatus('Runtime preview stays at the host-message seam; select a card to edit schema fields.', 'muted');
       return;
@@ -1576,6 +2620,10 @@ body.project-direct-view .forge-viewport iframe {
         '<label class="editor-field">' +
           '<span class="editor-field-label">Version</span>' +
           '<input class="editor-input" type="number" min="1" data-card-field="version" value="' + escapeHtml(String(asset.version)) + '">' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Content Hash</span>' +
+          '<input class="editor-input" type="text" value="' + escapeHtml(asset.contentHash == null ? 'null' : asset.contentHash) + '" readonly>' +
         '</label>' +
         '<label class="editor-field editor-field-wide">' +
           '<span class="editor-field-label">Name</span>' +
@@ -1606,6 +2654,10 @@ body.project-direct-view .forge-viewport iframe {
           '<input class="editor-input" type="text" data-card-field="statePreset" value="' + escapeHtml(asset.state && asset.state.preset ? asset.state.preset : '') + '">' +
         '</label>' +
         '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">State Pose JSON</span>' +
+          '<textarea class="editor-textarea" data-card-field="statePose">' + escapeHtml(formatJsonObject(asset.state && isPlainObject(asset.state.pose) ? asset.state.pose : {})) + '</textarea>' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
           '<span class="editor-field-label">Attribution JSON</span>' +
           '<textarea class="editor-textarea" data-card-field="attribution">' + escapeHtml(formatJsonObject(asset.attribution)) + '</textarea>' +
         '</label>' +
@@ -1621,6 +2673,65 @@ body.project-direct-view .forge-viewport iframe {
 
     bindCardEditor(asset);
     setCardEditorStatus('Card fields sync into the runtime preview through ferros:init/ferros:update only.', 'muted');
+  }
+
+  function renderDeckEditor(asset) {
+    if (!activeWorkingDeck) {
+      activeWorkingDeck = serializeDeckAsset(asset);
+    }
+
+    activeDeckPreviewIndex = resolveDeckPreviewIndex(activeWorkingDeck, activeDeckPreviewIndex);
+    cardEditor.className = 'card-editor deck-editor';
+    cardEditor.innerHTML =
+      '<div class="editor-grid">' +
+        '<label class="editor-field">' +
+          '<span class="editor-field-label">ID</span>' +
+          '<input class="editor-input" type="text" value="' + escapeHtml(activeWorkingDeck.id) + '" readonly>' +
+        '</label>' +
+        '<label class="editor-field">' +
+          '<span class="editor-field-label">Version</span>' +
+          '<input class="editor-input" type="number" min="1" data-deck-field="version" value="' + escapeHtml(String(activeWorkingDeck.version)) + '">' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Content Hash</span>' +
+          '<input class="editor-input" type="text" value="' + escapeHtml(activeWorkingDeck.contentHash == null ? 'null' : activeWorkingDeck.contentHash) + '" readonly>' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Name</span>' +
+          '<input class="editor-input" type="text" data-deck-field="name" value="' + escapeHtml(activeWorkingDeck.name) + '">' +
+        '</label>' +
+        '<label class="editor-field">' +
+          '<span class="editor-field-label">Role</span>' +
+          '<input class="editor-input" type="text" data-deck-field="role" value="' + escapeHtml(activeWorkingDeck.role || '') + '">' +
+        '</label>' +
+        '<label class="editor-field">' +
+          '<span class="editor-field-label">Default State</span>' +
+          '<input class="editor-input" type="text" data-deck-field="defaultState" value="' + escapeHtml(activeWorkingDeck.defaultState || '') + '">' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Description</span>' +
+          '<textarea class="editor-textarea" data-deck-field="description">' + escapeHtml(activeWorkingDeck.description || '') + '</textarea>' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Render File</span>' +
+          '<input class="editor-input" type="text" data-deck-field="renderFile" value="' + escapeHtml(activeWorkingDeck.renderFile || '') + '">' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Tags</span>' +
+          '<input class="editor-input" type="text" data-deck-field="tags" value="' + escapeHtml((activeWorkingDeck.tags || []).join(', ')) + '">' +
+        '</label>' +
+      '</div>' +
+      renderDeckStateStrip(activeWorkingDeck) +
+      '<div class="deck-drop-zone" id="deck-drop-zone">Drag a Card from the Bag here to append a new card reference.</div>' +
+      '<div class="deck-add-controls">' +
+        '<select class="editor-select" id="deck-add-card-id">' + buildCardOptions(CARDS.length ? CARDS[0].id : '') + '</select>' +
+        '<input class="editor-input" id="deck-add-slot" type="text" placeholder="slot (optional)">' +
+        '<button class="control-button" type="button" data-deck-action="add-card">Add Card</button>' +
+      '</div>' +
+      '<div class="deck-card-list">' + renderDeckCardRows(activeWorkingDeck) + '</div>';
+
+    bindDeckEditor(asset);
+    setCardEditorStatus('Deck assembly edits stay local until you export or re-import the working deck JSON.', 'muted');
   }
 
   function bindCardEditor(asset) {
@@ -1652,10 +2763,26 @@ body.project-direct-view .forge-viewport iframe {
             .filter(Boolean);
         } else if (field === 'statePreset') {
           asset.state = asset.state || {};
-          asset.state.preset = nextValue.trim();
+          if (nextValue.trim()) {
+            asset.state.preset = nextValue.trim();
+          } else {
+            delete asset.state.preset;
+          }
         } else if (field === 'stateControl') {
           asset.state = asset.state || {};
           asset.state.control = nextValue;
+        } else if (field === 'statePose') {
+          asset.state = asset.state || {};
+          if (!String(nextValue || '').trim()) {
+            delete asset.state.pose;
+          } else {
+            var parsedPose = parseJsonObjectField(field, nextValue);
+            if (!parsedPose) {
+              renderCardEditor(asset);
+              return;
+            }
+            asset.state.pose = parsedPose;
+          }
         } else if (field === 'attribution' || field === 'metadata' || field === 'transform') {
           var parsedObject = parseJsonObjectField(field, nextValue);
           if (!parsedObject) {
@@ -1666,6 +2793,257 @@ body.project-direct-view .forge-viewport iframe {
         }
 
         refreshCardPreview(asset, false);
+      });
+    }
+  }
+
+  function setActiveDeckRow(index) {
+    var rows = cardEditor.querySelectorAll('.deck-card-row');
+    for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      rows[rowIndex].classList.toggle('active', Number(rows[rowIndex].dataset.deckRowIndex) === index);
+    }
+  }
+
+  function updateDeckPreviewState(asset, previewIndex, reloadFrame) {
+    if (!activeWorkingDeck) return;
+
+    activeDeckPreviewIndex = resolveDeckPreviewIndex(activeWorkingDeck, previewIndex);
+    statusSelection.textContent = asset.name.toLowerCase();
+    statusViewer.textContent = 'viewer: deck preview';
+    statusSource.textContent = 'source: ' + asset.sourcePath;
+    hudRight.textContent = asset.name + ' / deck';
+
+    if (activeDeckPreviewIndex === -1) {
+      setLinkedCardItem(null);
+      setActiveDeckRow(-1);
+      frame.style.display = 'none';
+      emptyState.classList.remove('hidden');
+      setEmptyStateMessage('Add a card to the deck to preview it.');
+      statusPose.textContent = 'pose: ' + (asset.defaultState ? String(asset.defaultState).toLowerCase() : 'empty');
+      return;
+    }
+
+    var reference = activeWorkingDeck.cards[activeDeckPreviewIndex];
+    var cardAsset = findCardAsset(reference.cardId);
+    if (!cardAsset) {
+      setLinkedCardItem(null);
+      setActiveDeckRow(activeDeckPreviewIndex);
+      frame.style.display = 'none';
+      emptyState.classList.remove('hidden');
+      setEmptyStateMessage('Selected deck reference points to a missing Card.');
+      statusPose.textContent = 'pose: invalid';
+      setCardEditorStatus('Selected deck reference points to a Card that is not in the current Bag.', 'error');
+      return;
+    }
+
+    pendingInitConfig = buildCardInitConfig(cardAsset);
+    pendingPayload = buildCardPreviewPayload(cardAsset);
+    pendingPoseLabel = String(activeWorkingDeck.defaultState || reference.slot || 'deck-preview').toLowerCase();
+    activeRuntimeNonce = createRuntimeNonce();
+    setLinkedCardItem(cardAsset.id);
+    setActiveDeckRow(activeDeckPreviewIndex);
+    emptyState.classList.add('hidden');
+    setEmptyStateMessage('Select an asset to view');
+    frame.style.display = 'block';
+    statusPose.textContent = 'pose: ' + pendingPoseLabel;
+
+    if (reloadFrame || frame.src !== new URL(CARD_PREVIEW_PATH, window.location.href).href) {
+      frameLoaded = false;
+      frame.src = CARD_PREVIEW_PATH;
+      return;
+    }
+
+    if (frameLoaded) {
+      postToViewer({ type: 'ferros:init', nonce: activeRuntimeNonce, config: pendingInitConfig });
+      postToViewer({ type: 'ferros:update', payload: pendingPayload });
+    }
+  }
+
+  function refreshDeckAssembly(asset, message, tone, reloadFrame) {
+    syncDeckAssetState(asset, activeWorkingDeck);
+    syncCardReferencesFromDeck(activeWorkingDeck);
+    refreshAssets();
+    rebuildCatalog();
+    setActiveItem(asset.id);
+    renderInspector(asset);
+    updateDeckPreviewState(asset, activeDeckPreviewIndex, reloadFrame);
+    if (message) {
+      setCardEditorStatus(message, tone || 'success');
+    }
+  }
+
+  function addDeckCardReference(asset, cardId, slotValue) {
+    if (!findCardAsset(cardId)) {
+      setCardEditorStatus('Select a valid Card before adding it to the deck.', 'error');
+      return;
+    }
+
+    var reference = { cardId: cardId };
+    if (slotValue && slotValue.trim()) {
+      reference.slot = slotValue.trim();
+    }
+
+    activeWorkingDeck.cards.push(reference);
+    activeDeckPreviewIndex = activeWorkingDeck.cards.length - 1;
+    refreshDeckAssembly(asset, 'Card added to deck locally.', 'success', false);
+  }
+
+  function moveDeckCardReference(asset, index, delta) {
+    var nextIndex = index + delta;
+    if (nextIndex < 0 || nextIndex >= activeWorkingDeck.cards.length) return;
+
+    var moved = activeWorkingDeck.cards.splice(index, 1)[0];
+    activeWorkingDeck.cards.splice(nextIndex, 0, moved);
+    activeDeckPreviewIndex = nextIndex;
+    refreshDeckAssembly(asset, 'Deck order updated locally.', 'success', false);
+  }
+
+  function removeDeckCardReference(asset, index) {
+    if (index < 0 || index >= activeWorkingDeck.cards.length) return;
+    activeWorkingDeck.cards.splice(index, 1);
+    activeDeckPreviewIndex = resolveDeckPreviewIndex(activeWorkingDeck, activeDeckPreviewIndex);
+    refreshDeckAssembly(asset, 'Card reference removed from the deck.', 'success', false);
+  }
+
+  function bindDeckEditor(asset) {
+    cardEditor.onclick = function(event) {
+      var actionEl = event.target.closest('[data-deck-action]');
+      if (!actionEl) return;
+
+      var rowIndex = parseInt(actionEl.getAttribute('data-deck-row-index') || '-1', 10);
+      if (actionEl.getAttribute('data-deck-action') === 'preview-row') {
+        activeDeckPreviewIndex = rowIndex;
+        updateDeckPreviewState(asset, rowIndex, false);
+        setCardEditorStatus('Deck preview linked to the selected card reference.', 'success');
+        return;
+      }
+
+      if (actionEl.getAttribute('data-deck-action') === 'move-up') {
+        moveDeckCardReference(asset, rowIndex, -1);
+        return;
+      }
+
+      if (actionEl.getAttribute('data-deck-action') === 'move-down') {
+        moveDeckCardReference(asset, rowIndex, 1);
+        return;
+      }
+
+      if (actionEl.getAttribute('data-deck-action') === 'remove-row') {
+        removeDeckCardReference(asset, rowIndex);
+        return;
+      }
+
+      if (actionEl.getAttribute('data-deck-action') === 'add-card') {
+        addDeckCardReference(asset, cardEditor.querySelector('#deck-add-card-id').value, cardEditor.querySelector('#deck-add-slot').value);
+      }
+    };
+
+    cardEditor.onchange = function(event) {
+      var deckField = event.target.getAttribute('data-deck-field');
+      var rowField = event.target.getAttribute('data-deck-row-field');
+      var nextValue = event.target.value;
+
+      if (deckField) {
+        if (deckField === 'version') {
+          var parsedVersion = parseInt(nextValue, 10);
+          if (!Number.isFinite(parsedVersion) || parsedVersion < 1) {
+            setCardEditorStatus('Deck version must be an integer greater than or equal to 1.', 'error');
+            renderDeckEditor(asset);
+            return;
+          }
+          activeWorkingDeck.version = parsedVersion;
+        } else if (deckField === 'name') {
+          activeWorkingDeck.name = nextValue.trim() || activeWorkingDeck.name;
+        } else if (deckField === 'role') {
+          activeWorkingDeck.role = nextValue.trim() || 'project';
+        } else if (deckField === 'description') {
+          activeWorkingDeck.description = nextValue.trim();
+        } else if (deckField === 'renderFile') {
+          activeWorkingDeck.renderFile = nextValue.trim();
+        } else if (deckField === 'tags') {
+          activeWorkingDeck.tags = nextValue.split(',').map(function(tag) { return tag.trim(); }).filter(Boolean);
+        } else if (deckField === 'defaultState') {
+          activeWorkingDeck.defaultState = nextValue.trim();
+        }
+
+        refreshDeckAssembly(asset, 'Deck fields updated locally.', 'success', false);
+        return;
+      }
+
+      if (!rowField) return;
+
+      var rowIndex = parseInt(event.target.getAttribute('data-deck-row-index') || '-1', 10);
+      if (rowIndex < 0 || rowIndex >= activeWorkingDeck.cards.length) return;
+      activeDeckPreviewIndex = rowIndex;
+      var reference = activeWorkingDeck.cards[rowIndex];
+
+      if (rowField === 'cardId') {
+        if (!findCardAsset(nextValue)) {
+          setCardEditorStatus('Deck references can only point to Cards currently present in the Bag.', 'error');
+          renderDeckEditor(asset);
+          return;
+        }
+        reference.cardId = nextValue;
+      } else if (rowField === 'slot') {
+        if (nextValue.trim()) {
+          reference.slot = nextValue.trim();
+        } else {
+          delete reference.slot;
+        }
+      } else if (rowField === 'group') {
+        if (nextValue.trim()) {
+          reference.group = nextValue.trim();
+        } else {
+          delete reference.group;
+        }
+      } else if (rowField === 'instanceOf') {
+        if (nextValue.trim()) {
+          reference.instanceOf = nextValue.trim();
+        } else {
+          delete reference.instanceOf;
+        }
+      } else if (rowField === 'transform') {
+        if (!String(nextValue || '').trim()) {
+          delete reference.transform;
+        } else {
+          var parsedTransform = parseJsonObjectField('transform', nextValue);
+          if (!parsedTransform) {
+            renderDeckEditor(asset);
+            return;
+          }
+          try {
+            reference.transform = validateTransformObject(parsedTransform, 'transform');
+          } catch (error) {
+            setCardEditorStatus(error.message, 'error');
+            renderDeckEditor(asset);
+            return;
+          }
+        }
+      }
+
+      refreshDeckAssembly(asset, 'Deck card reference updated locally.', 'success', false);
+    };
+
+    cardEditor.onfocusin = function(event) {
+      var row = event.target.closest('.deck-card-row');
+      if (!row) return;
+      activeDeckPreviewIndex = parseInt(row.dataset.deckRowIndex || '-1', 10);
+      updateDeckPreviewState(asset, activeDeckPreviewIndex, false);
+    };
+
+    var dropZone = cardEditor.querySelector('#deck-drop-zone');
+    if (dropZone) {
+      dropZone.addEventListener('dragover', function(event) {
+        event.preventDefault();
+        dropZone.classList.add('drag-over');
+      });
+      dropZone.addEventListener('dragleave', function() {
+        dropZone.classList.remove('drag-over');
+      });
+      dropZone.addEventListener('drop', function(event) {
+        event.preventDefault();
+        dropZone.classList.remove('drag-over');
+        addDeckCardReference(asset, event.dataTransfer.getData('text/plain'), '');
       });
     }
   }
@@ -1717,6 +3095,10 @@ body.project-direct-view .forge-viewport iframe {
 
   function loadResolvedAsset(asset) {
     activeAsset = asset;
+    if (asset.kind !== 'deck') {
+      activeWorkingDeck = null;
+      activeDeckPreviewIndex = -1;
+    }
     frameLoaded = false;
     activeRuntimeNonce = null;
     pendingInitConfig = null;
@@ -1725,11 +3107,21 @@ body.project-direct-view .forge-viewport iframe {
     resetInspectorScroll();
     document.body.classList.toggle('project-direct-view', asset.viewer === 'direct');
     updateIframeScale();
+    setLinkedCardItem(null);
+    setEmptyStateMessage('Select an asset to view');
 
     if (asset.kind === 'card') {
       pendingInitConfig = buildCardInitConfig(asset);
       pendingPayload = buildCardPreviewPayload(asset);
       pendingPoseLabel = resolveCardControl(asset);
+      activeRuntimeNonce = createRuntimeNonce();
+      statusPose.textContent = 'pose: ' + pendingPoseLabel;
+    } else if (asset.kind === 'deck') {
+      activeWorkingDeck = serializeDeckAsset(asset);
+      activeDeckPreviewIndex = resolveDeckPreviewIndex(activeWorkingDeck, activeDeckPreviewIndex);
+      syncDeckAssetState(asset, activeWorkingDeck);
+      syncCardReferencesFromDeck(activeWorkingDeck);
+      pendingPoseLabel = String(activeWorkingDeck.defaultState || 'deck-preview').toLowerCase();
       activeRuntimeNonce = createRuntimeNonce();
       statusPose.textContent = 'pose: ' + pendingPoseLabel;
     } else {
@@ -1759,6 +3151,8 @@ body.project-direct-view .forge-viewport iframe {
       statusViewer.textContent = 'viewer: runtime';
       hudRight.textContent = asset.name + ' / card';
       statusSource.textContent = 'source: ' + asset.sourcePath;
+    } else if (asset.viewer === 'deck') {
+      updateDeckPreviewState(asset, activeDeckPreviewIndex, true);
     } else {
       frame.src = asset.renderFile;
       statusViewer.textContent = 'viewer: forge project';
@@ -1823,8 +3217,10 @@ body.project-direct-view .forge-viewport iframe {
     window.requestAnimationFrame(function() {
       if (!activeAsset) return;
 
-      if (activeAsset.viewer === 'runtime') {
-        postToViewer({ type: 'ferros:init', nonce: activeRuntimeNonce, config: pendingInitConfig || buildCardInitConfig(activeAsset) });
+      if (activeAsset.viewer === 'runtime' || activeAsset.viewer === 'deck') {
+        if (pendingInitConfig) {
+          postToViewer({ type: 'ferros:init', nonce: activeRuntimeNonce, config: pendingInitConfig });
+        }
         if (pendingPayload) {
           postToViewer({ type: 'ferros:update', payload: pendingPayload });
         }
@@ -1841,21 +3237,65 @@ body.project-direct-view .forge-viewport iframe {
 
   window.addEventListener('message', function(event) {
     var message = event.data;
-    if (!message || message.type !== 'ferros:event' || !activeAsset || activeAsset.kind !== 'card') return;
+    if (!message || message.type !== 'ferros:event' || !activeAsset || (activeAsset.kind !== 'card' && activeAsset.kind !== 'deck')) return;
     if (activeRuntimeNonce && message.nonce && message.nonce !== activeRuntimeNonce) return;
 
     if (message.event === 'ready') {
-      setCardEditorStatus('Runtime preview ready for ' + activeAsset.name + '.', 'success');
+      setCardEditorStatus((activeAsset.kind === 'deck' ? 'Deck preview ready for ' : 'Runtime preview ready for ') + activeAsset.name + '.', 'success');
     }
 
     if (message.event === 'cards-updated') {
-      setCardEditorStatus('Runtime preview refreshed from the active card fields.', 'success');
+      setCardEditorStatus(activeAsset.kind === 'deck'
+        ? 'Deck preview refreshed from the selected card reference.'
+        : 'Runtime preview refreshed from the active card fields.', 'success');
     }
+  });
+
+  cardExportButton.addEventListener('click', function() {
+    if (!activeAsset) return;
+    if (activeAsset.kind === 'deck') {
+      exportActiveDeck();
+      return;
+    }
+    exportActiveCard();
+  });
+
+  cardImportButton.addEventListener('click', function() {
+    if (!activeAsset || (activeAsset.kind !== 'card' && activeAsset.kind !== 'deck')) {
+      setCardPortabilityStatus('Select a card or deck before importing JSON.', 'error');
+      return;
+    }
+    cardImportInput.value = '';
+    cardImportInput.click();
+  });
+
+  cardImportInput.addEventListener('change', function(event) {
+    var file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function(loadEvent) {
+      if (activeAsset && activeAsset.kind === 'deck') {
+        importDeckPayload(String(loadEvent.target.result || ''), file.name);
+        return;
+      }
+      importCardPayload(String(loadEvent.target.result || ''), file.name);
+    };
+    reader.onerror = function() {
+      setCardPortabilityStatus('Could not read the selected card JSON file.', 'error');
+    };
+    reader.readAsText(file);
+    event.target.value = '';
   });
 
   Promise.allSettled([loadCardFixture(), loadPartIndex(), loadProjectIndex()]).then(function() {
     if (CARDS.length) {
       loadAsset(CARDS[0].id);
+      return;
+    }
+
+    if (DECKS.length) {
+      loadAsset(DECKS[0].id);
       return;
     }
 

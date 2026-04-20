@@ -144,7 +144,7 @@ One real end-to-end loop works locally.
 | V4 | Alias session → export → claim → XP merge works | ⬜ | Journey 2 |
 | V5 | Card loads in Forge → editable → renders in Runtime | ✅ | Journey 3 |
 | V6 | Runtime init/update/event loop completes | ✅ | Journey 3 |
-| V7 | Card round-trip export/import preserves all parameters | ⬜ | Journey 3 |
+| V7 | Card round-trip export/import preserves all parameters | ✅ | Journey 3 |
 | V8 | Phase 0 acceptance harness (H5) proves Journey 1 end-to-end: create→export→clear→import→render→assert | ✅ | All journeys |
 
 **Wave 1 exit:** V1–V8 complete (V3 split into V3a + V3b). All 3 user journeys work end-to-end. H5 acceptance harness passes.
@@ -256,7 +256,7 @@ Individual module specs retain their detailed milestones and dependency lists. T
 | Templates & Profiles | Wave 1 (vertical slice) | Schema baseline and template validation | [templates-and-profiles.md](./templates-and-profiles.md) |
 | Assets, Cards & Decks | Wave 1 (vertical slice) | Card/Deck object model and Forge round-trip | [assets-cards-decks.md](./assets-cards-decks.md) |
 | Arena Runtime | Wave 1 (vertical slice) | Separated runtime host layer | [arena-runtime.md](./arena-runtime.md) |
-| The Forge | Wave 1 (vertical slice) | Authoring surface for the card round-trip | [forge.md](./forge.md) |
+| The Forge | Wave 1 (vertical slice) | Authoring surface for card round-trip and local deck assembly | [forge.md](./forge.md) |
 | Schedule Ledger | Wave 2 (first consumer) | Proves shared contract consumption | [schedule-ledger.md](./schedule-ledger.md) |
 | Battle Arena | Wave 2 (first consumer) | Proves runtime can serve a second surface | [trading-arena.md](./trading-arena.md) |
 | Showcase / Landing Page | Wave 2 (first consumer) | Reads real capability status | [showcase.md](./showcase.md) |

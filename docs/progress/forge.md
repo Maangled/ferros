@@ -1,8 +1,8 @@
 # The Forge — Progress Spec
 
-**Current:** 40%
+**Current:** 50%
 **Phase:** Prototype
-**Status:** The workbench now loads a real card fixture into the Bag, exposes schema-aligned card fields in the inspector, and bridges that card into the runtime preview without widening shared contracts.
+**Status:** The workbench now loads real card and deck fixtures into the Bag, exposes schema-aligned card fields plus a deck assembly editor in the inspector, previews deck-selected cards through the existing runtime seam, and round-trips both card JSON and deck JSON locally through Forge-owned export/import.
 
 ## What This Is
 
@@ -16,7 +16,7 @@ This spec tracks The Forge as the FERROS authoring system represented today by `
 | 20% | Asset catalog indexing | Cards and Deck manifests load from repo JSON sources with verifiable selection state | ✅ |
 | 30% | Card visibility and selection | Atomic assets are visible, selectable, and clearly represented as Cards in the local workbench flow | ✅ |
 | 40% | Parametric cards | Card-level parameters, state presets, or assembly options are documented and locally manipulable | ✅ |
-| 50% | Local assembly workflow | A user can assemble Decks locally with drag, move, highlight, and basic preview behavior without backend services | ☐ |
+| 50% | Local assembly workflow | A user can assemble Decks locally with drag, move, highlight, and basic preview behavior without backend services | ✅ |
 | 60% | Assistant edit bridge | An assistant or local API bridge can create or edit Forge assets without replacing the standalone workflow | ☐ |
 | 70% | Command-center dispatch | `docs/agent-command-center.html` or its successor can dispatch generation or edit jobs into Forge workflows | ☐ |
 | 80% | Arena export target | Forge exports reusable Deck manifests or payloads that target the Arena Runtime cleanly | ☐ |
@@ -27,6 +27,8 @@ This spec tracks The Forge as the FERROS authoring system represented today by `
 
 - `README.md` — defines The Forge at 2% and states that no creation tools exist yet.
 - `docs/forge-workbench.html` — current workbench prototype and visible interaction surface.
+- `schemas/card.schema.json` — canonical C4 card vocabulary the local import path validates against.
+- `schemas/deck.schema.json` — canonical C5 deck vocabulary the local deck editor and import path validate against.
 - `schemas/fixtures/deck-card-assembly-seam.json` — fixture-backed V5 card source used to prove the card→deck seam inside Forge.
 - `docs/assets/cards/trading-card.html` — current runtime preview target for the V5 host-message bridge.
 - `docs/assets/loot/loot-box-3d.json` — canonical loot-box project manifest in current repo memory.
@@ -39,8 +41,7 @@ This spec tracks The Forge as the FERROS authoring system represented today by `
 
 ## Current Blockers
 
-- README explicitly notes that creation tools do not exist yet.
-- Current repo coverage is centered on the loot-box project and a single workbench flow.
-- V5 now covers one real card fixture, but multi-card local deck assembly remains a later step.
-- V7 card export/import portability is still open; this pass intentionally stopped at editable local preview.
+- README external progress copy still understates the shipped Forge workbench behavior.
+- Current repo coverage is still centered on one seam fixture and the loot-box project flow.
+- Assistant-driven edit/creation bridges are not started yet.
 - Forge output contracts for broader templates or reusable runtime targets are still TBD.
