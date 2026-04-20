@@ -49,6 +49,7 @@ Per `docs/ORCHESTRATION.md` §4, a cross-stream reconciliation review must compl
 > Run each harness by opening it in Chrome via `file://`. All harnesses load `ferros-core.js` via `<script src="../docs/assets/_core/ferros-core.js">`.
 
 Fresh gate verification on 2026-04-18 in Chrome via `file://`: H1 `28/28`, H2 `21/21`, H3 `18/18`, H4 `20/20`.
+Live supporting-harness verification in the current browser session on 2026-04-19: H5 `21/21` PASS, H6 `25/25` PASS, H7 `107/107` PASS, Preflight `6/6` PASS. H8 requires a clean rerun before using it as a sign-off anchor.
 
 | Harness | File | Contracts | Gate? | Verified status |
 |---------|------|-----------|-------|-----------------|
@@ -56,11 +57,11 @@ Fresh gate verification on 2026-04-18 in Chrome via `file://`: H1 `28/28`, H2 `2
 | H2 | `harnesses/round-trip-harness.html` | C9 | ✅ Gate | PASS — 21/21 |
 | H3 | `harnesses/runtime-harness.html` | C8 | ✅ Gate | PASS — 18/18 (nonce echo green; resize semantics aligned to C8) |
 | H4 | `harnesses/negative-harness.html` | C10 | ✅ Gate | PASS — 20/20 |
-| H5 | `harnesses/acceptance-harness.html` | V1/V8 | Supporting | 🔧 Built — open in Chrome to confirm |
-| H6 | `harnesses/write-path-harness.html` | C9 write | Supporting | 🔧 Built — open in Chrome to confirm |
-| H7 | `harnesses/semantic-fixture-linter.html` | C2/C4/C5/C6 | Supporting | 🔧 Built — open in Chrome to confirm |
-| H8 | `harnesses/ui-acceptance-harness.html` | C10/UI | Supporting | 🔧 Built — open in Chrome to confirm |
-| Preflight | `harnesses/preflight-check.html` | C7/C8 inventory | Supporting | 🔧 Built — open in Chrome to confirm |
+| H5 | `harnesses/acceptance-harness.html` | V1/V8 | Supporting | PASS — 21/21 |
+| H6 | `harnesses/write-path-harness.html` | C9 write | Supporting | PASS — 25/25 |
+| H7 | `harnesses/semantic-fixture-linter.html` | C2/C4/C5/C6 | Supporting | PASS — 107/107 |
+| H8 | `harnesses/ui-acceptance-harness.html` | C10/UI | Supporting | 🔧 Needs clean rerun — current browser state not stable enough for sign-off |
+| Preflight | `harnesses/preflight-check.html` | C7/C8 inventory | Supporting | PASS — 6/6 |
 
 ---
 
@@ -134,15 +135,15 @@ One real end-to-end loop works locally.
 
 | # | Capability | Status | Proving |
 |---|-----------|--------|---------|
-| V1 | Template → Profile creation completes without soft-lock | 🔧 built, pending run | Journey 1 |
-| V2 | Export → Import produces identical profile in fresh browser | ⬜ | Journey 1 |
-| V3a | All 4 valid session modes complete expected flows (H2 round-trip) | 🔧 built, pending run | Journey 1 + 2 |
-| V3b | Invalid session mode combinations rejected with correct error codes (H4 negative) | 🔧 built, pending run | Journey 1 + 2 |
+| V1 | Template → Profile creation completes without soft-lock | ✅ | Journey 1 |
+| V2 | Export → Import produces identical profile in fresh browser | ✅ | Journey 1 |
+| V3a | All 4 valid session modes complete expected flows (H2 round-trip) | ✅ | Journey 1 + 2 |
+| V3b | Invalid session mode combinations rejected with correct error codes (H4 negative) | ✅ | Journey 1 + 2 |
 | V4 | Alias session → export → claim → XP merge works | ⬜ | Journey 2 |
 | V5 | Card loads in Forge → editable → renders in Runtime | ⬜ | Journey 3 |
-| V6 | Runtime init/update/event loop completes | ⬜ | Journey 3 |
+| V6 | Runtime init/update/event loop completes | ✅ | Journey 3 |
 | V7 | Card round-trip export/import preserves all parameters | ⬜ | Journey 3 |
-| V8 | Phase 0 acceptance harness (H5) proves Journey 1 end-to-end: create→export→clear→import→render→assert | 🔧 built, pending run | All journeys |
+| V8 | Phase 0 acceptance harness (H5) proves Journey 1 end-to-end: create→export→clear→import→render→assert | ✅ | All journeys |
 
 **Wave 1 exit:** V1–V8 complete (V3 split into V3a + V3b). All 3 user journeys work end-to-end. H5 acceptance harness passes.
 

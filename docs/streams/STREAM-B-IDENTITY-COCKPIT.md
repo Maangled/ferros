@@ -81,33 +81,33 @@ Template: "ceo-operator" (from templates.json)
 3. Alex creates a **meeting**: "Investor call — Thursday 2pm — 45 min". This maps to a schedule event object conforming to `schemas/schedule-event.schema.json`.
 4. Alex creates a **task**: "Review Q1 contracts — due Friday EOD". Another schedule event, type `task`.
 5. Both are saved. The Ledger uses the profile's timezone preference from the template archetype.
-6. The Ledger displays the week view: two items, both attributed to Alex's profile ID.
+6. The Ledger displays the week view: two items, both rendered inside Alex's loaded profile context.
 
 **What just happened under the hood:**
 ```
 FerrosCore.loadProfile() → reads "ferros_profile" from localStorage
 Schedule event (meeting):
   {
-    eventId: "evt_001",
-    profileId: "alex-ferros-id",
-    type: "meeting",
-    title: "Investor call",
-    startTime: "2026-04-23T14:00:00Z",
-    duration: 45,
-    schemaVersion: "1.0"
+    id: "investor-call-thu",
+    kind: "event",
+    label: "Investor call",
+    time: "14:00",
+    date: "2026-04-23",
+    durationMin: 45,
+    source: { type: "user" }
   }
 Schedule event (task):
   {
-    eventId: "evt_002",
-    profileId: "alex-ferros-id",
-    type: "task",
-    title: "Review Q1 contracts",
-    dueDate: "2026-04-25",
-    schemaVersion: "1.0"
+    id: "review-q1-contracts",
+    kind: "task",
+    label: "Review Q1 contracts",
+    time: "17:00",
+    date: "2026-04-24",
+    source: { type: "user" }
   }
 ```
 
-**Contract touched:** C6 (Schedule Event Schema), C9 (Storage Rules), C2 (Profile Schema — for profileId linkage)
+**Contract touched:** C6 (Schedule Event Schema), C9 (Storage Rules), C2 (Profile Schema — for loaded identity context)
 
 ---
 
@@ -116,25 +116,35 @@ Schedule event (task):
 **Surface:** `docs/agent-command-center.html`  
 **Capability:** P1 precursor — Agent directives logged (not yet executed)
 
-1. Alex navigates to the Agent Command Center. It reads their profile and confirms full session mode via `FerrosCore.canMutateDurableState("full")` → `true`.
+1. Alex navigates to the Agent Command Center. It reads their profile and confirms full session mode via `FerrosCore.canMutateDurableState({ tradeWindowAccepted: true, sessionMode: false, aliasMode: false, recoveryMode: false })` → `true`.
 2. Alex sees their agent roster. Currently: one bot listed — **"ContentBot"** — status: idle.
 3. Alex issues a directive: "ContentBot — generate Q1 summary card for the Forge. Source: Q1 report PDF."
-4. The directive is **logged**, not executed. The Agent Command Center is a delegation layer, not a live execution engine. Agents will be wired in Wave 3 (P1). For now, every directive creates an audit record.
-5. The audit record is written via `FerrosCore.pushAuditEntry()`:
+4. The directive is **logged**, not executed. The Agent Command Center is a delegation layer, not a live execution engine. Agents will be wired in Wave 3 (P1). For now, every directive creates an agent-action audit artifact.
+5. A portable audit record can be serialized in the C7 shape below:
    ```json
    {
-     "recordId": "audit_001",
-     "profileId": "alex-ferros-id",
-     "action": "agent_directive",
-     "agentId": "content-bot-01",
-     "directive": "generate Q1 summary card",
-     "timestamp": "2026-04-18T10:30:00Z",
-     "sessionMode": "full",
-     "schemaVersion": "1.0"
+     "ferrosVersion": "1.0",
+     "logType": "agent-action",
+     "sessionStart": "2026-04-18T10:30:00Z",
+     "agent": {
+       "agentId": "content-bot-01",
+       "role": "documentation",
+       "targetSurface": "forge-workbench"
+     },
+     "entries": [
+       {
+         "ts": "2026-04-18T10:30:00Z",
+         "text": "Generate Q1 summary card for the Forge. Source: Q1 report PDF.",
+         "type": "agent-action",
+         "reversible": false,
+         "rollbackData": null
+       }
+     ]
    }
    ```
-6. Alex sees the directive appear in the audit log with status: **"Logged — pending agent connection"**.
-7. This is by design. The audit trail exists before the agents are wired. When agents are connected in Wave 3, they will find their directive queue already populated and properly attributed.
+6. Within the live profile surface, this can still be mirrored into the in-profile audit trail for immediate UX feedback; the portable contract artifact is the C7 envelope above.
+7. Alex sees the directive appear in the audit log with status: **"Logged — pending agent connection"**.
+8. This is by design. The audit trail exists before the agents are wired. When agents are connected in Wave 3, they will find their directive queue already populated and properly attributed.
 
 **Why log before executing?** Because accountability precedes action. The audit trail is the contract between Alex and the agents. Building it first means the permission and attribution model is proven before any real computation happens.
 
@@ -151,8 +161,7 @@ Schedule event (task):
 2. `FerrosCore.serializeExport()` reads from localStorage (not in-memory state — this is intentional; see audit finding #4), creates a portable envelope:
    ```json
    {
-     "exportVersion": "1.0",
-     "profileId": "alex-ferros-id",
+     "ferrosVersion": "1.0",
      "exportedAt": "2026-04-18T10:35:00Z",
      "profile": { /* full profile object */ },
      "sealChain": [ /* all seals */ ]
@@ -163,7 +172,7 @@ Schedule event (task):
 5. On the Profile surface, Alex clicks **"Import Profile"** and selects the downloaded file.
 6. `FerrosCore.validateImport(envelope)` runs: schema validation against C2, seal chain integrity check, corruption detection.
 7. The profile loads. Alex's display name, stage, template archetype, XP — everything is identical.
-8. The schedule events and agent audit log are also portable: they were included in the export envelope.
+8. The profile and its seal chain are portable by contract. Related C7 audit logs can travel alongside the profile as separate portable artifacts.
 
 **This is the portability guarantee:** Your FERROS profile is not locked to a browser, a device, or a website. It's a JSON file you own. Any FERROS surface that implements the import contract can restore your state.
 

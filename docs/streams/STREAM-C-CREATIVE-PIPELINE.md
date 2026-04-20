@@ -35,20 +35,21 @@ The Arena Runtime is the engine that makes assets *experiential*. A Card in a JS
 ### The Card
 
 A Card is the atomic FERROS object. Defined by `schemas/card.schema.json`. A Card has:
-- An identity (`cardId`, `profileId` — who created it)
-- Parameters (stats, art, type — what it is)
-- A seal chain entry (provenance — where it came from)
-- A schema version (`schemaVersion: "1.0"`)
+- An identity (`id`, `kind`, `name`, `version`)
+- A render reference (`renderFile`) and semantic role (`role`)
+- Attribution (`attribution.createdBy`, `attribution.linkedTo`) that ties it back to identity context
+- Interactive view state (`state`) and spatial transform (`transform`)
+- Extension data under `metadata` for card-type-specific fields such as stats, art, or gameplay parameters
 
 Cards are **parametric** — their properties are defined by fields, not hardcoded. The Forge edits those fields; the Runtime renders them.
 
 ### The Deck
 
 A Deck is a composed collection of Cards. Defined by `schemas/deck.schema.json`. A Deck has:
-- An identity (`deckId`, `profileId`)
-- A card list (ordered array of `cardId` references)
-- Assembly metadata (when it was composed, what template it follows)
-- A schema version
+- An identity (`id`, `kind`, `name`, `version`)
+- A card list (`cards[]`) made of `cardReference` objects
+- Optional attribution and render state (`attribution`, `renderFile`, `defaultState`, `states`)
+- Optional composition metadata in the deck object itself (`role`, `description`, `tags`)
 
 Decks are the unit of play. The Battle Arena doesn't load individual Cards — it loads Decks. The Forge's final output when building a playable set is a Deck manifest.
 
@@ -92,22 +93,23 @@ The Forge opens a template from `docs/assets/_core/templates.json` — the same 
 
 The Forge presents editable fields matching `schemas/card.schema.json`. The user fills in:
 - `name` — display name
-- `type` — card type (creature, spell, equipment, etc.)
-- `stats` — parametric values
-- `art` — reference to asset file or generative parameters
-- `profileId` — pre-filled from the loaded profile (Stream B)
+- `role` — semantic role for the card inside the system
+- `renderFile` — which HTML surface renders this card
+- `tags` — discovery / grouping labels
+- `metadata.type`, `metadata.stats`, `metadata.art` — card-type-specific parameters stored in the schema's extension field
+- `attribution.linkedTo` — pre-filled from the loaded profile context (Stream B)
 
 **3. Validate**
 
-On save, the Forge calls `FerrosCore.validateImport({ type: "card", data: cardObject })`. If validation fails (missing required fields, wrong types, forbidden meta fields), the Forge shows the error inline. The Card is not saved until it's valid.
+On save, the Forge validates `cardObject` against `schemas/card.schema.json`. H1 already proves the schema against golden fixtures; Forge-side validation must follow that same schema truth and may not invent fields outside the published contract.
 
 **4. Save to Bag**
 
-A valid Card is saved to localStorage under the profile's card collection key. The seal chain entry is appended via `FerrosCore.computeHash()`.
+A valid Card is saved into the profile-owned bag/inventory model. Integrity metadata can be derived via `FerrosCore.computeHash()` without changing the card schema itself.
 
 **5. Assemble a Deck**
 
-From the Bag, the user selects Cards and assembles them into a Deck. The Deck manifest lists `cardIds` in order. Deck validation runs against `schemas/deck.schema.json`.
+From the Bag, the user selects Cards and assembles them into a Deck. The Deck manifest stores `cards[]` as `cardReference` objects, with `cardId` required and `slot`, `group`, `instanceOf`, and `transform` available when needed. Deck validation runs against `schemas/deck.schema.json`.
 
 **6. Export to Runtime**
 
@@ -127,14 +129,12 @@ sequenceDiagram
     participant D as Consumer Surface
 
     U->>F: Fill card fields
-    F->>FC: validateImport(cardObject)
-    FC-->>F: valid ✅
+    F->>F: Validate cardObject against SCHEMA_CARD
     F->>FC: computeHash(cardObject)
     FC-->>F: {hash, algorithm}
     F->>LS: save card to profile inventory
     U->>F: assemble into Deck
-    F->>FC: validateImport(deckObject)
-    FC-->>F: valid ✅
+    F->>F: Validate deckObject against SCHEMA_DECK
     F->>LS: save deck manifest
     F->>R: postMessage ferros:init {deck: deckManifest}
     R-->>D: renders card/deck surface
@@ -149,9 +149,9 @@ Every step in the pipeline validates against the frozen Schema A contracts:
 
 | Step | Schema Checked | Method |
 |------|---------------|--------|
-| Card creation | `schemas/card.schema.json` (C4) | H1 (harness), `FerrosCore.validateImport()` at runtime |
-| Deck assembly | `schemas/deck.schema.json` (C5) | H1 (harness), `FerrosCore.validateImport()` at runtime |
-| Card export | `schemas/profile.schema.json` (C2) — export envelope | `FerrosCore.serializeExport()` |
+| Card creation | `schemas/card.schema.json` (C4) | H1 (harness), plus Forge-owned schema validation against the published contract |
+| Deck assembly | `schemas/deck.schema.json` (C5) | H1 (harness), plus Forge-owned schema validation against the published contract |
+| Card export | Wave 1 contract decision pending | Current public `FerrosCore.serializeExport()` is profile-only (C9) |
 | Runtime init | C8 Runtime Host Contract | H3 (harness), `ferros:init` message shape |
 | Fixture corpus | All schemas (C1–C7) | H1 gate harness |
 
@@ -180,7 +180,7 @@ The Wave 1 goal: prove that one Card can go from Forge to Runtime and back.
 
 **V6 in detail:** The Arena Runtime runs the full lifecycle — `ferros:init` (receives card data and nonce), `ferros:update` (receives a state update), `ferros:event` (receives user interaction). H3 harness verifies this contract. Nonce echo is confirmed (PR 5).
 
-**V7 in detail:** A card is exported from the Forge, the browser is cleared, the card is imported back. All fields are identical — including `cardId`, `profileId`, `sealChain`. This proves Cards are portable, not just viewable.
+**V7 in detail:** A card/deck payload is exported from the Forge, the browser is cleared, and the same payload is imported back. All schema fields are identical — including `id`, `version`, `attribution`, `metadata`, and the `cardReference` structure. This proves Cards are portable, not just viewable.
 
 ### Wave 2 — Deck Consumption
 
@@ -197,7 +197,7 @@ The Wave 1 goal: prove that one Card can go from Forge to Runtime and back.
 |------|-----------|-------------|
 | 1 | Forge exports to Runtime | Direct Forge → Runtime workflow |
 | 2 | Agent-generated cards | Agent Command Center (Stream B) directs card generation in Forge |
-| 3 | Card attribution chain | Cards carry `profileId` from the creator's identity |
+| 3 | Card attribution chain | Cards carry creator/owner linkage in `attribution` sourced from identity context |
 
 ---
 
