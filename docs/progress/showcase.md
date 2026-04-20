@@ -1,8 +1,8 @@
 # Showcase / Landing Page — Progress Spec
 
-**Current:** 1%
+**Current:** 10%
 **Phase:** Prototype
-**Status:** Prototype exists in `docs/ferros-showcase.html`.
+**Status:** Prototype exists in `docs/ferros-showcase.html`, and the contracts section now reads `docs/contracts/manifest.json` locally to show live status and evidence links with a visible failure state.
 
 ## What This Is
 
@@ -12,7 +12,7 @@ This spec tracks the public-facing FERROS landing page implemented in `docs/ferr
 
 | % | Gate | Deliverables | Done? |
 |---|------|-------------|-------|
-| 10% | Landing shell | A standalone public-facing page exists and loads locally without dependencies | ☐ |
+| 10% | Landing shell | A standalone public-facing page exists and loads locally without dependencies | ✅ |
 | 20% | Architecture narrative | The page explains FERROS architecture and philosophy using repo-consistent language | ☐ |
 | 30% | Roadmap narrative | Roadmap sections align with the canonical README phases without becoming the source of truth for percentages | ☐ |
 | 40% | Contributor guidance | The page contains contributor-facing entry points and references to repo docs | ☐ |
@@ -27,11 +27,13 @@ This spec tracks the public-facing FERROS landing page implemented in `docs/ferr
 
 - `README.md` — canonical roadmap, philosophy, and current-state source.
 - `docs/ferros-showcase.html` — current landing page prototype.
+- `docs/contracts/manifest.json` — live capability manifest consumed by the contracts section under the local file-origin workflow.
 - `docs/architecture-overview.md` — architecture language baseline.
 - `ferros-blueprint.html` — core Phase 0 reference artifact the showcase points toward.
 
 ## Current Blockers
 
 - The page contains illustrative roadmap progress bars that are not authoritative for actual project percentages.
+- The manifest-backed contracts panel is live, but it currently exposes only the existing manifest surface: contract identity, status, and evidence links.
 - Public-facing claims still depend on a rapidly evolving prototype repo surface.
 - Final public-readiness criteria are not yet documented outside the prototype itself.

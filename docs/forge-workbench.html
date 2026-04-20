@@ -496,6 +496,101 @@ body.project-direct-view .forge-viewport iframe {
   color: var(--text-dim);
 }
 
+.control-button.active {
+  border-color: var(--accent-cyan);
+  color: var(--text-primary);
+  background: rgba(45,212,191,0.14);
+}
+
+.card-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.editor-field-wide {
+  grid-column: 1 / -1;
+}
+
+.editor-field-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.editor-input,
+.editor-select,
+.editor-textarea {
+  width: 100%;
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+  background: rgba(10, 12, 16, 0.84);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 9px 10px;
+}
+
+.editor-input[readonly] {
+  color: var(--text-dim);
+}
+
+.editor-select {
+  appearance: none;
+}
+
+.editor-textarea {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.editor-input:focus-visible,
+.editor-select:focus-visible,
+.editor-textarea:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 1px;
+}
+
+.editor-status {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.editor-status.success {
+  color: var(--accent-green);
+}
+
+.editor-status.error {
+  color: var(--accent-red);
+}
+
+.editor-status.muted {
+  color: var(--text-dim);
+}
+
+.reference-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+}
+
 
 
 .forge-panel.panel-collapsed {
@@ -577,6 +672,14 @@ body.project-direct-view .forge-viewport iframe {
     width: 248px;
   }
 
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-field-wide {
+    grid-column: auto;
+  }
+
   .corner-tl, .corner-bl { left: 10px; }
   .corner-tr, .corner-br { right: 10px; }
 
@@ -646,12 +749,12 @@ body.project-direct-view .forge-viewport iframe {
       </section>
 
       <section class="inspector-section">
-        <div class="inspector-label">Composition</div>
+        <div class="inspector-label" id="composition-label">Composition</div>
         <div id="component-list" class="inspector-empty">Select a project to see its assembled parts.</div>
       </section>
 
       <section class="inspector-section">
-        <div class="inspector-label">Animation Presets</div>
+        <div class="inspector-label" id="controls-label">Animation Presets</div>
         <div class="control-grid" id="control-grid">
           <button class="control-button" type="button" disabled>No controls</button>
         </div>
@@ -659,7 +762,13 @@ body.project-direct-view .forge-viewport iframe {
       </section>
 
       <section class="inspector-section">
-        <div class="inspector-label">Saved Render / Arena</div>
+        <div class="inspector-label">Card Fields</div>
+        <div id="card-editor" class="inspector-empty">Select a card to edit schema-aligned fields.</div>
+        <div class="editor-status muted" id="card-editor-status">Runtime preview stays at the host-message seam; select a card to edit schema fields.</div>
+      </section>
+
+      <section class="inspector-section">
+        <div class="inspector-label" id="viewer-target-label">Saved Render / Arena</div>
         <a class="launch-link" id="arena-link" href="assets/_core/arena.html?part=../loot/parts/box-body.html" target="_blank" rel="noreferrer">Open current render target</a>
         <div class="inspector-copy" style="margin-top:10px;">
           <div id="viewer-manifest">manifest: --</div>
@@ -708,13 +817,61 @@ body.project-direct-view .forge-viewport iframe {
 (function() {
   'use strict';
 
+  var CARD_FIXTURE_PATH = '../schemas/fixtures/deck-card-assembly-seam.json';
+  var CARD_PREVIEW_PATH = 'assets/cards/trading-card.html';
   var PART_INDEX_PATH = 'assets/loot/parts/index.json';
   var PROJECT_INDEX_PATH = 'assets/loot/projects/index.json';
   var isFileProtocol = window.location.protocol === 'file:';
+  var CARDS = [];
   var PARTS = [];
   var PROJECTS = [];
+  var CARD_FIXTURE_DECK = null;
 
   var FILE_FALLBACKS = {
+    cardFixture: {
+      _fixture: {
+        purpose: 'Seam fixture: deck.cards[].cardId references valid card.id values',
+        seam: 'deck -> card (card-reference assembly)',
+        validates: [
+          'Each cardReference.cardId in deck.cards matches a card.id in the companion cards array',
+          'Slot names are unique within the deck',
+          'Transform values are schema-conformant'
+        ]
+      },
+      deck: {
+        id: 'forge-assembly-test',
+        kind: 'deck',
+        name: 'Forge Assembly Test Deck',
+        version: 1,
+        contentHash: null,
+        role: 'project',
+        description: 'Seam test: deck with 4 cards exercising all cardReference properties',
+        tags: ['seam-test', 'forge'],
+        attribution: {
+          createdBy: 'abc123fedcba',
+          createdAt: '2025-01-15T09:00:00Z',
+          linkedTo: 'abc123fedcba'
+        },
+        cards: [
+          { cardId: 'base-container', slot: 'base', group: 'structure' },
+          { cardId: 'lid-mechanism', slot: 'top', group: 'structure', transform: { ty: -40, rz: 0, scale: 1 } },
+          { cardId: 'hinge-left', slot: 'hinge-l', group: 'mechanism', transform: { tx: -20, ty: -20, tz: 0, rx: 0, ry: 0, rz: 0, scale: 1 } },
+          { cardId: 'decorative-plate', slot: 'front-face', group: 'decorative', instanceOf: 'base-container', transform: { tz: 5, scale: 0.8 } }
+        ],
+        renderFile: 'assets/cards/forge-assembly.html',
+        defaultState: 'Closed',
+        states: [
+          { name: 'Closed', control: 'static' },
+          { name: 'Open', control: 'interactive' }
+        ]
+      },
+      cards: [
+        { id: 'base-container', kind: 'card', name: 'Base Container', version: 1, contentHash: null, renderFile: 'assets/cards/base-container.html', role: 'container', tags: ['structural'] },
+        { id: 'lid-mechanism', kind: 'card', name: 'Lid Mechanism', version: 1, contentHash: null, renderFile: 'assets/cards/lid-mechanism.html', role: 'lid', tags: ['mechanism'] },
+        { id: 'hinge-left', kind: 'card', name: 'Hinge Left', version: 1, contentHash: null, renderFile: 'assets/cards/hinge-left.html', role: 'mechanism', tags: ['mechanism', 'hardware'] },
+        { id: 'decorative-plate', kind: 'card', name: 'Decorative Front Plate', version: 1, contentHash: null, renderFile: 'assets/cards/decorative-plate.html', role: 'decorative', tags: ['visual'] }
+      ]
+    },
     partIndex: {
       version: 1,
       parts: [
@@ -803,7 +960,7 @@ body.project-direct-view .forge-viewport iframe {
   };
 
   var ARENA_BASE = 'assets/_core/arena.html?part=';
-  var ASSETS = PARTS.concat(PROJECTS);
+  var ASSETS = CARDS.concat(PARTS, PROJECTS);
 
   var frame = document.getElementById('viewer-frame');
   var emptyState = document.getElementById('empty-state');
@@ -817,11 +974,16 @@ body.project-direct-view .forge-viewport iframe {
   var inspectorCopy = document.getElementById('inspector-copy');
   var inspectorNotes = document.getElementById('inspector-notes');
   var metaTypeSubtitle = document.getElementById('meta-type-subtitle');
+  var compositionLabel = document.getElementById('composition-label');
   var metaRole = document.getElementById('meta-role');
   var metaViewer = document.getElementById('meta-viewer');
   var componentList = document.getElementById('component-list');
+  var controlsLabel = document.getElementById('controls-label');
   var controlGrid = document.getElementById('control-grid');
   var controlHelp = document.getElementById('control-help');
+  var cardEditor = document.getElementById('card-editor');
+  var cardEditorStatus = document.getElementById('card-editor-status');
+  var viewerTargetLabel = document.getElementById('viewer-target-label');
   var arenaLink = document.getElementById('arena-link');
   var viewerManifest = document.getElementById('viewer-manifest');
   var viewerRender = document.getElementById('viewer-render');
@@ -850,13 +1012,222 @@ body.project-direct-view .forge-viewport iframe {
   }
 
   var activeAsset = null;
+  var activeRuntimeNonce = null;
+  var frameLoaded = false;
+  var pendingInitConfig = null;
   var pendingPayload = null;
   var pendingPoseLabel = 'default';
 
-  assetCount.textContent = PARTS.length + ' assets indexed';
+  assetCount.textContent = ASSETS.length + ' assets indexed';
 
   function cloneData(value) {
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function titleCase(value) {
+    return String(value || '')
+      .replace(/[-_]+/g, ' ')
+      .replace(/\b\w/g, function(match) { return match.toUpperCase(); });
+  }
+
+  function slugToTicker(id) {
+    var parts = String(id || 'card').split('-').filter(Boolean);
+    if (parts.length > 1) {
+      var initials = '';
+      for (var i = 0; i < parts.length; i++) initials += parts[i].charAt(0);
+      return initials.slice(0, 4).toUpperCase();
+    }
+
+    var compact = String(id || 'card').replace(/[^a-z0-9]/gi, '');
+    return (compact.slice(0, 4) || 'CARD').toUpperCase();
+  }
+
+  function createRuntimeNonce() {
+    var bytes = new Uint8Array(16);
+    if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+      window.crypto.getRandomValues(bytes);
+    } else {
+      for (var i = 0; i < bytes.length; i++) {
+        bytes[i] = Math.floor(Math.random() * 256);
+      }
+    }
+
+    var hex = '';
+    for (var j = 0; j < bytes.length; j++) {
+      hex += ('0' + bytes[j].toString(16)).slice(-2);
+    }
+    return hex;
+  }
+
+  function setCardEditorStatus(message, tone) {
+    cardEditorStatus.textContent = message;
+    cardEditorStatus.className = 'editor-status ' + (tone || 'muted');
+  }
+
+  function formatJsonObject(value) {
+    var normalized = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    return JSON.stringify(normalized, null, 2);
+  }
+
+  function parseJsonObjectField(label, rawValue) {
+    var trimmed = String(rawValue || '').trim();
+    if (!trimmed) return {};
+
+    try {
+      var parsed = JSON.parse(trimmed);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('must be a JSON object');
+      }
+      return parsed;
+    } catch (error) {
+      setCardEditorStatus(label + ' must be a valid JSON object.', 'error');
+      return null;
+    }
+  }
+
+  function iconForCardRole(role) {
+    var icons = {
+      container: '\uD83C\uDCCF',
+      lid: '\uD83D\uDEE1',
+      structural: '\uD83D\uDD29',
+      mechanism: '\u2699',
+      decorative: '\u2726',
+      profile: '\uD83D\uDC64',
+      schedule: '\uD83D\uDCC5'
+    };
+    return icons[role] || '\uD83C\uDCCF';
+  }
+
+  function resolveCardReferences(deck, cardId) {
+    var refs = [];
+    var deckCards = deck && Array.isArray(deck.cards) ? deck.cards : [];
+    for (var i = 0; i < deckCards.length; i++) {
+      if (deckCards[i].cardId === cardId) {
+        refs.push(cloneData(deckCards[i]));
+      }
+    }
+    return refs;
+  }
+
+  function buildCardAsset(rawCard, deck) {
+    var refs = resolveCardReferences(deck, rawCard.id);
+    var state = rawCard.state && typeof rawCard.state === 'object' ? cloneData(rawCard.state) : {};
+    if (!state.control) state.control = 'interactive';
+
+    return {
+      id: rawCard.id,
+      kind: 'card',
+      name: rawCard.name || titleCase(rawCard.id),
+      version: rawCard.version || 1,
+      icon: iconForCardRole(rawCard.role),
+      file: CARD_PREVIEW_PATH,
+      schemaRenderFile: rawCard.renderFile || '',
+      sourcePath: CARD_FIXTURE_PATH,
+      dims: 'schema',
+      role: rawCard.role || 'card',
+      viewer: 'runtime',
+      notes: refs.length
+        ? 'Fixture card currently referenced by ' + refs.length + ' deck slot' + (refs.length === 1 ? '' : 's') + '.'
+        : 'Fixture card loaded from the deck/card seam artifact.',
+      description: 'Schema-backed card preview bridged into the runtime host contract.',
+      tags: Array.isArray(rawCard.tags) ? rawCard.tags.slice() : [],
+      attribution: rawCard.attribution && typeof rawCard.attribution === 'object' ? cloneData(rawCard.attribution) : {},
+      state: state,
+      transform: rawCard.transform && typeof rawCard.transform === 'object' ? cloneData(rawCard.transform) : {},
+      metadata: rawCard.metadata && typeof rawCard.metadata === 'object' ? cloneData(rawCard.metadata) : {},
+      deckRefs: refs,
+      fixtureDeck: deck ? { id: deck.id, name: deck.name } : null
+    };
+  }
+
+  function resolveCardPreviewRarity(asset) {
+    var rarity = asset.metadata && typeof asset.metadata.rarity === 'string'
+      ? asset.metadata.rarity.toLowerCase()
+      : '';
+    if (rarity) return rarity;
+
+    var known = ['mythic', 'legendary', 'epic', 'rare', 'uncommon', 'common'];
+    for (var i = 0; i < asset.tags.length; i++) {
+      var tag = String(asset.tags[i] || '').toLowerCase();
+      if (known.indexOf(tag) >= 0) return tag;
+    }
+
+    return 'common';
+  }
+
+  function resolveCardPreviewAbility(asset) {
+    if (asset.metadata && typeof asset.metadata.ability === 'string') {
+      return asset.metadata.ability.toLowerCase();
+    }
+
+    var abilityByRole = {
+      container: 'barrier',
+      lid: 'overwhelm',
+      mechanism: 'attune',
+      decorative: 'elusive',
+      structural: 'barrier'
+    };
+
+    return abilityByRole[asset.role] || '';
+  }
+
+  function resolveCardPreviewSector(asset) {
+    if (asset.metadata && typeof asset.metadata.sector === 'string') {
+      return asset.metadata.sector;
+    }
+
+    var sectorByRole = {
+      container: 'Retail',
+      lid: 'Auto',
+      mechanism: 'Tech',
+      decorative: 'Media',
+      structural: 'Defense',
+      profile: 'Consumer',
+      schedule: 'Finance'
+    };
+
+    return sectorByRole[asset.role] || 'Tech';
+  }
+
+  function resolveCardControl(asset) {
+    return asset.state && typeof asset.state.control === 'string'
+      ? asset.state.control
+      : 'interactive';
+  }
+
+  function buildCardPreviewPayload(asset) {
+    return {
+      control: resolveCardControl(asset),
+      cards: [
+        {
+          ticker: slugToTicker(asset.id),
+          name: asset.name,
+          rarity: resolveCardPreviewRarity(asset),
+          ability: resolveCardPreviewAbility(asset),
+          price: asset.metadata && typeof asset.metadata.price === 'number' ? asset.metadata.price : asset.version,
+          pnl: asset.metadata && typeof asset.metadata.pnl === 'number' ? asset.metadata.pnl : 0,
+          energy: asset.metadata && typeof asset.metadata.energy === 'number' ? asset.metadata.energy : Math.max(asset.tags.length, 1),
+          sector: resolveCardPreviewSector(asset)
+        }
+      ]
+    };
+  }
+
+  function buildCardInitConfig(asset) {
+    return {
+      control: resolveCardControl(asset),
+      state: asset.state && asset.state.preset ? asset.state.preset : '',
+      pose: asset.state && asset.state.pose && typeof asset.state.pose === 'object' ? cloneData(asset.state.pose) : {},
+      version: '1.1.0'
+    };
   }
 
   function loadJsonResource(path, fallbackValue) {
@@ -873,7 +1244,7 @@ body.project-direct-view .forge-viewport iframe {
   }
 
   function refreshAssets() {
-    ASSETS = PARTS.concat(PROJECTS);
+    ASSETS = CARDS.concat(PARTS, PROJECTS);
     assetCount.textContent = ASSETS.length + ' assets indexed';
   }
 
@@ -924,10 +1295,34 @@ body.project-direct-view .forge-viewport iframe {
 
   function rebuildCatalog() {
     catalog.innerHTML = '';
-    catalog.appendChild(buildGroup('Cards', PARTS));
+    if (CARDS.length) {
+      catalog.appendChild(buildGroup('Cards', CARDS));
+    }
+    if (PARTS.length) {
+      catalog.appendChild(buildGroup('Parts', PARTS));
+    }
     if (PROJECTS.length) {
       catalog.appendChild(buildGroup('Decks', PROJECTS));
     }
+  }
+
+  function loadCardFixture() {
+    return loadJsonResource(CARD_FIXTURE_PATH, FILE_FALLBACKS.cardFixture)
+      .then(function(fixture) {
+        CARD_FIXTURE_DECK = fixture && fixture.deck ? fixture.deck : null;
+        CARDS = Array.isArray(fixture.cards)
+          ? fixture.cards.map(function(card) { return buildCardAsset(card, CARD_FIXTURE_DECK); })
+          : [];
+        refreshAssets();
+        rebuildCatalog();
+      })
+      .catch(function(error) {
+        CARDS = [];
+        CARD_FIXTURE_DECK = null;
+        refreshAssets();
+        rebuildCatalog();
+        controlHelp.textContent = 'Card fixture unavailable: ' + error.message;
+      });
   }
 
   function loadProjectIndex() {
@@ -1049,21 +1444,50 @@ body.project-direct-view .forge-viewport iframe {
   }
 
   function renderInspector(asset) {
+    compositionLabel.textContent = asset.kind === 'card' ? 'Deck References' : 'Composition';
+    controlsLabel.textContent = asset.kind === 'card' ? 'Preview Controls' : 'Animation Presets';
+    viewerTargetLabel.textContent = asset.kind === 'card' ? 'Runtime Bridge' : 'Saved Render / Arena';
     inspectorTitle.textContent = asset.name;
     metaTypeSubtitle.textContent = asset.kind;
     inspectorCopy.textContent = asset.kind === 'project'
       ? 'Manifest-defined project. Forge loads the saved render target and applies simple states from the project definition.'
+      : asset.kind === 'card'
+        ? 'Fixture-backed card. Forge edits schema fields locally and adapts them into the runtime preview only at the host-message seam.'
       : 'Standalone part rendered through The Arena for isolated inspection.';
     inspectorNotes.textContent = asset.notes;
     metaRole.textContent = asset.role;
-    metaViewer.textContent = asset.viewer;
-    viewerManifest.textContent = 'manifest: ' + (asset.manifestPath || '--');
-    viewerRender.textContent = 'render: ' + (asset.kind === 'project' ? asset.renderFile : asset.file);
+    metaViewer.textContent = asset.kind === 'card' ? 'runtime bridge' : asset.viewer;
+    viewerManifest.textContent = asset.kind === 'card'
+      ? 'fixture: ' + (asset.sourcePath || '--')
+      : 'manifest: ' + (asset.manifestPath || '--');
+    viewerRender.textContent = asset.kind === 'card'
+      ? 'schema render: ' + (asset.schemaRenderFile || '--')
+      : 'render: ' + (asset.kind === 'project' ? asset.renderFile : asset.file);
+    arenaLink.textContent = asset.kind === 'card' ? 'Open runtime bridge preview' : 'Open current render target';
     arenaLink.href = asset.kind === 'project'
       ? asset.standaloneRenderFile
+      : asset.kind === 'card'
+        ? asset.file
       : 'assets/_core/arena.html?part=' + encodeURIComponent(asset.file);
 
-    if (asset.components && asset.components.length) {
+    if (asset.kind === 'card') {
+      if (asset.deckRefs && asset.deckRefs.length) {
+        var refs = '<ul class="reference-list">';
+        for (var r = 0; r < asset.deckRefs.length; r++) {
+          refs += '<li>' +
+            escapeHtml((asset.fixtureDeck && asset.fixtureDeck.name) || 'Fixture deck') +
+            ' -> slot ' + escapeHtml(asset.deckRefs[r].slot || '--') +
+            (asset.deckRefs[r].group ? ' / group ' + escapeHtml(asset.deckRefs[r].group) : '') +
+            '</li>';
+        }
+        refs += '</ul>';
+        componentList.className = '';
+        componentList.innerHTML = refs;
+      } else {
+        componentList.className = 'inspector-empty';
+        componentList.textContent = 'This card is not referenced by the current seam deck.';
+      }
+    } else if (asset.components && asset.components.length) {
       componentList.className = '';
       var list = '<ul class="inspector-list">';
       for (var i = 0; i < asset.components.length; i++) {
@@ -1077,10 +1501,32 @@ body.project-direct-view .forge-viewport iframe {
     }
 
     renderControls(asset);
+    renderCardEditor(asset);
   }
 
   function renderControls(asset) {
     controlGrid.innerHTML = '';
+    if (asset.kind === 'card') {
+      var modes = ['demo', 'interactive', 'static'];
+      var activeMode = resolveCardControl(asset);
+      controlHelp.textContent = 'Card preview control is adapted at the runtime host-message seam. Schema fields remain the source of truth in the editor below.';
+      for (var m = 0; m < modes.length; m++) {
+        (function(mode) {
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'control-button' + (mode === activeMode ? ' active' : '');
+          button.textContent = titleCase(mode);
+          button.addEventListener('click', function() {
+            asset.state = asset.state || {};
+            asset.state.control = mode;
+            refreshCardPreview(asset, true);
+          });
+          controlGrid.appendChild(button);
+        })(modes[m]);
+      }
+      return;
+    }
+
     var controls = asset.states || asset.controls || [];
 
     if (!controls.length) {
@@ -1110,6 +1556,144 @@ body.project-direct-view .forge-viewport iframe {
     }
   }
 
+  function renderCardEditor(asset) {
+    if (asset.kind !== 'card') {
+      cardEditor.className = 'inspector-empty';
+      cardEditor.textContent = asset.kind === 'project'
+        ? 'Deck manifests are visible here, but V5 editing is limited to one real card fixture.'
+        : 'Parts stay in isolated inspection mode. Select a card to edit schema-aligned fields.';
+      setCardEditorStatus('Runtime preview stays at the host-message seam; select a card to edit schema fields.', 'muted');
+      return;
+    }
+
+    cardEditor.className = 'card-editor';
+    cardEditor.innerHTML =
+      '<div class="editor-grid">' +
+        '<label class="editor-field">' +
+          '<span class="editor-field-label">ID</span>' +
+          '<input class="editor-input" type="text" value="' + escapeHtml(asset.id) + '" readonly>' +
+        '</label>' +
+        '<label class="editor-field">' +
+          '<span class="editor-field-label">Version</span>' +
+          '<input class="editor-input" type="number" min="1" data-card-field="version" value="' + escapeHtml(String(asset.version)) + '">' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Name</span>' +
+          '<input class="editor-input" type="text" data-card-field="name" value="' + escapeHtml(asset.name) + '">' +
+        '</label>' +
+        '<label class="editor-field">' +
+          '<span class="editor-field-label">Role</span>' +
+          '<input class="editor-input" type="text" data-card-field="role" value="' + escapeHtml(asset.role || '') + '">' +
+        '</label>' +
+        '<label class="editor-field">' +
+          '<span class="editor-field-label">State Control</span>' +
+          '<select class="editor-select" data-card-field="stateControl">' +
+            '<option value="demo"' + (resolveCardControl(asset) === 'demo' ? ' selected' : '') + '>demo</option>' +
+            '<option value="interactive"' + (resolveCardControl(asset) === 'interactive' ? ' selected' : '') + '>interactive</option>' +
+            '<option value="static"' + (resolveCardControl(asset) === 'static' ? ' selected' : '') + '>static</option>' +
+          '</select>' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Render File</span>' +
+          '<input class="editor-input" type="text" data-card-field="schemaRenderFile" value="' + escapeHtml(asset.schemaRenderFile || '') + '">' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Tags</span>' +
+          '<input class="editor-input" type="text" data-card-field="tags" value="' + escapeHtml(asset.tags.join(', ')) + '">' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">State Preset</span>' +
+          '<input class="editor-input" type="text" data-card-field="statePreset" value="' + escapeHtml(asset.state && asset.state.preset ? asset.state.preset : '') + '">' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Attribution JSON</span>' +
+          '<textarea class="editor-textarea" data-card-field="attribution">' + escapeHtml(formatJsonObject(asset.attribution)) + '</textarea>' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Metadata JSON</span>' +
+          '<textarea class="editor-textarea" data-card-field="metadata">' + escapeHtml(formatJsonObject(asset.metadata)) + '</textarea>' +
+        '</label>' +
+        '<label class="editor-field editor-field-wide">' +
+          '<span class="editor-field-label">Transform JSON</span>' +
+          '<textarea class="editor-textarea" data-card-field="transform">' + escapeHtml(formatJsonObject(asset.transform)) + '</textarea>' +
+        '</label>' +
+      '</div>';
+
+    bindCardEditor(asset);
+    setCardEditorStatus('Card fields sync into the runtime preview through ferros:init/ferros:update only.', 'muted');
+  }
+
+  function bindCardEditor(asset) {
+    var fields = cardEditor.querySelectorAll('[data-card-field]');
+    for (var i = 0; i < fields.length; i++) {
+      fields[i].addEventListener('change', function(event) {
+        var field = event.target.getAttribute('data-card-field');
+        var nextValue = event.target.value;
+
+        if (field === 'version') {
+          var parsedVersion = parseInt(nextValue, 10);
+          if (!Number.isFinite(parsedVersion) || parsedVersion < 1) {
+            setCardEditorStatus('Version must be an integer greater than or equal to 1.', 'error');
+            renderCardEditor(asset);
+            return;
+          }
+          asset.version = parsedVersion;
+        } else if (field === 'name') {
+          asset.name = nextValue.trim() || asset.name;
+        } else if (field === 'role') {
+          asset.role = nextValue.trim() || 'card';
+          asset.icon = iconForCardRole(asset.role);
+        } else if (field === 'schemaRenderFile') {
+          asset.schemaRenderFile = nextValue.trim();
+        } else if (field === 'tags') {
+          asset.tags = nextValue
+            .split(',')
+            .map(function(tag) { return tag.trim(); })
+            .filter(Boolean);
+        } else if (field === 'statePreset') {
+          asset.state = asset.state || {};
+          asset.state.preset = nextValue.trim();
+        } else if (field === 'stateControl') {
+          asset.state = asset.state || {};
+          asset.state.control = nextValue;
+        } else if (field === 'attribution' || field === 'metadata' || field === 'transform') {
+          var parsedObject = parseJsonObjectField(field, nextValue);
+          if (!parsedObject) {
+            renderCardEditor(asset);
+            return;
+          }
+          asset[field] = parsedObject;
+        }
+
+        refreshCardPreview(asset, false);
+      });
+    }
+  }
+
+  function refreshCardPreview(asset, initiatedFromControl) {
+    pendingInitConfig = buildCardInitConfig(asset);
+    pendingPayload = buildCardPreviewPayload(asset);
+    pendingPoseLabel = resolveCardControl(asset);
+
+    rebuildCatalog();
+    setActiveItem(asset.id);
+    renderInspector(asset);
+
+    statusSelection.textContent = asset.name.toLowerCase();
+    statusPose.textContent = 'pose: ' + pendingPoseLabel;
+    statusViewer.textContent = 'viewer: runtime';
+    statusSource.textContent = 'source: ' + asset.sourcePath;
+    hudRight.textContent = asset.name + ' / card';
+
+    if (frameLoaded && activeAsset && activeAsset.id === asset.id && activeAsset.kind === 'card') {
+      postToViewer({ type: 'ferros:update', payload: pendingPayload });
+      setCardEditorStatus(
+        initiatedFromControl ? 'Card control updated in the runtime preview.' : 'Card fields synced to the runtime preview.',
+        'success'
+      );
+    }
+  }
+
   function resolveDefaultControl(asset) {
     var controls = asset.states || asset.controls || [];
     if (!controls.length) return null;
@@ -1133,20 +1717,31 @@ body.project-direct-view .forge-viewport iframe {
 
   function loadResolvedAsset(asset) {
     activeAsset = asset;
+    frameLoaded = false;
+    activeRuntimeNonce = null;
+    pendingInitConfig = null;
     pendingPayload = null;
     pendingPoseLabel = 'default';
     resetInspectorScroll();
     document.body.classList.toggle('project-direct-view', asset.viewer === 'direct');
     updateIframeScale();
 
-    var controls = asset.states || asset.controls || [];
-    if (controls.length) {
+    if (asset.kind === 'card') {
+      pendingInitConfig = buildCardInitConfig(asset);
+      pendingPayload = buildCardPreviewPayload(asset);
+      pendingPoseLabel = resolveCardControl(asset);
+      activeRuntimeNonce = createRuntimeNonce();
+      statusPose.textContent = 'pose: ' + pendingPoseLabel;
+    } else {
+      var controls = asset.states || asset.controls || [];
+      if (controls.length) {
       var defaultControl = resolveDefaultControl(asset);
       pendingPayload = defaultControl.payload;
       pendingPoseLabel = String(defaultControl.label || defaultControl.payload.pose || 'default').toLowerCase();
       statusPose.textContent = 'pose: ' + pendingPoseLabel;
-    } else {
-      statusPose.textContent = 'pose: default';
+      } else {
+        statusPose.textContent = 'pose: default';
+      }
     }
 
     setActiveItem(asset.id);
@@ -1159,6 +1754,11 @@ body.project-direct-view .forge-viewport iframe {
       statusViewer.textContent = 'viewer: arena';
       hudRight.textContent = asset.name + ' / part';
       statusSource.textContent = 'source: ' + asset.file;
+    } else if (asset.viewer === 'runtime') {
+      frame.src = asset.file;
+      statusViewer.textContent = 'viewer: runtime';
+      hudRight.textContent = asset.name + ' / card';
+      statusSource.textContent = 'source: ' + asset.sourcePath;
     } else {
       frame.src = asset.renderFile;
       statusViewer.textContent = 'viewer: forge project';
@@ -1219,15 +1819,46 @@ body.project-direct-view .forge-viewport iframe {
   }
 
   frame.addEventListener('load', function() {
-    if (activeAsset && activeAsset.viewer === 'direct' && pendingPayload) {
-      window.requestAnimationFrame(function() {
+    frameLoaded = true;
+    window.requestAnimationFrame(function() {
+      if (!activeAsset) return;
+
+      if (activeAsset.viewer === 'runtime') {
+        postToViewer({ type: 'ferros:init', nonce: activeRuntimeNonce, config: pendingInitConfig || buildCardInitConfig(activeAsset) });
+        if (pendingPayload) {
+          postToViewer({ type: 'ferros:update', payload: pendingPayload });
+        }
+        statusPose.textContent = 'pose: ' + pendingPoseLabel;
+        return;
+      }
+
+      if (activeAsset.viewer === 'direct' && pendingPayload) {
         postToViewer({ type: 'ferros:update', payload: pendingPayload });
         statusPose.textContent = 'pose: ' + pendingPoseLabel;
-      });
+      }
+    });
+  });
+
+  window.addEventListener('message', function(event) {
+    var message = event.data;
+    if (!message || message.type !== 'ferros:event' || !activeAsset || activeAsset.kind !== 'card') return;
+    if (activeRuntimeNonce && message.nonce && message.nonce !== activeRuntimeNonce) return;
+
+    if (message.event === 'ready') {
+      setCardEditorStatus('Runtime preview ready for ' + activeAsset.name + '.', 'success');
+    }
+
+    if (message.event === 'cards-updated') {
+      setCardEditorStatus('Runtime preview refreshed from the active card fields.', 'success');
     }
   });
 
-  Promise.allSettled([loadPartIndex(), loadProjectIndex()]).then(function() {
+  Promise.allSettled([loadCardFixture(), loadPartIndex(), loadProjectIndex()]).then(function() {
+    if (CARDS.length) {
+      loadAsset(CARDS[0].id);
+      return;
+    }
+
     if (PARTS.length) {
       loadAsset(PARTS[0].id);
       return;

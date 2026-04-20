@@ -445,7 +445,6 @@ section.full-width {
 }
 
 /* ── ARCHITECTURE DIAGRAM ───────────────────────────────────────── */
-#architecture { }
 
 .arch-container {
   display: grid;
@@ -563,6 +562,196 @@ section.full-width {
   color: var(--text-code);
 }
 
+/* ── CONTRACTS ─────────────────────────────────────────────────── */
+#contracts {
+  max-width: none;
+  padding: 5rem 2rem;
+}
+
+#contracts > .inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.contracts-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 1.4rem;
+  margin-bottom: 1.5rem;
+}
+
+.contracts-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.contracts-panel-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.contracts-panel-meta {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+
+.contracts-panel-note {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.contracts-status-banner {
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 0.95rem 1rem;
+  margin-bottom: 1.5rem;
+  background: rgba(74, 144, 217, 0.08);
+  color: var(--text-secondary);
+}
+
+.contracts-status-banner strong {
+  color: var(--text-primary);
+}
+
+.contracts-status-banner.error {
+  background: rgba(248, 113, 113, 0.08);
+  border-color: rgba(248, 113, 113, 0.28);
+  color: var(--text-primary);
+}
+
+.contracts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.2rem;
+}
+
+.contract-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 1.35rem;
+  transition: transform 0.22s, border-color 0.22s, box-shadow 0.22s;
+}
+
+.contract-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-accent);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32);
+}
+
+.contract-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.contract-card-id {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--accent-cyan);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+
+.contract-card-name {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.contract-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.32rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid rgba(52, 211, 153, 0.32);
+  background: rgba(52, 211, 153, 0.1);
+  color: var(--accent-green);
+  white-space: nowrap;
+}
+
+.contract-status::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.contract-status.is-generic {
+  border-color: rgba(143, 160, 184, 0.26);
+  background: rgba(143, 160, 184, 0.08);
+  color: var(--text-secondary);
+}
+
+.contract-links-title {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.65rem;
+}
+
+.contract-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.contract-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.38rem 0.66rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-accent);
+  background: var(--bg-highlight);
+  color: var(--text-code);
+  text-decoration: none;
+  font-size: 0.74rem;
+  line-height: 1.2;
+}
+
+.contract-link:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-cyan);
+}
+
+.contract-link-label {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.contract-empty {
+  background: var(--bg-card);
+  border: 1px dashed var(--border-accent);
+  border-radius: 12px;
+  padding: 1.5rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
 /* ── ROADMAP ────────────────────────────────────────────────────── */
 #roadmap { background: var(--bg-panel); max-width: none; padding: 5rem 2rem; }
 #roadmap > .inner { max-width: 1200px; margin: 0 auto; }
@@ -665,7 +854,6 @@ section.full-width {
 }
 
 /* ── GET STARTED ────────────────────────────────────────────────── */
-#get-started { }
 
 .get-started-grid {
   display: grid;
@@ -858,7 +1046,6 @@ section.full-width {
 .needed-card p { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.55; }
 
 /* ── DEPLOY ─────────────────────────────────────────────────────── */
-#deploy { }
 
 .deploy-grid {
   display: grid;
@@ -961,8 +1148,6 @@ section.full-width {
   max-height: 420px;
 }
 
-#boot-output { }
-
 .boot-line { display: block; animation: fadeInLine 0.15s ease; }
 
 @keyframes fadeInLine {
@@ -1012,7 +1197,6 @@ section.full-width {
 }
 
 /* ── COMMUNITY ──────────────────────────────────────────────────── */
-#community { }
 
 .community-grid {
   display: grid;
@@ -1170,6 +1354,7 @@ footer {
     <li><a href="#hero">Home</a></li>
     <li><a href="#features">Features</a></li>
     <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#contracts">Contracts</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#get-started">Get&nbsp;Started</a></li>
     <li><a href="#contributors">Contributors</a></li>
@@ -1436,6 +1621,43 @@ footer {
         details, and design decisions within the FERROS architecture.
       </p>
       <div class="arch-detail-tags" id="arch-detail-tags"></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── CONTRACTS ──────────────────────────────────────────────────────────── -->
+<section id="contracts">
+  <div class="inner">
+    <div class="section-label">// live contract surface</div>
+    <h2 class="section-title">Manifest-Backed Contracts</h2>
+    <p class="section-desc">
+      This section reads the current FERROS contract manifest directly. It exposes
+      the live contract IDs, names, status values, and existing evidence links
+      without turning the rest of the page into a project dashboard.
+    </p>
+
+    <div class="contracts-panel">
+      <div class="contracts-panel-header">
+        <div class="contracts-panel-title">Current manifest surface</div>
+        <div class="contracts-panel-meta" id="contracts-panel-meta">manifest pending load</div>
+      </div>
+      <p class="contracts-panel-note">
+        Scope is intentionally narrow for this pass: contract ID, name, status,
+        and existing references only. Roadmap cards below remain illustrative.
+      </p>
+    </div>
+
+    <div class="contracts-status-banner" id="contracts-status-banner">
+      <strong>Manifest status:</strong> loading current contract surface…
+    </div>
+
+    <div class="contracts-grid" id="contracts-grid">
+      <div class="contract-empty">
+        Waiting for <code>manifest.json</code> so the page can render the current
+        contract surface from live repo data.
+      </div>
     </div>
   </div>
 </section>
@@ -2118,6 +2340,103 @@ function copyCode(blockId, btn) {
     setTimeout(() => { btn.textContent = 'copy'; }, 1500);
   });
 }
+
+/* ── CONTRACT MANIFEST SURFACE ────────────────────────────────── */
+(function () {
+  const manifestUrl = new URL('./contracts/manifest.json', window.location.href);
+  const repoRootUrl = new URL('../', window.location.href);
+  const panelMeta = document.getElementById('contracts-panel-meta');
+  const statusBanner = document.getElementById('contracts-status-banner');
+  const grid = document.getElementById('contracts-grid');
+
+  function repoHref(path) {
+    if (!path) return null;
+    return new URL(path, repoRootUrl).href;
+  }
+
+  function labelFromPath(path) {
+    return path.split('/').pop();
+  }
+
+  function updateStatus(message, isError) {
+    statusBanner.innerHTML = '<strong>Manifest status:</strong> ' + message;
+    statusBanner.classList.toggle('error', !!isError);
+  }
+
+  function buildReferenceLinks(label, paths) {
+    return (paths || []).map(function(path) {
+      return '<a class="contract-link" href="' + repoHref(path) + '">'
+        + '<span class="contract-link-label">' + label + '</span>'
+        + '<span>' + labelFromPath(path) + '</span>'
+        + '</a>';
+    }).join('');
+  }
+
+  function renderManifest(manifest) {
+    const contracts = manifest && manifest.contracts ? manifest.contracts : null;
+    if (!contracts || typeof contracts !== 'object') {
+      throw new Error('Manifest does not contain a contracts object.');
+    }
+
+    const entries = Object.entries(contracts);
+    panelMeta.textContent = 'manifest v' + (manifest.version || 'unknown') + ' • ' + entries.length + ' contracts';
+    updateStatus('loaded from manifest.json under the current file-origin workflow.', false);
+
+    grid.innerHTML = entries.map(function(entry) {
+      const id = entry[0];
+      const contract = entry[1] || {};
+      const status = contract.status || 'unknown';
+      const statusClass = status === 'active' ? '' : ' is-generic';
+      let references = '';
+
+      if (contract.document) {
+        references += '<a class="contract-link" href="' + repoHref(contract.document) + '">'
+          + '<span class="contract-link-label">doc</span>'
+          + '<span>' + labelFromPath(contract.document) + '</span>'
+          + '</a>';
+      }
+
+      references += buildReferenceLinks('schema', contract.schemas);
+      references += buildReferenceLinks('harness', contract.harnesses);
+
+      if (!references) {
+        references = '<div class="contract-empty">No reference links published for this contract entry.</div>';
+      }
+
+      return '<article class="contract-card">'
+        + '<div class="contract-card-header">'
+        +   '<div>'
+        +     '<div class="contract-card-id">' + id + '</div>'
+        +     '<div class="contract-card-name">' + (contract.name || 'Unnamed contract') + '</div>'
+        +   '</div>'
+        +   '<span class="contract-status' + statusClass + '">' + status + '</span>'
+        + '</div>'
+        + '<div class="contract-links-title">Published references</div>'
+        + '<div class="contract-links">' + references + '</div>'
+        + '</article>';
+    }).join('');
+  }
+
+  function renderManifestFailure(error) {
+    panelMeta.textContent = 'manifest unavailable';
+    updateStatus('failed to load or parse manifest.json. The rest of the page remains static by design.', true);
+    grid.innerHTML = '<div class="contract-empty">'
+      + '<strong>Contract surface unavailable.</strong><br>'
+      + 'This page attempted to read <code>contracts/manifest.json</code> but could not build the live contract section.<br>'
+      + '<span style="color:var(--text-dim)">Reason: ' + String(error && error.message ? error.message : error) + '</span>'
+      + '</div>';
+  }
+
+  fetch(manifestUrl)
+    .then(function(response) {
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+      return response.json();
+    })
+    .then(renderManifest)
+    .catch(renderManifestFailure);
+})();
 
 /* ── BOOT ANIMATION ────────────────────────────────────────────── */
 const BOOT_LINES = [

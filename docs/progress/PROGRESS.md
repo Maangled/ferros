@@ -142,7 +142,7 @@ One real end-to-end loop works locally.
 | V3a | All 4 valid session modes complete expected flows (H2 round-trip) | ✅ | Journey 1 + 2 |
 | V3b | Invalid session mode combinations rejected with correct error codes (H4 negative) | ✅ | Journey 1 + 2 |
 | V4 | Alias session → export → claim → XP merge works | ⬜ | Journey 2 |
-| V5 | Card loads in Forge → editable → renders in Runtime | ⬜ | Journey 3 |
+| V5 | Card loads in Forge → editable → renders in Runtime | ✅ | Journey 3 |
 | V6 | Runtime init/update/event loop completes | ✅ | Journey 3 |
 | V7 | Card round-trip export/import preserves all parameters | ⬜ | Journey 3 |
 | V8 | Phase 0 acceptance harness (H5) proves Journey 1 end-to-end: create→export→clear→import→render→assert | ✅ | All journeys |
@@ -157,7 +157,7 @@ Shared contracts serve more than one surface.
 |---|-----------|--------|---------|
 | S1 | Schedule Ledger reads profile/template data via shared contract | ⬜ | Schedule Ledger |
 | S2 | Battle Arena consumes Arena Runtime without custom data paths | ⬜ | Battle Arena |
-| S3 | Showcase reads real capability status, not illustrative placeholders | ⬜ | Showcase |
+| S3 | Showcase reads real capability status, not illustrative placeholders | ✅ | Showcase |
 | S4 | Shared contracts frozen at v1 for local-first use | ⬜ | All |
 
 **Wave 2 exit:** S1–S4 complete. ≥3 surfaces consume shared contracts. Contracts frozen at v1.
