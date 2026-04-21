@@ -223,5 +223,4 @@ All harnesses use `<script src="../docs/assets/_core/ferros-core.js"></script>` 
 | H6 | `harnesses/write-path-harness.html` | `validateProfileShape`, `canMutateDurableState`, `VERSION` |
 | H7 | `harnesses/semantic-fixture-linter.html` | `VERSION` |
 | H8 | `harnesses/ui-acceptance-harness.html` | `VERSION` |
-
-`loadProfile`, `pushAuditEntry`, and `saveProfile` are consumer-surface helpers. They are published for Stream B and Stream D surfaces but are not yet directly exercised by a dedicated harness.
+| H9 | `harnesses/consumer-helper-harness.html` | `loadProfile`, `pushAuditEntry`, `saveProfile`, `canMutateDurableState` |

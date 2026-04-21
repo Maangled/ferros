@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>H9 — FERROS Consumer-Helper Harness</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:24px;font-size:13px;line-height:1.5}
+  h1{font-size:1.1rem;color:#58a6ff;margin-bottom:4px}
+  .meta{color:#8b949e;font-size:.85rem;margin-bottom:20px}
+  h2{font-size:.9rem;color:#8b949e;letter-spacing:2px;text-transform:uppercase;margin:24px 0 8px;border-bottom:1px solid #21262d;padding-bottom:4px}
+  .test{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #161b22}
+  .badge{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:3px;min-width:44px;text-align:center;flex-shrink:0;margin-top:1px}
+  .pass{background:#1a4731;color:#3fb950}
+  .fail{background:#4a1a1a;color:#f85149}
+  .warn{background:#2d2a14;color:#d29922}
+  .skip{background:#1c2128;color:#8b949e}
+  .test-name{color:#e6edf3;flex:1}
+  .test-detail{color:#8b949e;font-size:.8rem;margin-top:2px}
+  .test-error{color:#f85149;font-size:.8rem;margin-top:2px;word-break:break-word}
+  .test-warn{color:#d29922;font-size:.8rem;margin-top:2px;word-break:break-word}
+  #result-block{margin-top:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px}
+  #result-block pre{font-size:.78rem;color:#e6edf3;white-space:pre-wrap;word-break:break-word}
+  .summary-bar{display:flex;gap:16px;margin-top:16px;padding:12px;border-radius:4px}
+  .summary-bar.all-pass{background:#1a4731;color:#3fb950}
+  .summary-bar.has-fail{background:#4a1a1a;color:#f85149}
+  .summary-bar.has-warn{background:#2d2a14;color:#d29922}
+  .summary-stat{font-weight:700}
+</style>
+</head>
+<body>
+<h1>H9 — FERROS Consumer-Helper Harness</h1>
+<div class="meta">H9 — Dedicated harness for published consumer helpers &nbsp;|&nbsp; Covers: <code>loadProfile</code>, <code>pushAuditEntry</code>, <code>saveProfile</code> &nbsp;|&nbsp; Contracts: C9, C10 &nbsp;|&nbsp; Run on file:// in Chrome</div>
+<div id="groups"></div>
+<div class="summary-bar" id="summary-bar"></div>
+<div id="result-block"><pre id="result-json">running...</pre></div>
+
+<script src="_constants.js"></script>
+<script src="../docs/assets/_core/ferros-core.js"></script>
+<script>
+'use strict';
+
+var HARNESS_ID = 'consumer-helper-harness';
+var HARNESS_VERSION = '1.0.0';
+
+var results = [];
+var groupsEl = document.getElementById('groups');
+
+function startGroup(id, title) {
+  var h = document.createElement('h2');
+  h.textContent = id + ' — ' + title;
+  groupsEl.appendChild(h);
+}
+
+function record(id, name, pass, detail) {
+  var passClass = pass === 'warn' ? 'warn' : pass ? 'pass' : 'fail';
+  var passLabel = pass === 'warn' ? 'WARN' : pass ? 'PASS' : 'FAIL';
+  var detailClass = pass === 'warn' ? 'test-warn' : pass ? 'test-detail' : 'test-error';
+  var div = document.createElement('div');
+  div.className = 'test';
+  div.innerHTML =
+    '<span class="badge ' + passClass + '">' + passLabel + '</span>' +
+    '<div><div class="test-name">' + id + ': ' + name + '</div>' +
+    '<div class="' + detailClass + '">' + detail + '</div></div>';
+  groupsEl.appendChild(div);
+  results.push({ id: id, name: name, status: passLabel, detail: detail });
+}
+
+function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
+
+function makeValidProfile() {
+  return {
+    meta: {
+      version: '1.0', created: '2026-04-15T00:00:00.000Z', lastModified: '2026-04-15T00:00:00.000Z',
+      assistanceLevel: 1, genesisHash: 'aabbccdd', currentSeal: 'aabbccdd', sealCount: 1, stage: 1
+    },
+    identity: {
+      name: 'Test', avatar: 'shield', class: 'Architect', streamAffinity: 'A',
+      title: 'Newcomer', joinedDate: '2026-04-15T00:00:00.000Z', streakDays: 0, longestStreak: 0
+    },
+    attributes: {
+      Discipline: { level: 1, xp: 0, xpToNext: 100, color: 'amber', icon: '💪' },
+      Knowledge:  { level: 1, xp: 0, xpToNext: 100, color: 'blue',  icon: '📘' },
+      Craft:      { level: 1, xp: 0, xpToNext: 100, color: 'cyan',  icon: '🔨' },
+      Governance: { level: 1, xp: 0, xpToNext: 100, color: 'purple', icon: '⚖️' },
+      Wellness:   { level: 1, xp: 0, xpToNext: 100, color: 'green',  icon: '🌿' },
+      Community:  { level: 1, xp: 0, xpToNext: 100, color: 'pink',   icon: '🤝' }
+    },
+    skills: { A: [], B: [], C: [] },
+    achievements: [],
+    journal: [],
+    credentials: [],
+    sealChain: [{ taskId: 'genesis', seal: 'aabbccdd', previousSeal: 'genesis',
+                  timestamp: '2026-04-15T00:00:00.000Z', data: {}, hashAlgorithm: 'sha256', nonce: 1 }]
+  };
+}
+
+var VALID_FLAGS = { tradeWindowAccepted: true, sessionMode: false, aliasMode: false, recoveryMode: false };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Group A — loadProfile: success and error paths
+// Seeds localStorage directly to simulate stored states, then calls
+// FerrosCore.loadProfile() against those states.
+// ═══════════════════════════════════════════════════════════════════════════
+startGroup('A', 'loadProfile — load-path behavior');
+
+(function groupA() {
+  // A-1: PROFILE_NOT_FOUND when storage is empty
+  localStorage.removeItem('ferros_profile');
+  localStorage.removeItem('ferros_seal_chain');
+  var r1 = FerrosCore.loadProfile();
+  record('A-1', 'PROFILE_NOT_FOUND when storage is empty',
+    r1.ok === false && r1.code === 'PROFILE_NOT_FOUND',
+    r1.ok ? 'FAIL: got ok:true' : r1.code);
+
+  // A-2: STORAGE_JSON_INVALID for corrupted JSON
+  localStorage.setItem('ferros_profile', '{not valid json!!!');
+  var r2 = FerrosCore.loadProfile();
+  record('A-2', 'STORAGE_JSON_INVALID for corrupted JSON',
+    r2.ok === false && r2.code === 'STORAGE_JSON_INVALID',
+    r2.ok ? 'FAIL: got ok:true' : r2.code);
+
+  // A-3: STORAGE_GENESIS_STAGE_MISMATCH — stage > 0 with null genesisHash
+  var p3 = deepClone(makeValidProfile());
+  p3.meta.genesisHash = null;
+  p3.meta.stage = 2;
+  localStorage.setItem('ferros_profile', JSON.stringify(p3));
+  var r3 = FerrosCore.loadProfile();
+  record('A-3', 'STORAGE_GENESIS_STAGE_MISMATCH — stage>0 with null genesisHash',
+    r3.ok === false && r3.code === 'STORAGE_GENESIS_STAGE_MISMATCH',
+    r3.ok ? 'FAIL: got ok:true' : r3.code);
+
+  // A-4: STORAGE_SEAL_COUNT_MISMATCH — using negative fixture
+  var splitFixture = deepClone(FIXTURE_INVALID_SPLIT_SAVE_STATE);
+  // Ensure sealChain is inline to trigger the count check
+  if (!Array.isArray(splitFixture.sealChain)) splitFixture.sealChain = [];
+  localStorage.setItem('ferros_profile', JSON.stringify(splitFixture));
+  localStorage.removeItem('ferros_seal_chain');
+  var r4 = FerrosCore.loadProfile();
+  record('A-4', 'STORAGE_SEAL_COUNT_MISMATCH — negative fixture split-save-state',
+    r4.ok === false && r4.code === 'STORAGE_SEAL_COUNT_MISMATCH',
+    r4.ok ? 'FAIL: got ok:true' : r4.code);
+
+  // A-5: STORAGE_LAST_SEAL_MISMATCH — currentSeal does not match last chain entry
+  var p5 = deepClone(makeValidProfile());
+  p5.meta.currentSeal = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+  p5.sealChain = [{ taskId: 'genesis', seal: '0000000000000000000000000000000000000000000000000000000000000000',
+    previousSeal: 'genesis', timestamp: '2026-04-15T00:00:00.000Z', data: {}, hashAlgorithm: 'sha256', nonce: 1 }];
+  p5.meta.sealCount = 1;
+  localStorage.setItem('ferros_profile', JSON.stringify(p5));
+  var r5 = FerrosCore.loadProfile();
+  record('A-5', 'STORAGE_LAST_SEAL_MISMATCH — currentSeal does not match last chain entry',
+    r5.ok === false && r5.code === 'STORAGE_LAST_SEAL_MISMATCH',
+    r5.ok ? 'FAIL: got ok:true' : r5.code);
+
+  // A-6: Success — valid profile loaded with ok:true and profile present
+  var p6 = deepClone(makeValidProfile());
+  localStorage.setItem('ferros_profile', JSON.stringify(p6));
+  var r6 = FerrosCore.loadProfile();
+  record('A-6', 'Success path — ok:true with profile present',
+    r6.ok === true && r6.profile && typeof r6.profile === 'object',
+    r6.ok ? 'ok:true, identity.name=' + (r6.profile && r6.profile.identity && r6.profile.identity.name) : r6.code + ': ' + r6.detail);
+
+  // A-7: Loaded profile has sealChain array
+  record('A-7', 'Loaded profile has sealChain array',
+    r6.ok === true && Array.isArray(r6.sealChain),
+    r6.ok ? 'sealChain.length=' + (r6.sealChain && r6.sealChain.length) : 'FAIL: load failed — ' + r6.code);
+
+  // A-8: auditTrail normalized to [] if absent from stored data
+  var p8 = deepClone(makeValidProfile());
+  delete p8.auditTrail;
+  localStorage.setItem('ferros_profile', JSON.stringify(p8));
+  var r8 = FerrosCore.loadProfile();
+  record('A-8', 'auditTrail normalized to [] when absent in stored data',
+    r8.ok === true && Array.isArray(r8.profile.auditTrail) && r8.profile.auditTrail.length === 0,
+    r8.ok ? 'auditTrail.length=' + (r8.profile && r8.profile.auditTrail && r8.profile.auditTrail.length) : 'FAIL: load failed — ' + r8.code);
+
+  // Clean up
+  localStorage.removeItem('ferros_profile');
+  localStorage.removeItem('ferros_seal_chain');
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Group B — pushAuditEntry: audit ring-buffer contract
+// Calls FerrosCore.pushAuditEntry() directly — no localStorage required.
+// ═══════════════════════════════════════════════════════════════════════════
+startGroup('B', 'pushAuditEntry — audit ring-buffer contract');
+
+(function groupB() {
+  var validProfile = makeValidProfile();
+  validProfile.auditTrail = [];
+
+  // B-1: PROFILE_REQUIRED for null profile
+  var r1 = FerrosCore.pushAuditEntry(null, 'seal-added');
+  record('B-1', 'PROFILE_REQUIRED for null profile',
+    r1.ok === false && r1.code === 'PROFILE_REQUIRED',
+    r1.ok ? 'FAIL: got ok:true' : r1.code);
+
+  // B-2: AUDIT_ACTION_INVALID for unrecognized action
+  var r2 = FerrosCore.pushAuditEntry(deepClone(validProfile), 'invalid-action-xyz');
+  record('B-2', 'AUDIT_ACTION_INVALID for unrecognized action',
+    r2.ok === false && r2.code === 'AUDIT_ACTION_INVALID',
+    r2.ok ? 'FAIL: got ok:true' : r2.code + ' detail=' + r2.detail);
+
+  // B-3..B-7: All five valid AUDIT_ACTIONS succeed
+  var AUDIT_ACTIONS = ['seal-added', 'profile-saved', 'profile-imported', 'alias-claimed', 'recovery-claimed'];
+  for (var i = 0; i < AUDIT_ACTIONS.length; i++) {
+    var action = AUDIT_ACTIONS[i];
+    var p = deepClone(validProfile);
+    p.auditTrail = [];
+    var r = FerrosCore.pushAuditEntry(p, action, { test: true });
+    record('B-' + (3 + i), 'Success with action \'' + action + '\'',
+      r.ok === true && r.entry && r.entry.action === action,
+      r.ok ? 'ok:true entry.action=' + r.entry.action : r.code);
+  }
+
+  // B-8: Entry structure has ts, action, detail fields
+  var p8 = deepClone(validProfile);
+  p8.auditTrail = [];
+  var r8 = FerrosCore.pushAuditEntry(p8, 'seal-added', { extra: 'data' });
+  var e8 = r8.entry;
+  var b8pass = r8.ok && e8 && typeof e8.ts === 'string' && e8.action === 'seal-added' &&
+    e8.detail && e8.detail.extra === 'data';
+  record('B-8', 'Entry has {ts, action, detail} fields',
+    b8pass,
+    b8pass ? 'ts=' + e8.ts + ' action=' + e8.action : 'FAIL: ' + JSON.stringify(e8));
+
+  // B-9: detail defaults to null when not provided
+  var p9 = deepClone(validProfile);
+  p9.auditTrail = [];
+  var r9 = FerrosCore.pushAuditEntry(p9, 'profile-saved');
+  record('B-9', 'detail:null when omitted',
+    r9.ok === true && r9.entry && r9.entry.detail === null,
+    r9.ok ? 'detail=' + JSON.stringify(r9.entry.detail) : 'FAIL: ' + r9.code);
+
+  // B-10: Ring buffer caps at 1000 — oldest entries trimmed, length stays at 1000
+  var p10 = deepClone(validProfile);
+  p10.auditTrail = [];
+  // Fill to 1001 entries
+  for (var j = 0; j < 1001; j++) {
+    p10.auditTrail.push({ ts: new Date().toISOString(), action: 'seal-added', detail: { seq: j } });
+  }
+  var r10 = FerrosCore.pushAuditEntry(p10, 'profile-saved', { seq: 1001 });
+  var expectedLen = 1000;
+  var lastDetail = r10.profile && r10.profile.auditTrail && r10.profile.auditTrail[r10.profile.auditTrail.length - 1];
+  record('B-10', 'Ring buffer trims to AUDIT_TRAIL_CAP=1000 after overflow',
+    r10.ok === true && r10.profile.auditTrail.length === expectedLen &&
+    lastDetail && lastDetail.detail && lastDetail.detail.seq === 1001,
+    r10.ok ?
+      'auditTrail.length=' + r10.profile.auditTrail.length +
+      ' last.detail.seq=' + (lastDetail && lastDetail.detail && lastDetail.detail.seq) :
+      'FAIL: ' + r10.code);
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Group C — saveProfile: durable write-path contract
+// Calls FerrosCore.saveProfile() with various flag combinations and checks
+// correct write-denial, success, and round-trip behavior.
+// ═══════════════════════════════════════════════════════════════════════════
+startGroup('C', 'saveProfile — durable write-path contract');
+
+(function groupC() {
+  localStorage.removeItem('ferros_profile');
+  localStorage.removeItem('ferros_seal_chain');
+
+  // C-1: PROFILE_REQUIRED for null profile
+  var r1 = FerrosCore.saveProfile(null, { flags: VALID_FLAGS });
+  record('C-1', 'PROFILE_REQUIRED for null profile',
+    r1.ok === false && r1.code === 'PROFILE_REQUIRED',
+    r1.ok ? 'FAIL: got ok:true' : r1.code);
+
+  // C-2: DURABLE_WRITE_FLAGS_REQUIRED when flags not provided
+  var r2 = FerrosCore.saveProfile(makeValidProfile(), {});
+  record('C-2', 'DURABLE_WRITE_FLAGS_REQUIRED when flags absent',
+    r2.ok === false && r2.code === 'DURABLE_WRITE_FLAGS_REQUIRED',
+    r2.ok ? 'FAIL: got ok:true' : r2.code);
+
+  // C-3: DURABLE_WRITE_FORBIDDEN — sessionMode:true
+  var r3 = FerrosCore.saveProfile(makeValidProfile(), {
+    flags: { tradeWindowAccepted: true, sessionMode: true, aliasMode: false, recoveryMode: false }
+  });
+  record('C-3', 'DURABLE_WRITE_FORBIDDEN — sessionMode:true',
+    r3.ok === false && r3.code === 'DURABLE_WRITE_FORBIDDEN',
+    r3.ok ? 'FAIL: got ok:true' : r3.code);
+
+  // C-4: DURABLE_WRITE_FORBIDDEN — aliasMode:true
+  var r4 = FerrosCore.saveProfile(makeValidProfile(), {
+    flags: { tradeWindowAccepted: true, sessionMode: false, aliasMode: true, recoveryMode: false }
+  });
+  record('C-4', 'DURABLE_WRITE_FORBIDDEN — aliasMode:true',
+    r4.ok === false && r4.code === 'DURABLE_WRITE_FORBIDDEN',
+    r4.ok ? 'FAIL: got ok:true' : r4.code);
+
+  // C-5: DURABLE_WRITE_FORBIDDEN — recoveryMode:true
+  var r5 = FerrosCore.saveProfile(makeValidProfile(), {
+    flags: { tradeWindowAccepted: true, sessionMode: false, aliasMode: false, recoveryMode: true }
+  });
+  record('C-5', 'DURABLE_WRITE_FORBIDDEN — recoveryMode:true',
+    r5.ok === false && r5.code === 'DURABLE_WRITE_FORBIDDEN',
+    r5.ok ? 'FAIL: got ok:true' : r5.code);
+
+  // C-6: DURABLE_WRITE_FORBIDDEN — tradeWindowAccepted:false
+  var r6 = FerrosCore.saveProfile(makeValidProfile(), {
+    flags: { tradeWindowAccepted: false, sessionMode: false, aliasMode: false, recoveryMode: false }
+  });
+  record('C-6', 'DURABLE_WRITE_FORBIDDEN — tradeWindowAccepted:false',
+    r6.ok === false && r6.code === 'DURABLE_WRITE_FORBIDDEN',
+    r6.ok ? 'FAIL: got ok:true' : r6.code);
+
+  // C-7: Success with valid flags — ok:true, profile and sealChain returned
+  var p7 = makeValidProfile();
+  var r7 = FerrosCore.saveProfile(p7, { flags: VALID_FLAGS });
+  record('C-7', 'Success with valid durable-write flags',
+    r7.ok === true && r7.profile && Array.isArray(r7.sealChain),
+    r7.ok ? 'ok:true revision=' + (r7.profile && r7.profile.meta && r7.profile.meta.revision) : r7.code + ': ' + r7.detail);
+
+  // C-8: Saved profile round-trips — loadProfile reads back the saved state
+  var r8 = FerrosCore.loadProfile();
+  record('C-8', 'Saved profile round-trips through loadProfile',
+    r8.ok === true && r8.profile && r8.profile.identity && r8.profile.identity.name === 'Test',
+    r8.ok ? 'ok:true loaded name=' + (r8.profile && r8.profile.identity && r8.profile.identity.name) : r8.code + ': ' + r8.detail);
+
+  // C-9: skipAudit suppresses profile-saved audit entry
+  var p9 = makeValidProfile();
+  p9.auditTrail = [];
+  var r9 = FerrosCore.saveProfile(p9, { flags: VALID_FLAGS, skipAudit: true });
+  record('C-9', 'skipAudit:true suppresses profile-saved audit entry',
+    r9.ok === true && r9.profile && r9.profile.auditTrail && r9.profile.auditTrail.length === 0,
+    r9.ok ? 'auditTrail.length=' + (r9.profile && r9.profile.auditTrail && r9.profile.auditTrail.length) : r9.code + ': ' + r9.detail);
+
+  // C-10: STORAGE_QUOTA_EXCEEDED — mock Storage.prototype.setItem to throw
+  var quotaErr = new Error('QuotaExceededError: DOM Exception 22');
+  quotaErr.name = 'QuotaExceededError';
+  var origSetItem = Storage.prototype.setItem;
+  var quotaResult;
+  try {
+    Storage.prototype.setItem = function() { throw quotaErr; };
+    quotaResult = FerrosCore.saveProfile(makeValidProfile(), { flags: VALID_FLAGS });
+  } finally {
+    Storage.prototype.setItem = origSetItem;
+  }
+  record('C-10', 'STORAGE_QUOTA_EXCEEDED when storage quota mock throws',
+    quotaResult.ok === false && quotaResult.code === 'STORAGE_QUOTA_EXCEEDED',
+    quotaResult.ok ? 'FAIL: got ok:true' : quotaResult.code);
+
+  // Clean up
+  localStorage.removeItem('ferros_profile');
+  localStorage.removeItem('ferros_seal_chain');
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Summary
+// ═══════════════════════════════════════════════════════════════════════════
+(function summary() {
+  var pass = 0, fail = 0, warn = 0;
+  for (var i = 0; i < results.length; i++) {
+    if (results[i].status === 'PASS') pass++;
+    else if (results[i].status === 'WARN') warn++;
+    else fail++;
+  }
+  var bar = document.getElementById('summary-bar');
+  bar.className = 'summary-bar ' + (fail > 0 ? 'has-fail' : warn > 0 ? 'has-warn' : 'all-pass');
+  bar.innerHTML = '<span class="summary-stat">' + pass + ' PASS</span>' +
+    (warn > 0 ? '<span class="summary-stat">' + warn + ' WARN</span>' : '') +
+    '<span class="summary-stat">' + fail + ' FAIL</span>' +
+    '<span class="summary-stat">' + results.length + ' total</span>';
+
+  document.getElementById('result-json').textContent = JSON.stringify({
+    harness: HARNESS_ID,
+    version: HARNESS_VERSION,
+    timestamp: new Date().toISOString(),
+    pass: pass,
+    warn: warn,
+    fail: fail,
+    total: results.length,
+    results: results
+  }, null, 2);
+})();
+</script>
+</body>
+</html>
