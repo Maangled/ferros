@@ -1,4 +1,0 @@
-127.0.0.1 - - [21/Apr/2026 04:26:41] "GET /harnesses/consumer-helper-harness.html HTTP/1.1" 200 -
-127.0.0.1 - - [21/Apr/2026 04:26:44] "GET /harnesses/consumer-helper-harness.html HTTP/1.1" 200 -
-127.0.0.1 - - [21/Apr/2026 04:26:44] "GET /harnesses/_constants.js HTTP/1.1" 200 -
-127.0.0.1 - - [21/Apr/2026 04:26:44] "GET /docs/assets/_core/ferros-core.js HTTP/1.1" 200 -
