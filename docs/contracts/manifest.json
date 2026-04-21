@@ -84,7 +84,7 @@
       "document": null,
       "schemas": ["schemas/audit-record.schema.json"],
       "fixtures": [],
-      "harnesses": ["harnesses/ferros-contract-validator.html"],
+      "harnesses": ["harnesses/ferros-contract-validator.html", "harnesses/consumer-helper-harness.html"],
       "status": "active",
       "note": "No dedicated fixture required for Wave 0 — audit record schema is structurally validated by H1 keyword audit only. Document reference deferred pending audit-record consumer in Wave 1."
     },
@@ -122,7 +122,8 @@
         "harnesses/ferros-contract-validator.html",
         "harnesses/round-trip-harness.html",
         "harnesses/negative-harness.html",
-        "harnesses/write-path-harness.html"
+        "harnesses/write-path-harness.html",
+        "harnesses/consumer-helper-harness.html"
       ],
       "status": "active"
     },
@@ -133,7 +134,8 @@
       "fixtures": [],
       "harnesses": [
         "harnesses/negative-harness.html",
-        "harnesses/acceptance-harness.html"
+        "harnesses/acceptance-harness.html",
+        "harnesses/consumer-helper-harness.html"
       ],
       "status": "active"
     }
