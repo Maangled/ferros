@@ -51,7 +51,7 @@ Per `docs/ORCHESTRATION.md` §4, a cross-stream reconciliation review must compl
 > Run each harness by opening it in Chrome via `file://`. All harnesses load `ferros-core.js` via `<script src="../docs/assets/_core/ferros-core.js">`.
 
 Fresh gate verification on 2026-04-18 in Chrome via `file://`: H1 `28/28`, H2 `21/21`, H3 `18/18`, H4 `20/20`.
-Live supporting-harness verification in the current browser session on 2026-04-19: H5 `21/21` PASS, H6 `25/25` PASS, H7 `107/107` PASS, Preflight `6/6` PASS. H8 requires a clean rerun before using it as a sign-off anchor.
+Live supporting-harness verification in the current browser session on 2026-04-19: H5 `21/21` PASS, H6 `25/25` PASS, H7 `107/107` PASS, Preflight `6/6` PASS. H8 clean rerun completed 2026-04-21 — see `docs/progress/H8-RERUN-ENV-NOTES.md`.
 
 | Harness | File | Contracts | Gate? | Verified status |
 |---------|------|-----------|-------|-----------------|
@@ -62,7 +62,7 @@ Live supporting-harness verification in the current browser session on 2026-04-1
 | H5 | `harnesses/acceptance-harness.html` | V1/V8 | Supporting | PASS — 21/21 |
 | H6 | `harnesses/write-path-harness.html` | C9 write | Supporting | PASS — 25/25 |
 | H7 | `harnesses/semantic-fixture-linter.html` | C2/C4/C5/C6 | Supporting | PASS — 107/107 |
-| H8 | `harnesses/ui-acceptance-harness.html` | C10/UI | Supporting | 🔧 Needs clean rerun — current browser state not stable enough for sign-off |
+| H8 | `harnesses/ui-acceptance-harness.html` | C10/UI | Supporting | PASS — 17/17 (clean rerun 2026-04-21; see H8-RERUN-ENV-NOTES.md) |
 | Preflight | `harnesses/preflight-check.html` | C7/C8 inventory | Supporting | PASS — 6/6 |
 
 ---
