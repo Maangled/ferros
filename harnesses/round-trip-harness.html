@@ -288,7 +288,72 @@ test(gB, 'exportProfile() ferrosVersion matches FerrosCore.VERSION (no hardcoded
 });
 
 /* ==========================================================================
-   GROUP C — Implementation Probe via iframe
+   GROUP C — Portable Log Contract (PR10)
+   Exercises FerrosCore portable-log validation and duplicate claim detection.
+   ========================================================================== */
+
+function runGroupCPortable() {
+  return new Promise(function(resolve) {
+    var gC = makeGroup('Group C — Portable Log Contract (PR10)');
+    var duplicateProfile = stripMeta(clone(FIXTURE_FULL_PROFILE_STAGE3));
+    duplicateProfile.meta = duplicateProfile.meta || {};
+    duplicateProfile.meta.claimedAliasSessions = [FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM.sessionId];
+    duplicateProfile.meta.xp = duplicateProfile.meta.xp || 0;
+    var journalLengthBefore = (duplicateProfile.journal || []).length;
+
+    Promise.all([
+      FerrosCore.validatePortableLog(stripMeta(clone(FIXTURE_ALIAS_SESSION_LOG))),
+      FerrosCore.validatePortableLog(stripMeta(clone(FIXTURE_RECOVERY_SESSION_LOG))),
+      FerrosCore.validatePortableLog(stripMeta(clone(FIXTURE_INVALID_MISSING_SESSION_ID_ALIAS_LOG))),
+      FerrosCore.applyPortableLogClaim(duplicateProfile, stripMeta(clone(FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM)), { persist: false })
+    ]).then(function(results) {
+      var aliasResult = results[0];
+      var recoveryResult = results[1];
+      var missingSessionResult = results[2];
+      var duplicateResult = results[3];
+
+      test(gC, 'C-1: validatePortableLog(alias-session-log) → ok:true', function() {
+        if (aliasResult.ok && aliasResult.sessionId === 'tesla-2026-04-10T14:00:00.000Z' && aliasResult.xpGain === 45 && aliasResult.integrityWarning === false) {
+          return { pass: true, detail: 'sessionId=' + aliasResult.sessionId + ', entryCount=' + aliasResult.entryCount + ', xpGain=' + aliasResult.xpGain };
+        }
+        return { pass: false, error: JSON.stringify(aliasResult) };
+      });
+
+      test(gC, 'C-2: validatePortableLog(recovery-session-log) → ok:true', function() {
+        if (recoveryResult.ok && recoveryResult.log && recoveryResult.log.recovery && recoveryResult.log.recovery.profileName === 'Test Pioneer' && recoveryResult.integrityWarning === false) {
+          return { pass: true, detail: 'recovery profile=' + recoveryResult.log.recovery.profileName + ', entryCount=' + recoveryResult.entryCount };
+        }
+        return { pass: false, error: JSON.stringify(recoveryResult) };
+      });
+
+      test(gC, 'C-3: validatePortableLog(invalid-missing-session-id-alias-log) → PORTABLE_LOG_SESSION_ID_REQUIRED', function() {
+        if (!missingSessionResult.ok && missingSessionResult.code === 'PORTABLE_LOG_SESSION_ID_REQUIRED') {
+          return { pass: true, detail: 'correctly rejected missing canonical sessionId' };
+        }
+        return { pass: false, error: JSON.stringify(missingSessionResult) };
+      });
+
+      test(gC, 'C-4: applyPortableLogClaim(duplicate alias log) → CLAIM_DUPLICATE_SESSION without mutation', function() {
+        var journalLengthAfter = (duplicateProfile.journal || []).length;
+        var claimedLength = (duplicateProfile.meta.claimedAliasSessions || []).length;
+        if (!duplicateResult.ok && duplicateResult.code === 'CLAIM_DUPLICATE_SESSION' && journalLengthAfter === journalLengthBefore && claimedLength === 1 && duplicateProfile.meta.xp === 0) {
+          return { pass: true, detail: 'duplicate claim rejected before xp/journal mutation' };
+        }
+        return { pass: false, error: JSON.stringify(duplicateResult) };
+      });
+
+      resolve(gC);
+    }).catch(function(err) {
+      test(gC, 'portable log contract checks', function() {
+        return { pass: false, error: err.message };
+      });
+      resolve(gC);
+    });
+  });
+}
+
+/* ==========================================================================
+   GROUP D — Implementation Probe via iframe
    Loads ../docs/personal-profile.html#testmode and calls internal functions
    directly via contentWindow (same-origin file:// access).
 
@@ -323,7 +388,7 @@ function loadIframe(src) {
 
 function runGroupC() {
   return new Promise(function(resolve) {
-    var gC = makeGroup('Group C — Implementation Probe (iframe: ../docs/personal-profile.html#testmode)');
+    var gC = makeGroup('Group D — Implementation Probe (iframe: ../docs/personal-profile.html#testmode)');
 
     // Clear localStorage before loading iframe so init() starts fresh
     localStorage.removeItem('ferros_profile');
@@ -394,7 +459,7 @@ function runGroupC() {
 }
 
 /* ==========================================================================
-   GROUP D — True Round-Trip: export → clear → import → assert (C9)
+  GROUP E — True Round-Trip: export → clear → import → assert (C9)
    Loads personal-profile.html#testmode, sets profile from fixture data,
    uses FerrosCore.serializeExport() to get the envelope, clears localStorage,
    restores profile from envelope, re-saves, and asserts key fields match.
@@ -402,7 +467,7 @@ function runGroupC() {
 
 function runGroupD() {
   return new Promise(function(resolve) {
-    var gD = makeGroup('Group D — True Round-Trip: export → clear → import → assert (C9)');
+   var gD = makeGroup('Group E — True Round-Trip: export → clear → import → assert (C9)');
 
     localStorage.removeItem('ferros_profile');
     localStorage.removeItem('ferros_seal_chain');
@@ -580,7 +645,7 @@ function renderAll() {
     status: overallStatus,
     summary: { total: allTests.length, passed: passed, failed: failed, gaps: warned, skipped: skipped },
     contractVersion: IMPORT_CURRENT_VERSION,
-    provesGates: ['C9 import rejection I-1..I-9 (reference)', 'C9 export envelope structure', 'C9 true round-trip (export→clear→import→assert)', 'saveProfile() write guard (session mode)', 'V2 full (import validator + round-trip)'],
+    provesGates: ['C9 import rejection I-1..I-9 (reference)', 'C9 export envelope structure', 'C9 portable-log validation + duplicate claim denial', 'C9 true round-trip (export→clear→import→assert)', 'saveProfile() write guard (session mode)', 'V2 full (import validator + round-trip)'],
     implementationGaps: allTests
       .filter(function(t){ return t.status === 'warn'; })
       .map(function(t){ return t.warn; }),
@@ -595,7 +660,9 @@ function renderAll() {
 /* ==========================================================================
    MAIN — run sync groups, then async iframe groups, then render
    ========================================================================== */
-runGroupC().then(function() {
+runGroupCPortable().then(function() {
+  return runGroupC();
+}).then(function() {
   return runGroupD();
 }).then(function() {
   renderAll();

@@ -13,8 +13,8 @@
   "sessionStart": "2026-05-01T14:00:00.000Z",
   "sessionEnd": "2026-05-01T16:00:00.000Z",
   "entries": [
-    { "ts": "2026-05-01T14:05:00.000Z", "text": "Started alias session as Tesla", "type": "activity" },
-    { "ts": "2026-05-01T15:30:00.000Z", "text": "Completed deep experiment block", "type": "activity" }
+    { "ts": "2026-05-01T14:05:00.000Z", "text": "Started alias session as Tesla", "type": "activity", "seal": "local-0c310ab0" },
+    { "ts": "2026-05-01T15:30:00.000Z", "text": "Completed deep experiment block", "type": "activity", "seal": "local-a47f1f32" }
   ],
   "entryCount": 2,
   "claimInstructions": "Import this file on your home FERROS instance to claim these logs and merge them into your profile.",

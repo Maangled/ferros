@@ -2,6 +2,7 @@
   "$comment": "Golden fixture: .ferros-log from a recovery session. Use this to test recovery import. Attribution is 'self', all entries are self-attributed.",
   "ferrosVersion": "1.0",
   "logType": "recovery-session",
+  "sessionId": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2-2026-04-10T18:00:00.000Z",
   "recovery": {
     "profileName": "Test Pioneer",
     "genesisHash": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
@@ -15,13 +16,13 @@
       "ts": "2026-04-10T18:10:00.000Z",
       "text": "Reviewed schedule on library computer",
       "type": "activity",
-      "seal": null
+      "seal": "local-57af1cea"
     },
     {
       "ts": "2026-04-10T18:45:00.000Z",
       "text": "Added note about tomorrow's meeting",
       "type": "journal",
-      "seal": null
+      "seal": "local-d25fdbf0"
     }
   ],
   "entryCount": 2,

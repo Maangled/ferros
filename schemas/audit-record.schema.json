@@ -4,7 +4,7 @@
   "title": "FERROS Audit Record",
   "description": "Canonical schema for action/audit log entries. Used in .ferros-log export files (alias and recovery sessions), agent action trails, and future cross-surface audit logs.",
   "type": "object",
-  "required": ["ferrosVersion", "logType", "sessionStart", "entries"],
+  "required": ["ferrosVersion", "logType", "sessionId", "sessionStart", "entries"],
   "additionalProperties": false,
   "properties": {
     "ferrosVersion": {
@@ -15,6 +15,10 @@
       "type": "string",
       "enum": ["alias-session", "recovery-session", "agent-action"],
       "description": "Type of audit log"
+    },
+    "sessionId": {
+      "type": "string",
+      "description": "Canonical portable-log session identifier used for claim de-duplication."
     },
     "sessionStart": { "type": "string", "format": "date-time" },
     "sessionEnd": { "type": ["string", "null"], "format": "date-time" },

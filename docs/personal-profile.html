@@ -1624,7 +1624,7 @@
     let profile=null, sealChain=[], selectedAssistLevel=1, selectedAvatar='shield', selectedClass='Architect', selectedStream='A';
     let sessionMode=false,aliasMode=false,aliasProfile=null,aliasJournal=[],_aliasSessionStart=null;
     let recoveryMode=false,recoveryProfile=null,recoverySealChain=[],recoveryJournal=[],_recoverySessionStart=null,recoveryHasIntegrityWarning=false;
-    let _tradeAcceptCb=null,_pendingImportData=null,_pendingAliasClaimData=null,_pendingRecoveryData=null;
+    let _tradeAcceptCb=null,_pendingImportData=null,_pendingAliasClaimData=null,_pendingAliasClaimValidation=null,_pendingRecoveryData=null;
     let selectedTemplate=null;
     let selectedArchetype=null;
     let selectedCategoryInterests=[];
@@ -1650,27 +1650,68 @@
     Object.defineProperty(window,'sealChain',{get:function(){return sealChain;},set:function(v){sealChain=v;},configurable:true});
     Object.defineProperty(window,'sessionMode',{get:function(){return sessionMode;},set:function(v){sessionMode=!!v;},configurable:true});
 
+    const ALIAS_SESSION_STORAGE_KEY=(typeof FerrosCore!=='undefined'&&FerrosCore.ALIAS_SESSION_STORAGE_KEY)||'ferros_alias_session';
+
     function deepClone(o){return JSON.parse(JSON.stringify(o))}
     function $(id){return document.getElementById(id)}
     function setText(id,v){const e=$(id);if(e)e.textContent=v}
     function setHTML(id,v){const e=$(id);if(e)e.innerHTML=v}
 
-    // ── Write-Path Predicate ──────────────────────────────────────────────────
-    // Single reusable check: delegates to FerrosCore with local flags.
-    function canMutateDurableState(){
-      return FerrosCore.canMutateDurableState({tradeWindowAccepted:_tradeWindowAccepted,sessionMode:sessionMode,aliasMode:aliasMode,recoveryMode:recoveryMode});
+    function readAliasSession(){
+      try{
+        const raw=sessionStorage.getItem(ALIAS_SESSION_STORAGE_KEY);
+        if(!raw)return null;
+        const parsed=JSON.parse(raw);
+        if(!parsed||!parsed.alias||!Array.isArray(parsed.entries))return null;
+        return parsed;
+      }catch(error){
+        return null;
+      }
     }
 
-    // ── Audit Ring Buffer ─────────────────────────────────────────────────────
-    // Bounded FIFO ring buffer per C10 retention rule. Cap: 1000 entries.
-    var AUDIT_TRAIL_CAP=1000;
-    function pushAuditEntry(action,detail){
-      if(!profile)return;
-      profile.auditTrail=profile.auditTrail||[];
-      profile.auditTrail.push({ts:new Date().toISOString(),action:action,detail:detail||null});
-      if(profile.auditTrail.length>AUDIT_TRAIL_CAP){
-        profile.auditTrail=profile.auditTrail.slice(profile.auditTrail.length-AUDIT_TRAIL_CAP);
+    function writeAliasSession(session){
+      try{
+        sessionStorage.setItem(ALIAS_SESSION_STORAGE_KEY,JSON.stringify(session));
+        return true;
+      }catch(error){
+        return false;
       }
+    }
+
+    function clearAliasSession(){
+      try{sessionStorage.removeItem(ALIAS_SESSION_STORAGE_KEY)}catch(error){}
+    }
+
+    function syncAliasSessionState(){
+      const session=readAliasSession();
+      if(!session)return null;
+      aliasProfile={
+        id:session.alias.id,
+        name:session.alias.name,
+        icon:session.alias.icon||'',
+        class:session.alias.class||'',
+        tagline:(aliasProfile&&aliasProfile.tagline)||''
+      };
+      aliasJournal=session.entries.slice();
+      _aliasSessionStart=session.sessionStart||null;
+      return session;
+    }
+
+    // ── Write-Path Predicate ──────────────────────────────────────────────────
+    // Single reusable check: delegates to FerrosCore with local flags.
+    function currentDurableFlags(){
+      return{tradeWindowAccepted:_tradeWindowAccepted,sessionMode:sessionMode,aliasMode:aliasMode,recoveryMode:recoveryMode};
+    }
+    function canMutateDurableState(){
+      return FerrosCore.canMutateDurableState(currentDurableFlags());
+    }
+
+    // ── Audit / Persistence Wrappers ─────────────────────────────────────────
+    // Delegate to FerrosCore so the core owns the canonical durable-write path.
+    function pushAuditEntry(action,detail){
+      if(!profile)return false;
+      const result=FerrosCore.pushAuditEntry(profile,action,detail);
+      return !!(result&&result.ok);
     }
 
     // ── Harness seam: saveProfile() ──────────────────────────────────────────
@@ -1680,70 +1721,34 @@
     // shape validation fails. Harnesses observe effects via localStorage reads or
     // exported data rather than calling saveProfile() directly in most tests.
     function saveProfile(){
-      if(!canMutateDurableState())return false;
-      // Write-time shape validation (A1b)
-      var shapeCheck=FerrosCore.validateProfileShape(profile);
-      if(!shapeCheck.ok){
-        console.error('Profile shape validation failed:',shapeCheck.code,shapeCheck.detail);
-        showModal('&#9888; Profile Error','<p>Your profile contains invalid data and could not be saved.</p><p>Detail: '+shapeCheck.detail+'</p>');
-        return false;
-      }
-      profile.meta.lastModified=new Date().toISOString();
-      profile.meta.revision=(profile.meta.revision||0)+1; // B1: cross-tab coordination revision counter
-      profile.sealChain=sealChain;
-      pushAuditEntry('profile-saved',{sealCount:sealChain.length});
-      try{
-        localStorage.setItem('ferros_profile',JSON.stringify(profile));
-        localStorage.setItem('ferros_seal_chain',JSON.stringify(sealChain));
-      }catch(e){
-        if(e.name==='QuotaExceededError'||e.code===22){
+      const result=FerrosCore.saveProfile(profile,{sealChain:sealChain,flags:currentDurableFlags()});
+      if(!result.ok){
+        if(result.code==='PROFILE_SHAPE_INVALID'){
+          console.error('Profile shape validation failed:',result.code,result.detail);
+          showModal('&#9888; Profile Error','<p>Your profile contains invalid data and could not be saved.</p><p>Detail: '+result.detail+'</p>');
+          return false;
+        }
+        if(result.code==='STORAGE_QUOTA_EXCEEDED'){
           showModal('&#9888; Storage Full','<p>Your browser\'s localStorage quota has been exceeded. Your last change could not be saved.</p><p>Try exporting your profile and clearing old data, or use a browser with more storage available.</p>');
           return false;
-        }else{throw e}
+        }
+        return false;
       }
+      profile=result.profile;
+      sealChain=result.sealChain;
       return true;
     }
     function loadProfile(){
-      var raw=localStorage.getItem('ferros_profile');
-      if(!raw)return false;
-      // Corruption check C1: JSON parse
-      var parsed;
-      try{parsed=JSON.parse(raw)}catch(e){
-        showCorruptionModal('STORAGE_JSON_INVALID','Profile data is not valid JSON.');
+      const result=FerrosCore.loadProfile();
+      if(!result.ok){
+        if(result.code==='PROFILE_NOT_FOUND'||result.code==='STORAGE_UNAVAILABLE')return false;
+        if(result.code==='STORAGE_JSON_INVALID'||result.code==='STORAGE_GENESIS_STAGE_MISMATCH'||result.code==='STORAGE_SEAL_COUNT_MISMATCH'||result.code==='STORAGE_LAST_SEAL_MISMATCH'){
+          showCorruptionModal(result.code,result.detail||'Stored profile data is corrupt.');
+        }
         return false;
       }
-      // Flip load priority (A2): profile.sealChain canonical, ferros_seal_chain fallback
-      var chain=parsed.sealChain;
-      if(!Array.isArray(chain)){
-        var fallbackRaw=localStorage.getItem('ferros_seal_chain');
-        if(fallbackRaw){try{chain=JSON.parse(fallbackRaw)}catch(e2){chain=[]}}
-        else{chain=[]}
-      }
-      // Corruption check C2: genesis-stage mismatch
-      if(parsed.meta&&parsed.meta.genesisHash===null&&parsed.meta.stage>0){
-        showCorruptionModal('STORAGE_GENESIS_STAGE_MISMATCH','Profile has stage > 0 but no genesis hash.');
-        return false;
-      }
-      // Corruption check C3: sealCount mismatch (skip if sealCount undefined for v1.0 compat)
-      if(parsed.meta&&typeof parsed.meta.sealCount==='number'&&chain.length!==parsed.meta.sealCount){
-        showCorruptionModal('STORAGE_SEAL_COUNT_MISMATCH','Seal chain length ('+chain.length+') does not match meta.sealCount ('+parsed.meta.sealCount+').');
-        return false;
-      }
-      // Corruption check C4: last-seal mismatch
-      if(parsed.meta&&parsed.meta.currentSeal&&chain.length>0&&chain[chain.length-1].seal!==parsed.meta.currentSeal){
-        showCorruptionModal('STORAGE_LAST_SEAL_MISMATCH','Last seal in chain does not match meta.currentSeal.');
-        return false;
-      }
-      // Shape normalizer — default missing optional meta fields for backwards compat
-      if(parsed.meta){
-        if(typeof parsed.meta.revision!=='number')parsed.meta.revision=0;
-        if(typeof parsed.meta.xp!=='number')parsed.meta.xp=0;
-        if(!Array.isArray(parsed.meta.claimedAliasSessions))parsed.meta.claimedAliasSessions=[];
-        if(typeof parsed.meta.sealBroken!=='boolean')parsed.meta.sealBroken=false;
-        if(typeof parsed.meta.schemaVersion!=='number')parsed.meta.schemaVersion=1;
-      }
-      profile=parsed;
-      sealChain=chain;
+      profile=result.profile;
+      sealChain=result.sealChain;
       return true;
     }
 
@@ -1787,7 +1792,7 @@
     // blocks the durable write path. Used by H5 to verify that writes are
     // correctly rejected when the user declines storage consent.
     function enterSessionMode(){
-      if(aliasMode){aliasMode=false;aliasProfile=null;aliasJournal=[];_aliasSessionStart=null;document.body.classList.remove('alias-mode');const ab=$('alias-banner');if(ab)ab.style.display='none';}
+      if(aliasMode){aliasMode=false;aliasProfile=null;aliasJournal=[];_aliasSessionStart=null;clearAliasSession();document.body.classList.remove('alias-mode');const ab=$('alias-banner');if(ab)ab.style.display='none';}
       // FIX: capture whether Stage 0 is active before closing dialog so we can advance the setup flow
       const onSetupFlow=($('stage-0')&&$('stage-0').style.display!=='none');
       sessionMode=true;closeTradeDialog();const b=$('session-banner');if(b)b.style.display='flex';
@@ -2292,7 +2297,8 @@
     }
     function renderJournal(){
       const c=$('journal-entries');if(!c)return;
-      const entries=(recoveryMode?recoveryJournal:(aliasMode?aliasJournal:(profile.journal||[])));
+      const aliasEntries=aliasMode&&syncAliasSessionState()?aliasJournal:aliasJournal;
+      const entries=(recoveryMode?recoveryJournal:(aliasMode?aliasEntries:(profile.journal||[])));
       if(!entries.length){c.innerHTML='<p class="text-dim" style="font-size:.85rem">No '+(recoveryMode?'recovery log':aliasMode?'activity':'journal')+' entries yet.</p>';return}
       const aliasTag=aliasMode?(' <span style="color:var(--accent-amber);font-size:.68rem">[alias: '+esc(aliasProfile.id)+']</span>'):'';
       const recoveryTag=recoveryMode?' <span style="color:var(--accent-amber);font-size:.68rem">[recovery]</span>':'';
@@ -2324,7 +2330,14 @@
         const cnt=$('recovery-log-count');if(cnt)cnt.textContent=recoveryJournal.length;
         renderJournal();
       }else if(aliasMode){
-        aliasJournal.push({ts:new Date().toISOString(),text:txt});
+        const session=readAliasSession();
+        if(!session){showModal('&#9888; Alias Session Missing','<p>Alias session state is unavailable. Exit alias mode and start a new alias session.</p>');return}
+        const result=FerrosCore.appendAliasSessionEntry(session,{ts:new Date().toISOString(),text:txt,type:'activity'});
+        if(!result.ok||!writeAliasSession(result.session)){
+          showModal('&#9888; Alias Session Error','<p>Could not record this alias activity.</p><p>'+(result.detail||'sessionStorage write failed')+'</p>');
+          return;
+        }
+        aliasJournal=result.session.entries.slice();
         if(inp)inp.value='';
         const cnt=$('alias-log-count');if(cnt)cnt.textContent=aliasJournal.length;
         renderJournal();
@@ -2551,11 +2564,16 @@
     // UI-triggered. H4 exercises alias-mode blocking via indirect paths.
     function _enterAliasMode(alias){
       closeAliasGallery();
+      const sessionResult=FerrosCore.createAliasSession(alias);
+      if(!sessionResult.ok||!writeAliasSession(sessionResult.session)){
+        showModal('&#9888; Alias Session Error','<p>Could not start alias mode on this device.</p>');
+        return;
+      }
       aliasMode=true;
       aliasProfile={id:alias.id,name:alias.name,icon:alias.icon,class:alias.aliasClass,tagline:alias.tagline};
       aliasJournal=[];
       sessionMode=false;
-      _aliasSessionStart=new Date().toISOString();
+      _aliasSessionStart=sessionResult.session.sessionStart;
       document.body.classList.add('alias-mode');
       const banner=$('alias-banner');
       if(banner){
@@ -2568,12 +2586,13 @@
       renderAliasDashboard();
     }
     function renderAliasDashboard(){
+      syncAliasSessionState();
       setHTML('char-avatar-display',aliasProfile.icon);
       setText('char-name-display',aliasProfile.name);
       setText('char-class-display',aliasProfile.class);
       setText('char-title-display','[alias: unlinked]');
       const statsRow=document.querySelector('#ps-character .char-stats-row');
-      if(statsRow)statsRow.innerHTML='<div class="char-stat"><div class="stat-label">Logs</div><div class="stat-value" id="alias-log-count">0</div></div><div class="char-stat"><div class="stat-label">Session</div><div class="stat-value" style="color:var(--accent-green)">Active</div></div>';
+      if(statsRow)statsRow.innerHTML='<div class="char-stat"><div class="stat-label">Logs</div><div class="stat-value" id="alias-log-count">'+aliasJournal.length+'</div></div><div class="char-stat"><div class="stat-label">Session</div><div class="stat-value" style="color:var(--accent-green)">Active</div></div>';
       const achGrid=$('achievement-grid');
       if(achGrid)achGrid.innerHTML='<p style="font-size:.82rem;color:var(--text-dim);font-style:italic;padding:8px 0">Achievements require a full profile. Download your log to claim these later.</p>';
       const achBadge=$('ach-count-badge');if(achBadge)achBadge.style.display='none';
@@ -2586,20 +2605,14 @@
       renderJournal();
     }
     function downloadAliasLog(){
-      const now=new Date().toISOString();
-      const date=now.slice(0,10);
-      const sid=aliasProfile.id+'-'+(_aliasSessionStart||'');
-      const log={
-        ferrosVersion:'1.0',logType:'alias-session',
-        sessionId:sid,
-        alias:{id:aliasProfile.id,name:aliasProfile.name,icon:aliasProfile.icon,class:aliasProfile.class,attribution:'unlinked'},
-        sessionStart:_aliasSessionStart,sessionEnd:now,
-        entries:aliasJournal.map(e=>({ts:e.ts,text:e.text,type:'activity'})),
-        entryCount:aliasJournal.length,
-        claimInstructions:'Import this file on your home FERROS instance to claim these logs and merge them into your profile. Unlinked until claimed.'
-      };
+      const session=syncAliasSessionState();
+      if(!session){showModal('&#9888; Alias Session Missing','<p>No alias session is available to export.</p>');return}
+      const date=new Date().toISOString().slice(0,10);
+      const serialized=FerrosCore.serializeAliasSessionLog(session);
+      if(!serialized.ok){showModal('&#9888; Alias Export Failed','<p>'+(serialized.detail||serialized.code||'Could not serialize alias log.')+'</p>');return}
+      const log=serialized.log;
       const blob=new Blob([JSON.stringify(log,null,2)],{type:'application/json'});
-      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ferros-alias-log-'+aliasProfile.id+'-'+date+'.json';a.click();URL.revokeObjectURL(url);
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ferros-alias-log-'+session.alias.id+'-'+date+'.ferros-log';a.click();URL.revokeObjectURL(url);
     }
     // ── Alias Log Claim Flow ─────────────────────────────────────────────────
     function claimAliasLog(){
@@ -2611,124 +2624,112 @@
       reader.onload=function(ev){processAliasLogClaim(ev.target.result)};
       reader.readAsText(file);
     }
-    async function verifyAliasLogSeals(entries){
-      for(let i=0;i<entries.length;i++){
-        const e=entries[i];
-        if(!e.seal)continue;
-        const result=await computeHash(JSON.stringify({ts:e.ts,text:e.text,type:e.type||'activity'}));
-        if(result.hash!==e.seal){return false}
+
+    function showPortableLogValidationError(result){
+      if(!result||!result.code){showModal('&#10060; Invalid Log File','<p>&#10060; This doesn\'t look like a FERROS portable log.</p>');return}
+      if(result.code==='PORTABLE_LOG_SESSION_ID_REQUIRED'){
+        showModal('&#10060; Invalid Log File','<p>&#10060; Invalid log — missing canonical sessionId.</p>');
+        return;
       }
-      return true;
+      if(result.code==='PORTABLE_LOG_ENTRY_COUNT_INVALID'||result.code==='PORTABLE_LOG_ENTRY_COUNT_MISMATCH'){
+        showModal('&#10060; Invalid Log File','<p>&#10060; Invalid log — entryCount does not match the exported entries.</p>');
+        return;
+      }
+      if(result.code==='PORTABLE_LOG_ALIAS_REQUIRED'){
+        showModal('&#10060; Invalid Alias Log','<p>&#10060; Invalid alias log — missing alias identity fields.</p>');
+        return;
+      }
+      if(result.code==='PORTABLE_LOG_RECOVERY_REQUIRED'){
+        showModal('&#10060; Invalid Recovery Log','<p>&#10060; Invalid recovery log — missing recovery identity fields.</p>');
+        return;
+      }
+      showModal('&#10060; Invalid Log File','<p>&#10060; Invalid log — '+esc(result.detail||result.code)+'.</p>');
     }
+
+    function showClaimFailure(result){
+      if(!result||!result.code){showModal('&#9888; Claim Failed','<p>Could not claim this portable log.</p>');return}
+      if(result.code==='CLAIM_DUPLICATE_SESSION'){
+        showModal('&#9888; Already Claimed','<p>&#9888;&#65039; This log has already been claimed into your profile.</p>');
+        return;
+      }
+      if(result.code==='DURABLE_WRITE_FORBIDDEN'){
+        showModal('&#10060; Cannot Claim','<p>Log claims are not available in the current session mode.</p>');
+        return;
+      }
+      if(result.code==='STORAGE_QUOTA_EXCEEDED'){
+        showModal('&#9888; Claim Failed','<p>Your browser storage is full, so this claim could not be persisted.</p>');
+        return;
+      }
+      showModal('&#9888; Claim Failed','<p>Could not claim this portable log.</p><p>'+esc(result.detail||result.code)+'</p>');
+    }
+
     async function processAliasLogClaim(text){
       let data;
       try{data=JSON.parse(text)}catch(err){showModal('&#10060; Invalid File','<p>&#10060; Invalid file — not a valid JSON file.</p>');return}
-      const isRecovery=data&&data.logType==='recovery-session';
-      const isAlias=data&&data.logType==='alias-session';
-      if(!data||(!isAlias&&!isRecovery)||!Array.isArray(data.entries)){
-        showModal('&#10060; Invalid Log File','<p>&#10060; Invalid log — this doesn\'t look like a FERROS alias or recovery log file.</p>');return
-      }
-      if(isAlias&&(!data.alias||!data.alias.id||!data.alias.name)){
-        showModal('&#10060; Invalid Alias Log','<p>&#10060; Invalid alias log — missing alias identity fields.</p>');return
-      }
-      if(isRecovery&&(!data.profile||!data.profile.genesisHash)){
-        showModal('&#10060; Invalid Recovery Log','<p>&#10060; Invalid recovery log — missing profile identity fields.</p>');return
-      }
-      const sessionKey=data.sessionStart||'';
-      const logId=data.sessionId||(isRecovery?(data.profile.genesisHash+'-'+sessionKey):(data.alias.id+'-'+sessionKey));
-      // A3: dedupe via canonical claimedAliasSessions (not journal scan)
+      const validated=await FerrosCore.validatePortableLog(data);
+      if(!validated.ok){showPortableLogValidationError(validated);return}
+      const log=validated.log;
+      const isRecovery=log.logType==='recovery-session';
       const claimed=profile.meta&&Array.isArray(profile.meta.claimedAliasSessions)?profile.meta.claimedAliasSessions:[];
-      if(claimed.indexOf(logId)!==-1){
+      if(claimed.indexOf(validated.sessionId)!==-1){
         showModal('&#9888; Already Claimed','<p>&#9888;&#65039; This log has already been claimed into your profile.</p>');return
       }
-      const sealsOk=await verifyAliasLogSeals(data.entries);
-      const hasIntegrityWarning=!sealsOk;
-      const n=data.entries.length;
-      const xpGain=n*15;
+      const n=validated.entryCount;
+      const xpGain=validated.xpGain;
       let bodyHtml;
       if(isRecovery){
         bodyHtml='<p>This will merge <strong>'+n+'</strong> recovery log '+(n===1?'entry':'entries')+' into your profile. These were logged by YOU on a foreign device.</p>';
         bodyHtml+='<p>You\'ll earn <strong>'+xpGain+' XP</strong> for claimed entries.</p>';
-        if(hasIntegrityWarning)bodyHtml+='<p style="color:var(--accent-amber)">&#9888;&#65039; Note: Some entries have seal integrity issues but can still be claimed.</p>';
-        bodyHtml+='<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button onclick="confirmAliasClaim(_pendingAliasClaimData,'+hasIntegrityWarning+')" style="background:rgba(52,211,153,.1);border:1px solid var(--accent-green);border-radius:6px;color:var(--accent-green);cursor:pointer;font-weight:700;padding:8px 18px">&#9989; Claim Entries</button><button onclick="closeModal()" style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:8px 18px">&#10060; Cancel</button></div>';
-        _pendingAliasClaimData=data;
-        showModal('&#128273; Claim Recovery Log \u2014 '+esc(data.profile.id||'Recovery'),bodyHtml);
+        if(validated.integrityWarning)bodyHtml+='<p style="color:var(--accent-amber)">&#9888;&#65039; Note: Some entries have seal integrity issues but can still be claimed.</p>';
+        bodyHtml+='<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button onclick="confirmAliasClaim()" style="background:rgba(52,211,153,.1);border:1px solid var(--accent-green);border-radius:6px;color:var(--accent-green);cursor:pointer;font-weight:700;padding:8px 18px">&#9989; Claim Entries</button><button onclick="closeModal()" style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:8px 18px">&#10060; Cancel</button></div>';
+        _pendingAliasClaimData=log;
+        _pendingAliasClaimValidation=validated;
+        showModal('&#128273; Claim Recovery Log \u2014 '+esc(log.recovery.profileName||'Recovery'),bodyHtml);
       }else{
-        bodyHtml='<p>This will merge <strong>'+n+'</strong> log '+(n===1?'entry':'entries')+' from your alias session as "<strong>'+esc(data.alias.name)+'</strong>" into your profile.</p>';
+        bodyHtml='<p>This will merge <strong>'+n+'</strong> log '+(n===1?'entry':'entries')+' from your alias session as "<strong>'+esc(log.alias.name)+'</strong>" into your profile.</p>';
         bodyHtml+='<p>Each claimed entry will be attributed to you and added to your journal.</p>';
         bodyHtml+='<p>You\'ll earn <strong>'+xpGain+' XP</strong> for claimed entries.</p>';
-        if(hasIntegrityWarning)bodyHtml+='<p style="color:var(--accent-amber)">&#9888;&#65039; Note: Some entries have seal integrity issues but can still be claimed.</p>';
-        bodyHtml+='<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button onclick="confirmAliasClaim(_pendingAliasClaimData,'+hasIntegrityWarning+')" style="background:rgba(52,211,153,.1);border:1px solid var(--accent-green);border-radius:6px;color:var(--accent-green);cursor:pointer;font-weight:700;padding:8px 18px">&#9989; Claim Entries</button><button onclick="closeModal()" style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:8px 18px">&#10060; Cancel</button></div>';
-        _pendingAliasClaimData=data;
-        showModal('&#128206; Claim Alias Log \u2014 '+esc(data.alias.name),bodyHtml);
+        if(validated.integrityWarning)bodyHtml+='<p style="color:var(--accent-amber)">&#9888;&#65039; Note: Some entries have seal integrity issues but can still be claimed.</p>';
+        bodyHtml+='<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button onclick="confirmAliasClaim()" style="background:rgba(52,211,153,.1);border:1px solid var(--accent-green);border-radius:6px;color:var(--accent-green);cursor:pointer;font-weight:700;padding:8px 18px">&#9989; Claim Entries</button><button onclick="closeModal()" style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:6px;color:var(--text-secondary);cursor:pointer;padding:8px 18px">&#10060; Cancel</button></div>';
+        _pendingAliasClaimData=log;
+        _pendingAliasClaimValidation=validated;
+        showModal('&#128206; Claim Alias Log \u2014 '+esc(log.alias.name),bodyHtml);
       }
     }
-    function confirmAliasClaim(data,hasIntegrityWarning){
-      if(!canMutateDurableState()){showModal('&#10060; Cannot Claim','<p>Log claims are not available in the current session mode.</p>');_pendingAliasClaimData=null;return}
+    async function confirmAliasClaim(){
+      if(!_pendingAliasClaimData||!_pendingAliasClaimValidation)return;
+      if(!canMutateDurableState()){
+        _pendingAliasClaimData=null;
+        _pendingAliasClaimValidation=null;
+        showModal('&#10060; Cannot Claim','<p>Log claims are not available in the current session mode.</p>');
+        return;
+      }
+      const data=_pendingAliasClaimData;
       const isRecovery=data.logType==='recovery-session';
-      const claimId=data.sessionId||(isRecovery?(data.profile.genesisHash+'-'+(data.sessionStart||'')):(data.alias.id+'-'+(data.sessionStart||'')));
-      pushAuditEntry(isRecovery?'recovery-claimed':'alias-claimed',{claimId:claimId,entryCount:data.entries.length});
-      const now=new Date().toISOString();
-      const genesisHash=(profile.meta&&profile.meta.genesisHash)||null;
-      // A3: Build changeset — no profile mutations until seal succeeds
-      var changeset={};
-      var mergedEntries,summaryEntry;
-      if(isRecovery){
-        mergedEntries=data.entries.map(function(entry){
-          return{ts:entry.ts||now,text:entry.text,type:'claimed-recovery',linkedTo:genesisHash,claimId:claimId,sealBroken:!!hasIntegrityWarning};
-        });
-        var sessionDate=data.sessionStart?new Date(data.sessionStart).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
-        summaryEntry={ts:now,text:'&#128273; Claimed '+data.entries.length+' recovery log '+(data.entries.length===1?'entry':'entries')+' from session on '+sessionDate+'.'+(hasIntegrityWarning?' &#9888;&#65039; Some entries had integrity warnings.':''),type:'claim-event',aliasId:'recovery',aliasName:data.profile.id||'Recovery',claimId:claimId};
-      }else{
-        mergedEntries=data.entries.map(function(entry){
-          return{ts:entry.ts||now,text:entry.text,type:'claimed-alias',aliasId:data.alias.id,aliasName:data.alias.name,linkedTo:genesisHash,claimId:claimId,sealBroken:!!hasIntegrityWarning};
-        });
-        summaryEntry={ts:now,text:'&#128206; Claimed '+data.entries.length+' log '+(data.entries.length===1?'entry':'entries')+' from alias session as "'+data.alias.name+'" ('+data.alias.id+').'+(hasIntegrityWarning?' &#9888;&#65039; Some entries had integrity warnings.':''),type:'claim-event',aliasId:data.alias.id,aliasName:data.alias.name,claimId:claimId};
-      }
-      changeset.journalPrepend=[summaryEntry].concat(mergedEntries);
-      changeset.xpGain=data.entries.length*15;
-      changeset.claimId=claimId;
-      if(data.entries.length>0){
-        var achId=isRecovery?'claimed-recovery':'claimed-alias';
-        var existingAch=profile.achievements||[];
-        if(!existingAch.find(function(a){return a.id===achId})){
-          changeset.achievement=isRecovery
-            ?{id:'claimed-recovery',name:'&#128273; Recovery Claimed',desc:'Claimed a recovery session log',icon:'&#128273;',unlocked:true,unlockedAt:now}
-            :{id:'claimed-alias',name:'&#128206; Alias Claimed',desc:'Claimed an alias session log',icon:'&#128206;',unlocked:true,unlockedAt:now};
-        }
-      }
-      var claimTaskId=isRecovery?'recovery-claim':'alias-claim';
-      var claimTaskData={claimId:claimId,count:data.entries.length,aliasId:isRecovery?(data.profile&&data.profile.id||'recovery'):data.alias.id};
-      addSeal(claimTaskId,claimTaskData).then(function(){
-        // Seal succeeded — apply changeset to profile
-        profile.journal=changeset.journalPrepend.concat(profile.journal);
-        profile.meta.xp=(profile.meta.xp||0)+changeset.xpGain;
-        profile.meta.claimedAliasSessions=profile.meta.claimedAliasSessions||[];
-        profile.meta.claimedAliasSessions.push(changeset.claimId);
-        if(changeset.achievement){
-          profile.achievements=profile.achievements||[];
-          profile.achievements.push(changeset.achievement);
-        }
-        if(!saveProfile()){
-          showModal('&#9888; Claim Failed','<p>Seal was created but saving failed. Your claim could not be persisted.</p>');
+      try{
+        const result=await FerrosCore.applyPortableLogClaim(profile,data,{persist:true,flags:currentDurableFlags()});
+        if(!result.ok){
           _pendingAliasClaimData=null;
+          _pendingAliasClaimValidation=null;
+          showClaimFailure(result);
           return;
         }
+        profile=result.profile;
+        sealChain=result.sealChain;
         renderDashboard();updateVerificationPanel();renderJournal();renderClaimedSessionsList();
         closeModal();
         _pendingAliasClaimData=null;
-        var xpGain=changeset.xpGain;
-        if(isRecovery){
-          showModal('&#128273; Recovery Log Claimed','<p>&#128273; Recovery log claimed! '+data.entries.length+' '+(data.entries.length===1?'entry':'entries')+' merged into your profile.</p><p style="color:var(--accent-cyan);font-weight:700">+'+xpGain+' XP \u2014 Recovery log claimed!</p>');
-        }else{
-          showModal('&#128206; Alias Log Claimed','<p>&#128206; Alias log claimed! '+data.entries.length+' '+(data.entries.length===1?'entry':'entries')+' merged into your profile.</p><p style="color:var(--accent-cyan);font-weight:700">+'+xpGain+' XP \u2014 Alias logs claimed!</p>');
-        }
-      }).catch(function(e){
-        // Seal failed — discard changeset, no profile mutations
-        console.error('Failed to add claim seal:',e);
-        showModal('&#9888; Claim Failed','<p>Could not create a seal for this claim. No changes have been made to your profile.</p>');
+        _pendingAliasClaimValidation=null;
+        let bodyHtml='<p>'+(isRecovery?'Recovery':'Alias')+' log claimed! '+data.entries.length+' '+(data.entries.length===1?'entry':'entries')+' merged into your profile.</p>';
+        bodyHtml+='<p style="color:var(--accent-cyan);font-weight:700">+'+result.xpGain+' XP \u2014 '+(isRecovery?'Recovery':'Alias')+' log claimed!</p>';
+        if(result.integrityWarning)bodyHtml+='<p style="color:var(--accent-amber)">&#9888;&#65039; Integrity warning recorded on imported entries.</p>';
+        showModal(isRecovery?'&#128273; Recovery Log Claimed':'&#128206; Alias Log Claimed',bodyHtml);
+      }catch(error){
+        console.error('Failed to claim portable log:',error);
         _pendingAliasClaimData=null;
-      });
+        _pendingAliasClaimValidation=null;
+        showModal('&#9888; Claim Failed','<p>Could not complete this claim. No changes have been made to your profile.</p>');
+      }
     }
     function renderClaimedSessionsList(){
       const el=$('claimed-sessions-list');if(!el)return;
@@ -2745,6 +2746,7 @@
     }
     // ── End Alias Log Claim Flow ─────────────────────────────────────────────
     function exitAliasMode(){
+      syncAliasSessionState();
       if(aliasJournal.length>0){
         const n=aliasJournal.length;
         const html='<p>&#9888;&#65039; You have '+n+' unsaved log '+(n===1?'entry':'entries')+'. Download your log before exiting, or they will be lost.</p><div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button onclick="downloadAliasLog();_doExitAlias()" style="background:rgba(167,139,250,.12);border:1px solid var(--accent-purple);border-radius:6px;color:var(--accent-purple);cursor:pointer;font-weight:700;padding:8px 18px">&#128190; Download &amp; Exit</button><button onclick="_doExitAlias()" style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.3);border-radius:6px;color:var(--accent-red);cursor:pointer;padding:8px 18px">&#10060; Exit Without Saving</button></div>';
@@ -2754,6 +2756,7 @@
     function _doExitAlias(){
       closeModal();
       aliasMode=false;aliasProfile=null;aliasJournal=[];_aliasSessionStart=null;
+      clearAliasSession();
       document.body.classList.remove('alias-mode');
       const banner=$('alias-banner');if(banner)banner.style.display='none';
       const jpHeader=document.querySelector('#ps-journal .panel-header h3');if(jpHeader)jpHeader.innerHTML='&#128221; Journal';
@@ -2854,31 +2857,23 @@
       showStage(3);
       showXPToast('\uD83D\uDD11','Recovery mode active \u2014 log your activity, then download your log.');
     }
-    async function downloadRecoveryLog(){
+    function downloadRecoveryLog(){
       if(!recoveryJournal.length){showXPToast('\u26A0\uFE0F','No activity logged yet \u2014 nothing to download.');return}
       const now=new Date().toISOString();
       const date=now.slice(0,10);
       const rawName=(recoveryProfile&&recoveryProfile.identity&&recoveryProfile.identity.name)?recoveryProfile.identity.name:'';
       const safeName=rawName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'recovery';
       const genesisHash=(recoveryProfile&&recoveryProfile.meta&&recoveryProfile.meta.genesisHash)||'';
-      const entries=await Promise.all(recoveryJournal.map(async function(e){
-        const content=JSON.stringify({ts:e.ts,text:e.text,type:e.type||'activity'});
-        const result=await computeHash(content);
-        return{ts:e.ts,text:e.text,type:'activity',seal:result.hash};
-      }));
-      const sid=genesisHash+'-'+(_recoverySessionStart||'');
-      const log={
-        ferrosVersion:'1.0',
-        logType:'recovery-session',
-        sessionId:sid,
-        profile:{id:rawName,genesisHash:genesisHash,attribution:'self'},
+      const serialized=FerrosCore.serializeRecoverySessionLog({
+        sessionId:genesisHash+'-'+(_recoverySessionStart||''),
+        recovery:{profileName:rawName,genesisHash:genesisHash,integrityWarning:recoveryHasIntegrityWarning},
         sessionStart:_recoverySessionStart,
-        sessionEnd:now,
-        entries:entries,
-        claimInstructions:'Import this file on your home FERROS instance via Dashboard \u2192 Portability \u2192 Claim Recovery Log to merge these entries into your profile.'
-      };
+        entries:recoveryJournal.map(function(entry){return{ts:entry.ts,text:entry.text,type:entry.type||'activity'}})
+      },{sessionEnd:now});
+      if(!serialized.ok){showModal('&#9888; Recovery Export Failed','<p>'+(serialized.detail||serialized.code||'Could not serialize recovery log.')+'</p>');return}
+      const log=serialized.log;
       const blob=new Blob([JSON.stringify(log,null,2)],{type:'application/json'});
-      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ferros-recovery-'+safeName+'-'+date+'.json';a.click();URL.revokeObjectURL(url);
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ferros-recovery-'+safeName+'-'+date+'.ferros-log';a.click();URL.revokeObjectURL(url);
     }
     function exitRecoveryMode(){
       if(recoveryJournal.length>0){

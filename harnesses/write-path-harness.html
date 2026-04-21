@@ -26,7 +26,7 @@
 </head>
 <body>
 <h1>H6 — FERROS Write-Path Harness</h1>
-<p class="meta">H6 — Durable write-path and storage boundary tests: profile shape enforcement (A1b), migration field coverage, load-time corruption detection, and normalization. Black-box contract checks are owned by acceptance-harness (H5).</p>
+<p class="meta">H6 — Durable write-path and storage boundary tests: profile shape enforcement (A1b), migration field coverage, load-time corruption detection, normalization, and PR10 portable-claim persistence. Black-box contract checks are owned by acceptance-harness (H5).</p>
 
 <div id="groups"></div>
 <div class="summary-bar" id="summary-bar"></div>
@@ -100,6 +100,49 @@ function stripFixtureMeta(obj) {
     copy[k] = obj[k];
   }
   return copy;
+}
+
+function normalizeClaimOutcome(profile) {
+  var journal = Array.isArray(profile && profile.journal) ? profile.journal : [];
+  var auditTrail = Array.isArray(profile && profile.auditTrail) ? profile.auditTrail : [];
+  var achievements = Array.isArray(profile && profile.achievements) ? profile.achievements : [];
+  var sealChain = Array.isArray(profile && profile.sealChain) ? profile.sealChain : [];
+  var lastSeal = sealChain.length ? sealChain[sealChain.length - 1] : null;
+
+  return {
+    meta: {
+      stage: profile.meta.stage,
+      claimedAliasSessions: Array.isArray(profile.meta.claimedAliasSessions) ? profile.meta.claimedAliasSessions.slice() : [],
+      xp: profile.meta.xp || 0,
+      sealBroken: !!profile.meta.sealBroken,
+      revision: profile.meta.revision || 0,
+      sealCount: profile.meta.sealCount || 0
+    },
+    achievements: achievements.map(function(achievement) { return achievement && achievement.id; }),
+    journalHead: journal.slice(0, 4).map(function(entry) {
+      return {
+        text: entry.text,
+        type: entry.type,
+        aliasId: entry.aliasId || null,
+        aliasName: entry.aliasName || null,
+        linkedTo: entry.linkedTo || null,
+        claimId: entry.claimId || null,
+        sealBroken: !!entry.sealBroken
+      };
+    }),
+    auditTail: auditTrail.slice(-3).map(function(entry) {
+      var detail = entry && entry.detail ? entry.detail : null;
+      if (entry.action === 'seal-added') {
+        return { action: entry.action, detail: { taskId: detail && detail.taskId } };
+      }
+      return { action: entry.action, detail: detail };
+    }),
+    lastSeal: lastSeal ? {
+      taskId: lastSeal.taskId,
+      previousSeal: lastSeal.previousSeal,
+      data: lastSeal.data
+    } : null
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -365,9 +408,92 @@ startGroup('D', 'Shape normalization (A2)');
 })();
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Group E — Portable claim persistence (PR10)
+// Verifies claim merge, durable save, loadProfile round-trip, and claim seal.
+// ═══════════════════════════════════════════════════════════════════════════
+async function runGroupE() {
+  startGroup('E', 'Portable claim persistence (PR10)');
+
+  var expected = deepClone(stripFixtureMeta(FIXTURE_CLAIMED_ALIAS_MERGE_RESULT));
+  var baseline = deepClone(stripFixtureMeta(FIXTURE_FULL_PROFILE_STAGE3));
+  var aliasLog = deepClone(stripFixtureMeta(FIXTURE_ALIAS_SESSION_LOG));
+  var expectedSnapshot = normalizeClaimOutcome(expected);
+  var fixtureValidation = FerrosCore.validateProfileShape(expected);
+
+  record('E-1', 'Golden fixture claimed-alias-merge-result accepted', fixtureValidation.ok === true,
+    fixtureValidation.ok ? 'ok:true' : fixtureValidation.code + ': ' + fixtureValidation.detail);
+
+  localStorage.removeItem('ferros_profile');
+  localStorage.removeItem('ferros_seal_chain');
+
+  var claimResult;
+  try {
+    claimResult = await FerrosCore.applyPortableLogClaim(baseline, aliasLog, {
+      persist: true,
+      now: expected.journal[0].ts,
+      flags: {
+        tradeWindowAccepted: true,
+        sessionMode: false,
+        aliasMode: false,
+        recoveryMode: false
+      }
+    });
+  } catch (err) {
+    record('E-2', 'applyPortableLogClaim() persists portable alias log', false, err.message);
+    localStorage.removeItem('ferros_profile');
+    localStorage.removeItem('ferros_seal_chain');
+    return;
+  }
+
+  record('E-2', 'applyPortableLogClaim() persists portable alias log',
+    claimResult.ok === true && !!localStorage.getItem('ferros_profile') && !!localStorage.getItem('ferros_seal_chain'),
+    claimResult.ok ? ('claimId=' + claimResult.claimId + ', xpGain=' + claimResult.xpGain) : (claimResult.code + ': ' + claimResult.detail));
+
+  if (!claimResult.ok) {
+    localStorage.removeItem('ferros_profile');
+    localStorage.removeItem('ferros_seal_chain');
+    return;
+  }
+
+  var actualSnapshot = normalizeClaimOutcome(claimResult.profile);
+  record('E-3', 'Claim result matches expected merge fixture semantics',
+    JSON.stringify(actualSnapshot) === JSON.stringify(expectedSnapshot),
+    'expected stable claim snapshot from fixture');
+
+  var loaded = FerrosCore.loadProfile();
+  record('E-4', 'loadProfile() preserves claimed alias session fields after save',
+    loaded.ok === true && JSON.stringify(normalizeClaimOutcome(loaded.profile)) === JSON.stringify(expectedSnapshot),
+    loaded.ok ? ('claimed=' + loaded.profile.meta.claimedAliasSessions.join(',') + ', xp=' + loaded.profile.meta.xp) : (loaded.code + ': ' + loaded.detail));
+
+  var loadedLastSeal = loaded.ok && loaded.sealChain && loaded.sealChain.length
+    ? loaded.sealChain[loaded.sealChain.length - 1]
+    : null;
+  record('E-5', 'Persisted claim updates currentSeal/sealCount and appends alias-claim seal',
+    loaded.ok === true && !!loadedLastSeal && loaded.profile.meta.currentSeal === loadedLastSeal.seal && loaded.profile.meta.sealCount === loaded.sealChain.length && loadedLastSeal.taskId === 'alias-claim',
+    loadedLastSeal ? ('currentSeal=' + loaded.profile.meta.currentSeal + ', taskId=' + loadedLastSeal.taskId) : 'missing last seal');
+
+  var claimSealPayload = loadedLastSeal ? JSON.stringify({
+    taskId: loadedLastSeal.taskId,
+    data: loadedLastSeal.data,
+    previousSeal: loadedLastSeal.previousSeal,
+    timestamp: loadedLastSeal.timestamp,
+    nonce: loadedLastSeal.nonce
+  }) : null;
+  var claimSealVerify = (loaded.ok && loadedLastSeal)
+    ? await FerrosCore.hashWithAlgorithm(claimSealPayload, loadedLastSeal.hashAlgorithm)
+    : { ok: false, code: 'LOAD_FAILED' };
+  record('E-6', 'Persisted alias-claim seal rehashes to the stored seal value',
+    claimSealVerify.ok === true && claimSealVerify.hash === loadedLastSeal.seal,
+    claimSealVerify.ok ? ('seal=' + loadedLastSeal.seal) : JSON.stringify(claimSealVerify));
+
+  localStorage.removeItem('ferros_profile');
+  localStorage.removeItem('ferros_seal_chain');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Summary
 // ═══════════════════════════════════════════════════════════════════════════
-(function summary() {
+function renderSummary() {
   var pass = 0, fail = 0;
   for (var i = 0; i < results.length; i++) {
     if (results[i].status === 'PASS') pass++; else fail++;
@@ -387,7 +513,15 @@ startGroup('D', 'Shape normalization (A2)');
     total: results.length,
     results: results
   }, null, 2);
-})();
+}
+
+runGroupE().then(function() {
+  renderSummary();
+}).catch(function(err) {
+  startGroup('E', 'Portable claim persistence (PR10)');
+  record('E-0', 'Portable claim persistence group completed', false, err.message);
+  renderSummary();
+});
 </script>
 </body>
 </html>

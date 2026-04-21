@@ -16,11 +16,19 @@ All functions and properties listed below are accessible on `window.FerrosCore` 
 |--------|------|-------------|
 | `VERSION` | property | H1, H2, H3, H4 |
 | `TEMPLATE_PROFILES` | property | H1, H5 |
+| `ALIAS_SESSION_STORAGE_KEY` | property | H4, Stream A surfaces |
+| `PORTABLE_LOG_XP_PER_ENTRY` | property | H2, H5 |
 | `computeHash` | async function | H1, H2 |
 | `hashWithAlgorithm` | async function | H2 |
 | `createSealEntry` | async function | H2, H5 |
 | `verifyChain` | function | H2 |
 | `verifyChainFull` | async function | H2 |
+| `createAliasSession` | function | H5, Stream A surfaces |
+| `appendAliasSessionEntry` | function | H5, Stream A surfaces |
+| `serializeAliasSessionLog` | function | H2, H5 |
+| `serializeRecoverySessionLog` | function | H2, Stream A surfaces |
+| `validatePortableLog` | async function | H2, H4 |
+| `applyPortableLogClaim` | async function | H2, H4, H6 |
 | `canMutateDurableState` | function | H4 |
 | `validateImport` | function | H2 |
 | `validateProfileShape` | function | H4 |
@@ -41,6 +49,8 @@ All functions and properties listed below are accessible on `window.FerrosCore` 
 |----------|------|-------------|
 | `VERSION` | `string` | Current schema version (`"1.0"`) |
 | `TEMPLATE_PROFILES` | `Array<object>` | Embedded template profiles (populated by `generate-ferros-core.ps1` at build time; inline fallback preserved for standalone loading) |
+| `ALIAS_SESSION_STORAGE_KEY` | `string` | Canonical `sessionStorage` key for alias-session backing state (`"ferros_alias_session"`) |
+| `PORTABLE_LOG_XP_PER_ENTRY` | `number` | Fixed XP grant per claimed portable-log entry (`15`) |
 
 ---
 
@@ -88,6 +98,58 @@ Full chain verification: runs `verifyChain` linkage check first, then re-hashes 
 - **Params:** `chain` (Array of seal entries, each with `taskId`, `seal`, `previousSeal`, `timestamp`, `data`, `hashAlgorithm`, `nonce`)
 - **Returns:** `{ valid: true }` or `{ valid: false, brokenAt: number, reason: 'LINKAGE_BROKEN' | 'SEAL_FIELDS_MISSING' | 'HASH_MISMATCH' | 'SHA256_UNAVAILABLE' }`
 - **Harnesses:** H2
+
+### Portable Logs
+
+#### `createAliasSession(alias, options?) → {ok, session?, code?, detail?}`
+
+Creates the canonical alias-session object stored at `sessionStorage[ALIAS_SESSION_STORAGE_KEY]`. The returned session contains a generated `sessionId`, normalized alias identity, `sessionStart`, `sessionEnd`, and an empty `entries` array.
+
+- **Params:** `alias` (`{ id, name, icon?, aliasClass?, class?, tagline? }`), `options?` (`{ now?, sessionId? }`)
+- **Returns:** `{ ok: true, session }` or `{ ok: false, code: 'ALIAS_REQUIRED' | 'ALIAS_ID_REQUIRED' | 'ALIAS_NAME_REQUIRED' }`
+- **Consumers:** Personal Profile alias-mode entry point, Stream A surfaces
+
+#### `appendAliasSessionEntry(session, entry) → {ok, session?, code?, detail?}`
+
+Appends a normalized alias activity entry to a canonical alias session and updates `sessionEnd`. This is the only supported way to add portable-log entries before export.
+
+- **Params:** `session` (alias session object), `entry` (`{ ts?, text, type? }`)
+- **Returns:** `{ ok: true, session }` or `{ ok: false, code: 'PORTABLE_LOG_SESSION_REQUIRED' | 'PORTABLE_LOG_ENTRY_TEXT_REQUIRED' }`
+- **Consumers:** Personal Profile alias-mode journal flow
+
+#### `serializeAliasSessionLog(session, options?) → {ok, log?, code?, detail?}`
+
+Builds the canonical `.ferros-log` alias envelope from an alias session, including `sessionId`, normalized alias identity, entry seals, `entryCount`, and claim instructions.
+
+- **Params:** `session` (alias session object), `options?` (`{ ferrosVersion?, claimInstructions? }`)
+- **Returns:** `{ ok: true, log }` or `{ ok: false, code, detail? }`
+- **Harnesses:** H2 portable-log group, H5 alias export journey
+
+#### `serializeRecoverySessionLog(session, options?) → {ok, log?, code?, detail?}`
+
+Builds the canonical `.ferros-log` recovery envelope. The canonical recovery identity field is `recovery`; legacy `profile` recovery payloads remain accepted only at validation time for backwards compatibility.
+
+- **Params:** `session` (recovery session-like object), `options?` (`{ ferrosVersion?, claimInstructions? }`)
+- **Returns:** `{ ok: true, log }` or `{ ok: false, code, detail? }`
+- **Harnesses:** H2 portable-log group
+
+#### `validatePortableLog(raw) → Promise<{ok, log?, sessionId?, entryCount?, xpGain?, integrityWarning?, warnings?, code?, detail?}>`
+
+Canonical parser/validator for alias and recovery `.ferros-log` envelopes. Enforces `sessionId`, entry-count consistency, alias/recovery identity requirements, and per-entry seal verification. Missing or mismatched entry seals downgrade to `integrityWarning: true`; malformed envelopes hard-fail.
+
+- **Params:** `raw` (parsed JSON object)
+- **Returns:** `{ ok: true, log, sessionId, entryCount, xpGain, integrityWarning, warnings }` or `{ ok: false, code, detail? }`
+- **Error codes:** `PORTABLE_LOG_REQUIRED`, `PORTABLE_LOG_TYPE_INVALID`, `PORTABLE_LOG_SESSION_ID_REQUIRED`, `PORTABLE_LOG_ENTRY_COUNT_INVALID`, `PORTABLE_LOG_ENTRY_COUNT_MISMATCH`, `PORTABLE_LOG_ALIAS_REQUIRED`, `PORTABLE_LOG_RECOVERY_REQUIRED`, `PORTABLE_LOG_ENTRIES_REQUIRED`
+- **Harnesses:** H2 (portable-log validation), H4 (negative claim-path validation)
+
+#### `applyPortableLogClaim(profile, rawLog, options) → Promise<{ok, profile?, sealChain?, claimId?, sessionId?, xpGain?, integrityWarning?, warnings?, code?, detail?}>`
+
+Canonical claim/merge path for alias and recovery portable logs. Validates the envelope, rejects duplicate `sessionId` values before mutation, merges journal rows, updates `meta.xp` and `meta.claimedAliasSessions`, appends an `alias-claim` / `recovery-claim` seal, emits `seal-added` plus `alias-claimed` / `recovery-claimed`, and optionally persists through `saveProfile()`.
+
+- **Params:** `profile` (object), `rawLog` (parsed log object), `options` (`{ persist?: boolean, flags?, now? }`)
+- **Returns:** `{ ok: true, profile, sealChain, claimId, sessionId, xpGain, integrityWarning, warnings }` or `{ ok: false, code, detail? }`
+- **Error codes:** `CLAIM_DUPLICATE_SESSION`, `DURABLE_WRITE_FORBIDDEN`, plus any `validatePortableLog()` or `saveProfile()` errors
+- **Harnesses:** H2 (duplicate rejection), H4 (deny matrix), H6 (persist + reload verification)
 
 ### Profile Validation
 
@@ -216,11 +278,11 @@ All harnesses use `<script src="../docs/assets/_core/ferros-core.js"></script>` 
 | Harness | File | FerrosCore functions used |
 |---------|------|--------------------------|
 | H1 | `harnesses/ferros-contract-validator.html` | `computeHash`, `templateToEvents`, `templateBlockToEvent`, `VERSION`, `TEMPLATE_PROFILES` |
-| H2 | `harnesses/round-trip-harness.html` | `validateImport`, `verifyChain`, `verifyChainFull`, `serializeExport`, `createSealEntry`, `hashWithAlgorithm`, `computeHash`, `VERSION` |
+| H2 | `harnesses/round-trip-harness.html` | `validateImport`, `verifyChain`, `verifyChainFull`, `serializeExport`, `serializeAliasSessionLog`, `serializeRecoverySessionLog`, `validatePortableLog`, `applyPortableLogClaim`, `createSealEntry`, `hashWithAlgorithm`, `computeHash`, `VERSION`, `PORTABLE_LOG_XP_PER_ENTRY` |
 | H3 | `harnesses/runtime-harness.html` | `generateRuntimeNonce`, `validateRuntimeMessage`, `VERSION` |
-| H4 | `harnesses/negative-harness.html` | `canMutateDurableState`, `validateProfileShape`, `VERSION` |
-| H5 | `harnesses/acceptance-harness.html` | `validateImport`, `createSealEntry`, `TEMPLATE_PROFILES` |
-| H6 | `harnesses/write-path-harness.html` | `validateProfileShape`, `canMutateDurableState`, `VERSION` |
+| H4 | `harnesses/negative-harness.html` | `canMutateDurableState`, `validateProfileShape`, `validatePortableLog`, `applyPortableLogClaim`, `VERSION`, `ALIAS_SESSION_STORAGE_KEY` |
+| H5 | `harnesses/acceptance-harness.html` | `validateImport`, `createSealEntry`, `PORTABLE_LOG_XP_PER_ENTRY`, `TEMPLATE_PROFILES` |
+| H6 | `harnesses/write-path-harness.html` | `validateProfileShape`, `applyPortableLogClaim`, `loadProfile`, `verifyChainFull`, `canMutateDurableState`, `VERSION` |
 | H7 | `harnesses/semantic-fixture-linter.html` | `VERSION` |
 | H8 | `harnesses/ui-acceptance-harness.html` | `VERSION` |
 | H9 | `harnesses/consumer-helper-harness.html` | `loadProfile`, `pushAuditEntry`, `saveProfile`, `canMutateDurableState` |

@@ -1,6 +1,6 @@
 {
   "$comment": "FERROS Contract Manifest — maps contract IDs to schemas, fixtures, and harnesses. Phase 0 scope. IDs follow PROGRESS.md canonical taxonomy.",
-  "version": "1.1",
+  "version": "1.2",
   "contracts": {
     "C1": {
       "name": "Identity / Session Schema",
@@ -27,6 +27,7 @@
         "schemas/fixtures/minimal-stage0-profile.json",
         "schemas/fixtures/mid-stage1-profile.json",
         "schemas/fixtures/quota-boundary-profile.json",
+        "schemas/fixtures/claimed-alias-merge-result.json",
         "schemas/fixtures/profile-export-envelope.json",
         "schemas/fixtures/invalid-forbidden-meta-field.json",
         "schemas/fixtures/invalid-split-save-state.json",
@@ -81,12 +82,22 @@
     },
     "C7": {
       "name": "Audit Record Schema",
-      "document": null,
+      "document": "docs/contracts/storage-rules.md",
       "schemas": ["schemas/audit-record.schema.json"],
-      "fixtures": [],
-      "harnesses": ["harnesses/ferros-contract-validator.html", "harnesses/consumer-helper-harness.html"],
+      "fixtures": [
+        "schemas/fixtures/alias-session-log.json",
+        "schemas/fixtures/recovery-session-log.json",
+        "schemas/fixtures/invalid-duplicate-alias-claim.json",
+        "schemas/fixtures/invalid-missing-session-id-alias-log.json"
+      ],
+      "harnesses": [
+        "harnesses/ferros-contract-validator.html",
+        "harnesses/round-trip-harness.html",
+        "harnesses/negative-harness.html",
+        "harnesses/consumer-helper-harness.html"
+      ],
       "status": "active",
-      "note": "No dedicated fixture required for Wave 0 — audit record schema is structurally validated by H1 keyword audit only. Document reference deferred pending audit-record consumer in Wave 1."
+      "note": "Alias/recovery portable logs are the canonical C7-backed envelopes in Wave 0. H1 validates fixture/schema conformance, H2 validates positive portable-log flows, and H4 validates negative claim-path behavior."
     },
     "C8": {
       "name": "Runtime Host Contract",
@@ -109,12 +120,15 @@
         "schemas/fixtures/minimal-stage0-profile.json",
         "schemas/fixtures/mid-stage1-profile.json",
         "schemas/fixtures/quota-boundary-profile.json",
+        "schemas/fixtures/claimed-alias-merge-result.json",
         "schemas/fixtures/profile-export-envelope.json",
         "schemas/fixtures/alias-session-log.json",
+        "schemas/fixtures/recovery-session-log.json",
         "schemas/fixtures/card-deck-roundtrip.json",
         "schemas/fixtures/invalid-broken-seal-chain.json",
         "schemas/fixtures/invalid-corrupted-export.json",
         "schemas/fixtures/invalid-duplicate-alias-claim.json",
+        "schemas/fixtures/invalid-missing-session-id-alias-log.json",
         "schemas/fixtures/invalid-forbidden-meta-field.json",
         "schemas/fixtures/invalid-split-save-state.json"
       ],

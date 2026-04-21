@@ -3,9 +3,9 @@
 **ID:** C9
 **Version:** 1.0
 **Status:** Active
-**Last updated:** 2026-04-13
+**Last updated:** 2026-04-21
 **Depends on:** ADR-001 (Progression-Lock), ADR-005 (Session Modes)
-**Enforced by:** H2 (round-trip-harness.html), H4 (negative-harness.html)
+**Enforced by:** H2 (round-trip-harness.html), H4 (negative-harness.html), H5 (acceptance-harness.html), H6 (write-path-harness.html)
 
 ---
 
@@ -39,6 +39,8 @@ Current enforcement is via a unified durable-write predicate (`canMutateDurableS
 `saveProfile()`, `addSeal()`, import confirmation, and claim confirmation all gate mutations through this predicate. This guard model **must never be removed**.
 
 Cross-surface consumers that need durable profile access must go through the published `FerrosCore.loadProfile()` / `FerrosCore.saveProfile()` helpers. They may not create companion `localStorage` keys outside the C9 contract.
+
+Portable alias/recovery log handling is also canonicalized in `FerrosCore`: surfaces may orchestrate UX, but validation and merge behavior must go through `FerrosCore.validatePortableLog()` and `FerrosCore.applyPortableLogClaim()` rather than local page-specific merge logic.
 
 ---
 
@@ -202,13 +204,18 @@ When a `storage` event fires with `key === "ferros_profile"`:
 |---|---|
 | Import rejection I-1 through I-9 (FerrosCore-validated; I-10 size check enforced at surface before parse) | H2 round-trip-harness.html (Group A) |
 | Seal chain broken on import (I-6) | H2 round-trip-harness.html (Group A) |
+| Portable alias/recovery log validation and missing-sessionId rejection | H2 round-trip-harness.html (Group C) |
+| Duplicate portable-log claim rejected before mutation | H2 round-trip-harness.html (Group C), H4 negative-harness.html (Group F) |
 | True export → clear → import → assert round-trip | H2 round-trip-harness.html (Group D) |
 | Session mode does not write to localStorage | H4 negative-harness.html (Group A + E) |
 | Recovery mode writes nothing to any storage | H4 negative-harness.html (Group A + E) |
+| Claim persist path denied in session/alias/recovery modes | H4 negative-harness.html (Group F) |
 | Export envelope has required fields (`ferrosVersion`, `exportedAt`, `profile`, `sealChain`) | H2 round-trip-harness.html (Group D) |
+| Alias export → claim journey through the profile surface | H5 acceptance-harness.html (Group E) |
 | Write-time profile shape validation (A1b) | H6 write-path-harness.html |
 | Load-time corruption detection (A2) | H6 write-path-harness.html |
 | Load-time shape normalization (A2) | H6 write-path-harness.html |
+| Claim persistence, reload, and claim-seal verification | H6 write-path-harness.html (Group E) |
 
 ---
 
@@ -234,8 +241,17 @@ Alias and recovery session logs exported as `.ferros-log` files follow this cano
 - `sessionId` is the **canonical claim-identity carrier**. It uniquely identifies this session log for de-duplication during claim.
 - **Uniqueness:** `sessionId` must be unique per session. Generated deterministically from `alias.id + sessionStart` or equivalent.
 - **Claim check:** On claim, the receiving profile checks `profile.meta.claimedAliasSessions` (array of previously claimed `sessionId` values). Duplicate `sessionId` → reject with `CLAIM_DUPLICATE_SESSION`.
-- **Audit records** may mirror `sessionId` secondarily, but the `.ferros-log` envelope is the primary carrier (not `audit-record.schema.json`).
+- `sessionId` is also required in the C7 portable-log schema and corresponding golden fixtures. Missing `sessionId` is a hard validation error (`PORTABLE_LOG_SESSION_ID_REQUIRED`).
+- **Audit records** may mirror `sessionId` secondarily, but the `.ferros-log` envelope is the primary carrier.
 - See also C10 for consent/deny semantics on claim operations.
+
+### Portable Claim Canonical Path
+
+- Portable-log validation must run through `FerrosCore.validatePortableLog(raw)`.
+- Portable-log claims must run through `FerrosCore.applyPortableLogClaim(profile, rawLog, { persist, flags })`.
+- Duplicate `sessionId` detection happens **before** any XP, journal, seal, or audit mutation.
+- A successful persisted claim appends exactly one claim seal (`alias-claim` or `recovery-claim`), emits `seal-added` plus `alias-claimed` / `recovery-claimed`, and then persists via `saveProfile()` (which appends `profile-saved`).
+- If any portable-log entry seal is missing or invalid, validation may still succeed with `integrityWarning: true`; the resulting claim must set `meta.sealBroken = true` and mark claimed entries with `sealBroken: true`.
 
 ---
 

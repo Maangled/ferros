@@ -1,8 +1,7 @@
 {
-  "$comment": "Golden fixture: .ferros-log from an alias session. Use this to test the claim flow — importing on a home device should merge 15 XP per entry into the profile.",
+  "$comment": "NEGATIVE FIXTURE — must be rejected because portable alias logs now require canonical sessionId for de-duplication.",
   "ferrosVersion": "1.0",
   "logType": "alias-session",
-  "sessionId": "tesla-2026-04-10T14:00:00.000Z",
   "alias": {
     "id": "tesla",
     "name": "Nikola Tesla",
@@ -24,14 +23,9 @@
       "text": "Completed prototype wiring diagram",
       "type": "activity",
       "seal": "local-c43f721b"
-    },
-    {
-      "ts": "2026-04-10T15:20:00.000Z",
-      "text": "Reviewed calculations and filed notes",
-      "type": "activity",
-      "seal": "local-ad704448"
     }
   ],
-  "entryCount": 3,
-  "claimInstructions": "Import this file on your home FERROS instance to claim these logs and merge them into your profile. Unlinked until claimed."
+  "entryCount": 2,
+  "claimInstructions": "Import this file on your home FERROS instance to claim these logs and merge them into your profile.",
+  "_invalidReason": "Missing sessionId prevents canonical duplicate-claim detection against profile.meta.claimedAliasSessions."
 }

@@ -452,6 +452,99 @@ function runGroupD() {
 }
 
 /* ==========================================================================
+   GROUP F — Portable Claim Denials (PR10)
+   Exercises duplicate rejection, missing sessionId rejection, denied durable
+   writes in non-full-profile modes, and tampered-seal integrity warnings.
+   ========================================================================== */
+
+function runGroupF() {
+  return new Promise(function(resolve) {
+    var gF = makeGroup('Group F — Portable Claim Denials (PR10)');
+    var aliasLog = clone(FIXTURE_ALIAS_SESSION_LOG);
+    var duplicateProfile = clone(FIXTURE_FULL_PROFILE_STAGE3);
+    duplicateProfile.meta = duplicateProfile.meta || {};
+    duplicateProfile.meta.claimedAliasSessions = [aliasLog.sessionId];
+    duplicateProfile.meta.xp = duplicateProfile.meta.xp || 0;
+    duplicateProfile.auditTrail = duplicateProfile.auditTrail || [];
+    var duplicateJournalLength = (duplicateProfile.journal || []).length;
+
+    var missingSessionLog = clone(FIXTURE_INVALID_MISSING_SESSION_ID_ALIAS_LOG);
+    var tamperedLog = clone(FIXTURE_ALIAS_SESSION_LOG);
+    tamperedLog.entries[0].seal = 'local-deadbeef';
+
+    localStorage.removeItem('ferros_profile');
+    localStorage.removeItem('ferros_seal_chain');
+
+    Promise.all([
+      FerrosCore.validatePortableLog(missingSessionLog),
+      FerrosCore.applyPortableLogClaim(duplicateProfile, aliasLog, { persist: false }),
+      FerrosCore.applyPortableLogClaim(clone(FIXTURE_FULL_PROFILE_STAGE3), aliasLog, { persist: true, flags: { tradeWindowAccepted: true, sessionMode: true, aliasMode: false, recoveryMode: false } }),
+      FerrosCore.applyPortableLogClaim(clone(FIXTURE_FULL_PROFILE_STAGE3), aliasLog, { persist: true, flags: { tradeWindowAccepted: true, sessionMode: false, aliasMode: true, recoveryMode: false } }),
+      FerrosCore.applyPortableLogClaim(clone(FIXTURE_FULL_PROFILE_STAGE3), aliasLog, { persist: true, flags: { tradeWindowAccepted: true, sessionMode: false, aliasMode: false, recoveryMode: true } }),
+      FerrosCore.validatePortableLog(tamperedLog)
+    ]).then(function(results) {
+      var missingSessionResult = results[0];
+      var duplicateResult = results[1];
+      var sessionDeniedResult = results[2];
+      var aliasDeniedResult = results[3];
+      var recoveryDeniedResult = results[4];
+      var tamperedResult = results[5];
+
+      test(gF, 'F-1: validatePortableLog(missing sessionId) → PORTABLE_LOG_SESSION_ID_REQUIRED', function() {
+        if (!missingSessionResult.ok && missingSessionResult.code === 'PORTABLE_LOG_SESSION_ID_REQUIRED') {
+          return { pass: true, detail: 'missing sessionId rejected before claim merge' };
+        }
+        return { pass: false, error: JSON.stringify(missingSessionResult) };
+      });
+
+      test(gF, 'F-2: duplicate alias claim rejected before xp/journal mutation', function() {
+        if (!duplicateResult.ok && duplicateResult.code === 'CLAIM_DUPLICATE_SESSION' && duplicateProfile.meta.xp === 0 && (duplicateProfile.journal || []).length === duplicateJournalLength) {
+          return { pass: true, detail: 'CLAIM_DUPLICATE_SESSION with original profile unchanged' };
+        }
+        return { pass: false, error: JSON.stringify(duplicateResult) };
+      });
+
+      test(gF, 'F-3: session mode claim persist path → DURABLE_WRITE_FORBIDDEN with no localStorage write', function() {
+        if (!sessionDeniedResult.ok && sessionDeniedResult.code === 'DURABLE_WRITE_FORBIDDEN' && localStorage.getItem('ferros_profile') === null) {
+          return { pass: true, detail: 'session-mode claim denied before durable write' };
+        }
+        return { pass: false, error: JSON.stringify(sessionDeniedResult) };
+      });
+
+      test(gF, 'F-4: alias mode claim persist path → DURABLE_WRITE_FORBIDDEN with no localStorage write', function() {
+        if (!aliasDeniedResult.ok && aliasDeniedResult.code === 'DURABLE_WRITE_FORBIDDEN' && localStorage.getItem('ferros_profile') === null) {
+          return { pass: true, detail: 'alias-mode claim denied before durable write' };
+        }
+        return { pass: false, error: JSON.stringify(aliasDeniedResult) };
+      });
+
+      test(gF, 'F-5: recovery mode claim persist path → DURABLE_WRITE_FORBIDDEN with no localStorage write', function() {
+        if (!recoveryDeniedResult.ok && recoveryDeniedResult.code === 'DURABLE_WRITE_FORBIDDEN' && localStorage.getItem('ferros_profile') === null) {
+          return { pass: true, detail: 'recovery-mode claim denied before durable write' };
+        }
+        return { pass: false, error: JSON.stringify(recoveryDeniedResult) };
+      });
+
+      test(gF, 'F-6: tampered entry seal yields integrityWarning path', function() {
+        if (tamperedResult.ok && tamperedResult.integrityWarning === true) {
+          return { pass: true, detail: 'tampered portable log downgraded to integrity warning' };
+        }
+        return { pass: false, error: JSON.stringify(tamperedResult) };
+      });
+
+      localStorage.removeItem('ferros_profile');
+      localStorage.removeItem('ferros_seal_chain');
+      resolve(gF);
+    }).catch(function(err) {
+      test(gF, 'portable claim denial checks', function() {
+        return { pass: false, error: err.message };
+      });
+      resolve(gF);
+    });
+  });
+}
+
+/* ==========================================================================
    GROUP E — FerrosCore Implementation-Level Deny Probes (C10)
    Exercises the actual FerrosCore.canMutateDurableState() and
    FerrosCore.validateProfileShape() functions that implement C10 deny behavior.
@@ -596,7 +689,7 @@ function renderAll() {
     harnessVersion: '1.0',
     status: overallStatus,
     summary: { total: allTests.length, passed: passed, failed: failed, gaps: warned, skipped: skipped },
-    provesGates: ['C9 no-write (session/alias/recovery)', 'C10 permission deny matrix (reference)', 'C10 canMutateDurableState deny probes (E-1/E-2/E-3)', 'C10 allow-path verified (E-4)', 'C10 validateProfileShape reject undeclared field (E-5)', 'C10 allow-path audit emission (full-profile save/seal)', 'V3b'],
+    provesGates: ['C9 no-write (session/alias/recovery)', 'C10 permission deny matrix (reference)', 'C10 canMutateDurableState deny probes (E-1/E-2/E-3)', 'C10 allow-path verified (E-4)', 'C10 validateProfileShape reject undeclared field (E-5)', 'C10 allow-path audit emission (full-profile save/seal)', 'PR10 portable claim negatives (duplicate/missing sessionId/deny paths)', 'V3b'],
     implementationGaps: gaps,
     remediations: [],
     tests: allTests.map(function(t){
@@ -613,7 +706,7 @@ function renderAll() {
 
 // Groups A and E run synchronously (already added to allGroups/allTests above)
 
-Promise.all([runGroupB(), runGroupC(), runGroupD()]).then(function() {
+Promise.all([runGroupB(), runGroupC(), runGroupD(), runGroupF()]).then(function() {
   renderAll();
 });
 </script>

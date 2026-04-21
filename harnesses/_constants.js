@@ -18,7 +18,7 @@ var SCHEMA_AUDIT_RECORD = {
   "title": "FERROS Audit Record",
   "description": "Canonical schema for action/audit log entries. Used in .ferros-log export files (alias and recovery sessions), agent action trails, and future cross-surface audit logs.",
   "type": "object",
-  "required": ["ferrosVersion", "logType", "sessionStart", "entries"],
+  "required": ["ferrosVersion", "logType", "sessionId", "sessionStart", "entries"],
   "additionalProperties": false,
   "properties": {
     "ferrosVersion": {
@@ -29,6 +29,10 @@ var SCHEMA_AUDIT_RECORD = {
       "type": "string",
       "enum": ["alias-session", "recovery-session", "agent-action"],
       "description": "Type of audit log"
+    },
+    "sessionId": {
+      "type": "string",
+      "description": "Canonical portable-log session identifier used for claim de-duplication."
     },
     "sessionStart": { "type": "string", "format": "date-time" },
     "sessionEnd": { "type": ["string", "null"], "format": "date-time" },
@@ -824,6 +828,7 @@ var FIXTURE_ALIAS_SESSION_LOG = {
   "$comment": "Golden fixture: .ferros-log from an alias session. Use this to test the claim flow — importing on a home device should merge 15 XP per entry into the profile.",
   "ferrosVersion": "1.0",
   "logType": "alias-session",
+  "sessionId": "tesla-2026-04-10T14:00:00.000Z",
   "alias": {
     "id": "tesla",
     "name": "Nikola Tesla",
@@ -838,19 +843,19 @@ var FIXTURE_ALIAS_SESSION_LOG = {
       "ts": "2026-04-10T14:05:00.000Z",
       "text": "Started deep work session on circuit design",
       "type": "activity",
-      "seal": null
+      "seal": "local-60cec34f"
     },
     {
       "ts": "2026-04-10T14:45:00.000Z",
       "text": "Completed prototype wiring diagram",
       "type": "activity",
-      "seal": null
+      "seal": "local-c43f721b"
     },
     {
       "ts": "2026-04-10T15:20:00.000Z",
       "text": "Reviewed calculations and filed notes",
       "type": "activity",
-      "seal": null
+      "seal": "local-ad704448"
     }
   ],
   "entryCount": 3,
@@ -947,6 +952,159 @@ var FIXTURE_CARD_DECK_ROUNDTRIP = {
     "ferros:update with state 'Open' produces pose lidAngle=-110",
     "Exported card JSON re-imported produces identical transform and state values",
     "Exported deck JSON re-imported produces identical card list and state presets"
+  ]
+};
+
+// Source: schemas/fixtures/claimed-alias-merge-result.json
+var FIXTURE_CLAIMED_ALIAS_MERGE_RESULT = {
+  "$comment": "Expected profile shape after claiming schemas/fixtures/alias-session-log.json into a full-profile-stage3 baseline.",
+  "meta": {
+    "version": "1.0",
+    "created": "2026-04-10T09:00:00.000Z",
+    "lastModified": "2026-04-10T15:31:00.000Z",
+    "assistanceLevel": 1,
+    "genesisHash": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    "currentSeal": "c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2",
+    "sealCount": 4,
+    "stage": 3,
+    "anchoredToLedger": false,
+    "ledgerTxHash": null,
+    "schemaVersion": 1,
+    "claimedAliasSessions": ["tesla-2026-04-10T14:00:00.000Z"],
+    "xp": 45,
+    "sealBroken": false,
+    "revision": 1
+  },
+  "identity": {
+    "name": "Test Pioneer",
+    "avatar": "shield",
+    "class": "Architect",
+    "streamAffinity": "A",
+    "title": "Newcomer",
+    "joinedDate": "2026-04-10T09:00:00.000Z",
+    "streakDays": 1,
+    "longestStreak": 1,
+    "archetype": "structured-research",
+    "wakeTime": "07:00",
+    "sleepTime": "23:00",
+    "categoryInterests": ["knowledge", "craft"]
+  },
+  "attributes": {
+    "Discipline": { "level": 1, "xp": 50, "xpToNext": 100, "color": "amber", "icon": "💪" },
+    "Knowledge": { "level": 2, "xp": 10, "xpToNext": 200, "color": "blue", "icon": "📘" },
+    "Craft": { "level": 1, "xp": 0, "xpToNext": 100, "color": "cyan", "icon": "🔨" },
+    "Governance": { "level": 1, "xp": 0, "xpToNext": 100, "color": "purple", "icon": "⚖️" },
+    "Wellness": { "level": 1, "xp": 0, "xpToNext": 100, "color": "green", "icon": "🌿" },
+    "Community": { "level": 1, "xp": 0, "xpToNext": 100, "color": "pink", "icon": "🤝" }
+  },
+  "skills": { "A": [], "B": [], "C": [] },
+  "achievements": [
+    { "id": "genesis_pioneer", "name": "Genesis Pioneer", "desc": "Became a FERROS pioneer", "icon": "🏆", "unlocked": true, "unlockedAt": "2026-04-10T09:05:00.000Z" },
+    { "id": "first_protocol", "name": "First Protocol", "desc": "Completed your first protocol", "icon": "📋", "unlocked": true, "unlockedAt": "2026-04-10T09:12:00.000Z" },
+    { "id": "lvl5_disc", "name": "Disciplined", "desc": "Reach Discipline Level 5", "icon": "💪", "unlocked": false },
+    { "id": "lvl5_know", "name": "Scholar", "desc": "Reach Knowledge Level 5", "icon": "📘", "unlocked": false },
+    { "id": "seal_10", "name": "Chain Builder", "desc": "Create 10 seals", "icon": "🔗", "unlocked": false },
+    { "id": "streak_7", "name": "Week Warrior", "desc": "7-day streak", "icon": "🔥", "unlocked": false },
+    { "id": "all_streams", "name": "Polymath", "desc": "Have skills in all 3 streams", "icon": "🌟", "unlocked": false },
+    { "id": "claimed-alias", "name": "Alias Claimed", "desc": "Claimed an alias session log", "icon": "📎", "unlocked": true, "unlockedAt": "2026-04-10T15:31:00.000Z" }
+  ],
+  "journal": [
+    {
+      "ts": "2026-04-10T15:31:00.000Z",
+      "text": "Claimed 3 alias log entries from Nikola Tesla (tesla).",
+      "type": "claim-event",
+      "aliasId": "tesla",
+      "aliasName": "Nikola Tesla",
+      "claimId": "tesla-2026-04-10T14:00:00.000Z"
+    },
+    {
+      "ts": "2026-04-10T14:05:00.000Z",
+      "text": "Started deep work session on circuit design",
+      "type": "claimed-alias",
+      "aliasId": "tesla",
+      "aliasName": "Nikola Tesla",
+      "linkedTo": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "claimId": "tesla-2026-04-10T14:00:00.000Z",
+      "sealBroken": false
+    },
+    {
+      "ts": "2026-04-10T14:45:00.000Z",
+      "text": "Completed prototype wiring diagram",
+      "type": "claimed-alias",
+      "aliasId": "tesla",
+      "aliasName": "Nikola Tesla",
+      "linkedTo": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "claimId": "tesla-2026-04-10T14:00:00.000Z",
+      "sealBroken": false
+    },
+    {
+      "ts": "2026-04-10T15:20:00.000Z",
+      "text": "Reviewed calculations and filed notes",
+      "type": "claimed-alias",
+      "aliasId": "tesla",
+      "aliasName": "Nikola Tesla",
+      "linkedTo": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "claimId": "tesla-2026-04-10T14:00:00.000Z",
+      "sealBroken": false
+    },
+    { "ts": "2026-04-10T09:05:00.000Z", "text": "Profile created — Genesis Pioneer unlocked", "type": "system" },
+    { "ts": "2026-04-10T09:12:00.000Z", "text": "First protocol sealed — Discipline +50 XP", "type": "system" }
+  ],
+  "credentials": [],
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "previousSeal": "genesis",
+      "timestamp": "2026-04-10T09:05:00.000Z",
+      "data": { "event": "profile_created", "name": "Test Pioneer" },
+      "hashAlgorithm": "sha256",
+      "nonce": 3141592653
+    },
+    {
+      "taskId": "character_creation",
+      "seal": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+      "previousSeal": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "timestamp": "2026-04-10T09:10:00.000Z",
+      "data": { "event": "character_sealed", "class": "Architect", "stream": "A" },
+      "hashAlgorithm": "sha256",
+      "nonce": 2718281828
+    },
+    {
+      "taskId": "first_protocol",
+      "seal": "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
+      "previousSeal": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+      "timestamp": "2026-04-10T09:12:00.000Z",
+      "data": { "event": "protocol_completed", "xpAwarded": 100, "attribute": "Discipline" },
+      "hashAlgorithm": "sha256",
+      "nonce": 1618033988
+    },
+    {
+      "taskId": "alias-claim",
+      "seal": "c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2",
+      "previousSeal": "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
+      "timestamp": "2026-04-10T15:31:00.000Z",
+      "data": { "claimId": "tesla-2026-04-10T14:00:00.000Z", "count": 3, "aliasId": "tesla" },
+      "hashAlgorithm": "djb2",
+      "nonce": 42424242
+    }
+  ],
+  "auditTrail": [
+    {
+      "ts": "2026-04-10T15:31:00.000Z",
+      "action": "seal-added",
+      "detail": { "taskId": "alias-claim", "seal": "c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2" }
+    },
+    {
+      "ts": "2026-04-10T15:31:00.000Z",
+      "action": "alias-claimed",
+      "detail": { "claimId": "tesla-2026-04-10T14:00:00.000Z", "entryCount": 3, "xpGain": 45, "integrityWarning": false }
+    },
+    {
+      "ts": "2026-04-10T15:31:00.000Z",
+      "action": "profile-saved",
+      "detail": { "sealCount": 4, "reason": "portable-log-claim", "claimId": "tesla-2026-04-10T14:00:00.000Z" }
+    }
   ]
 };
 
@@ -1290,8 +1448,8 @@ var FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM = {
   "sessionStart": "2026-05-01T14:00:00.000Z",
   "sessionEnd": "2026-05-01T16:00:00.000Z",
   "entries": [
-    { "ts": "2026-05-01T14:05:00.000Z", "text": "Started alias session as Tesla", "type": "activity" },
-    { "ts": "2026-05-01T15:30:00.000Z", "text": "Completed deep experiment block", "type": "activity" }
+    { "ts": "2026-05-01T14:05:00.000Z", "text": "Started alias session as Tesla", "type": "activity", "seal": "local-0c310ab0" },
+    { "ts": "2026-05-01T15:30:00.000Z", "text": "Completed deep experiment block", "type": "activity", "seal": "local-a47f1f32" }
   ],
   "entryCount": 2,
   "claimInstructions": "Import this file on your home FERROS instance to claim these logs and merge them into your profile.",
@@ -1346,6 +1504,39 @@ var FIXTURE_INVALID_FORBIDDEN_META_FIELD = {
       "nonce": 666
     }
   ]
+};
+
+// Source: schemas/fixtures/invalid-missing-session-id-alias-log.json
+var FIXTURE_INVALID_MISSING_SESSION_ID_ALIAS_LOG = {
+  "$comment": "NEGATIVE FIXTURE — must be rejected because portable alias logs now require canonical sessionId for de-duplication.",
+  "ferrosVersion": "1.0",
+  "logType": "alias-session",
+  "alias": {
+    "id": "tesla",
+    "name": "Nikola Tesla",
+    "icon": "⚡",
+    "class": "Engineer",
+    "attribution": "unlinked"
+  },
+  "sessionStart": "2026-04-10T14:00:00.000Z",
+  "sessionEnd": "2026-04-10T15:30:00.000Z",
+  "entries": [
+    {
+      "ts": "2026-04-10T14:05:00.000Z",
+      "text": "Started deep work session on circuit design",
+      "type": "activity",
+      "seal": "local-60cec34f"
+    },
+    {
+      "ts": "2026-04-10T14:45:00.000Z",
+      "text": "Completed prototype wiring diagram",
+      "type": "activity",
+      "seal": "local-c43f721b"
+    }
+  ],
+  "entryCount": 2,
+  "claimInstructions": "Import this file on your home FERROS instance to claim these logs and merge them into your profile.",
+  "_invalidReason": "Missing sessionId prevents canonical duplicate-claim detection against profile.meta.claimedAliasSessions."
 };
 
 // Source: schemas/fixtures/invalid-split-save-state.json
@@ -1899,6 +2090,7 @@ var FIXTURE_RECOVERY_SESSION_LOG = {
   "$comment": "Golden fixture: .ferros-log from a recovery session. Use this to test recovery import. Attribution is 'self', all entries are self-attributed.",
   "ferrosVersion": "1.0",
   "logType": "recovery-session",
+  "sessionId": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2-2026-04-10T18:00:00.000Z",
   "recovery": {
     "profileName": "Test Pioneer",
     "genesisHash": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
@@ -1912,13 +2104,13 @@ var FIXTURE_RECOVERY_SESSION_LOG = {
       "ts": "2026-04-10T18:10:00.000Z",
       "text": "Reviewed schedule on library computer",
       "type": "activity",
-      "seal": null
+      "seal": "local-57af1cea"
     },
     {
       "ts": "2026-04-10T18:45:00.000Z",
       "text": "Added note about tomorrow's meeting",
       "type": "journal",
-      "seal": null
+      "seal": "local-d25fdbf0"
     }
   ],
   "entryCount": 2,
@@ -2064,6 +2256,7 @@ var FERROS_SCHEMAS = [
 var FERROS_GOLDEN_FIXTURES = [
   {name: "alias-session-log", file: "alias-session-log.json", fixture: FIXTURE_ALIAS_SESSION_LOG},
   {name: "card-deck-roundtrip", file: "card-deck-roundtrip.json", fixture: FIXTURE_CARD_DECK_ROUNDTRIP},
+  {name: "claimed-alias-merge-result", file: "claimed-alias-merge-result.json", fixture: FIXTURE_CLAIMED_ALIAS_MERGE_RESULT},
   {name: "deck-card-assembly-seam", file: "deck-card-assembly-seam.json", fixture: FIXTURE_DECK_CARD_ASSEMBLY_SEAM},
   {name: "full-profile-stage3", file: "full-profile-stage3.json", fixture: FIXTURE_FULL_PROFILE_STAGE3},
   {name: "maximum-template-schedule", file: "maximum-template-schedule.json", fixture: FIXTURE_MAXIMUM_TEMPLATE_SCHEDULE},
@@ -2082,8 +2275,9 @@ var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-dual-session-mode", file: "invalid-dual-session-mode.json", fixture: FIXTURE_INVALID_DUAL_SESSION_MODE},
   {name: "invalid-duplicate-alias-claim", file: "invalid-duplicate-alias-claim.json", fixture: FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM},
   {name: "invalid-forbidden-meta-field", file: "invalid-forbidden-meta-field.json", fixture: FIXTURE_INVALID_FORBIDDEN_META_FIELD},
+  {name: "invalid-missing-session-id-alias-log", file: "invalid-missing-session-id-alias-log.json", fixture: FIXTURE_INVALID_MISSING_SESSION_ID_ALIAS_LOG},
   {name: "invalid-split-save-state", file: "invalid-split-save-state.json", fixture: FIXTURE_INVALID_SPLIT_SAVE_STATE}
 ];
 
-// Total files embedded: 26
-// Schemas: 7 | Golden fixtures: 13 | Negative fixtures: 6
+// Total files embedded: 28
+// Schemas: 7 | Golden fixtures: 14 | Negative fixtures: 7

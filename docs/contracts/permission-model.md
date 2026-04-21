@@ -3,7 +3,7 @@
 **ID:** C10
 **Version:** 1.0
 **Status:** Active
-**Last updated:** 2026-04-13
+**Last updated:** 2026-04-21
 **Depends on:** ADR-002 (Smart Contract Boundaries), ADR-005 (Session Modes), ADR-001 (Seal Chain)
 **Enforced by:** H4 (negative-harness.html)
 
@@ -42,8 +42,10 @@ Permission is modeled as a 4-tuple:
 | `sealChain.verify` | Read and verify the seal chain (non-mutating) |
 | `aliasLog.write` | Write an entry to the alias session log |
 | `aliasLog.export` | Download the `.ferros-log` file |
+| `aliasLog.claim` | Merge an alias `.ferros-log` into the current full profile |
 | `recoveryLog.write` | Write an entry to the recovery session log |
 | `recoveryLog.export` | Download the `.ferros-log` file |
+| `recoveryLog.claim` | Merge a recovery `.ferros-log` into the current full profile |
 | `card.save` | Persist card state locally |
 | `card.export` | Export a card to a file |
 | `storage.clear` | Clear `localStorage` keys |
@@ -62,8 +64,10 @@ Permission is modeled as a 4-tuple:
 | `sealChain.verify` | ✅ Allow | ✅ Allow (own log only) | ✅ Allow (own log only) | ❌ Deny | 🔒 Gated (Wave 3) |
 | `aliasLog.write` | ❌ Deny | ✅ Allow | ❌ Deny | ❌ Deny | 🔒 Gated (Wave 3) |
 | `aliasLog.export` | ❌ Deny | ✅ Allow | ❌ Deny | ❌ Deny | 🔒 Gated (Wave 3) |
+| `aliasLog.claim` | ✅ Allow | ❌ Deny + audit | ❌ Deny + audit | ❌ Deny + audit | 🔒 Gated (Wave 3) |
 | `recoveryLog.write` | ❌ Deny | ❌ Deny | ✅ Allow (JS vars only, no storage) | ❌ Deny | 🔒 Gated (Wave 3) |
 | `recoveryLog.export` | ❌ Deny | ❌ Deny | ✅ Allow | ❌ Deny | 🔒 Gated (Wave 3) |
+| `recoveryLog.claim` | ✅ Allow | ❌ Deny + audit | ❌ Deny + audit | ❌ Deny + audit | 🔒 Gated (Wave 3) |
 | `card.save` | ✅ Allow | ❌ Deny | ❌ Deny | ❌ Deny | 🔒 Gated (Wave 3) |
 | `card.export` | ✅ Allow | ❌ Deny | ❌ Deny | ❌ Deny | 🔒 Gated (Wave 3) |
 | `storage.clear` | ✅ Allow (self only) | ❌ Deny | ❌ Deny | ❌ Deny | ❌ Deny |
@@ -132,7 +136,9 @@ This contract's reject decisions map directly to C9 storage rules:
 
 - `profile.write` / `sealChain.append` mutation paths are gated by the unified durable-write predicate (`canMutateDurableState`) rather than per-call ad hoc checks.
 - The predicate requires Trade Window consent accepted and denies durable writes in `sessionMode`, `aliasMode`, and `recoveryMode`.
+- `applyPortableLogClaim()` uses the same durable-write predicate when `persist: true`; denied claim attempts must leave `localStorage`, journal state, XP, and seal state unchanged.
 - Import rejection codes `STORAGE_*` from C9 are treated as upstream validation errors, not permission decisions — they happen before mutation is evaluated.
+- Duplicate portable-log claims (`CLAIM_DUPLICATE_SESSION`) are semantic reject decisions that occur before mutation and before audit persistence.
 
 ---
 
@@ -146,6 +152,8 @@ This contract's reject decisions map directly to C9 storage rules:
 | `canMutateDurableState()` returns false for session/alias/recovery | H4 negative-harness.html (Group E — E-1, E-2, E-3) |
 | `canMutateDurableState()` returns true for full-profile mode | H4 negative-harness.html (Group E — E-4) |
 | `validateProfileShape()` rejects profiles with undeclared fields | H4 negative-harness.html (Group E — E-5) |
+| Alias/recovery claim persist path denied in session/alias/recovery modes | H4 negative-harness.html (Group F) |
+| Full-profile alias claim path succeeds after Trade Window consent | H5 acceptance-harness.html (Group E) |
 | Trade Window consent gate prevents all pre-consent writes | H5 acceptance-harness.html |
 
 ---

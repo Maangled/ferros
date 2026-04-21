@@ -19,8 +19,13 @@
 
   var PROFILE_STORAGE_KEY = 'ferros_profile';
   var SEAL_CHAIN_STORAGE_KEY = 'ferros_seal_chain';
+  var ALIAS_SESSION_STORAGE_KEY = 'ferros_alias_session';
   var AUDIT_TRAIL_CAP = 1000;
   var AUDIT_ACTIONS = ['seal-added', 'profile-saved', 'profile-imported', 'alias-claimed', 'recovery-claimed'];
+  var PORTABLE_LOG_XP_PER_ENTRY = 15;
+
+  FerrosCore.ALIAS_SESSION_STORAGE_KEY = ALIAS_SESSION_STORAGE_KEY;
+  FerrosCore.PORTABLE_LOG_XP_PER_ENTRY = PORTABLE_LOG_XP_PER_ENTRY;
 
   // ── computeHash ────────────────────────────────────────────────────────────
   // Returns { hash: string, algorithm: 'sha256' | 'djb2' }
@@ -159,6 +164,109 @@
     } catch (error) {
       return null;
     }
+  }
+
+  function cloneJson(value) {
+    if (value === undefined) return undefined;
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function isPlainObject(value) {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  function buildPortableEntryPayload(entry) {
+    return JSON.stringify({
+      ts: entry.ts,
+      text: entry.text,
+      type: entry.type || 'activity'
+    });
+  }
+
+  function computePortableEntrySeal(entry) {
+    var payload = buildPortableEntryPayload(entry);
+    var h = 5381;
+    for (var i = 0; i < payload.length; i++) {
+      h = ((h << 5) + h) ^ payload.charCodeAt(i);
+      h = h >>> 0;
+    }
+    return 'local-' + h.toString(16).padStart(8, '0');
+  }
+
+  function makePortableSessionId(baseId, sessionStart) {
+    return String(baseId || 'session') + '-' + String(sessionStart || '');
+  }
+
+  function normalizePortableEntry(entry, index) {
+    if (!isPlainObject(entry)) {
+      return { ok: false, code: 'PORTABLE_LOG_ENTRY_INVALID', detail: 'entry[' + index + '] is not an object' };
+    }
+    if (!entry.ts || typeof entry.ts !== 'string') {
+      return { ok: false, code: 'PORTABLE_LOG_ENTRY_INVALID', detail: 'entry[' + index + '].ts missing' };
+    }
+    if (typeof entry.text !== 'string' || !entry.text.trim()) {
+      return { ok: false, code: 'PORTABLE_LOG_ENTRY_INVALID', detail: 'entry[' + index + '].text missing' };
+    }
+    return {
+      ok: true,
+      entry: {
+        ts: entry.ts,
+        text: entry.text,
+        type: entry.type || 'activity',
+        seal: entry.seal === undefined ? null : entry.seal
+      }
+    };
+  }
+
+  function normalizeRecoveryInfo(log) {
+    if (isPlainObject(log.recovery)) {
+      return {
+        ok: true,
+        recovery: {
+          profileName: log.recovery.profileName || null,
+          genesisHash: log.recovery.genesisHash || null,
+          attribution: log.recovery.attribution || 'self',
+          integrityWarning: !!log.recovery.integrityWarning
+        }
+      };
+    }
+
+    if (isPlainObject(log.profile)) {
+      return {
+        ok: true,
+        recovery: {
+          profileName: log.profile.id || log.profile.profileName || null,
+          genesisHash: log.profile.genesisHash || null,
+          attribution: log.profile.attribution || 'self',
+          integrityWarning: !!log.profile.integrityWarning
+        }
+      };
+    }
+
+    return { ok: false, code: 'PORTABLE_LOG_RECOVERY_REQUIRED', detail: 'recovery info missing' };
+  }
+
+  async function verifyPortableEntrySeal(entry) {
+    if (!entry.seal) {
+      return { ok: false, warningCode: 'PORTABLE_LOG_ENTRY_SEAL_MISSING' };
+    }
+
+    var portableSeal = computePortableEntrySeal(entry);
+    if (portableSeal === entry.seal) {
+      return { ok: true, algorithm: 'djb2' };
+    }
+
+    if (/^[0-9a-f]{64}$/i.test(entry.seal)) {
+      var shaResult = await FerrosCore.hashWithAlgorithm(buildPortableEntryPayload(entry), 'sha256');
+      if (shaResult.ok && shaResult.hash === entry.seal) {
+        return { ok: true, algorithm: 'sha256' };
+      }
+      if (!shaResult.ok) {
+        return { ok: false, warningCode: shaResult.code };
+      }
+    }
+
+    return { ok: false, warningCode: 'PORTABLE_LOG_ENTRY_SEAL_MISMATCH' };
   }
 
   function normalizeLoadedProfile(profile, sealChain) {
@@ -539,6 +647,382 @@
       exportedAt: new Date().toISOString(),
       profile: profile,
       sealChain: sealChain
+    };
+  };
+
+  // ── createAliasSession ────────────────────────────────────────────────────
+  // Creates a canonical alias session object for sessionStorage-backed flows.
+  FerrosCore.createAliasSession = function createAliasSession(alias, options) {
+    if (!isPlainObject(alias) || !alias.id || !alias.name) {
+      return { ok: false, code: 'ALIAS_SESSION_ALIAS_REQUIRED', detail: 'alias.id and alias.name are required' };
+    }
+
+    var opts = options || {};
+    var sessionStart = opts.sessionStart || new Date().toISOString();
+    var session = {
+      sessionId: makePortableSessionId(alias.id, sessionStart),
+      alias: {
+        id: alias.id,
+        name: alias.name,
+        icon: alias.icon || '',
+        class: alias.aliasClass || alias.class || '',
+        attribution: 'unlinked'
+      },
+      sessionStart: sessionStart,
+      entries: []
+    };
+
+    return { ok: true, code: null, session: session };
+  };
+
+  // ── appendAliasSessionEntry ───────────────────────────────────────────────
+  // Appends a portable-log entry to an alias session.
+  FerrosCore.appendAliasSessionEntry = function appendAliasSessionEntry(session, entry) {
+    if (!isPlainObject(session) || !Array.isArray(session.entries)) {
+      return { ok: false, code: 'ALIAS_SESSION_REQUIRED', detail: 'session.entries missing' };
+    }
+
+    var normalized = normalizePortableEntry(entry, session.entries.length);
+    if (!normalized.ok) return normalized;
+
+    session.entries.push({
+      ts: normalized.entry.ts,
+      text: normalized.entry.text,
+      type: normalized.entry.type,
+      seal: null
+    });
+
+    return { ok: true, code: null, session: session };
+  };
+
+  // ── serializeAliasSessionLog ──────────────────────────────────────────────
+  // Builds the canonical .ferros-log alias envelope with sessionId and seals.
+  FerrosCore.serializeAliasSessionLog = function serializeAliasSessionLog(session, options) {
+    if (!isPlainObject(session) || !isPlainObject(session.alias) || !Array.isArray(session.entries)) {
+      return { ok: false, code: 'ALIAS_SESSION_REQUIRED', detail: 'alias session missing alias or entries' };
+    }
+
+    if (!session.sessionId) {
+      return { ok: false, code: 'PORTABLE_LOG_SESSION_ID_REQUIRED', detail: 'alias session missing sessionId' };
+    }
+
+    var opts = options || {};
+    var entries = [];
+    for (var i = 0; i < session.entries.length; i++) {
+      var normalized = normalizePortableEntry(session.entries[i], i);
+      if (!normalized.ok) return normalized;
+      entries.push({
+        ts: normalized.entry.ts,
+        text: normalized.entry.text,
+        type: normalized.entry.type,
+        seal: computePortableEntrySeal(normalized.entry)
+      });
+    }
+
+    return {
+      ok: true,
+      code: null,
+      log: {
+        ferrosVersion: FerrosCore.VERSION,
+        logType: 'alias-session',
+        sessionId: session.sessionId,
+        alias: {
+          id: session.alias.id,
+          name: session.alias.name,
+          icon: session.alias.icon || '',
+          class: session.alias.class || '',
+          attribution: 'unlinked'
+        },
+        sessionStart: session.sessionStart,
+        sessionEnd: opts.sessionEnd || new Date().toISOString(),
+        entries: entries,
+        entryCount: entries.length,
+        claimInstructions: 'Import this file on your home FERROS instance to claim these logs and merge them into your profile. Unlinked until claimed.'
+      }
+    };
+  };
+
+  // ── serializeRecoverySessionLog ───────────────────────────────────────────
+  // Builds the canonical .ferros-log recovery envelope with sessionId and seals.
+  FerrosCore.serializeRecoverySessionLog = function serializeRecoverySessionLog(session, options) {
+    if (!isPlainObject(session) || !isPlainObject(session.recovery) || !Array.isArray(session.entries)) {
+      return { ok: false, code: 'RECOVERY_SESSION_REQUIRED', detail: 'recovery session missing recovery or entries' };
+    }
+
+    if (!session.sessionId) {
+      return { ok: false, code: 'PORTABLE_LOG_SESSION_ID_REQUIRED', detail: 'recovery session missing sessionId' };
+    }
+
+    var opts = options || {};
+    var entries = [];
+    for (var i = 0; i < session.entries.length; i++) {
+      var normalized = normalizePortableEntry(session.entries[i], i);
+      if (!normalized.ok) return normalized;
+      entries.push({
+        ts: normalized.entry.ts,
+        text: normalized.entry.text,
+        type: normalized.entry.type,
+        seal: computePortableEntrySeal(normalized.entry)
+      });
+    }
+
+    return {
+      ok: true,
+      code: null,
+      log: {
+        ferrosVersion: FerrosCore.VERSION,
+        logType: 'recovery-session',
+        sessionId: session.sessionId,
+        recovery: {
+          profileName: session.recovery.profileName || null,
+          genesisHash: session.recovery.genesisHash || null,
+          attribution: 'self',
+          integrityWarning: !!session.recovery.integrityWarning
+        },
+        sessionStart: session.sessionStart,
+        sessionEnd: opts.sessionEnd || new Date().toISOString(),
+        entries: entries,
+        entryCount: entries.length,
+        claimInstructions: 'Import this file on your home FERROS instance to claim these logs and merge them into your profile.'
+      }
+    };
+  };
+
+  // ── validatePortableLog ───────────────────────────────────────────────────
+  // Validates and normalizes canonical .ferros-log envelopes for claim flows.
+  FerrosCore.validatePortableLog = async function validatePortableLog(raw) {
+    if (!isPlainObject(raw)) {
+      return { ok: false, code: 'PORTABLE_LOG_REQUIRED', detail: 'portable log must be an object' };
+    }
+
+    if (!raw.ferrosVersion || typeof raw.ferrosVersion !== 'string') {
+      return { ok: false, code: 'PORTABLE_LOG_VERSION_REQUIRED', detail: 'ferrosVersion missing' };
+    }
+
+    if (raw.logType !== 'alias-session' && raw.logType !== 'recovery-session') {
+      return { ok: false, code: 'PORTABLE_LOG_TYPE_INVALID', detail: 'logType must be alias-session or recovery-session' };
+    }
+
+    if (!raw.sessionId || typeof raw.sessionId !== 'string') {
+      return { ok: false, code: 'PORTABLE_LOG_SESSION_ID_REQUIRED', detail: 'sessionId missing' };
+    }
+
+    if (!Array.isArray(raw.entries)) {
+      return { ok: false, code: 'PORTABLE_LOG_ENTRIES_REQUIRED', detail: 'entries array missing' };
+    }
+
+    if (typeof raw.entryCount !== 'number' || raw.entryCount < 0) {
+      return { ok: false, code: 'PORTABLE_LOG_ENTRY_COUNT_INVALID', detail: 'entryCount missing or invalid' };
+    }
+
+    if (raw.entryCount !== raw.entries.length) {
+      return { ok: false, code: 'PORTABLE_LOG_ENTRY_COUNT_MISMATCH', detail: 'entryCount=' + raw.entryCount + ' entries.length=' + raw.entries.length };
+    }
+
+    var normalizedLog = {
+      ferrosVersion: raw.ferrosVersion,
+      logType: raw.logType,
+      sessionId: raw.sessionId,
+      sessionStart: raw.sessionStart || null,
+      sessionEnd: raw.sessionEnd || null,
+      entries: [],
+      entryCount: raw.entryCount,
+      claimInstructions: raw.claimInstructions || ''
+    };
+
+    if (raw.logType === 'alias-session') {
+      if (!isPlainObject(raw.alias) || !raw.alias.id || !raw.alias.name) {
+        return { ok: false, code: 'PORTABLE_LOG_ALIAS_REQUIRED', detail: 'alias identity missing' };
+      }
+      normalizedLog.alias = {
+        id: raw.alias.id,
+        name: raw.alias.name,
+        icon: raw.alias.icon || '',
+        class: raw.alias.class || '',
+        attribution: raw.alias.attribution || 'unlinked'
+      };
+    } else {
+      var recoveryInfo = normalizeRecoveryInfo(raw);
+      if (!recoveryInfo.ok) return recoveryInfo;
+      if (!recoveryInfo.recovery.genesisHash) {
+        return { ok: false, code: 'PORTABLE_LOG_RECOVERY_REQUIRED', detail: 'recovery.genesisHash missing' };
+      }
+      normalizedLog.recovery = recoveryInfo.recovery;
+    }
+
+    var warnings = [];
+    var integrityWarning = !!(normalizedLog.recovery && normalizedLog.recovery.integrityWarning);
+
+    for (var i = 0; i < raw.entries.length; i++) {
+      var normalizedEntry = normalizePortableEntry(raw.entries[i], i);
+      if (!normalizedEntry.ok) return normalizedEntry;
+      normalizedLog.entries.push(normalizedEntry.entry);
+
+      var sealCheck = await verifyPortableEntrySeal(normalizedEntry.entry);
+      if (!sealCheck.ok) {
+        integrityWarning = true;
+        warnings.push({ index: i, code: sealCheck.warningCode });
+      }
+    }
+
+    if (normalizedLog.recovery) {
+      normalizedLog.recovery.integrityWarning = integrityWarning;
+    }
+
+    return {
+      ok: true,
+      code: null,
+      log: normalizedLog,
+      sessionId: normalizedLog.sessionId,
+      entryCount: normalizedLog.entries.length,
+      xpGain: normalizedLog.entries.length * PORTABLE_LOG_XP_PER_ENTRY,
+      integrityWarning: integrityWarning,
+      warnings: warnings
+    };
+  };
+
+  // ── applyPortableLogClaim ─────────────────────────────────────────────────
+  // Canonical claim path: validate, dedupe, merge, seal, audit, and optionally persist.
+  FerrosCore.applyPortableLogClaim = async function applyPortableLogClaim(profile, rawLog, options) {
+    if (!isPlainObject(profile)) {
+      return { ok: false, code: 'PROFILE_REQUIRED', detail: 'profile must be an object' };
+    }
+
+    var opts = options || {};
+    if (opts.persist) {
+      if (!opts.flags) {
+        return { ok: false, code: 'DURABLE_WRITE_FLAGS_REQUIRED' };
+      }
+      if (!FerrosCore.canMutateDurableState(opts.flags)) {
+        return { ok: false, code: 'DURABLE_WRITE_FORBIDDEN' };
+      }
+    }
+
+    var validated = await FerrosCore.validatePortableLog(rawLog);
+    if (!validated.ok) return validated;
+
+    var log = validated.log;
+    var isRecovery = log.logType === 'recovery-session';
+    var mergedProfile = cloneJson(profile);
+    normalizeLoadedProfile(mergedProfile, Array.isArray(mergedProfile.sealChain) ? mergedProfile.sealChain : []);
+
+    var claimed = Array.isArray(mergedProfile.meta.claimedAliasSessions)
+      ? mergedProfile.meta.claimedAliasSessions.slice()
+      : [];
+    if (claimed.indexOf(log.sessionId) !== -1) {
+      return { ok: false, code: 'CLAIM_DUPLICATE_SESSION', detail: 'sessionId already claimed: ' + log.sessionId };
+    }
+
+    var now = opts.now || new Date().toISOString();
+    var genesisHash = mergedProfile.meta && mergedProfile.meta.genesisHash ? mergedProfile.meta.genesisHash : null;
+    var summaryText;
+    var mergedEntries = [];
+
+    if (isRecovery) {
+      var recoveryName = log.recovery.profileName || 'Recovery';
+      summaryText = 'Claimed ' + log.entries.length + ' recovery log ' + (log.entries.length === 1 ? 'entry' : 'entries') + ' from ' + recoveryName + '.';
+      if (validated.integrityWarning) summaryText += ' Integrity warning recorded.';
+      for (var i = 0; i < log.entries.length; i++) {
+        mergedEntries.push({
+          ts: log.entries[i].ts || now,
+          text: log.entries[i].text,
+          type: 'claimed-recovery',
+          linkedTo: genesisHash,
+          claimId: log.sessionId,
+          sealBroken: !!validated.integrityWarning
+        });
+      }
+    } else {
+      summaryText = 'Claimed ' + log.entries.length + ' alias log ' + (log.entries.length === 1 ? 'entry' : 'entries') + ' from ' + log.alias.name + ' (' + log.alias.id + ').';
+      if (validated.integrityWarning) summaryText += ' Integrity warning recorded.';
+      for (var j = 0; j < log.entries.length; j++) {
+        mergedEntries.push({
+          ts: log.entries[j].ts || now,
+          text: log.entries[j].text,
+          type: 'claimed-alias',
+          aliasId: log.alias.id,
+          aliasName: log.alias.name,
+          linkedTo: genesisHash,
+          claimId: log.sessionId,
+          sealBroken: !!validated.integrityWarning
+        });
+      }
+    }
+
+    var summaryEntry = {
+      ts: now,
+      text: summaryText,
+      type: 'claim-event',
+      aliasId: isRecovery ? 'recovery' : log.alias.id,
+      aliasName: isRecovery ? (log.recovery.profileName || 'Recovery') : log.alias.name,
+      claimId: log.sessionId
+    };
+
+    mergedProfile.journal = [summaryEntry].concat(mergedEntries).concat(Array.isArray(mergedProfile.journal) ? mergedProfile.journal : []);
+    mergedProfile.meta.xp = (mergedProfile.meta.xp || 0) + validated.xpGain;
+    mergedProfile.meta.claimedAliasSessions = claimed.concat([log.sessionId]);
+    mergedProfile.meta.sealBroken = !!mergedProfile.meta.sealBroken || !!validated.integrityWarning;
+
+    if (Array.isArray(mergedProfile.achievements)) {
+      var claimAchievementId = isRecovery ? 'claimed-recovery' : 'claimed-alias';
+      var hasClaimAchievement = mergedProfile.achievements.some(function(achievement) {
+        return achievement && achievement.id === claimAchievementId;
+      });
+      if (!hasClaimAchievement) {
+        mergedProfile.achievements.push(isRecovery
+          ? { id: 'claimed-recovery', name: 'Recovery Claimed', desc: 'Claimed a recovery session log', icon: '🔑', unlocked: true, unlockedAt: now }
+          : { id: 'claimed-alias', name: 'Alias Claimed', desc: 'Claimed an alias session log', icon: '📎', unlocked: true, unlockedAt: now });
+      }
+    }
+
+    var claimTaskData = isRecovery
+      ? { claimId: log.sessionId, count: log.entries.length, aliasId: log.recovery.genesisHash }
+      : { claimId: log.sessionId, count: log.entries.length, aliasId: log.alias.id };
+    var previousSeal = mergedProfile.sealChain.length ? mergedProfile.sealChain[mergedProfile.sealChain.length - 1].seal : null;
+    var claimSealEntry = await FerrosCore.createSealEntry(isRecovery ? 'recovery-claim' : 'alias-claim', claimTaskData, previousSeal);
+    mergedProfile.sealChain.push(claimSealEntry);
+
+    var sealAudit = FerrosCore.pushAuditEntry(mergedProfile, 'seal-added', {
+      taskId: claimSealEntry.taskId,
+      seal: claimSealEntry.seal
+    });
+    if (!sealAudit.ok) return sealAudit;
+
+    var claimAudit = FerrosCore.pushAuditEntry(mergedProfile, isRecovery ? 'recovery-claimed' : 'alias-claimed', {
+      claimId: log.sessionId,
+      entryCount: log.entries.length,
+      xpGain: validated.xpGain,
+      integrityWarning: !!validated.integrityWarning
+    });
+    if (!claimAudit.ok) return claimAudit;
+
+    var saveResult = { ok: true, profile: mergedProfile, sealChain: mergedProfile.sealChain };
+    if (opts.persist) {
+      saveResult = FerrosCore.saveProfile(mergedProfile, {
+        flags: opts.flags,
+        sealChain: mergedProfile.sealChain,
+        auditDetail: {
+          sealCount: mergedProfile.sealChain.length,
+          reason: 'portable-log-claim',
+          claimId: log.sessionId
+        }
+      });
+      if (!saveResult.ok) return saveResult;
+      mergedProfile = saveResult.profile;
+    }
+
+    return {
+      ok: true,
+      code: null,
+      profile: mergedProfile,
+      sealChain: saveResult.sealChain || mergedProfile.sealChain,
+      sessionId: log.sessionId,
+      claimId: log.sessionId,
+      logType: log.logType,
+      xpGain: validated.xpGain,
+      integrityWarning: !!validated.integrityWarning,
+      warnings: validated.warnings,
+      auditDetail: claimAudit.entry ? claimAudit.entry.detail : null
     };
   };
 

@@ -1,0 +1,151 @@
+{
+  "$comment": "Expected profile shape after claiming schemas/fixtures/alias-session-log.json into a full-profile-stage3 baseline.",
+  "meta": {
+    "version": "1.0",
+    "created": "2026-04-10T09:00:00.000Z",
+    "lastModified": "2026-04-10T15:31:00.000Z",
+    "assistanceLevel": 1,
+    "genesisHash": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    "currentSeal": "c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2",
+    "sealCount": 4,
+    "stage": 3,
+    "anchoredToLedger": false,
+    "ledgerTxHash": null,
+    "schemaVersion": 1,
+    "claimedAliasSessions": ["tesla-2026-04-10T14:00:00.000Z"],
+    "xp": 45,
+    "sealBroken": false,
+    "revision": 1
+  },
+  "identity": {
+    "name": "Test Pioneer",
+    "avatar": "shield",
+    "class": "Architect",
+    "streamAffinity": "A",
+    "title": "Newcomer",
+    "joinedDate": "2026-04-10T09:00:00.000Z",
+    "streakDays": 1,
+    "longestStreak": 1,
+    "archetype": "structured-research",
+    "wakeTime": "07:00",
+    "sleepTime": "23:00",
+    "categoryInterests": ["knowledge", "craft"]
+  },
+  "attributes": {
+    "Discipline": { "level": 1, "xp": 50, "xpToNext": 100, "color": "amber", "icon": "💪" },
+    "Knowledge": { "level": 2, "xp": 10, "xpToNext": 200, "color": "blue", "icon": "📘" },
+    "Craft": { "level": 1, "xp": 0, "xpToNext": 100, "color": "cyan", "icon": "🔨" },
+    "Governance": { "level": 1, "xp": 0, "xpToNext": 100, "color": "purple", "icon": "⚖️" },
+    "Wellness": { "level": 1, "xp": 0, "xpToNext": 100, "color": "green", "icon": "🌿" },
+    "Community": { "level": 1, "xp": 0, "xpToNext": 100, "color": "pink", "icon": "🤝" }
+  },
+  "skills": { "A": [], "B": [], "C": [] },
+  "achievements": [
+    { "id": "genesis_pioneer", "name": "Genesis Pioneer", "desc": "Became a FERROS pioneer", "icon": "🏆", "unlocked": true, "unlockedAt": "2026-04-10T09:05:00.000Z" },
+    { "id": "first_protocol", "name": "First Protocol", "desc": "Completed your first protocol", "icon": "📋", "unlocked": true, "unlockedAt": "2026-04-10T09:12:00.000Z" },
+    { "id": "lvl5_disc", "name": "Disciplined", "desc": "Reach Discipline Level 5", "icon": "💪", "unlocked": false },
+    { "id": "lvl5_know", "name": "Scholar", "desc": "Reach Knowledge Level 5", "icon": "📘", "unlocked": false },
+    { "id": "seal_10", "name": "Chain Builder", "desc": "Create 10 seals", "icon": "🔗", "unlocked": false },
+    { "id": "streak_7", "name": "Week Warrior", "desc": "7-day streak", "icon": "🔥", "unlocked": false },
+    { "id": "all_streams", "name": "Polymath", "desc": "Have skills in all 3 streams", "icon": "🌟", "unlocked": false },
+    { "id": "claimed-alias", "name": "Alias Claimed", "desc": "Claimed an alias session log", "icon": "📎", "unlocked": true, "unlockedAt": "2026-04-10T15:31:00.000Z" }
+  ],
+  "journal": [
+    {
+      "ts": "2026-04-10T15:31:00.000Z",
+      "text": "Claimed 3 alias log entries from Nikola Tesla (tesla).",
+      "type": "claim-event",
+      "aliasId": "tesla",
+      "aliasName": "Nikola Tesla",
+      "claimId": "tesla-2026-04-10T14:00:00.000Z"
+    },
+    {
+      "ts": "2026-04-10T14:05:00.000Z",
+      "text": "Started deep work session on circuit design",
+      "type": "claimed-alias",
+      "aliasId": "tesla",
+      "aliasName": "Nikola Tesla",
+      "linkedTo": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "claimId": "tesla-2026-04-10T14:00:00.000Z",
+      "sealBroken": false
+    },
+    {
+      "ts": "2026-04-10T14:45:00.000Z",
+      "text": "Completed prototype wiring diagram",
+      "type": "claimed-alias",
+      "aliasId": "tesla",
+      "aliasName": "Nikola Tesla",
+      "linkedTo": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "claimId": "tesla-2026-04-10T14:00:00.000Z",
+      "sealBroken": false
+    },
+    {
+      "ts": "2026-04-10T15:20:00.000Z",
+      "text": "Reviewed calculations and filed notes",
+      "type": "claimed-alias",
+      "aliasId": "tesla",
+      "aliasName": "Nikola Tesla",
+      "linkedTo": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "claimId": "tesla-2026-04-10T14:00:00.000Z",
+      "sealBroken": false
+    },
+    { "ts": "2026-04-10T09:05:00.000Z", "text": "Profile created — Genesis Pioneer unlocked", "type": "system" },
+    { "ts": "2026-04-10T09:12:00.000Z", "text": "First protocol sealed — Discipline +50 XP", "type": "system" }
+  ],
+  "credentials": [],
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "previousSeal": "genesis",
+      "timestamp": "2026-04-10T09:05:00.000Z",
+      "data": { "event": "profile_created", "name": "Test Pioneer" },
+      "hashAlgorithm": "sha256",
+      "nonce": 3141592653
+    },
+    {
+      "taskId": "character_creation",
+      "seal": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+      "previousSeal": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "timestamp": "2026-04-10T09:10:00.000Z",
+      "data": { "event": "character_sealed", "class": "Architect", "stream": "A" },
+      "hashAlgorithm": "sha256",
+      "nonce": 2718281828
+    },
+    {
+      "taskId": "first_protocol",
+      "seal": "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
+      "previousSeal": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+      "timestamp": "2026-04-10T09:12:00.000Z",
+      "data": { "event": "protocol_completed", "xpAwarded": 100, "attribute": "Discipline" },
+      "hashAlgorithm": "sha256",
+      "nonce": 1618033988
+    },
+    {
+      "taskId": "alias-claim",
+      "seal": "c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2",
+      "previousSeal": "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
+      "timestamp": "2026-04-10T15:31:00.000Z",
+      "data": { "claimId": "tesla-2026-04-10T14:00:00.000Z", "count": 3, "aliasId": "tesla" },
+      "hashAlgorithm": "djb2",
+      "nonce": 42424242
+    }
+  ],
+  "auditTrail": [
+    {
+      "ts": "2026-04-10T15:31:00.000Z",
+      "action": "seal-added",
+      "detail": { "taskId": "alias-claim", "seal": "c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2" }
+    },
+    {
+      "ts": "2026-04-10T15:31:00.000Z",
+      "action": "alias-claimed",
+      "detail": { "claimId": "tesla-2026-04-10T14:00:00.000Z", "entryCount": 3, "xpGain": 45, "integrityWarning": false }
+    },
+    {
+      "ts": "2026-04-10T15:31:00.000Z",
+      "action": "profile-saved",
+      "detail": { "sealCount": 4, "reason": "portable-log-claim", "claimId": "tesla-2026-04-10T14:00:00.000Z" }
+    }
+  ]
+}

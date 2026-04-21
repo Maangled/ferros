@@ -510,7 +510,15 @@ runTest(g2, 'recovery-session-log validates against SCHEMA_AUDIT_RECORD', functi
   return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
 });
 
-// 2o: session-mode-invariants — structural presence check (C1 documentation fixture)
+// 2o: claimed-alias-merge-result → SCHEMA_PROFILE (C2/C9)
+runTest(g2, 'claimed-alias-merge-result validates against SCHEMA_PROFILE', function() {
+  var data = stripFixtureMeta(FIXTURE_CLAIMED_ALIAS_MERGE_RESULT);
+  var r = validate(data, SCHEMA_PROFILE);
+  if (r.valid) return { pass: true, detail: 'post-claim profile fixture validates — xp, claimedAliasSessions, auditTrail, and claim journal entries are schema-complete' };
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+// 2p: session-mode-invariants — structural presence check (C1 documentation fixture)
 // This fixture documents behavioral invariants, not a schema instance of SCHEMA_IDENTITY.
 // H3 owns runtime C8 enforcement; H1 confirms structural presence of expected invariant keys.
 runTest(g2, 'session-mode-invariants — structural presence check (C1 documentation fixture)', function() {
@@ -575,19 +583,17 @@ runTest(g3, 'SCHEMA_PROFILE rejects corrupted-export.profile (meta.version missi
   return { pass: false, error: 'schema incorrectly accepted profile with missing meta.version — review profile.schema.json $defs.meta.required' };
 });
 
-// 3d: invalid-duplicate-alias-claim → SCHEMA_AUDIT_RECORD rejects (sessionId is an unexpected field)
-// Primary invalidity is semantic (duplicate session detection, CLAIM_DUPLICATE_SESSION owned by H2).
-// Schema also rejects because sessionId is not a declared property and audit-record has additionalProperties:false.
-runTest(g3, 'SCHEMA_AUDIT_RECORD rejects invalid-duplicate-alias-claim (unexpected sessionId field)', function() {
-  var data = stripFixtureMeta(FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM);
+// 3d: invalid-missing-session-id-alias-log → SCHEMA_AUDIT_RECORD rejects (sessionId required)
+runTest(g3, 'SCHEMA_AUDIT_RECORD rejects invalid-missing-session-id-alias-log (sessionId required)', function() {
+  var data = stripFixtureMeta(FIXTURE_INVALID_MISSING_SESSION_ID_ALIAS_LOG);
   var r = validate(data, SCHEMA_AUDIT_RECORD);
   if (!r.valid) {
     return {
       pass: true,
-      detail: 'correctly rejected (additionalProperties: sessionId not declared in audit-record.schema.json). Primary invalidity is semantic — CLAIM_DUPLICATE_SESSION detection owned by H2 import logic. Errors: ' + r.errors.slice(0,2).join(' | ')
+      detail: 'correctly rejected. sessionId is now canonical and required by audit-record.schema.json. Errors: ' + r.errors.slice(0,2).join(' | ')
     };
   }
-  return { pass: false, error: 'SCHEMA_AUDIT_RECORD should reject sessionId as an undeclared field (additionalProperties:false) — investigate audit-record.schema.json' };
+  return { pass: false, error: 'SCHEMA_AUDIT_RECORD should reject portable logs missing sessionId — investigate audit-record.schema.json required fields' };
 });
 
 /* ==========================================================================
@@ -615,6 +621,16 @@ runTest(g4, 'SCHEMA_PROFILE accepts invalid-split-save-state (sealCount mismatch
     return { pass: true, detail: 'PASS (expected): schema validates structure only. sealCount=3 but sealChain has 1 entry — mismatch is runtime/semantic, not schema-detectable. H2 owns STORAGE_SEAL_COUNT_MISMATCH.' };
   }
   return { pass: false, error: 'unexpected schema rejection — sealCount mismatch should be semantic only: ' + r.errors.slice(0,3).join(' | ') };
+});
+
+// 4c: invalid-duplicate-alias-claim — schema validates; duplicate session detection is semantic (H2/H4 own)
+runTest(g4, 'SCHEMA_AUDIT_RECORD accepts invalid-duplicate-alias-claim (duplicate session is semantic, H2/H4 own)', function() {
+  var data = stripFixtureMeta(FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM);
+  var r = validate(data, SCHEMA_AUDIT_RECORD);
+  if (r.valid) {
+    return { pass: true, detail: 'PASS (expected): schema validates portable-log shape; duplicate session rejection is owned by FerrosCore claim logic and H2/H4.' };
+  }
+  return { pass: false, error: 'unexpected schema rejection — duplicate session should now be semantic only: ' + r.errors.slice(0,3).join(' | ') };
 });
 
 /* ==========================================================================

@@ -31,7 +31,7 @@
 </head>
 <body>
 <h1>H5 — FERROS Acceptance Harness</h1>
-<div class="meta">H5 — Primary black-box acceptance harness &nbsp;|&nbsp; Proves: V8, V1, V3a &nbsp;|&nbsp; Journey 1: acceptTrade → stage0 → stage1 → export → import-validate &nbsp;|&nbsp; Owns end-to-end journey validation; UI-layer checks are H8 &nbsp;|&nbsp; Run on file:// in Chrome</div>
+<div class="meta">H5 — Primary black-box acceptance harness &nbsp;|&nbsp; Proves: V8, V1, V3a, PR10 &nbsp;|&nbsp; Journey 1: acceptTrade → stage0 → stage1 → export → import-validate → alias export → claim &nbsp;|&nbsp; Owns end-to-end journey validation; UI-layer checks are H8 &nbsp;|&nbsp; Run on file:// in Chrome</div>
 <div id="groups"></div>
 <div class="summary-bar" id="summary-bar"></div>
 <div id="result-block"><pre id="result-json">running...</pre></div>
@@ -42,7 +42,7 @@
    H5 — FERROS ACCEPTANCE HARNESS
    End-to-end Journey 1 proof via direct contentWindow calls.
    Proves V8 (Journey 1 completable), V1 (profile created and seals added),
-   and V3a (valid export roundtrip).
+  V3a (valid export roundtrip), and PR10 (alias export/claim via FerrosCore).
 
    Journey Steps:
      1. Clear localStorage, load personal-profile.html#testmode in hidden iframe
@@ -55,6 +55,9 @@
     8. Call exportProfile() and capture the real blob envelope payload
      9. ferrosValidateImport(envelope) → ok:true
     10. Identity name from import matches original
+    11. Start alias mode, log alias entries, and export a real .ferros-log blob
+    12. Exit alias mode and claim the captured alias log back into the profile
+    13. Assert XP, claim journal rows, alias-claim seal, and persisted audit trail
    ========================================================================== */
 
 var IMPORT_CURRENT_VERSION = FerrosCore.VERSION;
@@ -131,6 +134,57 @@ function waitFor(predicate, timeoutMs, desc) {
   });
 }
 
+function iframeDocument(iframe) {
+  return iframe.contentDocument || iframe.contentWindow.document;
+}
+
+function captureDownload(iw, trigger, desc) {
+  return new Promise(function(resolve, reject) {
+    var capturedText = '';
+    var originalCreate = iw.URL.createObjectURL.bind(iw.URL);
+    var originalRevoke = iw.URL.revokeObjectURL.bind(iw.URL);
+    var originalClick = (iw.HTMLAnchorElement && iw.HTMLAnchorElement.prototype) ? iw.HTMLAnchorElement.prototype.click : null;
+
+    function restore() {
+      iw.URL.createObjectURL = originalCreate;
+      iw.URL.revokeObjectURL = originalRevoke;
+      if (originalClick) iw.HTMLAnchorElement.prototype.click = originalClick;
+    }
+
+    iw.URL.createObjectURL = function(blob) {
+      if (blob && typeof blob.text === 'function') {
+        blob.text().then(function(t) { capturedText = t; }).catch(function(){});
+      }
+      return 'blob:h5-captured';
+    };
+    iw.URL.revokeObjectURL = function() {};
+    if (originalClick) iw.HTMLAnchorElement.prototype.click = function() {};
+
+    try {
+      trigger();
+    } catch (e) {
+      restore();
+      reject(e);
+      return;
+    }
+
+    waitFor(function() { return capturedText.length > 0; }, 3000, desc).then(function() {
+      restore();
+      resolve(capturedText);
+    }).catch(function(err) {
+      restore();
+      reject(err);
+    });
+  });
+}
+
+function writeJournalInput(iframe, text) {
+  var doc = iframeDocument(iframe);
+  var input = doc.getElementById('journal-input');
+  if (!input) throw new Error('journal-input not found');
+  input.value = text;
+}
+
 /* ── RESULT TRACKING ── */
 var allResults = [];
 
@@ -152,7 +206,7 @@ function runResults() {
     '<span>TOTAL: <b>' + allResults.length + '</b></span>';
   document.getElementById('result-json').textContent = JSON.stringify({
     harness: 'H5',
-    proves: ['V8','V1','V3a'],
+    proves: ['V8','V1','V3a','PR10'],
     status: overall,
     pass: pass, warn: warn, fail: fail, total: allResults.length
   }, null, 2);
@@ -256,7 +310,7 @@ loadIframe(PROFILE_SRC).then(function(iframe) {
     iw.selectStream('A');
 
     /* Set the name input value — _doCompleteStage1 reads this from DOM */
-    var nameInput = (iframe.contentDocument || iframe.contentWindow.document).getElementById('char-name-input');
+    var nameInput = iframeDocument(iframe).getElementById('char-name-input');
     if (nameInput) nameInput.value = TEST_NAME;
 
     return iw._doCompleteStage1().then(function() {
@@ -320,34 +374,7 @@ loadIframe(PROFILE_SRC).then(function(iframe) {
          ==================================================================== */
       var gD = makeGroup('Group D — Export Envelope Round-Trip (V3a)');
       var envelope = null;
-      var capturedText = '';
-      var originalCreate = iw.URL.createObjectURL.bind(iw.URL);
-      var originalRevoke = iw.URL.revokeObjectURL.bind(iw.URL);
-      var originalClick = (iw.HTMLAnchorElement && iw.HTMLAnchorElement.prototype) ? iw.HTMLAnchorElement.prototype.click : null;
-
-      iw.URL.createObjectURL = function(blob) {
-        if (blob && typeof blob.text === 'function') {
-          blob.text().then(function(t) { capturedText = t; }).catch(function(){});
-        }
-        return 'blob:h5-captured';
-      };
-      iw.URL.revokeObjectURL = function() {};
-      if (originalClick) iw.HTMLAnchorElement.prototype.click = function() {};
-
-      try {
-        iw.exportProfile();
-      } catch (e) {
-        allResults.push(test(gD, 'D-0: exportProfile() invoked', function() {
-          return { pass: false, error: 'exportProfile() threw: ' + e.message };
-        }));
-        iw.URL.createObjectURL = originalCreate;
-        iw.URL.revokeObjectURL = originalRevoke;
-        if (originalClick) iw.HTMLAnchorElement.prototype.click = originalClick;
-        runResults();
-        return;
-      }
-
-      return waitFor(function(){ return capturedText.length > 0; }, 3000, 'captured export blob').then(function() {
+      return captureDownload(iw, function() { iw.exportProfile(); }, 'captured export blob').then(function(capturedText) {
         allResults.push(test(gD, 'D-0: exportProfile() produced downloadable JSON', function() {
           return { pass: true, detail: 'captured ' + capturedText.length + ' bytes from export blob' };
         }));
@@ -412,17 +439,151 @@ loadIframe(PROFILE_SRC).then(function(iframe) {
             return { pass: false, error: 'orig=' + orig + ' exported=' + exp };
           }));
 
-          runResults();
+          var gE = makeGroup('Group E — Alias Export → Claim (PR10)');
+          var aliasLog = null;
+          var aliasEntryTexts = [
+            'Started deep work session on circuit design',
+            'Completed prototype wiring diagram',
+            'Reviewed calculations and filed notes'
+          ];
+          var preClaimXp = 0;
+          var preClaimSealCount = 0;
+          var preClaimAuditCount = 0;
+
+          iw.useAlias('tesla');
+
+          return waitFor(function() {
+            return iframeDocument(iframe).body.classList.contains('alias-mode') && !!iw.sessionStorage.getItem('ferros_alias_session');
+          }, 3000, 'alias mode active').then(function() {
+            allResults.push(test(gE, 'E-1: useAlias("tesla") creates canonical alias session storage', function() {
+              var rawSession = iw.sessionStorage.getItem('ferros_alias_session');
+              if (!rawSession) return { pass: false, error: 'ferros_alias_session missing from sessionStorage' };
+              var parsed = JSON.parse(rawSession);
+              if (iframeDocument(iframe).body.classList.contains('alias-mode') && parsed && parsed.alias && parsed.alias.id === 'tesla' && Array.isArray(parsed.entries) && parsed.entries.length === 0) {
+                return { pass: true, detail: 'sessionId=' + parsed.sessionId };
+              }
+              return { pass: false, error: rawSession };
+            }));
+
+            for (var entryIndex = 0; entryIndex < aliasEntryTexts.length; entryIndex++) {
+              writeJournalInput(iframe, aliasEntryTexts[entryIndex]);
+              iw.addJournalEntry();
+            }
+
+            allResults.push(test(gE, 'E-2: alias journal writes flow into sessionStorage-backed log', function() {
+              var rawSession = iw.sessionStorage.getItem('ferros_alias_session');
+              if (!rawSession) return { pass: false, error: 'ferros_alias_session missing after writes' };
+              var parsed = JSON.parse(rawSession);
+              if (parsed.entries.length === aliasEntryTexts.length) {
+                return { pass: true, detail: parsed.entries.length + ' alias entries recorded' };
+              }
+              return { pass: false, error: 'stored=' + parsed.entries.length + ' expected=' + aliasEntryTexts.length };
+            }));
+
+            return captureDownload(iw, function() { iw.downloadAliasLog(); }, 'captured alias export blob');
+          }).then(function(aliasCapturedText) {
+            allResults.push(test(gE, 'E-3: downloadAliasLog() produces a portable .ferros-log payload', function() {
+              return { pass: true, detail: 'captured ' + aliasCapturedText.length + ' bytes from alias export blob' };
+            }));
+
+            try {
+              aliasLog = JSON.parse(aliasCapturedText);
+            } catch (e) {
+              allResults.push(test(gE, 'E-3b: Captured alias export JSON parses', function() {
+                return { pass: false, error: 'Captured alias export is not valid JSON: ' + e.message };
+              }));
+              runResults();
+              return;
+            }
+
+            allResults.push(test(gE, 'E-4: alias export carries canonical portable-log fields', function() {
+              var hasEntries = Array.isArray(aliasLog.entries) && aliasLog.entries.length === aliasEntryTexts.length;
+              if (aliasLog.logType === 'alias-session' && typeof aliasLog.sessionId === 'string' && aliasLog.sessionId.length > 0 && hasEntries) {
+                return { pass: true, detail: aliasLog.sessionId };
+              }
+              return { pass: false, error: JSON.stringify({ logType: aliasLog.logType, sessionId: aliasLog.sessionId, entryCount: aliasLog.entries && aliasLog.entries.length }) };
+            }));
+
+            iw._doExitAlias();
+            return waitFor(function() {
+              return !iframeDocument(iframe).body.classList.contains('alias-mode') && iw.sessionStorage.getItem('ferros_alias_session') === null;
+            }, 3000, 'alias exit cleanup');
+          }).then(function() {
+            allResults.push(test(gE, 'E-5: exiting alias mode restores the saved full profile state', function() {
+              if (!iframeDocument(iframe).body.classList.contains('alias-mode') && iw.profile && iw.profile.meta && iw.profile.meta.stage >= 2) {
+                return { pass: true, detail: 'profile.meta.stage=' + iw.profile.meta.stage };
+              }
+              return { pass: false, error: 'body.alias-mode=' + iframeDocument(iframe).body.classList.contains('alias-mode') + ' stage=' + (iw.profile && iw.profile.meta && iw.profile.meta.stage) };
+            }));
+
+            preClaimXp = (iw.profile && iw.profile.meta && typeof iw.profile.meta.xp === 'number') ? iw.profile.meta.xp : 0;
+            preClaimSealCount = Array.isArray(iw.sealChain) ? iw.sealChain.length : 0;
+            preClaimAuditCount = Array.isArray(iw.profile && iw.profile.auditTrail) ? iw.profile.auditTrail.length : 0;
+            return iw.processAliasLogClaim(JSON.stringify(aliasLog));
+          }).then(function() {
+            allResults.push(test(gE, 'E-6: processAliasLogClaim() primes a pending canonical claim', function() {
+              var modalTitle = iframeDocument(iframe).getElementById('modal-title');
+              var modalBody = iframeDocument(iframe).getElementById('modal-body');
+              var titleText = modalTitle ? modalTitle.textContent : '';
+              var bodyText = modalBody ? modalBody.textContent : '';
+              if (titleText.indexOf('Claim Alias Log') !== -1 && bodyText.indexOf(aliasLog.alias.name) !== -1) {
+                return { pass: true, detail: titleText };
+              }
+              return { pass: false, error: 'modal did not show alias claim confirmation' };
+            }));
+
+            return iw.confirmAliasClaim();
+          }).then(function() {
+            return waitFor(function() {
+              return iw.profile && iw.profile.meta && Array.isArray(iw.profile.meta.claimedAliasSessions) && iw.profile.meta.claimedAliasSessions.indexOf(aliasLog.sessionId) !== -1;
+            }, 3000, 'alias claim persisted');
+          }).then(function() {
+            var expectedXp = preClaimXp + (aliasLog.entries.length * iw.FerrosCore.PORTABLE_LOG_XP_PER_ENTRY);
+            var journal = iw.profile && Array.isArray(iw.profile.journal) ? iw.profile.journal : [];
+            var claimEntries = journal.slice(1, 1 + aliasLog.entries.length);
+            var lastSeal = iw.sealChain[iw.sealChain.length - 1];
+            var auditTrail = iw.profile && Array.isArray(iw.profile.auditTrail) ? iw.profile.auditTrail : [];
+            var persistedProfile = JSON.parse(iw.localStorage.getItem('ferros_profile') || 'null');
+            var persistedAudit = persistedProfile && Array.isArray(persistedProfile.auditTrail) ? persistedProfile.auditTrail : [];
+            var persistedClaimed = persistedProfile && persistedProfile.meta && Array.isArray(persistedProfile.meta.claimedAliasSessions)
+              ? persistedProfile.meta.claimedAliasSessions
+              : [];
+
+            allResults.push(test(gE, 'E-7: confirmAliasClaim() awards XP and records claimed sessionId', function() {
+              if (iw.profile.meta.xp === expectedXp && iw.profile.meta.claimedAliasSessions.indexOf(aliasLog.sessionId) !== -1) {
+                return { pass: true, detail: 'xp=' + iw.profile.meta.xp + ' claimed=' + aliasLog.sessionId };
+              }
+              return { pass: false, error: 'xp=' + iw.profile.meta.xp + ' expected=' + expectedXp + ' claimed=' + JSON.stringify(iw.profile.meta.claimedAliasSessions) };
+            }));
+
+            allResults.push(test(gE, 'E-8: claim journal rows and alias-claim seal are appended', function() {
+              var summary = journal[0];
+              var entriesMatch = claimEntries.length === aliasLog.entries.length && claimEntries.every(function(entry, index) {
+                return entry.type === 'claimed-alias' && entry.text === aliasLog.entries[index].text && entry.claimId === aliasLog.sessionId;
+              });
+              if (summary && summary.type === 'claim-event' && summary.claimId === aliasLog.sessionId && entriesMatch && iw.sealChain.length === preClaimSealCount + 1 && lastSeal && lastSeal.taskId === 'alias-claim') {
+                return { pass: true, detail: 'journal+seal appended for claimId=' + aliasLog.sessionId };
+              }
+              return { pass: false, error: JSON.stringify({ summary: summary, claimEntries: claimEntries.length, sealCount: iw.sealChain.length, lastSealTask: lastSeal && lastSeal.taskId }) };
+            }));
+
+            allResults.push(test(gE, 'E-9: persisted profile audit trail records seal-added, alias-claimed, and profile-saved', function() {
+              var actions = auditTrail.slice(preClaimAuditCount).map(function(entry) { return entry.action; });
+              var persistedActions = persistedAudit.slice(-3).map(function(entry) { return entry.action; });
+              if (actions.join(',') === 'seal-added,alias-claimed,profile-saved' && persistedActions.join(',') === 'seal-added,alias-claimed,profile-saved' && persistedClaimed.indexOf(aliasLog.sessionId) !== -1) {
+                return { pass: true, detail: 'persisted claim actions=' + persistedActions.join(', ') };
+              }
+              return { pass: false, error: JSON.stringify({ actions: actions, persistedActions: persistedActions, persistedClaimed: persistedClaimed }) };
+            }));
+
+            runResults();
+          });
         });
       }).catch(function(err) {
         allResults.push(test(gD, 'D-0: exportProfile() produced downloadable JSON', function() {
           return { pass: false, error: 'Failed to capture export blob: ' + err.message };
         }));
         runResults();
-      }).then(function() {
-        iw.URL.createObjectURL = originalCreate;
-        iw.URL.revokeObjectURL = originalRevoke;
-        if (originalClick) iw.HTMLAnchorElement.prototype.click = originalClick;
       });
     });
   });
