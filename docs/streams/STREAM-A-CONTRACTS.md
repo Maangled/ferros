@@ -23,13 +23,13 @@ All contracts are managed in `docs/contracts/manifest.json`. Here is the full cu
 
 | ID | Name | File | Fixtures | Gate Harness |
 |----|------|------|----------|-------------|
-| C1 | Identity / Session Schema | `schemas/identity.schema.json` | 4 golden + 2 negative | H1 |
-| C2 | Profile Schema | `schemas/profile.schema.json` | 5 golden + 3 negative | H1, H2 |
-| C3 | Template Profile | `schemas/template.schema.json` | 2 golden | H1 |
+| C1 | Identity / Session Schema | `schemas/identity.schema.json` | 4 fixtures | H1 |
+| C2 | Profile Schema | `schemas/profile.schema.json` | 9 fixtures | H1, H2 |
+| C3 | Template Profile | `schemas/template.schema.json` | 1 fixture | H1 |
 | C4 | Card Schema | `schemas/card.schema.json` | 2 golden | H1 |
 | C5 | Deck Schema | `schemas/deck.schema.json` | 2 golden | H1 |
-| C6 | Schedule Event Schema | `schemas/schedule-event.schema.json` | 1 golden | H1 |
-| C7 | Audit Record Schema | `schemas/audit-record.schema.json` | none (structural only) | H1 |
+| C6 | Schedule Event Schema | `schemas/schedule-event.schema.json` | 1 fixture | H1 |
+| C7 | Audit Record Schema | `schemas/audit-record.schema.json` | 4 fixtures | H1 |
 
 ### Contract Documents (in `docs/contracts/`)
 
@@ -60,12 +60,12 @@ These items were identified during Wave 0 and explicitly deferred. They are **no
 
 | # | Item | Target | Current State |
 |---|------|--------|---------------|
-| 1 | C7 audit record golden fixture | Wave 1 (first consumer) | Schema validates structurally; no dedicated fixture |
+| 1 | C7 audit record fixture coverage | Wave 1 | Closed on `main` via alias/recovery portable-log fixtures plus the claimed-alias merge fixture |
 | 2 | C6 schedule-event runtime consumption | Wave 2 (S1 — Schedule Ledger) | `templateToEvents()` exists; no surface consumes it yet |
 | 3 | Card/deck inclusion in export envelope | Wave 1 (V5–V7) | Storage rules note deferred item |
 | 4 | Seal chain compaction strategy | Wave 4 (H5 hardening) | Note in storage-rules.md |
 | 5 | Contract/fixture physical co-location | Wave 1 | Manifest mitigates; physical reorg deferred |
-| 6 | Full end-to-end Journey 1 acceptance (H5) | Wave 1 (V8) | Supporting harness built; WARN acceptable for Wave 0 |
+| 6 | Full end-to-end Journey 1 acceptance (H5) | Wave 1 (V8) | Complete — H5 is green at 30/30 with alias export → claim coverage |
 | 7 | Cross-browser support validation | Wave 4 (H2) | Not started |
 
 ---
@@ -243,12 +243,12 @@ This is not a limitation — it's a deliberate architectural choice. The platfor
 
 ## Stream A Wave 1 — Hardening Backlog
 
-These items are the current Wave 1 work queue for Stream A. None of them block other streams.
+These items are the current Stream A work queue. The first two still gate Phase A closure / Phase B entry.
 
 | # | Item | Priority | Notes |
 |---|------|----------|-------|
-| 1 | C7 audit record golden fixture | MED | Needed when first audit consumer ships (Stream B Wave 2b) |
-| 2 | Contract/fixture physical co-location | LOW | Manifest mitigates the nav issue; reorg is cosmetic |
-| 3 | Seal chain compaction strategy | LOW | Wave 4 (H5) target |
-| 4 | H5 end-to-end Journey 1 acceptance | HIGH | V8 gate — must pass before Wave 1 exit |
+| 1 | Wave 1 closure evidence + audit reconciliation | HIGH | PR 11 closes the Wave 1 ceremony and findings #9 / #19 |
+| 2 | C6 runtime consumption contract | HIGH | Promote `templateToEvents()` to a consumed contract before S1 begins |
+| 3 | Contract/fixture physical co-location | LOW | Manifest mitigates the nav issue; reorg is cosmetic |
+| 4 | Seal chain compaction strategy | LOW | Wave 4 (H5) target |
 | 5 | Schema evolution cascade tooling | MED | L10 (WASM validators) is research track |

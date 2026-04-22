@@ -25,6 +25,7 @@ Ordered by dependency. Each PR is scoped to be reviewable in a single sitting, m
 
 ## PR 10 — V4 alias → claim → XP merge *(A4)*
 - **Branch:** `pr10-v4-alias-claim-xp-merge`
+- **Status note:** Code scope is already present on `main` via commit `8d7c123` (`Add portable alias/recovery log claim support`). Treat PR 10 as code-complete; PR 11 remains the closure/evidence follow-through.
 - **Scope:**
   - Implementation in monolith + `ferros-core.js` (FerrosCore is canonical path per PR 5).
   - New alias-session + claim-log fixture pair with golden XP merge result.
@@ -45,7 +46,7 @@ Ordered by dependency. Each PR is scoped to be reviewable in a single sitting, m
 ## PR 12 — Arena Export Target ADR *(B1)*
 - **Branch:** `pr12-arena-export-adr`
 - **Scope:**
-  - New `docs/adr/ADR-015-arena-export-target.md`: deck export schema, runtime consumption contract, version negotiation, C5 ↔ C8 relationship for the export flow.
+  - New `docs/adr/ADR-016-arena-export-target.md`: deck export schema, runtime consumption contract, version negotiation, C5 ↔ C8 relationship for the export flow.
   - Cross-references from `docs/progress/forge.md` and `docs/progress/arena-runtime.md`.
   - `PROGRESS.md` Module Spec Files table updated.
   - No code changes — decide-before-building PR.
@@ -65,16 +66,16 @@ Ordered by dependency. Each PR is scoped to be reviewable in a single sitting, m
 
 ## Summary
 
-| PR | Issue item | Size | Scope type | Risk | Blocks |
-|---|---|---|---|---|---|
-| PR 8  | A2      | XS | Evidence             | None          | — |
-| PR 9  | A1      | M  | Harness (new)        | Medium        | PR 12 |
-| PR 10 | A4      | L  | Product code         | Medium-high   | PR 11 |
-| PR 11 | A3 + A5 | S  | Evidence + doc       | None          | PR 12 |
-| PR 12 | B1      | M  | ADR (decision)       | Low           | PR 13, S1/S2 |
-| PR 13 | B2      | M  | Contract spec + harness | Low-medium | S1 |
+| PR | Issue item | Status | Size | Scope type | Risk | Blocks |
+|---|---|---|---|---|---|---|
+| PR 8  | A2      | Merged #60 | XS | Evidence | None | — |
+| PR 9  | A1      | Merged #64 | M | Harness (new) | Medium | PR 12 |
+| PR 10 | A4      | Landed on `main` @ `8d7c123` | L | Product code | Medium-high | PR 11 |
+| PR 11 | A3 + A5 | Planned | S | Evidence + doc | None | PR 12 |
+| PR 12 | B1      | Planned | M | ADR (decision) | Low | PR 13, S1/S2 |
+| PR 13 | B2      | Planned | M | Contract spec + harness | Low-medium | S1 |
 
-**Phase A exit after PR 11. Phase B entry begins with PR 12.**
+**Phase A exit after PR 11. Phase B entry begins with PR 12.** The original PR 10 code scope is already present on `main`; the remaining Phase A work is closure evidence plus the PR 12/PR 13 on-ramp items.
 
 ## Conventions (carried over from Wave 0)
 

@@ -118,14 +118,14 @@ After **each** stream's plan PR has been individually reviewed and approved, a s
 
 ### Current reconciliation gate status
 
-**Wave 1 Reconciliation Gate: OPEN** — Initiated 2026-04-20.
+**Wave 1 Reconciliation Gate: CLOSED** — reviewer closure recorded 2026-04-19.
 
-- **Tracking issue:** [Reconciliation Gate — Wave 1 #53](https://github.com/Maangled/ferros/issues/53)
+- **Tracking issue:** [Reconciliation Gate — Wave 1 #53](https://github.com/Maangled/ferros/issues/53) — closed as completed in [#55](https://github.com/Maangled/ferros/pull/55)
 - **Gate document:** [`docs/progress/reconciliation-gate-wave1.md`](./progress/reconciliation-gate-wave1.md)
 - **Total reconciliation items:** 20 (6 for A↔B, 5 for A↔C, 5 for B,C↔D, 4 for E↔A–D)
-- **Items verified:** 0 / 20
+- **Items verified:** 20 / 20
 
-The gate document contains the specific checkboxes for each cross-stream check, with concrete references to schemas, contracts, and stream plan assumptions. All items must be verified before any Wave 1 execution PR merges.
+The gate document contains the specific checkboxes for each cross-stream check, with concrete references to schemas, contracts, and stream plan assumptions. All items are verified and the reconciliation gate no longer blocks Wave 1 execution PR merges.
 
 ---
 

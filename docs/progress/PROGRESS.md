@@ -48,16 +48,16 @@ Per `docs/ORCHESTRATION.md` §4, a cross-stream reconciliation review must compl
 
 > Run each harness by opening it in Chrome via `file://`. All harnesses load `ferros-core.js` via `<script src="../docs/assets/_core/ferros-core.js">`.
 
-Fresh gate verification on 2026-04-18 in Chrome via `file://`: H1 `28/28`, H2 `21/21`, H3 `18/18`, H4 `20/20`.
-Live supporting-harness verification in the current browser session on 2026-04-19: H5 `21/21` PASS, H6 `25/25` PASS, H7 `107/107` PASS, Preflight `6/6` PASS. H8 clean rerun completed 2026-04-21 — see `docs/progress/H8-RERUN-ENV-NOTES.md`. H9 verified 2026-04-21 — `28/28` PASS.
+Fresh gate verification on 2026-04-22 in Chrome via `file://`: H1 `30/30`, H2 `25/25`, H4 `26/26`. H3 remains last verified on 2026-04-18 at `18/18`.
+Live supporting-harness verification in the current browser session on 2026-04-22: H5 `30/30` PASS, H9 `28/28` PASS. H6 `25/25` PASS, H7 `107/107` PASS, and Preflight `6/6` PASS remain from the 2026-04-19 session. H8 clean rerun completed 2026-04-21 — see `docs/progress/H8-RERUN-ENV-NOTES.md`.
 
 | Harness | File | Contracts | Gate? | Verified status |
 |---------|------|-----------|-------|-----------------|
-| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 | ✅ Gate | PASS — 28/28 |
-| H2 | `harnesses/round-trip-harness.html` | C9 | ✅ Gate | PASS — 21/21 |
+| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 | ✅ Gate | PASS — 30/30 |
+| H2 | `harnesses/round-trip-harness.html` | C9 | ✅ Gate | PASS — 25/25 |
 | H3 | `harnesses/runtime-harness.html` | C8 | ✅ Gate | PASS — 18/18 (nonce echo green; resize semantics aligned to C8) |
-| H4 | `harnesses/negative-harness.html` | C10 | ✅ Gate | PASS — 20/20 |
-| H5 | `harnesses/acceptance-harness.html` | V1/V8 | Supporting | PASS — 21/21 |
+| H4 | `harnesses/negative-harness.html` | C10 | ✅ Gate | PASS — 26/26 |
+| H5 | `harnesses/acceptance-harness.html` | V1/V8 | Supporting | PASS — 30/30 |
 | H6 | `harnesses/write-path-harness.html` | C9 write | Supporting | PASS — 25/25 |
 | H7 | `harnesses/semantic-fixture-linter.html` | C2/C4/C5/C6 | Supporting | PASS — 107/107 |
 | H8 | `harnesses/ui-acceptance-harness.html` | C10/UI | Supporting | PASS — 17/17 (clean rerun 2026-04-21; see H8-RERUN-ENV-NOTES.md) |
@@ -71,18 +71,17 @@ Live supporting-harness verification in the current browser session on 2026-04-1
 | Contract | Name | Artifact | Schema | Fixtures | Gate harness | Status |
 |---|---|---|---|---|---|---|
 | C1 | Identity/Session Schema | ✅ | `schemas/identity.schema.json` | 4 fixtures | H1 | ✅ |
-| C2 | Profile Schema | ✅ | `schemas/profile.schema.json` | 8 fixtures | H1, H2 | ✅ |
+| C2 | Profile Schema | ✅ | `schemas/profile.schema.json` | 9 fixtures | H1, H2 | ✅ |
 | C3 | Template Profile | ✅ | `schemas/template.schema.json` | 1 fixture | H1 | ✅ |
 | C4 | Card Schema | ✅ | `schemas/card.schema.json` | 2 fixtures | H1 | ✅ |
 | C5 | Deck Schema | ✅ | `schemas/deck.schema.json` | 2 fixtures | H1 | ✅ |
 | C6 | Schedule Event Schema | ✅ | `schemas/schedule-event.schema.json` | 1 fixture | H1 | ✅ |
-| C7 | Audit Record Schema | ✅ | `schemas/audit-record.schema.json` | none (correct — see manifest note) | H1 | ✅ |
+| C7 | Audit Record Schema | ✅ | `schemas/audit-record.schema.json` | 4 fixtures | H1 | ✅ |
 | C8 | Runtime Host Contract | ✅ | `docs/contracts/runtime-host-v1.md` | none | H3 | ✅ |
-| C9 | Storage Rules | ✅ | `docs/contracts/storage-rules.md` | 11 fixtures | H2 | ✅ |
+| C9 | Storage Rules | ✅ | `docs/contracts/storage-rules.md` | 15 fixtures | H2 | ✅ |
 | C10 | Permission Model | ✅ | `docs/contracts/permission-model.md` | none | H4 | ✅ |
 
 **Known gaps / deferred items:**
-- C7 has no dedicated test fixture — audit record schema is validated by keyword audit in H1 only. Full audit record fixture deferred pending Wave 1 consumer.
 - C6 schedule-event runtime consumption is deferred to Wave 2 (S1). `FerrosCore.templateToEvents()` provides the transformation bridge but no surface consumes it yet.
 - C8 origin validation on `file://` is enforcement-on-conformance only — not a hard security boundary (documented in runtime-host-v1.md §9).
 
@@ -140,7 +139,7 @@ One real end-to-end loop works locally.
 | V2 | Export → Import produces identical profile in fresh browser | ✅ | Journey 1 |
 | V3a | All 4 valid session modes complete expected flows (H2 round-trip) | ✅ | Journey 1 + 2 |
 | V3b | Invalid session mode combinations rejected with correct error codes (H4 negative) | ✅ | Journey 1 + 2 |
-| V4 | Alias session → export → claim → XP merge works | ⬜ | Journey 2 |
+| V4 | Alias session → export → claim → XP merge works | ✅ | Journey 2 |
 | V5 | Card loads in Forge → editable → renders in Runtime | ✅ | Journey 3 |
 | V6 | Runtime init/update/event loop completes | ✅ | Journey 3 |
 | V7 | Card round-trip export/import preserves all parameters | ✅ | Journey 3 |
