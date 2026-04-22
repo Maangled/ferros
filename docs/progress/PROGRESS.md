@@ -32,13 +32,13 @@ This index tracks Phase 0 progress using **binary capability gates** — not per
 | PR 8  | A2 — H8 clean rerun + environmental notes | Merged [#60](https://github.com/Maangled/ferros/pull/60) | ✅ Merged |
 | PR 9  | A1 — H9 consumer-helper harness | Merged [#64](https://github.com/Maangled/ferros/pull/64) | ✅ Merged |
 | PR 10 | A4 — V4 alias → claim → XP merge | Landed `main` @ `8d7c123` | ✅ Landed |
-| PR 11 | A3 + A5 — Wave 1 closure evidence | This PR | ✅ Active |
-| PR 12 | B1 — Arena Export Target ADR | Planned | ⬜ |
-| PR 13 | B2 — C6 runtime consumption spec | Planned | ⬜ |
+| PR 11 | A3 + A5 — Wave 1 closure evidence | Merged [#67](https://github.com/Maangled/ferros/pull/67) | ✅ Merged |
+| PR 12 | B1 — Arena Export Target ADR | Merged [#68](https://github.com/Maangled/ferros/pull/68) | ✅ Merged |
+| PR 13 | B2 — C6 runtime consumption spec | Merged [#69](https://github.com/Maangled/ferros/pull/69) | ✅ Merged |
 
 Umbrella: [Phase A — Foundation Finalization #62](https://github.com/Maangled/ferros/issues/62) · Plan: [PR-PLAN-PR8-PR13.md](./PR-PLAN-PR8-PR13.md)
 
-**Wave 1 status: CLOSED** — All V1–V8 capabilities verified 2026-04-22. See [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md) for the full closure record. Phase B entry begins with PR 12.
+**Wave 1 status: CLOSED** — All V1–V8 capabilities verified 2026-04-22. See [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md) for the full closure record. Phase B complete with PR 12 (ADR-016) and PR 13 (C6 consumption spec) merged.
 
 ---
 
@@ -92,14 +92,13 @@ Live supporting-harness verification in the current browser session on 2026-04-2
 | C3 | Template Profile | ✅ | `schemas/template.schema.json` | 1 fixture | H1 | ✅ |
 | C4 | Card Schema | ✅ | `schemas/card.schema.json` | 2 fixtures | H1 | ✅ |
 | C5 | Deck Schema | ✅ | `schemas/deck.schema.json` | 2 fixtures | H1 | ✅ |
-| C6 | Schedule Event Schema | ✅ | `schemas/schedule-event.schema.json` | 1 fixture | H1 | ✅ |
+| C6 | Schedule Event Schema | ✅ | `schemas/schedule-event.schema.json` | 2 fixtures | H1 | ✅ |
 | C7 | Audit Record Schema | ✅ | `schemas/audit-record.schema.json` | 4 fixtures | H1 | ✅ |
 | C8 | Runtime Host Contract | ✅ | `docs/contracts/runtime-host-v1.md` | none | H3 | ✅ |
 | C9 | Storage Rules | ✅ | `docs/contracts/storage-rules.md` | 15 fixtures | H2 | ✅ |
 | C10 | Permission Model | ✅ | `docs/contracts/permission-model.md` | none | H4 | ✅ |
 
 **Known gaps / deferred items:**
-- C6 schedule-event runtime consumption is deferred to Wave 2 (S1). `FerrosCore.templateToEvents()` provides the transformation bridge but no surface consumes it yet.
 - C8 origin validation on `file://` is enforcement-on-conformance only — not a hard security boundary (documented in runtime-host-v1.md §9).
 
 ---
@@ -240,7 +239,7 @@ Twenty findings from the Phase 0 exit audit. Each is classified as **resolved** 
 | 5 | Claim/session identity not in log envelope | ✅ Resolved | C9 | `sessionId` emitted by `downloadAliasLog()` and `downloadRecoveryLog()`; documented in `storage-rules.md` and `permission-model.md` |
 | 6 | Origin validation missing from C8 | 🔧 Hardened | C8 | `runtime-host-v1.md` Section 9 |
 | 7 | Templates inlined, not validated against schema | ✅ Resolved | B7 | `templates.json`, `generate-ferros-core.ps1` |
-| 8 | Schedule-event schema not consumed at runtime | ⬜ Deferred → Wave 2 (S1) | C10 | Note in `storage-rules.md` |
+| 8 | Schedule-event schema not consumed at runtime | ✅ Resolved — PR 13 (C6 consumption spec + H1 assertions) | C10 | `docs/contracts/storage-rules.md` §C6; `schemas/fixtures/template-to-events-golden.json`; H1 Group 5 |
 | 9 | Card/deck not included in export | ✅ Resolved — V5/V6/V7 complete; card round-trip verified by `card-deck-roundtrip.json` + H5 PASS 30/30 | C11 | `schemas/fixtures/card-deck-roundtrip.json`; see [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md) |
 | 10 | Audit record retention unbounded | ✅ Resolved | C12 | `pushAuditEntry()` FIFO ring buffer (cap 1000) in monolith; documented in `permission-model.md` |
 | 11 | `meta.version` / `schemaVersion` dual-field confusion | ✅ Resolved | A1 | `migrateProfileStructure()` rename, single canonical field |
@@ -254,7 +253,7 @@ Twenty findings from the Phase 0 exit audit. Each is classified as **resolved** 
 | 19 | Contract/fixture co-location fragmented | 🔧 Deferred → Wave 3+ housekeeping (manifest mitigates; physical reorg low value; final disposition recorded in [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md)) | D16 | Manifest mitigates; physical reorg deferred |
 | 20 | Harnesses don't share core verification logic | ✅ Resolved | B6 | H2 + H5 load `ferros-core.js`, delegate to `FerrosCore.validateImport` + `FerrosCore.serializeExport` |
 
-**Totals:** 16 resolved, 1 hardened, 3 documented-and-deferred. Wave 1 audit dispositions recorded in [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md).
+**Totals:** 17 resolved, 1 hardened, 2 documented-and-deferred. Wave 1 audit dispositions recorded in [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md). Finding #8 (C6 consumption) resolved in PR 13.
 
 ---
 
@@ -270,8 +269,8 @@ Individual module specs retain their detailed milestones and dependency lists. T
 | User / Identity System | Wave 1 (vertical slice) | Extract shared identity contract from prototype | [user-identity-system.md](./user-identity-system.md) |
 | Templates & Profiles | Wave 1 (vertical slice) | Schema baseline and template validation | [templates-and-profiles.md](./templates-and-profiles.md) |
 | Assets, Cards & Decks | Wave 1 (vertical slice) | Card/Deck object model and Forge round-trip | [assets-cards-decks.md](./assets-cards-decks.md) |
-| Arena Runtime | Wave 1 (vertical slice) | Separated runtime host layer | [arena-runtime.md](./arena-runtime.md) |
-| The Forge | Wave 1 (vertical slice) | Authoring surface for card round-trip and local deck assembly | [forge.md](./forge.md) |
+| Arena Runtime | Wave 1 (vertical slice) | Separated runtime host layer | [arena-runtime.md](./arena-runtime.md) ← [ADR-016](../adr/ADR-016-arena-export-target.md) |
+| The Forge | Wave 1 (vertical slice) | Authoring surface for card round-trip and local deck assembly | [forge.md](./forge.md) ← [ADR-016](../adr/ADR-016-arena-export-target.md) |
 | Architecture Builder Lab | Wave 1 Exploration | Forge-pattern extension for parametric building authoring and Twin Architecture | [../builder-blueprint.md](../builder-blueprint.md) |
 | Schedule Ledger | Wave 2 (first consumer) | Proves shared contract consumption | [schedule-ledger.md](./schedule-ledger.md) |
 | Battle Arena | Wave 2 (first consumer) | Proves runtime can serve a second surface | [trading-arena.md](./trading-arena.md) |

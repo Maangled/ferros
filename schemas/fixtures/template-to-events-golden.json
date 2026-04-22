@@ -1,0 +1,61 @@
+{
+  "$schema": "https://ferros.local/schemas/schedule-event.schema.json",
+  "_fixture": {
+    "purpose": "Golden fixture: C6 runtime consumption contract — FerrosCore.templateToEvents() output",
+    "contract": "C6",
+    "seam": "template (C3) → schedule-event (C6) via FerrosCore.templateToEvents()",
+    "validates": [
+      "Each event in events[] conforms to schedule-event.schema.json",
+      "source.type='template' and source.templateId matches input template id",
+      "id follows pattern '<templateId>-block-<index>'",
+      "kind='block' for all template-derived events",
+      "stream field is propagated from the template when present"
+    ],
+    "inputTemplate": {
+      "id": "minimum-viable",
+      "stream": "A",
+      "templateSchedule": {
+        "blocks": [
+          { "time": "07:00", "label": "Morning focus block" },
+          { "time": "12:00", "label": "Midday review" },
+          { "time": "20:00", "label": "Evening reflection" }
+        ]
+      }
+    }
+  },
+  "events": [
+    {
+      "id": "minimum-viable-block-0",
+      "kind": "block",
+      "label": "Morning focus block",
+      "time": "07:00",
+      "stream": "A",
+      "source": {
+        "type": "template",
+        "templateId": "minimum-viable"
+      }
+    },
+    {
+      "id": "minimum-viable-block-1",
+      "kind": "block",
+      "label": "Midday review",
+      "time": "12:00",
+      "stream": "A",
+      "source": {
+        "type": "template",
+        "templateId": "minimum-viable"
+      }
+    },
+    {
+      "id": "minimum-viable-block-2",
+      "kind": "block",
+      "label": "Evening reflection",
+      "time": "20:00",
+      "stream": "A",
+      "source": {
+        "type": "template",
+        "templateId": "minimum-viable"
+      }
+    }
+  ]
+}

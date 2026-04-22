@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>H1 — FERROS Contract Validator</h1>
-<div class="meta">Harness version 1.0 &nbsp;|&nbsp; Gates: C1-C7, V3a (structural) &nbsp;|&nbsp; Run on file:// in Chrome</div>
+<div class="meta">Harness version 1.1 &nbsp;|&nbsp; Gates: C1-C7, V3a (structural), C6 consumption (PR 13) &nbsp;|&nbsp; Run on file:// in Chrome</div>
 
 <div id="groups"></div>
 <div class="summary-bar" id="summary-bar"></div>
@@ -366,7 +366,7 @@ for (var si = 0; si < FERROS_SCHEMAS.length; si++) {
 /* ==========================================================================
    GROUP 2 — Golden fixture positive validation (expect PASS)
    ========================================================================== */
-var g2 = addGroup('Group 2 — Golden fixture positive validation (15 expected PASS)');
+var g2 = addGroup('Group 2 — Golden fixture positive validation (16 expected PASS)');
 
 // 2a: full-profile-stage3 → SCHEMA_PROFILE (C2)
 runTest(g2, 'full-profile-stage3 validates against SCHEMA_PROFILE', function() {
@@ -533,6 +533,26 @@ runTest(g2, 'session-mode-invariants — structural presence check (C1 documenta
   };
 });
 
+// 2q: template-to-events-golden events[] each validates against SCHEMA_SCHEDULE_EVENT (C6 golden)
+runTest(g2, 'template-to-events-golden.events[] each validates against SCHEMA_SCHEDULE_EVENT (C6 golden)', function() {
+  var fixture = FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN;
+  var events = fixture.events;
+  if (!Array.isArray(events) || events.length === 0) {
+    return { pass: false, error: 'fixture.events array absent or empty' };
+  }
+  var errors = [];
+  for (var i = 0; i < events.length; i++) {
+    var r = validate(events[i], SCHEMA_SCHEDULE_EVENT);
+    if (!r.valid) {
+      errors.push('events[' + i + '] (' + (events[i].id || '?') + '): ' + r.errors.slice(0, 2).join('; '));
+    }
+  }
+  if (errors.length === 0) {
+    return { pass: true, detail: 'all ' + events.length + ' template-derived C6 events conform to SCHEMA_SCHEDULE_EVENT' };
+  }
+  return { pass: false, error: errors.join(' | ') };
+});
+
 /* ==========================================================================
    GROUP 3 — Negative fixture schema rejection (expect PASS — schema correctly rejects)
    ========================================================================== */
@@ -634,6 +654,78 @@ runTest(g4, 'SCHEMA_AUDIT_RECORD accepts invalid-duplicate-alias-claim (duplicat
 });
 
 /* ==========================================================================
+   GROUP 5 — C6 runtime consumption contract (PR 13)
+   Validates the FerrosCore.templateToEvents() output golden fixture.
+   ========================================================================== */
+var g5 = addGroup('Group 5 — C6 runtime consumption contract (3 expected PASS)');
+
+// 5a: template-to-events-golden events[] each validates against SCHEMA_SCHEDULE_EVENT
+runTest(g5, 'template-to-events-golden.events[] each validates against SCHEMA_SCHEDULE_EVENT (CX6-1)', function() {
+  var fixture = FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN;
+  var events = fixture.events;
+  if (!Array.isArray(events) || events.length === 0) {
+    return { pass: false, error: 'fixture.events array absent or empty' };
+  }
+  var errors = [];
+  for (var i = 0; i < events.length; i++) {
+    var r = validate(events[i], SCHEMA_SCHEDULE_EVENT);
+    if (!r.valid) {
+      errors.push('events[' + i + '] (' + (events[i].id || '?') + '): ' + r.errors.slice(0, 2).join('; '));
+    }
+  }
+  if (errors.length === 0) {
+    return { pass: true, detail: 'all ' + events.length + ' template-derived events conform to SCHEMA_SCHEDULE_EVENT (CX6-1 satisfied)' };
+  }
+  return { pass: false, error: errors.join(' | ') };
+});
+
+// 5b: source.type='template' and source.templateId present on all events (CX6-2)
+runTest(g5, 'template-to-events-golden.events[] all have source.type=template and source.templateId (CX6-2)', function() {
+  var inputTemplateId = FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN._fixture.inputTemplate.id;
+  var events = FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN.events;
+  if (!Array.isArray(events) || events.length === 0) {
+    return { pass: false, error: 'fixture.events array absent or empty' };
+  }
+  var errors = [];
+  for (var i = 0; i < events.length; i++) {
+    var ev = events[i];
+    if (!ev.source || ev.source.type !== 'template') {
+      errors.push('events[' + i + '].source.type !== "template": ' + JSON.stringify(ev.source));
+    } else if (ev.source.templateId !== inputTemplateId) {
+      errors.push('events[' + i + '].source.templateId mismatch: expected "' + inputTemplateId + '", got "' + ev.source.templateId + '"');
+    }
+  }
+  if (errors.length === 0) {
+    return { pass: true, detail: 'all ' + events.length + ' events carry source.type=template and source.templateId=' + inputTemplateId + ' (CX6-2 satisfied)' };
+  }
+  return { pass: false, error: errors.join(' | ') };
+});
+
+// 5c: id format follows '<templateId>-block-<index>' convention and kind='block' (CX6-1 + CX6-2)
+runTest(g5, 'template-to-events-golden.events[] ids follow <templateId>-block-<index> and kind=block (CX6-1+CX6-2)', function() {
+  var inputTemplateId = FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN._fixture.inputTemplate.id;
+  var events = FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN.events;
+  if (!Array.isArray(events) || events.length === 0) {
+    return { pass: false, error: 'fixture.events array absent or empty' };
+  }
+  var errors = [];
+  for (var i = 0; i < events.length; i++) {
+    var ev = events[i];
+    var expectedId = inputTemplateId + '-block-' + i;
+    if (ev.id !== expectedId) {
+      errors.push('events[' + i + '].id: expected "' + expectedId + '", got "' + ev.id + '"');
+    }
+    if (ev.kind !== 'block') {
+      errors.push('events[' + i + '].kind: expected "block", got "' + ev.kind + '"');
+    }
+  }
+  if (errors.length === 0) {
+    return { pass: true, detail: 'all ' + events.length + ' events have correct id pattern and kind=block; stream propagated from template (stream=' + (events[0].stream || 'absent') + ')' };
+  }
+  return { pass: false, error: errors.join(' | ') };
+});
+
+/* ==========================================================================
    RENDER RESULTS
    ========================================================================== */
 
@@ -693,7 +785,7 @@ summaryBar.innerHTML =
 var resultObj = {
   timestamp: new Date().toISOString(),
   harnessId: 'H1',
-  harnessVersion: '1.0',
+  harnessVersion: '1.1',
   status: overallStatus,
   summary: { total: allTests.length, passed: passed, failed: failed, skipped: skipped },
   gates: {
@@ -704,6 +796,7 @@ var resultObj = {
     C5_format_enforcement: 'INFORMATIONAL — format keyword acknowledged, not validated',
     C6_oneOf_semantics: 'STRICT — exactly 1 must match, validator recurses into each branch',
     C7_negative_fixture_detection: groups[2].tests.map(function(t){ return t.name + ': ' + t.status; }),
+    C6_consumption_contract: 'PR 13 — Group 5 validates templateToEvents() output shape (CX6-1 event schema, CX6-2 source fields, CX6-2 id pattern)',
     coverage: {
       golden_fixtures_tested: FERROS_GOLDEN_FIXTURES.length,
       negative_fixtures_tested: FERROS_NEGATIVE_FIXTURES.length,
