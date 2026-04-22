@@ -25,6 +25,23 @@ This index tracks Phase 0 progress using **binary capability gates** — not per
 
 ---
 
+## Phase A — Foundation Finalization PR Tracker
+
+| PR | Item | Commit / PR # | Status |
+|----|------|---------------|--------|
+| PR 8  | A2 — H8 clean rerun + environmental notes | Merged [#60](https://github.com/Maangled/ferros/pull/60) | ✅ Merged |
+| PR 9  | A1 — H9 consumer-helper harness | Merged [#64](https://github.com/Maangled/ferros/pull/64) | ✅ Merged |
+| PR 10 | A4 — V4 alias → claim → XP merge | Landed `main` @ `8d7c123` | ✅ Landed |
+| PR 11 | A3 + A5 — Wave 1 closure evidence | This PR | ✅ Active |
+| PR 12 | B1 — Arena Export Target ADR | Planned | ⬜ |
+| PR 13 | B2 — C6 runtime consumption spec | Planned | ⬜ |
+
+Umbrella: [Phase A — Foundation Finalization #62](https://github.com/Maangled/ferros/issues/62) · Plan: [PR-PLAN-PR8-PR13.md](./PR-PLAN-PR8-PR13.md)
+
+**Wave 1 status: CLOSED** — All V1–V8 capabilities verified 2026-04-22. See [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md) for the full closure record. Phase B entry begins with PR 12.
+
+---
+
 ## Reconciliation Gate — Wave 1
 
 > **Status: CLOSED** — Reviewer sign-off recorded 2026-04-19. Tracking issue: [Reconciliation Gate — Wave 1 #53](https://github.com/Maangled/ferros/issues/53).
@@ -224,7 +241,7 @@ Twenty findings from the Phase 0 exit audit. Each is classified as **resolved** 
 | 6 | Origin validation missing from C8 | 🔧 Hardened | C8 | `runtime-host-v1.md` Section 9 |
 | 7 | Templates inlined, not validated against schema | ✅ Resolved | B7 | `templates.json`, `generate-ferros-core.ps1` |
 | 8 | Schedule-event schema not consumed at runtime | ⬜ Deferred → Wave 2 (S1) | C10 | Note in `storage-rules.md` |
-| 9 | Card/deck not included in export | ⬜ Deferred → Wave 1 (V5-V7) | C11 | Note in `storage-rules.md` |
+| 9 | Card/deck not included in export | ✅ Resolved — V5/V6/V7 complete; card round-trip verified by `card-deck-roundtrip.json` + H5 PASS 30/30 | C11 | `schemas/fixtures/card-deck-roundtrip.json`; see [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md) |
 | 10 | Audit record retention unbounded | ✅ Resolved | C12 | `pushAuditEntry()` FIFO ring buffer (cap 1000) in monolith; documented in `permission-model.md` |
 | 11 | `meta.version` / `schemaVersion` dual-field confusion | ✅ Resolved | A1 | `migrateProfileStructure()` rename, single canonical field |
 | 12 | localStorage quota not handled | ✅ Resolved | A5 | `saveProfile()` try/catch + user modal |
@@ -234,10 +251,10 @@ Twenty findings from the Phase 0 exit audit. Each is classified as **resolved** 
 | 16 | Monolith duplicates contract logic | ✅ Resolved | B6 | Monolith delegates to `FerrosCore.*` |
 | 17 | No black-box UI acceptance harness | ✅ Resolved | D15 | H8 uses DOM + localStorage only; no `contentWindow` state reads |
 | 18 | No contract manifest | ✅ Resolved | D16 | `docs/contracts/manifest.json` |
-| 19 | Contract/fixture co-location fragmented | ⬜ Deferred → Wave 1 | D16 | Manifest mitigates; physical reorg deferred |
+| 19 | Contract/fixture co-location fragmented | 🔧 Deferred → Wave 3+ housekeeping (manifest mitigates; physical reorg low value; final disposition recorded in [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md)) | D16 | Manifest mitigates; physical reorg deferred |
 | 20 | Harnesses don't share core verification logic | ✅ Resolved | B6 | H2 + H5 load `ferros-core.js`, delegate to `FerrosCore.validateImport` + `FerrosCore.serializeExport` |
 
-**Totals:** 15 resolved, 1 hardened, 4 documented-and-deferred.
+**Totals:** 16 resolved, 1 hardened, 3 documented-and-deferred. Wave 1 audit dispositions recorded in [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md).
 
 ---
 
