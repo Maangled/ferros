@@ -71,11 +71,13 @@ Ordered by dependency. Each PR is scoped to be reviewable in a single sitting, m
 | PR 8  | A2      | Merged #60 | XS | Evidence | None | — |
 | PR 9  | A1      | Merged #64 | M | Harness (new) | Medium | PR 12 |
 | PR 10 | A4      | Landed on `main` @ `8d7c123` | L | Product code | Medium-high | PR 11 |
-| PR 11 | A3 + A5 | Planned | S | Evidence + doc | None | PR 12 |
+| PR 11 | A3 + A5 | **This PR — active** | S | Evidence + doc | None | PR 12 |
 | PR 12 | B1      | Planned | M | ADR (decision) | Low | PR 13, S1/S2 |
 | PR 13 | B2      | Planned | M | Contract spec + harness | Low-medium | S1 |
 
 **Phase A exit after PR 11. Phase B entry begins with PR 12.** The original PR 10 code scope is already present on `main`; the remaining Phase A work is closure evidence plus the PR 12/PR 13 on-ramp items.
+
+**Wave 1 status: CLOSED** — 2026-04-22. See [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md) for the full closure record.
 
 ## Conventions (carried over from Wave 0)
 
