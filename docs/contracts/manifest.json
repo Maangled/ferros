@@ -1,6 +1,6 @@
 {
   "$comment": "FERROS Contract Manifest — maps contract IDs to schemas, fixtures, and harnesses. Phase 0 scope. IDs follow PROGRESS.md canonical taxonomy.",
-  "version": "1.2",
+  "version": "1.3",
   "contracts": {
     "C1": {
       "name": "Identity / Session Schema",
@@ -73,12 +73,15 @@
     },
     "C6": {
       "name": "Schedule Event Schema",
-      "document": null,
+      "document": "docs/contracts/storage-rules.md",
       "schemas": ["schemas/schedule-event.schema.json"],
-      "fixtures": ["schemas/fixtures/schedule-event-source-seam.json"],
+      "fixtures": [
+        "schemas/fixtures/schedule-event-source-seam.json",
+        "schemas/fixtures/template-to-events-golden.json"
+      ],
       "harnesses": ["harnesses/ferros-contract-validator.html", "harnesses/semantic-fixture-linter.html"],
       "status": "active",
-      "note": "C1 templateToEvents provides runtime transformation. Full consumer in Wave 2."
+      "note": "FerrosCore.templateToEvents() is the canonical C6 production path. Consumption contract documented in storage-rules.md §C6. Golden fixture proves template→events shape conformance (PR 13)."
     },
     "C7": {
       "name": "Audit Record Schema",
@@ -166,7 +169,8 @@
     ],
     "toolDocs": "tools/README.md",
     "adrs": [
-      "docs/adr/ADR-012-schema-evolution-cascade.md"
+      "docs/adr/ADR-012-schema-evolution-cascade.md",
+      "docs/adr/ADR-016-arena-export-target.md"
     ]
   }
 }

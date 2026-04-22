@@ -261,6 +261,43 @@ The `schedule-event.schema.json` (C6) is a **future-consumer-only** schema in Ph
 
 ---
 
+## C6 Runtime Consumption Contract (PR 13)
+
+`FerrosCore.templateToEvents()` is the canonical C6 **production** path. Surfaces that
+read schedule data from a template **must** consume C6 events via this bridge, not by
+reading template schedule blocks directly.
+
+### Canonical consumption path
+
+```javascript
+// Consumer pattern — read C6 events from a profile's active template
+var profile = FerrosCore.loadProfile();
+var template = profile && profile.attributes && profile.attributes.activeTemplate;
+var events = template ? FerrosCore.templateToEvents(template) : [];
+// events[]: each item conforms to schemas/schedule-event.schema.json
+```
+
+### Contract rules
+
+| Rule | ID | Description |
+|------|----|-------------|
+| CX6-1 | Event shape | Every event emitted by `templateToEvents()` must validate against `schedule-event.schema.json`. |
+| CX6-2 | Source field | Events produced from a template must carry `source.type = "template"` and `source.templateId` equal to the template's `id`. |
+| CX6-3 | No direct block reads | Surfaces must not read `template.templateSchedule.blocks` directly to render schedule events. The `templateToEvents()` bridge is the single production path. |
+| CX6-4 | Empty-template safety | If the template object is absent, null, or has no `templateSchedule.blocks`, `templateToEvents()` returns `[]`. Consumers must handle empty arrays gracefully. |
+| CX6-5 | No mutation | Consumers must not mutate the returned event objects. Events are read-only C6 projections. |
+
+### H1 enforcement
+
+H1 Group 5 (`harnesses/ferros-contract-validator.html`) validates the C6 consumption
+contract via the golden fixture `schemas/fixtures/template-to-events-golden.json`:
+
+- Each event in the golden fixture validates against `SCHEMA_SCHEDULE_EVENT`.
+- The `source.type` and `source.templateId` fields match the input template's `id`.
+- An empty-template call returns `[]` (zero events, no error).
+
+---
+
 ## Card/Deck Export Exclusion
 
 Phase 0 exports do not include cards or decks. There are no placeholder fields for card/deck data in the export envelope. Card/deck portability is a separate concern addressed in Wave 1+ (V5-V7). See ADR-010 for card/deck nomenclature.

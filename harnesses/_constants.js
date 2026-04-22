@@ -2217,6 +2217,69 @@ var FIXTURE_SCHEDULE_EVENT_SOURCE_SEAM = {
   ]
 };
 
+// Source: schemas/fixtures/template-to-events-golden.json
+var FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN = {
+  "$schema": "https://ferros.local/schemas/schedule-event.schema.json",
+  "_fixture": {
+    "purpose": "Golden fixture: C6 runtime consumption contract — FerrosCore.templateToEvents() output",
+    "contract": "C6",
+    "seam": "template (C3) → schedule-event (C6) via FerrosCore.templateToEvents()",
+    "validates": [
+      "Each event in events[] conforms to schedule-event.schema.json",
+      "source.type='template' and source.templateId matches input template id",
+      "id follows pattern '<templateId>-block-<index>'",
+      "kind='block' for all template-derived events",
+      "stream field is propagated from the template when present"
+    ],
+    "inputTemplate": {
+      "id": "minimum-viable",
+      "stream": "A",
+      "templateSchedule": {
+        "blocks": [
+          { "time": "07:00", "label": "Morning focus block" },
+          { "time": "12:00", "label": "Midday review" },
+          { "time": "20:00", "label": "Evening reflection" }
+        ]
+      }
+    }
+  },
+  "events": [
+    {
+      "id": "minimum-viable-block-0",
+      "kind": "block",
+      "label": "Morning focus block",
+      "time": "07:00",
+      "stream": "A",
+      "source": {
+        "type": "template",
+        "templateId": "minimum-viable"
+      }
+    },
+    {
+      "id": "minimum-viable-block-1",
+      "kind": "block",
+      "label": "Midday review",
+      "time": "12:00",
+      "stream": "A",
+      "source": {
+        "type": "template",
+        "templateId": "minimum-viable"
+      }
+    },
+    {
+      "id": "minimum-viable-block-2",
+      "kind": "block",
+      "label": "Evening reflection",
+      "time": "20:00",
+      "stream": "A",
+      "source": {
+        "type": "template",
+        "templateId": "minimum-viable"
+      }
+    }
+  ]
+};
+
 // Source: schemas/fixtures/session-mode-invariants.json
 var FIXTURE_SESSION_MODE_INVARIANTS = {
   "$comment": "Golden fixture: session mode state. When a user declines the Trade Window, session mode activates. No localStorage writes. No exit artifact. This fixture documents the invariants that must hold.",
@@ -2267,7 +2330,8 @@ var FERROS_GOLDEN_FIXTURES = [
   {name: "quota-boundary-profile", file: "quota-boundary-profile.json", fixture: FIXTURE_QUOTA_BOUNDARY_PROFILE},
   {name: "recovery-session-log", file: "recovery-session-log.json", fixture: FIXTURE_RECOVERY_SESSION_LOG},
   {name: "schedule-event-source-seam", file: "schedule-event-source-seam.json", fixture: FIXTURE_SCHEDULE_EVENT_SOURCE_SEAM},
-  {name: "session-mode-invariants", file: "session-mode-invariants.json", fixture: FIXTURE_SESSION_MODE_INVARIANTS}
+  {name: "session-mode-invariants", file: "session-mode-invariants.json", fixture: FIXTURE_SESSION_MODE_INVARIANTS},
+  {name: "template-to-events-golden", file: "template-to-events-golden.json", fixture: FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN}
 ];
 var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-broken-seal-chain", file: "invalid-broken-seal-chain.json", fixture: FIXTURE_INVALID_BROKEN_SEAL_CHAIN},
@@ -2279,5 +2343,5 @@ var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-split-save-state", file: "invalid-split-save-state.json", fixture: FIXTURE_INVALID_SPLIT_SAVE_STATE}
 ];
 
-// Total files embedded: 28
-// Schemas: 7 | Golden fixtures: 14 | Negative fixtures: 7
+// Total files embedded: 29
+// Schemas: 7 | Golden fixtures: 15 | Negative fixtures: 7
