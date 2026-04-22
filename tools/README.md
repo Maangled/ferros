@@ -28,6 +28,28 @@ For macOS/Linux contributors who cannot run PowerShell:
 
 ## Scripts
 
+### `run-stream-a-baseline.ps1`
+
+**Purpose:** Runs Stream A baseline lock checks by executing both generators and failing if generated artifacts drift from committed output.
+
+**When to run:** Before starting Stream A implementation work and after any schema/template edits.
+
+**Usage:**
+```
+powershell -ExecutionPolicy Bypass -File tools\run-stream-a-baseline.ps1
+```
+
+**What it checks:**
+- Runs `generate-harness-constants.ps1`
+- Runs `generate-ferros-core.ps1`
+- Verifies no drift in:
+	- `harnesses/_constants.js`
+	- `docs/assets/_core/ferros-core.js`
+
+If drift is detected, the script exits non-zero and prints the files that must be reviewed.
+
+---
+
 ### `generate-harness-constants.ps1`
 
 **Purpose:** Reads all schemas (`schemas/*.schema.json`) and fixtures (`schemas/fixtures/*.json`), then outputs `harnesses/_constants.js` containing `var SCHEMA_*` and `var FIXTURE_*` declarations.

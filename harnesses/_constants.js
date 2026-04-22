@@ -1590,6 +1590,53 @@ var FIXTURE_INVALID_SPLIT_SAVE_STATE = {
   ]
 };
 
+// Source: schemas/fixtures/invalid-template-to-events-bad-time-format.json
+var FIXTURE_INVALID_TEMPLATE_TO_EVENTS_BAD_TIME_FORMAT = {
+  "$schema": "https://ferros.local/schemas/schedule-event.schema.json",
+  "_fixture": {
+    "purpose": "Negative fixture: template-to-events seam rejects events with invalid time format",
+    "contract": "C6",
+    "invalidReason": "time must match HH:MM 24-hour format"
+  },
+  "events": [
+    {
+      "id": "minimum-viable-block-1",
+      "kind": "block",
+      "label": "Midday review",
+      "time": "7:00",
+      "stream": "A",
+      "source": {
+        "type": "template",
+        "templateId": "minimum-viable"
+      }
+    }
+  ],
+  "expectedError": "pattern"
+};
+
+// Source: schemas/fixtures/invalid-template-to-events-missing-source-type.json
+var FIXTURE_INVALID_TEMPLATE_TO_EVENTS_MISSING_SOURCE_TYPE = {
+  "$schema": "https://ferros.local/schemas/schedule-event.schema.json",
+  "_fixture": {
+    "purpose": "Negative fixture: template-to-events seam rejects events missing required source.type",
+    "contract": "C6",
+    "invalidReason": "event source object present but missing required source.type"
+  },
+  "events": [
+    {
+      "id": "minimum-viable-block-0",
+      "kind": "block",
+      "label": "Morning focus block",
+      "time": "07:00",
+      "stream": "A",
+      "source": {
+        "templateId": "minimum-viable"
+      }
+    }
+  ],
+  "expectedError": "required: missing property \"type\""
+};
+
 // Source: schemas/fixtures/maximum-template-schedule.json
 var FIXTURE_MAXIMUM_TEMPLATE_SCHEDULE = {
   "$comment": "Golden fixture: maximum template schedule — all 12 templates with full schedule blocks. Tests template schema completeness at scale.",
@@ -2217,6 +2264,29 @@ var FIXTURE_SCHEDULE_EVENT_SOURCE_SEAM = {
   ]
 };
 
+// Source: schemas/fixtures/session-mode-invariants.json
+var FIXTURE_SESSION_MODE_INVARIANTS = {
+  "$comment": "Golden fixture: session mode state. When a user declines the Trade Window, session mode activates. No localStorage writes. No exit artifact. This fixture documents the invariants that must hold.",
+  "mode": "session",
+  "invariants": {
+    "localStorageWrites": 0,
+    "sessionStorageKeys": ["session_declined"],
+    "exitArtifact": null,
+    "bodyClass": null,
+    "saveProfileReturnsEarly": true,
+    "tradeWindowAccepted": false,
+    "stageFlowAccessible": true,
+    "explanation": "Session mode users can still proceed through the Stage 0→1→2→3 flow. They see all UI. But saveProfile() returns early, so nothing persists. Closing the tab loses everything."
+  },
+  "testAssertions": [
+    "localStorage.getItem('ferros_profile') === null after full session",
+    "localStorage.getItem('ferros_seal_chain') === null after full session",
+    "User can complete Stage 0→1→2→3 without error",
+    "No .ferros-log file is downloadable",
+    "sessionMode variable is true throughout session"
+  ]
+};
+
 // Source: schemas/fixtures/template-to-events-golden.json
 var FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN = {
   "$schema": "https://ferros.local/schemas/schedule-event.schema.json",
@@ -2280,29 +2350,6 @@ var FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN = {
   ]
 };
 
-// Source: schemas/fixtures/session-mode-invariants.json
-var FIXTURE_SESSION_MODE_INVARIANTS = {
-  "$comment": "Golden fixture: session mode state. When a user declines the Trade Window, session mode activates. No localStorage writes. No exit artifact. This fixture documents the invariants that must hold.",
-  "mode": "session",
-  "invariants": {
-    "localStorageWrites": 0,
-    "sessionStorageKeys": ["session_declined"],
-    "exitArtifact": null,
-    "bodyClass": null,
-    "saveProfileReturnsEarly": true,
-    "tradeWindowAccepted": false,
-    "stageFlowAccessible": true,
-    "explanation": "Session mode users can still proceed through the Stage 0→1→2→3 flow. They see all UI. But saveProfile() returns early, so nothing persists. Closing the tab loses everything."
-  },
-  "testAssertions": [
-    "localStorage.getItem('ferros_profile') === null after full session",
-    "localStorage.getItem('ferros_seal_chain') === null after full session",
-    "User can complete Stage 0→1→2→3 without error",
-    "No .ferros-log file is downloadable",
-    "sessionMode variable is true throughout session"
-  ]
-};
-
 // ==================================================
 // MANIFESTS -- arrays for harness iteration
 // ==================================================
@@ -2340,8 +2387,10 @@ var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-duplicate-alias-claim", file: "invalid-duplicate-alias-claim.json", fixture: FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM},
   {name: "invalid-forbidden-meta-field", file: "invalid-forbidden-meta-field.json", fixture: FIXTURE_INVALID_FORBIDDEN_META_FIELD},
   {name: "invalid-missing-session-id-alias-log", file: "invalid-missing-session-id-alias-log.json", fixture: FIXTURE_INVALID_MISSING_SESSION_ID_ALIAS_LOG},
-  {name: "invalid-split-save-state", file: "invalid-split-save-state.json", fixture: FIXTURE_INVALID_SPLIT_SAVE_STATE}
+  {name: "invalid-split-save-state", file: "invalid-split-save-state.json", fixture: FIXTURE_INVALID_SPLIT_SAVE_STATE},
+  {name: "invalid-template-to-events-bad-time-format", file: "invalid-template-to-events-bad-time-format.json", fixture: FIXTURE_INVALID_TEMPLATE_TO_EVENTS_BAD_TIME_FORMAT},
+  {name: "invalid-template-to-events-missing-source-type", file: "invalid-template-to-events-missing-source-type.json", fixture: FIXTURE_INVALID_TEMPLATE_TO_EVENTS_MISSING_SOURCE_TYPE}
 ];
 
-// Total files embedded: 29
-// Schemas: 7 | Golden fixtures: 15 | Negative fixtures: 7
+// Total files embedded: 31
+// Schemas: 7 | Golden fixtures: 15 | Negative fixtures: 9

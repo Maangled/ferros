@@ -654,10 +654,11 @@ runTest(g4, 'SCHEMA_AUDIT_RECORD accepts invalid-duplicate-alias-claim (duplicat
 });
 
 /* ==========================================================================
-   GROUP 5 — C6 runtime consumption contract (PR 13)
-   Validates the FerrosCore.templateToEvents() output golden fixture.
-   ========================================================================== */
-var g5 = addGroup('Group 5 — C6 runtime consumption contract (3 expected PASS)');
+  GROUP 5 — C6 runtime consumption contract (PR 13)
+  Validates the FerrosCore.templateToEvents() output golden fixture and
+  enforces malformed-event rejection at the seam boundary.
+  ========================================================================== */
+var g5 = addGroup('Group 5 — C6 runtime consumption contract (5 expected PASS)');
 
 // 5a: template-to-events-golden events[] each validates against SCHEMA_SCHEDULE_EVENT
 runTest(g5, 'template-to-events-golden.events[] each validates against SCHEMA_SCHEDULE_EVENT (CX6-1)', function() {
@@ -723,6 +724,46 @@ runTest(g5, 'template-to-events-golden.events[] ids follow <templateId>-block-<i
     return { pass: true, detail: 'all ' + events.length + ' events have correct id pattern and kind=block; stream propagated from template (stream=' + (events[0].stream || 'absent') + ')' };
   }
   return { pass: false, error: errors.join(' | ') };
+});
+
+// 5d: invalid-template-to-events-missing-source-type is rejected (CX6 boundary hardening)
+runTest(g5, 'invalid-template-to-events-missing-source-type.events[] rejected by SCHEMA_SCHEDULE_EVENT', function() {
+  var fixture = FIXTURE_INVALID_TEMPLATE_TO_EVENTS_MISSING_SOURCE_TYPE;
+  var events = fixture.events;
+  if (!Array.isArray(events) || events.length === 0) {
+    return { pass: false, error: 'fixture.events array absent or empty' };
+  }
+  var rejects = 0;
+  var details = [];
+  for (var i = 0; i < events.length; i++) {
+    var r = validate(events[i], SCHEMA_SCHEDULE_EVENT);
+    if (!r.valid) {
+      rejects++;
+      details.push('events[' + i + '] rejected: ' + r.errors.slice(0, 1).join('; '));
+    }
+  }
+  if (rejects === events.length) {
+    return { pass: true, detail: 'all ' + events.length + ' malformed events rejected (missing source.type)' };
+  }
+  return { pass: false, error: 'expected all events to be rejected, but only ' + rejects + '/' + events.length + ' failed validation' };
+});
+
+// 5e: invalid-template-to-events-bad-time-format is rejected (CX6 boundary hardening)
+runTest(g5, 'invalid-template-to-events-bad-time-format.events[] rejected by SCHEMA_SCHEDULE_EVENT', function() {
+  var fixture = FIXTURE_INVALID_TEMPLATE_TO_EVENTS_BAD_TIME_FORMAT;
+  var events = fixture.events;
+  if (!Array.isArray(events) || events.length === 0) {
+    return { pass: false, error: 'fixture.events array absent or empty' };
+  }
+  var rejects = 0;
+  for (var i = 0; i < events.length; i++) {
+    var r = validate(events[i], SCHEMA_SCHEDULE_EVENT);
+    if (!r.valid) rejects++;
+  }
+  if (rejects === events.length) {
+    return { pass: true, detail: 'all ' + events.length + ' malformed events rejected (time format)' };
+  }
+  return { pass: false, error: 'expected all events to be rejected, but only ' + rejects + '/' + events.length + ' failed validation' };
 });
 
 /* ==========================================================================

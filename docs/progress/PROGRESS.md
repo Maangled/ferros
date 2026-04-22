@@ -64,13 +64,18 @@ Per `docs/ORCHESTRATION.md` §4, a cross-stream reconciliation review must compl
 ## Wave 0 Harness Status
 
 > Run each harness by opening it in Chrome via `file://`. All harnesses load `ferros-core.js` via `<script src="../docs/assets/_core/ferros-core.js">`.
+>
+> Stream A baseline protocol (autonomous runs):
+> 1. `powershell -ExecutionPolicy Bypass -File tools\run-stream-a-baseline.ps1`
+> 2. If drift is reported for generated artifacts, review and commit regenerated output before further Stream A changes.
+> 3. Re-run the command and proceed only when it exits clean.
 
-Fresh gate verification on 2026-04-22 in Chrome via `file://`: H1 `30/30`, H2 `25/25`, H4 `26/26`. H3 remains last verified on 2026-04-18 at `18/18`.
+Fresh gate verification on 2026-04-22 in Chrome via `file://`: H1 `36/36`, H2 `25/25`, H4 `26/26`. H3 remains last verified on 2026-04-18 at `18/18`.
 Live supporting-harness verification in the current browser session on 2026-04-22: H5 `30/30` PASS, H9 `28/28` PASS. H6 `25/25` PASS, H7 `107/107` PASS, and Preflight `6/6` PASS remain from the 2026-04-19 session. H8 clean rerun completed 2026-04-21 — see `docs/progress/H8-RERUN-ENV-NOTES.md`.
 
 | Harness | File | Contracts | Gate? | Verified status |
 |---------|------|-----------|-------|-----------------|
-| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 | ✅ Gate | PASS — 30/30 |
+| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 | ✅ Gate | PASS — 36/36 |
 | H2 | `harnesses/round-trip-harness.html` | C9 | ✅ Gate | PASS — 25/25 |
 | H3 | `harnesses/runtime-harness.html` | C8 | ✅ Gate | PASS — 18/18 (nonce echo green; resize semantics aligned to C8) |
 | H4 | `harnesses/negative-harness.html` | C10 | ✅ Gate | PASS — 26/26 |

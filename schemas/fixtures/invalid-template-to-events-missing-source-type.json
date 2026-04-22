@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ferros.local/schemas/schedule-event.schema.json",
+  "_fixture": {
+    "purpose": "Negative fixture: template-to-events seam rejects events missing required source.type",
+    "contract": "C6",
+    "invalidReason": "event source object present but missing required source.type"
+  },
+  "events": [
+    {
+      "id": "minimum-viable-block-0",
+      "kind": "block",
+      "label": "Morning focus block",
+      "time": "07:00",
+      "stream": "A",
+      "source": {
+        "templateId": "minimum-viable"
+      }
+    }
+  ],
+  "expectedError": "required: missing property \"type\""
+}

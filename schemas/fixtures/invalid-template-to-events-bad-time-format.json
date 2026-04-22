@@ -1,0 +1,22 @@
+{
+  "$schema": "https://ferros.local/schemas/schedule-event.schema.json",
+  "_fixture": {
+    "purpose": "Negative fixture: template-to-events seam rejects events with invalid time format",
+    "contract": "C6",
+    "invalidReason": "time must match HH:MM 24-hour format"
+  },
+  "events": [
+    {
+      "id": "minimum-viable-block-1",
+      "kind": "block",
+      "label": "Midday review",
+      "time": "7:00",
+      "stream": "A",
+      "source": {
+        "type": "template",
+        "templateId": "minimum-viable"
+      }
+    }
+  ],
+  "expectedError": "pattern"
+}
