@@ -19,7 +19,7 @@ This spec tracks The Forge as the FERROS authoring system represented today by `
 | 50% | Local assembly workflow | A user can assemble Decks locally with drag, move, highlight, and basic preview behavior without backend services | ✅ |
 | 60% | Assistant edit bridge | An assistant or local API bridge can create or edit Forge assets without replacing the standalone workflow | ☐ |
 | 70% | Command-center dispatch | `docs/agent-command-center.html` or its successor can dispatch generation or edit jobs into Forge workflows | ☐ |
-| 80% | Arena export target | Forge exports reusable Deck manifests or payloads that target the Arena Runtime cleanly | ☐ |
+| 80% | Arena export target | Forge exports reusable Deck manifests or payloads that target the Arena Runtime cleanly | ✅ |
 | 90% | Shared authoring contract | Authoring conventions are stable across products that consume Cards, Decks, and Bag browsing | ☐ |
 | 100% | Production / Complete | Forge is a production authoring pipeline for parametric Cards and reusable Deck compositions | ☐ |
 
@@ -38,14 +38,18 @@ This spec tracks The Forge as the FERROS authoring system represented today by `
 - `docs/adr/ADR-010-cards-and-decks-nomenclature.md` — universal Card/Deck/Bag vocabulary.
 - `docs/adr/ADR-015-universal-parametric-authoring-workbench.md` — formalizes Forge as the base pattern for all domain-specific workbenches (architecture, materials, etc.) and establishes the HTML/CSS illusion strategy, durable contract boundary, and future Rust geometry layer expectations.
 - `docs/contracts/runtime-host-v1.md` — host-message seam the workbench uses for card preview sync.
-- `docs/progress/arena-runtime.md` — target runtime surface that Forge should eventually export into.
+- `docs/adr/ADR-016-arena-export-target.md` — **Arena export target contract** (ADR-016). Defines the `arena-deck` export envelope shape, card resolution rules, C8 initialization hand-off, and file naming convention. Reference implementation target for the 80% gate.
 
 ## Current Blockers
 
 - README external progress copy still understates the shipped Forge workbench behavior.
 - Current repo coverage is still centered on one seam fixture and the loot-box project flow.
 - Assistant-driven edit/creation bridges are not started yet.
-- Forge output contracts for broader templates or reusable runtime targets are still TBD.
+- Forge implementation of the `arena-deck` export envelope (ADR-016) is not yet shipped — spec is decided, implementation follows at 80% gate.
+
+## ADR-016 Cross-Reference
+
+The arena export contract is decided. See [`docs/adr/ADR-016-arena-export-target.md`](../adr/ADR-016-arena-export-target.md) for the full specification of the `arena-deck` export envelope that Forge must produce for the 80% gate.
 
 ## Related Specs
 
