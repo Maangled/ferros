@@ -1,6 +1,6 @@
 # Stream A — Contract & Backend Infrastructure
 
-> **Stream status:** Wave 0 CLOSED (PR #47). Currently in Wave 1 hardening.
+> **Stream status:** Wave 0 CLOSED (PR #47). Wave 1 CLOSED (PR #67, 2026-04-22). Phase B complete (ADR-016 PR #68, C6 consumption spec PR #69).
 > **Philosophy:** Be the bedrock. Contracts first, always. Binary gates, not percentages.
 
 ---
@@ -61,7 +61,7 @@ These items were identified during Wave 0 and explicitly deferred. They are **no
 | # | Item | Target | Current State |
 |---|------|--------|---------------|
 | 1 | C7 audit record fixture coverage | Wave 1 | Closed on `main` via alias/recovery portable-log fixtures plus the claimed-alias merge fixture |
-| 2 | C6 schedule-event runtime consumption | Wave 2 (S1 — Schedule Ledger) | `templateToEvents()` exists; no surface consumes it yet |
+| 2 | C6 schedule-event runtime consumption | ~~Wave 2 (S1)~~ | **DONE — PR 13.** `templateToEvents()` promoted to consumed contract. H1 Group 5 enforces CX6-1/CX6-2 rules. `storage-rules.md` §C6 is the canonical consumer contract. |
 | 3 | Card/deck inclusion in export envelope | Wave 1 (V5–V7) | Storage rules note deferred item |
 | 4 | Seal chain compaction strategy | Wave 4 (H5 hardening) | Note in storage-rules.md |
 | 5 | Contract/fixture physical co-location | Wave 1 | Manifest mitigates; physical reorg deferred |
@@ -247,8 +247,8 @@ These items are the current Stream A work queue. The first two still gate Phase 
 
 | # | Item | Priority | Notes |
 |---|------|----------|-------|
-| 1 | Wave 1 closure evidence + audit reconciliation | HIGH | PR 11 closes the Wave 1 ceremony and findings #9 / #19 |
-| 2 | C6 runtime consumption contract | HIGH | Promote `templateToEvents()` to a consumed contract before S1 begins |
+| 1 | Wave 1 closure evidence + audit reconciliation | ~~HIGH~~ **DONE** | PR 11 (#67) closed Wave 1 ceremony and findings #9 / #19 |
+| 2 | C6 runtime consumption contract | ~~HIGH~~ **DONE** | PR 13 (#69) promoted `templateToEvents()` to consumed contract; H1 Group 5 enforces it |
 | 3 | Contract/fixture physical co-location | LOW | Manifest mitigates the nav issue; reorg is cosmetic |
 | 4 | Seal chain compaction strategy | LOW | Wave 4 (H5) target |
 | 5 | Schema evolution cascade tooling | MED | L10 (WASM validators) is research track |
