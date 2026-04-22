@@ -1,0 +1,35 @@
+{
+  "$schema": "https://ferros.local/schemas/deck.schema.json",
+  "_fixture": {
+    "purpose": "Negative seam fixture: arena export envelope with wrong exportType",
+    "contract": "ADR-016",
+    "invalidReason": "exportType must be arena-deck"
+  },
+  "ferrosVersion": "1.0",
+  "exportedAt": "2026-04-22T04:20:00.000Z",
+  "exportType": "profile-export",
+  "deck": {
+    "id": "arena-wrong-type",
+    "kind": "deck",
+    "name": "Arena Wrong Type",
+    "version": 1,
+    "cards": [
+      { "cardId": "arena-card-2", "slot": "primary" }
+    ],
+    "renderFile": "docs/assets/cards/trading-card.html"
+  },
+  "cards": [
+    {
+      "id": "arena-card-2",
+      "kind": "card",
+      "name": "Arena Card Two",
+      "version": 1,
+      "renderFile": "docs/assets/cards/trading-card.html"
+    }
+  ],
+  "runtimeHint": {
+    "control": "demo",
+    "initialState": null
+  },
+  "expectedError": "ARENA_EXPORT_TYPE_INVALID"
+}

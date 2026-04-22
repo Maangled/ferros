@@ -1,0 +1,35 @@
+{
+  "$schema": "https://ferros.local/schemas/deck.schema.json",
+  "_fixture": {
+    "purpose": "Negative seam fixture: arena export envelope with unsupported runtimeHint.control",
+    "contract": "ADR-016",
+    "invalidReason": "runtimeHint.control must be one of demo|interactive|static"
+  },
+  "ferrosVersion": "1.0",
+  "exportedAt": "2026-04-22T04:15:00.000Z",
+  "exportType": "arena-deck",
+  "deck": {
+    "id": "arena-control-invalid",
+    "kind": "deck",
+    "name": "Arena Control Invalid",
+    "version": 1,
+    "cards": [
+      { "cardId": "arena-card-1", "slot": "primary" }
+    ],
+    "renderFile": "docs/assets/cards/trading-card.html"
+  },
+  "cards": [
+    {
+      "id": "arena-card-1",
+      "kind": "card",
+      "name": "Arena Card One",
+      "version": 1,
+      "renderFile": "docs/assets/cards/trading-card.html"
+    }
+  ],
+  "runtimeHint": {
+    "control": "autoplay",
+    "initialState": "Open"
+  },
+  "expectedError": "ARENA_EXPORT_UNSUPPORTED_CONTROL"
+}

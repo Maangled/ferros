@@ -30,7 +30,7 @@
 </head>
 <body>
 <h1>H9 — FERROS Consumer-Helper Harness</h1>
-<div class="meta">H9 — Dedicated harness for published consumer helpers &nbsp;|&nbsp; Covers: <code>loadProfile</code>, <code>pushAuditEntry</code>, <code>saveProfile</code> &nbsp;|&nbsp; Contracts: C9, C10 &nbsp;|&nbsp; Run on file:// in Chrome</div>
+<div class="meta">H9 — Dedicated harness for published consumer helpers &nbsp;|&nbsp; Covers: <code>loadProfile</code>, <code>pushAuditEntry</code>, <code>saveProfile</code>, <code>templateToEvents</code> &nbsp;|&nbsp; Contracts: C6, C9, C10 &nbsp;|&nbsp; Run on file:// in Chrome</div>
 <div id="groups"></div>
 <div class="summary-bar" id="summary-bar"></div>
 <div id="result-block"><pre id="result-json">running...</pre></div>
@@ -67,6 +67,18 @@ function record(id, name, pass, detail) {
 }
 
 function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
+
+function normalizeScheduleEvent(event) {
+  return {
+    id: event && event.id,
+    kind: event && event.kind,
+    label: event && event.label,
+    time: event && event.time,
+    stream: event && Object.prototype.hasOwnProperty.call(event, 'stream') ? event.stream : null,
+    sourceType: event && event.source ? event.source.type : null,
+    sourceTemplateId: event && event.source ? event.source.templateId : null
+  };
+}
 
 function makeValidProfile() {
   return {
@@ -346,6 +358,57 @@ startGroup('C', 'saveProfile — durable write-path contract');
   // Clean up
   localStorage.removeItem('ferros_profile');
   localStorage.removeItem('ferros_seal_chain');
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Group D — templateToEvents: published C6 consumer bridge
+// Calls FerrosCore.templateToEvents() directly — the canonical helper path
+// for template-backed schedule consumers such as Schedule Ledger.
+// ═══════════════════════════════════════════════════════════════════════════
+startGroup('D', 'templateToEvents — C6 consumer bridge');
+
+(function groupD() {
+  // D-1: Empty-template safety — null template returns []
+  var r1 = FerrosCore.templateToEvents(null);
+  record('D-1', 'Null template returns []',
+    Array.isArray(r1) && r1.length === 0,
+    Array.isArray(r1) ? 'events.length=' + r1.length : 'FAIL: result was not an array');
+
+  // D-2: Empty-template safety — missing blocks returns []
+  var r2 = FerrosCore.templateToEvents({ id: 'missing-blocks', templateSchedule: {} });
+  record('D-2', 'Template without blocks returns []',
+    Array.isArray(r2) && r2.length === 0,
+    Array.isArray(r2) ? 'events.length=' + r2.length : 'FAIL: result was not an array');
+
+  var golden = FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN;
+  var inputTemplate = deepClone(golden._fixture.inputTemplate);
+  var expectedEvents = deepClone(golden.events);
+  var emitted = FerrosCore.templateToEvents(inputTemplate);
+
+  // D-3: Golden fixture count matches emitted count
+  record('D-3', 'Golden input emits expected number of C6 events',
+    Array.isArray(emitted) && emitted.length === expectedEvents.length,
+    Array.isArray(emitted) ? 'emitted=' + emitted.length + ' expected=' + expectedEvents.length : 'FAIL: result was not an array');
+
+  // D-4: Golden fixture projection matches canonical expected events
+  var normalizedEmitted = emitted.map(normalizeScheduleEvent);
+  var normalizedExpected = expectedEvents.map(normalizeScheduleEvent);
+  record('D-4', 'Golden input matches canonical template-to-events fixture output',
+    JSON.stringify(normalizedEmitted) === JSON.stringify(normalizedExpected),
+    'emitted=' + JSON.stringify(normalizedEmitted));
+
+  // D-5: Template source metadata is attached and stream remains optional
+  var optionalStream = FerrosCore.templateToEvents({
+    id: 'no-stream-template',
+    templateSchedule: { blocks: [{ time: '09:30', label: 'Unstreamed block' }] }
+  });
+  var d5pass = Array.isArray(optionalStream) && optionalStream.length === 1 &&
+    optionalStream[0].source && optionalStream[0].source.type === 'template' &&
+    optionalStream[0].source.templateId === 'no-stream-template' &&
+    !Object.prototype.hasOwnProperty.call(optionalStream[0], 'stream');
+  record('D-5', 'Source metadata is canonical and stream stays optional',
+    d5pass,
+    d5pass ? 'source.type=' + optionalStream[0].source.type + ', templateId=' + optionalStream[0].source.templateId : 'FAIL: ' + JSON.stringify(optionalStream));
 })();
 
 // ═══════════════════════════════════════════════════════════════════════════

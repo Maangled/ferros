@@ -366,7 +366,7 @@ for (var si = 0; si < FERROS_SCHEMAS.length; si++) {
 /* ==========================================================================
    GROUP 2 — Golden fixture positive validation (expect PASS)
    ========================================================================== */
-var g2 = addGroup('Group 2 — Golden fixture positive validation (16 expected PASS)');
+var g2 = addGroup('Group 2 — Golden fixture positive validation (18 expected PASS)');
 
 // 2a: full-profile-stage3 → SCHEMA_PROFILE (C2)
 runTest(g2, 'full-profile-stage3 validates against SCHEMA_PROFILE', function() {
@@ -553,6 +553,60 @@ runTest(g2, 'template-to-events-golden.events[] each validates against SCHEMA_SC
   return { pass: false, error: errors.join(' | ') };
 });
 
+// 2r: arena-export-envelope-seam deck/cards validate against C5/C4 (ADR-016 seam)
+runTest(g2, 'arena-export-envelope-seam deck/cards validate against SCHEMA_DECK + SCHEMA_CARD (ADR-016 seam)', function() {
+  var fixture = stripFixtureMeta(FIXTURE_ARENA_EXPORT_ENVELOPE_SEAM);
+  if (!fixture.deck) return { pass: false, error: 'fixture.deck is absent' };
+  if (!Array.isArray(fixture.cards) || fixture.cards.length === 0) {
+    return { pass: false, error: 'fixture.cards array absent or empty' };
+  }
+
+  var deckResult = validate(fixture.deck, SCHEMA_DECK);
+  if (!deckResult.valid) {
+    return { pass: false, error: 'deck invalid: ' + deckResult.errors.slice(0, 3).join(' | ') };
+  }
+
+  var cardErrors = [];
+  for (var i = 0; i < fixture.cards.length; i++) {
+    var cardResult = validate(fixture.cards[i], SCHEMA_CARD);
+    if (!cardResult.valid) {
+      cardErrors.push('cards[' + i + '] (' + (fixture.cards[i].id || '?') + '): ' + cardResult.errors.slice(0, 2).join('; '));
+    }
+  }
+  if (cardErrors.length > 0) {
+    return { pass: false, error: cardErrors.join(' | ') };
+  }
+
+  return { pass: true, detail: 'deck + ' + fixture.cards.length + ' cards validate against C5/C4 for arena export seam' };
+});
+
+// 2s: arena-export-envelope-seam deck.cardId references resolve in cards[] payload (ADR-016 rule)
+runTest(g2, 'arena-export-envelope-seam deck.cardId references resolve to cards[].id (ADR-016)', function() {
+  var fixture = stripFixtureMeta(FIXTURE_ARENA_EXPORT_ENVELOPE_SEAM);
+  if (!fixture.deck || !Array.isArray(fixture.deck.cards)) {
+    return { pass: false, error: 'fixture.deck.cards array absent' };
+  }
+  if (!Array.isArray(fixture.cards) || fixture.cards.length === 0) {
+    return { pass: false, error: 'fixture.cards array absent or empty' };
+  }
+
+  var cardIdSet = {};
+  for (var i = 0; i < fixture.cards.length; i++) {
+    cardIdSet[fixture.cards[i].id] = true;
+  }
+
+  var unresolved = [];
+  for (var j = 0; j < fixture.deck.cards.length; j++) {
+    var cardId = fixture.deck.cards[j].cardId;
+    if (!cardIdSet[cardId]) unresolved.push(cardId);
+  }
+
+  if (unresolved.length === 0) {
+    return { pass: true, detail: 'all ' + fixture.deck.cards.length + ' deck card references resolve in embedded cards[]' };
+  }
+  return { pass: false, error: 'unresolved cardId references: ' + unresolved.join(', ') };
+});
+
 /* ==========================================================================
    GROUP 3 — Negative fixture schema rejection (expect PASS — schema correctly rejects)
    ========================================================================== */
@@ -651,6 +705,80 @@ runTest(g4, 'SCHEMA_AUDIT_RECORD accepts invalid-duplicate-alias-claim (duplicat
     return { pass: true, detail: 'PASS (expected): schema validates portable-log shape; duplicate session rejection is owned by FerrosCore claim logic and H2/H4.' };
   }
   return { pass: false, error: 'unexpected schema rejection — duplicate session should now be semantic only: ' + r.errors.slice(0,3).join(' | ') };
+});
+
+// 4d: invalid-arena-export-missing-card-reference — schema-valid envelope with semantic card-reference break (ADR-016 seam)
+runTest(g4, 'SCHEMA_DECK accepts invalid-arena-export-missing-card-reference (card resolution is semantic, runtime owns)', function() {
+  var fixture = stripFixtureMeta(FIXTURE_INVALID_ARENA_EXPORT_MISSING_CARD_REFERENCE);
+  if (!fixture.deck || !Array.isArray(fixture.cards)) {
+    return { pass: false, error: 'fixture missing deck/cards structure' };
+  }
+
+  var deckSchemaResult = validate(fixture.deck, SCHEMA_DECK);
+  if (!deckSchemaResult.valid) {
+    return { pass: false, error: 'unexpected deck schema rejection: ' + deckSchemaResult.errors.slice(0, 2).join(' | ') };
+  }
+
+  var cardSchemaErrors = [];
+  for (var i = 0; i < fixture.cards.length; i++) {
+    var cardSchemaResult = validate(fixture.cards[i], SCHEMA_CARD);
+    if (!cardSchemaResult.valid) {
+      cardSchemaErrors.push('cards[' + i + '] invalid: ' + cardSchemaResult.errors.slice(0, 2).join('; '));
+    }
+  }
+  if (cardSchemaErrors.length > 0) {
+    return { pass: false, error: 'unexpected card schema rejection(s): ' + cardSchemaErrors.join(' | ') };
+  }
+
+  var cardIdSet = {};
+  for (var c = 0; c < fixture.cards.length; c++) {
+    cardIdSet[fixture.cards[c].id] = true;
+  }
+
+  var unresolved = [];
+  for (var d = 0; d < fixture.deck.cards.length; d++) {
+    var cardId = fixture.deck.cards[d].cardId;
+    if (!cardIdSet[cardId]) unresolved.push(cardId);
+  }
+
+  if (unresolved.length > 0) {
+    return { pass: true, detail: 'PASS (expected): schema accepts shape, but runtime seam must reject unresolved cardIds: ' + unresolved.join(', ') };
+  }
+  return { pass: false, error: 'expected unresolved card reference but all deck.cardId values resolved' };
+});
+
+// 4e: invalid-arena-export-unsupported-control — schema-valid envelope with semantic runtimeHint.control break (ADR-016 seam)
+runTest(g4, 'SCHEMA_DECK accepts invalid-arena-export-unsupported-control (runtimeHint.control is semantic, runtime owns)', function() {
+  var fixture = stripFixtureMeta(FIXTURE_INVALID_ARENA_EXPORT_UNSUPPORTED_CONTROL);
+  if (!fixture.deck || !fixture.runtimeHint) {
+    return { pass: false, error: 'fixture missing deck/runtimeHint structure' };
+  }
+  var deckSchemaResult = validate(fixture.deck, SCHEMA_DECK);
+  if (!deckSchemaResult.valid) {
+    return { pass: false, error: 'unexpected deck schema rejection: ' + deckSchemaResult.errors.slice(0, 2).join(' | ') };
+  }
+  var allowed = ['demo', 'interactive', 'static'];
+  var control = fixture.runtimeHint.control;
+  if (allowed.indexOf(control) === -1) {
+    return { pass: true, detail: 'PASS (expected): schema accepts shape, but runtime seam must reject unsupported runtimeHint.control="' + control + '"' };
+  }
+  return { pass: false, error: 'expected unsupported runtimeHint.control in fixture' };
+});
+
+// 4f: invalid-arena-export-wrong-type — schema-valid envelope with semantic exportType break (ADR-016 seam)
+runTest(g4, 'SCHEMA_DECK accepts invalid-arena-export-wrong-type (exportType is semantic, runtime owns)', function() {
+  var fixture = stripFixtureMeta(FIXTURE_INVALID_ARENA_EXPORT_WRONG_TYPE);
+  if (!fixture.deck) {
+    return { pass: false, error: 'fixture missing deck structure' };
+  }
+  var deckSchemaResult = validate(fixture.deck, SCHEMA_DECK);
+  if (!deckSchemaResult.valid) {
+    return { pass: false, error: 'unexpected deck schema rejection: ' + deckSchemaResult.errors.slice(0, 2).join(' | ') };
+  }
+  if (fixture.exportType !== 'arena-deck') {
+    return { pass: true, detail: 'PASS (expected): schema accepts shape, but runtime seam must reject exportType="' + fixture.exportType + '"' };
+  }
+  return { pass: false, error: 'expected non arena-deck exportType in fixture' };
 });
 
 /* ==========================================================================

@@ -36,6 +36,8 @@ This index tracks Phase 0 progress using **binary capability gates** — not per
 | PR 12 | B1 — Arena Export Target ADR | Merged [#68](https://github.com/Maangled/ferros/pull/68) | ✅ Merged |
 | PR 13 | B2 — C6 runtime consumption spec | Merged [#69](https://github.com/Maangled/ferros/pull/69) | ✅ Merged |
 
+Freeze-prep governance increment (2026-04-22): `docs/contracts/manifest.json` now carries `governance.streamAContractFreeze` trigger metadata, `docs/contracts/CONTRACTS-OVERVIEW.md` documents freeze execution protocol, and ADR-012 now includes explicit freeze execution + v2 migration activation gate requirements.
+
 Umbrella: [Phase A — Foundation Finalization #62](https://github.com/Maangled/ferros/issues/62) · Plan: [PR-PLAN-PR8-PR13.md](./PR-PLAN-PR8-PR13.md)
 
 **Wave 1 status: CLOSED** — All V1–V8 capabilities verified 2026-04-22. See [WAVE-1-CLOSURE-EVIDENCE.md](./WAVE-1-CLOSURE-EVIDENCE.md) for the full closure record. Phase B complete with PR 12 (ADR-016) and PR 13 (C6 consumption spec) merged.
@@ -70,20 +72,20 @@ Per `docs/ORCHESTRATION.md` §4, a cross-stream reconciliation review must compl
 > 2. If drift is reported for generated artifacts, review and commit regenerated output before further Stream A changes.
 > 3. Re-run the command and proceed only when it exits clean.
 
-Fresh gate verification on 2026-04-22 in Chrome via `file://`: H1 `36/36`, H2 `25/25`, H4 `26/26`. H3 remains last verified on 2026-04-18 at `18/18`.
-Live supporting-harness verification in the current browser session on 2026-04-22: H5 `30/30` PASS, H9 `28/28` PASS. H6 `25/25` PASS, H7 `107/107` PASS, and Preflight `6/6` PASS remain from the 2026-04-19 session. H8 clean rerun completed 2026-04-21 — see `docs/progress/H8-RERUN-ENV-NOTES.md`.
+Fresh gate verification on 2026-04-22 in Chrome via `file://`: H1 `41/41`, H2 `31/31`, H4 `26/26`. H3 remains last verified on 2026-04-18 at `18/18`.
+Live supporting-harness verification in the current browser session on 2026-04-22: H5 `30/30` PASS, H7 `114/114` PASS, and H9 `33/33` PASS. H6 `25/25` PASS and Preflight `6/6` PASS remain from the 2026-04-19 session. H8 clean rerun completed 2026-04-21 — see `docs/progress/H8-RERUN-ENV-NOTES.md`.
 
 | Harness | File | Contracts | Gate? | Verified status |
 |---------|------|-----------|-------|-----------------|
-| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 | ✅ Gate | PASS — 36/36 |
-| H2 | `harnesses/round-trip-harness.html` | C9 | ✅ Gate | PASS — 25/25 |
+| H1 | `harnesses/ferros-contract-validator.html` | C1–C7 | ✅ Gate | PASS — 41/41 |
+| H2 | `harnesses/round-trip-harness.html` | C9 | ✅ Gate | PASS — 31/31 |
 | H3 | `harnesses/runtime-harness.html` | C8 | ✅ Gate | PASS — 18/18 (nonce echo green; resize semantics aligned to C8) |
 | H4 | `harnesses/negative-harness.html` | C10 | ✅ Gate | PASS — 26/26 |
 | H5 | `harnesses/acceptance-harness.html` | V1/V8 | Supporting | PASS — 30/30 |
 | H6 | `harnesses/write-path-harness.html` | C9 write | Supporting | PASS — 25/25 |
-| H7 | `harnesses/semantic-fixture-linter.html` | C2/C4/C5/C6 | Supporting | PASS — 107/107 |
+| H7 | `harnesses/semantic-fixture-linter.html` | C2/C4/C5/C6/C9 | Supporting | PASS — 114/114 |
 | H8 | `harnesses/ui-acceptance-harness.html` | C10/UI | Supporting | PASS — 17/17 (clean rerun 2026-04-21; see H8-RERUN-ENV-NOTES.md) |
-| H9 | `harnesses/consumer-helper-harness.html` | C7/C9/C10 helpers | Supporting | PASS — 28/28 |
+| H9 | `harnesses/consumer-helper-harness.html` | C6/C7/C9/C10 helpers | Supporting | PASS — 33/33 |
 | Preflight | `harnesses/preflight-check.html` | C7/C8 inventory | Supporting | PASS — 6/6 |
 
 ---

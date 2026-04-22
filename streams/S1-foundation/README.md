@@ -1,7 +1,7 @@
 # S1 — Foundation
 
 **Stream:** S1  
-**Status:** 🔴 Not started  
+**Status:** � In progress (local gate checks green; awaiting CI matrix confirmation)  
 **Gate:** G1
 
 ---
@@ -46,14 +46,14 @@ All other streams. G1 must close before S2–S8 work meaningfully.
 
 ## Definition of done
 
-- [ ] `cargo build` passes on `x86_64-linux`, `x86_64-macos`, `x86_64-windows`.
-- [ ] `cargo test` passes (empty test suite is acceptable at G1).
-- [ ] `cargo fmt --check` passes.
-- [ ] `cargo clippy -- -D warnings` passes.
-- [ ] CI workflow runs on every PR.
-- [ ] `ferros-blueprint.html` lives at `/site/index.html`.
-- [ ] `README.md` reflects actual project state.
-- [ ] `CODEOWNERS` exists with per-stream ownership entries.
+- [ ] `cargo build` passes on `x86_64-linux`, `x86_64-macos`, `x86_64-windows` (Windows local ✅; Linux/macOS pending CI run).
+- [ ] `cargo test` passes (empty test suite is acceptable at G1) (Windows local ✅; Linux/macOS pending CI run).
+- [x] `cargo fmt --check` passes.
+- [x] `cargo clippy -- -D warnings` passes.
+- [x] CI workflow exists and runs on every PR.
+- [x] `ferros-blueprint.html` lives at `/site/index.html`.
+- [x] `README.md` reflects actual project state.
+- [x] `CODEOWNERS` exists with per-stream ownership entries.
 
 ---
 
@@ -74,10 +74,6 @@ All other streams. G1 must close before S2–S8 work meaningfully.
 
 ## Immediate next steps
 
-1. Add `Cargo.toml` workspace root with an empty `[workspace]` members list.
-2. Add `rust-toolchain.toml`.
-3. Add `.github/workflows/ci.yml` with fmt/clippy/test jobs.
-4. Move `ferros-blueprint.html` → `site/index.html`.
-5. Update `README.md` to reflect current state and link to new docs.
-6. Add `CODEOWNERS`.
-7. Open PR tagged `[S1]`, target G1 gate.
+1. Open PR tagged `[S1]` targeting G1.
+2. Confirm Linux and macOS matrix jobs pass in CI.
+3. Mark S1 G1 closed and unblock S2 start.

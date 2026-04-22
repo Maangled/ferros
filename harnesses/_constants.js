@@ -862,6 +862,66 @@ var FIXTURE_ALIAS_SESSION_LOG = {
   "claimInstructions": "Import this file on your home FERROS instance to claim these logs and merge them into your profile. Unlinked until claimed."
 };
 
+// Source: schemas/fixtures/arena-export-envelope-seam.json
+var FIXTURE_ARENA_EXPORT_ENVELOPE_SEAM = {
+  "$schema": "https://ferros.local/schemas/deck.schema.json",
+  "_fixture": {
+    "purpose": "Seam fixture: ADR-016 arena-deck export envelope linking C5 deck + C4 cards + runtime hints",
+    "contract": "ADR-016",
+    "seam": "Forge export (C4/C5) -> Arena Runtime consume (C8)",
+    "validates": [
+      "Envelope carries ferrosVersion/exportedAt/exportType fields",
+      "deck validates against SCHEMA_DECK",
+      "cards[] each validate against SCHEMA_CARD",
+      "Every deck.cards[].cardId resolves to one embedded cards[].id",
+      "runtimeHint uses supported control values"
+    ]
+  },
+  "ferrosVersion": "1.0",
+  "exportedAt": "2026-04-22T03:50:00.000Z",
+  "exportType": "arena-deck",
+  "deck": {
+    "id": "minimum-viable-arena-deck",
+    "kind": "deck",
+    "name": "Minimum Viable Arena Deck",
+    "version": 1,
+    "role": "application",
+    "cards": [
+      { "cardId": "minimum-viable-card-shell", "slot": "shell" },
+      { "cardId": "minimum-viable-card-overlay", "slot": "overlay" }
+    ],
+    "renderFile": "docs/assets/cards/trading-card.html"
+  },
+  "cards": [
+    {
+      "id": "minimum-viable-card-shell",
+      "kind": "card",
+      "name": "Minimum Viable Card Shell",
+      "version": 1,
+      "renderFile": "docs/assets/cards/trading-card.html",
+      "role": "container",
+      "tags": ["arena", "shell"],
+      "state": { "preset": "Open", "control": "demo" },
+      "transform": { "tx": 0, "ty": 0, "tz": 0, "rx": 0, "ry": 0, "rz": 0, "scale": 1 }
+    },
+    {
+      "id": "minimum-viable-card-overlay",
+      "kind": "card",
+      "name": "Minimum Viable Card Overlay",
+      "version": 1,
+      "renderFile": "docs/assets/cards/trading-card.html",
+      "role": "decorative",
+      "tags": ["arena", "overlay"],
+      "state": { "preset": "Hover", "control": "demo" },
+      "transform": { "tx": 8, "ty": -6, "tz": 4, "rx": 0, "ry": 0, "rz": 5, "scale": 1 }
+    }
+  ],
+  "runtimeHint": {
+    "control": "demo",
+    "initialState": "Open"
+  }
+};
+
 // Source: schemas/fixtures/card-deck-roundtrip.json
 var FIXTURE_CARD_DECK_ROUNDTRIP = {
   "$comment": "Golden fixture: card and deck for the Forge→Runtime round-trip test (Journey 3). A card is created/edited in Forge, rendered in Runtime, and exported/imported without loss.",
@@ -1291,6 +1351,117 @@ var FIXTURE_FULL_PROFILE_STAGE3 = {
       "nonce": 1618033988
     }
   ]
+};
+
+// Source: schemas/fixtures/invalid-arena-export-missing-card-reference.json
+var FIXTURE_INVALID_ARENA_EXPORT_MISSING_CARD_REFERENCE = {
+  "$schema": "https://ferros.local/schemas/deck.schema.json",
+  "_fixture": {
+    "purpose": "Negative seam fixture: arena export envelope with unresolved deck card reference",
+    "contract": "ADR-016",
+    "invalidReason": "deck.cards references a cardId not present in cards[] payload"
+  },
+  "ferrosVersion": "1.0",
+  "exportedAt": "2026-04-22T03:55:00.000Z",
+  "exportType": "arena-deck",
+  "deck": {
+    "id": "broken-arena-deck",
+    "kind": "deck",
+    "name": "Broken Arena Deck",
+    "version": 1,
+    "cards": [
+      { "cardId": "missing-card-id", "slot": "primary" }
+    ],
+    "renderFile": "docs/assets/cards/trading-card.html"
+  },
+  "cards": [
+    {
+      "id": "present-but-unreferenced-card",
+      "kind": "card",
+      "name": "Present But Unreferenced",
+      "version": 1,
+      "renderFile": "docs/assets/cards/trading-card.html"
+    }
+  ],
+  "runtimeHint": {
+    "control": "demo",
+    "initialState": null
+  },
+  "expectedError": "ARENA_EXPORT_CARD_REFERENCE_MISSING"
+};
+
+// Source: schemas/fixtures/invalid-arena-export-unsupported-control.json
+var FIXTURE_INVALID_ARENA_EXPORT_UNSUPPORTED_CONTROL = {
+  "$schema": "https://ferros.local/schemas/deck.schema.json",
+  "_fixture": {
+    "purpose": "Negative seam fixture: arena export envelope with unsupported runtimeHint.control",
+    "contract": "ADR-016",
+    "invalidReason": "runtimeHint.control must be one of demo|interactive|static"
+  },
+  "ferrosVersion": "1.0",
+  "exportedAt": "2026-04-22T04:15:00.000Z",
+  "exportType": "arena-deck",
+  "deck": {
+    "id": "arena-control-invalid",
+    "kind": "deck",
+    "name": "Arena Control Invalid",
+    "version": 1,
+    "cards": [
+      { "cardId": "arena-card-1", "slot": "primary" }
+    ],
+    "renderFile": "docs/assets/cards/trading-card.html"
+  },
+  "cards": [
+    {
+      "id": "arena-card-1",
+      "kind": "card",
+      "name": "Arena Card One",
+      "version": 1,
+      "renderFile": "docs/assets/cards/trading-card.html"
+    }
+  ],
+  "runtimeHint": {
+    "control": "autoplay",
+    "initialState": "Open"
+  },
+  "expectedError": "ARENA_EXPORT_UNSUPPORTED_CONTROL"
+};
+
+// Source: schemas/fixtures/invalid-arena-export-wrong-type.json
+var FIXTURE_INVALID_ARENA_EXPORT_WRONG_TYPE = {
+  "$schema": "https://ferros.local/schemas/deck.schema.json",
+  "_fixture": {
+    "purpose": "Negative seam fixture: arena export envelope with wrong exportType",
+    "contract": "ADR-016",
+    "invalidReason": "exportType must be arena-deck"
+  },
+  "ferrosVersion": "1.0",
+  "exportedAt": "2026-04-22T04:20:00.000Z",
+  "exportType": "profile-export",
+  "deck": {
+    "id": "arena-wrong-type",
+    "kind": "deck",
+    "name": "Arena Wrong Type",
+    "version": 1,
+    "cards": [
+      { "cardId": "arena-card-2", "slot": "primary" }
+    ],
+    "renderFile": "docs/assets/cards/trading-card.html"
+  },
+  "cards": [
+    {
+      "id": "arena-card-2",
+      "kind": "card",
+      "name": "Arena Card Two",
+      "version": 1,
+      "renderFile": "docs/assets/cards/trading-card.html"
+    }
+  ],
+  "runtimeHint": {
+    "control": "demo",
+    "initialState": null
+  },
+  "expectedError": "ARENA_EXPORT_TYPE_INVALID"
 };
 
 // Source: schemas/fixtures/invalid-broken-seal-chain.json
@@ -2365,6 +2536,7 @@ var FERROS_SCHEMAS = [
 ];
 var FERROS_GOLDEN_FIXTURES = [
   {name: "alias-session-log", file: "alias-session-log.json", fixture: FIXTURE_ALIAS_SESSION_LOG},
+  {name: "arena-export-envelope-seam", file: "arena-export-envelope-seam.json", fixture: FIXTURE_ARENA_EXPORT_ENVELOPE_SEAM},
   {name: "card-deck-roundtrip", file: "card-deck-roundtrip.json", fixture: FIXTURE_CARD_DECK_ROUNDTRIP},
   {name: "claimed-alias-merge-result", file: "claimed-alias-merge-result.json", fixture: FIXTURE_CLAIMED_ALIAS_MERGE_RESULT},
   {name: "deck-card-assembly-seam", file: "deck-card-assembly-seam.json", fixture: FIXTURE_DECK_CARD_ASSEMBLY_SEAM},
@@ -2381,6 +2553,9 @@ var FERROS_GOLDEN_FIXTURES = [
   {name: "template-to-events-golden", file: "template-to-events-golden.json", fixture: FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN}
 ];
 var FERROS_NEGATIVE_FIXTURES = [
+  {name: "invalid-arena-export-missing-card-reference", file: "invalid-arena-export-missing-card-reference.json", fixture: FIXTURE_INVALID_ARENA_EXPORT_MISSING_CARD_REFERENCE},
+  {name: "invalid-arena-export-unsupported-control", file: "invalid-arena-export-unsupported-control.json", fixture: FIXTURE_INVALID_ARENA_EXPORT_UNSUPPORTED_CONTROL},
+  {name: "invalid-arena-export-wrong-type", file: "invalid-arena-export-wrong-type.json", fixture: FIXTURE_INVALID_ARENA_EXPORT_WRONG_TYPE},
   {name: "invalid-broken-seal-chain", file: "invalid-broken-seal-chain.json", fixture: FIXTURE_INVALID_BROKEN_SEAL_CHAIN},
   {name: "invalid-corrupted-export", file: "invalid-corrupted-export.json", fixture: FIXTURE_INVALID_CORRUPTED_EXPORT},
   {name: "invalid-dual-session-mode", file: "invalid-dual-session-mode.json", fixture: FIXTURE_INVALID_DUAL_SESSION_MODE},
@@ -2392,5 +2567,5 @@ var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-template-to-events-missing-source-type", file: "invalid-template-to-events-missing-source-type.json", fixture: FIXTURE_INVALID_TEMPLATE_TO_EVENTS_MISSING_SOURCE_TYPE}
 ];
 
-// Total files embedded: 31
-// Schemas: 7 | Golden fixtures: 15 | Negative fixtures: 9
+// Total files embedded: 35
+// Schemas: 7 | Golden fixtures: 16 | Negative fixtures: 12

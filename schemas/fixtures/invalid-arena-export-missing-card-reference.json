@@ -1,0 +1,35 @@
+{
+  "$schema": "https://ferros.local/schemas/deck.schema.json",
+  "_fixture": {
+    "purpose": "Negative seam fixture: arena export envelope with unresolved deck card reference",
+    "contract": "ADR-016",
+    "invalidReason": "deck.cards references a cardId not present in cards[] payload"
+  },
+  "ferrosVersion": "1.0",
+  "exportedAt": "2026-04-22T03:55:00.000Z",
+  "exportType": "arena-deck",
+  "deck": {
+    "id": "broken-arena-deck",
+    "kind": "deck",
+    "name": "Broken Arena Deck",
+    "version": 1,
+    "cards": [
+      { "cardId": "missing-card-id", "slot": "primary" }
+    ],
+    "renderFile": "docs/assets/cards/trading-card.html"
+  },
+  "cards": [
+    {
+      "id": "present-but-unreferenced-card",
+      "kind": "card",
+      "name": "Present But Unreferenced",
+      "version": 1,
+      "renderFile": "docs/assets/cards/trading-card.html"
+    }
+  ],
+  "runtimeHint": {
+    "control": "demo",
+    "initialState": null
+  },
+  "expectedError": "ARENA_EXPORT_CARD_REFERENCE_MISSING"
+}

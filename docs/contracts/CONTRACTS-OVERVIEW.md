@@ -26,6 +26,39 @@ What does not count as a contract:
 
 ---
 
+## Stream A freeze protocol (current)
+
+This repository also operates a Stream A contract set (C1-C10) used by the Phase/Wave tracker in `docs/progress/PROGRESS.md`.
+
+### Freeze target
+
+- **Target:** `v1.0.0` contract freeze for C1-C10
+- **Scope:** JSON schemas, contract docs, fixture semantics, and harness expectations
+- **Authority:** `docs/contracts/manifest.json` (`governance.streamAContractFreeze`)
+
+### Trigger rule
+
+Freeze executes when Wave 2 consumer-surface threshold is met:
+
+1. Read Tier 3 (`S1-S4`) in `docs/progress/PROGRESS.md`.
+2. Count completed surfaces.
+3. Execute freeze when completed surfaces >= 3.
+
+### Execution checklist
+
+1. Set `governance.streamAContractFreeze.status` to active.
+2. Record `manifestFrozenAt` with the commit SHA where freeze is declared.
+3. Add evidence reference in `evidenceRef` (closure doc or progress evidence note).
+4. Keep frozen versions immutable; all future evolution follows ADR-012.
+
+### Evolution after freeze
+
+- New additive fields: next minor version and fixtures/harness updates.
+- Breaking field changes: next major version with explicit migration artifacts.
+- No in-place edits to frozen versions.
+
+---
+
 ## Contract index
 
 ### Rust traits

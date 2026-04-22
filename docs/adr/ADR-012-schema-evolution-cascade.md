@@ -101,3 +101,34 @@ Current coverage:
 
 ### Risks
 - If a future change adds a deeply nested sub-schema (e.g., `schedule.archetype.config`) without `additionalProperties: false`, the cascade checklist won't catch violations at that level. Mitigation: apply `additionalProperties: false` to all new sub-schemas by default.
+
+## Freeze execution protocol (v1)
+
+Wave 0 established the schema baseline at v1.0.0. Stream A freeze execution is now machine-tracked in `docs/contracts/manifest.json` under `governance.streamAContractFreeze`.
+
+### Trigger
+
+Execute freeze when the Wave 2 consumer threshold is met:
+
+1. Read Tier 3 (`S1-S4`) in `docs/progress/PROGRESS.md`.
+2. Count completed surface rows.
+3. Freeze when completed count is >= 3.
+
+### Execution steps
+
+1. Set `governance.streamAContractFreeze.status` to `active`.
+2. Record `governance.streamAContractFreeze.execution.manifestFrozenAt` with the commit SHA declaring freeze.
+3. Record `governance.streamAContractFreeze.execution.evidenceRef` pointing to the closure evidence entry.
+4. Keep all v1 schema files immutable after freeze activation.
+
+## v2 migration activation gate
+
+A major schema bump (v2) may proceed only after all required migration artifacts are present in the same change set:
+
+1. New schema file(s) for v2 (never mutate frozen v1 files).
+2. Runtime migration logic in `ferros-core.js` for each bumped schema.
+3. Golden and negative migration fixtures proving expected transforms and reject paths.
+4. Harness coverage updates validating migration behavior.
+5. Documentation updates in `storage-rules.md` and `CONTRACTS-OVERVIEW.md`.
+
+Any PR missing one of these five artifacts is non-compliant with ADR-012.

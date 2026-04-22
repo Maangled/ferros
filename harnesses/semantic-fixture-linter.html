@@ -461,6 +461,38 @@
     }
   });
 
+  // E4: ADR-016 arena export seam integrity
+  var arenaSeam = typeof FIXTURE_ARENA_EXPORT_ENVELOPE_SEAM !== 'undefined' ? FIXTURE_ARENA_EXPORT_ENVELOPE_SEAM : null;
+  if (arenaSeam) {
+    var arenaData = stripMeta(arenaSeam);
+    var requiredArenaKeys = ['ferrosVersion', 'exportedAt', 'exportType', 'deck', 'cards'];
+    var missingArena = hasRequired(arenaData, requiredArenaKeys);
+    addResult('E: arena-export-envelope-seam required top-level keys', missingArena.length === 0,
+      'required=' + requiredArenaKeys.join(', '),
+      missingArena.length ? 'Missing: ' + missingArena.join(', ') : null);
+
+    addResult('E: arena-export-envelope-seam exportType is arena-deck', arenaData.exportType === 'arena-deck',
+      'exportType=' + arenaData.exportType,
+      arenaData.exportType !== 'arena-deck' ? 'Expected exportType="arena-deck"' : null);
+
+    if (arenaData.deck && Array.isArray(arenaData.deck.cards) && Array.isArray(arenaData.cards)) {
+      var exportCardIds = arenaData.cards.map(function(c) { return c.id; });
+      var unresolvedArenaRefs = [];
+      arenaData.deck.cards.forEach(function(cr) {
+        if (exportCardIds.indexOf(cr.cardId) === -1) unresolvedArenaRefs.push(cr.cardId);
+      });
+      addResult('E: arena-export-envelope-seam deck→cards references resolve', unresolvedArenaRefs.length === 0,
+        arenaData.deck.cards.length + ' refs, ' + exportCardIds.length + ' embedded cards',
+        unresolvedArenaRefs.length ? 'Unresolved: ' + unresolvedArenaRefs.join(', ') : null);
+    }
+
+    var control = arenaData.runtimeHint && arenaData.runtimeHint.control ? arenaData.runtimeHint.control : 'demo';
+    var allowedControls = ['demo', 'interactive', 'static'];
+    addResult('E: arena-export-envelope-seam runtimeHint.control allowed', allowedControls.indexOf(control) !== -1,
+      'control=' + control,
+      allowedControls.indexOf(control) === -1 ? 'Allowed: ' + allowedControls.join(', ') : null);
+  }
+
   // ── GROUP F: Negative fixture annotations ─────────────────
 
   addGroup('F — Negative Fixtures Have Expected Error');
@@ -468,6 +500,9 @@
   var negativeFixtures = [
     { name: 'invalid-broken-seal-chain', data: typeof FIXTURE_INVALID_BROKEN_SEAL_CHAIN !== 'undefined' ? FIXTURE_INVALID_BROKEN_SEAL_CHAIN : null },
     { name: 'invalid-corrupted-export', data: typeof FIXTURE_INVALID_CORRUPTED_EXPORT !== 'undefined' ? FIXTURE_INVALID_CORRUPTED_EXPORT : null },
+    { name: 'invalid-arena-export-missing-card-reference', data: typeof FIXTURE_INVALID_ARENA_EXPORT_MISSING_CARD_REFERENCE !== 'undefined' ? FIXTURE_INVALID_ARENA_EXPORT_MISSING_CARD_REFERENCE : null },
+    { name: 'invalid-arena-export-unsupported-control', data: typeof FIXTURE_INVALID_ARENA_EXPORT_UNSUPPORTED_CONTROL !== 'undefined' ? FIXTURE_INVALID_ARENA_EXPORT_UNSUPPORTED_CONTROL : null },
+    { name: 'invalid-arena-export-wrong-type', data: typeof FIXTURE_INVALID_ARENA_EXPORT_WRONG_TYPE !== 'undefined' ? FIXTURE_INVALID_ARENA_EXPORT_WRONG_TYPE : null },
     { name: 'invalid-dual-session-mode', data: typeof FIXTURE_INVALID_DUAL_SESSION_MODE !== 'undefined' ? FIXTURE_INVALID_DUAL_SESSION_MODE : null },
     { name: 'invalid-duplicate-alias-claim', data: typeof FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM !== 'undefined' ? FIXTURE_INVALID_DUPLICATE_ALIAS_CLAIM : null },
     { name: 'invalid-forbidden-meta-field', data: typeof FIXTURE_INVALID_FORBIDDEN_META_FIELD !== 'undefined' ? FIXTURE_INVALID_FORBIDDEN_META_FIELD : null },

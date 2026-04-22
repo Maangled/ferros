@@ -1,0 +1,58 @@
+{
+  "$schema": "https://ferros.local/schemas/deck.schema.json",
+  "_fixture": {
+    "purpose": "Seam fixture: ADR-016 arena-deck export envelope linking C5 deck + C4 cards + runtime hints",
+    "contract": "ADR-016",
+    "seam": "Forge export (C4/C5) -> Arena Runtime consume (C8)",
+    "validates": [
+      "Envelope carries ferrosVersion/exportedAt/exportType fields",
+      "deck validates against SCHEMA_DECK",
+      "cards[] each validate against SCHEMA_CARD",
+      "Every deck.cards[].cardId resolves to one embedded cards[].id",
+      "runtimeHint uses supported control values"
+    ]
+  },
+  "ferrosVersion": "1.0",
+  "exportedAt": "2026-04-22T03:50:00.000Z",
+  "exportType": "arena-deck",
+  "deck": {
+    "id": "minimum-viable-arena-deck",
+    "kind": "deck",
+    "name": "Minimum Viable Arena Deck",
+    "version": 1,
+    "role": "application",
+    "cards": [
+      { "cardId": "minimum-viable-card-shell", "slot": "shell" },
+      { "cardId": "minimum-viable-card-overlay", "slot": "overlay" }
+    ],
+    "renderFile": "docs/assets/cards/trading-card.html"
+  },
+  "cards": [
+    {
+      "id": "minimum-viable-card-shell",
+      "kind": "card",
+      "name": "Minimum Viable Card Shell",
+      "version": 1,
+      "renderFile": "docs/assets/cards/trading-card.html",
+      "role": "container",
+      "tags": ["arena", "shell"],
+      "state": { "preset": "Open", "control": "demo" },
+      "transform": { "tx": 0, "ty": 0, "tz": 0, "rx": 0, "ry": 0, "rz": 0, "scale": 1 }
+    },
+    {
+      "id": "minimum-viable-card-overlay",
+      "kind": "card",
+      "name": "Minimum Viable Card Overlay",
+      "version": 1,
+      "renderFile": "docs/assets/cards/trading-card.html",
+      "role": "decorative",
+      "tags": ["arena", "overlay"],
+      "state": { "preset": "Hover", "control": "demo" },
+      "transform": { "tx": 8, "ty": -6, "tz": 4, "rx": 0, "ry": 0, "rz": 5, "scale": 1 }
+    }
+  ],
+  "runtimeHint": {
+    "control": "demo",
+    "initialState": "Open"
+  }
+}

@@ -1,0 +1,22 @@
+# Default owner
+* @Maangled
+
+# Stream ownership
+/streams/S1-foundation/ @Maangled
+/streams/S2-profile/ @Maangled
+/streams/S3-agent-center/ @Maangled
+/streams/S4-runtime/ @Maangled
+/streams/S5-ux/ @Maangled
+/streams/S6-harvest/ @Maangled
+/streams/S7-hub/ @Maangled
+/streams/S8-docs/ @Maangled
+
+# Core contracts and schemas
+/schemas/ @Maangled
+/docs/contracts/ @Maangled
+/docs/progress/ @Maangled
+
+# Foundation plumbing
+/.github/workflows/ @Maangled
+/site/ @Maangled
+/tools/ @Maangled

@@ -287,6 +287,103 @@ test(gB, 'exportProfile() ferrosVersion matches FerrosCore.VERSION (no hardcoded
   return { pass: false, error: 'serializeExport().ferrosVersion=' + env.ferrosVersion + ' !== IMPORT_CURRENT_VERSION=' + IMPORT_CURRENT_VERSION };
 });
 
+// B5: ADR-016 arena export envelope has required seam fields
+test(gB, 'ADR-016 arena export envelope has required top-level fields', function() {
+  var env = stripMeta(clone(FIXTURE_ARENA_EXPORT_ENVELOPE_SEAM));
+  var missing = ['ferrosVersion', 'exportedAt', 'exportType', 'deck', 'cards'].filter(function(k) {
+    return env[k] === undefined || env[k] === null;
+  });
+  if (missing.length > 0) {
+    return { pass: false, error: 'Missing arena export fields: ' + missing.join(', ') };
+  }
+  if (env.exportType !== 'arena-deck') {
+    return { pass: false, error: 'exportType must be "arena-deck", got "' + env.exportType + '"' };
+  }
+  return { pass: true, detail: 'arena export envelope contains required fields with exportType=arena-deck' };
+});
+
+// B6: ADR-016 runtimeHint.control value is constrained
+test(gB, 'ADR-016 runtimeHint.control is supported', function() {
+  var env = stripMeta(clone(FIXTURE_ARENA_EXPORT_ENVELOPE_SEAM));
+  var allowed = ['demo', 'interactive', 'static'];
+  var control = env.runtimeHint && env.runtimeHint.control ? env.runtimeHint.control : 'demo';
+  if (allowed.indexOf(control) === -1) {
+    return { pass: false, error: 'unsupported runtimeHint.control="' + control + '"' };
+  }
+  return { pass: true, detail: 'runtimeHint.control=' + control + ' is supported' };
+});
+
+// B7: ADR-016 deck card references resolve inside embedded cards[]
+test(gB, 'ADR-016 deck.cards[].cardId all resolve to cards[].id', function() {
+  var env = stripMeta(clone(FIXTURE_ARENA_EXPORT_ENVELOPE_SEAM));
+  if (!env.deck || !Array.isArray(env.deck.cards)) {
+    return { pass: false, error: 'deck.cards missing from arena export envelope' };
+  }
+  if (!Array.isArray(env.cards) || env.cards.length === 0) {
+    return { pass: false, error: 'cards[] missing from arena export envelope' };
+  }
+
+  var cardMap = {};
+  for (var i = 0; i < env.cards.length; i++) {
+    cardMap[env.cards[i].id] = true;
+  }
+
+  var unresolved = [];
+  for (var j = 0; j < env.deck.cards.length; j++) {
+    var id = env.deck.cards[j].cardId;
+    if (!cardMap[id]) unresolved.push(id);
+  }
+
+  if (unresolved.length > 0) {
+    return { pass: false, error: 'unresolved deck card references: ' + unresolved.join(', ') };
+  }
+  return { pass: true, detail: 'all ' + env.deck.cards.length + ' deck card references resolve in cards[] payload' };
+});
+
+// B8: ADR-016 negative seam fixture surfaces unresolved card reference
+test(gB, 'ADR-016 negative fixture flags unresolved deck card references', function() {
+  var env = stripMeta(clone(FIXTURE_INVALID_ARENA_EXPORT_MISSING_CARD_REFERENCE));
+  if (!env.deck || !Array.isArray(env.deck.cards) || !Array.isArray(env.cards)) {
+    return { pass: false, error: 'invalid fixture missing deck/cards structure' };
+  }
+
+  var cardMap = {};
+  for (var i = 0; i < env.cards.length; i++) {
+    cardMap[env.cards[i].id] = true;
+  }
+
+  var unresolved = [];
+  for (var j = 0; j < env.deck.cards.length; j++) {
+    var id = env.deck.cards[j].cardId;
+    if (!cardMap[id]) unresolved.push(id);
+  }
+
+  if (unresolved.length === 0) {
+    return { pass: false, error: 'expected unresolved references in negative fixture but found none' };
+  }
+  return { pass: true, detail: 'negative fixture correctly exposes unresolved reference(s): ' + unresolved.join(', ') };
+});
+
+// B9: ADR-016 negative fixture flags unsupported runtimeHint.control
+test(gB, 'ADR-016 negative fixture flags unsupported runtimeHint.control', function() {
+  var env = stripMeta(clone(FIXTURE_INVALID_ARENA_EXPORT_UNSUPPORTED_CONTROL));
+  var allowed = ['demo', 'interactive', 'static'];
+  var control = env.runtimeHint && env.runtimeHint.control ? env.runtimeHint.control : 'demo';
+  if (allowed.indexOf(control) === -1) {
+    return { pass: true, detail: 'negative fixture correctly exposes unsupported control="' + control + '"' };
+  }
+  return { pass: false, error: 'expected unsupported control in negative fixture, got "' + control + '"' };
+});
+
+// B10: ADR-016 negative fixture flags wrong exportType
+test(gB, 'ADR-016 negative fixture flags non arena-deck exportType', function() {
+  var env = stripMeta(clone(FIXTURE_INVALID_ARENA_EXPORT_WRONG_TYPE));
+  if (env.exportType !== 'arena-deck') {
+    return { pass: true, detail: 'negative fixture correctly exposes invalid exportType="' + env.exportType + '"' };
+  }
+  return { pass: false, error: 'expected non arena-deck exportType in negative fixture' };
+});
+
 /* ==========================================================================
    GROUP C — Portable Log Contract (PR10)
    Exercises FerrosCore portable-log validation and duplicate claim detection.
@@ -645,7 +742,7 @@ function renderAll() {
     status: overallStatus,
     summary: { total: allTests.length, passed: passed, failed: failed, gaps: warned, skipped: skipped },
     contractVersion: IMPORT_CURRENT_VERSION,
-    provesGates: ['C9 import rejection I-1..I-9 (reference)', 'C9 export envelope structure', 'C9 portable-log validation + duplicate claim denial', 'C9 true round-trip (export→clear→import→assert)', 'saveProfile() write guard (session mode)', 'V2 full (import validator + round-trip)'],
+    provesGates: ['C9 import rejection I-1..I-9 (reference)', 'C9 export envelope structure', 'ADR-016 arena export seam envelope + card reference integrity', 'C9 portable-log validation + duplicate claim denial', 'C9 true round-trip (export→clear→import→assert)', 'saveProfile() write guard (session mode)', 'V2 full (import validator + round-trip)'],
     implementationGaps: allTests
       .filter(function(t){ return t.status === 'warn'; })
       .map(function(t){ return t.warn; }),
