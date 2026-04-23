@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — Signed CapabilityGrant verification path landed
+
+- Added the first signed and verifiable `CapabilityGrant` envelope path to `ferros-profile`, including explicit Ed25519 verify and re-sign-on-revoke behavior.
+- Froze the stripped JSON signing contract in `schemas/capability-grant.v0.json`: `profile_id`, `capability`, and optional `revoked_at` / `revocation_reason` are serialized in that order with no insignificant whitespace, while `signer_public_key` and `signature` stay envelope-only.
+- Added `schemas/fixtures/grant-valid.json` and `schemas/fixtures/grant-invalid-sig.json`, plus tests for canonical payload examples, happy-path verification, invalid-signature rejection, and revoke round-trip coverage.
+- G2 remains open: key material, `schemas/profile.v0.json` freeze, and the `ferros profile ...` CLI flows are still outstanding.
+
 ## 2026-04-23 — Filesystem profile store slice landed
 
 - Added the first `ProfileStore` abstraction to `ferros-profile`.

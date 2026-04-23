@@ -12,13 +12,15 @@ These are the cross-stream interfaces that S2 publishes. Other streams **must no
 | `CapabilityGrant` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created |
 | `ConsentManifest` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created |
 | `schemas/profile.v0.json` | JSON Schema | `schemas/profile.v0.json` | 🟡 Drafted; exercised by `ferros-profile` tests |
-| `schemas/capability-grant.v0.json` | JSON Schema | `schemas/capability-grant.v0.json` | 🟡 Drafted; exercised by `ferros-profile` tests |
+| `schemas/capability-grant.v0.json` | JSON Schema | `schemas/capability-grant.v0.json` | ✅ Frozen signed envelope; exercised by `ferros-profile` tests |
 
 ---
 
 ## Current repo state
 
-`schemas/profile.v0.json` and `schemas/capability-grant.v0.json` are the S2-owned draft freeze candidates currently referenced by the `ferros-profile` test suite. `schemas/fixtures/grant-valid.json` now anchors the grant happy path, `CapabilityGrant` carries revocation metadata, and `ConsentManifest` provides the first FERROS-owned grouping and revoke surface while signing remains future work.
+`schemas/profile.v0.json` remains the S2-owned draft freeze candidate referenced by the `ferros-profile` test suite. `schemas/capability-grant.v0.json` now freezes the signed grant envelope contract, `schemas/fixtures/grant-valid.json` anchors the happy path, `schemas/fixtures/grant-invalid-sig.json` anchors invalid-signature rejection, and `SignedCapabilityGrant` preserves the current flattened envelope shape without changing the runtime `CapabilityGrant` or `CapabilityGrantView` consumer boundary.
+
+The grant verification contract is now published in `schemas/capability-grant.v0.json`: independent verifiers must rebuild the signed payload from only `profile_id`, `capability`, and optional `revoked_at` and `revocation_reason`, emit UTF-8 JSON with no insignificant whitespace in exactly that member order, verify the Ed25519 signature with `signer_public_key`, and only then trust the embedded grant fields. `signer_public_key` and `signature` are envelope-only fields and are never part of the signed payload.
 
 ---
 
@@ -33,7 +35,7 @@ These are the cross-stream interfaces that S2 publishes. Other streams **must no
 
 ## Schema freeze policy
 
-`profile.v0.json` now exists as the draft freeze candidate. Once `profile.v0.json` and `capability-grant.v0.json` are frozen (G2), they **must not** be mutated in place. New fields go into `v1` schemas with explicit migration rules. See `ROADMAP.md` — coordination rules.
+`profile.v0.json` remains the draft freeze candidate. `capability-grant.v0.json` is now frozen at the stripped-payload signed-envelope contract described above and must not be mutated in place; new grant fields go into a `v1` schema with explicit migration rules. Once `profile.v0.json` is likewise frozen, it must follow the same rule. See `ROADMAP.md` — coordination rules.
 
 ---
 

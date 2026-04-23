@@ -1,5 +1,6 @@
 use std::fmt;
 
+use ferros_core::CapabilityGrantView;
 use ferros_profile::{CapabilityGrant, ProfileId};
 use serde::{Deserialize, Serialize};
 
@@ -63,7 +64,9 @@ impl CapabilityRequirement {
     #[must_use]
     pub fn is_satisfied_by(&self, grants: &[CapabilityGrant]) -> bool {
         grants.iter().any(|grant| {
-            grant.profile_id == self.profile_id && grant.capability == self.capability
+            grant.is_active()
+                && grant.profile_id == self.profile_id
+                && grant.capability == self.capability
         })
     }
 }
@@ -177,6 +180,27 @@ mod tests {
             decision,
             AuthorizationDecision::Denied {
                 missing: vec![read_requirement],
+            }
+        );
+    }
+
+    #[test]
+    fn manifest_authorization_rejects_revoked_grants() {
+        let profile_id = ProfileId::new("profile-alpha").expect("valid profile id");
+        let requirement = CapabilityRequirement::new(profile_id.clone(), "consent.read");
+        let manifest = AgentManifest::new(
+            AgentName::new("echo").expect("valid agent name"),
+            "0.1.0",
+            vec![requirement.clone()],
+        );
+        let mut revoked_grant = CapabilityGrant::new(profile_id, "consent.read");
+
+        assert!(revoked_grant.revoke("2026-04-23T00:00:00Z", "manual revoke"));
+
+        assert_eq!(
+            manifest.authorization(&[revoked_grant]),
+            AuthorizationDecision::Denied {
+                missing: vec![requirement],
             }
         );
     }

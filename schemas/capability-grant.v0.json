@@ -2,9 +2,30 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://ferros.local/schemas/capability-grant.v0.json",
   "title": "FERROS Capability Grant v0",
-  "description": "S2-owned capability grant schema candidate for G2 freeze. Mirrors the current ferros-profile CapabilityGrant serde boundary without signatures or revocation metadata yet.",
+  "description": "S2-owned capability grant schema candidate for G2 freeze. Mirrors the current ferros-profile signed CapabilityGrant envelope, including Ed25519 signer material and revocation metadata.",
+  "$comment": "Normative signing contract: reconstruct the signed payload from only profile_id, capability, and the optional revoked_at and revocation_reason fields. Omit absent optional fields entirely. Serialize that stripped payload as UTF-8 JSON with no insignificant whitespace and with members emitted in exactly this order: profile_id, capability, revoked_at, revocation_reason. signer_public_key and signature are envelope-only fields and are never part of the signed payload. Verifiers must verify that stripped payload before trusting the embedded grant fields.",
+  "x-ferros-signature": {
+    "algorithm": "Ed25519",
+    "payload_encoding": "utf-8",
+    "payload_fields_in_order": [
+      "profile_id",
+      "capability",
+      "revoked_at",
+      "revocation_reason"
+    ],
+    "payload_optional_fields": [
+      "revoked_at",
+      "revocation_reason"
+    ],
+    "payload_member_rules": "Construct a new JSON object from only the listed grant fields, omit absent optional fields, serialize without insignificant whitespace, and use standard JSON string escaping.",
+    "verification_rule": "Verify signer_public_key and signature against that stripped payload before treating the embedded grant as trusted input.",
+    "canonical_payload_examples": {
+      "active": "{\"profile_id\":\"profile-alpha\",\"capability\":\"consent.read\"}",
+      "revoked": "{\"profile_id\":\"profile-alpha\",\"capability\":\"consent.read\",\"revoked_at\":\"2026-04-23T00:00:00Z\",\"revocation_reason\":\"manual revoke\"}"
+    }
+  },
   "type": "object",
-  "required": ["profile_id", "capability"],
+  "required": ["profile_id", "capability", "signer_public_key", "signature"],
   "additionalProperties": false,
   "properties": {
     "profile_id": {
@@ -22,6 +43,20 @@
     "revocation_reason": {
       "type": "string",
       "description": "Optional human-readable reason recorded when the grant is revoked."
+    },
+    "signer_public_key": {
+      "type": "string",
+      "description": "Hex-encoded Ed25519 verifying key that must verify the stripped canonical payload defined by this schema.",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Hex-encoded Ed25519 signature over the stripped canonical payload defined by this schema.",
+      "minLength": 128,
+      "maxLength": 128,
+      "pattern": "^[0-9a-f]{128}$"
     }
   }
 }

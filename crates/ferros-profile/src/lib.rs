@@ -2,6 +2,7 @@
 
 use std::{collections::BTreeSet, fmt, fs, io, path::Path};
 
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use ferros_core::CapabilityGrantView;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -80,6 +81,191 @@ impl CapabilityGrant {
         self.revoked_at = Some(revoked_at.into());
         self.revocation_reason = Some(revocation_reason.into());
         true
+    }
+
+    pub fn sign(
+        &self,
+        signing_key: &SigningKey,
+    ) -> Result<SignedCapabilityGrant, CapabilityGrantSignatureError> {
+        SignedCapabilityGrant::new(self.clone(), signing_key)
+    }
+
+    fn canonical_signing_payload(&self) -> Result<String, CapabilityGrantSignatureError> {
+        let mut payload = String::from("{\"profile_id\":");
+        payload.push_str(&canonical_json_string(self.profile_id.as_str())?);
+        payload.push_str(",\"capability\":");
+        payload.push_str(&canonical_json_string(&self.capability)?);
+
+        if let Some(revoked_at) = &self.revoked_at {
+            payload.push_str(",\"revoked_at\":");
+            payload.push_str(&canonical_json_string(revoked_at)?);
+        }
+
+        if let Some(revocation_reason) = &self.revocation_reason {
+            payload.push_str(",\"revocation_reason\":");
+            payload.push_str(&canonical_json_string(revocation_reason)?);
+        }
+
+        payload.push('}');
+        Ok(payload)
+    }
+
+    fn canonical_bytes(&self) -> Result<Vec<u8>, CapabilityGrantSignatureError> {
+        self.canonical_signing_payload().map(String::into_bytes)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CapabilityGrantSignatureError {
+    CanonicalSerialization(String),
+    InvalidHex { field: &'static str },
+    InvalidHexLength {
+        field: &'static str,
+        expected: usize,
+        actual: usize,
+    },
+    InvalidPublicKey,
+    SignerPublicKeyMismatch,
+    SignatureMismatch,
+}
+
+impl fmt::Display for CapabilityGrantSignatureError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::CanonicalSerialization(error) => {
+                write!(f, "canonical capability grant serialization failed: {error}")
+            }
+            Self::InvalidHex { field } => write!(f, "{field} must be valid hexadecimal"),
+            Self::InvalidHexLength {
+                field,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "{field} must be {expected} hex characters, got {actual}"
+            ),
+            Self::InvalidPublicKey => write!(f, "signer_public_key is not a valid Ed25519 key"),
+            Self::SignerPublicKeyMismatch => {
+                write!(f, "signing key does not match signer_public_key")
+            }
+            Self::SignatureMismatch => {
+                write!(f, "capability grant signature verification failed")
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignedCapabilityGrant {
+    #[serde(flatten)]
+    pub grant: CapabilityGrant,
+    pub signer_public_key: String,
+    pub signature: String,
+}
+
+impl SignedCapabilityGrant {
+    pub fn new(
+        grant: CapabilityGrant,
+        signing_key: &SigningKey,
+    ) -> Result<Self, CapabilityGrantSignatureError> {
+        let signer_public_key = encode_hex(&signing_key.verifying_key().to_bytes());
+        let signature = encode_hex(&signing_key.sign(&grant.canonical_bytes()?).to_bytes());
+
+        Ok(Self {
+            grant,
+            signer_public_key,
+            signature,
+        })
+    }
+
+    #[must_use]
+    pub fn grant(&self) -> &CapabilityGrant {
+        &self.grant
+    }
+
+    pub fn verify(&self) -> Result<(), CapabilityGrantSignatureError> {
+        let message = self.grant.canonical_bytes()?;
+        let public_key_bytes = decode_hex_array::<32>(&self.signer_public_key, "signer_public_key")?;
+        let signature_bytes = decode_hex_array::<64>(&self.signature, "signature")?;
+        let verifying_key = VerifyingKey::from_bytes(&public_key_bytes)
+            .map_err(|_| CapabilityGrantSignatureError::InvalidPublicKey)?;
+        let signature = Signature::from_bytes(&signature_bytes);
+
+        verifying_key
+            .verify_strict(&message, &signature)
+            .map_err(|_| CapabilityGrantSignatureError::SignatureMismatch)
+    }
+
+    pub fn revoke(
+        &mut self,
+        signing_key: &SigningKey,
+        revoked_at: impl Into<String>,
+        revocation_reason: impl Into<String>,
+    ) -> Result<bool, CapabilityGrantSignatureError> {
+        let expected_signer_public_key = encode_hex(&signing_key.verifying_key().to_bytes());
+
+        if self.signer_public_key != expected_signer_public_key {
+            return Err(CapabilityGrantSignatureError::SignerPublicKeyMismatch);
+        }
+
+        if !self.grant.revoke(revoked_at, revocation_reason) {
+            return Ok(false);
+        }
+
+        self.signature = encode_hex(&signing_key.sign(&self.grant.canonical_bytes()?).to_bytes());
+        Ok(true)
+    }
+}
+
+fn canonical_json_string(value: &str) -> Result<String, CapabilityGrantSignatureError> {
+    serde_json::to_string(value)
+        .map_err(|error| CapabilityGrantSignatureError::CanonicalSerialization(error.to_string()))
+}
+
+fn encode_hex(bytes: &[u8]) -> String {
+    let mut encoded = String::with_capacity(bytes.len() * 2);
+
+    for byte in bytes {
+        use fmt::Write as _;
+
+        write!(&mut encoded, "{byte:02x}").expect("writing to a string should not fail");
+    }
+
+    encoded
+}
+
+fn decode_hex_array<const N: usize>(
+    value: &str,
+    field: &'static str,
+) -> Result<[u8; N], CapabilityGrantSignatureError> {
+    if value.len() != N * 2 {
+        return Err(CapabilityGrantSignatureError::InvalidHexLength {
+            field,
+            expected: N * 2,
+            actual: value.len(),
+        });
+    }
+
+    let mut bytes = [0_u8; N];
+
+    for (index, pair) in value.as_bytes().chunks_exact(2).enumerate() {
+        let high = decode_hex_nibble(pair[0], field)?;
+        let low = decode_hex_nibble(pair[1], field)?;
+        bytes[index] = (high << 4) | low;
+    }
+
+    Ok(bytes)
+}
+
+fn decode_hex_nibble(
+    nibble: u8,
+    field: &'static str,
+) -> Result<u8, CapabilityGrantSignatureError> {
+    match nibble {
+        b'0'..=b'9' => Ok(nibble - b'0'),
+        b'a'..=b'f' => Ok(nibble - b'a' + 10),
+        b'A'..=b'F' => Ok(nibble - b'A' + 10),
+        _ => Err(CapabilityGrantSignatureError::InvalidHex { field }),
     }
 }
 
@@ -162,6 +348,10 @@ impl CapabilityGrantView for CapabilityGrant {
 
     fn capability(&self) -> &str {
         &self.capability
+    }
+
+    fn is_active(&self) -> bool {
+        !self.is_revoked()
     }
 }
 
@@ -316,18 +506,41 @@ mod tests {
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use ed25519_dalek::SigningKey;
+
     use super::{
-        foundation_contract_preview, CapabilityGrant, ConsentManifest, ConsentManifestError,
-        FileSystemProfileStore, ProfileDocument, ProfileId, ProfileIdError, ProfileStore,
+        foundation_contract_preview, CapabilityGrant, CapabilityGrantSignatureError,
+        ConsentManifest, ConsentManifestError, FileSystemProfileStore, ProfileDocument,
+        ProfileId, ProfileIdError, ProfileStore, SignedCapabilityGrant,
     };
     use serde_json::Value;
 
     const MINIMAL_STAGE0_FIXTURE: &str =
         include_str!("../../../schemas/fixtures/minimal-stage0-profile.json");
     const GRANT_VALID_FIXTURE: &str = include_str!("../../../schemas/fixtures/grant-valid.json");
+    const GRANT_INVALID_SIGNATURE_FIXTURE: &str =
+        include_str!("../../../schemas/fixtures/grant-invalid-sig.json");
     const PROFILE_V0_SCHEMA: &str = include_str!("../../../schemas/profile.v0.json");
     const CAPABILITY_GRANT_V0_SCHEMA: &str =
         include_str!("../../../schemas/capability-grant.v0.json");
+    const TEST_SIGNING_KEY_BYTES: [u8; 32] = [
+        0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87, 0x98, 0xa9, 0xba, 0xcb, 0xdc, 0xed,
+        0xfe, 0x0f, 0x1f, 0x2e, 0x3d, 0x4c, 0x5b, 0x6a, 0x79, 0x88, 0x97, 0xa6, 0xb5, 0xc4,
+        0xd3, 0xe2, 0xf1, 0x01,
+    ];
+
+    fn test_signing_key() -> SigningKey {
+        SigningKey::from_bytes(&TEST_SIGNING_KEY_BYTES)
+    }
+
+    fn signed_test_grant() -> SignedCapabilityGrant {
+        CapabilityGrant::new(
+            ProfileId::new("profile-alpha").expect("valid profile id"),
+            "consent.read",
+        )
+        .sign(&test_signing_key())
+        .expect("test grant should sign")
+    }
 
     fn parse_schema(schema_source: &str, schema_name: &str) -> Value {
         serde_json::from_str(schema_source)
@@ -530,6 +743,140 @@ mod tests {
     }
 
     #[test]
+    fn signed_capability_grant_round_trips_verify_and_revoke() {
+        let signing_key = test_signing_key();
+        let grant = CapabilityGrant::new(
+            ProfileId::new("profile-alpha").expect("valid profile id"),
+            "consent.read",
+        );
+        let signed_grant = grant.sign(&signing_key).expect("grant should sign");
+
+        signed_grant.verify().expect("signed grant should verify");
+
+        let serialized = serde_json::to_string_pretty(&signed_grant)
+            .expect("signed grant should serialize");
+        let mut reparsed = serde_json::from_str::<SignedCapabilityGrant>(&serialized)
+            .expect("serialized signed grant should deserialize");
+
+        reparsed.verify().expect("reparsed signed grant should verify");
+        assert!(reparsed
+            .revoke(
+                &signing_key,
+                "2026-04-23T00:00:00Z",
+                "manual revoke",
+            )
+            .expect("revoked signed grant should re-sign"));
+        reparsed
+            .verify()
+            .expect("revoked signed grant should still verify");
+        assert!(reparsed.grant().is_revoked());
+        assert_eq!(reparsed.grant().revoked_at.as_deref(), Some("2026-04-23T00:00:00Z"));
+        assert_eq!(reparsed.grant().revocation_reason.as_deref(), Some("manual revoke"));
+        assert!(!ferros_core::CapabilityGrantView::is_active(reparsed.grant()));
+        assert!(!reparsed
+            .revoke(
+                &signing_key,
+                "2026-04-23T00:05:00Z",
+                "duplicate revoke",
+            )
+            .expect("duplicate revoke should stay idempotent"));
+    }
+
+    #[test]
+    fn canonical_signing_payload_matches_published_active_contract() {
+        let signed_grant = signed_test_grant();
+
+        assert_eq!(
+            signed_grant
+                .grant()
+                .canonical_signing_payload()
+                .expect("canonical payload should serialize"),
+            "{\"profile_id\":\"profile-alpha\",\"capability\":\"consent.read\"}"
+        );
+    }
+
+    #[test]
+    fn canonical_signing_payload_matches_published_revoked_contract() {
+        let mut grant = CapabilityGrant::new(
+            ProfileId::new("profile-alpha").expect("valid profile id"),
+            "consent.read",
+        );
+        grant.revoke("2026-04-23T00:00:00Z", "manual revoke");
+
+        assert_eq!(
+            grant
+                .canonical_signing_payload()
+                .expect("canonical payload should serialize"),
+            "{\"profile_id\":\"profile-alpha\",\"capability\":\"consent.read\",\"revoked_at\":\"2026-04-23T00:00:00Z\",\"revocation_reason\":\"manual revoke\"}"
+        );
+    }
+
+    #[test]
+    fn capability_grant_schema_publishes_current_signing_contract() {
+        let schema = parse_schema(CAPABILITY_GRANT_V0_SCHEMA, "capability-grant.v0");
+        let signing_contract = schema
+            .get("x-ferros-signature")
+            .and_then(Value::as_object)
+            .expect("grant schema should publish a signing contract");
+        let payload_fields = signing_contract
+            .get("payload_fields_in_order")
+            .and_then(Value::as_array)
+            .expect("signing contract should list ordered payload fields")
+            .iter()
+            .map(|value| {
+                value
+                    .as_str()
+                    .expect("payload field names should be strings")
+            })
+            .collect::<Vec<_>>();
+        let optional_fields = signing_contract
+            .get("payload_optional_fields")
+            .and_then(Value::as_array)
+            .expect("signing contract should list optional payload fields")
+            .iter()
+            .map(|value| {
+                value
+                    .as_str()
+                    .expect("optional payload field names should be strings")
+            })
+            .collect::<Vec<_>>();
+        let payload_examples = signing_contract
+            .get("canonical_payload_examples")
+            .and_then(Value::as_object)
+            .expect("signing contract should publish payload examples");
+        let mut revoked_grant = CapabilityGrant::new(
+            ProfileId::new("profile-alpha").expect("valid profile id"),
+            "consent.read",
+        );
+        revoked_grant.revoke("2026-04-23T00:00:00Z", "manual revoke");
+
+        assert_eq!(
+            payload_fields,
+            vec!["profile_id", "capability", "revoked_at", "revocation_reason"]
+        );
+        assert_eq!(optional_fields, vec!["revoked_at", "revocation_reason"]);
+        assert_eq!(
+            payload_examples
+                .get("active")
+                .and_then(Value::as_str)
+                .expect("signing contract should publish an active payload example"),
+            signed_test_grant()
+                .grant()
+                .canonical_signing_payload()
+                .expect("active payload should serialize")
+        );
+        assert_eq!(
+            payload_examples
+                .get("revoked")
+                .and_then(Value::as_str)
+                .expect("signing contract should publish a revoked payload example"),
+            revoked_grant
+                .canonical_signing_payload()
+                .expect("revoked payload should serialize")
+        );
+    }
+
+    #[test]
     fn capability_grant_revocation_is_idempotent() {
         let profile_id = ProfileId::new("profile-alpha").expect("valid profile id");
         let mut grant = CapabilityGrant::new(profile_id, "consent.read");
@@ -542,32 +889,77 @@ mod tests {
     }
 
     #[test]
+    fn capability_grant_view_reports_revoked_grants_as_inactive() {
+        let profile_id = ProfileId::new("profile-alpha").expect("valid profile id");
+        let mut grant = CapabilityGrant::new(profile_id, "consent.read");
+
+        assert!(ferros_core::CapabilityGrantView::is_active(&grant));
+
+        grant.revoke("2026-04-23T00:00:00Z", "manual revoke");
+
+        assert!(!ferros_core::CapabilityGrantView::is_active(&grant));
+    }
+
+    #[test]
     fn grant_valid_fixture_round_trips_and_matches_capability_grant_v0_contract() {
         let fixture =
             serde_json::from_str::<Value>(GRANT_VALID_FIXTURE).expect("grant fixture should parse");
-        let grant = serde_json::from_value::<CapabilityGrant>(fixture.clone())
+        let signed_grant = serde_json::from_value::<SignedCapabilityGrant>(fixture.clone())
             .expect("grant fixture should deserialize");
 
-        assert_eq!(grant.profile_id.as_str(), "profile-alpha");
-        assert_eq!(grant.capability, "consent.read");
+        signed_grant
+            .verify()
+            .expect("signed grant fixture should verify");
+        assert_eq!(signed_grant.grant().profile_id.as_str(), "profile-alpha");
+        assert_eq!(signed_grant.grant().capability, "consent.read");
 
-        let serialized = serde_json::to_value(&grant).expect("grant should convert to JSON");
+        let serialized = serde_json::to_value(&signed_grant)
+            .expect("signed grant should convert to JSON");
 
         assert_eq!(serialized, fixture);
         assert_matches_capability_grant_v0_contract(&serialized);
     }
 
     #[test]
-    fn revoked_grant_matches_capability_grant_v0_contract() {
-        let profile_id = ProfileId::new("profile-alpha").expect("valid profile id");
-        let mut grant = CapabilityGrant::new(profile_id, "consent.read");
-        grant.revoke("2026-04-23T00:00:00Z", "manual revoke");
+    fn invalid_signature_fixture_is_rejected() {
+        let fixture = serde_json::from_str::<SignedCapabilityGrant>(GRANT_INVALID_SIGNATURE_FIXTURE)
+            .expect("negative grant fixture should deserialize");
 
-        let serialized = serde_json::to_value(&grant).expect("grant should convert to JSON");
+        assert_eq!(
+            fixture.verify(),
+            Err(CapabilityGrantSignatureError::SignatureMismatch)
+        );
+    }
+
+    #[test]
+    fn revoked_grant_matches_capability_grant_v0_contract() {
+        let signing_key = test_signing_key();
+        let mut signed_grant = signed_test_grant();
+        signed_grant
+            .revoke(&signing_key, "2026-04-23T00:00:00Z", "manual revoke")
+            .expect("revoked signed grant should re-sign");
+
+        let serialized = serde_json::to_value(&signed_grant)
+            .expect("signed grant should convert to JSON");
 
         assert_matches_capability_grant_v0_contract(&serialized);
         assert_eq!(serialized["revoked_at"], "2026-04-23T00:00:00Z");
         assert_eq!(serialized["revocation_reason"], "manual revoke");
+    }
+
+    #[test]
+    fn signed_capability_grant_rejects_mismatched_resigning_key() {
+        let mut signed_grant = signed_test_grant();
+        let other_signing_key = SigningKey::from_bytes(&[0x55; 32]);
+
+        assert_eq!(
+            signed_grant.revoke(
+                &other_signing_key,
+                "2026-04-23T00:00:00Z",
+                "manual revoke",
+            ),
+            Err(CapabilityGrantSignatureError::SignerPublicKeyMismatch)
+        );
     }
 
     #[test]

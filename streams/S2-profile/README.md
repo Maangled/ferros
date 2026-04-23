@@ -54,13 +54,14 @@ This stream is intentionally insulated from raw legacy-repo input: the G2 identi
 ## Definition of done (G2)
 
 - [x] `ferros-profile` crate builds and passes `cargo test` locally.
+- [x] `CapabilityGrant` sign → serialize → verify → revoke works end-to-end with Ed25519 and re-signing on revoke.
 - [ ] Profile round-trips: create → serialize → sign → verify → revoke.
 - [ ] `schemas/profile.v0.json` frozen (feature-flag protected; no mutations after freeze).
-- [ ] `schemas/capability-grant.v0.json` frozen.
+- [x] `schemas/capability-grant.v0.json` frozen as the stripped-payload signed envelope contract.
 - [x] Rust/schema parity is enforced with a fixture-backed contract test against `schemas/profile.v0.json`.
 - [ ] CLI: `ferros profile init | show | export | import | grant | revoke` all functional.
-- [ ] At least one golden fixture in `schemas/fixtures/` for a valid profile and a valid grant.
-- [ ] Negative fixture: invalid signature rejected.
+- [x] At least one golden fixture in `schemas/fixtures/` for a valid profile and a valid grant.
+- [x] Negative fixture: invalid signature rejected.
 
 ---
 
@@ -71,17 +72,15 @@ This stream is intentionally insulated from raw legacy-repo input: the G2 identi
 | `crates/ferros-profile/` | Identity crate |
 | `schemas/profile.v0.json` | Draft S2-owned profile schema exercised by `ferros-profile` tests |
 | `schemas/fixtures/minimal-stage0-profile.json` | Existing Stage 0 profile fixture used for serde and schema parity tests |
-| `schemas/capability-grant.v0.json` | Planned grant schema |
-| `schemas/fixtures/grant-valid.json` | Planned golden fixture |
-| `schemas/fixtures/grant-invalid-sig.json` | Planned negative fixture |
+| `schemas/capability-grant.v0.json` | Frozen signed grant envelope schema exercised by `ferros-profile` tests |
+| `schemas/fixtures/grant-valid.json` | Golden happy-path signed grant fixture |
+| `schemas/fixtures/grant-invalid-sig.json` | Negative signed grant fixture with an invalid signature |
 
 ---
 
 ## Immediate next steps
 
-1. Extend the crate beyond the landed foundation slice: key material and consent-manifest types are still missing.
-2. Refine `schemas/profile.v0.json` for freeze and draft `schemas/capability-grant.v0.json` from the crate boundary.
-3. Expand schema parity enforcement beyond the minimal Stage 0 happy path so the Rust model cannot drift from `profile.v0.json` before freeze.
-4. Implement `grant` and `revoke` logic with signature verification.
-5. Wire CLI subcommands.
-6. Freeze schema under feature flag `profile-schema-v0`.
+1. Extend the crate beyond the landed grant-signing slice: key material and profile-level signing are still missing.
+2. Freeze `schemas/profile.v0.json` and expand parity enforcement beyond the minimal Stage 0 happy path.
+3. Wire CLI subcommands, starting with `ferros profile init | show` and then building `grant` / `revoke` on the landed signed envelope contract.
+4. Decide whether the promised `profile-schema-v0` freeze mechanism is still the right path before calling profile v0 frozen.

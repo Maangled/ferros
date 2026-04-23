@@ -22,7 +22,7 @@
 | Gate | Status | Condition |
 |------|--------|-----------|
 | G1 | ✅ Closed | CI run #24812246339 proved fmt, clippy, build, and test green on ubuntu-latest, macos-latest, and windows-latest |
-| G2 | 🟡 Active | G1 is closed; profile v0 implementation and freeze evidence are now the critical path |
+| G2 | 🟡 Active | Signed `CapabilityGrant` evidence landed; profile v0 freeze and CLI proof remain the critical path |
 | G3 | ⬜ Blocked | G2 must close first; S3+S4 minimal agent-center-on-runtime demo |
 | G4 | ⬜ Blocked | G3 must close first; `ferros-hub` on real hardware with HA integration |
 
@@ -33,7 +33,7 @@
 | Stream | Status | Current focus | Gate |
 |--------|--------|---------------|------|
 | S1 Foundation | 🟡 Closeout / hygiene | Tag `v0.0.1-foundation`, verify branch protection, keep repo hygiene rolling | G1 |
-| S2 Profile & Identity | 🟡 Active | Ed25519, grants, schema freeze, CLI, and schema parity tests | G2 |
+| S2 Profile & Identity | 🟡 Active | signed `CapabilityGrant` envelope landed; remaining work is key material, profile v0 freeze, and CLI flows | G2 |
 | S3 Agent Center | 🟡 Convergence active | reference agents, local `ferros agent ...` CLI, and `ferros-node demo` landed; JSON/RPC and post-G2 contract hardening remain | G3 |
 | S4 Runtime / OS Core | 🟡 Convergence active | `ferros-runtime`, in-memory executor and bus, `ferros-node demo`, and the `ferros-core --no-default-features` compile slice landed; property tests and broader `no_std` hardening remain | G3 |
 | S5 UX | 🟨 Phase A active; Phase B blocked on G3 | real landing page and honest status banner shipped; local agent-center web shell remains post-G3 work | post-G3 |
@@ -74,6 +74,7 @@ The **profile → agent center** path is the gating path. Everything else is par
 
 | Date | Event |
 |------|-------|
+| 2026-04-23 | S2 landed the first signed and verifiable `CapabilityGrant` path in `ferros-profile`: the stripped JSON payload contract is now explicitly frozen in `schemas/capability-grant.v0.json`, `grant-valid.json` and `grant-invalid-sig.json` are in repo, and `cargo test -p ferros-profile` covers verify plus revoke without claiming G2 closed. |
 | 2026-04-23 | S3 and S4 converged on the first runnable demo path: `ferros-node demo` now registers `echo` and `timer`, echoes a message, emits a timer tick, proves deny-by-default with the current real `CapabilityGrant` type, and ships a local `ferros agent list | describe | run | stop | logs` CLI validated by `cargo test -p ferros-node`. |
 | 2026-04-23 | S6 harvest ADRs landed: ADR-018 (`botgen-rust`), ADR-019 (`workpace-rust`), and ADR-020 (`sheetgen-rust`). |
 | 2026-04-23 | S4 landed the first `ferros-core` capability/policy slice, published `ferros-runtime`, wired an in-memory host path through `ferros-node`, and now compiles `ferros-core` with `--no-default-features` without claiming full embedded readiness yet. |
@@ -90,7 +91,7 @@ The **profile → agent center** path is the gating path. Everything else is par
 | Blocker | Affects | Owner |
 |---------|---------|-------|
 | `v0.0.1-foundation` tag is not yet created; required status checks on `main` are not yet verified in branch protection | S1 | S1 |
-| `ferros-profile` still needs key material, signature verification, frozen schemas, CLI flows, and schema parity tests for G2 | S2, S3, S7 | S2 |
+| `ferros-profile` still needs key material, full profile-level round-trip evidence, `schemas/profile.v0.json` freeze, and CLI `init | show | export | import | grant | revoke` for G2; the signed `CapabilityGrant` verify path and grant fixtures are now landed | S2, S3, S7 | S2 |
 | `ferros-agents` and the local `ferros` CLI still need a stable post-G2 grant contract, JSON/RPC surface, and broader harness/CI hardening | S3, S5 | S3 |
 | `ferros-runtime` still needs property tests, target-level `no_std` hardening beyond the current `--no-default-features` compile slice, and host-path hardening beyond the in-memory demo | S4, S3, S7 | S4 |
 | S5 Phase A is live on the landing page, but the local web shell remains blocked behind G3 and the S3 JSON/RPC surface | S5 | S5 |

@@ -2,5 +2,5 @@
   "profile_id": "profile-alpha",
   "capability": "consent.read",
   "signer_public_key": "8907668126536768cdb51c9f1643ff77447bff0e3fc6b4a78cd0fab53a6c590c",
-  "signature": "4a4ae2cef35856cc1116b06705b0e2ad9661559e6d26f7846bd84e14156e2a298c12d7391976d1bdde780c9dbb9ea9cc3cf7fb98483608bceda3db25cb071b0b"
+  "signature": "0a4ae2cef35856cc1116b06705b0e2ad9661559e6d26f7846bd84e14156e2a298c12d7391976d1bdde780c9dbb9ea9cc3cf7fb98483608bceda3db25cb071b0b"
 }
