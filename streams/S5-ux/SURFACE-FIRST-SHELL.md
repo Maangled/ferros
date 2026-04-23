@@ -91,7 +91,7 @@ Any Phase B mockup or HTML shell that breaks these budgets needs an explicit jus
 
 ## Build implication
 
-- The next S5 artifact after this note should be a slot-based wireframe for inspect, grant, and deny-log flows.
+- The slot-based follow-on now lives in `PHASE-B-SHELL-WIREFRAME.md`.
 - The first HTML shell should preserve fixed home surfaces and focus-mode expansion rather than introduce movable windows.
 - Typed shell intents should at minimum cover focus, collapse, route selection, consent, and audit handoff.
 
@@ -101,5 +101,7 @@ Any Phase B mockup or HTML shell that breaks these budgets needs an explicit jus
 
 - [README.md](./README.md)
 - [BACKLOG.md](./BACKLOG.md)
+- [DOCS-HTML-PROTOTYPE-AUDIT.md](./DOCS-HTML-PROTOTYPE-AUDIT.md)
+- [PHASE-B-SHELL-WIREFRAME.md](./PHASE-B-SHELL-WIREFRAME.md)
 - [docs/adr/ADR-019-harvest-workpace.md](../../docs/adr/ADR-019-harvest-workpace.md)
 - [docs/progress/forge.md](../../docs/progress/forge.md)

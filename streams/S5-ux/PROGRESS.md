@@ -4,6 +4,14 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — Prototype audit and shell wireframe landed
+
+- Added `DOCS-HTML-PROTOTYPE-AUDIT.md` to classify the top-level `docs/*.html` prototypes into explicit keep/archive/remove decisions.
+- Kept `agent-command-center.html` as the Phase B subject-matter prior and `forge-workbench.html` as the shell-layout prior.
+- Marked the remaining top-level docs prototypes for archive during Phase A cleanup; proposed no removals in this sprint to avoid destructive churn before link checks.
+- Added `PHASE-B-SHELL-WIREFRAME.md` to turn the surface-first shell note into a concrete slot map, workflow budget, and minimal typed shell intent vocabulary.
+- Left all work inside `streams/S5-ux/` and avoided changes to S3, S4, S6, S8, or `STATUS.md`.
+
 ## 2026-04-23 — Surface-first shell note landed
 
 - Added `SURFACE-FIRST-SHELL.md` as the current Phase B UX artifact.

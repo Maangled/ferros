@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — Bus transport boundary scaffolded
+
+- Added `crates/ferros-agents/src/bus.rs` with host-agnostic `BusTransport`, `BusListener`, and `BusChannel` traits plus `BusEndpoint` and `BusTransportKind` value types for local IPC addressing.
+- Kept the boundary transport-focused by using opaque byte payloads, leaving concrete Unix domain socket and named pipe implementations for later host work.
+- Hardened manifest and registry coverage with profile-scoped deny-by-default authorization and deregister lifecycle tests.
+- Validated the crate with focused `cargo test` against `crates/ferros-agents/Cargo.toml`.
+
 ## 2026-04-23 — Pre-G3 contract scaffold landed
 
 - Added a standalone `crates/ferros-agents/` crate without touching the root workspace manifest.

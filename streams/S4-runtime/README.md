@@ -57,7 +57,7 @@ Legacy runtime or agent prior art should enter this stream through S6 ADRs, not 
 
 ## Definition of done (G3, jointly with S3)
 
-- [ ] `ferros-core` and `ferros-runtime` build and pass `cargo test`.
+- [x] `ferros-core` and `ferros-runtime` build and pass `cargo test`.
 - [ ] `ferros-node demo` runs deterministically: registers reference agents, proves deny-by-default, exits 0.
 - [ ] 10+ unit tests covering capability grant/deny scenarios.
 - [ ] Property tests (via `proptest` or `quickcheck`) for the policy engine.
@@ -85,7 +85,6 @@ Legacy runtime or agent prior art should enter this stream through S6 ADRs, not 
 1. Extend the existing `crates/ferros-core/` foundation crate with capability and deny-by-default policy primitives.
 2. Implement the first policy engine slice with focused unit tests.
 3. Review accepted S6 ADRs for runtime-relevant prior art before hardening lifecycle or queue abstractions.
-4. Scaffold `crates/ferros-runtime/` with executor and bus.
-5. Scaffold `crates/ferros-node/` binary with `demo` subcommand.
-6. Replace the local grant abstraction with S2's `CapabilityGrant` once G2 closes.
-7. Property tests for policy engine.
+4. Scaffold `crates/ferros-node/` binary with `demo` subcommand.
+5. Replace the local grant abstraction with S2's `CapabilityGrant` once G2 closes.
+6. Property tests for policy engine.

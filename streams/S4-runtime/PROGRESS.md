@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — Runtime boundary slice published
+
+- Added `crates/ferros-runtime/` to the workspace with FERROS-owned `Executor` and `MessageBus` traits only, keeping the boundary generic so S4 stays decoupled from S3's pre-G3 agent surface.
+- Added `MessageEnvelope` to `crates/ferros-core/src/message.rs` with validated sender and recipient identifiers, capability, opaque payload bytes, and nonce fields.
+- Added focused crate tests for the new core envelope surface and the runtime trait boundary, then updated S4-owned planning docs to reflect the published slice.
+
 ## 2026-04-23 — First ferros-core capability/policy slice landed
 
 - Added `Capability`, `CapabilityRequest`, `CapabilityGrantView`, `PolicyDecision`, and `DenyByDefaultPolicy` to `crates/ferros-core/`.

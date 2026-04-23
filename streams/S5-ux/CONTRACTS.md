@@ -7,6 +7,7 @@
 | Contract | Type | Location | Status |
 |----------|------|----------|--------|
 | Web shell server port / URL convention | Convention | TBD (`ferros-node` config) | ⬜ Post-G3 |
+| Local shell intent vocabulary | Internal UI design boundary | `PHASE-B-SHELL-WIREFRAME.md` | 🟨 Pre-G3 design active |
 | UI component contracts (Phase B) | TypeScript/HTML | `crates/ferros-web/` | ⬜ Post-G3 |
 
 ---
@@ -23,4 +24,6 @@
 
 ## Notes
 
-S5 is a consumer stream. It does not define new data contracts. Its job is to expose existing contracts through a human-readable interface.
+S5 is a consumer stream. It does not define new cross-stream data contracts. Its job is to expose existing contracts through a human-readable interface.
+
+The shell intent vocabulary is an internal composition boundary for the future Phase B web shell. It is not a replacement for S3 or S4 contracts.

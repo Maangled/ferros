@@ -3,11 +3,13 @@
 extern crate alloc;
 
 pub mod capability;
+pub mod message;
 
 pub use capability::{
     Capability, CapabilityError, CapabilityGrantView, CapabilityRequest, DenyByDefaultPolicy,
     PolicyDecision, PolicyDenialReason, PolicyEngine, RequesterProfileIdError,
 };
+pub use message::{MessageEnvelope, MessageEnvelopeError};
 
 pub const FOUNDATION_MARKER: &str = "foundation-ready";
 pub const FOUNDATION_VERSION: &str = "0.1.0-foundation";

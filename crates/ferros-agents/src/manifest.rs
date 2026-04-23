@@ -117,7 +117,10 @@ pub enum AuthorizationDecision {
 
 #[cfg(test)]
 mod tests {
-    use super::{AgentManifest, AgentName, AgentNameError, AuthorizationDecision, CapabilityRequirement};
+    use super::{
+        AgentManifest, AgentName, AgentNameError, AuthorizationDecision,
+        CapabilityRequirement,
+    };
     use ferros_profile::{CapabilityGrant, ProfileId};
 
     #[test]
@@ -149,6 +152,31 @@ mod tests {
             decision,
             AuthorizationDecision::Denied {
                 missing: vec![write_requirement],
+            }
+        );
+    }
+
+    #[test]
+    fn manifest_authorization_requires_matching_profile_id() {
+        let required_profile = ProfileId::new("profile-alpha").expect("valid profile id");
+        let granted_profile = ProfileId::new("profile-beta").expect("valid profile id");
+        let read_requirement =
+            CapabilityRequirement::new(required_profile.clone(), "consent.read");
+        let manifest = AgentManifest::new(
+            AgentName::new("echo").expect("valid agent name"),
+            "0.1.0",
+            vec![read_requirement.clone()],
+        );
+
+        let decision = manifest.authorization(&[CapabilityGrant::new(
+            granted_profile,
+            "consent.read",
+        )]);
+
+        assert_eq!(
+            decision,
+            AuthorizationDecision::Denied {
+                missing: vec![read_requirement],
             }
         );
     }

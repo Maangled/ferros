@@ -15,7 +15,7 @@
 - [ ] Implement registry: register / deregister / list / describe
 - [ ] Converge `start()` / `stop()` with S4 executor host traits
 - [ ] Implement spawn/stop lifecycle with deny-by-default
-- [ ] IPC bus abstraction (Unix domain sockets / named pipes)
+- [x] IPC bus abstraction (Unix domain sockets / named pipes)
 - [ ] `echo` reference agent
 - [ ] `timer` reference agent
 - [ ] CLI: `ferros agent list | describe | run | stop | logs`

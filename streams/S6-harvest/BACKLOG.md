@@ -13,11 +13,12 @@
 - [x] Write ADR-018: harvest `botgen-rust` → agent spawning patterns
 - [x] Write ADR-019: harvest `workpace-rust` → agent center UX shell
 - [x] Write ADR-020: harvest `sheetgen-rust` → `ferros-data`
-- [ ] Scaffold `crates/ferros-data/` with harvested sheetgen primitives once the sheetgen harvest direction is fixed
+- [x] Scaffold `crates/ferros-data/` with a standalone ADR-020-aligned migration-first crate shell
 - [ ] Verify harvested code compiles under FERROS workspace
 
 ## Later
 
+- [ ] Add `crates/ferros-data/` to the root workspace once Lane D allows workspace-manifest edits
 - [ ] Git subtree integration for `sheetgen-rust` primitives (if license permits)
 - [ ] Extract workpace session model into S5 Phase B scaffold
 

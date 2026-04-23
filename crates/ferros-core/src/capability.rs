@@ -2,12 +2,12 @@ use alloc::string::String;
 use core::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TokenValidationError {
+pub(crate) enum TokenValidationError {
     Empty,
     ContainsWhitespace,
 }
 
-fn validate_token(value: &str) -> Result<(), TokenValidationError> {
+pub(crate) fn validate_token(value: &str) -> Result<(), TokenValidationError> {
     if value.trim().is_empty() {
         return Err(TokenValidationError::Empty);
     }

@@ -119,4 +119,23 @@ mod tests {
 
         assert_eq!(names, vec!["echo".to_string(), "timer".to_string()]);
     }
+
+    #[test]
+    fn registry_deregister_removes_manifest_from_future_queries() {
+        let mut registry = InMemoryAgentRegistry::default();
+        let echo = manifest("echo", "0.1.0");
+        let name = echo.name.clone();
+
+        registry
+            .register(echo.clone())
+            .expect("echo should register");
+
+        let removed = registry
+            .deregister(&name)
+            .expect("deregister should succeed");
+
+        assert_eq!(removed, Some(echo));
+        assert_eq!(registry.describe(&name).expect("describe should succeed"), None);
+        assert!(registry.list().is_empty());
+    }
 }

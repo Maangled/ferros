@@ -1,5 +1,5 @@
 [workspace]
-members = ["xtask", "crates/ferros-core", "crates/ferros-profile", "crates/ferros-agents"]
+members = ["xtask", "crates/ferros-core", "crates/ferros-runtime", "crates/ferros-profile", "crates/ferros-agents"]
 resolver = "2"
 
 [workspace.package]

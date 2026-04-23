@@ -14,7 +14,7 @@
 - [x] Implement capability + consent types
 - [x] Implement policy engine with deny-by-default logic
 - [x] Unit tests: 10+ grant/deny scenarios
-- [ ] Scaffold `crates/ferros-runtime/` — executor + in-process bus
+- [x] Scaffold `crates/ferros-runtime/` — executor + in-process bus boundary
 - [ ] Scaffold `crates/ferros-node/` binary
 - [ ] `ferros-node demo` subcommand
 - [ ] Replace stub grant type with S2 `CapabilityGrant` (after G2)

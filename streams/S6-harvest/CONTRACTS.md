@@ -8,10 +8,10 @@ S6 is a harvest and migration stream. It produces ADRs and extracted crates; it 
 
 | Contract | Type | Location | Status |
 |----------|------|----------|--------|
-| ADR-018: botgen harvest decision | ADR | `docs/adr/ADR-018-harvest-botgen.md` | ⬜ Not yet written |
-| ADR-019: workpace harvest decision | ADR | `docs/adr/ADR-019-harvest-workpace.md` | ⬜ Not yet written |
-| ADR-020: sheetgen harvest decision | ADR | `docs/adr/ADR-020-harvest-sheetgen.md` | ⬜ Not yet written |
-| `ferros-data` crate public API | Rust types | `crates/ferros-data/` | ⬜ Not yet created |
+| ADR-018: botgen harvest decision | ADR | `docs/adr/ADR-018-harvest-botgen.md` | ✅ Accepted |
+| ADR-019: workpace harvest decision | ADR | `docs/adr/ADR-019-harvest-workpace.md` | ✅ Accepted |
+| ADR-020: sheetgen harvest decision | ADR | `docs/adr/ADR-020-harvest-sheetgen.md` | ✅ Accepted |
+| `ferros-data` crate public API | Rust types | `crates/ferros-data/` | 🟡 Standalone scaffolded; not yet a root workspace member |
 
 S6 ADRs are the approved boundary by which external prior art enters FERROS. Downstream streams should consume the ADR decisions, not raw legacy repositories, unless a later governance change says otherwise.
 

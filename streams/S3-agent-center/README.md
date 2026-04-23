@@ -56,7 +56,7 @@ Build the coordination surface that lets users register, inspect, authorize, and
 - [ ] `timer` agent: registers, spawns, fires periodic events, stops.
 - [ ] Deny-by-default verified: ungranted capability request from either agent is rejected and logged.
 - [ ] `ferros agent list | describe | run | stop | logs` all functional against the reference agents.
-- [ ] IPC bus transport abstraction in place (concrete: Unix domain sockets / named pipes).
+- [x] IPC bus transport abstraction in place (concrete: Unix domain sockets / named pipes).
 
 ---
 

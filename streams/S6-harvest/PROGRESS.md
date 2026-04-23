@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — ferros-data scaffold started under ADR-020
+
+- Created `crates/ferros-data/` as a standalone crate so Lane D can start the data slice without editing the root workspace manifest.
+- Added an owned baseline SQL migration that establishes `revision_base`, a JSONB snapshot table, and a database-side parent invariant as the first ADR-020 proof points.
+- Added a tiny Rust boundary API and crate-local tests that pin migration authority, JSONB snapshots, and application prevalidation expectations.
+- Validated this slice with `cargo test --manifest-path crates/ferros-data/Cargo.toml`; workspace membership remains deferred to a later lane.
+
 ## 2026-04-23 — ADR-020 landed from sheetgen audit
 
 - Converted `.tmp/sg-r.md` into ADR-020 as the third concrete S6 harvest decision.

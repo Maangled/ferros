@@ -13,7 +13,7 @@
 | Active gate | **G2** — Profile v0 Frozen |
 | Launch gate | G4 (open) |
 | MVP gate | G1 → G2 → G3 in sequence |
-| Open streams | S1 (closeout), S2 (active), S4 (prep), S6 (active), S8 (background) |
+| Open streams | S1 (closeout), S2 (active), S3 (pre-G3 scaffold), S4 (policy slice), S5 (planning), S6 (active), S8 (background) |
 
 ---
 
@@ -34,10 +34,10 @@
 |--------|--------|---------------|------|
 | S1 Foundation | 🟡 Closeout / hygiene | Tag `v0.0.1-foundation`, verify branch protection, keep repo hygiene rolling | G1 |
 | S2 Profile & Identity | 🟡 Active | Ed25519, grants, schema freeze, CLI, and schema parity tests | G2 |
-| S3 Agent Center | ⬜ Blocked on G2 | `Agent` trait, registry, IPC bus | G3 |
-| S4 Runtime / OS Core | 🟡 Prep active | capability and policy interfaces, runtime design, await real grant type | G3 |
-| S5 UX | ⬜ Blocked on G3 | Site cleanup, then agent shell | post-G3 |
-| S6 Ecosystem Harvest | 🟡 Active | audit botgen/workpace/sheetgen and publish harvest ADRs | rolling |
+| S3 Agent Center | 🟨 Pre-G3 scaffold | `ferros-agents` boundary and in-memory registry landed; CLI, reference agents, and runtime integration still pending | G3 |
+| S4 Runtime / OS Core | 🟡 Active (policy slice) | deny-by-default capability/policy primitives are in `ferros-core`; `ferros-runtime` and `ferros-node` are not started yet | G3 |
+| S5 UX | 🟨 Planning active; implementation blocked on G3 | shell composition note landed; no local web shell or site truth-banner slice is shipped yet | post-G3 |
+| S6 Ecosystem Harvest | 🟡 Active | ADR-018/019/020 landed; downstream streams should consume ADR conclusions, not raw legacy repos | rolling |
 | S7 Smart-Home Hub | ⬜ Blocked on G2/G3 | pairing needs stable profile types; implementation needs runtime | G4 |
 | S8 Docs / Governance | 🟡 Active (background) | Stream scaffolding, CONTRIBUTING, ADR templates | rolling |
 
@@ -74,8 +74,11 @@ The **profile → agent center** path is the gating path. Everything else is par
 
 | Date | Event |
 |------|-------|
+| 2026-04-23 | S6 harvest ADRs landed: ADR-018 (`botgen-rust`), ADR-019 (`workpace-rust`), and ADR-020 (`sheetgen-rust`). |
+| 2026-04-23 | S4 landed the first `ferros-core` capability/policy slice with focused deny-by-default tests; `ferros-runtime` and `ferros-node` remain unstarted. |
+| 2026-04-23 | S3 landed a pre-G3 `ferros-agents` scaffold with manifest authorization helpers and an in-memory registry. |
+| 2026-04-23 | S5 recorded shell direction in `SURFACE-FIRST-SHELL.md`; no HTML shell implementation has landed yet. |
 | 2026-04-23 | G1 closed: CI run #24812246339 proved fmt, clippy, build, and test green across ubuntu-latest, macos-latest, and windows-latest. |
-| 2026-04-22 | S1 workspace artifacts landed: Cargo workspace, CI workflows, site move, CODEOWNERS, `cargo xtask ci`, and initial `ferros-core` / `ferros-profile` crates. |
 | 2026-04-21 | Wave 0 closed (contracts C1–C10 verified). Stream docs scaffolded. Stream-first planning model adopted. |
 
 ---
@@ -86,4 +89,6 @@ The **profile → agent center** path is the gating path. Everything else is par
 |---------|---------|-------|
 | `v0.0.1-foundation` tag is not yet created; required status checks on `main` are not yet verified in branch protection | S1 | S1 |
 | `ferros-profile` still needs key material, signature verification, frozen schemas, CLI flows, and schema parity tests for G2 | S2, S3, S7 | S2 |
-| `ferros-core` is still a foundation skeleton only; runtime and policy engine work have not started | S4, S3, S7 | S4 |
+| `ferros-agents` is still a pre-G3 scaffold only; lifecycle CLI, reference agents, and runtime hooks are not implemented | S3, S5 | S3 |
+| `ferros-runtime` and `ferros-node` do not exist yet; current S4 progress stops at `ferros-core` policy primitives | S4, S3, S7 | S4 |
+| S5 has planning artifacts only; the local web shell and site truth-banner slice are not implemented | S5 | S5 |

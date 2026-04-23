@@ -10,9 +10,9 @@
 | `CapabilityRequest` type | Rust type | `crates/ferros-core/src/capability.rs` | ✅ Created |
 | `CapabilityGrantView` trait | Rust trait | `crates/ferros-core/src/capability.rs` | ✅ Created |
 | `PolicyEngine` trait | Rust trait | `crates/ferros-core/src/capability.rs` | ✅ Created |
-| `MessageEnvelope` type | Rust type | `crates/ferros-core/src/message.rs` | ⬜ Not yet created |
-| `Executor` trait | Rust trait | `crates/ferros-runtime/src/executor.rs` | ⬜ Not yet created |
-| In-process bus protocol | Rust trait | `crates/ferros-runtime/src/bus.rs` | ⬜ Not yet created |
+| `MessageEnvelope` type | Rust type | `crates/ferros-core/src/message.rs` | ✅ Created |
+| `Executor` trait | Rust trait | `crates/ferros-runtime/src/executor.rs` | ✅ Created |
+| In-process bus protocol | Rust trait | `crates/ferros-runtime/src/bus.rs` | ✅ Created |
 
 ---
 
