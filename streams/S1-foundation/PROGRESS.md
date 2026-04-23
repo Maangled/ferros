@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-22 — G1 closeout narrowed to PR evidence
+
+- Re-ran `cargo xtask ci` after the latest `ferros-profile` edits; local fmt, clippy, build, and test still pass.
+- Audited the crate manifests after follow-up review feedback: `xtask` intentionally remains std-only, and `ferros-profile` correctly depends on `ferros-core`, `serde`, and `serde_json`.
+- Reduced the remaining S1 closeout work to GitHub-side proof steps: open the trivial-test PR, wait for the three-platform matrix to go green, update G1 evidence, tag `v0.0.1-foundation`, and close issue #62 / #63.
+
 ## 2026-04-22 — Workspace members and xtask validation landed
 
 - Expanded the workspace to include `crates/ferros-core` and `crates/ferros-profile` as initial Rust members.

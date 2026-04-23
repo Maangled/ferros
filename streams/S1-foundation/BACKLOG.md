@@ -12,6 +12,12 @@
 - [x] Update `README.md` to honest current state
 - [x] Add `CODEOWNERS`
 - [x] Resolve workspace licensing metadata mismatch
+- [x] Audit crate manifests and confirm current local wiring (`xtask` std-only; `ferros-profile` depends on `ferros-core`, `serde`, and `serde_json`)
+- [ ] Open the trivial G1 evidence PR
+- [ ] Observe a green `ci.yml` matrix run on `ubuntu-latest`, `macos-latest`, and `windows-latest`
+- [ ] Update `docs/gates/G1.md` after PR evidence lands
+- [ ] Tag `v0.0.1-foundation`
+- [ ] Close issue #62 and issue #63 as part of G1 closeout
 
 ## Next
 
@@ -20,13 +26,15 @@
 - [x] Add `tools/sh/` and `tools/ps/` placeholder scripts
 - [x] LICENSE split: `LICENSE` (code) + `LICENSE-DOCS` (docs)
 - [x] `integration.yml` workflow for weekly integration branch merges
+- [ ] Add a branch protection rule that requires `ci.yml` to pass before merge
 
 ## Later
 
 - [ ] Release workflow (`release.yml`)
 - [ ] Dependabot / Renovate config for dependency updates
 - [ ] MSRV policy documented in `README.md`
+- [ ] Continue moving active HTML surfaces into `docs/surfaces/active/` per ADR-017
 
 ## Blocked
 
-- [ ] First PR-based GitHub Actions matrix proof for G1
+- [ ] GitHub-side actions only: PR matrix evidence, tag creation, and issue closure cannot be completed from the local workspace alone
