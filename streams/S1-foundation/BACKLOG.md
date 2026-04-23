@@ -13,9 +13,9 @@
 - [x] Add `CODEOWNERS`
 - [x] Resolve workspace licensing metadata mismatch
 - [x] Audit crate manifests and confirm current local wiring (`xtask` std-only; `ferros-profile` depends on `ferros-core`, `serde`, and `serde_json`)
-- [ ] Open the trivial G1 evidence PR
-- [ ] Observe a green `ci.yml` matrix run on `ubuntu-latest`, `macos-latest`, and `windows-latest`
-- [ ] Update `docs/gates/G1.md` after PR evidence lands
+- [x] Open the trivial G1 evidence PR
+- [x] Observe a green `ci.yml` matrix run on `ubuntu-latest`, `macos-latest`, and `windows-latest` (run #24812246339, 2026-04-23)
+- [x] Update `docs/gates/G1.md` after PR evidence lands
 - [ ] Tag `v0.0.1-foundation`
 - [ ] Close issue #62 and issue #63 as part of G1 closeout
 

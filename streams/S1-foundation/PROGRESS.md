@@ -4,6 +4,15 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — G1 closed
+
+- CI run #24812246339 on `main` (commit `6230495`) completed with all 7 jobs green: `fmt + clippy`, `build (ubuntu-latest)`, `build (macos-latest)`, `build (windows-latest)`, `test (ubuntu-latest)`, `test (macos-latest)`, `test (windows-latest)`.
+- Updated `docs/gates/G1.md` to ✅ Closed: checked all remaining evidence boxes (`cargo build`, `cargo test`, `cargo fmt --check`, `cargo clippy`, CI workflow active).
+- Updated `streams/S1-foundation/BACKLOG.md` to reflect CI matrix observation complete.
+- Remaining G1 closeout steps: tag `v0.0.1-foundation` and close issues #62/#63.
+
+---
+
 ## 2026-04-22 — G1 closeout narrowed to PR evidence
 
 - Re-ran `cargo xtask ci` after the latest `ferros-profile` edits; local fmt, clippy, build, and test still pass.
