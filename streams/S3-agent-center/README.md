@@ -22,7 +22,7 @@ Build the coordination surface that lets users register, inspect, authorize, and
   - Local IPC bus (Unix domain sockets / named pipes; transport abstracted).
 - CLI subcommands: `ferros agent list | describe | run | stop | logs`.
 - Two reference agents: `echo` and `timer`.
-- Borrow patterns from `botgen-rust` (materialize-from-description) and `workpace-rust` (workspace/session model). See S6 harvest ADRs.
+- Borrow patterns from `botgen-rust` and `workpace-rust` only through accepted S6 harvest ADRs. S3 should not mine the legacy repos directly during implementation.
 
 ---
 
@@ -76,7 +76,7 @@ Build the coordination surface that lets users register, inspect, authorize, and
 
 ## Immediate next steps
 
-1. Review `botgen-rust` and `workpace-rust` agent/workspace patterns (see S6 harvest ADRs).
+1. Review accepted S6 harvest ADRs for `botgen-rust` and `workpace-rust` before hardening interfaces.
 2. Define the `Agent` trait with S4 alignment on executor interface.
 3. Scaffold `crates/ferros-agents/` crate (after G2).
 4. Implement registry and lifecycle.

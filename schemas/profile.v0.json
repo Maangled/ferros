@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ferros.local/schemas/profile.v0.json",
+  "title": "FERROS Profile v0",
+  "description": "S2-owned profile schema candidate for G2 freeze. Derived from the existing FERROS profile contract and used to enforce Rust schema parity in ferros-profile.",
+  "type": "object",
+  "required": ["meta", "identity", "attributes", "skills", "achievements", "journal", "credentials", "sealChain"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": { "$ref": "#/definitions/meta" },
+    "identity": { "$ref": "#/definitions/identity" },
+    "attributes": { "$ref": "#/definitions/attributes" },
+    "skills": { "$ref": "#/definitions/skills" },
+    "achievements": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/achievement" }
+    },
+    "journal": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/journalEntry" }
+    },
+    "credentials": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/credential" }
+    },
+    "sealChain": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/seal" }
+    },
+    "auditTrail": {
+      "type": "array",
+      "description": "C10 bounded audit ring buffer. Cap: 1000 entries, FIFO eviction.",
+      "items": { "$ref": "#/definitions/auditEntry" }
+    },
+    "schedule": {
+      "type": "object",
+      "description": "Legacy migration field carried forward from the Phase 0 profile contract.",
+      "properties": {
+        "archetype": { "type": ["string", "null"] },
+        "activeDeck": { "type": ["string", "null"] },
+        "wakeTime": { "type": "string" },
+        "sleepTime": { "type": "string" },
+        "slots": { "type": "array" }
+      }
+    },
+    "completions": {
+      "type": "object",
+      "description": "Legacy migration field carried forward from the Phase 0 profile contract."
+    },
+    "creditLog": {
+      "type": "object",
+      "description": "Legacy migration field carried forward from the Phase 0 profile contract."
+    },
+    "bag": {
+      "type": "array",
+      "description": "Legacy migration field carried forward from the Phase 0 profile contract.",
+      "items": { "type": "object" }
+    }
+  },
+  "definitions": {
+    "meta": {
+      "type": "object",
+      "required": ["version", "created", "lastModified", "assistanceLevel", "genesisHash", "currentSeal", "sealCount", "stage"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
+        "created": { "type": ["string", "null"], "format": "date-time" },
+        "lastModified": { "type": ["string", "null"], "format": "date-time" },
+        "assistanceLevel": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "genesisHash": { "type": ["string", "null"] },
+        "currentSeal": { "type": ["string", "null"] },
+        "sealCount": { "type": "integer", "minimum": 0 },
+        "stage": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "anchoredToLedger": { "type": "boolean", "default": false },
+        "ledgerTxHash": { "type": ["string", "null"], "default": null },
+        "schemaVersion": { "type": "integer", "description": "Internal structural version used by migrateProfileStructure(). Distinct from meta.version (interchange version)." },
+        "claimedAliasSessions": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Canonical dedupe index for claimed alias/recovery log sessions." },
+        "xp": { "type": "integer", "minimum": 0, "default": 0, "description": "Cumulative XP from alias/recovery log claims." },
+        "sealBroken": { "type": "boolean", "default": false, "description": "True if imported profile had a broken seal chain." },
+        "revision": { "type": "integer", "minimum": 0, "default": 0, "description": "Monotonically increasing counter for cross-tab coordination." }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "required": ["name", "avatar", "class", "streamAffinity", "title", "joinedDate", "streakDays", "longestStreak"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "class": { "type": ["string", "null"], "enum": ["Architect", "Engineer", "Scholar", "Artisan", "Healer", "Guardian", "Guided", "Community", null] },
+        "streamAffinity": { "type": ["string", "null"], "enum": ["A", "B", "C", null] },
+        "title": { "type": "string" },
+        "joinedDate": { "type": ["string", "null"], "format": "date-time" },
+        "streakDays": { "type": "integer", "minimum": 0 },
+        "longestStreak": { "type": "integer", "minimum": 0 },
+        "archetype": { "type": ["string", "null"] },
+        "wakeTime": { "type": "string" },
+        "sleepTime": { "type": "string" },
+        "categoryInterests": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "attribute": {
+      "type": "object",
+      "required": ["level", "xp", "xpToNext", "color", "icon"],
+      "additionalProperties": false,
+      "properties": {
+        "level": { "type": "integer", "minimum": 1 },
+        "xp": { "type": "integer", "minimum": 0 },
+        "xpToNext": { "type": "integer", "minimum": 1 },
+        "color": { "type": "string" },
+        "icon": { "type": "string" }
+      }
+    },
+    "attributes": {
+      "type": "object",
+      "required": ["Discipline", "Knowledge", "Craft", "Governance", "Wellness", "Community"],
+      "additionalProperties": false,
+      "properties": {
+        "Discipline": { "$ref": "#/definitions/attribute" },
+        "Knowledge": { "$ref": "#/definitions/attribute" },
+        "Craft": { "$ref": "#/definitions/attribute" },
+        "Governance": { "$ref": "#/definitions/attribute" },
+        "Wellness": { "$ref": "#/definitions/attribute" },
+        "Community": { "$ref": "#/definitions/attribute" }
+      }
+    },
+    "skills": {
+      "type": "object",
+      "required": ["A", "B", "C"],
+      "additionalProperties": false,
+      "properties": {
+        "A": { "type": "array", "items": { "type": "string" } },
+        "B": { "type": "array", "items": { "type": "string" } },
+        "C": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "achievement": {
+      "type": "object",
+      "required": ["id", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+        "name": { "type": "string" },
+        "desc": { "type": "string", "default": "" },
+        "icon": { "type": "string", "default": "" },
+        "unlocked": { "type": "boolean", "default": false },
+        "unlockedAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "journalEntry": {
+      "type": "object",
+      "required": ["ts", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "ts": { "type": "string", "format": "date-time" },
+        "text": { "type": "string" },
+        "type": { "type": "string", "enum": ["activity", "journal", "system", "claim-event", "claimed-alias", "claimed-recovery"], "default": "journal" },
+        "seal": { "type": ["string", "null"] },
+        "aliasId": { "type": ["string", "null"], "description": "Alias identifier for claimed entries." },
+        "aliasName": { "type": ["string", "null"], "description": "Alias display name for claimed entries." },
+        "linkedTo": { "type": ["string", "null"], "description": "Genesis hash of the claiming profile." },
+        "claimId": { "type": ["string", "null"], "description": "Unique claim session identifier." },
+        "sealBroken": { "type": "boolean", "description": "True if the source log had integrity warnings." }
+      }
+    },
+    "credential": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "issuedAt": { "type": ["string", "null"], "format": "date-time" },
+        "data": { "type": "object" }
+      }
+    },
+    "seal": {
+      "type": "object",
+      "required": ["taskId", "seal", "previousSeal", "timestamp", "data", "hashAlgorithm", "nonce"],
+      "additionalProperties": false,
+      "properties": {
+        "taskId": { "type": "string" },
+        "seal": { "type": "string" },
+        "previousSeal": { "type": "string", "description": "'genesis' for the first seal, otherwise the seal hash of the prior entry" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "data": { "description": "Arbitrary JSON-serializable task data" },
+        "hashAlgorithm": { "type": "string", "enum": ["sha256", "djb2"], "description": "Algorithm used to compute this seal hash" },
+        "nonce": { "type": ["integer", "number"], "description": "Random nonce consumed during seal computation, persisted for deterministic re-verification" }
+      }
+    },
+    "auditEntry": {
+      "type": "object",
+      "required": ["ts", "action"],
+      "additionalProperties": false,
+      "properties": {
+        "ts": { "type": "string", "format": "date-time" },
+        "action": { "type": "string", "enum": ["seal-added", "profile-saved", "profile-imported", "alias-claimed", "recovery-claimed"] },
+        "detail": { "description": "Optional action-specific data", "type": ["object", "null"] }
+      }
+    }
+  }
+}

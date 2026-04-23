@@ -144,9 +144,33 @@ mod tests {
     use super::{
         foundation_contract_preview, CapabilityGrant, ProfileDocument, ProfileId, ProfileIdError,
     };
+    use serde_json::Value;
 
     const MINIMAL_STAGE0_FIXTURE: &str =
         include_str!("../../../schemas/fixtures/minimal-stage0-profile.json");
+    const PROFILE_V0_SCHEMA: &str = include_str!("../../../schemas/profile.v0.json");
+
+    fn assert_matches_profile_v0_schema(instance: &Value) {
+        let schema: Value =
+            serde_json::from_str(PROFILE_V0_SCHEMA).expect("profile.v0 schema should parse");
+        let config = jsonschema_valid::Config::from_schema(
+            &schema,
+            Some(jsonschema_valid::schemas::Draft::Draft7),
+        )
+        .expect("profile.v0 schema should compile");
+
+        config
+            .validate_schema()
+            .expect("profile.v0 schema should be valid");
+
+        if let Err(errors) = config.validate(instance) {
+            let messages = errors.map(|error| error.to_string()).collect::<Vec<_>>();
+            panic!(
+                "profile instance should satisfy profile.v0.json: {}",
+                messages.join("; ")
+            );
+        }
+    }
 
     #[test]
     fn profile_id_rejects_empty_values() {
@@ -198,5 +222,14 @@ mod tests {
         assert_eq!(reparsed.meta.version, "1.0");
         assert_eq!(reparsed.seal_chain.len(), 1);
         assert_eq!(reparsed.identity.title, "Newcomer");
+    }
+
+    #[test]
+    fn serialized_profile_document_matches_profile_v0_schema() {
+        let profile =
+            ProfileDocument::from_json_str(MINIMAL_STAGE0_FIXTURE).expect("fixture should parse");
+        let serialized = serde_json::to_value(&profile).expect("profile should convert to JSON");
+
+        assert_matches_profile_v0_schema(&serialized);
     }
 }

@@ -1,7 +1,7 @@
 # S4 — Runtime / OS Core
 
 **Stream:** S4  
-**Status:** ⬜ Blocked on G1  
+**Status:** 🟡 Prep active  
 **Gate:** G3 (jointly with S3)
 
 ---
@@ -9,6 +9,8 @@
 ## Mission
 
 Build the "OS" layer: the capability and consent primitives, the in-process message bus, the executor, and the binary that hosts everything. This stream runs in parallel with S2/S3 via trait stubs and converges when S2 profile types land.
+
+Legacy runtime or agent prior art should enter this stream through S6 ADRs, not through direct dependency on old repository shapes.
 
 ---
 
@@ -40,8 +42,9 @@ Build the "OS" layer: the capability and consent primitives, the in-process mess
 
 ## Dependencies
 
-- **S1 (G1 must be green):** Cargo workspace and CI.
-- **S2 (converges at G2):** Policy engine needs `CapabilityGrant` type. Use stub until S2 lands.
+- **S1:** G1 is closed; the workspace and CI foundation already exist.
+- **S2 (converges at G2):** Policy engine needs `CapabilityGrant` type. Use a narrow local abstraction until S2 lands.
+- **S6:** Prior-art from `botgen-rust` should inform this stream through ADR decisions, not direct code borrowing.
 
 ---
 
@@ -79,9 +82,10 @@ Build the "OS" layer: the capability and consent primitives, the in-process mess
 
 ## Immediate next steps
 
-1. Scaffold `crates/ferros-core/` with stub types (can start before G2 using placeholder grant type).
-2. Implement policy engine with unit tests.
-3. Scaffold `crates/ferros-runtime/` with executor and bus.
-4. Scaffold `crates/ferros-node/` binary with `demo` subcommand.
-5. Replace stub grant type with S2's `CapabilityGrant` once G2 closes.
-6. Property tests for policy engine.
+1. Extend the existing `crates/ferros-core/` foundation crate with capability and deny-by-default policy primitives.
+2. Implement the first policy engine slice with focused unit tests.
+3. Review accepted S6 ADRs for runtime-relevant prior art before hardening lifecycle or queue abstractions.
+4. Scaffold `crates/ferros-runtime/` with executor and bus.
+5. Scaffold `crates/ferros-node/` binary with `demo` subcommand.
+6. Replace the local grant abstraction with S2's `CapabilityGrant` once G2 closes.
+7. Property tests for policy engine.
