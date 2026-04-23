@@ -4,13 +4,14 @@
 
 ## Now
 
-- [ ] Design `ProfileId`, `KeyPair`, `CapabilityGrant`, `ConsentManifest` types (can start before G1)
+- [ ] Design `ProfileId`, `KeyPair`, `CapabilityGrant`, `ConsentManifest` types (foundation slice started; key material and consent manifest still open)
 - [ ] Draft `schemas/profile.v0.json`
 - [ ] Draft `schemas/capability-grant.v0.json`
 
 ## Next
 
-- [ ] Create `crates/ferros-profile/` (after G1)
+- [x] Create `crates/ferros-profile/`
+- [x] Add fixture-backed serde parsing for the minimal Stage 0 profile
 - [ ] Implement Ed25519 keypair generation and device binding
 - [ ] Implement grant + revoke logic with signature verification
 - [ ] Profile storage abstraction (filesystem-first)
@@ -26,4 +27,4 @@
 
 ## Blocked
 
-- Crate creation blocked on G1 (Cargo workspace must exist).
+- Full S2 closeout remains blocked on G1 closure and CI-proven foundation evidence.

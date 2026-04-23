@@ -2,7 +2,7 @@
 
 > Dashboard, not a diary. Each section shows current state. Details live in stream PROGRESS.md files.
 >
-> Last updated: 2026-04-21
+> Last updated: 2026-04-22
 
 ---
 
@@ -13,7 +13,7 @@
 | Active gate | **G1** — Foundation |
 | Launch gate | G4 (open) |
 | MVP gate | G1 → G2 → G3 in sequence |
-| Open streams | S1 (active), S8 (background) |
+| Open streams | S1 (active), S2 (scaffolded), S4 (scaffolded), S8 (background) |
 
 ---
 
@@ -21,7 +21,7 @@
 
 | Gate | Status | Condition |
 |------|--------|-----------|
-| G1 | 🔴 Open | `cargo build && cargo test` green on Linux/macOS/Windows; CI running |
+| G1 | 🟡 In progress | Workspace artifacts landed; waiting on green CI proof across Linux/macOS/Windows |
 | G2 | ⬜ Blocked | G1 must close first; S2 profile v0 frozen |
 | G3 | ⬜ Blocked | G2 must close first; S3+S4 minimal agent-center-on-runtime demo |
 | G4 | ⬜ Blocked | G3 must close first; `ferros-hub` on real hardware with HA integration |
@@ -32,10 +32,10 @@
 
 | Stream | Status | Current focus | Gate |
 |--------|--------|---------------|------|
-| S1 Foundation | 🔴 Not started | Cargo workspace, CI, site move, tooling | G1 |
-| S2 Profile & Identity | ⬜ Blocked on G1 | `ferros-profile` crate, Ed25519, schemas | G2 |
+| S1 Foundation | 🟡 In progress | CI proof, workspace validation, close G1 | G1 |
+| S2 Profile & Identity | 🟡 Scaffolded / blocked on G1 close | `ferros-profile` crate skeleton, Ed25519, schemas | G2 |
 | S3 Agent Center | ⬜ Blocked on G2 | `Agent` trait, registry, IPC bus | G3 |
-| S4 Runtime / OS Core | ⬜ Blocked on G1 | `ferros-core`, consent bus, executor | G3 |
+| S4 Runtime / OS Core | 🟡 Scaffolded / blocked on G1 close | `ferros-core` crate skeleton, consent bus, executor | G3 |
 | S5 UX | ⬜ Blocked on G1 | Site cleanup, then agent shell | post-G3 |
 | S6 Ecosystem Harvest | ⬜ Blocked on G1 | Audit sheetgen/botgen/workpace, ADRs | rolling |
 | S7 Smart-Home Hub | ⬜ Blocked on G3 | `ferros-hub`, HA integration | G4 |
@@ -74,6 +74,7 @@ The **profile → agent center** path is the gating path. Everything else is par
 
 | Date | Event |
 |------|-------|
+| 2026-04-22 | S1 workspace artifacts landed: Cargo workspace, CI workflows, site move, CODEOWNERS, `cargo xtask ci`, and initial `ferros-core` / `ferros-profile` crates. |
 | 2026-04-21 | Wave 0 closed (contracts C1–C10 verified). Stream docs scaffolded. Stream-first planning model adopted. |
 
 ---
@@ -82,7 +83,7 @@ The **profile → agent center** path is the gating path. Everything else is par
 
 | Blocker | Affects | Owner |
 |---------|---------|-------|
-| Cargo workspace not yet set up | S1, all | S1 |
-| No CI workflow | S1, all | S1 |
-| `ferros-profile` crate does not exist | S2 | S2 |
-| `ferros-core` crate does not exist | S4 | S4 |
+| GitHub Actions matrix proof not yet observed on a PR | S1, all | S1 |
+| G1 trivial-test PR evidence not yet merged | S1, all | S1 |
+| `ferros-profile` is still a foundation skeleton only | S2 | S2 |
+| `ferros-core` is still a foundation skeleton only | S4 | S4 |

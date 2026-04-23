@@ -4,6 +4,14 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-22 — Workspace members and xtask validation landed
+
+- Expanded the workspace to include `crates/ferros-core` and `crates/ferros-profile` as initial Rust members.
+- Replaced the `xtask` placeholder with a real `cargo xtask ci` command path.
+- Added `.cargo/config.toml` so the `cargo xtask` alias works without extra local setup.
+- Aligned workspace licensing metadata to the repository GPL code license and documented the split-license model in `LICENSING.md`.
+- Local foundation validation now passes through `cargo xtask ci` (fmt, clippy, build, test).
+
 ## 2026-04-22 — G1 foundation backlog implemented
 
 - Added root Rust workspace (`Cargo.toml`) with `xtask` member.

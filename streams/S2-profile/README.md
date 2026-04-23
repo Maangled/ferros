@@ -1,7 +1,7 @@
 # S2 — Profile & Identity
 
 **Stream:** S2  
-**Status:** ⬜ Blocked on G1  
+**Status:** 🟡 Scaffolded / blocked on G1 closure  
 **Gate:** G2
 
 ---
@@ -50,7 +50,7 @@ Give every FERROS entity a locally-sovereign cryptographic identity. The profile
 
 ## Definition of done (G2)
 
-- [ ] `ferros-profile` crate builds and passes `cargo test`.
+- [x] `ferros-profile` crate builds and passes `cargo test` locally.
 - [ ] Profile round-trips: create → serialize → sign → verify → revoke.
 - [ ] `schemas/profile.v0.json` frozen (feature-flag protected; no mutations after freeze).
 - [ ] `schemas/capability-grant.v0.json` frozen.
@@ -75,9 +75,8 @@ Give every FERROS entity a locally-sovereign cryptographic identity. The profile
 
 ## Immediate next steps
 
-1. Create `crates/ferros-profile/` with a `Cargo.toml` stub.
-2. Define `ProfileId`, `KeyPair`, `CapabilityGrant`, `ConsentManifest` types.
-3. Draft `schemas/profile.v0.json` — iterate until round-trip works.
-4. Implement `grant` and `revoke` logic with signature verification.
-5. Wire CLI subcommands.
-6. Freeze schema under feature flag `profile-schema-v0`.
+1. Extend the crate beyond the foundation slice: fixture-backed serde model, key material, and consent-manifest types.
+2. Draft `schemas/profile.v0.json` and `schemas/capability-grant.v0.json` from the crate boundary.
+3. Implement `grant` and `revoke` logic with signature verification.
+4. Wire CLI subcommands.
+5. Freeze schema under feature flag `profile-schema-v0`.

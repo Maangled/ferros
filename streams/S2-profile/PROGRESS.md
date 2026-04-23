@@ -4,6 +4,14 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-22 — Foundation slice landed in `ferros-profile`
+
+- Added `crates/ferros-profile/` as a real workspace member.
+- Implemented `ProfileId` and `CapabilityGrant` as compile-tested Rust types.
+- Added a first fixture-backed `ProfileDocument` serde model that parses `schemas/fixtures/minimal-stage0-profile.json`.
+- Added round-trip JSON tests against the minimal Stage 0 profile fixture.
+- Stream remains blocked on G1 closure for meaningful downstream work, but the crate is no longer hypothetical.
+
 ## 2026-04-21 — Stream scaffolded
 
 - Stream directory and planning documents created.

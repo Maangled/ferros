@@ -18,5 +18,8 @@
 
 # Foundation plumbing
 /.github/workflows/ @Maangled
+/crates/ferros-core/ @Maangled
+/crates/ferros-profile/ @Maangled
 /site/ @Maangled
 /tools/ @Maangled
+/xtask/ @Maangled

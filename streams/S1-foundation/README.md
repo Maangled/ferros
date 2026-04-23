@@ -1,7 +1,7 @@
 # S1 — Foundation
 
 **Stream:** S1  
-**Status:** � In progress (local gate checks green; awaiting CI matrix confirmation)  
+**Status:** 🟡 In progress (local gate checks green; awaiting CI matrix confirmation)  
 **Gate:** G1
 
 ---
@@ -64,6 +64,8 @@ All other streams. G1 must close before S2–S8 work meaningfully.
 | `Cargo.toml` | Workspace root |
 | `rust-toolchain.toml` | Rust edition pin |
 | `.github/workflows/ci.yml` | CI pipeline |
+| `crates/ferros-core/` | Initial runtime crate skeleton |
+| `crates/ferros-profile/` | Initial profile crate skeleton |
 | `xtask/` | Build task crate |
 | `tools/sh/` | Bash helper scripts |
 | `tools/ps/` | PowerShell helper scripts |

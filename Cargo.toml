@@ -1,10 +1,10 @@
 [workspace]
-members = ["xtask"]
+members = ["xtask", "crates/ferros-core", "crates/ferros-profile"]
 resolver = "2"
 
 [workspace.package]
 edition = "2021"
-license = "MIT"
+license = "GPL-3.0-only"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -14,13 +14,16 @@ This repository is in early foundation stage. It is not yet a bootable Rust OS.
   - Root Cargo workspace (`Cargo.toml`)
   - Rust toolchain pin (`rust-toolchain.toml`)
   - CI workflows (`.github/workflows/ci.yml`, `.github/workflows/integration.yml`)
+  - Workspace command runner (`cargo xtask ci`)
   - Ownership map (`CODEOWNERS`)
   - Dual shell helpers (`tools/sh/`, `tools/ps/`)
+  - Initial Rust crates: `ferros-core` and `ferros-profile`
 - The founding blueprint now lives at `site/index.html`.
 
 ## Repository Layout
 
 - `site/` - founding blueprint and site entry
+- `crates/` - Rust workspace crates (`ferros-core`, `ferros-profile`)
 - `docs/` - architecture docs, ADRs, stream plans, progress records
 - `schemas/` - schema contracts and fixtures
 - `harnesses/` - browser-run validation harnesses
@@ -36,6 +39,7 @@ cargo build --workspace --all-targets
 cargo test --workspace --all-targets
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
+cargo xtask ci
 ```
 
 ## Primary References
@@ -49,3 +53,4 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 - Code: `LICENSE`
 - Documentation: `LICENSE-DOCS`
+- Licensing notes: `LICENSING.md`
