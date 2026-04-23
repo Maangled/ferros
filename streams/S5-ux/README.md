@@ -1,7 +1,7 @@
 # S5 — UX
 
 **Stream:** S5  
-**Status:** ⬜ Blocked on G1 (Phase A); blocked on G3 (Phase B)  
+**Status:** 🟨 Phase A active; Phase B blocked on G3  
 **Gate:** Contributes to launch-readiness; no blocking gate owned solely by S5
 
 ---
@@ -24,7 +24,7 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 - Local web UI served by `ferros-node` on `localhost`.
 - Talks to `ferros-agents` (S3) over JSON/RPC.
 - Shows: agent list, agent status, capability grants, deny log.
-- The "workpace-rust" session shell pattern is the prior art here (see S6 harvest ADR).
+- ADR-019 is the prior-art boundary for shell composition, typed IPC, and capability-scoped UI messaging.
 
 ### Phase C — WASM demo (post-G3, background)
 - Compile `ferros-core` to WASM.

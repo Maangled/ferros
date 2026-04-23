@@ -8,11 +8,17 @@ These are the cross-stream interfaces that S2 publishes. Other streams **must no
 
 | Contract | Type | Location | Status |
 |----------|------|----------|--------|
-| `ProfileId` type | Rust type | `crates/ferros-profile/src/lib.rs` | ⬜ Not yet created |
-| `CapabilityGrant` type | Rust type | `crates/ferros-profile/src/lib.rs` | ⬜ Not yet created |
+| `ProfileId` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created |
+| `CapabilityGrant` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created |
 | `ConsentManifest` type | Rust type | `crates/ferros-profile/src/lib.rs` | ⬜ Not yet created |
-| `schemas/profile.v0.json` | JSON Schema | `schemas/profile.v0.json` | ⬜ Not yet created |
-| `schemas/capability-grant.v0.json` | JSON Schema | `schemas/capability-grant.v0.json` | ⬜ Not yet created |
+| `schemas/profile.v0.json` | JSON Schema | `schemas/profile.v0.json` | 🟡 Drafted; exercised by `ferros-profile` tests |
+| `schemas/capability-grant.v0.json` | JSON Schema | `schemas/capability-grant.v0.json` | 🟡 Drafted; exercised by `ferros-profile` tests |
+
+---
+
+## Current repo state
+
+`schemas/profile.v0.json` and `schemas/capability-grant.v0.json` are the S2-owned draft freeze candidates currently referenced by the `ferros-profile` test suite. `schemas/fixtures/grant-valid.json` now anchors the grant happy path while signed and revocable grant fields remain future work.
 
 ---
 
@@ -27,7 +33,7 @@ These are the cross-stream interfaces that S2 publishes. Other streams **must no
 
 ## Schema freeze policy
 
-Once `profile.v0.json` and `capability-grant.v0.json` are frozen (G2), they **must not** be mutated in place. New fields go into `v1` schemas with explicit migration rules. See `ROADMAP.md` — coordination rules.
+`profile.v0.json` now exists as the draft freeze candidate. Once `profile.v0.json` and `capability-grant.v0.json` are frozen (G2), they **must not** be mutated in place. New fields go into `v1` schemas with explicit migration rules. See `ROADMAP.md` — coordination rules.
 
 ---
 

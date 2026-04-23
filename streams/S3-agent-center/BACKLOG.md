@@ -4,14 +4,16 @@
 
 ## Now
 
-- [ ] Sketch `Agent` trait interface (align with S4 on executor contract)
-- [ ] Review S6 harvest ADRs for `botgen-rust` and `workpace-rust`
+- [x] Sketch pre-G3 `Agent` trait interface (host-agnostic until S4 executor stubs land)
+- [x] Review ADR-018 for `botgen-rust`
+- [ ] Review ADR-019 for `workpace-rust`
 
 ## Next
 
-- [ ] Scaffold `crates/ferros-agents/` (after G2)
+- [ ] Promote `crates/ferros-agents/` scaffold into the root workspace once G2/S4 unblockers are ready
 - [ ] Implement `AgentManifest` with capability declarations
 - [ ] Implement registry: register / deregister / list / describe
+- [ ] Converge `start()` / `stop()` with S4 executor host traits
 - [ ] Implement spawn/stop lifecycle with deny-by-default
 - [ ] IPC bus abstraction (Unix domain sockets / named pipes)
 - [ ] `echo` reference agent

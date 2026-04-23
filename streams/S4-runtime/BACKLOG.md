@@ -4,15 +4,16 @@
 
 ## Now
 
-- [ ] Design capability and consent primitive types against the upcoming S2 frozen boundaries
-- [ ] Design policy engine interface
+- [x] Design capability and consent primitive types against the upcoming S2 frozen boundaries
+- [x] Design policy engine interface using ADR-018 lifecycle, task-history, and deny-by-default implications as prior art constraints
+- [ ] Converge the local `CapabilityGrantView` adapter with S2's concrete `CapabilityGrant` after G2 closes
 
 ## Next
 
-- [ ] Extend the existing `crates/ferros-core/` foundation crate beyond the marker-only slice
-- [ ] Implement capability + consent types
-- [ ] Implement policy engine with deny-by-default logic
-- [ ] Unit tests: 10+ grant/deny scenarios
+- [x] Extend the existing `crates/ferros-core/` foundation crate beyond the marker-only slice
+- [x] Implement capability + consent types
+- [x] Implement policy engine with deny-by-default logic
+- [x] Unit tests: 10+ grant/deny scenarios
 - [ ] Scaffold `crates/ferros-runtime/` — executor + in-process bus
 - [ ] Scaffold `crates/ferros-node/` binary
 - [ ] `ferros-node demo` subcommand

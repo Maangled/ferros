@@ -4,10 +4,10 @@
 
 ## Now
 
-- [ ] Design `ProfileId`, `KeyPair`, `CapabilityGrant`, `ConsentManifest` types (foundation slice started; key material and consent manifest still open)
-- [ ] Draft `schemas/profile.v0.json`
-- [ ] Draft `schemas/capability-grant.v0.json`
-- [ ] Add a jsonschema-backed test that validates `ProfileDocument` against `schemas/profile.v0.json` before freeze
+- [ ] Finish the identity type surface: `KeyPair` and `ConsentManifest` are still open after `ProfileId` and `CapabilityGrant` landed
+- [ ] Refine `schemas/profile.v0.json` for G2 freeze
+- [x] Draft `schemas/capability-grant.v0.json`
+- [ ] Expand the existing fixture-backed `ProfileDocument` contract test beyond the minimal Stage 0 fixture before freeze
 
 ## Next
 

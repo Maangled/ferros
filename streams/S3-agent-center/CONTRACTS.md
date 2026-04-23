@@ -6,9 +6,9 @@
 
 | Contract | Type | Location | Status |
 |----------|------|----------|--------|
-| `Agent` trait | Rust trait | `crates/ferros-agents/src/agent.rs` | ⬜ Not yet created |
-| `AgentManifest` type | Rust type + JSON | `crates/ferros-agents/src/manifest.rs` | ⬜ Not yet created |
-| `AgentRegistry` trait | Rust trait | `crates/ferros-agents/src/registry.rs` | ⬜ Not yet created |
+| `Agent` trait | Rust trait | `crates/ferros-agents/src/agent.rs` | 🟡 Pre-G3 scaffold created |
+| `AgentManifest` type | Rust type + JSON | `crates/ferros-agents/src/manifest.rs` | 🟡 Pre-G3 scaffold created |
+| `AgentRegistry` trait | Rust trait | `crates/ferros-agents/src/registry.rs` | 🟡 Pre-G3 scaffold created |
 | IPC bus transport abstraction | Rust trait | `crates/ferros-agents/src/bus.rs` | ⬜ Not yet created |
 | JSON/RPC API (for S5 web shell) | HTTP+JSON spec | TBD | ⬜ Post-G3 |
 
@@ -21,6 +21,12 @@
 | `ProfileId` | S2 | Agents are authorized by profile |
 | `CapabilityGrant` | S2 | Grants required per agent manifest |
 | Executor interface / runtime traits | S4 | Agents run inside the `ferros-runtime` executor |
+
+## Pre-G3 boundary notes
+
+- `AgentManifest` now stores `CapabilityRequirement` entries, not `CapabilityGrant`. The manifest declares what an agent needs; S2 grants remain runtime authorization inputs.
+- The pre-G3 `Agent` trait keeps `start()` and `stop()` host-agnostic so S3 can freeze lifecycle vocabulary before S4 publishes executor host traits.
+- `InMemoryAgentRegistry` uses `BTreeMap` ordering so `list()` stays deterministic and avoids the unordered `String`-key registry shape rejected by ADR-018.
 
 ---
 

@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ferros.local/schemas/capability-grant.v0.json",
+  "title": "FERROS Capability Grant v0",
+  "description": "S2-owned capability grant schema candidate for G2 freeze. Mirrors the current ferros-profile CapabilityGrant serde boundary without signatures or revocation metadata yet.",
+  "type": "object",
+  "required": ["profile_id", "capability"],
+  "additionalProperties": false,
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "description": "Granted FERROS profile identity as currently serialized by ferros-profile."
+    },
+    "capability": {
+      "type": "string",
+      "description": "Granted capability token understood by downstream policy consumers."
+    }
+  }
+}

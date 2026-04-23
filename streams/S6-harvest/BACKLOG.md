@@ -4,15 +4,15 @@
 
 ## Now
 
-- [ ] Audit `Maangled/botgen-rust` — agent spawning patterns (P0: unblocks S3)
-- [ ] Audit `Maangled/workpace-rust` — workspace/session model (P0: informs S5)
-- [ ] Audit `Maangled/sheetgen-rust` — data generation primitives (P1)
+- [x] Audit `Maangled/botgen-rust` — agent spawning patterns (P0: unblocks S3)
+- [x] Audit `Maangled/workpace-rust` — workspace/session model (P0: informs S5)
+- [x] Audit `Maangled/sheetgen-rust` — data generation primitives (P1)
 
 ## Next
 
-- [ ] Write ADR-018: harvest `botgen-rust` → agent spawning patterns
-- [ ] Write ADR-019: harvest `workpace-rust` → agent center UX shell
-- [ ] Write ADR-020: harvest `sheetgen-rust` → `ferros-data`
+- [x] Write ADR-018: harvest `botgen-rust` → agent spawning patterns
+- [x] Write ADR-019: harvest `workpace-rust` → agent center UX shell
+- [x] Write ADR-020: harvest `sheetgen-rust` → `ferros-data`
 - [ ] Scaffold `crates/ferros-data/` with harvested sheetgen primitives once the sheetgen harvest direction is fixed
 - [ ] Verify harvested code compiles under FERROS workspace
 

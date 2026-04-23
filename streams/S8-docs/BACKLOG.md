@@ -20,6 +20,7 @@
 - [ ] `SECURITY.md` — vulnerability reporting policy
 - [ ] `GOVERNANCE.md` — project governance
 - [ ] `CODE_OF_CONDUCT.md`
+- [ ] Review ADR-020 before adding contract-generation or command-catalog tooling
 - [ ] `.github/ISSUE_TEMPLATE/` per-stream issue templates
 - [ ] `.github/PULL_REQUEST_TEMPLATE.md`
 - [ ] 5 good-first-issue items seeded per stream (before public contributor invite)

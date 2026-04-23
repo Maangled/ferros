@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — CapabilityGrant schema slice landed
+
+- Added `schemas/capability-grant.v0.json` as the first S2-owned draft grant schema, mirroring the current `CapabilityGrant` serde boundary.
+- Added `schemas/fixtures/grant-valid.json` as a golden happy-path grant fixture.
+- Extended `ferros-profile` with a no-new-dependency structural contract test that round-trips the grant fixture and checks it against the draft grant schema.
+
 ## 2026-04-22 — Foundation slice landed in `ferros-profile`
 
 - Added `crates/ferros-profile/` as a real workspace member.

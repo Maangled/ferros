@@ -57,7 +57,7 @@ This stream is intentionally insulated from raw legacy-repo input: the G2 identi
 - [ ] Profile round-trips: create → serialize → sign → verify → revoke.
 - [ ] `schemas/profile.v0.json` frozen (feature-flag protected; no mutations after freeze).
 - [ ] `schemas/capability-grant.v0.json` frozen.
-- [ ] Rust schema parity is enforced with a jsonschema-backed test against `schemas/profile.v0.json`.
+- [x] Rust/schema parity is enforced with a fixture-backed contract test against `schemas/profile.v0.json`.
 - [ ] CLI: `ferros profile init | show | export | import | grant | revoke` all functional.
 - [ ] At least one golden fixture in `schemas/fixtures/` for a valid profile and a valid grant.
 - [ ] Negative fixture: invalid signature rejected.
@@ -69,19 +69,19 @@ This stream is intentionally insulated from raw legacy-repo input: the G2 identi
 | Path | Role |
 |------|------|
 | `crates/ferros-profile/` | Identity crate |
-| `schemas/profile.v0.json` | Profile schema |
-| `schemas/capability-grant.v0.json` | Grant schema |
-| `schemas/fixtures/profile-valid.json` | Golden fixture |
-| `schemas/fixtures/grant-valid.json` | Golden fixture |
-| `schemas/fixtures/grant-invalid-sig.json` | Negative fixture |
+| `schemas/profile.v0.json` | Draft S2-owned profile schema exercised by `ferros-profile` tests |
+| `schemas/fixtures/minimal-stage0-profile.json` | Existing Stage 0 profile fixture used for serde and schema parity tests |
+| `schemas/capability-grant.v0.json` | Planned grant schema |
+| `schemas/fixtures/grant-valid.json` | Planned golden fixture |
+| `schemas/fixtures/grant-invalid-sig.json` | Planned negative fixture |
 
 ---
 
 ## Immediate next steps
 
-1. Extend the crate beyond the foundation slice: fixture-backed serde model, key material, and consent-manifest types.
-2. Draft `schemas/profile.v0.json` and `schemas/capability-grant.v0.json` from the crate boundary.
-3. Add schema parity enforcement so the Rust model cannot drift from `profile.v0.json` before freeze.
+1. Extend the crate beyond the landed foundation slice: key material and consent-manifest types are still missing.
+2. Refine `schemas/profile.v0.json` for freeze and draft `schemas/capability-grant.v0.json` from the crate boundary.
+3. Expand schema parity enforcement beyond the minimal Stage 0 happy path so the Rust model cannot drift from `profile.v0.json` before freeze.
 4. Implement `grant` and `revoke` logic with signature verification.
 5. Wire CLI subcommands.
 6. Freeze schema under feature flag `profile-schema-v0`.

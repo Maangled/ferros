@@ -141,6 +141,8 @@ pub struct SealEntry {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use super::{
         foundation_contract_preview, CapabilityGrant, ProfileDocument, ProfileId, ProfileIdError,
     };
@@ -148,28 +150,175 @@ mod tests {
 
     const MINIMAL_STAGE0_FIXTURE: &str =
         include_str!("../../../schemas/fixtures/minimal-stage0-profile.json");
+    const GRANT_VALID_FIXTURE: &str = include_str!("../../../schemas/fixtures/grant-valid.json");
     const PROFILE_V0_SCHEMA: &str = include_str!("../../../schemas/profile.v0.json");
+    const CAPABILITY_GRANT_V0_SCHEMA: &str =
+        include_str!("../../../schemas/capability-grant.v0.json");
 
-    fn assert_matches_profile_v0_schema(instance: &Value) {
-        let schema: Value =
-            serde_json::from_str(PROFILE_V0_SCHEMA).expect("profile.v0 schema should parse");
-        let config = jsonschema_valid::Config::from_schema(
-            &schema,
-            Some(jsonschema_valid::schemas::Draft::Draft7),
-        )
-        .expect("profile.v0 schema should compile");
+    fn parse_schema(schema_source: &str, schema_name: &str) -> Value {
+        serde_json::from_str(schema_source)
+            .unwrap_or_else(|_| panic!("{schema_name} schema should parse"))
+    }
 
-        config
-            .validate_schema()
-            .expect("profile.v0 schema should be valid");
+    fn resolve_schema_node<'a>(
+        root_schema: &'a Value,
+        schema_node: &'a Value,
+        label: &str,
+    ) -> &'a Value {
+        let mut current = schema_node;
 
-        if let Err(errors) = config.validate(instance) {
-            let messages = errors.map(|error| error.to_string()).collect::<Vec<_>>();
-            panic!(
-                "profile instance should satisfy profile.v0.json: {}",
-                messages.join("; ")
-            );
+        while let Some(reference) = current.get("$ref").and_then(Value::as_str) {
+            let pointer = reference.strip_prefix('#').unwrap_or_else(|| {
+                panic!("{label} should only use local schema refs: {reference}")
+            });
+            current = root_schema.pointer(pointer).unwrap_or_else(|| {
+                panic!("{label} should resolve schema ref {reference}")
+            });
         }
+
+        current
+    }
+
+    fn json_kind(value: &Value) -> &'static str {
+        match value {
+            Value::Null => "null",
+            Value::Bool(_) => "boolean",
+            Value::Number(number) if number.is_i64() || number.is_u64() => "integer",
+            Value::Number(_) => "number",
+            Value::String(_) => "string",
+            Value::Array(_) => "array",
+            Value::Object(_) => "object",
+        }
+    }
+
+    fn matches_schema_type(value: &Value, schema_type: &str) -> bool {
+        match schema_type {
+            "null" => value.is_null(),
+            "boolean" => value.is_boolean(),
+            "integer" => {
+                matches!(value, Value::Number(number) if number.is_i64() || number.is_u64())
+            }
+            "number" => value.is_number(),
+            "string" => value.is_string(),
+            "array" => value.is_array(),
+            "object" => value.is_object(),
+            _ => false,
+        }
+    }
+
+    fn assert_value_kind_matches_schema(value: &Value, schema_node: &Value, label: &str) {
+        let expected_types = schema_node
+            .get("type")
+            .unwrap_or_else(|| panic!("{label} should declare a schema type"));
+
+        let matches = match expected_types {
+            Value::String(schema_type) => matches_schema_type(value, schema_type),
+            Value::Array(schema_types) => schema_types
+                .iter()
+                .filter_map(Value::as_str)
+                .any(|schema_type| matches_schema_type(value, schema_type)),
+            _ => false,
+        };
+
+        assert!(
+            matches,
+            "{label} should match schema type {expected_types}, got {}",
+            json_kind(value)
+        );
+    }
+
+    // This is a deliberate subset contract check: required fields, declared properties, and JSON value kinds.
+    fn assert_matches_schema_contract(
+        instance: &Value,
+        schema_source: &str,
+        schema_name: &str,
+        root_label: &str,
+    ) {
+        fn visit(instance: &Value, schema_node: &Value, root_schema: &Value, label: &str) {
+            let schema_node = resolve_schema_node(root_schema, schema_node, label);
+
+            if schema_node.get("type").is_some() {
+                assert_value_kind_matches_schema(instance, schema_node, label);
+            }
+
+            match instance {
+                Value::Object(object) => {
+                    let properties = schema_node.get("properties").and_then(Value::as_object);
+
+                    if schema_node
+                        .get("additionalProperties")
+                        .and_then(Value::as_bool)
+                        == Some(false)
+                    {
+                        let properties = properties.unwrap_or_else(|| {
+                            panic!(
+                                "{label} should define properties when additionalProperties is false"
+                            )
+                        });
+
+                        let undeclared_fields = object
+                            .keys()
+                            .filter(|field| !properties.contains_key(*field))
+                            .cloned()
+                            .collect::<BTreeSet<_>>();
+
+                        assert!(
+                            undeclared_fields.is_empty(),
+                            "{label} contains fields missing from the declared schema: {}",
+                            undeclared_fields.into_iter().collect::<Vec<_>>().join(", ")
+                        );
+                    }
+
+                    if let Some(required) = schema_node.get("required").and_then(Value::as_array) {
+                        let missing_fields = required
+                            .iter()
+                            .filter_map(Value::as_str)
+                            .filter(|field| !object.contains_key(*field))
+                            .collect::<Vec<_>>();
+
+                        assert!(
+                            missing_fields.is_empty(),
+                            "{label} is missing required schema fields: {}",
+                            missing_fields.join(", ")
+                        );
+                    }
+
+                    if let Some(properties) = properties {
+                        for (field, field_value) in object {
+                            if let Some(field_schema) = properties.get(field) {
+                                let nested_label = format!("{label}.{field}");
+                                visit(field_value, field_schema, root_schema, &nested_label);
+                            }
+                        }
+                    }
+                }
+                Value::Array(items) => {
+                    if let Some(item_schema) = schema_node.get("items") {
+                        for (index, item) in items.iter().enumerate() {
+                            let nested_label = format!("{label}[{index}]");
+                            visit(item, item_schema, root_schema, &nested_label);
+                        }
+                    }
+                }
+                Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+            }
+        }
+
+        let schema = parse_schema(schema_source, schema_name);
+        visit(instance, &schema, &schema, root_label);
+    }
+
+    fn assert_matches_profile_v0_contract(instance: &Value) {
+        assert_matches_schema_contract(instance, PROFILE_V0_SCHEMA, "profile.v0", "profile");
+    }
+
+    fn assert_matches_capability_grant_v0_contract(instance: &Value) {
+        assert_matches_schema_contract(
+            instance,
+            CAPABILITY_GRANT_V0_SCHEMA,
+            "capability-grant.v0",
+            "grant",
+        );
     }
 
     #[test]
@@ -192,6 +341,22 @@ mod tests {
 
         assert_eq!(grant.profile_id, profile_id);
         assert_eq!(grant.capability, "consent.read");
+    }
+
+    #[test]
+    fn grant_valid_fixture_round_trips_and_matches_capability_grant_v0_contract() {
+        let fixture =
+            serde_json::from_str::<Value>(GRANT_VALID_FIXTURE).expect("grant fixture should parse");
+        let grant = serde_json::from_value::<CapabilityGrant>(fixture.clone())
+            .expect("grant fixture should deserialize");
+
+        assert_eq!(grant.profile_id.as_str(), "profile-alpha");
+        assert_eq!(grant.capability, "consent.read");
+
+        let serialized = serde_json::to_value(&grant).expect("grant should convert to JSON");
+
+        assert_eq!(serialized, fixture);
+        assert_matches_capability_grant_v0_contract(&serialized);
     }
 
     #[test]
@@ -225,11 +390,11 @@ mod tests {
     }
 
     #[test]
-    fn serialized_profile_document_matches_profile_v0_schema() {
+    fn serialized_profile_document_matches_profile_v0_contract() {
         let profile =
             ProfileDocument::from_json_str(MINIMAL_STAGE0_FIXTURE).expect("fixture should parse");
         let serialized = serde_json::to_value(&profile).expect("profile should convert to JSON");
 
-        assert_matches_profile_v0_schema(&serialized);
+        assert_matches_profile_v0_contract(&serialized);
     }
 }

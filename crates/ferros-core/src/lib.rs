@@ -1,5 +1,14 @@
 #![forbid(unsafe_code)]
 
+extern crate alloc;
+
+pub mod capability;
+
+pub use capability::{
+    Capability, CapabilityError, CapabilityGrantView, CapabilityRequest, DenyByDefaultPolicy,
+    PolicyDecision, PolicyDenialReason, PolicyEngine, RequesterProfileIdError,
+};
+
 pub const FOUNDATION_MARKER: &str = "foundation-ready";
 pub const FOUNDATION_VERSION: &str = "0.1.0-foundation";
 
