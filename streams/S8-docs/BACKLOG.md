@@ -12,12 +12,12 @@
 - [x] `docs/adr/ADR-TEMPLATE.md`
 - [x] `docs/contracts/CONTRACTS-OVERVIEW.md`
 - [x] `CONTRIBUTING.md` — stream routing
+- [x] `GLOSSARY.md` — shared vocabulary
+- [x] `SECURITY.md` — vulnerability reporting policy
 
 ## Next
 
-- [ ] `GLOSSARY.md` — shared vocabulary (ProfileId, CapabilityGrant, Agent, Hub, Gate, Stream)
 - [ ] `THREAT-MODEL.md` skeleton
-- [ ] `SECURITY.md` — vulnerability reporting policy
 - [ ] `GOVERNANCE.md` — project governance
 - [ ] `CODE_OF_CONDUCT.md`
 - [ ] Review ADR-020 before adding contract-generation or command-catalog tooling

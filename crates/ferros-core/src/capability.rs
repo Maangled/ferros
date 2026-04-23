@@ -109,6 +109,10 @@ pub trait CapabilityGrantView {
     fn profile_id(&self) -> &str;
 
     fn capability(&self) -> &str;
+
+    fn is_active(&self) -> bool {
+        true
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -153,13 +157,16 @@ impl PolicyEngine for DenyByDefaultPolicy {
     where
         G: CapabilityGrantView,
     {
-        if grants.is_empty() {
-            return PolicyDecision::Denied(PolicyDenialReason::NoGrantsPresented);
-        }
-
+        let mut saw_active_grant = false;
         let mut saw_profile = false;
 
         for grant in grants {
+            if !grant.is_active() {
+                continue;
+            }
+
+            saw_active_grant = true;
+
             if grant.profile_id() != request.requester_profile_id() {
                 continue;
             }
@@ -169,6 +176,10 @@ impl PolicyEngine for DenyByDefaultPolicy {
             if grant.capability() == request.capability().as_str() {
                 return PolicyDecision::Allowed;
             }
+        }
+
+        if !saw_active_grant {
+            return PolicyDecision::Denied(PolicyDenialReason::NoGrantsPresented);
         }
 
         if saw_profile {

@@ -48,12 +48,12 @@ A new contributor should be able to pick a stream, read one document, and open a
 
 ## Definition of done (rolling)
 
-- [ ] `CONTRIBUTING.md` routes contributors to streams and gates (not a generic workflow).
+- [x] `CONTRIBUTING.md` routes contributors to streams and gates (not a generic workflow).
 - [ ] All 8 stream READMEs accurate and linked from `ROADMAP.md`.
 - [ ] `STATUS.md` updated at least weekly while any stream is active.
-- [ ] `docs/adr/ADR-TEMPLATE.md` exists.
+- [x] `docs/adr/ADR-TEMPLATE.md` exists.
 - [ ] `THREAT-MODEL.md` skeleton exists (can be incomplete until S2/S4 stable).
-- [ ] `SECURITY.md` skeleton exists.
+- [x] `SECURITY.md` skeleton exists.
 - [ ] 5 `good-first-issue`-labelled issues seeded per stream before public contributor invite.
 
 ---
@@ -80,9 +80,8 @@ A new contributor should be able to pick a stream, read one document, and open a
 
 ## Immediate next steps
 
-1. Review and update `ROADMAP.md`, `LAUNCH.md`, `STATUS.md` (done in this PR).
-2. Write/update `CONTRIBUTING.md` with stream routing.
-3. Write `docs/adr/ADR-TEMPLATE.md`.
-4. Write `docs/contracts/CONTRACTS-OVERVIEW.md`.
-5. Write gate docs `G1.md`–`G4.md`.
-6. Skeleton `THREAT-MODEL.md` and `SECURITY.md`.
+1. Land `THREAT-MODEL.md` as the minimum launch-facing skeleton and keep it explicitly incomplete where S2/S4 are still moving.
+2. Add `GOVERNANCE.md` and `CODE_OF_CONDUCT.md` so governance docs match the current stream charter.
+3. Add `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md` for contributor intake.
+4. Seed 5 `good-first-issue` candidates per stream before any broader contributor invite.
+5. Keep `docs/contracts/CONTRACTS-OVERVIEW.md` synchronized with already-landed contract surfaces as S2-S4 docs evolve.

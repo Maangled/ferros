@@ -5,5 +5,9 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+default = ["std"]
+std = []
+
 [lib]
 path = "src/lib.rs"

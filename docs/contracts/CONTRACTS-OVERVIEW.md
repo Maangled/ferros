@@ -65,17 +65,17 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 
 | Trait | Owner | Crate | Consumers | Status |
 |-------|-------|-------|-----------|--------|
-| `Agent` | S3 | `ferros-agents` | S4 (executor), S7 (hub) | ⬜ Not yet defined |
-| `AgentRegistry` | S3 | `ferros-agents` | S5 (web shell), S7 (hub) | ⬜ Not yet defined |
-| `PolicyEngine` | S4 | `ferros-core` | S3 (spawn gate), S7 (hub consent) | ⬜ Not yet defined |
-| `Executor` | S4 | `ferros-runtime` | S3 (agent hosting) | ⬜ Not yet defined |
+| `Agent` | S3 | `ferros-agents` | S4 (executor), S7 (hub) | 🟡 Created and exercised by the local demo / CLI path; post-G2 hardening remains |
+| `AgentRegistry` | S3 | `ferros-agents` | S5 (web shell), S7 (hub) | 🟡 Created and exercised by the local demo / CLI path; remote API work remains |
+| `PolicyEngine` | S4 | `ferros-core` | S3 (spawn gate), S7 (hub consent) | ✅ Created; current repo also validates the `--no-default-features` compile slice |
+| `Executor` | S4 | `ferros-runtime` | S3 (agent hosting) | ✅ Created |
 
 ### JSON Schemas
 
 | Schema | Owner | Path | Consumers | Status |
 |--------|-------|------|-----------|--------|
-| Profile | S2 | `schemas/profile.v0.json` | S3, S7 | ⬜ Not yet created |
-| CapabilityGrant | S2 | `schemas/capability-grant.v0.json` | S3, S4, S7 | ⬜ Not yet created |
+| Profile | S2 | `schemas/profile.v0.json` | S3, S7 | ✅ Created |
+| CapabilityGrant | S2 | `schemas/capability-grant.v0.json` | S3, S4, S7 | ✅ Created |
 | AgentManifest | S3 | `schemas/agent-manifest.v0.json` | S4, S5, S7 | ⬜ Not yet created |
 
 ### CLI APIs
@@ -83,13 +83,13 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 | Command | Owner | Consumers | Status |
 |---------|-------|-----------|--------|
 | `ferros profile init\|show\|export\|import\|grant\|revoke` | S2 | S7 (pairing scripts), S8 (docs) | ⬜ Not yet implemented |
-| `ferros agent list\|describe\|run\|stop\|logs` | S3 | S5 (web shell), S7 (hub admin) | ⬜ Not yet implemented |
+| `ferros agent list\|describe\|run\|stop\|logs` | S3 | S5 (web shell), S7 (hub admin) | 🟡 Local CLI shipped in the `ferros` binary and covered by `cargo test -p ferros-node`; post-G2 contract hardening and remote surfaces remain |
 
 ### IPC / RPC
 
 | Protocol | Owner | Consumers | Status |
 |----------|-------|-----------|--------|
-| In-process bus (Unix socket / named pipe) | S4 | S3 (agent routing) | ⬜ Not yet defined |
+| In-process bus (`MessageBus` trait) | S4 | S3 (agent routing) | ✅ Created and backing the current local demo path |
 | JSON/RPC HTTP API (agent center) | S3 | S5 Phase B (web shell) | ⬜ Not yet defined |
 
 ---

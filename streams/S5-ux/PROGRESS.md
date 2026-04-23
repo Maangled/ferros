@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — Landing-page status banner and docs sync landed
+
+- Added a repository-status banner to `site/index.html` so the real FERROS landing page now states that Phase A site cleanup is active, the local agent-center shell remains Phase B work pending G3, and launch is still hardware-first.
+- Updated `README.md` so S5 no longer reads as if Phase A is waiting on initial `/site/` bring-up; marked the landing-page move and status banner as landed work.
+- Updated `BACKLOG.md` to treat Phase A as active repo work instead of a G1-blocked placeholder.
+- Kept the lane fully inside Phase A: no local web shell work, no JSON/RPC work, and no changes to S3 or S4 code.
+
 ## 2026-04-23 — Prototype audit and shell wireframe landed
 
 - Added `DOCS-HTML-PROTOTYPE-AUDIT.md` to classify the top-level `docs/*.html` prototypes into explicit keep/archive/remove decisions.

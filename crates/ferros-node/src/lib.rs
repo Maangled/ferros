@@ -3,17 +3,25 @@
 use std::collections::BTreeMap;
 use std::convert::Infallible;
 use std::fmt;
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
 
 use ferros_agents::{
-    Agent, AgentManifest, AgentRegistry, EchoAgent, InMemoryAgentRegistry,
+    Agent, AgentManifest, AgentRegistry, AgentStatus, EchoAgent, InMemoryAgentRegistry,
     ReferenceAgentError, RegistryError, TimerAgent,
 };
 use ferros_core::{
-    Capability, CapabilityError, CapabilityRequest, DenyByDefaultPolicy, MessageEnvelope,
-    MessageEnvelopeError, PolicyDecision, PolicyEngine, RequesterProfileIdError,
+    Capability, CapabilityError, CapabilityGrantView, CapabilityRequest, DenyByDefaultPolicy,
+    MessageEnvelope, MessageEnvelopeError, PolicyDecision, PolicyEngine,
+    RequesterProfileIdError,
 };
 use ferros_profile::{CapabilityGrant, ProfileId, ProfileIdError};
 use ferros_runtime::{Executor, InMemoryExecutor, InMemoryMessageBus, MessageBus};
+
+const DEFAULT_PROFILE_ID: &str = "profile-alpha";
+const CLI_STATE_DIRECTORY: &str = "ferros";
+const CLI_STATE_FILE: &str = "agent-center.state";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DemoSummary {
@@ -100,6 +108,159 @@ struct HostedAgent {
     agent: Box<dyn Agent<Error = ReferenceAgentError>>,
 }
 
+struct ActiveGrantView<'a> {
+    grant: &'a CapabilityGrant,
+}
+
+impl CapabilityGrantView for ActiveGrantView<'_> {
+    fn profile_id(&self) -> &str {
+        self.grant.profile_id.as_str()
+    }
+
+    fn capability(&self) -> &str {
+        &self.grant.capability
+    }
+
+    fn is_active(&self) -> bool {
+        !self.grant.is_revoked()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentRecord {
+    pub manifest: AgentManifest,
+    pub status: AgentStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AgentCliCommand {
+    List,
+    Describe { name: String },
+    Run { name: String },
+    Stop { name: String },
+    Logs { name: Option<String> },
+}
+
+#[derive(Debug)]
+pub enum CliError {
+    Usage(&'static str),
+    InvalidState(String),
+    Io(io::Error),
+    Runtime(DemoError),
+}
+
+impl fmt::Display for CliError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Usage(message) => write!(f, "{message}"),
+            Self::InvalidState(message) => write!(f, "invalid CLI state: {message}"),
+            Self::Io(error) => write!(f, "{error}"),
+            Self::Runtime(error) => write!(f, "{error}"),
+        }
+    }
+}
+
+impl From<io::Error> for CliError {
+    fn from(value: io::Error) -> Self {
+        Self::Io(value)
+    }
+}
+
+impl From<DemoError> for CliError {
+    fn from(value: DemoError) -> Self {
+        Self::Runtime(value)
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct CliState {
+    agent_statuses: BTreeMap<String, AgentStatus>,
+    log_entries: Vec<String>,
+}
+
+impl CliState {
+    fn load(path: &Path) -> Result<Self, CliError> {
+        match fs::read_to_string(path) {
+            Ok(contents) => Self::parse(&contents),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(Self::default()),
+            Err(error) => Err(CliError::Io(error)),
+        }
+    }
+
+    fn parse(contents: &str) -> Result<Self, CliError> {
+        let mut state = Self::default();
+
+        for line in contents.lines() {
+            if line.is_empty() {
+                continue;
+            }
+
+            let Some((kind, rest)) = line.split_once('\t') else {
+                return Err(CliError::InvalidState(format!(
+                    "malformed state line: {line}"
+                )));
+            };
+
+            match kind {
+                "status" => {
+                    let Some((name, status_label)) = rest.split_once('\t') else {
+                        return Err(CliError::InvalidState(format!(
+                            "malformed status entry: {line}"
+                        )));
+                    };
+
+                    let status = parse_agent_status(status_label).ok_or_else(|| {
+                        CliError::InvalidState(format!(
+                            "unsupported status {status_label} for {name}"
+                        ))
+                    })?;
+
+                    state.set_status(name, status);
+                }
+                "log" => state.log_entries.push(rest.to_owned()),
+                _ => {
+                    return Err(CliError::InvalidState(format!(
+                        "unknown state entry kind: {kind}"
+                    )));
+                }
+            }
+        }
+
+        Ok(state)
+    }
+
+    fn save(&self, path: &Path) -> Result<(), CliError> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        fs::write(path, self.encode())?;
+        Ok(())
+    }
+
+    fn encode(&self) -> String {
+        let mut lines = Vec::new();
+
+        for (name, status) in &self.agent_statuses {
+            lines.push(format!("status\t{name}\t{}", format_agent_status(*status)));
+        }
+
+        for entry in &self.log_entries {
+            lines.push(format!("log\t{entry}"));
+        }
+
+        lines.join("\n")
+    }
+
+    fn set_status(&mut self, name: &str, status: AgentStatus) {
+        if status == AgentStatus::Registered {
+            self.agent_statuses.remove(name);
+        } else {
+            self.agent_statuses.insert(name.to_owned(), status);
+        }
+    }
+}
+
 pub struct DemoRuntime {
     registry: InMemoryAgentRegistry,
     agents: BTreeMap<String, HostedAgent>,
@@ -148,47 +309,88 @@ impl DemoRuntime {
     }
 
     pub fn start_agent(&mut self, name: &str) -> Result<(), DemoError> {
-        let decision = {
+        self.start_agent_internal(name, true)
+    }
+
+    fn start_agent_internal(&mut self, name: &str, record_log: bool) -> Result<(), DemoError> {
+        let required_capabilities = {
             let hosted = self
                 .agents
                 .get(name)
                 .ok_or_else(|| DemoError::UnknownAgent(name.to_owned()))?;
-            hosted.manifest.authorization(&self.grants)
+            hosted.manifest.required_capabilities.clone()
         };
 
-        match decision {
-            ferros_agents::AuthorizationDecision::Authorized => {
-                let hosted = self
-                    .agents
-                    .get_mut(name)
-                    .ok_or_else(|| DemoError::UnknownAgent(name.to_owned()))?;
-                hosted.agent.start()?;
-                self.log_entries.push(format!("started:{name}"));
-                Ok(())
-            }
-            ferros_agents::AuthorizationDecision::Denied { missing } => {
-                let message = format!(
-                    "{name} missing {}",
-                    missing
-                        .iter()
-                        .map(|requirement| requirement.capability.as_str())
-                        .collect::<Vec<_>>()
-                        .join(",")
-                );
-                self.log_entries.push(format!("denied-start:{message}"));
-                Err(DemoError::AuthorizationDenied(message))
+        let mut missing = Vec::new();
+
+        for requirement in required_capabilities {
+            let decision = self.evaluate_policy(
+                requirement.profile_id.as_str(),
+                requirement.capability.as_str(),
+            )?;
+
+            if !decision.is_allowed() {
+                missing.push(requirement);
             }
         }
+
+        if missing.is_empty() {
+            let hosted = self
+                .agents
+                .get_mut(name)
+                .ok_or_else(|| DemoError::UnknownAgent(name.to_owned()))?;
+            hosted.agent.start()?;
+            if record_log {
+                self.log_entries.push(format!("started:{name}"));
+            }
+            return Ok(());
+        }
+
+        let message = format!(
+            "{name} missing {}",
+            missing
+                .iter()
+                .map(|requirement| requirement.capability.as_str())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        self.log_entries.push(format!("denied-start:{message}"));
+        Err(DemoError::AuthorizationDenied(message))
     }
 
     pub fn stop_agent(&mut self, name: &str) -> Result<(), DemoError> {
+        self.stop_agent_internal(name, true)
+    }
+
+    fn stop_agent_internal(&mut self, name: &str, record_log: bool) -> Result<(), DemoError> {
         let hosted = self
             .agents
             .get_mut(name)
             .ok_or_else(|| DemoError::UnknownAgent(name.to_owned()))?;
         hosted.agent.stop()?;
-        self.log_entries.push(format!("stopped:{name}"));
+        if record_log {
+            self.log_entries.push(format!("stopped:{name}"));
+        }
         Ok(())
+    }
+
+    #[must_use]
+    pub fn agent_records(&self) -> Vec<AgentRecord> {
+        self.agents
+            .values()
+            .map(|hosted| AgentRecord {
+                manifest: hosted.manifest.clone(),
+                status: hosted.agent.status(),
+            })
+            .collect()
+    }
+
+    #[must_use]
+    pub fn describe_agent(&self, name: &str) -> Option<AgentRecord> {
+        self.agents.get(name).map(|hosted| AgentRecord {
+            manifest: hosted.manifest.clone(),
+            status: hosted.agent.status(),
+        })
     }
 
     pub fn send_message(
@@ -298,8 +500,7 @@ impl DemoRuntime {
                 .ok_or_else(|| DemoError::ManifestMissingCapabilities(name.to_owned()))?
         };
 
-        let request = CapabilityRequest::new(requester_profile_id, Capability::new(capability)?)?;
-        let decision = self.policy.evaluate(&request, &self.grants);
+            let decision = self.evaluate_policy(&requester_profile_id, capability)?;
 
         if decision == PolicyDecision::Allowed {
             return Ok(());
@@ -308,6 +509,21 @@ impl DemoRuntime {
         let message = format!("{name}:{capability}:{decision:?}");
         self.log_entries.push(format!("denied:{message}"));
         Err(DemoError::AuthorizationDenied(message))
+    }
+
+    fn evaluate_policy(
+        &self,
+        requester_profile_id: &str,
+        capability: &str,
+    ) -> Result<PolicyDecision, DemoError> {
+        let request = CapabilityRequest::new(requester_profile_id, Capability::new(capability)?)?;
+        let grants = self
+            .grants
+            .iter()
+            .map(|grant| ActiveGrantView { grant })
+            .collect::<Vec<_>>();
+
+        Ok(self.policy.evaluate(&request, &grants))
     }
 
     fn allocate_nonce(&mut self) -> u64 {
@@ -325,8 +541,8 @@ impl DemoRuntime {
     }
 }
 
-pub fn run_demo() -> Result<DemoSummary, DemoError> {
-    let profile_id = ProfileId::new("profile-alpha")?;
+pub fn build_reference_runtime() -> Result<DemoRuntime, DemoError> {
+    let profile_id = ProfileId::new(DEFAULT_PROFILE_ID)?;
     let grants = vec![
         CapabilityGrant::new(profile_id.clone(), "agent.echo"),
         CapabilityGrant::new(profile_id.clone(), "agent.timer"),
@@ -338,6 +554,208 @@ pub fn run_demo() -> Result<DemoSummary, DemoError> {
 
     runtime.register(echo.manifest(), Box::new(echo))?;
     runtime.register(timer.manifest(), Box::new(timer))?;
+
+    Ok(runtime)
+}
+
+pub fn execute_agent_cli(command: AgentCliCommand) -> Result<Vec<String>, CliError> {
+    execute_agent_cli_with_state_path(command, &cli_state_path())
+}
+
+fn execute_agent_cli_with_state_path(
+    command: AgentCliCommand,
+    state_path: &Path,
+) -> Result<Vec<String>, CliError> {
+    match command {
+        AgentCliCommand::List => {
+            let runtime = runtime_with_state(state_path)?;
+            let mut lines = vec!["name\tversion\tstatus".to_owned()];
+
+            lines.extend(
+                runtime
+                    .agent_records()
+                    .into_iter()
+                    .map(|record| format_agent_summary(&record)),
+            );
+
+            Ok(lines)
+        }
+        AgentCliCommand::Describe { name } => {
+            let runtime = runtime_with_state(state_path)?;
+            let record = runtime
+                .describe_agent(&name)
+                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
+
+            Ok(format_agent_description(&record))
+        }
+        AgentCliCommand::Run { name } => {
+            let mut state = CliState::load(state_path)?;
+            let mut runtime = runtime_with_state_from_loaded_state(&state)?;
+            let record = runtime
+                .describe_agent(&name)
+                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
+
+            if record.status != AgentStatus::Running {
+                runtime.start_agent(&name)?;
+                state.set_status(&name, AgentStatus::Running);
+                state
+                    .log_entries
+                    .extend(runtime.log_entries().iter().cloned());
+                state.save(state_path)?;
+            }
+
+            let status = runtime
+                .describe_agent(&name)
+                .map(|updated| updated.status)
+                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
+
+            Ok(vec![format!("{}\t{}", name, format_agent_status(status))])
+        }
+        AgentCliCommand::Stop { name } => {
+            let mut state = CliState::load(state_path)?;
+            let mut runtime = runtime_with_state_from_loaded_state(&state)?;
+            runtime
+                .describe_agent(&name)
+                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
+
+            if runtime
+                .describe_agent(&name)
+                .map(|record| record.status)
+                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?
+                != AgentStatus::Stopped
+            {
+                runtime.stop_agent(&name)?;
+                state.set_status(&name, AgentStatus::Stopped);
+                state
+                    .log_entries
+                    .extend(runtime.log_entries().iter().cloned());
+                state.save(state_path)?;
+            }
+
+            let status = runtime
+                .describe_agent(&name)
+                .map(|record| record.status)
+                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
+
+            Ok(vec![format!("{}\t{}", name, format_agent_status(status))])
+        }
+        AgentCliCommand::Logs { name } => {
+            let state = CliState::load(state_path)?;
+            let entries = if let Some(name) = name {
+                state
+                    .log_entries
+                    .into_iter()
+                    .filter(|entry| entry.contains(&name))
+                    .collect::<Vec<_>>()
+            } else {
+                state.log_entries
+            };
+
+            if entries.is_empty() {
+                Ok(vec!["no log entries".to_owned()])
+            } else {
+                Ok(entries)
+            }
+        }
+    }
+}
+
+fn runtime_with_state(state_path: &Path) -> Result<DemoRuntime, CliError> {
+    let state = CliState::load(state_path)?;
+    runtime_with_state_from_loaded_state(&state)
+}
+
+fn runtime_with_state_from_loaded_state(state: &CliState) -> Result<DemoRuntime, CliError> {
+    let mut runtime = build_reference_runtime()?;
+
+    for (name, status) in &state.agent_statuses {
+        match status {
+            AgentStatus::Registered => {}
+            AgentStatus::Running => runtime.start_agent_internal(name, false)?,
+            AgentStatus::Stopped => runtime.stop_agent_internal(name, false)?,
+            _ => {
+                return Err(CliError::InvalidState(format!(
+                    "unsupported persisted status for {name}: {}",
+                    format_agent_status(*status)
+                )));
+            }
+        }
+    }
+
+    Ok(runtime)
+}
+
+fn cli_state_path() -> PathBuf {
+    std::env::temp_dir()
+        .join(CLI_STATE_DIRECTORY)
+        .join(CLI_STATE_FILE)
+}
+
+fn format_agent_summary(record: &AgentRecord) -> String {
+    format!(
+        "{}\t{}\t{}",
+        record.manifest.name.as_str(),
+        record.manifest.version,
+        format_agent_status(record.status)
+    )
+}
+
+fn format_agent_description(record: &AgentRecord) -> Vec<String> {
+    let mut lines = vec![
+        format!("name: {}", record.manifest.name.as_str()),
+        format!("version: {}", record.manifest.version),
+        format!("status: {}", format_agent_status(record.status)),
+    ];
+
+    if record.manifest.required_capabilities.is_empty() {
+        lines.push("required capabilities: none".to_owned());
+        return lines;
+    }
+
+    lines.push("required capabilities:".to_owned());
+    lines.extend(
+        record
+            .manifest
+            .required_capabilities
+            .iter()
+            .map(|requirement| {
+                format!(
+                    "- {}:{}",
+                    requirement.profile_id.as_str(),
+                    requirement.capability
+                )
+            }),
+    );
+    lines
+}
+
+fn format_agent_status(status: AgentStatus) -> &'static str {
+    match status {
+        AgentStatus::Registered => "registered",
+        AgentStatus::Starting => "starting",
+        AgentStatus::Running => "running",
+        AgentStatus::Paused => "paused",
+        AgentStatus::Stopping => "stopping",
+        AgentStatus::Stopped => "stopped",
+        AgentStatus::Failed => "failed",
+    }
+}
+
+fn parse_agent_status(value: &str) -> Option<AgentStatus> {
+    match value {
+        "registered" => Some(AgentStatus::Registered),
+        "starting" => Some(AgentStatus::Starting),
+        "running" => Some(AgentStatus::Running),
+        "paused" => Some(AgentStatus::Paused),
+        "stopping" => Some(AgentStatus::Stopping),
+        "stopped" => Some(AgentStatus::Stopped),
+        "failed" => Some(AgentStatus::Failed),
+        _ => None,
+    }
+}
+
+pub fn run_demo() -> Result<DemoSummary, DemoError> {
+    let mut runtime = build_reference_runtime()?;
 
     runtime.start_agent("echo")?;
     runtime.start_agent("timer")?;
@@ -372,15 +790,23 @@ pub fn run_demo() -> Result<DemoSummary, DemoError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{run_demo, DemoRuntime};
+    use super::{
+        execute_agent_cli_with_state_path, run_demo, AgentCliCommand, DemoError, DemoRuntime,
+    };
     use ferros_agents::{EchoAgent, TimerAgent};
     use ferros_profile::{CapabilityGrant, ProfileId};
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn demo_runs_deterministically_and_denies_unauthorized_work() {
         let summary = run_demo().expect("demo should succeed");
 
-        assert_eq!(summary.started_agents, vec!["echo".to_string(), "timer".to_string()]);
+        assert_eq!(
+            summary.started_agents,
+            vec!["echo".to_string(), "timer".to_string()]
+        );
         assert_eq!(summary.echo_response, "hello");
         assert_eq!(summary.timer_event, "tick-1");
         assert_eq!(summary.denied_requests, 1);
@@ -409,6 +835,152 @@ mod tests {
             .register(timer.manifest(), Box::new(timer))
             .expect("timer should register");
 
-        assert_eq!(runtime.list_agents(), vec!["echo".to_string(), "timer".to_string()]);
+        assert_eq!(
+            runtime.list_agents(),
+            vec!["echo".to_string(), "timer".to_string()]
+        );
+    }
+
+    #[test]
+    fn revoked_grant_does_not_authorize_agent_start() {
+        let profile_id = ProfileId::new("profile-alpha").expect("valid profile id");
+        let mut revoked_grant = CapabilityGrant::new(profile_id.clone(), "agent.echo");
+        assert!(revoked_grant.revoke("2026-04-23T00:00:00Z", "manual revoke"));
+
+        let mut runtime = DemoRuntime::new(vec![revoked_grant]);
+        let echo = EchoAgent::new(profile_id);
+
+        runtime
+            .register(echo.manifest(), Box::new(echo))
+            .expect("echo should register");
+
+        let error = runtime
+            .start_agent("echo")
+            .expect_err("revoked grant should deny start");
+
+        assert_eq!(
+            error,
+            DemoError::AuthorizationDenied("echo missing agent.echo".to_string())
+        );
+        assert!(runtime
+            .log_entries()
+            .iter()
+            .any(|entry| entry == "denied-start:echo missing agent.echo"));
+    }
+
+    #[test]
+    fn revoked_grant_does_not_authorize_runtime_messages() {
+        let profile_id = ProfileId::new("profile-alpha").expect("valid profile id");
+        let mut revoked_grant = CapabilityGrant::new(profile_id.clone(), "agent.echo");
+        assert!(revoked_grant.revoke("2026-04-23T00:00:00Z", "manual revoke"));
+
+        let mut runtime = DemoRuntime::new(vec![revoked_grant]);
+        let echo = EchoAgent::new(profile_id);
+
+        runtime
+            .register(echo.manifest(), Box::new(echo))
+            .expect("echo should register");
+
+        let error = runtime
+            .send_message("echo", "echo", "agent.echo", b"hello")
+            .expect_err("revoked grant should deny runtime authorization");
+
+        assert_eq!(
+            error,
+            DemoError::AuthorizationDenied(
+                "echo:agent.echo:Denied(NoGrantsPresented)".to_string(),
+            )
+        );
+        assert!(runtime
+            .log_entries()
+            .iter()
+            .any(|entry| entry == "denied:echo:agent.echo:Denied(NoGrantsPresented)"));
+    }
+
+    #[test]
+    fn agent_cli_lists_reference_agents_with_status() {
+        let state_path = unique_state_path("list");
+
+        let lines = execute_agent_cli_with_state_path(AgentCliCommand::List, &state_path)
+            .expect("list should succeed");
+
+        assert_eq!(
+            lines,
+            vec![
+                "name\tversion\tstatus".to_string(),
+                "echo\t0.1.0\tregistered".to_string(),
+                "timer\t0.1.0\tregistered".to_string(),
+            ]
+        );
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn agent_cli_persists_run_stop_and_logs() {
+        let state_path = unique_state_path("lifecycle");
+
+        execute_agent_cli_with_state_path(
+            AgentCliCommand::Run {
+                name: "echo".to_string(),
+            },
+            &state_path,
+        )
+        .expect("run should succeed");
+
+        let describe_running = execute_agent_cli_with_state_path(
+            AgentCliCommand::Describe {
+                name: "echo".to_string(),
+            },
+            &state_path,
+        )
+        .expect("describe should succeed");
+
+        assert!(describe_running
+            .iter()
+            .any(|line| line == "status: running"));
+
+        execute_agent_cli_with_state_path(
+            AgentCliCommand::Stop {
+                name: "echo".to_string(),
+            },
+            &state_path,
+        )
+        .expect("stop should succeed");
+
+        let describe_stopped = execute_agent_cli_with_state_path(
+            AgentCliCommand::Describe {
+                name: "echo".to_string(),
+            },
+            &state_path,
+        )
+        .expect("describe after stop should succeed");
+
+        assert!(describe_stopped
+            .iter()
+            .any(|line| line == "status: stopped"));
+
+        let logs =
+            execute_agent_cli_with_state_path(AgentCliCommand::Logs { name: None }, &state_path)
+                .expect("logs should succeed");
+
+        assert_eq!(
+            logs,
+            vec!["started:echo".to_string(), "stopped:echo".to_string()]
+        );
+
+        cleanup_state_path(&state_path);
+    }
+
+    fn unique_state_path(test_name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be after epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("ferros-node-{test_name}-{nonce}.state"))
+    }
+
+    fn cleanup_state_path(path: &PathBuf) {
+        let _ = fs::remove_file(path);
     }
 }

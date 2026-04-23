@@ -9,10 +9,10 @@
 - [x] Turn the surface-first shell note into a slot-based wireframe for inspect, grant, and deny-log flows (`PHASE-B-SHELL-WIREFRAME.md`)
 - [x] Define the minimal shell intent vocabulary for focus, route selection, consent, and audit handoff (`PHASE-B-SHELL-WIREFRAME.md`)
 
-## Next (Phase A — after G1)
+## Phase A (active)
 
-- [ ] Confirm `/site/` layout with S1
-- [ ] Add honest status banner to site (links to STATUS.md)
+- [x] Confirm `/site/` layout in repo reality
+- [x] Add honest status banner to the real landing page (links to `STATUS.md`)
 - [ ] Execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once inbound links are checked
 - [ ] Verify no dead links in site
 
@@ -34,5 +34,4 @@
 
 ## Blocked
 
-- Phase A: blocked on G1.
 - Phase B: blocked on G3 (needs S3 JSON/RPC API).

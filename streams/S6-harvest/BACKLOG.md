@@ -14,14 +14,14 @@
 - [x] Write ADR-019: harvest `workpace-rust` → agent center UX shell
 - [x] Write ADR-020: harvest `sheetgen-rust` → `ferros-data`
 - [x] Scaffold `crates/ferros-data/` with a standalone ADR-020-aligned migration-first crate shell
-- [ ] Verify harvested code compiles under FERROS workspace
+- [x] Admit `crates/ferros-data/` to the root workspace
+- [x] Verify `ferros-data` compiles under the FERROS workspace
 
 ## Later
 
-- [ ] Add `crates/ferros-data/` to the root workspace once Lane D allows workspace-manifest edits
 - [ ] Git subtree integration for `sheetgen-rust` primitives (if license permits)
 - [ ] Extract workpace session model into S5 Phase B scaffold
 
 ## Blocked
 
-No upstream G1 blocker remains. Audits and ADR writing are active now; crate extraction should wait until the harvest direction is settled.
+No active blocker on the `ferros-data` workspace-admission slice. Downstream consumer wiring remains intentionally out of scope for S6.

@@ -19,6 +19,26 @@ impl CapabilityGrantView for GrantStub {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct InactiveGrantStub {
+    profile_id: &'static str,
+    capability: &'static str,
+}
+
+impl CapabilityGrantView for InactiveGrantStub {
+    fn profile_id(&self) -> &str {
+        self.profile_id
+    }
+
+    fn capability(&self) -> &str {
+        self.capability
+    }
+
+    fn is_active(&self) -> bool {
+        false
+    }
+}
+
 fn request(profile_id: &str, capability: &str) -> CapabilityRequest {
     CapabilityRequest::new(profile_id, Capability::new(capability).expect("valid capability"))
         .expect("valid requester profile id")
@@ -115,6 +135,21 @@ fn allow_when_matching_grant_is_not_first() {
     ];
 
     assert_eq!(policy.evaluate(&request, &grants), PolicyDecision::Allowed);
+}
+
+#[test]
+fn inactive_grant_does_not_authorize_matching_capability() {
+    let policy = DenyByDefaultPolicy;
+    let request = request("profile-alpha", "consent.read");
+    let grants = [InactiveGrantStub {
+        profile_id: "profile-alpha",
+        capability: "consent.read",
+    }];
+
+    assert_eq!(
+        policy.evaluate(&request, &grants),
+        PolicyDecision::Denied(PolicyDenialReason::NoGrantsPresented)
+    );
 }
 
 #[test]

@@ -14,6 +14,7 @@
 - [x] Implement capability + consent types
 - [x] Implement policy engine with deny-by-default logic
 - [x] Unit tests: 10+ grant/deny scenarios
+- [x] Validate the current `ferros-core` std/no_std boundary with a host-side `cargo check -p ferros-core --no-default-features`
 - [x] Scaffold `crates/ferros-runtime/` — executor + in-process bus boundary
 - [x] Scaffold `crates/ferros-node/` binary
 - [x] `ferros-node demo` subcommand
@@ -23,7 +24,7 @@
 ## Later
 
 - [ ] Property tests for policy engine (`proptest` or `quickcheck`)
-- [ ] `no_std` feature on `ferros-core` (needed for embedded target)
+- [ ] Extend the current host-side `--no-default-features` slice into CI-backed embedded-target `no_std` validation for `ferros-core`
 - [ ] Multi-threaded executor option
 - [ ] Persistent bus message log (for audit)
 

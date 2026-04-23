@@ -1,7 +1,7 @@
 # S5 — UX
 
 **Stream:** S5  
-**Status:** 🟨 Phase A active; Phase B blocked on G3  
+**Status:** 🟨 Phase A active on the real landing page; Phase B pending G3  
 **Gate:** Contributes to launch-readiness; no blocking gate owned solely by S5
 
 ---
@@ -14,7 +14,7 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 
 ## Scope
 
-### Phase A — Site cleanup (unblocks at G1)
+### Phase A — Site cleanup
 - Move `ferros-blueprint.html` to `/site/index.html` (coordinated with S1).
 - Add an honest status banner to the site.
 - Clean up dead HTML prototypes or archive to `docs/legacy/`.
@@ -44,7 +44,7 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 
 ## Dependencies
 
-- **S1 (G1):** Site structure and workspace must exist for Phase A.
+- **S1 (G1):** Site structure landed; remaining Phase A work continues on the real `/site/index.html`.
 - **S3 + S4 (G3):** JSON/RPC API from S3 must exist for Phase B.
 
 ---
@@ -59,8 +59,8 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 ## Definition of done per phase
 
 **Phase A:**
-- [ ] `/site/index.html` serves `ferros-blueprint.html` content.
-- [ ] Site has an honest status banner (links to `STATUS.md`).
+- [x] `/site/index.html` serves `ferros-blueprint.html` content.
+- [x] Site has an honest status banner (links to `STATUS.md`).
 - [ ] No dead links in the site.
 
 **Phase B:**
@@ -87,6 +87,6 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 
 ## Immediate next steps
 
-1. Coordinate with S1 on site structure — confirm `/site/` layout.
-2. Audit existing HTML prototypes in `docs/`; identify what to archive.
-3. Design Phase B UI wireframe against S3's JSON/RPC API (can begin pre-G3).
+1. Verify the remaining site links and archive candidates against current inbound references.
+2. Execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once link hygiene is confirmed.
+3. Keep Phase B wireframe work aligned to S3/S4 contracts without starting shell implementation.

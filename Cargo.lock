@@ -17,6 +17,10 @@ name = "ferros-core"
 version = "0.1.0"
 
 [[package]]
+name = "ferros-data"
+version = "0.1.0"
+
+[[package]]
 name = "ferros-node"
 version = "0.1.0"
 dependencies = [

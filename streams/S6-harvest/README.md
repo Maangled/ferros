@@ -51,20 +51,18 @@ For each source repository, decide per module or subsystem: **adopt / adapt / re
 
 ## What this stream blocks
 
-- **S3:** `botgen-rust` harvest ADR should complete before S3 implementation hardens around a registry or lifecycle shape.
-- **S5:** `workpace-rust` harvest ADR should complete before the Phase B web shell hardens around a workspace/session model.
-- **S7:** Home Assistant prior art and pairing-related patterns should be reference-scoped before hub implementation hardens.
+- **S3 / S4:** ADR-018 is now the handoff surface for registry, lifecycle, queue, and materialization decisions; downstream streams should consume it instead of mining `botgen-rust` directly.
+- **S5:** ADR-019 is now the handoff surface for workspace/session, typed IPC, and shell-delivery conclusions; any later extraction remains follow-on work rather than fresh ADR authoring.
+- **S7:** Home Assistant prior art remains reference-scoped; hub work should consume S6 conclusions rather than the legacy fork directly.
 
 ---
 
-## Definition of done (per source repo)
+## Current completion baseline
 
-For each of `sheetgen-rust`, `botgen-rust`, `workpace-rust`:
-
-- [ ] ADR written: what was audited, what was harvested, what was discarded, and why.
-- [ ] Harvested code compiles under the FERROS workspace.
-- [ ] Harvested code is relicensed or attribution is recorded in the ADR.
-- [ ] Git provenance preserved where reasonable (`git subtree` or attribution in ADR).
+- [x] ADR-018, ADR-019, and ADR-020 are accepted and record the adopt/adapt/reference/discard verdicts for `botgen-rust`, `workpace-rust`, and `sheetgen-rust`.
+- [x] `crates/ferros-data/` is admitted to the root Cargo workspace as the ADR-020-aligned scaffold.
+- [ ] Git provenance and attribution still need to be preserved where later code lift is warranted, especially for any deeper `sheetgen-rust` extraction.
+- [ ] Downstream implementation streams still need to consume these accepted decisions in their own lanes; that wiring remains outside S6.
 
 ---
 
@@ -72,18 +70,15 @@ For each of `sheetgen-rust`, `botgen-rust`, `workpace-rust`:
 
 | Path | Role |
 |------|------|
-| `crates/ferros-data/` | Primitives from `sheetgen-rust` |
-| `docs/adr/ADR-018-harvest-botgen.md` | Harvest ADR for `botgen-rust` |
-| `docs/adr/ADR-019-harvest-workpace.md` | Harvest ADR for `workpace-rust` |
-| `docs/adr/ADR-020-harvest-sheetgen.md` | Harvest ADR for `sheetgen-rust` |
+| `crates/ferros-data/` | ADR-020-aligned `sheetgen-rust` scaffold admitted to the root workspace |
+| `docs/adr/ADR-018-harvest-botgen.md` | Accepted harvest ADR for `botgen-rust` |
+| `docs/adr/ADR-019-harvest-workpace.md` | Accepted harvest ADR for `workpace-rust` |
+| `docs/adr/ADR-020-harvest-sheetgen.md` | Accepted harvest ADR for `sheetgen-rust` |
 
 ---
 
-## Immediate next steps
+## Current next work
 
-1. Audit `Maangled/botgen-rust` first — identify agent lifecycle, registry, work queue, and materialization patterns; compare them to FERROS S3 and S4 seams.
-2. Write ADR-018 for `botgen-rust` with explicit adopt/adapt/reference/discard verdicts.
-3. Audit `Maangled/workpace-rust` second — identify workspace/session model patterns for S5 Phase B.
-4. Write ADR-019 for `workpace-rust`.
-5. Audit `Maangled/sheetgen-rust` third — identify data and schema-discipline primitives for `ferros-data`.
-6. Write ADR-020 for `sheetgen-rust`, then decide whether code extraction is warranted.
+1. Preserve provenance for any later lifted `sheetgen-rust` primitives, including history-carrying approaches such as `git subtree` when the slice and license make that worthwhile.
+2. Keep `ferros-data` aligned with ADR-020 as a migration-first scaffold now that it is a root workspace member.
+3. Hand off ADR-018, ADR-019, and ADR-020 as the approved prior-art boundary for S3, S4, S5, and S7; downstream consumer wiring remains with those owning streams.

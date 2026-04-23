@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — S4 docs truth-synced to the current `ferros-core` boundary
+
+- Updated the S4 stream docs to describe the current `ferros-core` boundary honestly: `std` remains the default feature, while `#![cfg_attr(not(feature = "std"), no_std)]` and `alloc` keep the core slice portable.
+- Recorded this wave's narrow validation slice as host-side `cargo check -p ferros-core --no-default-features`, not as full embedded-target closure.
+- Kept G3 explicitly open in S4-owned docs: property tests, host hardening beyond the convergence demo, and embedded-target / CI `no_std` validation remain outstanding.
+
 ## 2026-04-23 — `ferros-node demo` convergence path landed
 
 - Added concrete in-memory runtime implementations for the `Executor` and `MessageBus` boundaries in `crates/ferros-runtime/`.

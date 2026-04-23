@@ -14,22 +14,22 @@
 - [x] Implement `AgentManifest` with capability declarations
 - [x] Implement registry: register / deregister / list / describe
 - [x] Converge `start()` / `stop()` with S4 executor host traits
-- [x] Implement spawn/stop lifecycle with deny-by-default
-- [x] IPC bus abstraction (Unix domain sockets / named pipes)
+- [x] Implement spawn/stop lifecycle with deny-by-default authorization paths
+- [x] IPC bus transport abstraction and endpoint kinds
 - [x] `echo` reference agent
 - [x] `timer` reference agent
-- [ ] CLI: `ferros agent list | describe | run | stop | logs`
-- [x] Harness: verify deny-by-default (ungranted capability → denied + logged)
+- [x] Thin local CLI: `ferros agent list | describe | run | stop | logs`
+- [x] Focused deny-by-default coverage across manifest authorization and demo/runtime denial logging
 - [ ] Harden `ferros-node demo` into a reusable runtime-host integration layer
 
 ## Later
 
-- [ ] Named pipe transport for Windows support
+- [ ] Concrete Unix domain socket and named pipe adapters for the bus boundary
 - [ ] JSON/RPC layer for S5 Phase B web shell
 - [ ] Agent capability introspection (describe why denied)
 - [ ] Agent manifest versioning
 
 ## Blocked
 
-- Implementation blocked on G2 (needs `ProfileId`, `CapabilityGrant` types from S2).
-- Executor interface depends on S4 publishing trait stubs.
+- Final G3 contract freeze still depends on G2 locking `ProfileId` and `CapabilityGrant`.
+- Reusable runtime-host/API convergence still depends on S4 stabilizing shared execution traits.

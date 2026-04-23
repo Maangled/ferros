@@ -11,6 +11,7 @@
 | `CapabilityGrantView` trait | Rust trait | `crates/ferros-core/src/capability.rs` | ✅ Created |
 | `PolicyEngine` trait | Rust trait | `crates/ferros-core/src/capability.rs` | ✅ Created |
 | `MessageEnvelope` type | Rust type | `crates/ferros-core/src/message.rs` | ✅ Created |
+| `ferros-core` `std`/`no_std` boundary | Cargo feature boundary | `crates/ferros-core/Cargo.toml`, `crates/ferros-core/src/lib.rs` | 🟡 `std` is still the default feature; host `--no-default-features` compile slice is validated, but embedded-target / CI validation remains open |
 | `Executor` trait | Rust trait | `crates/ferros-runtime/src/executor.rs` | ✅ Created |
 | In-process bus protocol | Rust trait | `crates/ferros-runtime/src/bus.rs` | ✅ Created |
 | `InMemoryExecutor` type | Rust type | `crates/ferros-runtime/src/executor.rs` | 🟡 Convergence implementation created |
@@ -40,4 +41,4 @@
 
 ## Note on `no_std`
 
-`ferros-core` must expose a `no_std` feature flag so it can eventually compile for embedded targets (`thumbv7em-none-eabi`). This constraint should be enforced by a CI job that compiles `ferros-core` with `--no-default-features` and `--target thumbv7em-none-eabi` once the baseline is stable.
+`ferros-core` currently exposes `std` as its default feature in `Cargo.toml` and uses `#![cfg_attr(not(feature = "std"), no_std)]` plus `extern crate alloc` in `src/lib.rs` to keep the current core surface portable. The honest validation slice for this wave is host-side `cargo check -p ferros-core --no-default-features`. Embedded-target validation (`--target thumbv7em-none-eabi`) and CI enforcement remain open work.

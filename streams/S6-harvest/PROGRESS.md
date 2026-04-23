@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — ferros-data admitted to the root workspace
+
+- Added `crates/ferros-data/` to the root Cargo workspace and removed the crate-local standalone `[workspace]` marker used during the earlier isolated scaffold phase.
+- Validated the narrow admission slice with `cargo metadata --no-deps` and `cargo test -p ferros-data` from the repository root.
+- Updated S6 stream tracking docs to reflect that `ferros-data` is now a root workspace member, while downstream consumers remain intentionally untouched.
+- This moves ADR-020 from standalone scaffold status to verified workspace residency; it does not claim any S3, S5, or gate advancement.
+
 ## 2026-04-23 — ferros-data scaffold started under ADR-020
 
 - Created `crates/ferros-data/` as a standalone crate so Lane D can start the data slice without editing the root workspace manifest.
