@@ -2,18 +2,16 @@ use std::collections::VecDeque;
 use std::convert::Infallible;
 
 use ferros_core::{Capability, MessageEnvelope};
-use ferros_runtime::{Executor, MessageBus};
+use ferros_runtime::{Executor, InMemoryExecutor, InMemoryMessageBus, MessageBus};
 
 struct StubExecutor {
     pending: VecDeque<&'static str>,
-    executed: Vec<&'static str>,
 }
 
 impl StubExecutor {
     fn new() -> Self {
         Self {
             pending: VecDeque::new(),
-            executed: Vec::new(),
         }
     }
 }
@@ -27,46 +25,12 @@ impl Executor for StubExecutor {
         Ok(())
     }
 
-    fn run_next(&mut self) -> Result<bool, Self::Error> {
-        let Some(job) = self.pending.pop_front() else {
-            return Ok(false);
-        };
-
-        self.executed.push(job);
-        Ok(true)
+    fn pop_next(&mut self) -> Result<Option<Self::Job>, Self::Error> {
+        Ok(self.pending.pop_front())
     }
 
     fn pending_jobs(&self) -> usize {
         self.pending.len()
-    }
-}
-
-struct LoopbackBus {
-    queue: VecDeque<MessageEnvelope>,
-}
-
-impl LoopbackBus {
-    fn new() -> Self {
-        Self {
-            queue: VecDeque::new(),
-        }
-    }
-}
-
-impl MessageBus for LoopbackBus {
-    type Error = Infallible;
-
-    fn send(&mut self, envelope: MessageEnvelope) -> Result<(), Self::Error> {
-        self.queue.push_back(envelope);
-        Ok(())
-    }
-
-    fn try_recv(&mut self, recipient: &str) -> Result<Option<MessageEnvelope>, Self::Error> {
-        let Some(position) = self.queue.iter().position(|envelope| envelope.recipient() == recipient) else {
-            return Ok(None);
-        };
-
-        Ok(self.queue.remove(position))
     }
 }
 
@@ -89,16 +53,27 @@ fn executor_runs_jobs_in_submission_order() {
     executor.submit("deliver").expect("submit should succeed");
 
     assert_eq!(executor.pending_jobs(), 2);
-    assert!(executor.run_next().expect("run should succeed"));
-    assert!(executor.run_next().expect("run should succeed"));
-    assert!(!executor.run_next().expect("idle executor should report false"));
-    assert_eq!(executor.executed, vec!["boot", "deliver"]);
+    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("boot"));
+    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("deliver"));
+    assert_eq!(executor.pop_next().expect("idle executor should be empty"), None);
     assert_eq!(executor.pending_jobs(), 0);
 }
 
 #[test]
+fn in_memory_executor_preserves_submission_order() {
+    let mut executor = InMemoryExecutor::new();
+
+    executor.submit("boot").expect("submit should succeed");
+    executor.submit("deliver").expect("submit should succeed");
+
+    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("boot"));
+    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("deliver"));
+    assert_eq!(executor.pop_next().expect("idle executor should be empty"), None);
+}
+
+#[test]
 fn message_bus_routes_messages_by_recipient() {
-    let mut bus = LoopbackBus::new();
+    let mut bus = InMemoryMessageBus::new();
 
     bus.send(message("agent.alpha", "agent.bravo", 11))
         .expect("send should succeed");
@@ -125,7 +100,7 @@ fn message_bus_routes_messages_by_recipient() {
 
 #[test]
 fn message_bus_reports_empty_queue_for_unknown_recipient() {
-    let mut bus = LoopbackBus::new();
+    let mut bus = InMemoryMessageBus::new();
 
     bus.send(message("agent.alpha", "agent.bravo", 11))
         .expect("send should succeed");

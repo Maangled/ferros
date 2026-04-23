@@ -1,7 +1,7 @@
 # S3 — Agent Center
 
 **Stream:** S3  
-**Status:** ⬜ Blocked on G2  
+**Status:** 🟡 Convergence active; final closure still depends on G2  
 **Gate:** G3
 
 ---
@@ -15,7 +15,7 @@ Build the coordination surface that lets users register, inspect, authorize, and
 ## Scope
 
 - `ferros-agents` crate:
-  - `Agent` trait: `id()`, `capabilities()`, `start()`, `stop()`, `status()`.
+  - `Agent` trait: `id()`, `capabilities()`, `start()`, `stop()`, `status()`, message handling, periodic polling.
   - `AgentManifest` format: name, version, required capabilities (referencing `ProfileId`).
   - Registry: register, deregister, list, describe agents by name.
   - Spawn/stop lifecycle with deny-by-default capability check.
@@ -52,9 +52,9 @@ Build the coordination surface that lets users register, inspect, authorize, and
 ## Definition of done (G3, jointly with S4)
 
 - [ ] `ferros-agents` crate builds and passes `cargo test`.
-- [ ] `echo` agent: registers, receives a capability grant, spawns, echoes messages, stops.
-- [ ] `timer` agent: registers, spawns, fires periodic events, stops.
-- [ ] Deny-by-default verified: ungranted capability request from either agent is rejected and logged.
+- [x] `echo` agent: registers, receives a capability grant, spawns, echoes messages, stops.
+- [x] `timer` agent: registers, spawns, fires periodic events, stops.
+- [x] Deny-by-default verified: ungranted capability request from either agent is rejected and logged.
 - [ ] `ferros agent list | describe | run | stop | logs` all functional against the reference agents.
 - [x] IPC bus transport abstraction in place (concrete: Unix domain sockets / named pipes).
 
@@ -69,17 +69,14 @@ Build the coordination surface that lets users register, inspect, authorize, and
 | `crates/ferros-agents/src/manifest.rs` | `AgentManifest` |
 | `crates/ferros-agents/src/registry.rs` | Registry |
 | `crates/ferros-agents/src/bus.rs` | IPC bus abstraction |
-| `agents/echo/` | Reference agent |
-| `agents/timer/` | Reference agent |
+| `crates/ferros-agents/src/reference.rs` | `echo` + `timer` reference agents |
+| `crates/ferros-node/` | Convergence demo host |
 
 ---
 
 ## Immediate next steps
 
-1. Review accepted S6 harvest ADRs for `botgen-rust` and `workpace-rust` before hardening interfaces.
-2. Define the `Agent` trait with S4 alignment on executor interface.
-3. Scaffold `crates/ferros-agents/` crate (after G2).
-4. Implement registry and lifecycle.
-5. Implement `echo` agent.
-6. Wire CLI subcommands.
-7. Verify deny-by-default with a harness.
+1. Harden the `ferros-node demo` path into a reusable runtime-host integration surface.
+2. Implement `ferros agent list | describe | run | stop | logs` on top of the current registry and demo host.
+3. Add a log-facing harness around deny-by-default and agent lifecycle paths.
+4. Prepare the JSON/RPC boundary that S5 Phase B will consume after G3.

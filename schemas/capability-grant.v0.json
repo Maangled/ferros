@@ -14,6 +14,14 @@
     "capability": {
       "type": "string",
       "description": "Granted capability token understood by downstream policy consumers."
+    },
+    "revoked_at": {
+      "type": "string",
+      "description": "Optional timestamp marking when the grant was revoked in the current pre-signature revocation model."
+    },
+    "revocation_reason": {
+      "type": "string",
+      "description": "Optional human-readable reason recorded when the grant is revoked."
     }
   }
 }

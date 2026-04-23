@@ -6,20 +6,21 @@
 
 - [x] Sketch pre-G3 `Agent` trait interface (host-agnostic until S4 executor stubs land)
 - [x] Review ADR-018 for `botgen-rust`
-- [ ] Review ADR-019 for `workpace-rust`
+- [x] Review ADR-019 for `workpace-rust`
 
 ## Next
 
-- [ ] Promote `crates/ferros-agents/` scaffold into the root workspace once G2/S4 unblockers are ready
-- [ ] Implement `AgentManifest` with capability declarations
-- [ ] Implement registry: register / deregister / list / describe
-- [ ] Converge `start()` / `stop()` with S4 executor host traits
-- [ ] Implement spawn/stop lifecycle with deny-by-default
+- [x] Promote `crates/ferros-agents/` scaffold into the root workspace once G2/S4 unblockers are ready
+- [x] Implement `AgentManifest` with capability declarations
+- [x] Implement registry: register / deregister / list / describe
+- [x] Converge `start()` / `stop()` with S4 executor host traits
+- [x] Implement spawn/stop lifecycle with deny-by-default
 - [x] IPC bus abstraction (Unix domain sockets / named pipes)
-- [ ] `echo` reference agent
-- [ ] `timer` reference agent
+- [x] `echo` reference agent
+- [x] `timer` reference agent
 - [ ] CLI: `ferros agent list | describe | run | stop | logs`
-- [ ] Harness: verify deny-by-default (ungranted capability → denied + logged)
+- [x] Harness: verify deny-by-default (ungranted capability → denied + logged)
+- [ ] Harden `ferros-node demo` into a reusable runtime-host integration layer
 
 ## Later
 

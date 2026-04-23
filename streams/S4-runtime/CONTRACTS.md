@@ -13,6 +13,9 @@
 | `MessageEnvelope` type | Rust type | `crates/ferros-core/src/message.rs` | ✅ Created |
 | `Executor` trait | Rust trait | `crates/ferros-runtime/src/executor.rs` | ✅ Created |
 | In-process bus protocol | Rust trait | `crates/ferros-runtime/src/bus.rs` | ✅ Created |
+| `InMemoryExecutor` type | Rust type | `crates/ferros-runtime/src/executor.rs` | 🟡 Convergence implementation created |
+| `InMemoryMessageBus` type | Rust type | `crates/ferros-runtime/src/bus.rs` | 🟡 Convergence implementation created |
+| `ferros-node demo` host path | Rust binary + library | `crates/ferros-node/src/lib.rs` | 🟡 Convergence implementation created |
 
 ---
 
@@ -20,7 +23,7 @@
 
 | Contract | Source | Purpose |
 |----------|--------|---------|
-| `CapabilityGrant` | S2 | Policy engine evaluates grants; current alignment is `profile_id` + `capability` via `CapabilityGrantView` until direct convergence |
+| `CapabilityGrant` | S2 | Policy engine now evaluates the current concrete type directly through `CapabilityGrantView`; G2 freeze still owns the final contract shape |
 | `Agent` trait | S3 | Runtime hosts agents via this interface |
 | Cargo workspace | S1 | Build and CI |
 

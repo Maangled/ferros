@@ -1,17 +1,19 @@
 [package]
-name = "ferros-agents"
+name = "ferros-node"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 publish = false
 
 [dependencies]
+ferros-agents = { path = "../ferros-agents" }
 ferros-core = { path = "../ferros-core" }
 ferros-profile = { path = "../ferros-profile" }
-serde = { version = "1", features = ["derive"] }
-
-[dev-dependencies]
-serde_json = "1"
+ferros-runtime = { path = "../ferros-runtime" }
 
 [lib]
 path = "src/lib.rs"
+
+[[bin]]
+name = "ferros-node"
+path = "src/main.rs"

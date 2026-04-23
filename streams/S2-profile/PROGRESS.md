@@ -4,6 +4,19 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — Filesystem profile store slice landed
+
+- Added the first `ProfileStore` abstraction to `ferros-profile`.
+- Added `FileSystemProfileStore` as the filesystem-first implementation for loading and saving `ProfileDocument` values.
+- Covered the storage slice with a filesystem round-trip test against the existing minimal Stage 0 fixture.
+
+## 2026-04-23 — Consent and revocation slice landed
+
+- Added `ConsentManifest` to `ferros-profile` as the first FERROS-owned consent grouping surface over `CapabilityGrant` values.
+- Extended `CapabilityGrant` with revocation metadata plus idempotent revoke semantics.
+- Expanded grant tests to cover revocation, manifest profile matching, duplicate capability rejection, and active-grant filtering.
+- Updated the draft grant schema so the new revocation fields stay within the current G2 freeze candidate boundary.
+
 ## 2026-04-23 — CapabilityGrant schema slice landed
 
 - Added `schemas/capability-grant.v0.json` as the first S2-owned draft grant schema, mirroring the current `CapabilityGrant` serde boundary.

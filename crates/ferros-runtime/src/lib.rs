@@ -3,5 +3,5 @@
 pub mod bus;
 pub mod executor;
 
-pub use bus::MessageBus;
-pub use executor::Executor;
+pub use bus::{InMemoryMessageBus, MessageBus};
+pub use executor::{Executor, InMemoryExecutor};

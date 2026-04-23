@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 
-use std::fmt;
+use std::{collections::BTreeSet, fmt, fs, io, path::Path};
 
+use ferros_core::CapabilityGrantView;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -45,6 +46,10 @@ impl ProfileId {
 pub struct CapabilityGrant {
     pub profile_id: ProfileId,
     pub capability: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revoked_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revocation_reason: Option<String>,
 }
 
 impl CapabilityGrant {
@@ -53,7 +58,110 @@ impl CapabilityGrant {
         Self {
             profile_id,
             capability: capability.into(),
+            revoked_at: None,
+            revocation_reason: None,
         }
+    }
+
+    #[must_use]
+    pub fn is_revoked(&self) -> bool {
+        self.revoked_at.is_some()
+    }
+
+    pub fn revoke(
+        &mut self,
+        revoked_at: impl Into<String>,
+        revocation_reason: impl Into<String>,
+    ) -> bool {
+        if self.is_revoked() {
+            return false;
+        }
+
+        self.revoked_at = Some(revoked_at.into());
+        self.revocation_reason = Some(revocation_reason.into());
+        true
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConsentManifest {
+    pub profile_id: ProfileId,
+    pub grants: Vec<CapabilityGrant>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConsentManifestError {
+    GrantProfileMismatch { expected: String, found: String },
+    DuplicateCapability(String),
+}
+
+impl fmt::Display for ConsentManifestError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::GrantProfileMismatch { expected, found } => write!(
+                f,
+                "grant profile id {found} does not match consent manifest profile {expected}"
+            ),
+            Self::DuplicateCapability(capability) => {
+                write!(f, "duplicate capability in consent manifest: {capability}")
+            }
+        }
+    }
+}
+
+impl ConsentManifest {
+    pub fn new(
+        profile_id: ProfileId,
+        grants: Vec<CapabilityGrant>,
+    ) -> Result<Self, ConsentManifestError> {
+        let mut seen_capabilities = BTreeSet::new();
+
+        for grant in &grants {
+            if grant.profile_id != profile_id {
+                return Err(ConsentManifestError::GrantProfileMismatch {
+                    expected: profile_id.as_str().to_owned(),
+                    found: grant.profile_id.as_str().to_owned(),
+                });
+            }
+
+            if !seen_capabilities.insert(grant.capability.clone()) {
+                return Err(ConsentManifestError::DuplicateCapability(
+                    grant.capability.clone(),
+                ));
+            }
+        }
+
+        Ok(Self { profile_id, grants })
+    }
+
+    #[must_use]
+    pub fn active_grants(&self) -> Vec<&CapabilityGrant> {
+        self.grants.iter().filter(|grant| !grant.is_revoked()).collect()
+    }
+
+    pub fn revoke_capability(
+        &mut self,
+        capability: &str,
+        revoked_at: impl Into<String>,
+        revocation_reason: impl Into<String>,
+    ) -> bool {
+        let revoked_at = revoked_at.into();
+        let revocation_reason = revocation_reason.into();
+
+        self.grants
+            .iter_mut()
+            .find(|grant| grant.capability == capability)
+            .is_some_and(|grant| grant.revoke(revoked_at, revocation_reason))
+    }
+}
+
+impl CapabilityGrantView for CapabilityGrant {
+    fn profile_id(&self) -> &str {
+        self.profile_id.as_str()
+    }
+
+    fn capability(&self) -> &str {
+        &self.capability
     }
 }
 
@@ -89,6 +197,69 @@ impl ProfileDocument {
         self.seal_chain
             .first()
             .is_some_and(|seal| seal.previous_seal == "genesis")
+    }
+}
+
+#[derive(Debug)]
+pub enum ProfileStoreError {
+    Io(io::Error),
+    Serde(serde_json::Error),
+}
+
+impl fmt::Display for ProfileStoreError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(error) => write!(f, "{error}"),
+            Self::Serde(error) => write!(f, "{error}"),
+        }
+    }
+}
+
+impl From<io::Error> for ProfileStoreError {
+    fn from(value: io::Error) -> Self {
+        Self::Io(value)
+    }
+}
+
+impl From<serde_json::Error> for ProfileStoreError {
+    fn from(value: serde_json::Error) -> Self {
+        Self::Serde(value)
+    }
+}
+
+pub trait ProfileStore {
+    fn load_profile(&self, path: &Path) -> Result<ProfileDocument, ProfileStoreError>;
+
+    fn save_profile(
+        &self,
+        path: &Path,
+        profile: &ProfileDocument,
+    ) -> Result<(), ProfileStoreError>;
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct FileSystemProfileStore;
+
+impl ProfileStore for FileSystemProfileStore {
+    fn load_profile(&self, path: &Path) -> Result<ProfileDocument, ProfileStoreError> {
+        let contents = fs::read_to_string(path)?;
+        Ok(ProfileDocument::from_json_str(&contents)?)
+    }
+
+    fn save_profile(
+        &self,
+        path: &Path,
+        profile: &ProfileDocument,
+    ) -> Result<(), ProfileStoreError> {
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
+        let serialized = profile.to_json_string_pretty()?;
+        fs::write(path, serialized)?;
+        Ok(())
     }
 }
 
@@ -142,9 +313,12 @@ pub struct SealEntry {
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        foundation_contract_preview, CapabilityGrant, ProfileDocument, ProfileId, ProfileIdError,
+        foundation_contract_preview, CapabilityGrant, ConsentManifest, ConsentManifestError,
+        FileSystemProfileStore, ProfileDocument, ProfileId, ProfileIdError, ProfileStore,
     };
     use serde_json::Value;
 
@@ -321,6 +495,17 @@ mod tests {
         );
     }
 
+    fn unique_temp_profile_path(test_name: &str) -> PathBuf {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after epoch")
+            .as_nanos();
+
+        std::env::temp_dir()
+            .join("ferros-profile-tests")
+            .join(format!("{test_name}-{timestamp}.json"))
+    }
+
     #[test]
     fn profile_id_rejects_empty_values() {
         assert_eq!(ProfileId::new(""), Err(ProfileIdError::Empty));
@@ -341,6 +526,19 @@ mod tests {
 
         assert_eq!(grant.profile_id, profile_id);
         assert_eq!(grant.capability, "consent.read");
+        assert!(!grant.is_revoked());
+    }
+
+    #[test]
+    fn capability_grant_revocation_is_idempotent() {
+        let profile_id = ProfileId::new("profile-alpha").expect("valid profile id");
+        let mut grant = CapabilityGrant::new(profile_id, "consent.read");
+
+        assert!(grant.revoke("2026-04-23T00:00:00Z", "manual revoke"));
+        assert!(grant.is_revoked());
+        assert_eq!(grant.revoked_at.as_deref(), Some("2026-04-23T00:00:00Z"));
+        assert_eq!(grant.revocation_reason.as_deref(), Some("manual revoke"));
+        assert!(!grant.revoke("2026-04-23T00:05:00Z", "second revoke"));
     }
 
     #[test]
@@ -357,6 +555,90 @@ mod tests {
 
         assert_eq!(serialized, fixture);
         assert_matches_capability_grant_v0_contract(&serialized);
+    }
+
+    #[test]
+    fn revoked_grant_matches_capability_grant_v0_contract() {
+        let profile_id = ProfileId::new("profile-alpha").expect("valid profile id");
+        let mut grant = CapabilityGrant::new(profile_id, "consent.read");
+        grant.revoke("2026-04-23T00:00:00Z", "manual revoke");
+
+        let serialized = serde_json::to_value(&grant).expect("grant should convert to JSON");
+
+        assert_matches_capability_grant_v0_contract(&serialized);
+        assert_eq!(serialized["revoked_at"], "2026-04-23T00:00:00Z");
+        assert_eq!(serialized["revocation_reason"], "manual revoke");
+    }
+
+    #[test]
+    fn consent_manifest_rejects_grants_for_other_profiles() {
+        let expected_profile = ProfileId::new("profile-alpha").expect("valid profile id");
+        let other_profile = ProfileId::new("profile-beta").expect("valid profile id");
+
+        let result = ConsentManifest::new(
+            expected_profile,
+            vec![CapabilityGrant::new(other_profile, "consent.read")],
+        );
+
+        assert_eq!(
+            result,
+            Err(ConsentManifestError::GrantProfileMismatch {
+                expected: "profile-alpha".to_string(),
+                found: "profile-beta".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn consent_manifest_rejects_duplicate_capabilities() {
+        let profile_id = ProfileId::new("profile-alpha").expect("valid profile id");
+
+        let result = ConsentManifest::new(
+            profile_id.clone(),
+            vec![
+                CapabilityGrant::new(profile_id.clone(), "consent.read"),
+                CapabilityGrant::new(profile_id, "consent.read"),
+            ],
+        );
+
+        assert_eq!(
+            result,
+            Err(ConsentManifestError::DuplicateCapability(
+                "consent.read".to_string(),
+            ))
+        );
+    }
+
+    #[test]
+    fn consent_manifest_revoke_updates_active_grants() {
+        let profile_id = ProfileId::new("profile-alpha").expect("valid profile id");
+        let mut manifest = ConsentManifest::new(
+            profile_id.clone(),
+            vec![
+                CapabilityGrant::new(profile_id.clone(), "consent.read"),
+                CapabilityGrant::new(profile_id, "consent.write"),
+            ],
+        )
+        .expect("manifest should build");
+
+        assert_eq!(manifest.active_grants().len(), 2);
+        assert!(manifest.revoke_capability(
+            "consent.write",
+            "2026-04-23T00:00:00Z",
+            "user revoked write access",
+        ));
+        assert_eq!(manifest.active_grants().len(), 1);
+        assert_eq!(manifest.active_grants()[0].capability, "consent.read");
+        assert!(!manifest.revoke_capability(
+            "consent.write",
+            "2026-04-23T00:05:00Z",
+            "duplicate revoke",
+        ));
+        assert!(!manifest.revoke_capability(
+            "consent.admin",
+            "2026-04-23T00:05:00Z",
+            "missing capability",
+        ));
     }
 
     #[test]
@@ -396,5 +678,27 @@ mod tests {
         let serialized = serde_json::to_value(&profile).expect("profile should convert to JSON");
 
         assert_matches_profile_v0_contract(&serialized);
+    }
+
+    #[test]
+    fn file_system_profile_store_round_trips_profile_document() {
+        let store = FileSystemProfileStore;
+        let path = unique_temp_profile_path("round-trip");
+        let profile =
+            ProfileDocument::from_json_str(MINIMAL_STAGE0_FIXTURE).expect("fixture should parse");
+
+        store
+            .save_profile(&path, &profile)
+            .expect("profile should save to filesystem");
+        let loaded = store
+            .load_profile(&path)
+            .expect("profile should load from filesystem");
+
+        assert_eq!(loaded, profile);
+
+        let _ = std::fs::remove_file(&path);
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::remove_dir(parent);
+        }
     }
 }

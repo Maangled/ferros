@@ -1,7 +1,7 @@
 # S4 — Runtime / OS Core
 
 **Stream:** S4  
-**Status:** 🟡 Prep active  
+**Status:** 🟡 Convergence active  
 **Gate:** G3 (jointly with S3)
 
 ---
@@ -58,8 +58,8 @@ Legacy runtime or agent prior art should enter this stream through S6 ADRs, not 
 ## Definition of done (G3, jointly with S3)
 
 - [x] `ferros-core` and `ferros-runtime` build and pass `cargo test`.
-- [ ] `ferros-node demo` runs deterministically: registers reference agents, proves deny-by-default, exits 0.
-- [ ] 10+ unit tests covering capability grant/deny scenarios.
+- [x] `ferros-node demo` runs deterministically: registers reference agents, proves deny-by-default, exits 0.
+- [x] 10+ unit tests covering capability grant/deny scenarios.
 - [ ] Property tests (via `proptest` or `quickcheck`) for the policy engine.
 - [ ] `no_std` feature compiles without `std` for `ferros-core`.
 
@@ -76,15 +76,15 @@ Legacy runtime or agent prior art should enter this stream through S6 ADRs, not 
 | `crates/ferros-runtime/src/executor.rs` | Task executor |
 | `crates/ferros-runtime/src/bus.rs` | In-process message bus |
 | `crates/ferros-node/` | Binary crate |
-| `crates/ferros-node/src/demo.rs` | `demo` subcommand |
+| `crates/ferros-node/src/lib.rs` | Demo host and convergence path |
+| `crates/ferros-node/src/main.rs` | `demo` subcommand |
 
 ---
 
 ## Immediate next steps
 
-1. Extend the existing `crates/ferros-core/` foundation crate with capability and deny-by-default policy primitives.
-2. Implement the first policy engine slice with focused unit tests.
-3. Review accepted S6 ADRs for runtime-relevant prior art before hardening lifecycle or queue abstractions.
-4. Scaffold `crates/ferros-node/` binary with `demo` subcommand.
-5. Replace the local grant abstraction with S2's `CapabilityGrant` once G2 closes.
-6. Property tests for policy engine.
+1. Harden the current `ferros-node demo` host path into reusable runtime infrastructure.
+2. Add property tests for the policy engine and message path invariants.
+3. Add `no_std` support and validation for `ferros-core`.
+4. Review accepted S6 ADRs for runtime-relevant prior art before widening lifecycle or queue abstractions.
+5. Re-check the current `CapabilityGrant` wiring once G2 freezes the contract.

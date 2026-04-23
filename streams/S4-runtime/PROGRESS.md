@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — `ferros-node demo` convergence path landed
+
+- Added concrete in-memory runtime implementations for the `Executor` and `MessageBus` boundaries in `crates/ferros-runtime/`.
+- Added `crates/ferros-node/` and a deterministic `demo` path that exercises the current S3 and S4 convergence surface.
+- Verified the demo path against the current concrete S2 `CapabilityGrant` type, including a deny-by-default rejection.
+- Kept the remaining S4 work focused on host hardening, property tests, and `no_std` readiness rather than widening runtime scope.
+
 ## 2026-04-23 — Runtime boundary slice published
 
 - Added `crates/ferros-runtime/` to the workspace with FERROS-owned `Executor` and `MessageBus` traits only, keeping the boundary generic so S4 stays decoupled from S3's pre-G3 agent surface.

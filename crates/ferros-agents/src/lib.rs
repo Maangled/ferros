@@ -3,6 +3,7 @@
 pub mod agent;
 pub mod bus;
 pub mod manifest;
+pub mod reference;
 pub mod registry;
 
 pub use agent::{Agent, AgentStatus};
@@ -13,4 +14,5 @@ pub use bus::{
 pub use manifest::{
     AgentManifest, AgentName, AgentNameError, AuthorizationDecision, CapabilityRequirement,
 };
+pub use reference::{EchoAgent, ReferenceAgentError, TimerAgent};
 pub use registry::{AgentRegistry, AgentSummary, InMemoryAgentRegistry, RegistryError};

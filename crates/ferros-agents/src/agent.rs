@@ -1,3 +1,5 @@
+use ferros_core::MessageEnvelope;
+
 use crate::manifest::{AgentName, CapabilityRequirement};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,4 +23,15 @@ pub trait Agent {
     fn start(&mut self) -> Result<(), Self::Error>;
     fn stop(&mut self) -> Result<(), Self::Error>;
     fn status(&self) -> AgentStatus;
+
+    fn handle_message(
+        &mut self,
+        _envelope: &MessageEnvelope,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(None)
+    }
+
+    fn poll(&mut self) -> Result<Vec<Vec<u8>>, Self::Error> {
+        Ok(Vec::new())
+    }
 }

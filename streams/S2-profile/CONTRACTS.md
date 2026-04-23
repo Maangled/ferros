@@ -10,7 +10,7 @@ These are the cross-stream interfaces that S2 publishes. Other streams **must no
 |----------|------|----------|--------|
 | `ProfileId` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created |
 | `CapabilityGrant` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created |
-| `ConsentManifest` type | Rust type | `crates/ferros-profile/src/lib.rs` | ⬜ Not yet created |
+| `ConsentManifest` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created |
 | `schemas/profile.v0.json` | JSON Schema | `schemas/profile.v0.json` | 🟡 Drafted; exercised by `ferros-profile` tests |
 | `schemas/capability-grant.v0.json` | JSON Schema | `schemas/capability-grant.v0.json` | 🟡 Drafted; exercised by `ferros-profile` tests |
 
@@ -18,7 +18,7 @@ These are the cross-stream interfaces that S2 publishes. Other streams **must no
 
 ## Current repo state
 
-`schemas/profile.v0.json` and `schemas/capability-grant.v0.json` are the S2-owned draft freeze candidates currently referenced by the `ferros-profile` test suite. `schemas/fixtures/grant-valid.json` now anchors the grant happy path while signed and revocable grant fields remain future work.
+`schemas/profile.v0.json` and `schemas/capability-grant.v0.json` are the S2-owned draft freeze candidates currently referenced by the `ferros-profile` test suite. `schemas/fixtures/grant-valid.json` now anchors the grant happy path, `CapabilityGrant` carries revocation metadata, and `ConsentManifest` provides the first FERROS-owned grouping and revoke surface while signing remains future work.
 
 ---
 
