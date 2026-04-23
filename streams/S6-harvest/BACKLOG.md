@@ -10,10 +10,10 @@
 
 ## Next
 
-- [ ] Write ADR-0017: harvest `botgen-rust` → agent spawning patterns
-- [ ] Write ADR-0018: harvest `workpace-rust` → agent center UX shell
-- [ ] Write ADR-0016: harvest `sheetgen-rust` → `ferros-data`
-- [ ] Scaffold `crates/ferros-data/` with harvested sheetgen primitives (after G1)
+- [ ] Write ADR-018: harvest `botgen-rust` → agent spawning patterns
+- [ ] Write ADR-019: harvest `workpace-rust` → agent center UX shell
+- [ ] Write ADR-020: harvest `sheetgen-rust` → `ferros-data`
+- [ ] Scaffold `crates/ferros-data/` with harvested sheetgen primitives once the sheetgen harvest direction is fixed
 - [ ] Verify harvested code compiles under FERROS workspace
 
 ## Later
@@ -23,5 +23,4 @@
 
 ## Blocked
 
-- Crate extraction blocked on G1 (Cargo workspace must exist).
-- Audits and ADR writing can proceed immediately.
+No upstream G1 blocker remains. Audits and ADR writing are active now; crate extraction should wait until the harvest direction is settled.

@@ -1,7 +1,7 @@
 # S1 — Foundation
 
 **Stream:** S1  
-**Status:** 🟡 In progress (local gate checks green; awaiting CI matrix confirmation)  
+**Status:** ✅ G1 closed; follow-on hygiene remains  
 **Gate:** G1
 
 ---
@@ -40,14 +40,14 @@ None — S1 is the root stream.
 
 ## What this stream blocks
 
-All other streams. G1 must close before S2–S8 work meaningfully.
+G1 is closed. Ongoing S1 hygiene no longer blocks S2–S8 execution, but the foundation tag and branch-protection follow-through still matter for repo discipline.
 
 ---
 
 ## Definition of done
 
-- [ ] `cargo build` passes on `x86_64-linux`, `x86_64-macos`, `x86_64-windows` (Windows local ✅; Linux/macOS pending CI run).
-- [ ] `cargo test` passes (empty test suite is acceptable at G1) (Windows local ✅; Linux/macOS pending CI run).
+- [x] `cargo build` passes on `x86_64-linux`, `x86_64-macos`, `x86_64-windows` (CI run #24812246339, 2026-04-23).
+- [x] `cargo test` passes (empty test suite is acceptable at G1) (CI run #24812246339, 2026-04-23).
 - [x] `cargo fmt --check` passes.
 - [x] `cargo clippy -- -D warnings` passes.
 - [x] CI workflow exists and runs on every PR.
@@ -76,6 +76,6 @@ All other streams. G1 must close before S2–S8 work meaningfully.
 
 ## Immediate next steps
 
-1. Open PR tagged `[S1]` targeting G1.
-2. Confirm Linux and macOS matrix jobs pass in CI.
-3. Mark S1 G1 closed and unblock S2 start.
+1. Tag `v0.0.1-foundation`.
+2. Verify branch protection on `main` requires the CI status checks before merge.
+3. Keep release automation, dependency automation, and MSRV policy as rolling hygiene while S2 takes the critical path.

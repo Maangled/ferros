@@ -16,8 +16,8 @@
 - [x] Open the trivial G1 evidence PR
 - [x] Observe a green `ci.yml` matrix run on `ubuntu-latest`, `macos-latest`, and `windows-latest` (run #24812246339, 2026-04-23)
 - [x] Update `docs/gates/G1.md` after PR evidence lands
+- [x] Close issue #62 as the G1 umbrella follow-up
 - [ ] Tag `v0.0.1-foundation`
-- [ ] Close issue #62 and issue #63 as part of G1 closeout
 
 ## Next
 
@@ -37,4 +37,4 @@
 
 ## Blocked
 
-- [ ] GitHub-side actions only: PR matrix evidence, tag creation, and issue closure cannot be completed from the local workspace alone
+- [ ] GitHub-side actions only: tag creation and branch-protection verification cannot be completed from the local workspace alone

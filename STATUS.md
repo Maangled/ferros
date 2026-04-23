@@ -2,7 +2,7 @@
 
 > Dashboard, not a diary. Each section shows current state. Details live in stream PROGRESS.md files.
 >
-> Last updated: 2026-04-22
+> Last updated: 2026-04-23
 
 ---
 
@@ -10,10 +10,10 @@
 
 | Item | State |
 |------|-------|
-| Active gate | **G1** — Foundation |
+| Active gate | **G2** — Profile v0 Frozen |
 | Launch gate | G4 (open) |
 | MVP gate | G1 → G2 → G3 in sequence |
-| Open streams | S1 (active), S2 (scaffolded), S4 (scaffolded), S8 (background) |
+| Open streams | S1 (closeout), S2 (active), S4 (prep), S6 (active), S8 (background) |
 
 ---
 
@@ -21,8 +21,8 @@
 
 | Gate | Status | Condition |
 |------|--------|-----------|
-| G1 | 🟡 In progress | Workspace artifacts landed; waiting on green CI proof across Linux/macOS/Windows |
-| G2 | ⬜ Blocked | G1 must close first; S2 profile v0 frozen |
+| G1 | ✅ Closed | CI run #24812246339 proved fmt, clippy, build, and test green on ubuntu-latest, macos-latest, and windows-latest |
+| G2 | 🟡 Active | G1 is closed; profile v0 implementation and freeze evidence are now the critical path |
 | G3 | ⬜ Blocked | G2 must close first; S3+S4 minimal agent-center-on-runtime demo |
 | G4 | ⬜ Blocked | G3 must close first; `ferros-hub` on real hardware with HA integration |
 
@@ -32,13 +32,13 @@
 
 | Stream | Status | Current focus | Gate |
 |--------|--------|---------------|------|
-| S1 Foundation | 🟡 In progress | CI proof, workspace validation, close G1 | G1 |
-| S2 Profile & Identity | 🟡 Scaffolded / blocked on G1 close | `ferros-profile` crate skeleton, Ed25519, schemas | G2 |
+| S1 Foundation | 🟡 Closeout / hygiene | Tag `v0.0.1-foundation`, verify branch protection, keep repo hygiene rolling | G1 |
+| S2 Profile & Identity | 🟡 Active | Ed25519, grants, schema freeze, CLI, and schema parity tests | G2 |
 | S3 Agent Center | ⬜ Blocked on G2 | `Agent` trait, registry, IPC bus | G3 |
-| S4 Runtime / OS Core | 🟡 Scaffolded / blocked on G1 close | `ferros-core` crate skeleton, consent bus, executor | G3 |
-| S5 UX | ⬜ Blocked on G1 | Site cleanup, then agent shell | post-G3 |
-| S6 Ecosystem Harvest | ⬜ Blocked on G1 | Audit sheetgen/botgen/workpace, ADRs | rolling |
-| S7 Smart-Home Hub | ⬜ Blocked on G3 | `ferros-hub`, HA integration | G4 |
+| S4 Runtime / OS Core | 🟡 Prep active | capability and policy interfaces, runtime design, await real grant type | G3 |
+| S5 UX | ⬜ Blocked on G3 | Site cleanup, then agent shell | post-G3 |
+| S6 Ecosystem Harvest | 🟡 Active | audit botgen/workpace/sheetgen and publish harvest ADRs | rolling |
+| S7 Smart-Home Hub | ⬜ Blocked on G2/G3 | pairing needs stable profile types; implementation needs runtime | G4 |
 | S8 Docs / Governance | 🟡 Active (background) | Stream scaffolding, CONTRIBUTING, ADR templates | rolling |
 
 ---
@@ -47,7 +47,7 @@
 
 | Tag | Status | Condition |
 |-----|--------|-----------|
-| `v0.0.1-foundation` | ⬜ | S1 done |
+| `v0.0.1-foundation` | 🟡 | G1 closed; tag pending |
 | `v0.0.2-profile` | ⬜ | S2 profile v0 frozen |
 | `v0.0.3-runtime` | ⬜ | S4 consent bus runnable |
 | `v0.0.4-agents` | ⬜ | S3 agent center CLI with two reference agents |
@@ -74,6 +74,7 @@ The **profile → agent center** path is the gating path. Everything else is par
 
 | Date | Event |
 |------|-------|
+| 2026-04-23 | G1 closed: CI run #24812246339 proved fmt, clippy, build, and test green across ubuntu-latest, macos-latest, and windows-latest. |
 | 2026-04-22 | S1 workspace artifacts landed: Cargo workspace, CI workflows, site move, CODEOWNERS, `cargo xtask ci`, and initial `ferros-core` / `ferros-profile` crates. |
 | 2026-04-21 | Wave 0 closed (contracts C1–C10 verified). Stream docs scaffolded. Stream-first planning model adopted. |
 
@@ -83,7 +84,6 @@ The **profile → agent center** path is the gating path. Everything else is par
 
 | Blocker | Affects | Owner |
 |---------|---------|-------|
-| GitHub Actions matrix proof not yet observed on a PR | S1, all | S1 |
-| G1 trivial-test PR evidence not yet merged | S1, all | S1 |
-| `ferros-profile` is still a foundation skeleton only | S2 | S2 |
-| `ferros-core` is still a foundation skeleton only | S4 | S4 |
+| `v0.0.1-foundation` tag is not yet created; required status checks on `main` are not yet verified in branch protection | S1 | S1 |
+| `ferros-profile` still needs key material, signature verification, frozen schemas, CLI flows, and schema parity tests for G2 | S2, S3, S7 | S2 |
+| `ferros-core` is still a foundation skeleton only; runtime and policy engine work have not started | S4, S3, S7 | S4 |

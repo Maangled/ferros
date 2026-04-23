@@ -4,12 +4,12 @@
 
 ## Now
 
-- [ ] Design capability and consent primitive types (can precede G1 as a sketch)
+- [ ] Design capability and consent primitive types against the upcoming S2 frozen boundaries
 - [ ] Design policy engine interface
 
 ## Next
 
-- [ ] Scaffold `crates/ferros-core/` (after G1)
+- [ ] Extend the existing `crates/ferros-core/` foundation crate beyond the marker-only slice
 - [ ] Implement capability + consent types
 - [ ] Implement policy engine with deny-by-default logic
 - [ ] Unit tests: 10+ grant/deny scenarios
@@ -27,5 +27,4 @@
 
 ## Blocked
 
-- Crate creation blocked on G1 (Cargo workspace).
-- `CapabilityGrant` type dependency on G2 (use stub until then).
+No upstream G1 blocker remains. Real `CapabilityGrant` wiring still depends on G2; keep runtime and node implementation shallow until the S2 type is frozen.

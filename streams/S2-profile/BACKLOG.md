@@ -7,6 +7,7 @@
 - [ ] Design `ProfileId`, `KeyPair`, `CapabilityGrant`, `ConsentManifest` types (foundation slice started; key material and consent manifest still open)
 - [ ] Draft `schemas/profile.v0.json`
 - [ ] Draft `schemas/capability-grant.v0.json`
+- [ ] Add a jsonschema-backed test that validates `ProfileDocument` against `schemas/profile.v0.json` before freeze
 
 ## Next
 
@@ -27,4 +28,4 @@
 
 ## Blocked
 
-- Full S2 closeout remains blocked on G1 closure and CI-proven foundation evidence.
+No upstream gate blocker remains. S2 is now the active gate; the remaining work is implementation, schema freeze, and CI evidence.

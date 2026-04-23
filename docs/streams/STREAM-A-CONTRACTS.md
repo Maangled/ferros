@@ -252,3 +252,10 @@ These items are the current Stream A work queue. The first two still gate Phase 
 | 3 | Contract/fixture physical co-location | LOW | Manifest mitigates the nav issue; reorg is cosmetic |
 | 4 | Seal chain compaction strategy | LOW | Wave 4 (H5) target |
 | 5 | Schema evolution cascade tooling | MED | L10 (WASM validators) is research track |
+
+## Cross-Stream Guardrails
+
+To keep the legacy Stream A lane separate from the newer S1-S8 gate path:
+
+- Stream A may land PRs in `docs/`, `harnesses/`, `schemas/fixtures/` (golden fixtures), and `tools/generate-*.ps1` when contract, harness, or evidence work requires it.
+- Stream A may not modify `schemas/profile.v0.json`, `schemas/capability-grant.v0.json`, or any `crates/` files once those artifacts are frozen under G2; those belong to S2 and must gate through G2 change control.
