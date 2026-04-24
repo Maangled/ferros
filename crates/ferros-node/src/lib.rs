@@ -14,8 +14,7 @@ use ferros_agents::{
 };
 use ferros_core::{
     Capability, CapabilityError, CapabilityGrantView, CapabilityRequest, DenyByDefaultPolicy,
-    MessageEnvelope, MessageEnvelopeError, PolicyDecision, PolicyEngine,
-    RequesterProfileIdError,
+    MessageEnvelope, MessageEnvelopeError, PolicyDecision, PolicyEngine, RequesterProfileIdError,
 };
 use ferros_profile::{
     grant_profile_capability, init_local_profile, revoke_profile_capability, CapabilityGrant,
@@ -528,7 +527,7 @@ impl DemoRuntime {
                 .ok_or_else(|| DemoError::ManifestMissingCapabilities(name.to_owned()))?
         };
 
-            let decision = self.evaluate_policy(&requester_profile_id, capability)?;
+        let decision = self.evaluate_policy(&requester_profile_id, capability)?;
 
         if decision == PolicyDecision::Allowed {
             return Ok(());
@@ -936,7 +935,7 @@ mod tests {
     use ferros_agents::{EchoAgent, TimerAgent};
     use ferros_profile::{CapabilityGrant, FileSystemProfileStore, ProfileDocument, ProfileId};
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -1027,9 +1026,7 @@ mod tests {
 
         assert_eq!(
             error,
-            DemoError::AuthorizationDenied(
-                "echo:agent.echo:Denied(NoGrantsPresented)".to_string(),
-            )
+            DemoError::AuthorizationDenied("echo:agent.echo:Denied(NoGrantsPresented)".to_string(),)
         );
         assert!(runtime
             .log_entries()
@@ -1185,7 +1182,10 @@ mod tests {
     fn default_profile_path_uses_profile_file_name() {
         let path = default_profile_path();
 
-        assert_eq!(path.file_name().and_then(|value| value.to_str()), Some("profile.json"));
+        assert_eq!(
+            path.file_name().and_then(|value| value.to_str()),
+            Some("profile.json")
+        );
     }
 
     fn unique_state_path(test_name: &str) -> PathBuf {
@@ -1207,11 +1207,11 @@ mod tests {
             .join(format!("{test_name}-{nonce}.json"))
     }
 
-    fn cleanup_state_path(path: &PathBuf) {
+    fn cleanup_state_path(path: &Path) {
         let _ = fs::remove_file(path);
     }
 
-    fn cleanup_parent_dir(path: &PathBuf) {
+    fn cleanup_parent_dir(path: &Path) {
         if let Some(parent) = path.parent() {
             let _ = fs::remove_dir(parent);
         }

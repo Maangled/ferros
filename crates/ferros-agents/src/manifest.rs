@@ -121,8 +121,7 @@ pub enum AuthorizationDecision {
 #[cfg(test)]
 mod tests {
     use super::{
-        AgentManifest, AgentName, AgentNameError, AuthorizationDecision,
-        CapabilityRequirement,
+        AgentManifest, AgentName, AgentNameError, AuthorizationDecision, CapabilityRequirement,
     };
     use ferros_profile::{CapabilityGrant, ProfileId};
 
@@ -146,10 +145,7 @@ mod tests {
             vec![read_requirement.clone(), write_requirement.clone()],
         );
 
-        let decision = manifest.authorization(&[CapabilityGrant::new(
-            profile_id,
-            "consent.read",
-        )]);
+        let decision = manifest.authorization(&[CapabilityGrant::new(profile_id, "consent.read")]);
 
         assert_eq!(
             decision,
@@ -163,18 +159,15 @@ mod tests {
     fn manifest_authorization_requires_matching_profile_id() {
         let required_profile = ProfileId::new("profile-alpha").expect("valid profile id");
         let granted_profile = ProfileId::new("profile-beta").expect("valid profile id");
-        let read_requirement =
-            CapabilityRequirement::new(required_profile.clone(), "consent.read");
+        let read_requirement = CapabilityRequirement::new(required_profile.clone(), "consent.read");
         let manifest = AgentManifest::new(
             AgentName::new("echo").expect("valid agent name"),
             "0.1.0",
             vec![read_requirement.clone()],
         );
 
-        let decision = manifest.authorization(&[CapabilityGrant::new(
-            granted_profile,
-            "consent.read",
-        )]);
+        let decision =
+            manifest.authorization(&[CapabilityGrant::new(granted_profile, "consent.read")]);
 
         assert_eq!(
             decision,
@@ -214,8 +207,8 @@ mod tests {
             vec![CapabilityRequirement::new(profile_id, "clock.tick")],
         );
 
-        let encoded = serde_json::to_string_pretty(&manifest)
-            .expect("agent manifest should serialize");
+        let encoded =
+            serde_json::to_string_pretty(&manifest).expect("agent manifest should serialize");
         let decoded: AgentManifest =
             serde_json::from_str(&encoded).expect("agent manifest should deserialize");
 

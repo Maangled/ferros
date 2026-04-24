@@ -72,8 +72,11 @@ enum MismatchGrantSpec {
 }
 
 fn request(profile_id: &str, capability: &str) -> CapabilityRequest {
-    CapabilityRequest::new(profile_id, Capability::new(capability).expect("valid capability"))
-        .expect("valid requester profile id")
+    CapabilityRequest::new(
+        profile_id,
+        Capability::new(capability).expect("valid capability"),
+    )
+    .expect("valid requester profile id")
 }
 
 fn valid_token_strategy() -> impl Strategy<Value = String> {
@@ -247,7 +250,10 @@ fn deny_when_profile_exists_but_capability_is_missing() {
 
     let decision = policy.evaluate(&request, &grants);
 
-    assert_eq!(decision.denial_reason(), Some(PolicyDenialReason::CapabilityNotGranted));
+    assert_eq!(
+        decision.denial_reason(),
+        Some(PolicyDenialReason::CapabilityNotGranted)
+    );
     assert_eq!(
         decision,
         PolicyDecision::Denied(PolicyDenialReason::CapabilityNotGranted)

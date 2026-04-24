@@ -100,7 +100,8 @@ mod tests {
         assert!(BASELINE_MIGRATION_SQL.contains("create table if not exists revision_base"));
         assert!(BASELINE_MIGRATION_SQL.contains("snapshot jsonb not null"));
         assert!(BASELINE_MIGRATION_SQL.contains("check (jsonb_typeof(snapshot) = 'object')"));
-        assert!(BASELINE_MIGRATION_SQL.contains("check (parent_card_id is not null or parent_deck_id is not null)"));
+        assert!(BASELINE_MIGRATION_SQL
+            .contains("check (parent_card_id is not null or parent_deck_id is not null)"));
     }
 
     #[test]
@@ -108,12 +109,11 @@ mod tests {
         let baseline_sql = normalized_sql(BASELINE_MIGRATION_SQL);
         let tightening_sql = normalized_sql(ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_SQL);
 
-        assert!(baseline_sql.contains(
-            "check (parent_card_id is not null or parent_deck_id is not null)"
+        assert!(baseline_sql
+            .contains("check (parent_card_id is not null or parent_deck_id is not null)"));
+        assert!(tightening_sql.contains(
+            "alter table ordered_child add constraint ordered_child_single_parent_scope"
         ));
-        assert!(
-            tightening_sql.contains("alter table ordered_child add constraint ordered_child_single_parent_scope")
-        );
         assert!(tightening_sql.contains(
             "check ( not ( parent_card_id is not null and parent_deck_id is not null ) )"
         ));

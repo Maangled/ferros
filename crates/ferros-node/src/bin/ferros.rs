@@ -25,14 +25,16 @@ fn run(args: Vec<String>) -> Result<Vec<String>, CliError> {
     };
 
     match scope {
-        "demo" if args.len() == 1 => run_demo().map(|summary| {
-            vec![
-                format!("started: {}", summary.started_agents.join(",")),
-                format!("echo: {}", summary.echo_response),
-                format!("timer: {}", summary.timer_event),
-                format!("denied: {}", summary.denied_requests),
-            ]
-        }).map_err(CliError::from),
+        "demo" if args.len() == 1 => run_demo()
+            .map(|summary| {
+                vec![
+                    format!("started: {}", summary.started_agents.join(",")),
+                    format!("echo: {}", summary.echo_response),
+                    format!("timer: {}", summary.timer_event),
+                    format!("denied: {}", summary.denied_requests),
+                ]
+            })
+            .map_err(CliError::from),
         "agent" => execute_agent_cli(parse_agent_command(&args)?),
         "profile" => execute_profile_cli(parse_profile_command(&args)?),
         _ => Err(usage()),
@@ -95,7 +97,7 @@ fn parse_profile_command(args: &[String]) -> Result<ProfileCliCommand, CliError>
     }
 }
 
-fn parse_required_value<'a>(args: &'a [String], index: usize) -> Result<&'a str, CliError> {
+fn parse_required_value(args: &[String], index: usize) -> Result<&str, CliError> {
     args.get(index).map(String::as_str).ok_or_else(usage)
 }
 
@@ -127,7 +129,11 @@ fn exit_code(error: &CliError) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::run;
-    use std::{fs, path::PathBuf, time::{SystemTime, UNIX_EPOCH}};
+    use std::{
+        fs,
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
 
     #[test]
     fn run_dispatches_profile_init_and_show_with_explicit_path() {

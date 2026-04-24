@@ -47,7 +47,9 @@ fn profile_cli_lifecycle_works_via_real_ferros_binary() {
     let grant_stdout =
         String::from_utf8(grant_output.stdout).expect("grant stdout should be valid UTF-8");
     assert!(
-        grant_stdout.lines().any(|line| line.starts_with("granted agent.echo to ")),
+        grant_stdout
+            .lines()
+            .any(|line| line.starts_with("granted agent.echo to ")),
         "unexpected grant stdout: {grant_stdout}"
     );
 
@@ -111,7 +113,9 @@ fn profile_cli_lifecycle_works_via_real_ferros_binary() {
     let revoke_stdout =
         String::from_utf8(revoke_output.stdout).expect("revoke stdout should be valid UTF-8");
     assert!(
-        revoke_stdout.lines().any(|line| line.starts_with("revoked agent.echo for ")),
+        revoke_stdout
+            .lines()
+            .any(|line| line.starts_with("revoked agent.echo for ")),
         "unexpected revoke stdout: {revoke_stdout}"
     );
 
@@ -129,9 +133,10 @@ fn profile_cli_lifecycle_works_via_real_ferros_binary() {
 
     let show_stdout =
         String::from_utf8(show_output.stdout).expect("show stdout should be valid UTF-8");
-    let show_json: Value = serde_json::from_str(&show_stdout).expect("show stdout should be valid JSON");
-    let profile =
-        ProfileDocument::from_json_str(&show_stdout).expect("show stdout should be valid profile JSON");
+    let show_json: Value =
+        serde_json::from_str(&show_stdout).expect("show stdout should be valid JSON");
+    let profile = ProfileDocument::from_json_str(&show_stdout)
+        .expect("show stdout should be valid profile JSON");
 
     assert_unsigned_profile_boundary(&show_json);
     assert_eq!(profile.identity.name, "Fresh Start");
@@ -148,7 +153,9 @@ fn profile_cli_lifecycle_works_via_real_ferros_binary() {
         .verify()
         .expect("revoked imported signed grant should still verify");
     assert_signed_grant_matches_frozen_boundary(&revoked_grant_json);
-    assert!(imported_state_after_revoke.signed_grants[0].grant.is_revoked());
+    assert!(imported_state_after_revoke.signed_grants[0]
+        .grant
+        .is_revoked());
 
     cleanup_profile_path(&profile_path);
     cleanup_bundle_path(&bundle_path);
@@ -211,8 +218,12 @@ fn assert_signed_grant_matches_frozen_boundary(value: &Value) {
     assert!(object.get("profile_id").is_some_and(Value::is_string));
     assert!(object.get("capability").is_some_and(Value::is_string));
     assert!(object.get("revoked_at").is_some_and(Value::is_string));
-    assert!(object.get("revocation_reason").is_some_and(Value::is_string));
-    assert!(object.get("signer_public_key").is_some_and(Value::is_string));
+    assert!(object
+        .get("revocation_reason")
+        .is_some_and(Value::is_string));
+    assert!(object
+        .get("signer_public_key")
+        .is_some_and(Value::is_string));
     assert!(object.get("signature").is_some_and(Value::is_string));
 }
 

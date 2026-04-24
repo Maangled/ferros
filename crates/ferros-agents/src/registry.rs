@@ -92,12 +92,12 @@ mod tests {
             .register(manifest.clone())
             .expect("initial register should succeed");
 
-        let error = registry.register(manifest).expect_err("duplicate should fail");
+        let error = registry
+            .register(manifest)
+            .expect_err("duplicate should fail");
         assert_eq!(
             error,
-            RegistryError::AlreadyRegistered(
-                AgentName::new("echo").expect("valid agent name")
-            )
+            RegistryError::AlreadyRegistered(AgentName::new("echo").expect("valid agent name"))
         );
     }
 
@@ -135,7 +135,10 @@ mod tests {
             .expect("deregister should succeed");
 
         assert_eq!(removed, Some(echo));
-        assert_eq!(registry.describe(&name).expect("describe should succeed"), None);
+        assert_eq!(
+            registry.describe(&name).expect("describe should succeed"),
+            None
+        );
         assert!(registry.list().is_empty());
     }
 }

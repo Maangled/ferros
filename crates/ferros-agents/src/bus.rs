@@ -107,11 +107,9 @@ mod tests {
 
     #[test]
     fn endpoint_preserves_transport_and_location() {
-        let endpoint = BusEndpoint::new(
-            BusTransportKind::NamedPipe,
-            r"\\.\pipe\ferros\agents\echo",
-        )
-        .expect("named pipe endpoint should be valid");
+        let endpoint =
+            BusEndpoint::new(BusTransportKind::NamedPipe, r"\\.\pipe\ferros\agents\echo")
+                .expect("named pipe endpoint should be valid");
 
         assert_eq!(endpoint.transport(), BusTransportKind::NamedPipe);
         assert_eq!(endpoint.location(), r"\\.\pipe\ferros\agents\echo");

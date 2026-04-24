@@ -173,8 +173,14 @@ mod tests {
         agent.start().expect("start should succeed");
 
         assert_eq!(agent.status(), AgentStatus::Running);
-        assert_eq!(agent.poll().expect("first poll should work"), vec![b"tick-1".to_vec()]);
-        assert_eq!(agent.poll().expect("second poll should work"), vec![b"tick-2".to_vec()]);
+        assert_eq!(
+            agent.poll().expect("first poll should work"),
+            vec![b"tick-1".to_vec()]
+        );
+        assert_eq!(
+            agent.poll().expect("second poll should work"),
+            vec![b"tick-2".to_vec()]
+        );
     }
 
     #[test]

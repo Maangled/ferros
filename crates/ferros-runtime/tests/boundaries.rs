@@ -53,9 +53,18 @@ fn executor_runs_jobs_in_submission_order() {
     executor.submit("deliver").expect("submit should succeed");
 
     assert_eq!(executor.pending_jobs(), 2);
-    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("boot"));
-    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("deliver"));
-    assert_eq!(executor.pop_next().expect("idle executor should be empty"), None);
+    assert_eq!(
+        executor.pop_next().expect("pop should succeed"),
+        Some("boot")
+    );
+    assert_eq!(
+        executor.pop_next().expect("pop should succeed"),
+        Some("deliver")
+    );
+    assert_eq!(
+        executor.pop_next().expect("idle executor should be empty"),
+        None
+    );
     assert_eq!(executor.pending_jobs(), 0);
 }
 
@@ -66,9 +75,18 @@ fn in_memory_executor_preserves_submission_order() {
     executor.submit("boot").expect("submit should succeed");
     executor.submit("deliver").expect("submit should succeed");
 
-    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("boot"));
-    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("deliver"));
-    assert_eq!(executor.pop_next().expect("idle executor should be empty"), None);
+    assert_eq!(
+        executor.pop_next().expect("pop should succeed"),
+        Some("boot")
+    );
+    assert_eq!(
+        executor.pop_next().expect("pop should succeed"),
+        Some("deliver")
+    );
+    assert_eq!(
+        executor.pop_next().expect("idle executor should be empty"),
+        None
+    );
 }
 
 #[test]

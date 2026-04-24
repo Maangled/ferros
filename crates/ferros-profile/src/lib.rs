@@ -133,7 +133,9 @@ impl CapabilityGrant {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum HexDecodeError {
-    InvalidHex { field: &'static str },
+    InvalidHex {
+        field: &'static str,
+    },
     InvalidHexLength {
         field: &'static str,
         expected: usize,
@@ -144,7 +146,9 @@ enum HexDecodeError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CapabilityGrantSignatureError {
     CanonicalSerialization(String),
-    InvalidHex { field: &'static str },
+    InvalidHex {
+        field: &'static str,
+    },
     InvalidHexLength {
         field: &'static str,
         expected: usize,
@@ -159,17 +163,17 @@ impl fmt::Display for CapabilityGrantSignatureError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::CanonicalSerialization(error) => {
-                write!(f, "canonical capability grant serialization failed: {error}")
+                write!(
+                    f,
+                    "canonical capability grant serialization failed: {error}"
+                )
             }
             Self::InvalidHex { field } => write!(f, "{field} must be valid hexadecimal"),
             Self::InvalidHexLength {
                 field,
                 expected,
                 actual,
-            } => write!(
-                f,
-                "{field} must be {expected} hex characters, got {actual}"
-            ),
+            } => write!(f, "{field} must be {expected} hex characters, got {actual}"),
             Self::InvalidPublicKey => write!(f, "signer_public_key is not a valid Ed25519 key"),
             Self::SignerPublicKeyMismatch => {
                 write!(f, "signing key does not match signer_public_key")
@@ -228,7 +232,8 @@ impl SignedCapabilityGrant {
 
     pub fn verify(&self) -> Result<(), CapabilityGrantSignatureError> {
         let message = self.grant.canonical_bytes()?;
-        let public_key_bytes = decode_hex_array::<32>(&self.signer_public_key, "signer_public_key")?;
+        let public_key_bytes =
+            decode_hex_array::<32>(&self.signer_public_key, "signer_public_key")?;
         let signature_bytes = decode_hex_array::<64>(&self.signature, "signature")?;
         let verifying_key = VerifyingKey::from_bytes(&public_key_bytes)
             .map_err(|_| CapabilityGrantSignatureError::InvalidPublicKey)?;
@@ -304,10 +309,7 @@ fn decode_hex_array<const N: usize>(
     Ok(bytes)
 }
 
-fn decode_hex_nibble(
-    nibble: u8,
-    field: &'static str,
-) -> Result<u8, HexDecodeError> {
+fn decode_hex_nibble(nibble: u8, field: &'static str) -> Result<u8, HexDecodeError> {
     match nibble {
         b'0'..=b'9' => Ok(nibble - b'0'),
         b'a'..=b'f' => Ok(nibble - b'a' + 10),
@@ -326,7 +328,9 @@ pub struct KeyPair {
 pub enum KeyPairError {
     EmptyDeviceLabel,
     EntropyUnavailable,
-    InvalidHex { field: &'static str },
+    InvalidHex {
+        field: &'static str,
+    },
     InvalidHexLength {
         field: &'static str,
         expected: usize,
@@ -349,17 +353,17 @@ impl fmt::Display for KeyPairError {
         match self {
             Self::EmptyDeviceLabel => write!(f, "device label cannot be empty"),
             Self::EntropyUnavailable => {
-                write!(f, "operating-system entropy is unavailable for Ed25519 key generation")
+                write!(
+                    f,
+                    "operating-system entropy is unavailable for Ed25519 key generation"
+                )
             }
             Self::InvalidHex { field } => write!(f, "{field} must be valid hexadecimal"),
             Self::InvalidHexLength {
                 field,
                 expected,
                 actual,
-            } => write!(
-                f,
-                "{field} must be {expected} hex characters, got {actual}"
-            ),
+            } => write!(f, "{field} must be {expected} hex characters, got {actual}"),
         }
     }
 }
@@ -543,7 +547,8 @@ impl StoredKeyPair {
             )));
         }
 
-        KeyPair::from_secret_key_hex(self.device_label, &self.secret_key).map_err(ProfileStoreError::from)
+        KeyPair::from_secret_key_hex(self.device_label, &self.secret_key)
+            .map_err(ProfileStoreError::from)
     }
 }
 
@@ -662,7 +667,10 @@ impl ConsentManifest {
 
     #[must_use]
     pub fn active_grants(&self) -> Vec<&CapabilityGrant> {
-        self.grants.iter().filter(|grant| !grant.is_revoked()).collect()
+        self.grants
+            .iter()
+            .filter(|grant| !grant.is_revoked())
+            .collect()
     }
 
     pub fn revoke_capability(
@@ -813,7 +821,9 @@ impl ProfileDocument {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProfileSignatureError {
     CanonicalSerialization(String),
-    InvalidHex { field: &'static str },
+    InvalidHex {
+        field: &'static str,
+    },
     InvalidHexLength {
         field: &'static str,
         expected: usize,
@@ -836,10 +846,7 @@ impl fmt::Display for ProfileSignatureError {
                 field,
                 expected,
                 actual,
-            } => write!(
-                f,
-                "{field} must be {expected} hex characters, got {actual}"
-            ),
+            } => write!(f, "{field} must be {expected} hex characters, got {actual}"),
             Self::InvalidPublicKey => write!(f, "signer_public_key is not a valid Ed25519 key"),
             Self::ProfileIdMismatch => {
                 write!(f, "profile_id does not match signer_public_key")
@@ -882,7 +889,10 @@ pub struct SignedProfileDocument {
 }
 
 impl SignedProfileDocument {
-    pub fn new(profile: ProfileDocument, key_pair: &KeyPair) -> Result<Self, ProfileSignatureError> {
+    pub fn new(
+        profile: ProfileDocument,
+        key_pair: &KeyPair,
+    ) -> Result<Self, ProfileSignatureError> {
         let mut signed_profile = Self {
             profile_id: key_pair.profile_id(),
             profile,
@@ -892,8 +902,12 @@ impl SignedProfileDocument {
             signature: String::new(),
         };
 
-        signed_profile.signature =
-            encode_hex(&key_pair.signing_key().sign(&signed_profile.canonical_bytes()?).to_bytes());
+        signed_profile.signature = encode_hex(
+            &key_pair
+                .signing_key()
+                .sign(&signed_profile.canonical_bytes()?)
+                .to_bytes(),
+        );
 
         Ok(signed_profile)
     }
@@ -915,10 +929,11 @@ impl SignedProfileDocument {
 
     pub fn verify(&self) -> Result<(), ProfileSignatureError> {
         let message = self.canonical_bytes()?;
-        let public_key_bytes = decode_hex_array::<32>(&self.signer_public_key, "signer_public_key")?;
+        let public_key_bytes =
+            decode_hex_array::<32>(&self.signer_public_key, "signer_public_key")?;
         let signature_bytes = decode_hex_array::<64>(&self.signature, "signature")?;
-        let verifying_key =
-            VerifyingKey::from_bytes(&public_key_bytes).map_err(|_| ProfileSignatureError::InvalidPublicKey)?;
+        let verifying_key = VerifyingKey::from_bytes(&public_key_bytes)
+            .map_err(|_| ProfileSignatureError::InvalidPublicKey)?;
         let expected_profile_id = ProfileId::from_public_key(&verifying_key);
         let signature = Signature::from_bytes(&signature_bytes);
 
@@ -951,7 +966,12 @@ impl SignedProfileDocument {
 
         self.revoked_at = Some(revoked_at.into());
         self.revocation_reason = Some(revocation_reason.into());
-        self.signature = encode_hex(&key_pair.signing_key().sign(&self.canonical_bytes()?).to_bytes());
+        self.signature = encode_hex(
+            &key_pair
+                .signing_key()
+                .sign(&self.canonical_bytes()?)
+                .to_bytes(),
+        );
 
         Ok(true)
     }
@@ -1049,11 +1069,8 @@ impl From<serde_json::Error> for ProfileStoreError {
 pub trait ProfileStore {
     fn load_profile(&self, path: &Path) -> Result<ProfileDocument, ProfileStoreError>;
 
-    fn save_profile(
-        &self,
-        path: &Path,
-        profile: &ProfileDocument,
-    ) -> Result<(), ProfileStoreError>;
+    fn save_profile(&self, path: &Path, profile: &ProfileDocument)
+        -> Result<(), ProfileStoreError>;
 
     fn create_profile(
         &self,
@@ -1138,9 +1155,10 @@ pub fn grant_profile_capability<S: LocalProfileStore>(
         return Err(ProfileStoreError::CapabilityGrantAlreadyExists(capability));
     }
 
-    let signed_grant = state
-        .key_pair
-        .sign_grant(&CapabilityGrant::new(state.key_pair.profile_id(), capability))?;
+    let signed_grant = state.key_pair.sign_grant(&CapabilityGrant::new(
+        state.key_pair.profile_id(),
+        capability,
+    ))?;
 
     state.signed_grants.push(signed_grant.clone());
     store.save_signed_grants(path, &state.signed_grants)?;
@@ -1247,7 +1265,7 @@ impl FileSystemProfileStore {
         profile_path: &Path,
     ) -> Result<Vec<SignedCapabilityGrant>, ProfileStoreError> {
         let grants_path = Self::signed_grants_path(profile_path);
-        let contents = match fs::read_to_string(&grants_path) {
+        let contents = match fs::read_to_string(grants_path) {
             Ok(contents) => contents,
             Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
             Err(error) => return Err(ProfileStoreError::Io(error)),
@@ -1327,7 +1345,10 @@ impl LocalProfileStore for FileSystemProfileStore {
 
         self.create_profile(path, profile)?;
 
-        if let Err(error) = self.write_json_pretty_new(&Self::key_pair_path(path), &StoredKeyPair::from_key_pair(key_pair)) {
+        if let Err(error) = self.write_json_pretty_new(
+            &Self::key_pair_path(path),
+            &StoredKeyPair::from_key_pair(key_pair),
+        ) {
             let _ = fs::remove_file(path);
             return Err(error);
         }
@@ -1459,7 +1480,10 @@ fn canonical_json_value(value: &Value) -> Result<String, serde_json::Error> {
     Ok(encoded)
 }
 
-fn write_canonical_json_value(value: &Value, encoded: &mut String) -> Result<(), serde_json::Error> {
+fn write_canonical_json_value(
+    value: &Value,
+    encoded: &mut String,
+) -> Result<(), serde_json::Error> {
     match value {
         Value::Null => encoded.push_str("null"),
         Value::Bool(boolean) => {
@@ -1561,10 +1585,9 @@ mod tests {
     use super::{
         encode_hex, foundation_contract_preview, init_profile, CapabilityGrant,
         CapabilityGrantSignatureError, ConsentManifest, ConsentManifestError,
-        FileSystemProfileStore, KeyPair, KeyPairError, ProfileDocument,
-        LocalProfileStore, ProfileDocumentError, ProfileId, ProfileIdError,
-        ProfileSignatureError, ProfileStore, ProfileStoreError, SignedCapabilityGrant,
-        SignedProfileDocument,
+        FileSystemProfileStore, KeyPair, KeyPairError, LocalProfileStore, ProfileDocument,
+        ProfileDocumentError, ProfileId, ProfileIdError, ProfileSignatureError, ProfileStore,
+        ProfileStoreError, SignedCapabilityGrant, SignedProfileDocument,
     };
     use serde_json::Value;
 
@@ -1588,9 +1611,9 @@ mod tests {
         "signature",
     ];
     const TEST_SIGNING_KEY_BYTES: [u8; 32] = [
-        0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87, 0x98, 0xa9, 0xba, 0xcb, 0xdc, 0xed,
-        0xfe, 0x0f, 0x1f, 0x2e, 0x3d, 0x4c, 0x5b, 0x6a, 0x79, 0x88, 0x97, 0xa6, 0xb5, 0xc4,
-        0xd3, 0xe2, 0xf1, 0x01,
+        0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87, 0x98, 0xa9, 0xba, 0xcb, 0xdc, 0xed, 0xfe,
+        0x0f, 0x1f, 0x2e, 0x3d, 0x4c, 0x5b, 0x6a, 0x79, 0x88, 0x97, 0xa6, 0xb5, 0xc4, 0xd3, 0xe2,
+        0xf1, 0x01,
     ];
 
     fn test_signing_key() -> SigningKey {
@@ -1634,9 +1657,9 @@ mod tests {
             let pointer = reference.strip_prefix('#').unwrap_or_else(|| {
                 panic!("{label} should only use local schema refs: {reference}")
             });
-            current = root_schema.pointer(pointer).unwrap_or_else(|| {
-                panic!("{label} should resolve schema ref {reference}")
-            });
+            current = root_schema
+                .pointer(pointer)
+                .unwrap_or_else(|| panic!("{label} should resolve schema ref {reference}"));
         }
 
         current
@@ -1829,32 +1852,34 @@ mod tests {
 
         signed_grant.verify().expect("signed grant should verify");
 
-        let serialized = serde_json::to_string_pretty(&signed_grant)
-            .expect("signed grant should serialize");
+        let serialized =
+            serde_json::to_string_pretty(&signed_grant).expect("signed grant should serialize");
         let mut reparsed = serde_json::from_str::<SignedCapabilityGrant>(&serialized)
             .expect("serialized signed grant should deserialize");
 
-        reparsed.verify().expect("reparsed signed grant should verify");
+        reparsed
+            .verify()
+            .expect("reparsed signed grant should verify");
         assert!(reparsed
-            .revoke(
-                &signing_key,
-                "2026-04-23T00:00:00Z",
-                "manual revoke",
-            )
+            .revoke(&signing_key, "2026-04-23T00:00:00Z", "manual revoke",)
             .expect("revoked signed grant should re-sign"));
         reparsed
             .verify()
             .expect("revoked signed grant should still verify");
         assert!(reparsed.grant().is_revoked());
-        assert_eq!(reparsed.grant().revoked_at.as_deref(), Some("2026-04-23T00:00:00Z"));
-        assert_eq!(reparsed.grant().revocation_reason.as_deref(), Some("manual revoke"));
-        assert!(!ferros_core::CapabilityGrantView::is_active(reparsed.grant()));
+        assert_eq!(
+            reparsed.grant().revoked_at.as_deref(),
+            Some("2026-04-23T00:00:00Z")
+        );
+        assert_eq!(
+            reparsed.grant().revocation_reason.as_deref(),
+            Some("manual revoke")
+        );
+        assert!(!ferros_core::CapabilityGrantView::is_active(
+            reparsed.grant()
+        ));
         assert!(!reparsed
-            .revoke(
-                &signing_key,
-                "2026-04-23T00:05:00Z",
-                "duplicate revoke",
-            )
+            .revoke(&signing_key, "2026-04-23T00:05:00Z", "duplicate revoke",)
             .expect("duplicate revoke should stay idempotent"));
     }
 
@@ -1928,7 +1953,12 @@ mod tests {
 
         assert_eq!(
             payload_fields,
-            vec!["profile_id", "capability", "revoked_at", "revocation_reason"]
+            vec![
+                "profile_id",
+                "capability",
+                "revoked_at",
+                "revocation_reason"
+            ]
         );
         assert_eq!(optional_fields, vec!["revoked_at", "revocation_reason"]);
         assert_eq!(
@@ -1989,8 +2019,8 @@ mod tests {
         assert_eq!(signed_grant.grant().profile_id.as_str(), "profile-alpha");
         assert_eq!(signed_grant.grant().capability, "consent.read");
 
-        let serialized = serde_json::to_value(&signed_grant)
-            .expect("signed grant should convert to JSON");
+        let serialized =
+            serde_json::to_value(&signed_grant).expect("signed grant should convert to JSON");
 
         assert_eq!(serialized, fixture);
         assert_matches_capability_grant_v0_contract(&serialized);
@@ -1998,8 +2028,9 @@ mod tests {
 
     #[test]
     fn invalid_signature_fixture_is_rejected() {
-        let fixture = serde_json::from_str::<SignedCapabilityGrant>(GRANT_INVALID_SIGNATURE_FIXTURE)
-            .expect("negative grant fixture should deserialize");
+        let fixture =
+            serde_json::from_str::<SignedCapabilityGrant>(GRANT_INVALID_SIGNATURE_FIXTURE)
+                .expect("negative grant fixture should deserialize");
 
         assert_eq!(
             fixture.verify(),
@@ -2015,8 +2046,8 @@ mod tests {
             .revoke(&signing_key, "2026-04-23T00:00:00Z", "manual revoke")
             .expect("revoked signed grant should re-sign");
 
-        let serialized = serde_json::to_value(&signed_grant)
-            .expect("signed grant should convert to JSON");
+        let serialized =
+            serde_json::to_value(&signed_grant).expect("signed grant should convert to JSON");
 
         assert_matches_capability_grant_v0_contract(&serialized);
         assert_eq!(serialized["revoked_at"], "2026-04-23T00:00:00Z");
@@ -2029,11 +2060,7 @@ mod tests {
         let other_signing_key = SigningKey::from_bytes(&[0x55; 32]);
 
         assert_eq!(
-            signed_grant.revoke(
-                &other_signing_key,
-                "2026-04-23T00:00:00Z",
-                "manual revoke",
-            ),
+            signed_grant.revoke(&other_signing_key, "2026-04-23T00:00:00Z", "manual revoke",),
             Err(CapabilityGrantSignatureError::SignerPublicKeyMismatch)
         );
     }
@@ -2157,7 +2184,7 @@ mod tests {
     fn serialized_profile_document_matches_profile_v0_contract() {
         let profile =
             ProfileDocument::from_json_str(MINIMAL_STAGE0_FIXTURE).expect("fixture should parse");
-        let serialized = serde_json::to_value(&profile).expect("profile should convert to JSON");
+        let serialized = serde_json::to_value(profile).expect("profile should convert to JSON");
 
         assert_matches_profile_v0_contract(&serialized);
     }
@@ -2232,11 +2259,9 @@ mod tests {
     #[test]
     fn key_pair_generates_and_round_trips_secret_key_hex() {
         let generated = KeyPair::generate("local-device").expect("key generation should succeed");
-        let reparsed = KeyPair::from_secret_key_hex(
-            generated.device_label(),
-            &generated.secret_key_hex(),
-        )
-        .expect("generated secret key should round-trip");
+        let reparsed =
+            KeyPair::from_secret_key_hex(generated.device_label(), &generated.secret_key_hex())
+                .expect("generated secret key should round-trip");
 
         assert_eq!(generated.device_label(), "local-device");
         assert_eq!(generated.profile_id(), reparsed.profile_id());
@@ -2254,8 +2279,8 @@ mod tests {
             .verify()
             .expect("signed profile should verify");
 
-        let serialized = serde_json::to_string_pretty(&signed_profile)
-            .expect("signed profile should serialize");
+        let serialized =
+            serde_json::to_string_pretty(&signed_profile).expect("signed profile should serialize");
         let mut reparsed = serde_json::from_str::<SignedProfileDocument>(&serialized)
             .expect("serialized signed profile should deserialize");
 
@@ -2265,11 +2290,7 @@ mod tests {
         assert_eq!(reparsed.profile_id(), &key_pair.profile_id());
         assert_eq!(reparsed.profile().identity.name, "Wave Pilot");
         assert!(reparsed
-            .revoke(
-                &key_pair,
-                "2026-04-23T11:00:00Z",
-                "rotated local device",
-            )
+            .revoke(&key_pair, "2026-04-23T11:00:00Z", "rotated local device",)
             .expect("revoked signed profile should re-sign"));
         reparsed
             .verify()
@@ -2281,11 +2302,7 @@ mod tests {
             Some("rotated local device")
         );
         assert!(!reparsed
-            .revoke(
-                &key_pair,
-                "2026-04-23T12:00:00Z",
-                "duplicate revoke",
-            )
+            .revoke(&key_pair, "2026-04-23T12:00:00Z", "duplicate revoke",)
             .expect("duplicate revoke should stay idempotent"));
     }
 
@@ -2299,7 +2316,10 @@ mod tests {
         signed_profile
             .verify()
             .expect("signed profile fixture should verify");
-        assert_eq!(signed_profile.profile_id().as_str(), test_key_pair().profile_id().as_str());
+        assert_eq!(
+            signed_profile.profile_id().as_str(),
+            test_key_pair().profile_id().as_str()
+        );
         assert_eq!(signed_profile.profile().identity.name, "Wave Pilot");
 
         let serialized = serde_json::to_value(&signed_profile)
@@ -2321,11 +2341,7 @@ mod tests {
         let mut signed_profile = signed_test_profile();
 
         assert!(signed_profile
-            .revoke(
-                &key_pair,
-                "2026-04-23T11:00:00Z",
-                "rotated local device",
-            )
+            .revoke(&key_pair, "2026-04-23T11:00:00Z", "rotated local device",)
             .expect("revoked signed profile should re-sign"));
         signed_profile
             .verify()
@@ -2340,7 +2356,7 @@ mod tests {
     #[test]
     fn signed_profile_document_rejects_tampering() {
         let mut signed_profile = signed_test_profile();
-        signed_profile.profile.identity.name = "Tampered Pilot".to_owned();
+        "Tampered Pilot".clone_into(&mut signed_profile.profile.identity.name);
 
         assert_eq!(
             signed_profile.verify(),
@@ -2351,8 +2367,9 @@ mod tests {
     #[test]
     fn signed_profile_document_rejects_mismatched_resigning_key() {
         let mut signed_profile = signed_test_profile();
-        let other_key_pair = KeyPair::from_secret_key_hex("backup-device", &encode_hex(&[0x55; 32]))
-            .expect("other key pair should decode");
+        let other_key_pair =
+            KeyPair::from_secret_key_hex("backup-device", &encode_hex(&[0x55; 32]))
+                .expect("other key pair should decode");
 
         assert_eq!(
             signed_profile.revoke(
@@ -2369,13 +2386,8 @@ mod tests {
         let store = FileSystemProfileStore;
         let path = unique_temp_profile_path("init");
 
-        let profile = init_profile(
-            &store,
-            &path,
-            "Wave Pilot",
-            "2026-04-23T10:00:00Z",
-        )
-        .expect("init should create a new profile");
+        let profile = init_profile(&store, &path, "Wave Pilot", "2026-04-23T10:00:00Z")
+            .expect("init should create a new profile");
 
         let loaded = store
             .load_profile(&path)
@@ -2396,21 +2408,11 @@ mod tests {
         let store = FileSystemProfileStore;
         let path = unique_temp_profile_path("init-existing");
 
-        init_profile(
-            &store,
-            &path,
-            "Wave Pilot",
-            "2026-04-23T10:00:00Z",
-        )
-        .expect("initial profile should create");
+        init_profile(&store, &path, "Wave Pilot", "2026-04-23T10:00:00Z")
+            .expect("initial profile should create");
 
-        let error = init_profile(
-            &store,
-            &path,
-            "Wave Pilot",
-            "2026-04-23T10:01:00Z",
-        )
-        .expect_err("second init should not overwrite an existing profile");
+        let error = init_profile(&store, &path, "Wave Pilot", "2026-04-23T10:01:00Z")
+            .expect_err("second init should not overwrite an existing profile");
 
         assert!(matches!(
             error,
@@ -2510,8 +2512,14 @@ mod tests {
             .expect("bundle should import");
 
         assert_eq!(imported.profile, profile);
-        assert_eq!(imported.key_pair.public_key_hex(), key_pair.public_key_hex());
-        assert_eq!(imported.key_pair.secret_key_hex(), key_pair.secret_key_hex());
+        assert_eq!(
+            imported.key_pair.public_key_hex(),
+            key_pair.public_key_hex()
+        );
+        assert_eq!(
+            imported.key_pair.secret_key_hex(),
+            key_pair.secret_key_hex()
+        );
         assert_eq!(imported.signed_grants, vec![signed_grant]);
 
         let _ = std::fs::remove_file(&source_path);
