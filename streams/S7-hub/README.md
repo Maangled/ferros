@@ -1,7 +1,7 @@
 # S7 — Smart-Home Hub
 
 **Stream:** S7  
-**Status:** ⬜ Runway mode; implementation blocked on G3  
+**Status:** 🟡 Runway mode; G4 is active and implementation is no longer blocked on G3  
 **Gate:** G4 — this stream owns the launch gate
 
 ---

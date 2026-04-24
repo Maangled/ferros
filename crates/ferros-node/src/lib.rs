@@ -4,13 +4,18 @@ use std::collections::BTreeMap;
 use std::convert::Infallible;
 use std::fmt;
 use std::fs;
-use std::io;
+use std::io::{self, Read, Write};
+use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use ferros_agents::{
-    Agent, AgentManifest, AgentRegistry, AgentStatus, EchoAgent, InMemoryAgentRegistry,
-    ReferenceAgentError, RegistryError, TimerAgent,
+    Agent, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult, AgentManifest,
+    AgentRegistry, AgentRpcAgentDetail, AgentRpcAgentSummary, AgentStatus, DenyLogEntry, EchoAgent,
+    GrantStateRecord, InMemoryAgentRegistry, ReferenceAgentError, RegistryError, TimerAgent,
+    JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_INVALID_PARAMS, JSON_RPC_INVALID_REQUEST,
+    JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_DENY_LOG_LIST,
+    METHOD_GRANT_LIST,
 };
 use ferros_core::{
     Capability, CapabilityError, CapabilityGrantView, CapabilityRequest, DenyByDefaultPolicy,
@@ -31,6 +36,9 @@ const CLI_STATE_FILE: &str = "agent-center.state";
 const CLI_PROFILE_DIRECTORY: &str = ".ferros";
 const CLI_PROFILE_FILE: &str = "profile.json";
 const PROFILE_REVOKE_REASON: &str = "revoked via ferros profile revoke";
+const LOCAL_SHELL_DEFAULT_PORT: u16 = 4317;
+const MAX_HTTP_REQUEST_BYTES: usize = 64 * 1024;
+const LOCAL_SHELL_HTML: &str = include_str!("../../../site/agent-center-shell.html");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DemoSummary {
@@ -593,6 +601,369 @@ pub fn execute_profile_cli(command: ProfileCliCommand) -> Result<Vec<String>, Cl
     execute_profile_cli_with_store(command, &FileSystemProfileStore)
 }
 
+pub fn execute_agent_read_rpc(
+    request: AgentJsonRpcRequest,
+) -> Result<AgentJsonRpcResponse, CliError> {
+    execute_agent_read_rpc_with_store_and_paths(
+        request,
+        &cli_state_path(),
+        &default_profile_path(),
+        &FileSystemProfileStore,
+    )
+}
+
+pub fn execute_agent_read_rpc_json(request_json: &str) -> Result<String, CliError> {
+    let request: AgentJsonRpcRequest = serde_json::from_str(request_json)
+        .map_err(|error| CliError::InvalidState(format!("invalid JSON-RPC request: {error}")))?;
+    let response = execute_agent_read_rpc(request)?;
+
+    serde_json::to_string_pretty(&response).map_err(|error| {
+        CliError::InvalidState(format!("failed to serialize JSON-RPC response: {error}"))
+    })
+}
+
+#[must_use]
+pub fn local_shell_default_port() -> u16 {
+    LOCAL_SHELL_DEFAULT_PORT
+}
+
+#[must_use]
+pub fn local_shell_url(port: u16) -> String {
+    format!("http://127.0.0.1:{port}/")
+}
+
+pub fn serve_local_shell(port: u16) -> io::Result<()> {
+    let listener = TcpListener::bind(("127.0.0.1", port))?;
+
+    for incoming in listener.incoming() {
+        let mut stream = incoming?;
+
+        if let Err(error) = handle_shell_connection(&mut stream) {
+            let response = text_response(
+                500,
+                "Internal Server Error",
+                format!("FERROS shell server error: {error}"),
+            );
+            let _ = write_http_response(&mut stream, response);
+        }
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct HttpRequest {
+    method: String,
+    path: String,
+    body: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct HttpResponse {
+    status_code: u16,
+    status_text: &'static str,
+    content_type: &'static str,
+    body: Vec<u8>,
+}
+
+fn handle_shell_connection(stream: &mut TcpStream) -> io::Result<()> {
+    let Some(request) = read_http_request(stream)? else {
+        return Ok(());
+    };
+    let response = route_shell_request(request);
+    write_http_response(stream, response)
+}
+
+fn route_shell_request(request: HttpRequest) -> HttpResponse {
+    route_shell_request_with_store_and_paths(
+        request,
+        &cli_state_path(),
+        &default_profile_path(),
+        &FileSystemProfileStore,
+    )
+}
+
+fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
+    request: HttpRequest,
+    state_path: &Path,
+    default_profile_path: &Path,
+    store: &S,
+) -> HttpResponse {
+    match (request.method.as_str(), request.path.as_str()) {
+        ("GET", "/") | ("GET", "/index.html") => HttpResponse {
+            status_code: 200,
+            status_text: "OK",
+            content_type: "text/html; charset=utf-8",
+            body: LOCAL_SHELL_HTML.as_bytes().to_vec(),
+        },
+        ("POST", "/rpc") => route_shell_rpc_request(request.body, state_path, default_profile_path, store),
+        _ => text_response(404, "Not Found", "FERROS local shell route not found"),
+    }
+}
+
+fn route_shell_rpc_request<S: LocalProfileStore>(
+    body: Vec<u8>,
+    state_path: &Path,
+    default_profile_path: &Path,
+    store: &S,
+) -> HttpResponse {
+    let request_json = match String::from_utf8(body) {
+        Ok(request_json) => request_json,
+        Err(_) => {
+            return text_response(400, "Bad Request", "request body must be valid UTF-8");
+        }
+    };
+
+    let request: AgentJsonRpcRequest = match serde_json::from_str(&request_json) {
+        Ok(request) => request,
+        Err(error) => {
+            return text_response(
+                400,
+                "Bad Request",
+                format!("invalid JSON-RPC request: {error}"),
+            );
+        }
+    };
+
+    match execute_agent_read_rpc_with_store_and_paths(request, state_path, default_profile_path, store) {
+        Ok(response) => match serde_json::to_string_pretty(&response) {
+            Ok(body) => HttpResponse {
+                status_code: 200,
+                status_text: "OK",
+                content_type: "application/json; charset=utf-8",
+                body: body.into_bytes(),
+            },
+            Err(error) => text_response(
+                500,
+                "Internal Server Error",
+                format!("failed to serialize JSON-RPC response: {error}"),
+            ),
+        },
+        Err(error) => text_response(500, "Internal Server Error", error.to_string()),
+    }
+}
+
+fn read_http_request(stream: &mut TcpStream) -> io::Result<Option<HttpRequest>> {
+    let mut buffer = Vec::new();
+    let mut chunk = [0_u8; 1024];
+    let mut header_end = None;
+    let mut content_length = 0_usize;
+
+    loop {
+        let bytes_read = stream.read(&mut chunk)?;
+        if bytes_read == 0 {
+            if buffer.is_empty() {
+                return Ok(None);
+            }
+            break;
+        }
+
+        buffer.extend_from_slice(&chunk[..bytes_read]);
+
+        if buffer.len() > MAX_HTTP_REQUEST_BYTES {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "HTTP request exceeded FERROS local shell limit",
+            ));
+        }
+
+        if header_end.is_none() {
+            if let Some(index) = find_http_header_end(&buffer) {
+                header_end = Some(index);
+                content_length = parse_content_length(&buffer[..index])?;
+            }
+        }
+
+        if let Some(index) = header_end {
+            let expected_len = index + 4 + content_length;
+            if buffer.len() >= expected_len {
+                return parse_http_request(&buffer[..expected_len]).map(Some);
+            }
+        }
+    }
+
+    if let Some(index) = header_end {
+        let expected_len = index + 4 + content_length;
+        if buffer.len() >= expected_len {
+            return parse_http_request(&buffer[..expected_len]).map(Some);
+        }
+    }
+
+    Err(io::Error::new(
+        io::ErrorKind::UnexpectedEof,
+        "incomplete HTTP request for FERROS local shell",
+    ))
+}
+
+fn parse_http_request(bytes: &[u8]) -> io::Result<HttpRequest> {
+    let Some(header_end) = find_http_header_end(bytes) else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "missing HTTP header terminator",
+        ));
+    };
+
+    let header_text = std::str::from_utf8(&bytes[..header_end]).map_err(|_| {
+        io::Error::new(io::ErrorKind::InvalidData, "HTTP headers must be UTF-8")
+    })?;
+    let mut lines = header_text.lines();
+    let request_line = lines
+        .next()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing HTTP request line"))?;
+    let mut parts = request_line.split_whitespace();
+    let method = parts
+        .next()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing HTTP method"))?;
+    let path = parts
+        .next()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing HTTP path"))?;
+
+    Ok(HttpRequest {
+        method: method.to_owned(),
+        path: path.split('?').next().unwrap_or(path).to_owned(),
+        body: bytes[header_end + 4..].to_vec(),
+    })
+}
+
+fn parse_content_length(header_bytes: &[u8]) -> io::Result<usize> {
+    let header_text = std::str::from_utf8(header_bytes).map_err(|_| {
+        io::Error::new(io::ErrorKind::InvalidData, "HTTP headers must be UTF-8")
+    })?;
+
+    for line in header_text.lines() {
+        if let Some(value) = line.strip_prefix("Content-Length:") {
+            return value.trim().parse::<usize>().map_err(|_| {
+                io::Error::new(io::ErrorKind::InvalidData, "invalid Content-Length header")
+            });
+        }
+
+        if let Some(value) = line.strip_prefix("content-length:") {
+            return value.trim().parse::<usize>().map_err(|_| {
+                io::Error::new(io::ErrorKind::InvalidData, "invalid Content-Length header")
+            });
+        }
+    }
+
+    Ok(0)
+}
+
+fn find_http_header_end(bytes: &[u8]) -> Option<usize> {
+    bytes.windows(4).position(|window| window == b"\r\n\r\n")
+}
+
+fn write_http_response(stream: &mut TcpStream, response: HttpResponse) -> io::Result<()> {
+    let header = format!(
+        "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n",
+        response.status_code,
+        response.status_text,
+        response.content_type,
+        response.body.len()
+    );
+
+    stream.write_all(header.as_bytes())?;
+    stream.write_all(&response.body)?;
+    stream.flush()
+}
+
+fn text_response(status_code: u16, status_text: &'static str, message: impl Into<String>) -> HttpResponse {
+    HttpResponse {
+        status_code,
+        status_text,
+        content_type: "text/plain; charset=utf-8",
+        body: message.into().into_bytes(),
+    }
+}
+
+fn execute_agent_read_rpc_with_store_and_paths<S: LocalProfileStore>(
+    request: AgentJsonRpcRequest,
+    state_path: &Path,
+    default_profile_path: &Path,
+    store: &S,
+) -> Result<AgentJsonRpcResponse, CliError> {
+    let AgentJsonRpcRequest {
+        jsonrpc,
+        id,
+        method,
+        params,
+    } = request;
+
+    if jsonrpc != ferros_agents::JSON_RPC_VERSION {
+        return Ok(AgentJsonRpcResponse::error(
+            id,
+            JSON_RPC_INVALID_REQUEST,
+            format!("unsupported JSON-RPC version: {jsonrpc}"),
+        ));
+    }
+
+    match method.as_str() {
+        METHOD_AGENT_LIST => {
+            let runtime = runtime_with_state(state_path)?;
+            let agents = runtime
+                .agent_records()
+                .into_iter()
+                .map(agent_record_to_rpc_summary)
+                .collect();
+
+            Ok(AgentJsonRpcResponse::success(
+                id,
+                AgentJsonRpcResult::AgentList { agents },
+            ))
+        }
+        METHOD_AGENT_DESCRIBE => {
+            let Some(agent_name) = params.agent_name.as_deref() else {
+                return Ok(AgentJsonRpcResponse::error(
+                    id,
+                    JSON_RPC_INVALID_PARAMS,
+                    "agentName parameter is required for agent.describe",
+                ));
+            };
+
+            let runtime = runtime_with_state(state_path)?;
+            let Some(agent) = runtime.describe_agent(agent_name) else {
+                return Ok(AgentJsonRpcResponse::error(
+                    id,
+                    JSON_RPC_AGENT_NOT_FOUND,
+                    format!("agent not found: {agent_name}"),
+                ));
+            };
+
+            Ok(AgentJsonRpcResponse::success(
+                id,
+                AgentJsonRpcResult::AgentDetail {
+                    agent: agent_record_to_rpc_detail(agent),
+                },
+            ))
+        }
+        METHOD_GRANT_LIST => {
+            let profile_path = params
+                .profile_path
+                .as_deref()
+                .map(PathBuf::from)
+                .unwrap_or_else(|| default_profile_path.to_path_buf());
+            let grants = load_grant_state_records(store, &profile_path)?;
+
+            Ok(AgentJsonRpcResponse::success(
+                id,
+                AgentJsonRpcResult::GrantList { grants },
+            ))
+        }
+        METHOD_DENY_LOG_LIST => {
+            let state = CliState::load(state_path)?;
+            let entries = deny_log_entries(&state, params.agent_name.as_deref());
+
+            Ok(AgentJsonRpcResponse::success(
+                id,
+                AgentJsonRpcResult::DenyLog { entries },
+            ))
+        }
+        _ => Ok(AgentJsonRpcResponse::error(
+            id,
+            JSON_RPC_METHOD_NOT_FOUND,
+            format!("unknown JSON-RPC method: {method}"),
+        )),
+    }
+}
+
 fn execute_agent_cli_with_state_path(
     command: AgentCliCommand,
     state_path: &Path,
@@ -891,6 +1262,98 @@ fn parse_agent_status(value: &str) -> Option<AgentStatus> {
     }
 }
 
+fn agent_record_to_rpc_summary(record: AgentRecord) -> AgentRpcAgentSummary {
+    AgentRpcAgentSummary {
+        name: record.manifest.name.as_str().to_owned(),
+        version: record.manifest.version,
+        status: format_agent_status(record.status).to_owned(),
+    }
+}
+
+fn agent_record_to_rpc_detail(record: AgentRecord) -> AgentRpcAgentDetail {
+    AgentRpcAgentDetail {
+        name: record.manifest.name.as_str().to_owned(),
+        version: record.manifest.version,
+        status: format_agent_status(record.status).to_owned(),
+        required_capabilities: record.manifest.required_capabilities,
+    }
+}
+
+fn load_grant_state_records<S: LocalProfileStore>(
+    store: &S,
+    profile_path: &Path,
+) -> Result<Vec<GrantStateRecord>, CliError> {
+    match store.load_local_profile(profile_path) {
+        Ok(state) => Ok(state
+            .signed_grants
+            .into_iter()
+            .map(|signed_grant| grant_state_record(signed_grant.grant))
+            .collect()),
+        Err(ProfileStoreError::Io(error)) if error.kind() == io::ErrorKind::NotFound => {
+            Ok(Vec::new())
+        }
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn grant_state_record(grant: CapabilityGrant) -> GrantStateRecord {
+    let is_active = !grant.is_revoked();
+
+    GrantStateRecord {
+        profile_id: grant.profile_id.as_str().to_owned(),
+        capability: grant.capability,
+        is_active,
+        revoked_at: grant.revoked_at,
+        revocation_reason: grant.revocation_reason,
+    }
+}
+
+fn deny_log_entries(state: &CliState, agent_name: Option<&str>) -> Vec<DenyLogEntry> {
+    state
+        .log_entries
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entry)| parse_deny_log_entry(index + 1, entry))
+        .filter(|entry| agent_name.map_or(true, |name| entry.agent_name.as_deref() == Some(name)))
+        .collect()
+}
+
+fn parse_deny_log_entry(entry_id: usize, entry: &str) -> Option<DenyLogEntry> {
+    if let Some(message) = entry.strip_prefix("denied-start:") {
+        let (agent_name, capability) = match message.split_once(" missing ") {
+            Some((agent_name, capability)) => {
+                (Some(agent_name.to_owned()), Some(capability.to_owned()))
+            }
+            None => (None, None),
+        };
+
+        return Some(DenyLogEntry {
+            entry_id,
+            kind: "deniedStart".to_owned(),
+            message: message.to_owned(),
+            agent_name,
+            capability,
+        });
+    }
+
+    let message = entry.strip_prefix("denied:")?;
+    let (agent_name, capability) = match message.split_once(':') {
+        Some((agent_name, remainder)) => match remainder.split_once(':') {
+            Some((capability, _)) => (Some(agent_name.to_owned()), Some(capability.to_owned())),
+            None => (Some(agent_name.to_owned()), None),
+        },
+        None => (None, None),
+    };
+
+    Some(DenyLogEntry {
+        entry_id,
+        kind: "denied".to_owned(),
+        message: message.to_owned(),
+        agent_name,
+        capability,
+    })
+}
+
 pub fn run_demo() -> Result<DemoSummary, DemoError> {
     let mut runtime = build_reference_runtime()?;
 
@@ -928,11 +1391,15 @@ pub fn run_demo() -> Result<DemoSummary, DemoError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        default_profile_path, execute_agent_cli_with_state_path, execute_profile_cli_with_store,
-        run_demo, AgentCliCommand, CliError, DemoError, DemoRuntime, ProfileCliCommand,
-        DEFAULT_PROFILE_NAME,
+        default_profile_path, execute_agent_cli_with_state_path, execute_agent_read_rpc_json,
+        execute_agent_read_rpc_with_store_and_paths, execute_profile_cli_with_store, run_demo,
+        route_shell_request_with_store_and_paths, AgentCliCommand, CliError, CliState,
+        DemoError, DemoRuntime, HttpRequest, ProfileCliCommand, DEFAULT_PROFILE_NAME,
     };
-    use ferros_agents::{EchoAgent, TimerAgent};
+    use ferros_agents::{
+        AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResult, EchoAgent, TimerAgent,
+        METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
+    };
     use ferros_profile::{CapabilityGrant, FileSystemProfileStore, ProfileDocument, ProfileId};
     use std::fs;
     use std::path::{Path, PathBuf};
@@ -1110,6 +1577,263 @@ mod tests {
     }
 
     #[test]
+    fn agent_read_rpc_lists_reference_agents() {
+        let state_path = unique_state_path("rpc-list");
+        let profile_path = unique_profile_path("rpc-list");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new("req-1", METHOD_AGENT_LIST, AgentJsonRpcParams::default()),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("list RPC should succeed");
+
+        match response.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentList { agents } => {
+                assert_eq!(agents.len(), 2);
+                assert_eq!(agents[0].name, "echo");
+                assert_eq!(agents[0].status, "registered");
+                assert_eq!(agents[1].name, "timer");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn agent_read_rpc_describes_agent_with_capability_requirements() {
+        let state_path = unique_state_path("rpc-describe");
+        let profile_path = unique_profile_path("rpc-describe");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-2",
+                METHOD_AGENT_DESCRIBE,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("describe RPC should succeed");
+
+        match response.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentDetail { agent } => {
+                assert_eq!(agent.name, "echo");
+                assert_eq!(agent.status, "registered");
+                assert_eq!(agent.required_capabilities.len(), 1);
+                assert_eq!(agent.required_capabilities[0].capability, "agent.echo");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn agent_read_rpc_lists_signed_grant_state_from_local_profile() {
+        let store = FileSystemProfileStore;
+        let state_path = unique_state_path("rpc-grants");
+        let profile_path = unique_profile_path("rpc-grants");
+
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &store,
+        )
+        .expect("profile init should succeed");
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Grant {
+                path: profile_path.clone(),
+                capability: "agent.echo".to_owned(),
+            },
+            &store,
+        )
+        .expect("profile grant should succeed");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-3",
+                METHOD_GRANT_LIST,
+                AgentJsonRpcParams {
+                    agent_name: None,
+                    profile_path: Some(profile_path.display().to_string()),
+                },
+            ),
+            &state_path,
+            &profile_path,
+            &store,
+        )
+        .expect("grant list RPC should succeed");
+
+        match response.result.expect("result should be present") {
+            AgentJsonRpcResult::GrantList { grants } => {
+                assert_eq!(grants.len(), 1);
+                assert_eq!(grants[0].capability, "agent.echo");
+                assert!(grants[0].is_active);
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn agent_read_rpc_lists_only_deny_entries_and_supports_agent_filter() {
+        let state_path = unique_state_path("rpc-deny-log");
+        let profile_path = unique_profile_path("rpc-deny-log");
+        let state = CliState {
+            agent_statuses: Default::default(),
+            log_entries: vec![
+                "started:echo".to_owned(),
+                "denied:echo:agent.admin:Denied(NoGrantsPresented)".to_owned(),
+                "denied-start:timer missing agent.timer".to_owned(),
+            ],
+        };
+
+        state.save(&state_path).expect("state file should save");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-4",
+                METHOD_DENY_LOG_LIST,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("deny log RPC should succeed");
+
+        match response.result.expect("result should be present") {
+            AgentJsonRpcResult::DenyLog { entries } => {
+                assert_eq!(entries.len(), 1);
+                assert_eq!(entries[0].agent_name.as_deref(), Some("echo"));
+                assert_eq!(entries[0].capability.as_deref(), Some("agent.admin"));
+                assert_eq!(entries[0].kind, "denied");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn agent_read_rpc_json_round_trips_serialized_requests() {
+        let request_json = serde_json::to_string(&AgentJsonRpcRequest::new(
+            "req-5",
+            METHOD_AGENT_LIST,
+            AgentJsonRpcParams::default(),
+        ))
+        .expect("request should serialize");
+
+        let response_json = execute_agent_read_rpc_json(&request_json)
+            .expect("JSON-RPC wrapper should return a JSON response");
+        let response: ferros_agents::AgentJsonRpcResponse =
+            serde_json::from_str(&response_json).expect("response JSON should deserialize");
+
+        match response.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentList { agents } => {
+                assert_eq!(agents.len(), 2);
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn shell_route_serves_local_shell_html() {
+        let state_path = unique_state_path("shell-html");
+        let profile_path = unique_profile_path("shell-html");
+
+        let response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "GET".to_owned(),
+                path: "/".to_owned(),
+                body: Vec::new(),
+            },
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        );
+
+        let html = String::from_utf8(response.body).expect("shell HTML should be valid UTF-8");
+
+        assert_eq!(response.status_code, 200);
+        assert!(html.contains("FERROS Local Shell"));
+        assert!(html.contains("/rpc"));
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn shell_route_posts_json_rpc_agent_list() {
+        let state_path = unique_state_path("shell-rpc");
+        let profile_path = unique_profile_path("shell-rpc");
+        let request_body = serde_json::to_vec(&AgentJsonRpcRequest::new(
+            "req-shell",
+            METHOD_AGENT_LIST,
+            AgentJsonRpcParams::default(),
+        ))
+        .expect("request JSON should serialize");
+
+        let response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "POST".to_owned(),
+                path: "/rpc".to_owned(),
+                body: request_body,
+            },
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        );
+
+        let payload: ferros_agents::AgentJsonRpcResponse = serde_json::from_slice(&response.body)
+            .expect("shell RPC response should be valid JSON");
+
+        assert_eq!(response.status_code, 200);
+        match payload.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentList { agents } => {
+                assert_eq!(agents.len(), 2);
+                assert_eq!(agents[0].name, "echo");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn shell_route_returns_not_found_for_unknown_paths() {
+        let state_path = unique_state_path("shell-404");
+        let profile_path = unique_profile_path("shell-404");
+
+        let response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "GET".to_owned(),
+                path: "/missing".to_owned(),
+                body: Vec::new(),
+            },
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        );
+
+        assert_eq!(response.status_code, 404);
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
     fn profile_cli_init_and_show_round_trip_profile_document() {
         let store = FileSystemProfileStore;
         let profile_path = unique_profile_path("init-show");
@@ -1215,5 +1939,12 @@ mod tests {
         if let Some(parent) = path.parent() {
             let _ = fs::remove_dir(parent);
         }
+    }
+
+    fn cleanup_profile_artifacts(path: &Path) {
+        let _ = fs::remove_file(path);
+        let _ = fs::remove_file(path.with_extension("key.json"));
+        let _ = fs::remove_file(path.with_extension("grants.json"));
+        cleanup_parent_dir(path);
     }
 }

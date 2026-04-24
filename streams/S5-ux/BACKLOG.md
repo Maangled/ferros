@@ -16,15 +16,17 @@
 - [ ] Execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once inbound links are checked
 - [ ] Verify no dead links in site
 
-## Next (Phase B — after G3)
+## Phase B (active)
 
-- [ ] Scaffold `crates/ferros-web/` or equivalent web shell server
-- [ ] Translate `PHASE-B-SHELL-WIREFRAME.md` into a fixed-slot HTML shell with visible collapse anchors
-- [ ] Agent list surface (reads from S3 registry via JSON/RPC)
-- [ ] Agent detail surface
-- [ ] Capability grant surface
-- [ ] Deny log surface
-- [ ] Wire to real `ferros-node` backend — no fake data
+- [x] Scaffold `crates/ferros-web/` or equivalent web shell server
+- [x] Translate `PHASE-B-SHELL-WIREFRAME.md` into a fixed-slot HTML shell with visible collapse anchors
+- [x] Agent list surface (reads from S3 registry via JSON/RPC)
+- [x] Agent detail surface
+- [x] Capability grant surface
+- [x] Deny log surface
+- [x] Wire to real `ferros-node` backend — no fake data
+- [ ] Add focused UI acceptance coverage for `ferros-node shell` plus `/rpc`
+- [ ] Stage privileged grant/revoke shell intents without bypassing S2/S3/S4 consent boundaries
 
 ## Later (Phase C — post-G3)
 
@@ -34,4 +36,4 @@
 
 ## Blocked
 
-- Phase B: blocked on G3 (needs S3 JSON/RPC API).
+- No current upstream blocker. Privileged grant/revoke shell actions still depend on later S3/S4 write surfaces.

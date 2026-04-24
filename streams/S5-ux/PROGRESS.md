@@ -4,6 +4,16 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-24 — First localhost shell slice landed
+
+- Added `site/agent-center-shell.html` as the first real fixed-slot localhost shell and wired it to the read-first S3 JSON/RPC routes via `ferros-node shell [port]`.
+- Extended `crates/ferros-node/src/lib.rs` so the current local host now serves `GET /` for the shell and `POST /rpc` for the existing read-first JSON/RPC contract instead of relying on fake data or a parallel transport path.
+- Added focused shell route tests to `cargo test -p ferros-node`, then browser-validated the live shell at `http://127.0.0.1:4317/` against real agent, grant-state, and deny-log data.
+- Fixed the inspector capability rendering bug so required capabilities now show the real profile identifier instead of an `undefined:*` placeholder after the shell asset is rebuilt into the binary.
+- Kept the wave read-first: no privileged write actions, no grant mutation through the shell, and no claim that Phase A cleanup is complete.
+
+---
+
 ## 2026-04-24 — Prototype authority and archive note landed
 
 - Added a surface-authority map to `site/index.html` so the live landing page now points readers to the two kept docs prototypes as reference-only priors and to the archive note.

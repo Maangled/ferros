@@ -10,13 +10,11 @@ ferros-agents = { path = "../ferros-agents" }
 ferros-core = { path = "../ferros-core" }
 ferros-profile = { path = "../ferros-profile" }
 ferros-runtime = { path = "../ferros-runtime" }
+serde_json = "1"
 time = { version = "=0.3.36", features = ["formatting"] }
 
 [lib]
 path = "src/lib.rs"
-
-[dev-dependencies]
-serde_json = "1"
 
 [[bin]]
 name = "ferros-node"

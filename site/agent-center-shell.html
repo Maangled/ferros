@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FERROS Local Shell</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #09111a;
+      --panel: #101c28;
+      --panel-alt: #132433;
+      --panel-strong: #182c3e;
+      --line: rgba(122, 167, 201, 0.2);
+      --line-strong: rgba(122, 167, 201, 0.42);
+      --text: #edf4fb;
+      --muted: #9eb1c4;
+      --dim: #6f8399;
+      --accent: #70d6c1;
+      --accent-strong: #7ab0f7;
+      --warn: #f5bf63;
+      --danger: #ff8b7b;
+      --ok: #73d4a5;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+      --radius: 18px;
+      --radius-small: 12px;
+      --font-ui: "Aptos", "Trebuchet MS", "Segoe UI", sans-serif;
+      --font-mono: "Cascadia Code", "Consolas", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-ui);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(112, 214, 193, 0.14), transparent 30%),
+        radial-gradient(circle at top right, rgba(122, 176, 247, 0.12), transparent 26%),
+        linear-gradient(180deg, #09111a 0%, #0b131d 100%);
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: minmax(250px, 1.05fr) minmax(420px, 1.7fr) minmax(250px, 1fr);
+      grid-template-rows: auto minmax(420px, 1fr) minmax(180px, auto) auto;
+      grid-template-areas:
+        "top top top"
+        "registry center inspector"
+        "tools center audit"
+        "status status status";
+      gap: 16px;
+      min-height: 100vh;
+      padding: 18px;
+    }
+
+    .panel {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, rgba(19, 36, 51, 0.96), rgba(12, 23, 33, 0.94));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .panel.collapsed .panel-body,
+    .panel.collapsed .panel-scroll,
+    .panel.collapsed .panel-footer {
+      display: none;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid rgba(122, 167, 201, 0.12);
+    }
+
+    .panel-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .anchor-pill,
+    .state-pill,
+    .route-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(122, 167, 201, 0.24);
+      background: rgba(122, 167, 201, 0.08);
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+
+    .panel-title {
+      margin: 8px 0 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .panel-subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid rgba(122, 167, 201, 0.24);
+      background: rgba(122, 167, 201, 0.08);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+    }
+
+    button:hover {
+      background: rgba(122, 167, 201, 0.16);
+      border-color: rgba(122, 167, 201, 0.4);
+      transform: translateY(-1px);
+    }
+
+    button.is-active {
+      background: linear-gradient(90deg, rgba(112, 214, 193, 0.22), rgba(122, 176, 247, 0.2));
+      border-color: rgba(112, 214, 193, 0.42);
+      color: #f1fffb;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid rgba(122, 167, 201, 0.2);
+      background: rgba(7, 14, 21, 0.65);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 11px 12px;
+    }
+
+    .top-edge {
+      grid-area: top;
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      background: linear-gradient(135deg, rgba(15, 31, 45, 0.98), rgba(11, 21, 31, 0.96));
+    }
+
+    .identity-title {
+      margin: 0;
+      font-size: clamp(1.6rem, 2vw, 2.2rem);
+      letter-spacing: -0.03em;
+    }
+
+    .identity-subtitle {
+      margin-top: 8px;
+      max-width: 50rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .identity-meta,
+    .connection-metrics,
+    .status-rail {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .identity-meta {
+      margin-top: 14px;
+    }
+
+    .top-left {
+      grid-area: registry;
+    }
+
+    .center {
+      grid-area: center;
+    }
+
+    .top-right {
+      grid-area: inspector;
+    }
+
+    .bottom-left {
+      grid-area: tools;
+    }
+
+    .bottom-right {
+      grid-area: audit;
+    }
+
+    .bottom-edge {
+      grid-area: status;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      background: linear-gradient(180deg, rgba(15, 31, 45, 0.98), rgba(11, 21, 31, 0.96));
+    }
+
+    .panel-body {
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .panel-scroll {
+      overflow: auto;
+      min-height: 0;
+    }
+
+    .route-list,
+    .stack,
+    .detail-stack,
+    .shell-notes {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .route-button,
+    .list-row,
+    .table-row {
+      border: 1px solid rgba(122, 167, 201, 0.14);
+      background: rgba(8, 15, 22, 0.48);
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+
+    .route-button {
+      text-align: left;
+      width: 100%;
+    }
+
+    .route-button strong,
+    .list-row strong,
+    .table-row strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .route-button small,
+    .list-row small,
+    .table-row small,
+    .note-copy,
+    .metric-copy {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .list-row,
+    .table-row {
+      cursor: pointer;
+    }
+
+    .list-row.is-selected,
+    .table-row.is-selected {
+      border-color: rgba(112, 214, 193, 0.38);
+      background: linear-gradient(90deg, rgba(112, 214, 193, 0.15), rgba(122, 176, 247, 0.12));
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric-card,
+    .note-card {
+      border: 1px solid rgba(122, 167, 201, 0.14);
+      background: rgba(8, 15, 22, 0.44);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .metric-label {
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.72rem;
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+    }
+
+    .detail-key {
+      color: var(--dim);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .detail-value {
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .detail-pair {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(122, 167, 201, 0.1);
+    }
+
+    .detail-pair:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .table-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .table-row-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: var(--dim);
+    }
+
+    .shell-note-title {
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--warn);
+      margin-bottom: 8px;
+    }
+
+    .shell-note-copy {
+      color: var(--muted);
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    .shell-controls {
+      display: grid;
+      gap: 12px;
+    }
+
+    .control-row {
+      display: grid;
+      gap: 8px;
+    }
+
+    .control-row label {
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .status-indicator[data-state="ready"] {
+      color: var(--ok);
+      border-color: rgba(115, 212, 165, 0.4);
+      background: rgba(115, 212, 165, 0.12);
+    }
+
+    .status-indicator[data-state="connecting"] {
+      color: var(--warn);
+      border-color: rgba(245, 191, 99, 0.38);
+      background: rgba(245, 191, 99, 0.12);
+    }
+
+    .status-indicator[data-state="degraded"],
+    .status-indicator[data-state="offline"] {
+      color: var(--danger);
+      border-color: rgba(255, 139, 123, 0.4);
+      background: rgba(255, 139, 123, 0.12);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1120px) {
+      .shell {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-rows: auto auto auto auto auto;
+        grid-template-areas:
+          "top top"
+          "registry inspector"
+          "center center"
+          "tools audit"
+          "status status";
+      }
+    }
+
+    @media (max-width: 800px) {
+      .shell {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "top"
+          "registry"
+          "center"
+          "inspector"
+          "tools"
+          "audit"
+          "status";
+      }
+
+      .top-edge,
+      .bottom-edge {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="panel top-edge">
+      <section>
+        <span class="panel-label">FERROS local shell</span>
+        <h1 class="identity-title">Agent Center Read Surface</h1>
+        <p class="identity-subtitle">
+          Fixed-slot localhost shell powered by the landed read-first JSON-RPC routes. This slice stays read-heavy on purpose: agent list, agent detail, grant state, and deny log are real; privileged writes remain future work.
+        </p>
+        <div class="identity-meta">
+          <span class="state-pill">route <span id="active-route-pill">agents</span></span>
+          <span class="state-pill">target <span id="target-pill">localhost</span></span>
+          <span class="state-pill">focus shell.phase-b.v1</span>
+        </div>
+      </section>
+
+      <section class="connection-metrics">
+        <span id="connection-state" class="state-pill status-indicator" data-state="connecting">connecting</span>
+        <span class="state-pill">rpc <span id="rpc-health">warming</span></span>
+        <span class="state-pill">agents <span id="agent-count-pill">0</span></span>
+        <span class="state-pill">denies <span id="deny-count-pill">0</span></span>
+      </section>
+
+      <section class="shell-notes">
+        <div class="note-card">
+          <div class="shell-note-title">Current lane contract</div>
+          <p class="shell-note-copy">Consumes <code>agent.list</code>, <code>agent.describe</code>, <code>grant.list</code>, and <code>denyLog.list</code> only. Consent and grant-write surfaces stay visible as owned future slots rather than fake actions.</p>
+        </div>
+      </section>
+    </header>
+
+    <aside id="registry-panel" class="panel top-left">
+      <div class="panel-header">
+        <div>
+          <span class="panel-label">Top-left <span class="anchor-pill">registry anchor</span></span>
+          <h2 class="panel-title">Routes and registry</h2>
+          <p class="panel-subtitle">Select the active route and choose an agent for the inspector.</p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" data-collapse-target="registry-panel">Collapse</button>
+        </div>
+      </div>
+      <div class="panel-body panel-scroll">
+        <div class="route-list" id="route-list">
+          <button class="route-button is-active" data-route="agents" type="button">
+            <strong>Agents</strong>
+            <small>Registry state, status summary, and required capabilities.</small>
+          </button>
+          <button class="route-button" data-route="grants" type="button">
+            <strong>Grants</strong>
+            <small>Real grant state from the current local profile path.</small>
+          </button>
+          <button class="route-button" data-route="denyLog" type="button">
+            <strong>Deny log</strong>
+            <small>Deny-by-default evidence from current persisted shell log state.</small>
+          </button>
+        </div>
+
+        <div class="stack" id="agent-list"></div>
+      </div>
+    </aside>
+
+    <main id="center-panel" class="panel center">
+      <div class="panel-header">
+        <div>
+          <span class="panel-label">Center <span class="anchor-pill">focus anchor</span></span>
+          <h2 class="panel-title">Primary focus</h2>
+          <p id="center-subtitle" class="panel-subtitle">Live read surface for the currently selected route.</p>
+        </div>
+        <div class="panel-actions">
+          <button id="refresh-button" type="button">Refresh</button>
+        </div>
+      </div>
+      <div class="panel-body panel-scroll">
+        <div class="metrics-grid">
+          <article class="metric-card">
+            <div class="metric-label">Registered agents</div>
+            <div class="metric-value" id="metric-agents">0</div>
+            <div class="metric-copy">Current runtime registry rows through <code>agent.list</code>.</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-label">Grant rows</div>
+            <div class="metric-value" id="metric-grants">0</div>
+            <div class="metric-copy">Active or revoked grant state through <code>grant.list</code>.</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-label">Deny entries</div>
+            <div class="metric-value" id="metric-denies">0</div>
+            <div class="metric-copy">Persisted deny evidence through <code>denyLog.list</code>.</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-label">Connection</div>
+            <div class="metric-value" id="metric-connection">--</div>
+            <div class="metric-copy">Same-origin shell transport to the current localhost server.</div>
+          </article>
+        </div>
+
+        <section id="agents-surface" class="table-list"></section>
+        <section id="grants-surface" class="table-list hidden"></section>
+        <section id="deny-surface" class="table-list hidden"></section>
+      </div>
+    </main>
+
+    <aside id="inspector-panel" class="panel top-right">
+      <div class="panel-header">
+        <div>
+          <span class="panel-label">Top-right <span class="anchor-pill">inspector anchor</span></span>
+          <h2 class="panel-title">Inspector</h2>
+          <p class="panel-subtitle">Selected object detail, metadata, and required capabilities.</p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" data-collapse-target="inspector-panel">Collapse</button>
+        </div>
+      </div>
+      <div id="inspector-content" class="panel-body detail-stack">
+        <div class="note-card">
+          <div class="shell-note-title">No object selected</div>
+          <p class="shell-note-copy">Select an agent, grant row, or deny event to inspect the current live detail.</p>
+        </div>
+      </div>
+    </aside>
+
+    <section id="tools-panel" class="panel bottom-left">
+      <div class="panel-header">
+        <div>
+          <span class="panel-label">Bottom-left <span class="anchor-pill">tools anchor</span></span>
+          <h2 class="panel-title">Tools and filters</h2>
+          <p class="panel-subtitle">Route-scoped filter controls without introducing extra modal layers.</p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" data-collapse-target="tools-panel">Collapse</button>
+        </div>
+      </div>
+      <div class="panel-body shell-controls">
+        <div class="control-row">
+          <label for="profile-path-input">Grant profile path</label>
+          <input id="profile-path-input" type="text" placeholder="Uses ferros default when left empty" />
+        </div>
+        <div class="control-row">
+          <label for="agent-filter-input">Agent filter</label>
+          <input id="agent-filter-input" type="text" placeholder="Filter registry rows by name" />
+        </div>
+        <div class="note-card">
+          <div class="shell-note-title">Current route scope</div>
+          <p id="tools-copy" class="shell-note-copy">Agents route shows registry rows and promotes the selected agent into the inspector.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="audit-panel" class="panel bottom-right">
+      <div class="panel-header">
+        <div>
+          <span class="panel-label">Bottom-right <span class="anchor-pill">consent / audit anchor</span></span>
+          <h2 class="panel-title">Consent and audit</h2>
+          <p class="panel-subtitle">Visible home for privileged actions even before write flows exist.</p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" data-collapse-target="audit-panel">Collapse</button>
+        </div>
+      </div>
+      <div class="panel-body shell-notes">
+        <div class="note-card">
+          <div class="shell-note-title">Read-only on purpose</div>
+          <p class="shell-note-copy">Grant creation and revoke actions are not wired yet. This shell keeps their home slot visible so Phase B does not invent a modal stack or fake write flow before the S3/S5 write contract exists.</p>
+        </div>
+        <div class="note-card">
+          <div class="shell-note-title">Latest deny event</div>
+          <p id="latest-deny-copy" class="shell-note-copy">No deny events loaded yet.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="panel bottom-edge">
+      <div class="status-rail">
+        <span class="route-pill">route <span id="status-route">agents</span></span>
+        <span class="route-pill">rpc <span id="status-rpc">warming</span></span>
+        <span class="route-pill">profile <span id="status-profile">default</span></span>
+      </div>
+      <div class="status-rail">
+        <span class="route-pill">errors <span id="status-error-count">0</span></span>
+        <span class="route-pill">selected <span id="status-selected">none</span></span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const state = {
+      route: 'agents',
+      agents: [],
+      selectedAgent: null,
+      grants: [],
+      selectedGrantIndex: null,
+      denyEntries: [],
+      selectedDenyIndex: null,
+      errors: 0,
+      connection: 'connecting',
+      rpcHealth: 'warming',
+      selectedLabel: 'none',
+    };
+
+    function setConnection(stateLabel, detail) {
+      state.connection = stateLabel;
+      state.rpcHealth = detail;
+      const stateChip = document.getElementById('connection-state');
+      stateChip.dataset.state = stateLabel;
+      stateChip.textContent = stateLabel;
+      document.getElementById('rpc-health').textContent = detail;
+      document.getElementById('metric-connection').textContent = detail;
+      document.getElementById('status-rpc').textContent = detail;
+    }
+
+    async function rpc(method, params = {}) {
+      const response = await fetch('/rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: `${method}-${Date.now()}`,
+          method,
+          params,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const payload = await response.json();
+      if (payload.error) {
+        throw new Error(payload.error.message || `JSON-RPC ${payload.error.code}`);
+      }
+
+      return payload.result;
+    }
+
+    function selectedProfilePath() {
+      const value = document.getElementById('profile-path-input').value.trim();
+      document.getElementById('status-profile').textContent = value || 'default';
+      return value;
+    }
+
+    async function refreshShell() {
+      setConnection('connecting', 'warming');
+      try {
+        const [agentList, grantList, denyLog] = await Promise.all([
+          rpc('agent.list'),
+          rpc('grant.list', selectedProfilePath() ? { profilePath: selectedProfilePath() } : {}),
+          rpc('denyLog.list'),
+        ]);
+
+        state.agents = agentList.agents || [];
+        state.grants = grantList.grants || [];
+        state.denyEntries = denyLog.entries || [];
+        state.errors = 0;
+
+        if (!state.selectedAgent && state.agents.length > 0) {
+          state.selectedAgent = state.agents[0].name;
+        }
+
+        if (state.selectedAgent) {
+          await loadAgentDetail(state.selectedAgent);
+        }
+
+        setConnection('ready', 'live');
+        render();
+      } catch (error) {
+        state.errors += 1;
+        setConnection('offline', 'error');
+        setStatusSelection('none');
+        renderOffline(error instanceof Error ? error.message : String(error));
+      }
+    }
+
+    async function loadAgentDetail(agentName) {
+      const detail = await rpc('agent.describe', { agentName });
+      state.selectedAgent = detail.agent.name;
+      state.selectedAgentDetail = detail.agent;
+      setStatusSelection(agentName);
+    }
+
+    function render() {
+      document.getElementById('agent-count-pill').textContent = String(state.agents.length);
+      document.getElementById('deny-count-pill').textContent = String(state.denyEntries.length);
+      document.getElementById('metric-agents').textContent = String(state.agents.length);
+      document.getElementById('metric-grants').textContent = String(state.grants.length);
+      document.getElementById('metric-denies').textContent = String(state.denyEntries.length);
+      document.getElementById('status-error-count').textContent = String(state.errors);
+      document.getElementById('active-route-pill').textContent = state.route;
+      document.getElementById('status-route').textContent = state.route;
+      renderRouteButtons();
+      renderAgentList();
+      renderSurface();
+      renderInspector();
+      renderToolsCopy();
+      renderAuditCopy();
+    }
+
+    function renderOffline(message) {
+      document.getElementById('agent-list').innerHTML = `
+        <article class="note-card">
+          <div class="shell-note-title">RPC unavailable</div>
+          <p class="shell-note-copy">The shell tried to read the localhost RPC surface and failed with: ${escapeHtml(message)}.</p>
+        </article>`;
+
+      document.getElementById('agents-surface').innerHTML = `
+        <article class="note-card">
+          <div class="shell-note-title">Offline shell</div>
+          <p class="shell-note-copy">Start <code>ferros-node shell</code> to serve the local shell and the read-only <code>/rpc</code> endpoint.</p>
+        </article>`;
+
+      document.getElementById('grants-surface').innerHTML = '';
+      document.getElementById('deny-surface').innerHTML = '';
+      document.getElementById('inspector-content').innerHTML = `
+        <div class="note-card">
+          <div class="shell-note-title">Inspector waiting</div>
+          <p class="shell-note-copy">No live object detail is available while the RPC surface is offline.</p>
+        </div>`;
+      document.getElementById('latest-deny-copy').textContent = 'No deny event available while the shell is offline.';
+      document.getElementById('status-error-count').textContent = String(state.errors);
+    }
+
+    function renderRouteButtons() {
+      document.querySelectorAll('[data-route]').forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.route === state.route);
+      });
+    }
+
+    function renderAgentList() {
+      const filter = document.getElementById('agent-filter-input').value.trim().toLowerCase();
+      const rows = state.agents
+        .filter((agent) => !filter || agent.name.toLowerCase().includes(filter))
+        .map((agent) => `
+          <button class="list-row ${agent.name === state.selectedAgent ? 'is-selected' : ''}" data-agent-name="${agent.name}" type="button">
+            <strong>${escapeHtml(agent.name)}</strong>
+            <small>version ${escapeHtml(agent.version)} · status ${escapeHtml(agent.status)}</small>
+          </button>`)
+        .join('');
+
+      document.getElementById('agent-list').innerHTML = rows || `
+        <article class="note-card">
+          <div class="shell-note-title">No agents</div>
+          <p class="shell-note-copy">The current runtime returned no registry rows.</p>
+        </article>`;
+
+      document.querySelectorAll('[data-agent-name]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          await loadAgentDetail(button.dataset.agentName);
+          render();
+        });
+      });
+    }
+
+    function renderSurface() {
+      const agentsSurface = document.getElementById('agents-surface');
+      const grantsSurface = document.getElementById('grants-surface');
+      const denySurface = document.getElementById('deny-surface');
+      agentsSurface.classList.toggle('hidden', state.route !== 'agents');
+      grantsSurface.classList.toggle('hidden', state.route !== 'grants');
+      denySurface.classList.toggle('hidden', state.route !== 'denyLog');
+
+      document.getElementById('center-subtitle').textContent = centerSubtitle();
+
+      agentsSurface.innerHTML = state.agents.map((agent) => `
+        <article class="table-row ${agent.name === state.selectedAgent ? 'is-selected' : ''}" data-focus-agent="${agent.name}">
+          <strong>${escapeHtml(agent.name)}</strong>
+          <small>${escapeHtml(agent.status)} · version ${escapeHtml(agent.version)}</small>
+          <div class="table-row-meta"><span>Route focus</span><span>inspect agent</span></div>
+        </article>`).join('') || emptyNote('No registry rows', 'The runtime still exposes a valid read surface, but no agents are currently visible.');
+
+      grantsSurface.innerHTML = state.grants.map((grant, index) => `
+        <article class="table-row ${index === state.selectedGrantIndex ? 'is-selected' : ''}" data-grant-index="${index}">
+          <strong>${escapeHtml(grant.capability)}</strong>
+          <small>${escapeHtml(grant.profileId)} · ${grant.isActive ? 'active' : 'revoked'}</small>
+          <div class="table-row-meta"><span>${grant.revokedAt ? escapeHtml(grant.revokedAt) : 'not revoked'}</span><span>grant state</span></div>
+        </article>`).join('') || emptyNote('No grant rows', 'Grant state is empty for the current local profile path.');
+
+      denySurface.innerHTML = state.denyEntries.map((entry, index) => `
+        <article class="table-row ${index === state.selectedDenyIndex ? 'is-selected' : ''}" data-deny-index="${index}">
+          <strong>${escapeHtml(entry.agentName || 'runtime')}</strong>
+          <small>${escapeHtml(entry.message)}</small>
+          <div class="table-row-meta"><span>${escapeHtml(entry.kind)}</span><span>${escapeHtml(entry.capability || 'no capability parsed')}</span></div>
+        </article>`).join('') || emptyNote('No deny entries', 'The deny log is currently clear.');
+
+      document.querySelectorAll('[data-focus-agent]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          state.route = 'agents';
+          await loadAgentDetail(button.dataset.focusAgent);
+          render();
+        });
+      });
+
+      document.querySelectorAll('[data-grant-index]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.route = 'grants';
+          state.selectedGrantIndex = Number(button.dataset.grantIndex);
+          setStatusSelection(`grant:${state.grants[state.selectedGrantIndex].capability}`);
+          renderInspector();
+          render();
+        });
+      });
+
+      document.querySelectorAll('[data-deny-index]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.route = 'denyLog';
+          state.selectedDenyIndex = Number(button.dataset.denyIndex);
+          setStatusSelection(`deny:${state.denyEntries[state.selectedDenyIndex].entryId}`);
+          renderInspector();
+          render();
+        });
+      });
+    }
+
+    function renderInspector() {
+      const inspector = document.getElementById('inspector-content');
+
+      if (state.route === 'agents' && state.selectedAgentDetail) {
+        inspector.innerHTML = `
+          <div class="detail-pair"><div class="detail-key">Agent</div><div class="detail-value">${escapeHtml(state.selectedAgentDetail.name)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Status</div><div class="detail-value">${escapeHtml(state.selectedAgentDetail.status)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Version</div><div class="detail-value">${escapeHtml(state.selectedAgentDetail.version)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Required capabilities</div><div class="detail-value">${renderCapabilities(state.selectedAgentDetail.requiredCapabilities)}</div></div>`;
+        return;
+      }
+
+      if (state.route === 'grants' && state.grants[state.selectedGrantIndex ?? -1]) {
+        const grant = state.grants[state.selectedGrantIndex];
+        inspector.innerHTML = `
+          <div class="detail-pair"><div class="detail-key">Capability</div><div class="detail-value">${escapeHtml(grant.capability)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Profile</div><div class="detail-value">${escapeHtml(grant.profileId)}</div></div>
+          <div class="detail-pair"><div class="detail-key">State</div><div class="detail-value">${grant.isActive ? 'active' : 'revoked'}</div></div>
+          <div class="detail-pair"><div class="detail-key">Revoked at</div><div class="detail-value">${escapeHtml(grant.revokedAt || 'not revoked')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Reason</div><div class="detail-value">${escapeHtml(grant.revocationReason || 'none')}</div></div>`;
+        return;
+      }
+
+      if (state.route === 'denyLog' && state.denyEntries[state.selectedDenyIndex ?? -1]) {
+        const entry = state.denyEntries[state.selectedDenyIndex];
+        inspector.innerHTML = `
+          <div class="detail-pair"><div class="detail-key">Entry ID</div><div class="detail-value">${entry.entryId}</div></div>
+          <div class="detail-pair"><div class="detail-key">Kind</div><div class="detail-value">${escapeHtml(entry.kind)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Agent</div><div class="detail-value">${escapeHtml(entry.agentName || 'runtime')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Capability</div><div class="detail-value">${escapeHtml(entry.capability || 'none')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Message</div><div class="detail-value">${escapeHtml(entry.message)}</div></div>`;
+        return;
+      }
+
+      inspector.innerHTML = `
+        <div class="note-card">
+          <div class="shell-note-title">Inspector waiting</div>
+          <p class="shell-note-copy">Select a route row to inspect the current live detail for that object.</p>
+        </div>`;
+    }
+
+    function renderToolsCopy() {
+      const copy = {
+        agents: 'Agents route shows live registry rows and promotes a selected agent into the inspector slot.',
+        grants: 'Grants route reads the local profile state through the current S3/S2 boundary with no mock grant rows.',
+        denyLog: 'Deny log route uses persisted deny evidence only; route filtering stays in-slot and does not open overlays.',
+      };
+      document.getElementById('tools-copy').textContent = copy[state.route];
+    }
+
+    function renderAuditCopy() {
+      const latest = state.denyEntries[0];
+      document.getElementById('latest-deny-copy').textContent = latest
+        ? `${latest.agentName || 'runtime'} · ${latest.message}`
+        : 'No deny events recorded in the current shell state yet.';
+    }
+
+    function centerSubtitle() {
+      switch (state.route) {
+        case 'grants':
+          return 'Grant rows reflect the current local profile state through the landed read-first RPC contract.';
+        case 'denyLog':
+          return 'Deny-log rows stay inside the current persisted shell state and promote a selected event into the inspector.';
+        default:
+          return 'Agent registry and detail now read through the landed JSON-RPC route set with no fake data.';
+      }
+    }
+
+    function renderCapabilities(requiredCapabilities) {
+      if (!requiredCapabilities || requiredCapabilities.length === 0) {
+        return 'none';
+      }
+
+      return requiredCapabilities
+        .map((capability) => {
+          const profileId = capability.profileId ?? capability.profile_id ?? 'unknown-profile';
+          return `${escapeHtml(profileId)}:${escapeHtml(capability.capability)}`;
+        })
+        .join('<br />');
+    }
+
+    function setStatusSelection(value) {
+      state.selectedLabel = value;
+      document.getElementById('status-selected').textContent = value;
+    }
+
+    function emptyNote(title, copy) {
+      return `
+        <article class="note-card">
+          <div class="shell-note-title">${escapeHtml(title)}</div>
+          <p class="shell-note-copy">${escapeHtml(copy)}</p>
+        </article>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    document.querySelectorAll('[data-route]').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.route = button.dataset.route;
+        render();
+      });
+    });
+
+    document.querySelectorAll('[data-collapse-target]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const target = document.getElementById(button.dataset.collapseTarget);
+        const collapsed = target.classList.toggle('collapsed');
+        button.textContent = collapsed ? 'Expand' : 'Collapse';
+      });
+    });
+
+    document.getElementById('refresh-button').addEventListener('click', refreshShell);
+    document.getElementById('profile-path-input').addEventListener('change', refreshShell);
+    document.getElementById('agent-filter-input').addEventListener('input', renderAgentList);
+
+    refreshShell();
+  </script>
+</body>
+</html>

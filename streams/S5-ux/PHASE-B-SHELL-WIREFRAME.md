@@ -209,6 +209,7 @@ type ShellIntent =
 - The first HTML shell can be built as fixed CSS grid regions with slot-specific `data-slot` attributes.
 - The center surface should be the only region that routinely swaps full route content.
 - Inspector and consent surfaces should be reusable across all three core workflows.
+- The current read-first S3 contract now exposes `agent.list`, `agent.describe`, `grant.list`, and `denyLog.list`. Phase B should consume those routes directly before asking S3 for privileged writes or richer transport features.
 - No mock-only features should be added just to fill the shell; empty and loading states are acceptable pre-G3.
 
 ---

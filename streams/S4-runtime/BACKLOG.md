@@ -28,6 +28,6 @@
 - [ ] Multi-threaded executor option
 - [ ] Persistent bus message log (for audit)
 
-## Blocked
+## Post-G3 constraints
 
-No upstream G1 blocker remains. G2 contract freeze, further hardening, and a recorded green hosted CI run reference for the newly wired workflow steps still remain before G3 can advance; keep runtime and node implementation shallow until the S2 type is frozen.
+G3 is now closed. The next S4 work is broader `no_std` hardening, host/runtime hardening beyond the in-memory demo, and the narrow runtime support required by the first post-G3 S3 contract wave; keep runtime and node changes shallow unless they are directly needed by those owned slices.

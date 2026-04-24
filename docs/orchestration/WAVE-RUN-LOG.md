@@ -2,6 +2,30 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+## 2026-04-24 — WAVE-2026-04-23-B01
+
+- Selected item: `WAVE-2026-04-23-B01`
+- Result: Landed the first real S5 localhost shell slice without widening into privileged writes. `site/agent-center-shell.html` now renders the fixed-slot agent-center shell, `crates/ferros-node/src/lib.rs` serves that shell at `GET /` and forwards `POST /rpc` into the existing read-first JSON/RPC handler, and `crates/ferros-node/src/main.rs` now exposes `ferros-node shell [port]` with a default localhost port of `4317`. The browser-validated shell reads live agent, grant-state, and deny-log data, and the inspector capability rendering bug was fixed before closeout so required capabilities now render the real profile identifier instead of an `undefined:*` placeholder.
+- Files: `site/agent-center-shell.html`, `crates/ferros-node/src/lib.rs`, `crates/ferros-node/src/main.rs`, `streams/S5-ux/README.md`, `streams/S5-ux/CONTRACTS.md`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/PROGRESS.md`, `site/index.html`, `STATUS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Passed `cargo test -p ferros-node`; live browser validation at `http://127.0.0.1:4317/` confirmed `ready`, `rpc live`, and real list/describe/grant/deny data after restarting the embedded-asset server with the rebuilt shell HTML; final editor diagnostics were clean on the touched S5, status, landing-page, and orchestration files.
+- Next follow-up: `WAVE-2026-04-23-09`
+
+## 2026-04-24 — WAVE-2026-04-24-04
+
+- Selected item: `WAVE-2026-04-24-04`
+- Result: Landed the first read-first S3 JSON/RPC contract without widening into HTTP serving, privileged write actions, or Phase B shell rendering. The contract now lives in `crates/ferros-agents/src/rpc.rs` with method and payload types for `agent.list`, `agent.describe`, `grant.list`, and `denyLog.list`, and `crates/ferros-node/src/lib.rs` now hosts that contract over the current deterministic runtime state, persisted grant state, and deny-log state. The owning S3 contract docs, shared contract index, S5 shell wireframe, and status surfaces now reflect that the read path exists; as a direct consequence, `WAVE-2026-04-23-B01` is no longer blocked and is now ready for the first shell-consumer pass.
+- Files: `crates/ferros-agents/src/rpc.rs`, `crates/ferros-agents/src/lib.rs`, `crates/ferros-node/src/lib.rs`, `crates/ferros-node/Cargo.toml`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S5-ux/PHASE-B-SHELL-WIREFRAME.md`, `docs/contracts/CONTRACTS-OVERVIEW.md`, `STATUS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Passed `cargo test -p ferros-agents`; passed `cargo test -p ferros-node`; the new `ferros-node` tests cover typed list, describe, grant-list, deny-log, and JSON wrapper behavior against the current runtime and local profile store; final editor diagnostics were clean on the touched contract, status, and queue files.
+- Next follow-up: `WAVE-2026-04-23-B01`
+
+## 2026-04-24 — WAVE-2026-04-24-03
+
+- Selected item: `WAVE-2026-04-24-03`
+- Result: Recorded the first green hosted CI proof for the landed G3 workflow path, then truth-synced the gate, status, stream, and queue surfaces so G3 is now closed and G4 is now active. The closure references CI #20 (`run 24902870499`, commit `8383b67` on `main`), keeps the proof tied to the current hosted Ubuntu workflow that still runs `cargo check -p ferros-core --no-default-features` and `cargo run --bin ferros -- demo`, reclassifies S5 Phase B as blocked on the missing S3 JSON/RPC contract rather than on G3 itself, and updates S7 and S4 surfaces to their post-G3 state without starting JSON/RPC, shell rendering, or `ferros-hub` code.
+- Files: `docs/gates/G3.md`, `docs/gates/G4.md`, `STATUS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S5-ux/BACKLOG.md`, `streams/S7-hub/README.md`, `streams/S7-hub/PROGRESS.md`
+- Validation: Confirmed the current `.github/workflows/ci.yml` still contains `cargo check -p ferros-core --no-default-features` and `cargo run --bin ferros -- demo`; refreshed the GitHub Actions CI workflow page and confirmed CI #20 (`run 24902870499`, commit `8383b67` on `main`) completed successfully on 2026-04-24; final editor diagnostics were clean on the touched gate, status, queue, and stream docs.
+- Next follow-up: `WAVE-2026-04-24-04`
+
 ## 2026-04-24 — WAVE-2026-04-23-08
 
 - Selected item: `WAVE-2026-04-23-08`

@@ -1,7 +1,7 @@
 # S5 — UX
 
 **Stream:** S5  
-**Status:** 🟨 Phase A active on the real landing page; Phase B pending G3  
+**Status:** 🟨 Phase A active on the real landing page; Phase B localhost read slice landed  
 **Gate:** Contributes to launch-readiness; no blocking gate owned solely by S5
 
 ---
@@ -20,7 +20,7 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 - Clean up dead HTML prototypes or archive to `docs/legacy/`.
 - Make `ferros-blueprint.html` accessible as the primary site.
 
-### Phase B — Agent center local web shell (unblocks at G3)
+### Phase B — Agent center local web shell (first localhost read slice landed)
 - Local web UI served by `ferros-node` on `localhost`.
 - Talks to `ferros-agents` (S3) over JSON/RPC.
 - Shows: agent list, agent status, capability grants, deny log.
@@ -45,7 +45,7 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 ## Dependencies
 
 - **S1 (G1):** Site structure landed; remaining Phase A work continues on the real `/site/index.html`.
-- **S3 + S4 (G3):** JSON/RPC API from S3 must exist for Phase B.
+- **S3 + S4 (post-G3):** the first read-first JSON/RPC API from S3 now exists for Phase B; privileged write flows remain later follow-up work.
 
 ---
 
@@ -64,9 +64,11 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 - [ ] No dead links in the site.
 
 **Phase B:**
-- [ ] Local web shell at `http://localhost:<port>` served by `ferros-node`.
-- [ ] Agent list, agent describe, capability grant view — no fake data.
-- [ ] Deny log visible in the UI.
+- [x] Local web shell at `http://localhost:<port>` served by `ferros-node`.
+- [x] Agent list, agent describe, capability grant view — no fake data.
+- [x] Deny log visible in the UI.
+
+The current Phase B slice is intentionally read-first. Privileged grant/revoke actions and broader browser acceptance coverage remain follow-up work.
 
 **Phase C:**
 - [ ] `ferros-core` compiles to `wasm32-unknown-unknown` with `no_std`.
@@ -80,7 +82,8 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 |------|------|
 | `site/` | Static site root |
 | `site/index.html` | `ferros-blueprint.html` moved here (S1 handles move) |
-| `crates/ferros-web/` | Web shell server (Phase B) |
+| `site/agent-center-shell.html` | Fixed-slot localhost shell asset (Phase B) |
+| `crates/ferros-node/` | Equivalent local web shell server plus `/rpc` host (Phase B) |
 | `site/wasm-demo/` | WASM demo (Phase C) |
 
 ---
@@ -89,4 +92,4 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 
 1. Verify the remaining site links and archive candidates against current inbound references.
 2. Execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once link hygiene is confirmed.
-3. Keep Phase B wireframe work aligned to S3/S4 contracts without starting shell implementation.
+3. Add focused UI acceptance coverage for `ferros-node shell` and the current `/rpc` read path before widening into privileged write flows.

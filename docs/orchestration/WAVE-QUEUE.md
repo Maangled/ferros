@@ -23,20 +23,48 @@ None.
 
 ## Blocked
 
+None.
+
+## Done
+
 ### WAVE-2026-04-23-B01
 
 - Title: Start S5 local web shell against JSON/RPC
-- Status: blocked
+- Status: done
 - Priority: P3
-- Gate: G3
+- Gate: post-G3 S3 contract
 - Owning streams: S5 primary, S3 dependency
 - Goal: Begin the local agent-center web shell implementation.
 - Anchor files: `site/`, `crates/ferros-agents/`, `streams/S5-ux/`
-- Validation: UI acceptance plus S3 API validation once the surface exists
-- Constraints: Blocked until the S3 JSON/RPC API exists and G3 is materially closer.
-- Last update: 2026-04-23
+- Validation: Passed `cargo test -p ferros-node`; live browser validation against `http://127.0.0.1:4317/` confirmed real agent, grant-state, and deny-log reads through `/rpc`; editor diagnostics stayed clean on the touched S5, status, and orchestration docs
+- Constraints: Start against the landed read-first S3 JSON/RPC routes. Keep the first shell slice read-heavy and do not widen into undocumented write actions.
+- Last update: 2026-04-24
 
-## Done
+### WAVE-2026-04-24-04
+
+- Title: Publish the first S3 JSON/RPC read contract
+- Status: done
+- Priority: P0
+- Gate: post-G3 contract spine
+- Owning streams: S3 primary, S5 consumer review, S4 support if host/runtime proof moves, S8 truth-sync after landing
+- Goal: Define and land the first read-first S3 JSON/RPC surface for agent list, describe, grant-state, and deny-log style data without widening into privileged writes or Phase B shell rendering in the same wave.
+- Anchor files: `streams/S3-agent-center/CONTRACTS.md`, `crates/ferros-agents/`, `crates/ferros-node/src/lib.rs`, `streams/S5-ux/PHASE-B-SHELL-WIREFRAME.md`, `docs/contracts/CONTRACTS-OVERVIEW.md`
+- Validation: `cargo test -p ferros-agents -p ferros-node`; focused contract and route-shape coverage for the touched host and contract surfaces; editor diagnostics on touched truth-sync files
+- Constraints: Keep the surface read-first. Do not start Phase B shell rendering or privileged write actions in this wave. Keep `docs/contracts/CONTRACTS-OVERVIEW.md` aligned only if the owning S3 contract surfaces move in the same wave.
+- Last update: 2026-04-24
+
+### WAVE-2026-04-24-03
+
+- Title: Record the first green hosted CI proof and close G3
+- Status: done
+- Priority: P0
+- Gate: G3
+- Owning streams: S3 primary, S4 primary, S8 truth-sync if gate, status, or queue surfaces move
+- Goal: Record the first green hosted CI run reference for the landed `cargo check -p ferros-core --no-default-features` plus `cargo run --bin ferros -- demo` workflow path, then close G3 and activate the next post-G3 queue state without widening into JSON/RPC, S5 shell implementation, or `ferros-hub` scaffolding.
+- Anchor files: `docs/gates/G3.md`, `docs/gates/G4.md`, `STATUS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S5-ux/BACKLOG.md`, `streams/S7-hub/README.md`, `streams/S7-hub/PROGRESS.md`
+- Validation: Confirm the current `.github/workflows/ci.yml` still contains `cargo check -p ferros-core --no-default-features` and `cargo run --bin ferros -- demo`; confirm the GitHub Actions CI workflow page records CI #20 (`run 24902870499`, commit `8383b67` on `main`) as completed successfully; verify editor diagnostics are clean on touched docs
+- Constraints: Keep the slice inside hosted-evidence capture and truth-sync. Do not start S3 JSON/RPC, S5 Phase B implementation, or S7 code scaffolding in this wave.
+- Last update: 2026-04-24
 
 ### WAVE-2026-04-23-08
 

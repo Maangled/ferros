@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-24 — G3 closed; G4 runway active
+
+- Recorded the first hosted green CI proof for the landed G3 workflow path and truth-synced the gate and status surfaces so G4 is now the active gate.
+- S7 is no longer blocked on G3; runway work can continue while the real `ferros-hub` binary, HA bridge, and physical-device evidence remain open.
+
+---
+
 ## 2026-04-24 — Hardware runway tightened
 
 - Expanded `docs/hub/reference-hardware.md` from a placeholder into a runway and evidence-prep doc aligned to `LAUNCH.md` and `docs/gates/G4.md`.
