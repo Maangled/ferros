@@ -2,6 +2,14 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+## 2026-04-24 — WAVE-2026-04-23-08
+
+- Selected item: `WAVE-2026-04-23-08`
+- Result: Closed the S7 runway documentation wave without wave-owned S7 content edits in this invocation because `docs/hub/reference-hardware.md`, `streams/S7-hub/README.md`, and `streams/S7-hub/BACKLOG.md` already reflected the dispatched pairing and hardware design-pack scope. G3 remains the implementation blocker, G4 did not move, no `crates/ferros-hub/` work or Home Assistant bridge work was started, and no immediate S8 or S2 follow-up is required from this closeout.
+- Files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Confirmed the three S7 anchor docs had no uncommitted changes relative to `HEAD`; editor diagnostics were clean for `docs/hub/reference-hardware.md`, `streams/S7-hub/README.md`, and `streams/S7-hub/BACKLOG.md`; integration review passed with gate truth still honest, S2 consumer-surface alignment intact, and cross-file coherence preserved; final editor diagnostics were clean for `docs/orchestration/WAVE-QUEUE.md` and `docs/orchestration/WAVE-RUN-LOG.md`.
+- Next follow-up: `WAVE-2026-04-23-09`
+
 ## 2026-04-24 — WAVE-2026-04-24-02
 
 - Selected item: `WAVE-2026-04-24-02`

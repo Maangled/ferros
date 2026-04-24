@@ -4,19 +4,6 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 
 ## Ready
 
-### WAVE-2026-04-23-08
-
-- Title: Start S7 pairing and hardware design pack
-- Status: ready
-- Priority: P1
-- Gate: G4 runway
-- Owning streams: S7 primary, S8 truth-sync if docs move, S2 consumer awareness if pairing contract wording shifts
-- Goal: Keep the S7 runway moving by finishing the reference hardware recipe and documenting the current pairing constraints, open questions, and grant-aware design posture without freezing authoritative pairing semantics yet.
-- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `docs/hub/reference-hardware.md`, `docs/hub/`
-- Validation: editor diagnostics on touched docs; verify the pairing and hardware docs stay consistent with the current S7 README and backlog boundaries
-- Constraints: Keep the slice to S7 design and documentation runway. Keep pairing notes provisional, do not scaffold `crates/ferros-hub/`, do not start the HA bridge, and do not claim G4 evidence in this wave.
-- Last update: 2026-04-24
-
 ### WAVE-2026-04-23-09
 
 - Title: Execute S5 Phase A archive and link-hygiene pack
@@ -50,6 +37,19 @@ None.
 - Last update: 2026-04-23
 
 ## Done
+
+### WAVE-2026-04-23-08
+
+- Title: Start S7 pairing and hardware design pack
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S7 primary, S8 truth-sync if docs move, S2 consumer awareness if pairing contract wording shifts
+- Goal: Keep the S7 runway moving by finishing the reference hardware recipe and documenting the current pairing constraints, open questions, and grant-aware design posture without freezing authoritative pairing semantics yet.
+- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `docs/hub/reference-hardware.md`, `docs/hub/`
+- Validation: editor diagnostics on touched docs; verify the pairing and hardware docs stay consistent with the current S7 README and backlog boundaries
+- Constraints: Keep the slice to S7 design and documentation runway. Keep pairing notes provisional, do not scaffold `crates/ferros-hub/`, do not start the HA bridge, and do not claim G4 evidence in this wave.
+- Last update: 2026-04-24
 
 ### WAVE-2026-04-24-02
 

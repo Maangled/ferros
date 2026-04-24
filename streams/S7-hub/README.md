@@ -10,7 +10,7 @@
 
 `ferros-hub` is the launch vehicle. Launch is not a website event or a crates.io publish — it is a real hub binary running on a Raspberry Pi or home server, with a real device profile, at least one real Home Assistant entity registered through the agent center, and consent enforced end-to-end. See `LAUNCH.md` for the authoritative definition.
 
-Current S7 work is still runway work. The stream can prepare hardware, deployment assumptions, and evidence collection now, but it should not claim a running hub, a satisfied G4 checklist, or an authoritative pairing handshake before the relevant S2/S3/S4 implementation surfaces exist.
+Current S7 work is still runway work. The stream can prepare hardware, deployment assumptions, and evidence collection now, but it should not claim a running hub, a satisfied G4 checklist, or an authoritative pairing handshake before the relevant S2 consumer surfaces and S3/S4 runtime seams are concrete in implementation.
 
 ---
 
@@ -19,7 +19,7 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 - `ferros-hub` crate/binary:
   - Target personas: smart-home hub, AI edge device, home server.
   - Wraps `ferros-node` (S4) and `ferros-agents` (S3) into a single deployable binary.
-  - Pairing runway: identify the device-profile, approval, persistence, and revocation constraints that must eventually produce signed capability grants. The exact handshake remains provisional until implementation work starts.
+  - Pairing runway: document the device-profile, operator-approval, persistence, revocation, and deny-observability constraints that must eventually compose around the stable S2 consumer surfaces (`ProfileId`, `CapabilityGrant`) and yield signed capability grants. The exact handshake remains provisional until the hub exists and the S3/S4 seams are real.
   - Reboot-safe storage: profile and grants must persist across restart and full power cycle.
 - Home Assistant integration (fork: `Maangled/home-assistant`):
   - FERROS HA custom component registers agents and devices via the agent center.
@@ -32,9 +32,9 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 
 ## Current lane
 
-- Expand the hardware runway doc so the first on-device sessions collect the evidence G4 will eventually require.
+- Treat `docs/hub/reference-hardware.md` as the hardware recipe authority for this wave and keep it aligned to the evidence G4 will eventually require.
 - Decide the first physical hardware targets and Home Assistant topology.
-- Keep pairing notes at the level of constraints and open questions until the actual hub crate and S2/S3/S4 boundaries are ready.
+- Keep pairing notes at the level of constraints and open questions bound to S2 consumer surfaces plus the S3/S4 seams that will eventually enforce them.
 
 ---
 
@@ -51,8 +51,26 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 
 - **S4 (G3 must be green):** `ferros-runtime` must be stable before hub wraps it.
 - **S3 (G3 must be green):** Agent registry and spawn lifecycle must be functional.
-- **S2:** Profile and capability-grant types are the pairing-flow currency, so S7 should consume them rather than redefine them.
+- **S2:** `ProfileId` and `CapabilityGrant` are stable consumer surfaces for runway planning, so S7 should consume them rather than redefine signing, approval, or issuance semantics.
 - **S6:** Harvest patterns may inform hub agent design later.
+
+---
+
+## Pairing posture (runway only)
+
+- S7 currently treats pairing as a bounded consumer-side design problem, not a stream-local protocol that can be ratified from planning docs alone.
+- S2 gives S7 stable names to plan around today: `ProfileId` and `CapabilityGrant`.
+- S7 can document hub obligations now: operator approval checkpoints, signed-grant persistence, revocation expectations, restart and power-cycle survival, and consent-deny observability.
+- S7 should not freeze handshake order, signing ceremony details, or authoritative grant semantics until G3 closes and the real S3/S4 seams are available.
+
+---
+
+## Open pairing questions
+
+- What minimum device bootstrap state must exist before the hub can request, receive, or store grants on first start?
+- Which runtime boundary owns grant persistence and revocation fan-out in practice: hub-local storage, S4 runtime policy, or an S3 registration seam?
+- At what agent-registration point must grant checks gate Home Assistant entity exposure?
+- What operator-visible deny path is required between runtime logs and the HA dashboard to satisfy G4 evidence without redefining S2 grant semantics?
 
 ---
 
@@ -93,6 +111,5 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 1. Keep `docs/hub/reference-hardware.md` current with the chosen runway hardware, topology assumptions, and evidence fields.
 2. Select the first physical `aarch64` and `x86_64` candidates for bring-up.
 3. Record pairing constraints and open questions without freezing the final handshake before implementation work starts.
-4. Scaffold `crates/ferros-hub/` after G3 closes.
-5. Implement the HA bridge agent against S3's `Agent` trait and S4 runtime once the crate exists.
-6. Run the first real hardware power-cycle validation before claiming any G4 progress.
+4. Map the open questions above to the exact S2 consumer dependencies and S3/S4 seams that must land before an implementation plan is honest.
+5. Prepare the post-G3 design handoff for `ferros-hub` without scaffolding the crate or bridge in this wave.
