@@ -60,3 +60,11 @@ jobs:
 
       - name: Cargo test
         run: cargo test --workspace --all-targets
+
+      - name: Cargo check ferros-core without default features
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: cargo check -p ferros-core --no-default-features
+
+      - name: Cargo run ferros demo
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: cargo run --bin ferros -- demo

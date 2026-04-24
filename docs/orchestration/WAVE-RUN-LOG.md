@@ -2,6 +2,14 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+## 2026-04-23 — WAVE-2026-04-23-07
+
+- Selected item: `WAVE-2026-04-23-07`
+- Result: Landed the narrow G3 truth-sync and CI-proof slice without widening into JSON/RPC, reusable host work, or S5 shell work. The `ferros` binary now exposes `cargo run --bin ferros -- demo`, Ubuntu CI is explicitly wired to run both `cargo check -p ferros-core --no-default-features` and `cargo run --bin ferros -- demo`, and the G3/status/contracts/S4 backlog surfaces now reflect the already-landed S4 policy property tests and current demo evidence honestly. G3 still remains blocked on G2 and on recording the first green hosted run for the new workflow steps, but the queue item's repo-owned slice is complete.
+- Files: `.github/workflows/ci.yml`, `crates/ferros-node/src/bin/ferros.rs`, `docs/contracts/CONTRACTS-OVERVIEW.md`, `docs/gates/G3.md`, `STATUS.md`, `streams/S4-runtime/BACKLOG.md`
+- Validation: Delegated orchestration passed `cargo test -p ferros-core -p ferros-runtime -p ferros-agents -p ferros-node`; passed `cargo check -p ferros-core --no-default-features`; passed `cargo run --bin ferros -- demo` with `started: echo,timer`, `echo: hello`, `timer: tick-1`, and `denied: 1`; additional focused passes covered `cargo test -p ferros-node --bin ferros` and `cargo test -p ferros-core --test capability_policy`; editor diagnostics were clean for the touched workflow and truth-sync files.
+- Next follow-up: `WAVE-2026-04-23-08`. Separately capture the first green hosted CI run reference for the newly wired Ubuntu demo and `--no-default-features` steps when it becomes available.
+
 ## 2026-04-23 — WAVE-2026-04-23-06
 
 - Selected item: `WAVE-2026-04-23-06`

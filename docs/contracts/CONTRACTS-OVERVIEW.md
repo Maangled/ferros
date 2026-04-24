@@ -67,7 +67,7 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 |-------|-------|-------|-----------|--------|
 | `Agent` | S3 | `ferros-agents` | S4 (executor), S7 (hub) | 🟡 Created and exercised by the local demo / CLI path; post-G2 hardening remains |
 | `AgentRegistry` | S3 | `ferros-agents` | S5 (web shell), S7 (hub) | 🟡 Created and exercised by the local demo / CLI path; remote API work remains |
-| `PolicyEngine` | S4 | `ferros-core` | S3 (spawn gate), S7 (hub consent) | ✅ Created; current repo also validates the `--no-default-features` compile slice |
+| `PolicyEngine` | S4 | `ferros-core` | S3 (spawn gate), S7 (hub consent) | ✅ Created; current repo validates policy property tests plus the `--no-default-features` compile slice |
 | `Executor` | S4 | `ferros-runtime` | S3 (agent hosting) | ✅ Created |
 
 ### JSON Schemas
@@ -82,8 +82,8 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 
 | Command | Owner | Consumers | Status |
 |---------|-------|-----------|--------|
-| `ferros profile init\|show\|export\|import\|grant\|revoke` | S2 | S7 (pairing scripts), S8 (docs) | ⬜ Not yet implemented |
-| `ferros agent list\|describe\|run\|stop\|logs` | S3 | S5 (web shell), S7 (hub admin) | 🟡 Local CLI shipped in the `ferros` binary and covered by `cargo test -p ferros-node`; post-G2 contract hardening and remote surfaces remain |
+| `ferros profile init\|show\|export\|import\|grant\|revoke` | S2 | S7 (pairing scripts), S8 (docs) | 🟡 Partial: `init` and `show` landed in the current `ferros` binary; `export`, `import`, `grant`, and `revoke` remain open |
+| `ferros agent list\|describe\|run\|stop\|logs` | S3 | S5 (web shell), S7 (hub admin) | 🟡 This is the current local operational surface in the `ferros` binary, exercised by the local demo / CLI path; JSON/RPC, shared remote APIs, and post-G2 contract hardening remain open |
 
 ### IPC / RPC
 

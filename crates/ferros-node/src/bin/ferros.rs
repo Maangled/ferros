@@ -1,8 +1,8 @@
 use std::{env, path::PathBuf};
 
 use ferros_node::{
-    default_profile_path, execute_agent_cli, execute_profile_cli, AgentCliCommand, CliError,
-    ProfileCliCommand,
+    default_profile_path, execute_agent_cli, execute_profile_cli, run_demo, AgentCliCommand,
+    CliError, ProfileCliCommand,
 };
 
 fn main() {
@@ -25,6 +25,14 @@ fn run(args: Vec<String>) -> Result<Vec<String>, CliError> {
     };
 
     match scope {
+        "demo" if args.len() == 1 => run_demo().map(|summary| {
+            vec![
+                format!("started: {}", summary.started_agents.join(",")),
+                format!("echo: {}", summary.echo_response),
+                format!("timer: {}", summary.timer_event),
+                format!("denied: {}", summary.denied_requests),
+            ]
+        }).map_err(CliError::from),
         "agent" => execute_agent_cli(parse_agent_command(&args)?),
         "profile" => execute_profile_cli(parse_profile_command(&args)?),
         _ => Err(usage()),
@@ -75,7 +83,7 @@ fn parse_profile_command(args: &[String]) -> Result<ProfileCliCommand, CliError>
 
 fn usage() -> CliError {
     CliError::Usage(
-        "usage: ferros agent list | describe <name> | run <name> | stop <name> | logs [name]\n       ferros profile init [path]\n       ferros profile show [path]",
+        "usage: ferros demo\n       ferros agent list | describe <name> | run <name> | stop <name> | logs [name]\n       ferros profile init [path]\n       ferros profile show [path]",
     )
 }
 
@@ -117,6 +125,16 @@ mod tests {
             .any(|line| line.contains("\"name\": \"Fresh Start\"")));
 
         cleanup_profile_path(&profile_path);
+    }
+
+    #[test]
+    fn run_dispatches_demo() {
+        let lines = run(vec!["demo".to_string()]).expect("demo should succeed");
+
+        assert!(lines.iter().any(|line| line.starts_with("started: ")));
+        assert!(lines.iter().any(|line| line.starts_with("echo: ")));
+        assert!(lines.iter().any(|line| line.starts_with("timer: ")));
+        assert!(lines.iter().any(|line| line == "denied: 1"));
     }
 
     fn unique_profile_path(test_name: &str) -> PathBuf {

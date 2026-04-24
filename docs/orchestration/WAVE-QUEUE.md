@@ -4,7 +4,31 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 
 ## Ready
 
-None.
+### WAVE-2026-04-23-08
+
+- Title: Start S7 pairing and hardware design pack
+- Status: ready
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S7 primary, S8 truth-sync if docs move, S2 consumer awareness if pairing contract wording shifts
+- Goal: Turn the now-stable profile and grant surfaces into concrete S7 design artifacts by finishing the reference hardware recipe and documenting the pairing flow from device profile and user profile to signed capability grants.
+- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `docs/hub/reference-hardware.md`, `docs/hub/`
+- Validation: editor diagnostics on touched docs; verify the pairing and hardware docs stay consistent with the current S7 README and backlog boundaries
+- Constraints: Keep the slice to S7 design and documentation runway. Do not scaffold `crates/ferros-hub/`, start the HA bridge, or claim G4 evidence in this wave.
+- Last update: 2026-04-23
+
+### WAVE-2026-04-23-09
+
+- Title: Execute S5 Phase A archive and link-hygiene pack
+- Status: ready
+- Priority: P1
+- Gate: post-G3 runway
+- Owning streams: S5 primary, S8 truth-sync if archive surfaces move
+- Goal: Verify inbound links, archive the inactive top-level HTML prototypes to `docs/legacy/`, and keep the real `site/` surface clean for the later local shell without starting localhost UI work yet.
+- Anchor files: `site/index.html`, `streams/S5-ux/DOCS-HTML-PROTOTYPE-AUDIT.md`, `docs/`, `docs/legacy/`
+- Validation: editor diagnostics on touched files; grep inbound references before moving any prototype files so active links are not broken
+- Constraints: Keep `docs/agent-command-center.html` and `docs/forge-workbench.html` active. Do not start the S5 Phase B local web shell in this wave.
+- Last update: 2026-04-23
 
 ## In Progress
 
@@ -26,6 +50,19 @@ None.
 - Last update: 2026-04-23
 
 ## Done
+
+### WAVE-2026-04-23-07
+
+- Title: Tighten G3 evidence and CI demo proof
+- Status: done
+- Priority: P0
+- Gate: G3
+- Owning streams: S3 primary, S4 primary, S8 truth-sync if gate or status surfaces move
+- Goal: Sync G3-facing docs to the already-landed S4 property tests and add a repo-backed CI proof for `cargo run --bin ferros -- demo` without widening into JSON/RPC or reusable host work.
+- Anchor files: `.github/workflows/ci.yml`, `docs/gates/G3.md`, `STATUS.md`, `streams/S4-runtime/BACKLOG.md`, `docs/contracts/CONTRACTS-OVERVIEW.md`
+- Validation: `cargo test -p ferros-core -p ferros-runtime -p ferros-agents -p ferros-node`; `cargo check -p ferros-core --no-default-features`; `cargo run --bin ferros -- demo`
+- Constraints: Keep the slice inside G3 evidence, CI proof, and truth-sync. Do not start S3 JSON/RPC, reusable host work, or S5 shell implementation in this wave.
+- Last update: 2026-04-23
 
 ### WAVE-2026-04-23-06
 
