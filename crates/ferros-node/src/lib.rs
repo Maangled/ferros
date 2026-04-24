@@ -696,7 +696,9 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
             content_type: "text/html; charset=utf-8",
             body: LOCAL_SHELL_HTML.as_bytes().to_vec(),
         },
-        ("POST", "/rpc") => route_shell_rpc_request(request.body, state_path, default_profile_path, store),
+        ("POST", "/rpc") => {
+            route_shell_rpc_request(request.body, state_path, default_profile_path, store)
+        }
         _ => text_response(404, "Not Found", "FERROS local shell route not found"),
     }
 }
@@ -725,7 +727,12 @@ fn route_shell_rpc_request<S: LocalProfileStore>(
         }
     };
 
-    match execute_agent_read_rpc_with_store_and_paths(request, state_path, default_profile_path, store) {
+    match execute_agent_read_rpc_with_store_and_paths(
+        request,
+        state_path,
+        default_profile_path,
+        store,
+    ) {
         Ok(response) => match serde_json::to_string_pretty(&response) {
             Ok(body) => HttpResponse {
                 status_code: 200,
@@ -803,9 +810,8 @@ fn parse_http_request(bytes: &[u8]) -> io::Result<HttpRequest> {
         ));
     };
 
-    let header_text = std::str::from_utf8(&bytes[..header_end]).map_err(|_| {
-        io::Error::new(io::ErrorKind::InvalidData, "HTTP headers must be UTF-8")
-    })?;
+    let header_text = std::str::from_utf8(&bytes[..header_end])
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "HTTP headers must be UTF-8"))?;
     let mut lines = header_text.lines();
     let request_line = lines
         .next()
@@ -826,9 +832,8 @@ fn parse_http_request(bytes: &[u8]) -> io::Result<HttpRequest> {
 }
 
 fn parse_content_length(header_bytes: &[u8]) -> io::Result<usize> {
-    let header_text = std::str::from_utf8(header_bytes).map_err(|_| {
-        io::Error::new(io::ErrorKind::InvalidData, "HTTP headers must be UTF-8")
-    })?;
+    let header_text = std::str::from_utf8(header_bytes)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "HTTP headers must be UTF-8"))?;
 
     for line in header_text.lines() {
         if let Some(value) = line.strip_prefix("Content-Length:") {
@@ -865,7 +870,11 @@ fn write_http_response(stream: &mut TcpStream, response: HttpResponse) -> io::Re
     stream.flush()
 }
 
-fn text_response(status_code: u16, status_text: &'static str, message: impl Into<String>) -> HttpResponse {
+fn text_response(
+    status_code: u16,
+    status_text: &'static str,
+    message: impl Into<String>,
+) -> HttpResponse {
     HttpResponse {
         status_code,
         status_text,
@@ -1392,8 +1401,8 @@ pub fn run_demo() -> Result<DemoSummary, DemoError> {
 mod tests {
     use super::{
         default_profile_path, execute_agent_cli_with_state_path, execute_agent_read_rpc_json,
-        execute_agent_read_rpc_with_store_and_paths, execute_profile_cli_with_store, run_demo,
-        route_shell_request_with_store_and_paths, AgentCliCommand, CliError, CliState,
+        execute_agent_read_rpc_with_store_and_paths, execute_profile_cli_with_store,
+        route_shell_request_with_store_and_paths, run_demo, AgentCliCommand, CliError, CliState,
         DemoError, DemoRuntime, HttpRequest, ProfileCliCommand, DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
