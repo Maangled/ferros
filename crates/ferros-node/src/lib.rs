@@ -1323,7 +1323,7 @@ fn deny_log_entries(state: &CliState, agent_name: Option<&str>) -> Vec<DenyLogEn
         .iter()
         .enumerate()
         .filter_map(|(index, entry)| parse_deny_log_entry(index + 1, entry))
-    .filter(|entry| agent_name.is_none() || entry.agent_name.as_deref() == agent_name)
+        .filter(|entry| agent_name.is_none() || entry.agent_name.as_deref() == agent_name)
         .collect()
 }
 
