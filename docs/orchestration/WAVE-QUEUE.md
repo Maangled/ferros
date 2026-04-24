@@ -11,11 +11,11 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 - Priority: P1
 - Gate: G4 runway
 - Owning streams: S7 primary, S8 truth-sync if docs move, S2 consumer awareness if pairing contract wording shifts
-- Goal: Turn the now-stable profile and grant surfaces into concrete S7 design artifacts by finishing the reference hardware recipe and documenting the pairing flow from device profile and user profile to signed capability grants.
+- Goal: Keep the S7 runway moving by finishing the reference hardware recipe and documenting the current pairing constraints, open questions, and grant-aware design posture without freezing authoritative pairing semantics yet.
 - Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `docs/hub/reference-hardware.md`, `docs/hub/`
 - Validation: editor diagnostics on touched docs; verify the pairing and hardware docs stay consistent with the current S7 README and backlog boundaries
-- Constraints: Keep the slice to S7 design and documentation runway. Do not scaffold `crates/ferros-hub/`, start the HA bridge, or claim G4 evidence in this wave.
-- Last update: 2026-04-23
+- Constraints: Keep the slice to S7 design and documentation runway. Keep pairing notes provisional, do not scaffold `crates/ferros-hub/`, do not start the HA bridge, and do not claim G4 evidence in this wave.
+- Last update: 2026-04-24
 
 ### WAVE-2026-04-23-09
 

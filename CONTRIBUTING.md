@@ -76,4 +76,4 @@ Look for issues labelled `good-first-issue` and `stream/SN-*`. Each stream will 
 
 Be direct and honest. Respect others' time. Do not overpromise in documentation or PRs. If something is not working, say so.
 
-A formal `CODE_OF_CONDUCT.md` will be added as part of S8 governance work.
+See [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) for the current project-wide conduct baseline.

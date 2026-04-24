@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-24 — Signed profile fixture now reuses the base profile contract guard
+
+- Extended `ferros-profile` so `schemas/fixtures/signed-profile-valid.json` must not only deserialize and verify, but also round-trip its embedded `profile` payload through `ProfileDocument` and match `schemas/profile.v0.json`.
+- Kept the additive `SignedProfileDocument` envelope Rust-local for now: this tightens parity against the unsigned freeze candidate without publishing a new schema contract prematurely.
+- G2 remains open: `schemas/profile.v0.json` is still not frozen, the signed profile envelope still does not have a separately published schema contract, and `ferros profile export | import | grant | revoke` remain incomplete.
+
 ## 2026-04-23 — `KeyPair` and signed profile envelope landed
 
 - Added the first S2-owned `KeyPair` surface to `ferros-profile`, with Ed25519 generation, local device labeling, `ProfileId` derivation from the verifying key, and hex rehydration for future persistence/import work.

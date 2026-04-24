@@ -272,6 +272,81 @@
       text-decoration-color: rgba(255, 231, 187, 0.6);
     }
 
+    .prototype-map {
+      margin-top: 18px;
+      padding: 18px 20px;
+      background: rgba(74, 144, 217, 0.08);
+      border: 1px solid rgba(74, 144, 217, 0.22);
+      border-left: 3px solid var(--accent-blue);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+      max-width: 980px;
+    }
+
+    .prototype-map-title {
+      font-size: 0.74rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-blue);
+      margin-bottom: 10px;
+    }
+
+    .prototype-map-copy {
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+      line-height: 1.7;
+    }
+
+    .prototype-map-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .prototype-map-card {
+      padding: 14px 16px;
+      border-radius: var(--radius-card);
+      background: rgba(17, 21, 32, 0.65);
+      border: 1px solid rgba(58, 90, 143, 0.22);
+    }
+
+    .prototype-map-label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .prototype-map-card p {
+      margin-top: 8px;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .prototype-map-links {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .prototype-map-links a {
+      width: fit-content;
+      color: #b9d8ff;
+      text-decoration: underline;
+      text-decoration-color: rgba(185, 216, 255, 0.35);
+      text-underline-offset: 0.16em;
+    }
+
+    .prototype-map-links a:hover {
+      color: #d9ebff;
+      text-decoration-color: rgba(217, 235, 255, 0.65);
+    }
+
     .header-tagline {
       display: flex;
       gap: 24px;
@@ -977,6 +1052,36 @@
           web shell is still Phase B work pending G3, and launch remains hardware-first rather than
           website-first. Track repo reality in <a href="../STATUS.md">STATUS.md</a> and
           <a href="../LAUNCH.md">LAUNCH.md</a>.
+        </div>
+      </div>
+
+      <div class="prototype-map" role="note" aria-label="Surface authority map">
+        <div class="prototype-map-title">Surface authority map</div>
+        <div class="prototype-map-copy">
+          Use this page as the active FERROS entry surface. The kept docs prototypes remain
+          reference-only priors for S5 work, and the other top-level docs HTML files are archive
+          material pending a later move into <code>docs/legacy/</code> after link checks.
+        </div>
+        <div class="prototype-map-grid">
+          <div class="prototype-map-card">
+            <span class="prototype-map-label">Live surface</span>
+            <p>This landing page is the active Phase A reference and the truthful repo-facing entry.</p>
+          </div>
+          <div class="prototype-map-card">
+            <span class="prototype-map-label">Active references</span>
+            <div class="prototype-map-links">
+              <a href="../docs/agent-command-center.html">Agent command center prior</a>
+              <a href="../docs/forge-workbench.html">Forge workbench prior</a>
+            </div>
+            <p>Useful for Phase B vocabulary and shell layout, but not a shipped localhost UI.</p>
+          </div>
+          <div class="prototype-map-card">
+            <span class="prototype-map-label">Archive note</span>
+            <div class="prototype-map-links">
+              <a href="../docs/legacy/html-prototype-status.html">Legacy HTML status note</a>
+            </div>
+            <p>The remaining top-level docs HTML prototypes should be read as historical or incubation material.</p>
+          </div>
         </div>
       </div>
 

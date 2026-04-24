@@ -22,7 +22,7 @@ G1 is closed. G2 is the active gate, and G3 remains blocked on G2. This reposito
 - S4 has landed the first `ferros-core` policy slice, `ferros-runtime`, and a validated `cargo check -p ferros-core --no-default-features` compile slice; this is not yet a claim of full embedded or `no_std` readiness.
 - S5 Phase A is live on `site/index.html`: the landing page moved there and now carries an honest repository-status banner. The local agent-center web shell is still Phase B work pending G3.
 - S6 has admitted `crates/ferros-data/` to the root workspace; downstream consumer adoption remains stream-owned follow-up work.
-- S8 has the current docs baseline in repo (`STATUS.md`, gate docs, contracts overview, `CONTRIBUTING.md`, ADR template, `SECURITY.md`), but `THREAT-MODEL.md`, `GOVERNANCE.md`, `CODE_OF_CONDUCT.md`, and contributor templates are not yet landed.
+- S8 now has the core governance baseline in repo (`STATUS.md`, gate docs, contracts overview, `CONTRIBUTING.md`, `DOCTRINE.md`, ADR template and index surfaces, `SECURITY.md`, `THREAT-MODEL.md`, `GOVERNANCE.md`, `CODE_OF_CONDUCT.md`, and contributor intake templates); good-first-issue seeding remains open follow-up work.
 
 ## Repository Layout
 

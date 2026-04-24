@@ -2,7 +2,7 @@
 
 > Dashboard, not a diary. Each section shows current state. Details live in stream PROGRESS.md files.
 >
-> Last updated: 2026-04-23
+> Last updated: 2026-04-24
 
 ---
 
@@ -33,13 +33,13 @@
 | Stream | Status | Current focus | Gate |
 |--------|--------|---------------|------|
 | S1 Foundation | 🟡 Closeout / hygiene | Tag `v0.0.1-foundation`, verify branch protection, keep repo hygiene rolling | G1 |
-| S2 Profile & Identity | 🟡 Active | signed `CapabilityGrant` envelope, additive `KeyPair` + signed profile round-trip evidence, the dedicated `profile-valid` against `profile.v0` proof, and the Linux-backed real-binary `init | show` CLI proof landed; remaining work is `profile.v0.json` freeze plus CLI `export | import | grant | revoke` | G2 |
+| S2 Profile & Identity | 🟡 Active | signed `CapabilityGrant` envelope, additive `KeyPair` + signed profile round-trip evidence, the dedicated `profile-valid` against `profile.v0` proof, the signed-profile fixture parity check that revalidates its embedded profile against the base contract, and the Linux-backed real-binary `init | show` CLI proof landed; remaining work is `profile.v0.json` freeze plus CLI `export | import | grant | revoke` | G2 |
 | S3 Agent Center | 🟡 Convergence active | reference agents, local `ferros agent ...` CLI, and the `cargo run --bin ferros -- demo` path via the `ferros` binary landed; JSON/RPC and post-G2 contract hardening remain | G3 |
 | S4 Runtime / OS Core | 🟡 Convergence active | `ferros-runtime`, in-memory executor and bus, policy property tests, the `cargo run --bin ferros -- demo` path, and the `ferros-core --no-default-features` compile slice landed; broader `no_std` and host hardening remain | G3 |
-| S5 UX | 🟨 Phase A active; Phase B blocked on G3 | real landing page and honest status banner shipped; local agent-center web shell remains post-G3 work | post-G3 |
+| S5 UX | 🟨 Phase A active; Phase B blocked on G3 | real landing page and honest status banner shipped; prototype-authority cleanup and archive mapping are underway, while the local agent-center web shell remains post-G3 work | post-G3 |
 | S6 Ecosystem Harvest | 🟡 Active | ADR-018/019/020 landed; `ferros-data` is now a root workspace member while downstream extraction stays stream-owned | rolling |
-| S7 Smart-Home Hub | ⬜ Blocked on G2/G3 | pairing needs stable profile types; implementation needs runtime | G4 |
-| S8 Docs / Governance | 🟡 Active (background) | status/gate/contracts truth-sync baseline is in repo; governance skeleton remains partial (`SECURITY.md` yes, `THREAT-MODEL.md`/`GOVERNANCE.md`/`CODE_OF_CONDUCT.md` not yet landed) | rolling |
+| S7 Smart-Home Hub | ⬜ Blocked on G2/G3 | hardware runway and reference-hardware prep are now explicit, while pairing semantics remain provisional until the upstream profile and runtime seams stabilize | G4 |
+| S8 Docs / Governance | 🟡 Active (background) | status/gate/contracts truth-sync baseline is in repo; doctrine plus the ADR index/roadmap/research baseline are now landed; `SECURITY.md`, `THREAT-MODEL.md`, `GOVERNANCE.md`, `CODE_OF_CONDUCT.md`, and contributor intake templates now exist, while issue seeding remains open | rolling |
 
 ---
 
@@ -74,6 +74,10 @@ The **profile → agent center** path is the gating path. Everything else is par
 
 | Date | Event |
 |------|-------|
+| 2026-04-24 | S2, S4, S5, S6, and S7 all advanced in a non-overlapping subagent batch: S2 tightened signed-profile fixture parity against the base profile contract, S4 improved the shared `MessageEnvelope` portability proof with `--no-default-features` and `thumbv7em-none-eabi` validation, S6 added an exactly-one-parent ordered-child migration guard, S5 added prototype-authority banners plus an archive map, and S7 expanded hardware runway documentation without claiming pairing semantics are frozen. |
+| 2026-04-24 | S8 truth-sync corrected the contributor intake state: `.github/ISSUE_TEMPLATE/stream-task.md` and `.github/PULL_REQUEST_TEMPLATE.md` were already present and are now treated as the current intake baseline rather than open work. |
+| 2026-04-24 | S8 landed the missing governance skeleton files: `THREAT-MODEL.md`, `GOVERNANCE.md`, and `CODE_OF_CONDUCT.md`. The threat model is intentionally partial and keyed to the current G2/G3/G4 posture rather than claiming production hardening. |
+| 2026-04-24 | S8 landed the ADR context-lock baseline: `DOCTRINE.md`, ADR-022, the ADR index and roadmap, the research-note and evidence lanes, and the first ACC card/deck projection research note; `docs/ORCHESTRATION.md` was also downgraded to historical governance context rather than the active execution authority. |
 | 2026-04-23 | G3 truth surfaces synced to repo evidence: `.github/workflows/ci.yml` now explicitly wires `cargo check -p ferros-core --no-default-features` and `cargo run --bin ferros -- demo` into CI, while G3 remains blocked on G2 and a recorded green run reference is still pending. |
 | 2026-04-23 | S2 landed `KeyPair` plus an additive signed profile envelope in `ferros-profile`: Ed25519 key generation, a `KeyPair` path that derives a `ProfileId` from its verifying key, and create → serialize → sign → verify → revoke evidence now pass in `cargo test -p ferros-profile` without mutating `schemas/profile.v0.json`. |
 | 2026-04-23 | S2 landed the first signed and verifiable `CapabilityGrant` path in `ferros-profile`: the stripped JSON payload contract is now explicitly frozen in `schemas/capability-grant.v0.json`, `grant-valid.json` and `grant-invalid-sig.json` are in repo, and `cargo test -p ferros-profile` covers verify plus revoke without claiming G2 closed. |

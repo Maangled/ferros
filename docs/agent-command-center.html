@@ -748,6 +748,53 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-blue); }
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 10px;
 }
+
+.prototype-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 10px 12px;
+  background: rgba(74, 144, 217, 0.08);
+  border-bottom: 1px solid var(--border-accent);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+.prototype-banner-copy {
+  flex: 1;
+}
+
+.prototype-banner-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.prototype-banner-links {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.prototype-banner-links a {
+  color: var(--accent-cyan);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .prototype-banner {
+    flex-direction: column;
+  }
+}
 </style>
 </head>
 <body>
@@ -770,6 +817,20 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-blue); }
     <button class="icon-btn" title="Notifications" onclick="showToast('No new notifications','info')">🔔</button>
     <button class="icon-btn" title="Settings">⚙️</button>
     <div class="agent-avatar" style="width:30px;height:30px;font-size:14px;border-radius:50%;">👤</div>
+  </div>
+</div>
+
+<div class="prototype-banner" role="note" aria-label="Prototype status">
+  <div class="prototype-banner-copy">
+    <span class="prototype-banner-label">Incubation prior</span>
+    This page stays in <code>docs/</code> as the Phase B subject-matter reference. It is not the
+    live landing page and not a shipped localhost agent-center shell; that remains blocked work
+    pending G3.
+  </div>
+  <div class="prototype-banner-links">
+    <a href="../site/index.html">Live site</a>
+    <a href="forge-workbench.html">Shell-layout prior</a>
+    <a href="legacy/html-prototype-status.html">Archive note</a>
   </div>
 </div>
 

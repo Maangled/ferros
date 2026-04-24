@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FERROS — HTML Prototype Status</title>
+<style>
+:root {
+  --bg-base: #0a0c10;
+  --bg-panel: #111520;
+  --bg-card: #161b28;
+  --border-dim: #1e2a3a;
+  --border-accent: #2a3f5f;
+  --text-primary: #e8edf5;
+  --text-secondary: #8fa0b8;
+  --text-dim: #5a6a80;
+  --accent-blue: #4a90d9;
+  --accent-cyan: #2dd4bf;
+  --accent-amber: #f59e0b;
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --radius-card: 12px;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top, rgba(74, 144, 217, 0.16), transparent 34%),
+    linear-gradient(180deg, #0d1119 0%, #090c12 100%);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 48px 24px 72px;
+}
+
+h1, h2 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin-top: 14px;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+
+p {
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+a {
+  color: #9fdbff;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+a:hover {
+  color: #d9ebff;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.12);
+  color: #ffd18a;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lede {
+  max-width: 760px;
+  margin-top: 14px;
+}
+
+.panel {
+  margin-top: 24px;
+  padding: 22px 24px;
+  background: rgba(17, 21, 32, 0.82);
+  border: 1px solid rgba(42, 63, 95, 0.58);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.map-card {
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(58, 90, 143, 0.24);
+  background: rgba(22, 27, 40, 0.92);
+}
+
+.map-label {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.map-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.archive-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.archive-list li + li {
+  margin-top: 4px;
+}
+
+.muted {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+</style>
+</head>
+<body>
+<main>
+  <span class="status-pill">Phase A archive note</span>
+  <h1>FERROS HTML Prototype Status</h1>
+  <p class="lede">
+    This page separates the active S5 reference surfaces from the historical docs-root HTML set.
+    It is intentionally conservative: the local agent-center shell is still blocked Phase B work,
+    so the notes below describe reference authority only.
+  </p>
+
+  <section class="panel">
+    <h2>Authority map</h2>
+    <div class="map-grid">
+      <div class="map-card">
+        <span class="map-label">Live surface</span>
+        <div class="map-links">
+          <a href="../../site/index.html">site/index.html</a>
+        </div>
+        <p>Authoritative landing page for current Phase A site work.</p>
+      </div>
+      <div class="map-card">
+        <span class="map-label">Active S5 references</span>
+        <div class="map-links">
+          <a href="../agent-command-center.html">docs/agent-command-center.html</a>
+          <a href="../forge-workbench.html">docs/forge-workbench.html</a>
+        </div>
+        <p>Kept as the Phase B subject-matter and shell-layout priors only.</p>
+      </div>
+      <div class="map-card">
+        <span class="map-label">Decision artifact</span>
+        <div class="map-links">
+          <a href="../../streams/S5-ux/DOCS-HTML-PROTOTYPE-AUDIT.md">S5 prototype audit</a>
+        </div>
+        <p>Tracks the keep and archive decisions without overstating shell progress.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Archive material</h2>
+    <p>
+      These files are archive material. They remain in <code>docs/</code> for now so inbound links
+      stay stable, but they should be read as historical or incubation artifacts rather than active
+      references.
+    </p>
+    <ul class="archive-list">
+      <li><a href="../home-hud-dashboard.html">docs/home-hud-dashboard.html</a></li>
+      <li><a href="../ferros-showcase.html">docs/ferros-showcase.html</a></li>
+      <li><a href="../algo-trading-arena.html">docs/algo-trading-arena.html</a></li>
+      <li><a href="../architecture-design-lab-builder.html">docs/architecture-design-lab-builder.html</a></li>
+      <li><a href="../architecture-design-lab.html">docs/architecture-design-lab.html</a></li>
+      <li><a href="../deployment-roadmap.html">docs/deployment-roadmap.html</a></li>
+      <li><a href="../ferros-mind-map.html">docs/ferros-mind-map.html</a></li>
+      <li><a href="../ferros-project-map.html">docs/ferros-project-map.html</a></li>
+      <li><a href="../personal-profile.html">docs/personal-profile.html</a></li>
+      <li><a href="../schedule-ledger.html">docs/schedule-ledger.html</a></li>
+    </ul>
+    <p class="muted">Archive move still deferred until inbound links are checked and the move can happen without wider churn.</p>
+  </section>
+</main>
+</body>
+</html>

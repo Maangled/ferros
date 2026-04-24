@@ -1,4 +1,4 @@
-use alloc::{string::String, vec::Vec};
+use alloc::{boxed::Box, string::String, vec::Vec};
 use core::fmt;
 
 use crate::capability::{validate_token, Capability, TokenValidationError};
@@ -31,7 +31,7 @@ pub struct MessageEnvelope {
     sender: String,
     recipient: String,
     capability: Capability,
-    payload: Vec<u8>,
+    payload: Box<[u8]>,
     nonce: u64,
 }
 
@@ -40,7 +40,7 @@ impl MessageEnvelope {
         sender: impl Into<String>,
         recipient: impl Into<String>,
         capability: Capability,
-        payload: Vec<u8>,
+        payload: impl Into<Vec<u8>>,
         nonce: u64,
     ) -> Result<Self, MessageEnvelopeError> {
         let sender = sender.into();
@@ -58,6 +58,8 @@ impl MessageEnvelope {
                 MessageEnvelopeError::RecipientContainsWhitespace
             }
         })?;
+
+        let payload = payload.into().into_boxed_slice();
 
         Ok(Self {
             sender,
@@ -85,7 +87,7 @@ impl MessageEnvelope {
 
     #[must_use]
     pub fn payload(&self) -> &[u8] {
-        &self.payload
+        self.payload.as_ref()
     }
 
     #[must_use]

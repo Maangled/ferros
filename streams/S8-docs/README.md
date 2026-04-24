@@ -18,7 +18,7 @@ A new contributor should be able to pick a stream, read one document, and open a
 - Top-level docs: `ROADMAP.md`, `LAUNCH.md`, `STATUS.md`, `CONTRIBUTING.md`.
 - Architecture docs: `docs/architecture-overview.md` (update), `ARCHITECTURE.md` (if needed).
 - Governance: `GLOSSARY.md`, `THREAT-MODEL.md`, `SECURITY.md`, `GOVERNANCE.md`, `CODE_OF_CONDUCT.md`.
-- ADR templates and process: `docs/adr/ADR-TEMPLATE.md`.
+- ADR doctrine, taxonomy, and process: `DOCTRINE.md`, `docs/adr/ADR-TEMPLATE.md`, `docs/adr/_INDEX.md`, `docs/adr/_ROADMAP.md`, and `docs/adr/_RESEARCH-NOTES/`.
 - Contracts overview: `docs/contracts/CONTRACTS-OVERVIEW.md`.
 - Issue and PR templates: `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md`.
 - Per-stream `good-first-issue` seeding: 5 per stream before inviting contributors.
@@ -52,8 +52,11 @@ A new contributor should be able to pick a stream, read one document, and open a
 - [ ] All 8 stream READMEs accurate and linked from `ROADMAP.md`.
 - [ ] `STATUS.md` updated at least weekly while any stream is active.
 - [x] `docs/adr/ADR-TEMPLATE.md` exists.
-- [ ] `THREAT-MODEL.md` skeleton exists (can be incomplete until S2/S4 stable).
+- [x] ADR program baseline exists: root doctrine, index, roadmap, research-note lane, and evidence lane.
+- [x] `THREAT-MODEL.md` skeleton exists (can be incomplete until S2/S4 stable).
 - [x] `SECURITY.md` skeleton exists.
+- [x] `GOVERNANCE.md` exists.
+- [x] `CODE_OF_CONDUCT.md` exists.
 - [ ] 5 `good-first-issue`-labelled issues seeded per stream before public contributor invite.
 
 ---
@@ -71,8 +74,15 @@ A new contributor should be able to pick a stream, read one document, and open a
 | `SECURITY.md` | Vulnerability reporting policy |
 | `GOVERNANCE.md` | Project governance |
 | `CODE_OF_CONDUCT.md` | Contributor code of conduct |
+| `DOCTRINE.md` | Root evaluation rubric for FERROS decisions |
 | `docs/adr/ADR-TEMPLATE.md` | ADR template |
+| `docs/adr/_INDEX.md` | ADR navigation surface |
+| `docs/adr/_ROADMAP.md` | Candidate future ADR topics |
+| `docs/adr/_RESEARCH-NOTES/` | Pre-ADR investigation lane |
+| `docs/adr/_EVIDENCE/` | Supporting evidence lane for ADRs and research notes |
 | `docs/contracts/CONTRACTS-OVERVIEW.md` | Contracts overview |
+| `.github/ISSUE_TEMPLATE/` | Contributor issue intake templates |
+| `.github/PULL_REQUEST_TEMPLATE.md` | Contributor PR intake template |
 | `streams/SN-*/` | Per-stream planning dirs |
 | `docs/gates/G*.md` | Gate documents |
 
@@ -80,8 +90,8 @@ A new contributor should be able to pick a stream, read one document, and open a
 
 ## Immediate next steps
 
-1. Land `THREAT-MODEL.md` as the minimum launch-facing skeleton and keep it explicitly incomplete where S2/S4 are still moving.
-2. Add `GOVERNANCE.md` and `CODE_OF_CONDUCT.md` so governance docs match the current stream charter.
-3. Add `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md` for contributor intake.
-4. Seed 5 `good-first-issue` candidates per stream before any broader contributor invite.
-5. Keep `docs/contracts/CONTRACTS-OVERVIEW.md` synchronized with already-landed contract surfaces as S2-S4 docs evolve.
+1. Backfill older ADRs opportunistically with domain tags and evidence references where it materially improves navigation.
+2. Seed 5 `good-first-issue` candidates per stream before any broader contributor invite.
+3. Keep `THREAT-MODEL.md` honest as S2, S4, and S7 move from partial to real operational evidence.
+4. Keep `GOVERNANCE.md` aligned with the active authority surfaces as execution practice evolves.
+5. Revisit whether the generic stream issue template should later split into narrower templates once contributor volume justifies it.

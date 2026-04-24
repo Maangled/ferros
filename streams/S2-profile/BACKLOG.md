@@ -7,7 +7,7 @@
 - [ ] Decide whether the additive `SignedProfileDocument` envelope stays Rust-local or becomes a published schema at G2 freeze
 - [ ] Refine `schemas/profile.v0.json` for G2 freeze
 - [x] Freeze `schemas/capability-grant.v0.json` as the signed envelope contract
-- [ ] Expand the existing fixture-backed `ProfileDocument` contract test beyond the minimal Stage 0 fixture before freeze
+- [ ] Broaden the fixture-backed `ProfileDocument` freeze evidence beyond the base and embedded signed-profile happy paths before freeze
 
 ## Next
 

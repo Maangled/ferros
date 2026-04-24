@@ -1822,8 +1822,15 @@ mod tests {
 
         let serialized = serde_json::to_value(&signed_profile)
             .expect("signed profile fixture should convert to JSON");
+        let serialized_profile = serde_json::to_value(signed_profile.profile())
+            .expect("embedded profile should convert to JSON");
+        let embedded_profile = fixture
+            .get("profile")
+            .expect("signed profile fixture should contain an embedded profile");
 
         assert_eq!(serialized, fixture);
+        assert_eq!(serialized_profile, *embedded_profile);
+        assert_matches_profile_v0_contract(&serialized_profile);
     }
 
     #[test]

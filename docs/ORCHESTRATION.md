@@ -1,6 +1,8 @@
 # FERROS Orchestration Control Document v2
 
-> **Status:** Plan document only. No execution PRs. No code changes. This document governs cross-stream coordination for Streams A–E.
+> **Status:** Historical governance document for the earlier Streams A-E planning model.
+>
+> Active day-to-day execution in the current repo is driven by the S1-S8 stream docs, the gate documents, and the local-driver queue under `docs/orchestration/`. Keep this file as governance background and precedent unless a later ADR explicitly reactivates or replaces its control model.
 
 ---
 
@@ -188,14 +190,14 @@ Stream E **files requests — it does not impose**.
 
 ### Agent Command Center handoff
 
-The Agent Command Center (`docs/agent-command-center.html`, Stream B) is envisioned as the future runtime control plane for cross-stream agent orchestration. When sufficiently mature, it may assume the coordination role currently managed manually through GitHub issues and this document.
+The Agent Command Center (`docs/agent-command-center.html`, now aligned with S5 Phase B intent rather than the old Stream B label) is envisioned as a future runtime control plane for cross-stream orchestration. When sufficiently mature, it may assume parts of the coordination role currently expressed through the gate docs, the local-driver queue, and related governance surfaces.
 
 **This handoff is not scheduled.** It requires:
 - Stream B Wave 2+ completion
 - A formal ADR approving the governance transfer
 - Explicit approval by @Maangled
 
-Until those conditions are met, this document (`docs/ORCHESTRATION.md`) remains the single authoritative governance reference for cross-stream coordination.
+Until those conditions are met, this document remains historical governance context. The active execution references are the current stream docs, gate docs, `STATUS.md`, and the local-driver files in `docs/orchestration/`.
 
 ---
 

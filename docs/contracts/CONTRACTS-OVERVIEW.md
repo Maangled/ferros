@@ -89,7 +89,7 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 
 | Protocol | Owner | Consumers | Status |
 |----------|-------|-----------|--------|
-| In-process bus (`MessageBus` trait) | S4 | S3 (agent routing) | ✅ Created and backing the current local demo path |
+| In-process bus (`MessageBus` trait + `MessageEnvelope` payload contract) | S4 | S3 (agent routing) | ✅ Created and backing the current local demo path; the shared payload boundary now has explicit message-envelope tests plus `--no-default-features` and `thumbv7em-none-eabi` compile proof in the current repo workflow |
 | JSON/RPC HTTP API (agent center) | S3 | S5 Phase B (web shell) | ⬜ Not yet defined |
 
 ---

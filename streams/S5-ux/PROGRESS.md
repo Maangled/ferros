@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-24 — Prototype authority and archive note landed
+
+- Added a surface-authority map to `site/index.html` so the live landing page now points readers to the two kept docs prototypes as reference-only priors and to the archive note.
+- Added prototype-status banners to `docs/agent-command-center.html` and `docs/forge-workbench.html` so each page states it is incubation prior art rather than a shipped localhost shell.
+- Added `docs/legacy/html-prototype-status.html` to separate active references from archive material without moving files before inbound-link checks.
+- Kept the lane inside Phase A doc and link hygiene: no Phase B shell implementation, no `STATUS.md` or gate doc edits, and no claim that the local shell is further along than blocked pre-G3 work.
+
 ## 2026-04-23 — Landing-page status banner and docs sync landed
 
 - Added a repository-status banner to `site/index.html` so the real FERROS landing page now states that Phase A site cleanup is active, the local agent-center shell remains Phase B work pending G3, and launch is still hardware-first.
