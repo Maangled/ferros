@@ -48,6 +48,11 @@ impl ProfileId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    #[must_use]
+    pub fn from_public_key(verifying_key: &VerifyingKey) -> Self {
+        Self(encode_hex(&verifying_key.to_bytes()))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -123,6 +128,16 @@ impl CapabilityGrant {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+enum HexDecodeError {
+    InvalidHex { field: &'static str },
+    InvalidHexLength {
+        field: &'static str,
+        expected: usize,
+        actual: usize,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CapabilityGrantSignatureError {
     CanonicalSerialization(String),
     InvalidHex { field: &'static str },
@@ -158,6 +173,23 @@ impl fmt::Display for CapabilityGrantSignatureError {
             Self::SignatureMismatch => {
                 write!(f, "capability grant signature verification failed")
             }
+        }
+    }
+}
+
+impl From<HexDecodeError> for CapabilityGrantSignatureError {
+    fn from(value: HexDecodeError) -> Self {
+        match value {
+            HexDecodeError::InvalidHex { field } => Self::InvalidHex { field },
+            HexDecodeError::InvalidHexLength {
+                field,
+                expected,
+                actual,
+            } => Self::InvalidHexLength {
+                field,
+                expected,
+                actual,
+            },
         }
     }
 }
@@ -224,8 +256,12 @@ impl SignedCapabilityGrant {
     }
 }
 
-fn canonical_json_string(value: &str) -> Result<String, CapabilityGrantSignatureError> {
+fn json_string_literal(value: &str) -> Result<String, serde_json::Error> {
     serde_json::to_string(value)
+}
+
+fn canonical_json_string(value: &str) -> Result<String, CapabilityGrantSignatureError> {
+    json_string_literal(value)
         .map_err(|error| CapabilityGrantSignatureError::CanonicalSerialization(error.to_string()))
 }
 
@@ -244,9 +280,9 @@ fn encode_hex(bytes: &[u8]) -> String {
 fn decode_hex_array<const N: usize>(
     value: &str,
     field: &'static str,
-) -> Result<[u8; N], CapabilityGrantSignatureError> {
+) -> Result<[u8; N], HexDecodeError> {
     if value.len() != N * 2 {
-        return Err(CapabilityGrantSignatureError::InvalidHexLength {
+        return Err(HexDecodeError::InvalidHexLength {
             field,
             expected: N * 2,
             actual: value.len(),
@@ -267,12 +303,142 @@ fn decode_hex_array<const N: usize>(
 fn decode_hex_nibble(
     nibble: u8,
     field: &'static str,
-) -> Result<u8, CapabilityGrantSignatureError> {
+) -> Result<u8, HexDecodeError> {
     match nibble {
         b'0'..=b'9' => Ok(nibble - b'0'),
         b'a'..=b'f' => Ok(nibble - b'a' + 10),
         b'A'..=b'F' => Ok(nibble - b'A' + 10),
-        _ => Err(CapabilityGrantSignatureError::InvalidHex { field }),
+        _ => Err(HexDecodeError::InvalidHex { field }),
+    }
+}
+
+#[derive(Clone)]
+pub struct KeyPair {
+    device_label: String,
+    signing_key: SigningKey,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KeyPairError {
+    EmptyDeviceLabel,
+    EntropyUnavailable,
+    InvalidHex { field: &'static str },
+    InvalidHexLength {
+        field: &'static str,
+        expected: usize,
+        actual: usize,
+    },
+}
+
+impl fmt::Debug for KeyPair {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("KeyPair")
+            .field("device_label", &self.device_label)
+            .field("profile_id", &self.profile_id())
+            .field("public_key", &self.public_key_hex())
+            .finish()
+    }
+}
+
+impl fmt::Display for KeyPairError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::EmptyDeviceLabel => write!(f, "device label cannot be empty"),
+            Self::EntropyUnavailable => {
+                write!(f, "operating-system entropy is unavailable for Ed25519 key generation")
+            }
+            Self::InvalidHex { field } => write!(f, "{field} must be valid hexadecimal"),
+            Self::InvalidHexLength {
+                field,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "{field} must be {expected} hex characters, got {actual}"
+            ),
+        }
+    }
+}
+
+impl From<HexDecodeError> for KeyPairError {
+    fn from(value: HexDecodeError) -> Self {
+        match value {
+            HexDecodeError::InvalidHex { field } => Self::InvalidHex { field },
+            HexDecodeError::InvalidHexLength {
+                field,
+                expected,
+                actual,
+            } => Self::InvalidHexLength {
+                field,
+                expected,
+                actual,
+            },
+        }
+    }
+}
+
+impl KeyPair {
+    pub fn generate(device_label: impl Into<String>) -> Result<Self, KeyPairError> {
+        let mut secret_key_bytes = [0_u8; 32];
+        getrandom::getrandom(&mut secret_key_bytes)
+            .map_err(|_| KeyPairError::EntropyUnavailable)?;
+
+        Self::from_secret_key_bytes(device_label, secret_key_bytes)
+    }
+
+    pub fn from_secret_key_hex(
+        device_label: impl Into<String>,
+        secret_key_hex: &str,
+    ) -> Result<Self, KeyPairError> {
+        let secret_key_bytes = decode_hex_array::<32>(secret_key_hex, "secret_key")?;
+        Self::from_secret_key_bytes(device_label, secret_key_bytes)
+    }
+
+    fn from_secret_key_bytes(
+        device_label: impl Into<String>,
+        secret_key_bytes: [u8; 32],
+    ) -> Result<Self, KeyPairError> {
+        let device_label = device_label.into();
+
+        if device_label.trim().is_empty() {
+            return Err(KeyPairError::EmptyDeviceLabel);
+        }
+
+        Ok(Self {
+            device_label,
+            signing_key: SigningKey::from_bytes(&secret_key_bytes),
+        })
+    }
+
+    #[must_use]
+    pub fn device_label(&self) -> &str {
+        &self.device_label
+    }
+
+    #[must_use]
+    pub fn profile_id(&self) -> ProfileId {
+        ProfileId::from_public_key(&self.signing_key.verifying_key())
+    }
+
+    #[must_use]
+    pub fn public_key_hex(&self) -> String {
+        encode_hex(&self.signing_key.verifying_key().to_bytes())
+    }
+
+    #[must_use]
+    pub fn secret_key_hex(&self) -> String {
+        encode_hex(&self.signing_key.to_bytes())
+    }
+
+    pub fn sign_profile(
+        &self,
+        profile: &ProfileDocument,
+    ) -> Result<SignedProfileDocument, ProfileSignatureError> {
+        SignedProfileDocument::new(profile.clone(), self)
+    }
+
+    fn signing_key(&self) -> &SigningKey {
+        &self.signing_key
     }
 }
 
@@ -465,11 +631,186 @@ impl ProfileDocument {
         serde_json::to_string_pretty(self)
     }
 
+    pub fn sign(&self, key_pair: &KeyPair) -> Result<SignedProfileDocument, ProfileSignatureError> {
+        key_pair.sign_profile(self)
+    }
+
     #[must_use]
     pub fn has_genesis_seal(&self) -> bool {
         self.seal_chain
             .first()
             .is_some_and(|seal| seal.previous_seal == "genesis")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProfileSignatureError {
+    CanonicalSerialization(String),
+    InvalidHex { field: &'static str },
+    InvalidHexLength {
+        field: &'static str,
+        expected: usize,
+        actual: usize,
+    },
+    InvalidPublicKey,
+    ProfileIdMismatch,
+    SignerPublicKeyMismatch,
+    SignatureMismatch,
+}
+
+impl fmt::Display for ProfileSignatureError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::CanonicalSerialization(error) => {
+                write!(f, "canonical profile serialization failed: {error}")
+            }
+            Self::InvalidHex { field } => write!(f, "{field} must be valid hexadecimal"),
+            Self::InvalidHexLength {
+                field,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "{field} must be {expected} hex characters, got {actual}"
+            ),
+            Self::InvalidPublicKey => write!(f, "signer_public_key is not a valid Ed25519 key"),
+            Self::ProfileIdMismatch => {
+                write!(f, "profile_id does not match signer_public_key")
+            }
+            Self::SignerPublicKeyMismatch => {
+                write!(f, "signing key does not match signer_public_key")
+            }
+            Self::SignatureMismatch => write!(f, "profile signature verification failed"),
+        }
+    }
+}
+
+impl From<HexDecodeError> for ProfileSignatureError {
+    fn from(value: HexDecodeError) -> Self {
+        match value {
+            HexDecodeError::InvalidHex { field } => Self::InvalidHex { field },
+            HexDecodeError::InvalidHexLength {
+                field,
+                expected,
+                actual,
+            } => Self::InvalidHexLength {
+                field,
+                expected,
+                actual,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SignedProfileDocument {
+    pub profile_id: ProfileId,
+    pub profile: ProfileDocument,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revoked_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revocation_reason: Option<String>,
+    pub signer_public_key: String,
+    pub signature: String,
+}
+
+impl SignedProfileDocument {
+    pub fn new(profile: ProfileDocument, key_pair: &KeyPair) -> Result<Self, ProfileSignatureError> {
+        let mut signed_profile = Self {
+            profile_id: key_pair.profile_id(),
+            profile,
+            revoked_at: None,
+            revocation_reason: None,
+            signer_public_key: key_pair.public_key_hex(),
+            signature: String::new(),
+        };
+
+        signed_profile.signature =
+            encode_hex(&key_pair.signing_key().sign(&signed_profile.canonical_bytes()?).to_bytes());
+
+        Ok(signed_profile)
+    }
+
+    #[must_use]
+    pub fn profile(&self) -> &ProfileDocument {
+        &self.profile
+    }
+
+    #[must_use]
+    pub fn profile_id(&self) -> &ProfileId {
+        &self.profile_id
+    }
+
+    #[must_use]
+    pub fn is_revoked(&self) -> bool {
+        self.revoked_at.is_some()
+    }
+
+    pub fn verify(&self) -> Result<(), ProfileSignatureError> {
+        let message = self.canonical_bytes()?;
+        let public_key_bytes = decode_hex_array::<32>(&self.signer_public_key, "signer_public_key")?;
+        let signature_bytes = decode_hex_array::<64>(&self.signature, "signature")?;
+        let verifying_key =
+            VerifyingKey::from_bytes(&public_key_bytes).map_err(|_| ProfileSignatureError::InvalidPublicKey)?;
+        let expected_profile_id = ProfileId::from_public_key(&verifying_key);
+        let signature = Signature::from_bytes(&signature_bytes);
+
+        if self.profile_id != expected_profile_id {
+            return Err(ProfileSignatureError::ProfileIdMismatch);
+        }
+
+        verifying_key
+            .verify_strict(&message, &signature)
+            .map_err(|_| ProfileSignatureError::SignatureMismatch)
+    }
+
+    pub fn revoke(
+        &mut self,
+        key_pair: &KeyPair,
+        revoked_at: impl Into<String>,
+        revocation_reason: impl Into<String>,
+    ) -> Result<bool, ProfileSignatureError> {
+        if self.signer_public_key != key_pair.public_key_hex() {
+            return Err(ProfileSignatureError::SignerPublicKeyMismatch);
+        }
+
+        if self.profile_id != key_pair.profile_id() {
+            return Err(ProfileSignatureError::ProfileIdMismatch);
+        }
+
+        if self.is_revoked() {
+            return Ok(false);
+        }
+
+        self.revoked_at = Some(revoked_at.into());
+        self.revocation_reason = Some(revocation_reason.into());
+        self.signature = encode_hex(&key_pair.signing_key().sign(&self.canonical_bytes()?).to_bytes());
+
+        Ok(true)
+    }
+
+    fn canonical_signing_payload(&self) -> Result<String, ProfileSignatureError> {
+        let mut payload = String::from("{\"profile_id\":");
+        payload.push_str(&profile_json_string(self.profile_id.as_str())?);
+        payload.push_str(",\"profile\":");
+        payload.push_str(&canonical_profile_json(&self.profile)?);
+
+        if let Some(revoked_at) = &self.revoked_at {
+            payload.push_str(",\"revoked_at\":");
+            payload.push_str(&profile_json_string(revoked_at)?);
+        }
+
+        if let Some(revocation_reason) = &self.revocation_reason {
+            payload.push_str(",\"revocation_reason\":");
+            payload.push_str(&profile_json_string(revocation_reason)?);
+        }
+
+        payload.push('}');
+        Ok(payload)
+    }
+
+    fn canonical_bytes(&self) -> Result<Vec<u8>, ProfileSignatureError> {
+        self.canonical_signing_payload().map(String::into_bytes)
     }
 }
 
@@ -662,6 +1003,69 @@ fn initial_profile_seal(display_name: &str, created_at: &str) -> String {
     }
 }
 
+fn profile_json_string(value: &str) -> Result<String, ProfileSignatureError> {
+    json_string_literal(value)
+        .map_err(|error| ProfileSignatureError::CanonicalSerialization(error.to_string()))
+}
+
+fn canonical_profile_json(profile: &ProfileDocument) -> Result<String, ProfileSignatureError> {
+    let value = serde_json::to_value(profile)
+        .map_err(|error| ProfileSignatureError::CanonicalSerialization(error.to_string()))?;
+
+    canonical_json_value(&value)
+        .map_err(|error| ProfileSignatureError::CanonicalSerialization(error.to_string()))
+}
+
+fn canonical_json_value(value: &Value) -> Result<String, serde_json::Error> {
+    let mut encoded = String::new();
+    write_canonical_json_value(value, &mut encoded)?;
+    Ok(encoded)
+}
+
+fn write_canonical_json_value(value: &Value, encoded: &mut String) -> Result<(), serde_json::Error> {
+    match value {
+        Value::Null => encoded.push_str("null"),
+        Value::Bool(boolean) => {
+            encoded.push_str(if *boolean { "true" } else { "false" });
+        }
+        Value::Number(number) => encoded.push_str(&number.to_string()),
+        Value::String(string) => encoded.push_str(&json_string_literal(string)?),
+        Value::Array(items) => {
+            encoded.push('[');
+
+            for (index, item) in items.iter().enumerate() {
+                if index > 0 {
+                    encoded.push(',');
+                }
+
+                write_canonical_json_value(item, encoded)?;
+            }
+
+            encoded.push(']');
+        }
+        Value::Object(object) => {
+            encoded.push('{');
+
+            let mut entries = object.iter().collect::<Vec<_>>();
+            entries.sort_by(|(left, _), (right, _)| left.cmp(right));
+
+            for (index, (key, nested_value)) in entries.into_iter().enumerate() {
+                if index > 0 {
+                    encoded.push(',');
+                }
+
+                encoded.push_str(&json_string_literal(key)?);
+                encoded.push(':');
+                write_canonical_json_value(nested_value, encoded)?;
+            }
+
+            encoded.push('}');
+        }
+    }
+
+    Ok(())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProfileMeta {
     pub version: String,
@@ -718,10 +1122,11 @@ mod tests {
     use ed25519_dalek::SigningKey;
 
     use super::{
-        foundation_contract_preview, init_profile, CapabilityGrant,
+        encode_hex, foundation_contract_preview, init_profile, CapabilityGrant,
         CapabilityGrantSignatureError, ConsentManifest, ConsentManifestError,
-        FileSystemProfileStore, ProfileDocument, ProfileDocumentError, ProfileId,
-        ProfileIdError, ProfileStore, ProfileStoreError, SignedCapabilityGrant,
+        FileSystemProfileStore, KeyPair, KeyPairError, ProfileDocument,
+        ProfileDocumentError, ProfileId, ProfileIdError, ProfileSignatureError,
+        ProfileStore, ProfileStoreError, SignedCapabilityGrant, SignedProfileDocument,
     };
     use serde_json::Value;
 
@@ -729,6 +1134,8 @@ mod tests {
         include_str!("../../../schemas/fixtures/minimal-stage0-profile.json");
     const PROFILE_VALID_FIXTURE: &str =
         include_str!("../../../schemas/fixtures/profile-valid.json");
+    const SIGNED_PROFILE_VALID_FIXTURE: &str =
+        include_str!("../../../schemas/fixtures/signed-profile-valid.json");
     const GRANT_VALID_FIXTURE: &str = include_str!("../../../schemas/fixtures/grant-valid.json");
     const GRANT_INVALID_SIGNATURE_FIXTURE: &str =
         include_str!("../../../schemas/fixtures/grant-invalid-sig.json");
@@ -745,6 +1152,11 @@ mod tests {
         SigningKey::from_bytes(&TEST_SIGNING_KEY_BYTES)
     }
 
+    fn test_key_pair() -> KeyPair {
+        KeyPair::from_secret_key_hex("local-test-device", &encode_hex(&TEST_SIGNING_KEY_BYTES))
+            .expect("test key pair should decode")
+    }
+
     fn signed_test_grant() -> SignedCapabilityGrant {
         CapabilityGrant::new(
             ProfileId::new("profile-alpha").expect("valid profile id"),
@@ -752,6 +1164,13 @@ mod tests {
         )
         .sign(&test_signing_key())
         .expect("test grant should sign")
+    }
+
+    fn signed_test_profile() -> SignedProfileDocument {
+        ProfileDocument::fresh("Wave Pilot", "2026-04-23T10:00:00Z")
+            .expect("fresh profile should build")
+            .sign(&test_key_pair())
+            .expect("fresh profile should sign")
     }
 
     fn parse_schema(schema_source: &str, schema_name: &str) -> Value {
@@ -1317,6 +1736,120 @@ mod tests {
         assert_eq!(
             error,
             ProfileDocumentError::InvalidCreatedAt("not-a-timestamp".to_owned())
+        );
+    }
+
+    #[test]
+    fn key_pair_rejects_empty_device_label() {
+        assert!(matches!(
+            KeyPair::from_secret_key_hex("   ", &encode_hex(&TEST_SIGNING_KEY_BYTES)),
+            Err(KeyPairError::EmptyDeviceLabel)
+        ));
+    }
+
+    #[test]
+    fn key_pair_generates_and_round_trips_secret_key_hex() {
+        let generated = KeyPair::generate("local-device").expect("key generation should succeed");
+        let reparsed = KeyPair::from_secret_key_hex(
+            generated.device_label(),
+            &generated.secret_key_hex(),
+        )
+        .expect("generated secret key should round-trip");
+
+        assert_eq!(generated.device_label(), "local-device");
+        assert_eq!(generated.profile_id(), reparsed.profile_id());
+        assert_eq!(generated.public_key_hex(), reparsed.public_key_hex());
+    }
+
+    #[test]
+    fn signed_profile_document_round_trips_verify_and_revoke() {
+        let key_pair = test_key_pair();
+        let profile = ProfileDocument::fresh("Wave Pilot", "2026-04-23T10:00:00Z")
+            .expect("fresh profile should build");
+        let signed_profile = profile.sign(&key_pair).expect("fresh profile should sign");
+
+        signed_profile
+            .verify()
+            .expect("signed profile should verify");
+
+        let serialized = serde_json::to_string_pretty(&signed_profile)
+            .expect("signed profile should serialize");
+        let mut reparsed = serde_json::from_str::<SignedProfileDocument>(&serialized)
+            .expect("serialized signed profile should deserialize");
+
+        reparsed
+            .verify()
+            .expect("reparsed signed profile should verify");
+        assert_eq!(reparsed.profile_id(), &key_pair.profile_id());
+        assert_eq!(reparsed.profile().identity.name, "Wave Pilot");
+        assert!(reparsed
+            .revoke(
+                &key_pair,
+                "2026-04-23T11:00:00Z",
+                "rotated local device",
+            )
+            .expect("revoked signed profile should re-sign"));
+        reparsed
+            .verify()
+            .expect("revoked signed profile should still verify");
+        assert!(reparsed.is_revoked());
+        assert_eq!(reparsed.revoked_at.as_deref(), Some("2026-04-23T11:00:00Z"));
+        assert_eq!(
+            reparsed.revocation_reason.as_deref(),
+            Some("rotated local device")
+        );
+        assert!(!reparsed
+            .revoke(
+                &key_pair,
+                "2026-04-23T12:00:00Z",
+                "duplicate revoke",
+            )
+            .expect("duplicate revoke should stay idempotent"));
+    }
+
+    #[test]
+    fn signed_profile_valid_fixture_round_trips_and_verifies() {
+        let fixture = serde_json::from_str::<Value>(SIGNED_PROFILE_VALID_FIXTURE)
+            .expect("signed profile fixture should parse");
+        let signed_profile = serde_json::from_value::<SignedProfileDocument>(fixture.clone())
+            .expect("signed profile fixture should deserialize");
+
+        signed_profile
+            .verify()
+            .expect("signed profile fixture should verify");
+        assert_eq!(signed_profile.profile_id().as_str(), test_key_pair().profile_id().as_str());
+        assert_eq!(signed_profile.profile().identity.name, "Wave Pilot");
+
+        let serialized = serde_json::to_value(&signed_profile)
+            .expect("signed profile fixture should convert to JSON");
+
+        assert_eq!(serialized, fixture);
+    }
+
+    #[test]
+    fn signed_profile_document_rejects_tampering() {
+        let mut signed_profile = signed_test_profile();
+        signed_profile.profile.identity.name = "Tampered Pilot".to_owned();
+
+        assert_eq!(
+            signed_profile.verify(),
+            Err(ProfileSignatureError::SignatureMismatch)
+        );
+    }
+
+    #[test]
+    fn signed_profile_document_rejects_mismatched_resigning_key() {
+        let mut signed_profile = signed_test_profile();
+        let other_key_pair = KeyPair::from_secret_key_hex("backup-device", &encode_hex(&[0x55; 32]))
+            .expect("other key pair should decode");
+
+        assert_eq!(
+            signed_profile.revoke(
+                &other_key_pair,
+                "2026-04-23T11:00:00Z",
+                "rotated local device",
+            ),
+            Err(ProfileSignatureError::SignerPublicKeyMismatch)
         );
     }
 

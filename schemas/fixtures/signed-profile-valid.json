@@ -1,0 +1,108 @@
+{
+  "profile_id": "8907668126536768cdb51c9f1643ff77447bff0e3fc6b4a78cd0fab53a6c590c",
+  "profile": {
+    "meta": {
+      "version": "1.0",
+      "created": "2026-04-23T10:00:00Z",
+      "lastModified": "2026-04-23T10:00:00Z",
+      "assistanceLevel": 1,
+      "genesisHash": "profile-genesis-wave-pilot2026-04-23t10-00-00z",
+      "currentSeal": "profile-genesis-wave-pilot2026-04-23t10-00-00z",
+      "sealCount": 1,
+      "stage": 0
+    },
+    "identity": {
+      "name": "Wave Pilot",
+      "avatar": "star",
+      "class": null,
+      "streamAffinity": null,
+      "title": "Newcomer",
+      "joinedDate": "2026-04-23T10:00:00Z",
+      "streakDays": 0,
+      "longestStreak": 0
+    },
+    "attributes": {
+      "Community": {
+        "color": "pink",
+        "icon": "community",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      },
+      "Craft": {
+        "color": "cyan",
+        "icon": "craft",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      },
+      "Discipline": {
+        "color": "amber",
+        "icon": "discipline",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      },
+      "Governance": {
+        "color": "purple",
+        "icon": "governance",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      },
+      "Knowledge": {
+        "color": "blue",
+        "icon": "knowledge",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      },
+      "Wellness": {
+        "color": "green",
+        "icon": "wellness",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      }
+    },
+    "skills": {
+      "A": [],
+      "B": [],
+      "C": []
+    },
+    "achievements": [
+      {
+        "desc": "Created a FERROS profile",
+        "icon": "trophy",
+        "id": "genesis_pioneer",
+        "name": "Genesis Pioneer",
+        "unlocked": true,
+        "unlockedAt": "2026-04-23T10:00:00Z"
+      }
+    ],
+    "journal": [
+      {
+        "text": "Profile created for Wave Pilot",
+        "ts": "2026-04-23T10:00:00Z",
+        "type": "system"
+      }
+    ],
+    "credentials": [],
+    "sealChain": [
+      {
+        "taskId": "genesis",
+        "seal": "profile-genesis-wave-pilot2026-04-23t10-00-00z",
+        "previousSeal": "genesis",
+        "timestamp": "2026-04-23T10:00:00Z",
+        "data": {
+          "event": "profile_created",
+          "name": "Wave Pilot"
+        },
+        "hashAlgorithm": "sha256",
+        "nonce": 0
+      }
+    ]
+  },
+  "signer_public_key": "8907668126536768cdb51c9f1643ff77447bff0e3fc6b4a78cd0fab53a6c590c",
+  "signature": "7fdd56938e573ca3d09e4ca8861e3d964fe87d56071dd47267e7751e01179478e63eadd0d125a1f0548c50abad9b842fc5dc109740566bd6fa2d953a2dff5305"
+}

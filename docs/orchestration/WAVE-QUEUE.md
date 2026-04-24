@@ -27,6 +27,19 @@ None.
 
 ## Done
 
+### WAVE-2026-04-23-06
+
+- Title: Land `KeyPair` and signed profile round-trip evidence
+- Status: done
+- Priority: P0
+- Gate: G2
+- Owning streams: S2 primary, S8 truth-sync if gate or contract docs move
+- Goal: Add the first S2-owned key-material surface plus a signed profile round-trip path so `ferros-profile` can create a fresh profile, serialize it, sign it, verify it, and prove the contract with focused tests and fixtures without widening into the remaining profile CLI verbs.
+- Anchor files: `crates/ferros-profile/src/lib.rs`, `crates/ferros-profile/Cargo.toml`, `schemas/profile.v0.json`, `schemas/fixtures/`, `docs/gates/G2.md`, `STATUS.md`, `streams/S2-profile/CONTRACTS.md`, `streams/S2-profile/PROGRESS.md`
+- Validation: `cargo test -p ferros-profile`; update harness or truth surfaces only if the profile schema contract actually changes
+- Constraints: Keep the slice inside S2 key material and signed profile evidence. Do not start `ferros profile export | import | grant | revoke` in this wave. Avoid changing downstream S3/S4 consumer boundaries unless the signed profile contract truly requires it.
+- Last update: 2026-04-23
+
 ### WAVE-2026-04-23-05
 
 - Title: Add Linux-backed `ferros profile init` to `show` proof

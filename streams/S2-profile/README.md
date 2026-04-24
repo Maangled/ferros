@@ -55,7 +55,7 @@ This stream is intentionally insulated from raw legacy-repo input: the G2 identi
 
 - [x] `ferros-profile` crate builds and passes `cargo test` locally.
 - [x] `CapabilityGrant` sign → serialize → verify → revoke works end-to-end with Ed25519 and re-signing on revoke.
-- [ ] Profile round-trips: create → serialize → sign → verify → revoke.
+- [x] Profile round-trips: create → serialize → sign → verify → revoke.
 - [ ] `schemas/profile.v0.json` frozen (feature-flag protected; no mutations after freeze).
 - [x] `schemas/capability-grant.v0.json` frozen as the stripped-payload signed envelope contract.
 - [x] Rust/schema parity is enforced with a fixture-backed contract test against `schemas/profile.v0.json`.
@@ -80,7 +80,7 @@ This stream is intentionally insulated from raw legacy-repo input: the G2 identi
 
 ## Immediate next steps
 
-1. Extend the crate beyond the landed grant-signing slice: key material and profile-level signing are still missing.
+1. Decide whether the additive `SignedProfileDocument` envelope remains a Rust-local proof surface or earns its own published schema when `profile.v0.json` freezes.
 2. Freeze `schemas/profile.v0.json` and expand parity enforcement beyond the minimal Stage 0 happy path.
 3. Wire CLI subcommands, starting with `ferros profile init | show` and then building `grant` / `revoke` on the landed signed envelope contract.
 4. Decide whether the promised `profile-schema-v0` freeze mechanism is still the right path before calling profile v0 frozen.

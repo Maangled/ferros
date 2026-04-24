@@ -4,13 +4,20 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-23 — `KeyPair` and signed profile envelope landed
+
+- Added the first S2-owned `KeyPair` surface to `ferros-profile`, with Ed25519 generation, local device labeling, `ProfileId` derivation from the verifying key, and hex rehydration for future persistence/import work.
+- Added an additive `SignedProfileDocument` envelope over `ProfileDocument` so a fresh profile can be created, serialized, signed, deserialized, verified, and re-signed on revoke without mutating the base `profile.v0.json` contract.
+- Covered the slice with focused `cargo test -p ferros-profile` evidence for key generation, secret-key round-trip, signed profile verify, tamper rejection, and revoke re-signing.
+- G2 remains open: `schemas/profile.v0.json` is still not frozen, the signed profile envelope is not yet a separately published schema contract, and `ferros profile export | import | grant | revoke` are still not complete.
+
 ## 2026-04-23 — Minimal `ferros profile init | show` CLI slice landed
 
 - Added fresh `ProfileDocument` creation in `ferros-profile`, keeping the Stage 0 defaults and genesis-seal bootstrap near the S2-owned profile model instead of duplicating them in the CLI.
 - Extended `ProfileStore` with explicit create-without-overwrite behavior and used the filesystem-backed store as the persistence boundary for the new CLI path.
 - Wired `ferros profile init [path]` and `ferros profile show [path]` through `ferros-node`, with a default profile path when no explicit path is provided.
 - Added focused tests for fresh profile/schema parity, filesystem init round-trip, duplicate-init rejection, `ferros-node` profile CLI execution, and binary-level `ferros` argument dispatch.
-- G2 remains open: the broader profile signing story, `schemas/profile.v0.json` freeze, Linux-specific CLI proof, and `export | import | grant | revoke` are still not complete.
+- G2 remains open: `schemas/profile.v0.json` freeze and `export | import | grant | revoke` are still not complete.
 
 ## 2026-04-23 — Signed CapabilityGrant verification path landed
 

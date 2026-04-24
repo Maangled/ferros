@@ -2,6 +2,14 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+## 2026-04-23 — WAVE-2026-04-23-06
+
+- Selected item: `WAVE-2026-04-23-06`
+- Result: Landed the first S2-owned `KeyPair` surface plus an additive `SignedProfileDocument` round-trip path in `ferros-profile`, so a fresh profile can be created, serialized, signed, deserialized, verified, and re-signed on revoke without widening into the remaining profile CLI verbs. The wave also added the focused `schemas/fixtures/signed-profile-valid.json` evidence and truth-synced S2 and gate/status surfaces while leaving `schemas/profile.v0.json`, harness files, and downstream S3/S4 consumer boundaries unchanged.
+- Files: `Cargo.lock`, `crates/ferros-profile/Cargo.toml`, `crates/ferros-profile/src/lib.rs`, `schemas/fixtures/signed-profile-valid.json`, `streams/S2-profile/README.md`, `streams/S2-profile/BACKLOG.md`, `streams/S2-profile/CONTRACTS.md`, `streams/S2-profile/PROGRESS.md`, `docs/gates/G2.md`, `STATUS.md`
+- Validation: Delegated orchestration passed `cargo test -p ferros-profile` with 32 passed and 0 failed; editor diagnostics were clean for the touched `ferros-profile` slice.
+- Next follow-up: No ready queue item remains. `WAVE-2026-04-23-B01` stays blocked on the S3 JSON/RPC dependency; the next recommended new wave is an S2 follow-up to decide whether `SignedProfileDocument` should become a published schema contract or remain Rust-local until profile freeze, then land the remaining `ferros profile export | import | grant | revoke` evidence for G2 closeout.
+
 ## 2026-04-23 — WAVE-2026-04-23-05
 
 - Selected item: `WAVE-2026-04-23-05`

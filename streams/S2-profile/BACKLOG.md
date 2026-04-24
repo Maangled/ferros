@@ -4,7 +4,7 @@
 
 ## Now
 
-- [ ] Finish the identity type surface: `KeyPair` and full profile-level signing are still open after `ProfileId`, signed `CapabilityGrant`, and `ConsentManifest` landed
+- [ ] Decide whether the additive `SignedProfileDocument` envelope stays Rust-local or becomes a published schema at G2 freeze
 - [ ] Refine `schemas/profile.v0.json` for G2 freeze
 - [x] Freeze `schemas/capability-grant.v0.json` as the signed envelope contract
 - [ ] Expand the existing fixture-backed `ProfileDocument` contract test beyond the minimal Stage 0 fixture before freeze
@@ -13,7 +13,7 @@
 
 - [x] Create `crates/ferros-profile/`
 - [x] Add fixture-backed serde parsing for the minimal Stage 0 profile
-- [ ] Implement Ed25519 keypair generation and device binding
+- [x] Implement Ed25519 keypair generation and device binding
 - [x] Implement grant + revoke logic with signature verification
 - [x] Profile storage abstraction (filesystem-first)
 - [ ] CLI: `ferros profile init | show | export | import | grant | revoke`
