@@ -1508,7 +1508,7 @@ fn write_canonical_json_value(
             encoded.push('{');
 
             let mut entries = object.iter().collect::<Vec<_>>();
-            entries.sort_by(|(left, _), (right, _)| left.cmp(right));
+            entries.sort_by_key(|(left, _)| *left);
 
             for (index, (key, nested_value)) in entries.into_iter().enumerate() {
                 if index > 0 {
@@ -2462,7 +2462,7 @@ mod tests {
             .create_local_profile(&path, &profile, &key_pair)
             .expect("local profile should persist");
         store
-            .save_signed_grants(&path, &[signed_grant.clone()])
+            .save_signed_grants(&path, std::slice::from_ref(&signed_grant))
             .expect("signed grants should persist");
 
         let loaded = store
@@ -2501,7 +2501,7 @@ mod tests {
             .create_local_profile(&source_path, &profile, &key_pair)
             .expect("source state should persist");
         store
-            .save_signed_grants(&source_path, &[signed_grant.clone()])
+            .save_signed_grants(&source_path, std::slice::from_ref(&signed_grant))
             .expect("source grants should persist");
         store
             .export_profile_bundle(&source_path, &bundle_path)
