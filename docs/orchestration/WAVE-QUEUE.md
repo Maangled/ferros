@@ -27,6 +27,19 @@ None.
 
 ## Done
 
+### WAVE-2026-04-24-05
+
+- Title: Add same-origin localhost shell acceptance coverage
+- Status: done
+- Priority: P1
+- Gate: post-G3 consumer reliability
+- Owning streams: S5 primary, S4 support, S8 truth-sync if queue or stream surfaces move
+- Goal: Add a dedicated same-origin acceptance harness for the live `ferros-node shell` surface so the real localhost shell can be black-box tested through `GET /` and `POST /rpc` without widening into new JSON/RPC methods, privileged writes, or the remaining Phase A archive work.
+- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`, `crates/ferros-node/src/lib.rs`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/PROGRESS.md`
+- Validation: `cargo test -p ferros-node shell_route_`; live browser validation at `http://127.0.0.1:4317/harnesses/localhost-shell-acceptance.html` against the real localhost shell
+- Constraints: Keep the slice read-first. Do not add write actions, new JSON/RPC methods, transport changes beyond serving the harness, or Phase A archive moves in this wave.
+- Last update: 2026-04-24
+
 ### WAVE-2026-04-23-B01
 
 - Title: Start S5 local web shell against JSON/RPC

@@ -6,6 +6,11 @@
 
 name: S5 UX Agent
 description: Web UI and WASM demo agent for stream S5 — ships the site cleanup, the local agent-center web shell, and the ferros-core WASM demo.
+tools: [agent, read, search]
+agents:
+	- FERROS Lane Validator Agent
+	- FERROS Log Triage Agent
+	- FERROS Trace Analyst Agent
 ---
 
 # S5 — UX Agent
@@ -39,4 +44,5 @@ Before acting, read [`streams/S5-ux/README.md`](../../streams/S5-ux/README.md), 
 - Tag PRs with `[S5]` and note the phase (A or B).
 - Prefer boring HTML/CSS and vanilla JS unless a framework is clearly justified.
 - Never overstate the project — the status banner is honest at all times.
+- Use **FERROS Lane Validator Agent** for Phase B shell pre-flight or post-flight checks, then route ambiguous browser, RPC, or WASM failures through **FERROS Log Triage Agent** and **FERROS Trace Analyst Agent**.
 - Keep the WASM demo small, offline-capable, and reproducible.

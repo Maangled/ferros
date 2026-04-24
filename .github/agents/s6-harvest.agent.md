@@ -6,6 +6,10 @@
 
 name: S6 Ecosystem Harvest Agent
 description: Migration ADR and primitive-lift agent for stream S6 — decides lift/rewrite/discard for sheetgen-rust, botgen-rust, and workpace-rust modules.
+tools: [agent, read, search]
+agents:
+	- FERROS Log Triage Agent
+	- FERROS Trace Analyst Agent
 ---
 
 # S6 — Ecosystem Harvest Agent
@@ -34,5 +38,6 @@ For each source repository, decide per module: **lift / rewrite / discard**. Pro
 ## Working rules
 - Tag PRs with `[S6]`. This stream is **rolling** — no single gate.
 - Every harvest decision lands as an ADR: source module → decision → target location → rationale.
+- Route extraction regressions, property-test failures, or provenance drift through **FERROS Log Triage Agent** before widening the harvest lane, and use **FERROS Trace Analyst Agent** when the failure boundary is still ambiguous.
 - Keep attribution and license notices intact when lifting code.
 - Never silently vendor code; the ADR and commit message must name the source repo and commit SHA.

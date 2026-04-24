@@ -39,6 +39,8 @@ const PROFILE_REVOKE_REASON: &str = "revoked via ferros profile revoke";
 const LOCAL_SHELL_DEFAULT_PORT: u16 = 4317;
 const MAX_HTTP_REQUEST_BYTES: usize = 64 * 1024;
 const LOCAL_SHELL_HTML: &str = include_str!("../../../site/agent-center-shell.html");
+const LOCAL_SHELL_ACCEPTANCE_HARNESS_HTML: &str =
+    include_str!("../../../harnesses/localhost-shell-acceptance-harness.html");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DemoSummary {
@@ -695,6 +697,12 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
             status_text: "OK",
             content_type: "text/html; charset=utf-8",
             body: LOCAL_SHELL_HTML.as_bytes().to_vec(),
+        },
+        ("GET", "/harnesses/localhost-shell-acceptance.html") => HttpResponse {
+            status_code: 200,
+            status_text: "OK",
+            content_type: "text/html; charset=utf-8",
+            body: LOCAL_SHELL_ACCEPTANCE_HARNESS_HTML.as_bytes().to_vec(),
         },
         ("POST", "/rpc") => {
             route_shell_rpc_request(request.body, state_path, default_profile_path, store)
@@ -1815,6 +1823,32 @@ mod tests {
             }
             other => panic!("unexpected RPC result: {other:?}"),
         }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn shell_route_serves_localhost_acceptance_harness() {
+        let state_path = unique_state_path("shell-harness-html");
+        let profile_path = unique_profile_path("shell-harness-html");
+
+        let response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "GET".to_owned(),
+                path: "/harnesses/localhost-shell-acceptance.html".to_owned(),
+                body: Vec::new(),
+            },
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        );
+
+        let html = String::from_utf8(response.body).expect("harness HTML should be valid UTF-8");
+
+        assert_eq!(response.status_code, 200);
+        assert!(html.contains("FERROS Localhost Shell Acceptance Harness"));
+        assert!(html.contains("iframe id=\"sut\" src=\"/\""));
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);

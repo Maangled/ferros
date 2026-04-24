@@ -2,7 +2,7 @@
 
 > **Status:** Historical governance document for the earlier Streams A-E planning model.
 >
-> Active day-to-day execution in the current repo is driven by the S1-S8 stream docs, the gate documents, and the local-driver queue under `docs/orchestration/`. Keep this file as governance background and precedent unless a later ADR explicitly reactivates or replaces its control model.
+> Active day-to-day execution in the current repo is driven by the S1-S8 stream docs, the gate documents, and the local-driver queue under `docs/orchestration/`. That active local-driver model now includes bounded recursive lane planning, lane validation, and failure triage through hidden helper agents. Keep this file as governance background and precedent unless a later ADR explicitly reactivates or replaces its control model.
 
 ---
 
@@ -198,6 +198,17 @@ The Agent Command Center (`docs/agent-command-center.html`, now aligned with S5 
 - Explicit approval by @Maangled
 
 Until those conditions are met, this document remains historical governance context. The active execution references are the current stream docs, gate docs, `STATUS.md`, and the local-driver files in `docs/orchestration/`.
+
+## Current local-driver addendum
+
+The active S1-S8 local-driver model is intentionally narrower than the historical A-E control model above.
+
+- Top-level orchestration still begins with lane planning and keeps the safe ceiling at **5 parallel repo-editing lanes**.
+- Hidden helper agents now allow one extra bounded planning pass per generated lane, capped at depth **2** and **12 total lanes** across a wave.
+- Failed lanes are expected to route through log triage first and trace analysis only when the failing boundary remains ambiguous.
+- Shared truth surfaces remain reconciliation targets, not concurrent implementation lanes.
+
+For the active operating procedure, queue discipline, and lane rules, defer to `docs/orchestration/LOCAL-DRIVER.md`.
 
 ---
 

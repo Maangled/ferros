@@ -2,6 +2,14 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+## 2026-04-24 — WAVE-2026-04-24-05
+
+- Selected item: `WAVE-2026-04-24-05`
+- Result: Landed a dedicated same-origin localhost shell acceptance slice without widening the read-first contract. `harnesses/localhost-shell-acceptance-harness.html` now exercises the real shell through a same-origin iframe, `crates/ferros-node/src/lib.rs` serves that harness at `/harnesses/localhost-shell-acceptance.html`, and the live browser pass proved route switching, registry/detail inspection, grant empty-state degradation for a missing profile path, deny-log empty-state rendering, and the persistent read-only audit slot against the actual `ferros-node shell` server.
+- Files: `harnesses/localhost-shell-acceptance-harness.html`, `crates/ferros-node/src/lib.rs`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/PROGRESS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Passed `cargo test -p ferros-node shell_route_`; live browser validation at `http://127.0.0.1:4317/harnesses/localhost-shell-acceptance.html` passed 13/13 checks against the real localhost shell after restarting `ferros-node shell 4317`; final editor diagnostics stayed clean on the touched S5 and orchestration files.
+- Next follow-up: `WAVE-2026-04-23-09` remains ready. If consumer reliability and G4 alignment stay higher priority than Phase A cleanup, queue a follow-on S4/S7 wave for localhost host hardening plus the first concrete S7 bring-up contract.
+
 ## 2026-04-24 — WAVE-2026-04-23-B01
 
 - Selected item: `WAVE-2026-04-23-B01`

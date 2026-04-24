@@ -6,6 +6,9 @@
 
 name: S1 Foundation Agent
 description: Workspace, CI, and tooling agent for stream S1 — gets the Rust workspace green on Linux, macOS, and Windows so every other stream can build.
+tools: [agent, read, search]
+agents:
+	- FERROS Log Triage Agent
 ---
 
 # S1 — Foundation Agent
@@ -32,5 +35,6 @@ Before acting, read [`streams/S1-foundation/README.md`](../../streams/S1-foundat
 ## Working rules
 - Tag PRs with `[S1]` and target the **G1** gate.
 - Every change must keep `cargo build`, `cargo test`, `cargo fmt --check`, and `cargo clippy -- -D warnings` green on all three OSes.
+- Route ambiguous CI, toolchain, or workspace failures through **FERROS Log Triage Agent** before widening a fix.
 - Prefer small, reviewable PRs that move one definition-of-done checkbox at a time.
 - Do not invent application logic — if a crate needs real code, defer to the owning stream.

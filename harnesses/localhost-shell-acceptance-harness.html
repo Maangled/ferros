@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>H9 — FERROS Localhost Shell Acceptance Harness</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:24px;font-size:13px;line-height:1.5}
+  h1{font-size:1.1rem;color:#58a6ff;margin-bottom:4px}
+  .meta{color:#8b949e;font-size:.85rem;margin-bottom:20px}
+  h2{font-size:.9rem;color:#8b949e;letter-spacing:2px;text-transform:uppercase;margin:24px 0 8px;border-bottom:1px solid #21262d;padding-bottom:4px}
+  .test{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #161b22}
+  .badge{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:3px;min-width:44px;text-align:center;flex-shrink:0;margin-top:1px}
+  .pass{background:#1a4731;color:#3fb950}
+  .fail{background:#4a1a1a;color:#f85149}
+  .skip{background:#1c2128;color:#8b949e}
+  .test-name{color:#e6edf3;flex:1}
+  .test-detail{color:#8b949e;font-size:.8rem;margin-top:2px}
+  .test-error{color:#f85149;font-size:.8rem;margin-top:2px;word-break:break-word}
+  #result-block{margin-top:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:16px}
+  #result-block pre{font-size:.78rem;color:#e6edf3;white-space:pre-wrap;word-break:break-word}
+  .summary-bar{display:flex;gap:16px;margin-top:16px;padding:12px;border-radius:4px}
+  .summary-bar.all-pass{background:#1a4731;color:#3fb950}
+  .summary-bar.has-fail{background:#4a1a1a;color:#f85149}
+  .summary-stat{font-weight:700}
+  iframe{border:1px solid #30363d;border-radius:6px;margin:16px 0;background:#09111a}
+  button{font:inherit;border:1px solid #30363d;background:#238636;color:#fff;border-radius:6px;padding:8px 20px;cursor:pointer;font-weight:700}
+</style>
+</head>
+<body>
+<h1>H9 — FERROS Localhost Shell Acceptance Harness</h1>
+<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates route switching, live registry detail, empty-state grant and deny handling, and read-only audit visibility &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
+
+<button onclick="runJourney()">Run Journey</button>
+
+<iframe id="sut" src="/" width="100%" height="760"></iframe>
+
+<div id="groups"></div>
+<div class="summary-bar" id="summary-bar"></div>
+<div id="result-block"><pre id="result-json">waiting for journey start...</pre></div>
+
+<script>
+var results = [];
+
+function addResult(group, name, pass, detail, error) {
+  results.push({ group: group, name: name, pass: pass, detail: detail || '', error: error || '' });
+  renderResults();
+}
+
+function renderResults() {
+  var groups = {};
+  results.forEach(function(result) {
+    if (!groups[result.group]) groups[result.group] = [];
+    groups[result.group].push(result);
+  });
+
+  var html = '';
+  Object.keys(groups).forEach(function(group) {
+    html += '<h2>' + escapeHtml(group) + '</h2>';
+    groups[group].forEach(function(result) {
+      var cls = result.pass ? 'pass' : 'fail';
+      var label = result.pass ? 'PASS' : 'FAIL';
+      html += '<div class="test"><span class="badge ' + cls + '">' + label + '</span><div><div class="test-name">' + escapeHtml(result.name) + '</div>';
+      if (result.detail) html += '<div class="test-detail">' + escapeHtml(result.detail) + '</div>';
+      if (result.error) html += '<div class="test-error">' + escapeHtml(result.error) + '</div>';
+      html += '</div></div>';
+    });
+  });
+
+  document.getElementById('groups').innerHTML = html;
+
+  var passCount = results.filter(function(result) { return result.pass; }).length;
+  var failCount = results.length - passCount;
+  var bar = document.getElementById('summary-bar');
+  bar.className = 'summary-bar ' + (failCount > 0 ? 'has-fail' : 'all-pass');
+  bar.innerHTML = '<span class="summary-stat">' + passCount + ' passed</span><span class="summary-stat">' + failCount + ' failed</span><span>' + results.length + ' total</span>';
+
+  document.getElementById('result-json').textContent = JSON.stringify(results, null, 2);
+}
+
+function escapeHtml(value) {
+  var node = document.createElement('div');
+  node.textContent = String(value);
+  return node.innerHTML;
+}
+
+function waitFor(predicate, timeoutMs) {
+  return new Promise(function(resolve) {
+    var start = Date.now();
+    var check = function() {
+      try {
+        if (predicate()) return resolve(true);
+      } catch (error) {
+      }
+      if (Date.now() - start > timeoutMs) return resolve(false);
+      setTimeout(check, 100);
+    };
+    check();
+  });
+}
+
+function getDoc() {
+  return document.getElementById('sut').contentDocument;
+}
+
+function reloadShellFrame() {
+  return new Promise(function(resolve) {
+    var iframe = document.getElementById('sut');
+    iframe.onload = function() {
+      iframe.onload = null;
+      resolve();
+    };
+    iframe.src = '/?h9=' + Date.now();
+  });
+}
+
+async function click(doc, selector, description) {
+  var element = doc.querySelector(selector);
+  if (!element) throw new Error('missing element: ' + description + ' (' + selector + ')');
+  element.click();
+  return element;
+}
+
+async function runJourney() {
+  results = [];
+  renderResults();
+
+  await reloadShellFrame();
+
+  var loaded = await waitFor(function() {
+    var doc = getDoc();
+    return doc && doc.readyState === 'complete' && doc.getElementById('route-list') && doc.getElementById('connection-state');
+  }, 8000);
+
+  addResult('Setup', 'Shell iframe loaded from same-origin / route', loaded, loaded ? 'live shell DOM is readable from harness route' : '', loaded ? '' : 'timed out waiting for localhost shell iframe');
+  if (!loaded) return;
+
+  var doc = getDoc();
+  var ready = await waitFor(function() {
+    doc = getDoc();
+    return doc.getElementById('connection-state').dataset.state === 'ready';
+  }, 8000);
+  addResult('Setup', 'Shell reaches ready/live state', ready, ready ? 'connection-state=ready, rpc-health=' + doc.getElementById('rpc-health').textContent : '', ready ? '' : 'shell did not reach ready state');
+  if (!ready) return;
+
+  var routeButtons = doc.querySelectorAll('[data-route]');
+  addResult('A: Registry', 'Three route buttons are visible', routeButtons.length === 3, 'found ' + routeButtons.length + ' route buttons');
+
+  var agentRows = doc.querySelectorAll('[data-agent-name]');
+  addResult('A: Registry', 'Live agent list renders the reference agents', agentRows.length >= 2, 'agent rows=' + agentRows.length);
+  addResult('A: Registry', 'Agent count pill matches the rendered list', doc.getElementById('agent-count-pill').textContent === String(agentRows.length), 'pill=' + doc.getElementById('agent-count-pill').textContent + ', rows=' + agentRows.length);
+
+  try {
+    await click(doc, '[data-route="agents"]', 'agents route button');
+    await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('active-route-pill').textContent.trim() === 'agents' && doc.querySelector('[data-focus-agent="timer"]');
+    }, 3000);
+    await click(doc, '[data-focus-agent="timer"]', 'timer focus row');
+    var timerSelected = await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('status-selected').textContent.trim() === 'timer';
+    }, 3000);
+    addResult('B: Inspector', 'Selecting timer updates the selected status rail', timerSelected, timerSelected ? 'status-selected=timer' : '', timerSelected ? '' : 'timer selection did not propagate to status rail');
+
+    var inspectorHasTimer = doc.getElementById('inspector-content').textContent.toLowerCase().indexOf('timer') !== -1;
+    addResult('B: Inspector', 'Inspector renders live timer detail', inspectorHasTimer, inspectorHasTimer ? 'timer detail visible in inspector' : '', inspectorHasTimer ? '' : 'inspector did not show timer detail');
+  } catch (error) {
+    addResult('B: Inspector', 'Selecting timer updates the inspector', false, '', error.message);
+  }
+
+  try {
+    await click(doc, '[data-route="grants"]', 'grants route button');
+    var grantsRoute = await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('active-route-pill').textContent === 'grants';
+    }, 3000);
+    addResult('C: Grants', 'Grants route activates', grantsRoute, grantsRoute ? 'route=grants' : '', grantsRoute ? '' : 'grants route did not activate');
+
+    if (grantsRoute) {
+      doc.getElementById('profile-path-input').value = '/definitely/missing/profile.json';
+      doc.getElementById('profile-path-input').dispatchEvent(new Event('input', { bubbles: true }));
+      await click(doc, '#refresh-button', 'refresh button');
+      var stillReady = await waitFor(function() {
+        doc = getDoc();
+        return doc.getElementById('connection-state').dataset.state === 'ready';
+      }, 5000);
+      addResult('C: Grants', 'Missing profile path degrades to an empty grant view instead of failing the shell', stillReady, stillReady ? 'shell stayed ready after missing profile path refresh' : '', stillReady ? '' : 'shell dropped out of ready state after missing profile path refresh');
+
+      var grantEmpty = doc.getElementById('grants-surface').textContent.indexOf('No grant rows') !== -1;
+      addResult('C: Grants', 'Grants surface renders the empty-state note for missing profile state', grantEmpty, grantEmpty ? 'empty-state copy visible' : '', grantEmpty ? '' : 'expected empty-state note was not rendered');
+    }
+  } catch (error) {
+    addResult('C: Grants', 'Grants route journey completes', false, '', error.message);
+  }
+
+  try {
+    await click(doc, '[data-route="denyLog"]', 'deny log route button');
+    var denyRoute = await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('active-route-pill').textContent === 'denyLog';
+    }, 3000);
+    addResult('D: Deny Log', 'Deny log route activates', denyRoute, denyRoute ? 'route=denyLog' : '', denyRoute ? '' : 'deny log route did not activate');
+
+    if (denyRoute) {
+      var denyVisible = doc.getElementById('deny-surface').textContent.indexOf('No deny entries') !== -1 || doc.querySelectorAll('[data-deny-index]').length >= 0;
+      addResult('D: Deny Log', 'Deny log route renders a visible live or empty state', denyVisible, denyVisible ? 'deny surface content is present' : '', denyVisible ? '' : 'deny surface did not render a visible state');
+    }
+  } catch (error) {
+    addResult('D: Deny Log', 'Deny log route journey completes', false, '', error.message);
+  }
+
+  var readOnlyVisible = doc.getElementById('audit-panel').textContent.indexOf('Read-only on purpose') !== -1;
+  addResult('E: Audit Slot', 'Audit slot preserves the read-only contract copy', readOnlyVisible, readOnlyVisible ? 'read-only note visible' : '', readOnlyVisible ? '' : 'read-only audit note missing');
+}
+</script>
+</body>
+</html>

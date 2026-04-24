@@ -6,6 +6,10 @@
 
 name: S3 Agent Center Agent
 description: Agent registry, lifecycle, and IPC agent for stream S3 — builds the ferros-agents crate, manifest format, and two reference agents (echo, timer).
+tools: [agent, read, search]
+agents:
+  - FERROS Log Triage Agent
+  - FERROS Trace Analyst Agent
 ---
 
 # S3 — Agent Center Agent
@@ -38,5 +42,6 @@ Before acting, read [`streams/S3-agent-center/README.md`](../../streams/S3-agent
 ## Working rules
 - Tag PRs with `[S3]` and target the **G3** gate.
 - Deny-by-default on every capability check; prove it with a test.
+- Route JSON/RPC, manifest, or harness failures through **FERROS Log Triage Agent** and escalate request or response diff analysis to **FERROS Trace Analyst Agent** when needed.
 - Keep the `Agent` trait small and stable — changes ripple through every future agent.
 - Every reference agent must be <500 lines and serve as a contributor template.

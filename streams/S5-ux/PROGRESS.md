@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-24 — Same-origin localhost shell acceptance harness landed
+
+- Added `harnesses/localhost-shell-acceptance-harness.html` as a dedicated live-shell acceptance surface served by `ferros-node shell` rather than stretching the older file-based prototype harness past its real boundary.
+- Extended `crates/ferros-node/src/lib.rs` so the local shell host now serves the harness at `/harnesses/localhost-shell-acceptance.html`, keeping the harness same-origin with `GET /` and `POST /rpc` so it can black-box the real DOM and live read-first transport.
+- Focused validation passed in two layers: `cargo test -p ferros-node shell_route_` stayed green, and live browser validation at `http://127.0.0.1:4317/harnesses/localhost-shell-acceptance.html` passed 13/13 checks across route switching, agent detail, grant empty-state degradation, deny-log empty state, and the read-only audit slot.
+- Kept the slice read-first: no new JSON/RPC methods, no privileged write actions, no S5 prototype archive moves, and no claim that broader browser acceptance is fully closed.
+
 ## 2026-04-24 — First localhost shell slice landed
 
 - Added `site/agent-center-shell.html` as the first real fixed-slot localhost shell and wired it to the read-first S3 JSON/RPC routes via `ferros-node shell [port]`.

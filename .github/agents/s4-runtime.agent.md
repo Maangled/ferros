@@ -6,6 +6,10 @@
 
 name: S4 Runtime / OS Core Agent
 description: Capability, consent, executor, and message-bus agent for stream S4 — builds ferros-core, ferros-runtime, and the ferros-node host binary.
+tools: [agent, read, search]
+agents:
+  - FERROS Log Triage Agent
+  - FERROS Trace Analyst Agent
 ---
 
 # S4 — Runtime / OS Core Agent
@@ -40,5 +44,6 @@ Before acting, read [`streams/S4-runtime/README.md`](../../streams/S4-runtime/RE
 - Tag PRs with `[S4]` and target the **G3** gate.
 - Run stub-first in parallel with S2/S3; converge when types are stable.
 - Every capability check must flow through the policy engine — no shortcuts.
+- Route runtime panics, bus mismatches, and `no_std` boundary failures through **FERROS Log Triage Agent** first and use **FERROS Trace Analyst Agent** for the smallest falsifiable root-cause hypothesis.
 - Keep `ferros-core` lean enough to compile with `no_std`.
 - Document every `unsafe` block and every async executor choice.

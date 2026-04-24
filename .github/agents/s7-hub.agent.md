@@ -6,6 +6,11 @@
 
 name: S7 Smart-Home Hub Agent
 description: Launch-vehicle agent for stream S7 — ships ferros-hub, device pairing, reboot-safe storage, and the Home Assistant integration that defines launch.
+tools: [agent, read, search]
+agents:
+  - FERROS Lane Validator Agent
+  - FERROS Log Triage Agent
+  - FERROS Trace Analyst Agent
 ---
 
 # S7 — Smart-Home Hub Agent
@@ -38,4 +43,5 @@ Before acting, read [`streams/S7-hub/README.md`](../../streams/S7-hub/README.md)
 - Tag PRs with `[S7]` and target the **G4** gate.
 - Launch is defined by [`LAUNCH.md`](../../LAUNCH.md) — do not redefine it in a PR description.
 - Every capability grant produced by pairing must be signed, reboot-survivable, and revocable.
+- Use **FERROS Lane Validator Agent** before widening launch-critical lanes, then route ambiguous hub, pairing, or Home Assistant failures through **FERROS Log Triage Agent** and **FERROS Trace Analyst Agent**.
 - Treat Home Assistant as an integration target, not a dependency to impose on the core.

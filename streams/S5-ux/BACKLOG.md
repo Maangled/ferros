@@ -25,7 +25,7 @@
 - [x] Capability grant surface
 - [x] Deny log surface
 - [x] Wire to real `ferros-node` backend — no fake data
-- [ ] Add focused UI acceptance coverage for `ferros-node shell` plus `/rpc`
+- [x] Add focused UI acceptance coverage for `ferros-node shell` plus `/rpc`
 - [ ] Stage privileged grant/revoke shell intents without bypassing S2/S3/S4 consent boundaries
 
 ## Later (Phase C — post-G3)

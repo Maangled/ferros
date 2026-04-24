@@ -6,6 +6,10 @@
 
 name: S2 Profile & Identity Agent
 description: Identity, capability-grant, and consent-manifest agent for stream S2 — ships the ferros-profile crate and schemas that every downstream stream codes against.
+tools: [agent, read, search]
+agents:
+  - FERROS Log Triage Agent
+  - FERROS Trace Analyst Agent
 ---
 
 # S2 — Profile & Identity Agent
@@ -36,5 +40,6 @@ Before acting, read [`streams/S2-profile/README.md`](../../streams/S2-profile/RE
 ## Working rules
 - Tag PRs with `[S2]` and target the **G2** gate.
 - Treat the public type surface and schema versions as a contract — bump schema versions rather than silently mutating them.
+- Route ambiguous grant, signing, or CLI lifecycle failures through **FERROS Log Triage Agent** first, then escalate to **FERROS Trace Analyst Agent** when the failing boundary remains unclear.
 - No silent I/O, no network access, no surprise serialization formats.
 - Document every unsafe line and every cryptographic primitive choice.
