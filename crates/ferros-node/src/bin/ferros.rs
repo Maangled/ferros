@@ -68,22 +68,52 @@ fn parse_profile_command(args: &[String]) -> Result<ProfileCliCommand, CliError>
         return Err(usage());
     };
 
-    let path = match args.get(2) {
-        Some(path) if args.len() == 3 => PathBuf::from(path),
-        None => default_profile_path(),
-        _ => return Err(usage()),
-    };
-
     match verb {
-        "init" => Ok(ProfileCliCommand::Init { path }),
-        "show" => Ok(ProfileCliCommand::Show { path }),
+        "init" => Ok(ProfileCliCommand::Init {
+            path: parse_optional_profile_path(args, 2)?,
+        }),
+        "show" => Ok(ProfileCliCommand::Show {
+            path: parse_optional_profile_path(args, 2)?,
+        }),
+        "export" => Ok(ProfileCliCommand::Export {
+            bundle_path: parse_required_path(args, 2)?,
+            path: parse_optional_profile_path(args, 3)?,
+        }),
+        "import" => Ok(ProfileCliCommand::Import {
+            bundle_path: parse_required_path(args, 2)?,
+            path: parse_optional_profile_path(args, 3)?,
+        }),
+        "grant" => Ok(ProfileCliCommand::Grant {
+            capability: parse_required_value(args, 2)?.to_owned(),
+            path: parse_optional_profile_path(args, 3)?,
+        }),
+        "revoke" => Ok(ProfileCliCommand::Revoke {
+            capability: parse_required_value(args, 2)?.to_owned(),
+            path: parse_optional_profile_path(args, 3)?,
+        }),
+        _ => Err(usage()),
+    }
+}
+
+fn parse_required_value<'a>(args: &'a [String], index: usize) -> Result<&'a str, CliError> {
+    args.get(index).map(String::as_str).ok_or_else(usage)
+}
+
+fn parse_required_path(args: &[String], index: usize) -> Result<PathBuf, CliError> {
+    Ok(PathBuf::from(parse_required_value(args, index)?))
+}
+
+fn parse_optional_profile_path(args: &[String], index: usize) -> Result<PathBuf, CliError> {
+    match args.get(index) {
+        Some(path) if args.len() == index + 1 => Ok(PathBuf::from(path)),
+        None if args.len() == index => Ok(default_profile_path()),
         _ => Err(usage()),
     }
 }
 
 fn usage() -> CliError {
     CliError::Usage(
-        "usage: ferros demo\n       ferros agent list | describe <name> | run <name> | stop <name> | logs [name]\n       ferros profile init [path]\n       ferros profile show [path]",
+        "usage: ferros demo\n       ferros agent list | describe <name> | run <name> | stop <name> | logs [name]\n       ferros profile init [path]\n       ferros profile show [path]\n       ferros profile export <bundle-path> [path]\n       ferros profile import <bundle-path> [path]\n       ferros profile grant <capability> [path]\n       ferros profile revoke <capability> [path]",
     )
 }
 

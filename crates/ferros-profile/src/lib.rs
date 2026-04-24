@@ -14,6 +14,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
+const LOCAL_KEY_PAIR_STATE_FORMAT: &str = "ferros.local.key-pair.v0";
+const LOCAL_SIGNED_GRANT_STATE_FORMAT: &str = "ferros.local.signed-grants.v0";
+const LOCAL_PROFILE_BUNDLE_FORMAT: &str = "ferros.local.profile-bundle.v0";
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProfileId(String);
 
@@ -437,8 +441,171 @@ impl KeyPair {
         SignedProfileDocument::new(profile.clone(), self)
     }
 
+    pub fn sign_grant(
+        &self,
+        grant: &CapabilityGrant,
+    ) -> Result<SignedCapabilityGrant, CapabilityGrantSignatureError> {
+        grant.sign(self.signing_key())
+    }
+
+    pub fn revoke_grant(
+        &self,
+        grant: &mut SignedCapabilityGrant,
+        revoked_at: impl Into<String>,
+        revocation_reason: impl Into<String>,
+    ) -> Result<bool, CapabilityGrantSignatureError> {
+        grant.revoke(self.signing_key(), revoked_at, revocation_reason)
+    }
+
     fn signing_key(&self) -> &SigningKey {
         &self.signing_key
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct LocalProfileState {
+    pub profile: ProfileDocument,
+    pub key_pair: KeyPair,
+    pub signed_grants: Vec<SignedCapabilityGrant>,
+}
+
+impl LocalProfileState {
+    pub fn new(
+        profile: ProfileDocument,
+        key_pair: KeyPair,
+        signed_grants: Vec<SignedCapabilityGrant>,
+    ) -> Result<Self, ProfileStoreError> {
+        let state = Self {
+            profile,
+            key_pair,
+            signed_grants,
+        };
+
+        state.validate()?;
+        Ok(state)
+    }
+
+    fn validate(&self) -> Result<(), ProfileStoreError> {
+        let expected_profile_id = self.key_pair.profile_id();
+        let expected_signer_public_key = self.key_pair.public_key_hex();
+        let mut capabilities = BTreeSet::new();
+
+        for grant in &self.signed_grants {
+            grant.verify()?;
+
+            if grant.grant.profile_id != expected_profile_id {
+                return Err(ProfileStoreError::InvalidLocalState(format!(
+                    "grant {} profile id does not match local key pair",
+                    grant.grant.capability
+                )));
+            }
+
+            if grant.signer_public_key != expected_signer_public_key {
+                return Err(ProfileStoreError::InvalidLocalState(format!(
+                    "grant {} signer_public_key does not match local key pair",
+                    grant.grant.capability
+                )));
+            }
+
+            if !capabilities.insert(grant.grant.capability.clone()) {
+                return Err(ProfileStoreError::InvalidLocalState(format!(
+                    "duplicate capability in local grant state: {}",
+                    grant.grant.capability
+                )));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct StoredKeyPair {
+    format: String,
+    device_label: String,
+    secret_key: String,
+}
+
+impl StoredKeyPair {
+    fn from_key_pair(key_pair: &KeyPair) -> Self {
+        Self {
+            format: LOCAL_KEY_PAIR_STATE_FORMAT.to_owned(),
+            device_label: key_pair.device_label().to_owned(),
+            secret_key: key_pair.secret_key_hex(),
+        }
+    }
+
+    fn into_key_pair(self) -> Result<KeyPair, ProfileStoreError> {
+        if self.format != LOCAL_KEY_PAIR_STATE_FORMAT {
+            return Err(ProfileStoreError::InvalidLocalState(format!(
+                "unsupported local key pair state format: {}",
+                self.format
+            )));
+        }
+
+        KeyPair::from_secret_key_hex(self.device_label, &self.secret_key).map_err(ProfileStoreError::from)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct StoredSignedGrantState {
+    format: String,
+    #[serde(default)]
+    grants: Vec<SignedCapabilityGrant>,
+}
+
+impl StoredSignedGrantState {
+    fn from_signed_grants(grants: &[SignedCapabilityGrant]) -> Self {
+        Self {
+            format: LOCAL_SIGNED_GRANT_STATE_FORMAT.to_owned(),
+            grants: grants.to_vec(),
+        }
+    }
+
+    fn into_signed_grants(self) -> Result<Vec<SignedCapabilityGrant>, ProfileStoreError> {
+        if self.format != LOCAL_SIGNED_GRANT_STATE_FORMAT {
+            return Err(ProfileStoreError::InvalidLocalState(format!(
+                "unsupported local signed grant state format: {}",
+                self.format
+            )));
+        }
+
+        for grant in &self.grants {
+            grant.verify()?;
+        }
+
+        Ok(self.grants)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct StoredProfileBundle {
+    format: String,
+    profile: ProfileDocument,
+    key_pair: StoredKeyPair,
+    #[serde(default)]
+    grants: Vec<SignedCapabilityGrant>,
+}
+
+impl StoredProfileBundle {
+    fn from_local_state(state: &LocalProfileState) -> Self {
+        Self {
+            format: LOCAL_PROFILE_BUNDLE_FORMAT.to_owned(),
+            profile: state.profile.clone(),
+            key_pair: StoredKeyPair::from_key_pair(&state.key_pair),
+            grants: state.signed_grants.clone(),
+        }
+    }
+
+    fn into_local_state(self) -> Result<LocalProfileState, ProfileStoreError> {
+        if self.format != LOCAL_PROFILE_BUNDLE_FORMAT {
+            return Err(ProfileStoreError::InvalidLocalState(format!(
+                "unsupported local profile bundle format: {}",
+                self.format
+            )));
+        }
+
+        LocalProfileState::new(self.profile, self.key_pair.into_key_pair()?, self.grants)
     }
 }
 
@@ -817,8 +984,13 @@ impl SignedProfileDocument {
 #[derive(Debug)]
 pub enum ProfileStoreError {
     AlreadyExists(PathBuf),
+    CapabilityGrantAlreadyExists(String),
+    CapabilityGrantNotFound(String),
+    CapabilityGrantSignature(CapabilityGrantSignatureError),
     InvalidProfile(ProfileDocumentError),
+    InvalidLocalState(String),
     Io(io::Error),
+    KeyPair(KeyPairError),
     Serde(serde_json::Error),
 }
 
@@ -828,16 +1000,37 @@ impl fmt::Display for ProfileStoreError {
             Self::AlreadyExists(path) => {
                 write!(f, "profile already exists at {}", path.display())
             }
+            Self::CapabilityGrantAlreadyExists(capability) => {
+                write!(f, "capability grant already exists: {capability}")
+            }
+            Self::CapabilityGrantNotFound(capability) => {
+                write!(f, "capability grant not found: {capability}")
+            }
+            Self::CapabilityGrantSignature(error) => write!(f, "{error}"),
             Self::InvalidProfile(error) => write!(f, "{error}"),
+            Self::InvalidLocalState(message) => write!(f, "invalid local profile state: {message}"),
             Self::Io(error) => write!(f, "{error}"),
+            Self::KeyPair(error) => write!(f, "{error}"),
             Self::Serde(error) => write!(f, "{error}"),
         }
+    }
+}
+
+impl From<CapabilityGrantSignatureError> for ProfileStoreError {
+    fn from(value: CapabilityGrantSignatureError) -> Self {
+        Self::CapabilityGrantSignature(value)
     }
 }
 
 impl From<ProfileDocumentError> for ProfileStoreError {
     fn from(value: ProfileDocumentError) -> Self {
         Self::InvalidProfile(value)
+    }
+}
+
+impl From<KeyPairError> for ProfileStoreError {
+    fn from(value: KeyPairError) -> Self {
+        Self::KeyPair(value)
     }
 }
 
@@ -875,6 +1068,35 @@ pub trait ProfileStore {
     }
 }
 
+pub trait LocalProfileStore: ProfileStore {
+    fn create_local_profile(
+        &self,
+        path: &Path,
+        profile: &ProfileDocument,
+        key_pair: &KeyPair,
+    ) -> Result<(), ProfileStoreError>;
+
+    fn load_local_profile(&self, path: &Path) -> Result<LocalProfileState, ProfileStoreError>;
+
+    fn save_signed_grants(
+        &self,
+        path: &Path,
+        grants: &[SignedCapabilityGrant],
+    ) -> Result<(), ProfileStoreError>;
+
+    fn export_profile_bundle(
+        &self,
+        profile_path: &Path,
+        bundle_path: &Path,
+    ) -> Result<(), ProfileStoreError>;
+
+    fn import_profile_bundle(
+        &self,
+        bundle_path: &Path,
+        profile_path: &Path,
+    ) -> Result<LocalProfileState, ProfileStoreError>;
+}
+
 pub fn init_profile<S: ProfileStore>(
     store: &S,
     path: &Path,
@@ -886,6 +1108,72 @@ pub fn init_profile<S: ProfileStore>(
     store.load_profile(path)
 }
 
+pub fn init_local_profile<S: LocalProfileStore>(
+    store: &S,
+    path: &Path,
+    display_name: impl Into<String>,
+    created_at: impl Into<String>,
+    device_label: impl Into<String>,
+) -> Result<LocalProfileState, ProfileStoreError> {
+    let profile = ProfileDocument::fresh(display_name, created_at)?;
+    let key_pair = KeyPair::generate(device_label)?;
+
+    store.create_local_profile(path, &profile, &key_pair)?;
+    store.load_local_profile(path)
+}
+
+pub fn grant_profile_capability<S: LocalProfileStore>(
+    store: &S,
+    path: &Path,
+    capability: impl Into<String>,
+) -> Result<SignedCapabilityGrant, ProfileStoreError> {
+    let mut state = store.load_local_profile(path)?;
+    let capability = capability.into();
+
+    if state
+        .signed_grants
+        .iter()
+        .any(|grant| grant.grant.capability == capability)
+    {
+        return Err(ProfileStoreError::CapabilityGrantAlreadyExists(capability));
+    }
+
+    let signed_grant = state
+        .key_pair
+        .sign_grant(&CapabilityGrant::new(state.key_pair.profile_id(), capability))?;
+
+    state.signed_grants.push(signed_grant.clone());
+    store.save_signed_grants(path, &state.signed_grants)?;
+
+    Ok(signed_grant)
+}
+
+pub fn revoke_profile_capability<S: LocalProfileStore>(
+    store: &S,
+    path: &Path,
+    capability: &str,
+    revoked_at: impl Into<String>,
+    revocation_reason: impl Into<String>,
+) -> Result<SignedCapabilityGrant, ProfileStoreError> {
+    let mut state = store.load_local_profile(path)?;
+    let revoked_at = revoked_at.into();
+    let revocation_reason = revocation_reason.into();
+    let grant = state
+        .signed_grants
+        .iter_mut()
+        .find(|grant| grant.grant.capability == capability)
+        .ok_or_else(|| ProfileStoreError::CapabilityGrantNotFound(capability.to_owned()))?;
+
+    state
+        .key_pair
+        .revoke_grant(grant, revoked_at, revocation_reason)?;
+    let updated_grant = grant.clone();
+
+    store.save_signed_grants(path, &state.signed_grants)?;
+
+    Ok(updated_grant)
+}
+
 fn validate_created_at(created_at: String) -> Result<String, ProfileDocumentError> {
     OffsetDateTime::parse(&created_at, &Rfc3339)
         .map(|_| created_at.clone())
@@ -894,6 +1182,80 @@ fn validate_created_at(created_at: String) -> Result<String, ProfileDocumentErro
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct FileSystemProfileStore;
+
+impl FileSystemProfileStore {
+    fn key_pair_path(profile_path: &Path) -> PathBuf {
+        profile_path.with_extension("key.json")
+    }
+
+    fn signed_grants_path(profile_path: &Path) -> PathBuf {
+        profile_path.with_extension("grants.json")
+    }
+
+    fn write_json_pretty<T: Serialize>(
+        &self,
+        path: &Path,
+        value: &T,
+    ) -> Result<(), ProfileStoreError> {
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
+        let serialized = serde_json::to_string_pretty(value)?;
+        fs::write(path, serialized)?;
+        Ok(())
+    }
+
+    fn write_json_pretty_new<T: Serialize>(
+        &self,
+        path: &Path,
+        value: &T,
+    ) -> Result<(), ProfileStoreError> {
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
+        let serialized = serde_json::to_string_pretty(value)?;
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)
+            .map_err(|error| {
+                if error.kind() == io::ErrorKind::AlreadyExists {
+                    ProfileStoreError::AlreadyExists(path.to_path_buf())
+                } else {
+                    ProfileStoreError::Io(error)
+                }
+            })?;
+
+        file.write_all(serialized.as_bytes())?;
+        Ok(())
+    }
+
+    fn load_key_pair(&self, profile_path: &Path) -> Result<KeyPair, ProfileStoreError> {
+        let contents = fs::read_to_string(Self::key_pair_path(profile_path))?;
+        let stored: StoredKeyPair = serde_json::from_str(&contents)?;
+        stored.into_key_pair()
+    }
+
+    fn load_signed_grants(
+        &self,
+        profile_path: &Path,
+    ) -> Result<Vec<SignedCapabilityGrant>, ProfileStoreError> {
+        let grants_path = Self::signed_grants_path(profile_path);
+        let contents = match fs::read_to_string(&grants_path) {
+            Ok(contents) => contents,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(error) => return Err(ProfileStoreError::Io(error)),
+        };
+        let stored: StoredSignedGrantState = serde_json::from_str(&contents)?;
+        stored.into_signed_grants()
+    }
+}
 
 impl ProfileStore for FileSystemProfileStore {
     fn load_profile(&self, path: &Path) -> Result<ProfileDocument, ProfileStoreError> {
@@ -943,6 +1305,81 @@ impl ProfileStore for FileSystemProfileStore {
 
         file.write_all(serialized.as_bytes())?;
         Ok(())
+    }
+}
+
+impl LocalProfileStore for FileSystemProfileStore {
+    fn create_local_profile(
+        &self,
+        path: &Path,
+        profile: &ProfileDocument,
+        key_pair: &KeyPair,
+    ) -> Result<(), ProfileStoreError> {
+        let key_pair_path = Self::key_pair_path(path);
+
+        if path.exists() {
+            return Err(ProfileStoreError::AlreadyExists(path.to_path_buf()));
+        }
+
+        if key_pair_path.exists() {
+            return Err(ProfileStoreError::AlreadyExists(key_pair_path));
+        }
+
+        self.create_profile(path, profile)?;
+
+        if let Err(error) = self.write_json_pretty_new(&Self::key_pair_path(path), &StoredKeyPair::from_key_pair(key_pair)) {
+            let _ = fs::remove_file(path);
+            return Err(error);
+        }
+
+        Ok(())
+    }
+
+    fn load_local_profile(&self, path: &Path) -> Result<LocalProfileState, ProfileStoreError> {
+        LocalProfileState::new(
+            self.load_profile(path)?,
+            self.load_key_pair(path)?,
+            self.load_signed_grants(path)?,
+        )
+    }
+
+    fn save_signed_grants(
+        &self,
+        path: &Path,
+        grants: &[SignedCapabilityGrant],
+    ) -> Result<(), ProfileStoreError> {
+        for grant in grants {
+            grant.verify()?;
+        }
+
+        self.write_json_pretty(
+            &Self::signed_grants_path(path),
+            &StoredSignedGrantState::from_signed_grants(grants),
+        )
+    }
+
+    fn export_profile_bundle(
+        &self,
+        profile_path: &Path,
+        bundle_path: &Path,
+    ) -> Result<(), ProfileStoreError> {
+        let state = self.load_local_profile(profile_path)?;
+        self.write_json_pretty_new(bundle_path, &StoredProfileBundle::from_local_state(&state))
+    }
+
+    fn import_profile_bundle(
+        &self,
+        bundle_path: &Path,
+        profile_path: &Path,
+    ) -> Result<LocalProfileState, ProfileStoreError> {
+        let contents = fs::read_to_string(bundle_path)?;
+        let bundle: StoredProfileBundle = serde_json::from_str(&contents)?;
+        let state = bundle.into_local_state()?;
+
+        self.create_local_profile(profile_path, &state.profile, &state.key_pair)?;
+        self.save_signed_grants(profile_path, &state.signed_grants)?;
+
+        self.load_local_profile(profile_path)
     }
 }
 
@@ -1125,8 +1562,9 @@ mod tests {
         encode_hex, foundation_contract_preview, init_profile, CapabilityGrant,
         CapabilityGrantSignatureError, ConsentManifest, ConsentManifestError,
         FileSystemProfileStore, KeyPair, KeyPairError, ProfileDocument,
-        ProfileDocumentError, ProfileId, ProfileIdError, ProfileSignatureError,
-        ProfileStore, ProfileStoreError, SignedCapabilityGrant, SignedProfileDocument,
+        LocalProfileStore, ProfileDocumentError, ProfileId, ProfileIdError,
+        ProfileSignatureError, ProfileStore, ProfileStoreError, SignedCapabilityGrant,
+        SignedProfileDocument,
     };
     use serde_json::Value;
 
@@ -1142,6 +1580,13 @@ mod tests {
     const PROFILE_V0_SCHEMA: &str = include_str!("../../../schemas/profile.v0.json");
     const CAPABILITY_GRANT_V0_SCHEMA: &str =
         include_str!("../../../schemas/capability-grant.v0.json");
+    const SIGNED_PROFILE_ENVELOPE_ONLY_FIELDS: [&str; 5] = [
+        "profile_id",
+        "revoked_at",
+        "revocation_reason",
+        "signer_public_key",
+        "signature",
+    ];
     const TEST_SIGNING_KEY_BYTES: [u8; 32] = [
         0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87, 0x98, 0xa9, 0xba, 0xcb, 0xdc, 0xed,
         0xfe, 0x0f, 0x1f, 0x2e, 0x3d, 0x4c, 0x5b, 0x6a, 0x79, 0x88, 0x97, 0xa6, 0xb5, 0xc4,
@@ -1729,6 +2174,43 @@ mod tests {
     }
 
     #[test]
+    fn profile_v0_schema_freezes_the_unsigned_boundary() {
+        let schema = parse_schema(PROFILE_V0_SCHEMA, "profile.v0");
+        let description = schema
+            .get("description")
+            .and_then(Value::as_str)
+            .expect("profile.v0 schema should describe its frozen boundary");
+        let comment = schema
+            .get("$comment")
+            .and_then(Value::as_str)
+            .expect("profile.v0 schema should document the signed-profile freeze boundary");
+        let properties = schema
+            .get("properties")
+            .and_then(Value::as_object)
+            .expect("profile.v0 schema should declare root properties");
+
+        assert!(
+            description.contains("Frozen S2-owned unsigned FERROS profile schema"),
+            "profile.v0 schema should identify itself as the frozen unsigned v0 contract"
+        );
+        assert!(
+            comment.contains("SignedProfileDocument stays Rust-local at v0"),
+            "profile.v0 schema should keep SignedProfileDocument Rust-local at v0"
+        );
+        assert!(
+            !properties.contains_key("profile"),
+            "profile.v0 schema should describe the profile payload directly, not a signed wrapper"
+        );
+
+        for field in SIGNED_PROFILE_ENVELOPE_ONLY_FIELDS {
+            assert!(
+                !properties.contains_key(field),
+                "profile.v0 schema should stay unsigned and omit envelope-only field {field}"
+            );
+        }
+    }
+
+    #[test]
     fn fresh_profile_document_rejects_invalid_created_at() {
         let error = ProfileDocument::fresh("Wave Pilot", "not-a-timestamp")
             .expect_err("invalid created_at should be rejected at the constructor boundary");
@@ -1830,6 +2312,28 @@ mod tests {
 
         assert_eq!(serialized, fixture);
         assert_eq!(serialized_profile, *embedded_profile);
+        assert_matches_profile_v0_contract(&serialized_profile);
+    }
+
+    #[test]
+    fn revoked_signed_profile_keeps_embedded_profile_within_profile_v0_contract() {
+        let key_pair = test_key_pair();
+        let mut signed_profile = signed_test_profile();
+
+        assert!(signed_profile
+            .revoke(
+                &key_pair,
+                "2026-04-23T11:00:00Z",
+                "rotated local device",
+            )
+            .expect("revoked signed profile should re-sign"));
+        signed_profile
+            .verify()
+            .expect("revoked signed profile should still verify");
+
+        let serialized_profile = serde_json::to_value(signed_profile.profile())
+            .expect("revoked signed profile should expose the embedded profile as JSON");
+
         assert_matches_profile_v0_contract(&serialized_profile);
     }
 
@@ -1937,6 +2441,87 @@ mod tests {
 
         let _ = std::fs::remove_file(&path);
         if let Some(parent) = path.parent() {
+            let _ = std::fs::remove_dir(parent);
+        }
+    }
+
+    #[test]
+    fn file_system_profile_store_round_trips_local_profile_state() {
+        let store = FileSystemProfileStore;
+        let path = unique_temp_profile_path("local-state");
+        let profile = ProfileDocument::fresh("Wave Pilot", "2026-04-23T10:00:00Z")
+            .expect("fresh profile should build");
+        let key_pair = test_key_pair();
+        let signed_grant = key_pair
+            .sign_grant(&CapabilityGrant::new(key_pair.profile_id(), "consent.read"))
+            .expect("grant should sign");
+
+        store
+            .create_local_profile(&path, &profile, &key_pair)
+            .expect("local profile should persist");
+        store
+            .save_signed_grants(&path, &[signed_grant.clone()])
+            .expect("signed grants should persist");
+
+        let loaded = store
+            .load_local_profile(&path)
+            .expect("local profile state should load");
+
+        assert_eq!(loaded.profile, profile);
+        assert_eq!(loaded.key_pair.device_label(), key_pair.device_label());
+        assert_eq!(loaded.key_pair.public_key_hex(), key_pair.public_key_hex());
+        assert_eq!(loaded.key_pair.secret_key_hex(), key_pair.secret_key_hex());
+        assert_eq!(loaded.signed_grants, vec![signed_grant]);
+
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(FileSystemProfileStore::key_pair_path(&path));
+        let _ = std::fs::remove_file(FileSystemProfileStore::signed_grants_path(&path));
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::remove_dir(parent);
+        }
+    }
+
+    #[test]
+    fn file_system_profile_store_exports_and_imports_local_bundle() {
+        let store = FileSystemProfileStore;
+        let source_path = unique_temp_profile_path("bundle-source");
+        let bundle_path = unique_temp_profile_path("bundle").with_extension("bundle.json");
+        let imported_path = unique_temp_profile_path("bundle-imported");
+
+        let profile = ProfileDocument::fresh("Wave Pilot", "2026-04-23T10:00:00Z")
+            .expect("fresh profile should build");
+        let key_pair = test_key_pair();
+        let signed_grant = key_pair
+            .sign_grant(&CapabilityGrant::new(key_pair.profile_id(), "consent.read"))
+            .expect("grant should sign");
+
+        store
+            .create_local_profile(&source_path, &profile, &key_pair)
+            .expect("source state should persist");
+        store
+            .save_signed_grants(&source_path, &[signed_grant.clone()])
+            .expect("source grants should persist");
+        store
+            .export_profile_bundle(&source_path, &bundle_path)
+            .expect("bundle should export");
+
+        let imported = store
+            .import_profile_bundle(&bundle_path, &imported_path)
+            .expect("bundle should import");
+
+        assert_eq!(imported.profile, profile);
+        assert_eq!(imported.key_pair.public_key_hex(), key_pair.public_key_hex());
+        assert_eq!(imported.key_pair.secret_key_hex(), key_pair.secret_key_hex());
+        assert_eq!(imported.signed_grants, vec![signed_grant]);
+
+        let _ = std::fs::remove_file(&source_path);
+        let _ = std::fs::remove_file(FileSystemProfileStore::key_pair_path(&source_path));
+        let _ = std::fs::remove_file(FileSystemProfileStore::signed_grants_path(&source_path));
+        let _ = std::fs::remove_file(&bundle_path);
+        let _ = std::fs::remove_file(&imported_path);
+        let _ = std::fs::remove_file(FileSystemProfileStore::key_pair_path(&imported_path));
+        let _ = std::fs::remove_file(FileSystemProfileStore::signed_grants_path(&imported_path));
+        if let Some(parent) = source_path.parent() {
             let _ = std::fs::remove_dir(parent);
         }
     }

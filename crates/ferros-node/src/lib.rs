@@ -18,18 +18,20 @@ use ferros_core::{
     RequesterProfileIdError,
 };
 use ferros_profile::{
-    init_profile, CapabilityGrant, FileSystemProfileStore, ProfileId, ProfileIdError,
-    ProfileStore, ProfileStoreError,
+    grant_profile_capability, init_local_profile, revoke_profile_capability, CapabilityGrant,
+    FileSystemProfileStore, LocalProfileStore, ProfileId, ProfileIdError, ProfileStoreError,
 };
 use ferros_runtime::{Executor, InMemoryExecutor, InMemoryMessageBus, MessageBus};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 const DEFAULT_PROFILE_ID: &str = "profile-alpha";
 const DEFAULT_PROFILE_NAME: &str = "Fresh Start";
+const DEFAULT_PROFILE_DEVICE_LABEL: &str = "ferros-cli";
 const CLI_STATE_DIRECTORY: &str = "ferros";
 const CLI_STATE_FILE: &str = "agent-center.state";
 const CLI_PROFILE_DIRECTORY: &str = ".ferros";
 const CLI_PROFILE_FILE: &str = "profile.json";
+const PROFILE_REVOKE_REASON: &str = "revoked via ferros profile revoke";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DemoSummary {
@@ -153,6 +155,10 @@ pub enum AgentCliCommand {
 pub enum ProfileCliCommand {
     Init { path: PathBuf },
     Show { path: PathBuf },
+    Export { path: PathBuf, bundle_path: PathBuf },
+    Import { path: PathBuf, bundle_path: PathBuf },
+    Grant { path: PathBuf, capability: String },
+    Revoke { path: PathBuf, capability: String },
 }
 
 #[derive(Debug)]
@@ -686,22 +692,24 @@ fn execute_agent_cli_with_state_path(
     }
 }
 
-fn execute_profile_cli_with_store<S: ProfileStore>(
+fn execute_profile_cli_with_store<S: LocalProfileStore>(
     command: ProfileCliCommand,
     store: &S,
 ) -> Result<Vec<String>, CliError> {
     match command {
         ProfileCliCommand::Init { path } => {
-            let profile = init_profile(
+            let state = init_local_profile(
                 store,
                 &path,
                 DEFAULT_PROFILE_NAME,
                 current_profile_timestamp(),
+                DEFAULT_PROFILE_DEVICE_LABEL,
             )?;
 
             Ok(vec![
                 format!("initialized profile at {}", path.display()),
-                format!("profile name: {}", profile.identity.name),
+                format!("profile id: {}", state.key_pair.profile_id().as_str()),
+                format!("profile name: {}", state.profile.identity.name),
             ])
         }
         ProfileCliCommand::Show { path } => {
@@ -711,6 +719,47 @@ fn execute_profile_cli_with_store<S: ProfileStore>(
                 .map_err(ProfileStoreError::Serde)?;
 
             Ok(rendered.lines().map(str::to_owned).collect())
+        }
+        ProfileCliCommand::Export { path, bundle_path } => {
+            store.export_profile_bundle(&path, &bundle_path)?;
+
+            Ok(vec![format!(
+                "exported profile bundle to {}",
+                bundle_path.display()
+            )])
+        }
+        ProfileCliCommand::Import { path, bundle_path } => {
+            let state = store.import_profile_bundle(&bundle_path, &path)?;
+
+            Ok(vec![
+                format!("imported profile at {}", path.display()),
+                format!("profile id: {}", state.key_pair.profile_id().as_str()),
+                format!("grant count: {}", state.signed_grants.len()),
+            ])
+        }
+        ProfileCliCommand::Grant { path, capability } => {
+            let signed_grant = grant_profile_capability(store, &path, capability)?;
+
+            Ok(vec![format!(
+                "granted {} to {}",
+                signed_grant.grant.capability,
+                signed_grant.grant.profile_id.as_str()
+            )])
+        }
+        ProfileCliCommand::Revoke { path, capability } => {
+            let signed_grant = revoke_profile_capability(
+                store,
+                &path,
+                &capability,
+                current_profile_timestamp(),
+                PROFILE_REVOKE_REASON,
+            )?;
+
+            Ok(vec![format!(
+                "revoked {} for {}",
+                signed_grant.grant.capability,
+                signed_grant.grant.profile_id.as_str()
+            )])
         }
     }
 }

@@ -142,7 +142,7 @@ var SCHEMA_CAPABILITY_GRANT_V0 = {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://ferros.local/schemas/capability-grant.v0.json",
   "title": "FERROS Capability Grant v0",
-  "description": "S2-owned capability grant schema candidate for G2 freeze. Mirrors the current ferros-profile signed CapabilityGrant envelope, including Ed25519 signer material and revocation metadata.",
+  "description": "Frozen S2-owned signed FERROS capability grant schema for G2. This is the published v0 envelope contract mirrored by the current ferros-profile signed CapabilityGrant shape, including Ed25519 signer material and revocation metadata.",
   "$comment": "Normative signing contract: reconstruct the signed payload from only profile_id, capability, and the optional revoked_at and revocation_reason fields. Omit absent optional fields entirely. Serialize that stripped payload as UTF-8 JSON with no insignificant whitespace and with members emitted in exactly this order: profile_id, capability, revoked_at, revocation_reason. signer_public_key and signature are envelope-only fields and are never part of the signed payload. Verifiers must verify that stripped payload before trusting the embedded grant fields.",
   "x-ferros-signature": {
     "algorithm": "Ed25519",
@@ -716,7 +716,8 @@ var SCHEMA_PROFILE_V0 = {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://ferros.local/schemas/profile.v0.json",
   "title": "FERROS Profile v0",
-  "description": "S2-owned profile schema candidate for G2 freeze. Derived from the existing FERROS profile contract and used to enforce Rust schema parity in ferros-profile.",
+  "description": "Frozen S2-owned unsigned FERROS profile schema for G2. This is the published v0 consumer contract enforced by ferros-profile parity tests.",
+  "$comment": "Freeze boundary: this schema covers only the unsigned ProfileDocument payload. SignedProfileDocument stays Rust-local at v0; envelope-only fields like profile_id, revoked_at, revocation_reason, signer_public_key, and signature are intentionally excluded. If signed-profile portability is needed later, publish a separate versioned schema instead of widening profile.v0.json in place.",
   "type": "object",
   "required": ["meta", "identity", "attributes", "skills", "achievements", "journal", "credentials", "sealChain"],
   "additionalProperties": false,
@@ -2810,6 +2811,116 @@ var FIXTURE_SESSION_MODE_INVARIANTS = {
   ]
 };
 
+// Source: schemas/fixtures/signed-profile-valid.json
+var FIXTURE_SIGNED_PROFILE_VALID = {
+  "profile_id": "8907668126536768cdb51c9f1643ff77447bff0e3fc6b4a78cd0fab53a6c590c",
+  "profile": {
+    "meta": {
+      "version": "1.0",
+      "created": "2026-04-23T10:00:00Z",
+      "lastModified": "2026-04-23T10:00:00Z",
+      "assistanceLevel": 1,
+      "genesisHash": "profile-genesis-wave-pilot2026-04-23t10-00-00z",
+      "currentSeal": "profile-genesis-wave-pilot2026-04-23t10-00-00z",
+      "sealCount": 1,
+      "stage": 0
+    },
+    "identity": {
+      "name": "Wave Pilot",
+      "avatar": "star",
+      "class": null,
+      "streamAffinity": null,
+      "title": "Newcomer",
+      "joinedDate": "2026-04-23T10:00:00Z",
+      "streakDays": 0,
+      "longestStreak": 0
+    },
+    "attributes": {
+      "Community": {
+        "color": "pink",
+        "icon": "community",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      },
+      "Craft": {
+        "color": "cyan",
+        "icon": "craft",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      },
+      "Discipline": {
+        "color": "amber",
+        "icon": "discipline",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      },
+      "Governance": {
+        "color": "purple",
+        "icon": "governance",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      },
+      "Knowledge": {
+        "color": "blue",
+        "icon": "knowledge",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      },
+      "Wellness": {
+        "color": "green",
+        "icon": "wellness",
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100
+      }
+    },
+    "skills": {
+      "A": [],
+      "B": [],
+      "C": []
+    },
+    "achievements": [
+      {
+        "desc": "Created a FERROS profile",
+        "icon": "trophy",
+        "id": "genesis_pioneer",
+        "name": "Genesis Pioneer",
+        "unlocked": true,
+        "unlockedAt": "2026-04-23T10:00:00Z"
+      }
+    ],
+    "journal": [
+      {
+        "text": "Profile created for Wave Pilot",
+        "ts": "2026-04-23T10:00:00Z",
+        "type": "system"
+      }
+    ],
+    "credentials": [],
+    "sealChain": [
+      {
+        "taskId": "genesis",
+        "seal": "profile-genesis-wave-pilot2026-04-23t10-00-00z",
+        "previousSeal": "genesis",
+        "timestamp": "2026-04-23T10:00:00Z",
+        "data": {
+          "event": "profile_created",
+          "name": "Wave Pilot"
+        },
+        "hashAlgorithm": "sha256",
+        "nonce": 0
+      }
+    ]
+  },
+  "signer_public_key": "8907668126536768cdb51c9f1643ff77447bff0e3fc6b4a78cd0fab53a6c590c",
+  "signature": "7fdd56938e573ca3d09e4ca8861e3d964fe87d56071dd47267e7751e01179478e63eadd0d125a1f0548c50abad9b842fc5dc109740566bd6fa2d953a2dff5305"
+};
+
 // Source: schemas/fixtures/template-to-events-golden.json
 var FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN = {
   "$schema": "https://ferros.local/schemas/schedule-event.schema.json",
@@ -2906,6 +3017,7 @@ var FERROS_GOLDEN_FIXTURES = [
   {name: "recovery-session-log", file: "recovery-session-log.json", fixture: FIXTURE_RECOVERY_SESSION_LOG},
   {name: "schedule-event-source-seam", file: "schedule-event-source-seam.json", fixture: FIXTURE_SCHEDULE_EVENT_SOURCE_SEAM},
   {name: "session-mode-invariants", file: "session-mode-invariants.json", fixture: FIXTURE_SESSION_MODE_INVARIANTS},
+  {name: "signed-profile-valid", file: "signed-profile-valid.json", fixture: FIXTURE_SIGNED_PROFILE_VALID},
   {name: "template-to-events-golden", file: "template-to-events-golden.json", fixture: FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN}
 ];
 var FERROS_NEGATIVE_FIXTURES = [
@@ -2924,5 +3036,5 @@ var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-template-to-events-missing-source-type", file: "invalid-template-to-events-missing-source-type.json", fixture: FIXTURE_INVALID_TEMPLATE_TO_EVENTS_MISSING_SOURCE_TYPE}
 ];
 
-// Total files embedded: 40
-// Schemas: 9 | Golden fixtures: 18 | Negative fixtures: 13
+// Total files embedded: 41
+// Schemas: 9 | Golden fixtures: 19 | Negative fixtures: 13

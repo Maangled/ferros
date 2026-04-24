@@ -51,6 +51,32 @@ None.
 
 ## Done
 
+### WAVE-2026-04-24-02
+
+- Title: Close G2 with the remaining profile CLI evidence
+- Status: done
+- Priority: P0
+- Gate: G2
+- Owning streams: S2 primary, S8 truth-sync after landing, S1 support only if a repo-backed Linux proof surface needs to move
+- Goal: Finish the only remaining G2 blocker by landing a repo-backed `ferros profile export`, `import`, `grant`, and `revoke` path, including the minimum local persistence boundary for key material and signed grant state, without widening the frozen published v0 contracts or changing downstream S3, S4, or S7 consumer boundaries.
+- Anchor files: `crates/ferros-profile/src/lib.rs`, `crates/ferros-node/src/lib.rs`, `crates/ferros-node/src/bin/ferros.rs`, `schemas/profile.v0.json`, `schemas/capability-grant.v0.json`, `docs/gates/G2.md`, `STATUS.md`
+- Validation: `cargo test -p ferros-profile -p ferros-node`; repo-backed real-binary proof that `ferros profile init`, `grant`, `export`, `import`, `revoke`, and `show` succeed against real files and preserve the frozen `profile.v0.json` and `capability-grant.v0.json` boundaries
+- Constraints: Keep `profile.v0.json` frozen as the unsigned published v0 consumer contract. Keep `SignedProfileDocument` Rust-local at v0. Do not mutate `capability-grant.v0.json`. Do not widen S3 or S4 runtime and manifest contracts, S7 pairing semantics, optional passphrase wrap, or post-G2 UX work. If a new on-disk bundle format is needed, keep it local to the CLI and store surface rather than publishing a new shared schema.
+- Last update: 2026-04-24
+
+### WAVE-2026-04-24-01
+
+- Title: Freeze profile.v0 and settle the signed-profile v0 boundary
+- Status: done
+- Priority: P0
+- Gate: G2
+- Owning streams: S2 primary, S8 truth-sync after landing, S3 and S4 consumer awareness only if the published contract wording shifts
+- Goal: Convert the current `schemas/profile.v0.json` freeze candidate into the actual frozen v0 contract by deciding whether `SignedProfileDocument` stays Rust-local at v0, landing only the minimal schema and parity changes required for freeze, and propagating that final contract through shared validation and truth surfaces without widening into the remaining profile CLI verbs.
+- Anchor files: `schemas/profile.v0.json`, `crates/ferros-profile/src/lib.rs`, `schemas/fixtures/profile-valid.json`, `schemas/fixtures/signed-profile-valid.json`, `tools/generate-harness-constants.ps1`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`, `streams/S2-profile/CONTRACTS.md`, `docs/gates/G2.md`, `docs/contracts/CONTRACTS-OVERVIEW.md`, `STATUS.md`
+- Validation: `cargo test -p ferros-profile`; if fixture or schema coverage changes, regenerate harness constants and confirm `harnesses/ferros-contract-validator.html` still accepts the frozen profile fixture set; confirm editor diagnostics are clean on touched S2 and truth-sync files
+- Constraints: Keep the slice inside profile.v0 freeze semantics and freeze evidence. Do not start `ferros profile export | import | grant | revoke` in this wave. Do not mutate `schemas/capability-grant.v0.json`. Do not publish a separate signed-profile schema unless S2 can prove the unsigned profile.v0 contract cannot be frozen cleanly without it.
+- Last update: 2026-04-24
+
 ### WAVE-2026-04-23-07
 
 - Title: Tighten G3 evidence and CI demo proof

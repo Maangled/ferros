@@ -74,7 +74,7 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 
 | Schema | Owner | Path | Consumers | Status |
 |--------|-------|------|-----------|--------|
-| Profile | S2 | `schemas/profile.v0.json` | S3, S7 | ✅ Created |
+| Profile | S2 | `schemas/profile.v0.json` | S3, S7 | ✅ Frozen unsigned published v0 consumer contract; cargo test + H1 harness-covered |
 | CapabilityGrant | S2 | `schemas/capability-grant.v0.json` | S3, S4, S7 | ✅ Frozen signed envelope; cargo test + H1 harness-covered |
 | AgentManifest | S3 | `schemas/agent-manifest.v0.json` | S4, S5, S7 | ⬜ Not yet created |
 
@@ -82,7 +82,7 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 
 | Command | Owner | Consumers | Status |
 |---------|-------|-----------|--------|
-| `ferros profile init\|show\|export\|import\|grant\|revoke` | S2 | S7 (pairing scripts), S8 (docs) | 🟡 Partial: `init` and `show` landed in the current `ferros` binary; `export`, `import`, `grant`, and `revoke` remain open |
+| `ferros profile init\|show\|export\|import\|grant\|revoke` | S2 | S7 (pairing scripts), S8 (docs) | ✅ Landed through the real `ferros` binary; `show` stays on the frozen unsigned `profile.v0.json` boundary and persisted grant state stays within the frozen `capability-grant.v0.json` envelope |
 | `ferros agent list\|describe\|run\|stop\|logs` | S3 | S5 (web shell), S7 (hub admin) | 🟡 This is the current local operational surface in the `ferros` binary, exercised by the local demo / CLI path; JSON/RPC, shared remote APIs, and post-G2 contract hardening remain open |
 
 ### IPC / RPC
@@ -106,7 +106,7 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 
 ## Schema versioning
 
-Schema files follow the pattern `schemas/{name}.v{N}.json`. Version `0` schemas are pre-freeze drafts. Version `0` schemas are frozen at the corresponding gate (G2 for profile schemas). After freeze:
+Schema files follow the pattern `schemas/{name}.v{N}.json`. Version `0` schemas start as pre-freeze drafts. A `v0` schema becomes frozen once its owning stream lands explicit freeze evidence at the corresponding gate; that gate can still remain open if other required evidence is outstanding. For S2, `schemas/profile.v0.json` is now the frozen unsigned published v0 consumer contract, while `SignedProfileDocument` stays Rust-local at v0 unless a separate versioned signed-profile schema is published later. After freeze:
 
 - Add optional fields → new version `v{N+1}`.
 - Remove or rename fields → new version `v{N+1}` with a migration ADR.

@@ -1,7 +1,7 @@
 # S2 — Profile & Identity
 
 **Stream:** S2  
-**Status:** 🟡 Active  
+**Status:** 🟡 Active (G2 closed)  
 **Gate:** G2
 
 ---
@@ -38,7 +38,7 @@ This stream is intentionally insulated from raw legacy-repo input: the G2 identi
 ## Dependencies
 
 - **S1:** G1 is closed; the workspace and CI foundation already exist.
-- **S6:** External prior art may inform downstream implementation only after S6 publishes ADRs. S2 does not mine old repos directly while G2 is active.
+- **S6:** External prior art may inform downstream implementation only after S6 publishes ADRs. The frozen S2 v0 boundary remains FERROS-authored rather than copied from pre-FERROS systems.
 
 ---
 
@@ -56,10 +56,10 @@ This stream is intentionally insulated from raw legacy-repo input: the G2 identi
 - [x] `ferros-profile` crate builds and passes `cargo test` locally.
 - [x] `CapabilityGrant` sign → serialize → verify → revoke works end-to-end with Ed25519 and re-signing on revoke.
 - [x] Profile round-trips: create → serialize → sign → verify → revoke.
-- [ ] `schemas/profile.v0.json` frozen (feature-flag protected; no mutations after freeze).
+- [x] `schemas/profile.v0.json` frozen as the unsigned published v0 consumer contract.
 - [x] `schemas/capability-grant.v0.json` frozen as the stripped-payload signed envelope contract.
 - [x] Rust/schema parity is enforced with a fixture-backed contract test against `schemas/profile.v0.json`.
-- [ ] CLI: `ferros profile init | show | export | import | grant | revoke` all functional.
+- [x] CLI: `ferros profile init | show | export | import | grant | revoke` all functional through the real `ferros` binary against temp-file-backed local state; `show` stays on the frozen unsigned `profile.v0.json` boundary and persisted revoked grant state stays within the frozen grant boundary.
 - [x] At least one golden fixture in `schemas/fixtures/` for a valid profile and a valid grant.
 - [x] Negative fixture: invalid signature rejected.
 
@@ -70,7 +70,7 @@ This stream is intentionally insulated from raw legacy-repo input: the G2 identi
 | Path | Role |
 |------|------|
 | `crates/ferros-profile/` | Identity crate |
-| `schemas/profile.v0.json` | Draft S2-owned profile schema exercised by `ferros-profile` tests |
+| `schemas/profile.v0.json` | Frozen S2-owned unsigned published v0 consumer contract exercised by `ferros-profile` tests and H1 |
 | `schemas/fixtures/minimal-stage0-profile.json` | Existing Stage 0 profile fixture used for serde and schema parity tests |
 | `schemas/capability-grant.v0.json` | Frozen signed grant envelope schema exercised by `ferros-profile` tests |
 | `schemas/fixtures/grant-valid.json` | Golden happy-path signed grant fixture |
@@ -80,7 +80,6 @@ This stream is intentionally insulated from raw legacy-repo input: the G2 identi
 
 ## Immediate next steps
 
-1. Decide whether the additive `SignedProfileDocument` envelope remains a Rust-local proof surface or earns its own published schema when `profile.v0.json` freezes.
-2. Freeze `schemas/profile.v0.json` and expand parity enforcement beyond the minimal Stage 0 happy path.
-3. Wire CLI subcommands, starting with `ferros profile init | show` and then building `grant` / `revoke` on the landed signed envelope contract.
-4. Decide whether the promised `profile-schema-v0` freeze mechanism is still the right path before calling profile v0 frozen.
+1. Keep `SignedProfileDocument` Rust-local at v0 unless downstream portability needs a separate versioned signed-profile schema.
+2. Hold the frozen `schemas/profile.v0.json` and `schemas/capability-grant.v0.json` v0 boundaries steady for downstream consumers.
+3. Tighten parity or local CLI coverage only where it reinforces those frozen v0 contracts without widening them in place.

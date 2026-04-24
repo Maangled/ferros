@@ -392,7 +392,7 @@ runTest(g2, 'profile-valid validates against SCHEMA_PROFILE_V0', function() {
   var data = stripFixtureMeta(FIXTURE_PROFILE_VALID);
   var r = validate(data, SCHEMA_PROFILE_V0);
   if (r.valid) {
-    return { pass: true, detail: 'dedicated S2 golden profile fixture matches the draft profile.v0 freeze candidate' };
+    return { pass: true, detail: 'dedicated S2 golden profile fixture matches the frozen unsigned profile.v0 contract' };
   }
   return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
 });

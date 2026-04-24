@@ -2,6 +2,22 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+## 2026-04-24 — WAVE-2026-04-24-02
+
+- Selected item: `WAVE-2026-04-24-02`
+- Result: Landed the remaining S2 profile CLI lifecycle on a local-only persistence boundary for key material and signed grant state, adding repo-backed `ferros profile grant`, `export`, `import`, and `revoke` behavior while keeping `ferros profile show` on the frozen unsigned `profile.v0` document surface. The wave kept `SignedProfileDocument` Rust-local at v0, left `schemas/profile.v0.json` and `schemas/capability-grant.v0.json` unchanged, did not widen S3, S4, or S7 boundaries, and truth-synced the gate and status surfaces so G2 is closed and G3 is active.
+- Files: `crates/ferros-profile/src/lib.rs`, `crates/ferros-node/src/lib.rs`, `crates/ferros-node/src/bin/ferros.rs`, `crates/ferros-node/tests/profile_cli_linux.rs`, `crates/ferros-node/Cargo.toml`, `docs/gates/G2.md`, `docs/gates/G3.md`, `STATUS.md`, `docs/contracts/CONTRACTS-OVERVIEW.md`, `streams/S2-profile/README.md`, `streams/S2-profile/PROGRESS.md`
+- Validation: Delegated orchestration passed `cargo test -p ferros-profile`, `cargo test -p ferros-node`, and `cargo test -p ferros-profile -p ferros-node`. The repo-backed real-binary proof in `crates/ferros-node/tests/profile_cli_linux.rs` exercised `ferros profile init`, `grant agent.echo`, `export`, `import`, `revoke agent.echo`, and `show` against real temp files, verified that imported local state preserved keypair and signed grant state, verified that the revoked signed grant still stayed within the frozen grant boundary, and confirmed that `show` remained an unsigned profile document. Final editor diagnostics were clean on touched code and truth-sync files.
+- Next follow-up: `WAVE-2026-04-23-08`. Separately queue a new P0 G3 evidence wave to record the first hosted green CI run reference for `cargo check -p ferros-core --no-default-features` and `cargo run --bin ferros -- demo`.
+
+## 2026-04-24 — WAVE-2026-04-24-01
+
+- Selected item: `WAVE-2026-04-24-01`
+- Result: Landed the profile.v0 freeze boundary as the frozen unsigned published v0 contract, kept `SignedProfileDocument` Rust-local at v0, refreshed harness parity for the frozen profile fixture set, and truth-synced S2, gate, contracts, and status surfaces without widening into `export | import | grant | revoke`. G2 remains open only for the remaining profile CLI evidence. Integration review found one stale README line and fixed it before closeout; no S3 or S4 consumer-awareness follow-up is required because the published downstream contract remains the unsigned `profile.v0` boundary.
+- Files: `schemas/profile.v0.json`, `crates/ferros-profile/src/lib.rs`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`, `streams/S2-profile/CONTRACTS.md`, `docs/gates/G2.md`, `docs/contracts/CONTRACTS-OVERVIEW.md`, `STATUS.md`, `streams/S2-profile/README.md`, `streams/S2-profile/PROGRESS.md`
+- Validation: Delegated S2 lane passed `cargo test -p ferros-profile` with 34 passed and 0 failed; harness constants were regenerated; `harnesses/ferros-contract-validator.html` accepted the frozen profile fixture set with 47 passed and 0 failed; final editor diagnostics were clean on touched S2 and truth-sync files.
+- Next follow-up: `WAVE-2026-04-23-08`. Separately queue a new S2 wave for the remaining `ferros profile export | import | grant | revoke` evidence when ready.
+
 ## 2026-04-23 — WAVE-2026-04-23-07
 
 - Selected item: `WAVE-2026-04-23-07`

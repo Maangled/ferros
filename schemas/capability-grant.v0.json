@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://ferros.local/schemas/capability-grant.v0.json",
   "title": "FERROS Capability Grant v0",
-  "description": "S2-owned capability grant schema candidate for G2 freeze. Mirrors the current ferros-profile signed CapabilityGrant envelope, including Ed25519 signer material and revocation metadata.",
+  "description": "Frozen S2-owned signed FERROS capability grant schema for G2. This is the published v0 envelope contract mirrored by the current ferros-profile signed CapabilityGrant shape, including Ed25519 signer material and revocation metadata.",
   "$comment": "Normative signing contract: reconstruct the signed payload from only profile_id, capability, and the optional revoked_at and revocation_reason fields. Omit absent optional fields entirely. Serialize that stripped payload as UTF-8 JSON with no insignificant whitespace and with members emitted in exactly this order: profile_id, capability, revoked_at, revocation_reason. signer_public_key and signature are envelope-only fields and are never part of the signed payload. Verifiers must verify that stripped payload before trusting the embedded grant fields.",
   "x-ferros-signature": {
     "algorithm": "Ed25519",

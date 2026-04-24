@@ -35,9 +35,10 @@ Your job is to:
 
 1. Read the current gate and status surfaces first: `STATUS.md`, `docs/gates/G2.md`, and `docs/gates/G3.md`.
 2. Invoke **FERROS Lane Architect Agent** to break the request into stream-owned lanes and identify which can run in parallel.
-3. Launch the independent implementation lanes with the owning stream agents.
-4. After those lanes finish, invoke **FERROS Integration Reviewer Agent** to check gate truth, contract alignment, and cross-stream coherence.
-5. If the reviewer finds issues, send follow-up work only to the affected stream agents.
+3. Use the lane plan to fill up to **5 safe repo-editing lanes** when the repo state supports it. Prefer to reserve **1 or 2 lanes** for the active critical path or gate-owner work, then use the remaining lanes for non-overlapping support work that keeps the repo moving honestly.
+4. Launch the independent implementation lanes with the owning stream agents.
+5. After those lanes finish, invoke **FERROS Integration Reviewer Agent** to check gate truth, contract alignment, and cross-stream coherence.
+6. If the reviewer finds issues, send follow-up work only to the affected stream agents.
 
 ## Constraints
 
@@ -45,6 +46,8 @@ Your job is to:
 - Do not mix multiple owning streams into a single delegated implementation lane unless the request is truly inseparable.
 - Do not claim a gate moved unless the repo evidence actually changed.
 - Keep S2 as the default serial gate owner when identity or grant semantics are involved.
+- Do not force the full 5-lane budget when the available safe lanes overlap on files, contracts, or shared truth surfaces.
+- Treat shared truth surfaces such as `STATUS.md`, gate docs, contracts overview, queue files, CI files, and root manifests as reconciliation targets unless one lane clearly owns them.
 
 ## Output format
 

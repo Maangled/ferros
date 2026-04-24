@@ -4,18 +4,25 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
-## 2026-04-24 — Signed profile fixture now reuses the base profile contract guard
+## 2026-04-24 — Real-binary profile CLI lifecycle closed G2
 
-- Extended `ferros-profile` so `schemas/fixtures/signed-profile-valid.json` must not only deserialize and verify, but also round-trip its embedded `profile` payload through `ProfileDocument` and match `schemas/profile.v0.json`.
-- Kept the additive `SignedProfileDocument` envelope Rust-local for now: this tightens parity against the unsigned freeze candidate without publishing a new schema contract prematurely.
-- G2 remains open: `schemas/profile.v0.json` is still not frozen, the signed profile envelope still does not have a separately published schema contract, and `ferros profile export | import | grant | revoke` remain incomplete.
+- Landed the remaining `ferros profile grant | export | import | revoke` path through the real `ferros` binary against temp-file-backed local state, completing the existing `init | show` slice.
+- Kept `schemas/profile.v0.json` as the frozen unsigned published v0 consumer contract, kept `SignedProfileDocument` Rust-local at v0, and kept `schemas/capability-grant.v0.json` frozen while `show` stays unsigned and revoked persisted grant state stays within the frozen grant boundary.
+- G2 is closed.
+
+## 2026-04-24 — Profile v0 freeze boundary made explicit
+
+- Extended `ferros-profile` so `schemas/fixtures/signed-profile-valid.json` must not only deserialize and verify, but also round-trip its embedded `profile` payload through `ProfileDocument` and match the frozen `schemas/profile.v0.json` contract.
+- Marked `schemas/profile.v0.json` as the frozen S2-owned unsigned published v0 consumer contract and kept the additive `SignedProfileDocument` envelope Rust-local at v0 instead of publishing a signed-profile schema.
+- Refreshed harness parity so browser evidence stays aligned with that frozen unsigned boundary.
+- This slice still left G2 open because the remaining `ferros profile export | import | grant | revoke` CLI evidence had not landed yet.
 
 ## 2026-04-23 — `KeyPair` and signed profile envelope landed
 
 - Added the first S2-owned `KeyPair` surface to `ferros-profile`, with Ed25519 generation, local device labeling, `ProfileId` derivation from the verifying key, and hex rehydration for future persistence/import work.
 - Added an additive `SignedProfileDocument` envelope over `ProfileDocument` so a fresh profile can be created, serialized, signed, deserialized, verified, and re-signed on revoke without mutating the base `profile.v0.json` contract.
 - Covered the slice with focused `cargo test -p ferros-profile` evidence for key generation, secret-key round-trip, signed profile verify, tamper rejection, and revoke re-signing.
-- G2 remains open: `schemas/profile.v0.json` is still not frozen, the signed profile envelope is not yet a separately published schema contract, and `ferros profile export | import | grant | revoke` are still not complete.
+- At that point, G2 was still open: `schemas/profile.v0.json` was not yet frozen, the signed profile envelope was still being kept Rust-local pending the freeze decision, and `ferros profile export | import | grant | revoke` were still not complete.
 
 ## 2026-04-23 — Minimal `ferros profile init | show` CLI slice landed
 
@@ -23,14 +30,14 @@ Reverse-chronological. Append a dated entry at the top per session.
 - Extended `ProfileStore` with explicit create-without-overwrite behavior and used the filesystem-backed store as the persistence boundary for the new CLI path.
 - Wired `ferros profile init [path]` and `ferros profile show [path]` through `ferros-node`, with a default profile path when no explicit path is provided.
 - Added focused tests for fresh profile/schema parity, filesystem init round-trip, duplicate-init rejection, `ferros-node` profile CLI execution, and binary-level `ferros` argument dispatch.
-- G2 remains open: `schemas/profile.v0.json` freeze and `export | import | grant | revoke` are still not complete.
+- That left G2 open: `schemas/profile.v0.json` freeze and `export | import | grant | revoke` were still not complete.
 
 ## 2026-04-23 — Signed CapabilityGrant verification path landed
 
 - Added the first signed and verifiable `CapabilityGrant` envelope path to `ferros-profile`, including explicit Ed25519 verify and re-sign-on-revoke behavior.
 - Froze the stripped JSON signing contract in `schemas/capability-grant.v0.json`: `profile_id`, `capability`, and optional `revoked_at` / `revocation_reason` are serialized in that order with no insignificant whitespace, while `signer_public_key` and `signature` stay envelope-only.
 - Added `schemas/fixtures/grant-valid.json` and `schemas/fixtures/grant-invalid-sig.json`, plus tests for canonical payload examples, happy-path verification, invalid-signature rejection, and revoke round-trip coverage.
-- G2 remains open: key material, `schemas/profile.v0.json` freeze, and the `ferros profile ...` CLI flows are still outstanding.
+- That left G2 open: key material, `schemas/profile.v0.json` freeze, and the `ferros profile ...` CLI flows were still outstanding.
 
 ## 2026-04-23 — Filesystem profile store slice landed
 

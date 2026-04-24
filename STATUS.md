@@ -10,10 +10,10 @@
 
 | Item | State |
 |------|-------|
-| Active gate | **G2** — Profile v0 Frozen |
+| Active gate | **G3** — Agent Center on Runtime Demo |
 | Launch gate | G4 (open) |
 | MVP gate | G1 → G2 → G3 in sequence |
-| Open streams | S1 (closeout), S2 (active), S3 (convergence), S4 (convergence), S5 (Phase A), S6 (active), S8 (background) |
+| Open streams | S1 (closeout), S3 (convergence), S4 (convergence), S5 (Phase A), S6 (active), S8 (background) |
 
 ---
 
@@ -22,8 +22,8 @@
 | Gate | Status | Condition |
 |------|--------|-----------|
 | G1 | ✅ Closed | CI run #24812246339 proved fmt, clippy, build, and test green on ubuntu-latest, macos-latest, and windows-latest |
-| G2 | 🟡 Active | Signed `CapabilityGrant` evidence, additive `KeyPair` + signed profile round-trip evidence, the dedicated `profile-valid` against `profile.v0` proof, and the Linux-backed real-binary `ferros profile init | show` proof landed; `profile.v0.json` freeze and remaining CLI evidence keep G2 open |
-| G3 | ⬜ Blocked | G2 must close first; the local S3+S4 demo evidence is now repo-backed, including policy property tests, and CI is now wired to run `cargo check -p ferros-core --no-default-features` plus `cargo run --bin ferros -- demo` pending a recorded green run reference |
+| G2 | ✅ Closed | `profile.v0.json` remains the frozen unsigned published v0 consumer contract, `SignedProfileDocument` stays Rust-local at v0, and the real `ferros` binary now proves `profile init | grant | export | import | revoke | show` against temp-file-backed local state while `show` stays unsigned and revoked grant state stays within the frozen grant boundary |
+| G3 | 🟡 Active | G2 is closed; the local S3+S4 demo evidence is repo-backed, and G3 remains open because a recorded green hosted CI run reference is still pending for `cargo check -p ferros-core --no-default-features` plus `cargo run --bin ferros -- demo` |
 | G4 | ⬜ Blocked | G3 must close first; `ferros-hub` on real hardware with HA integration |
 
 ---
@@ -33,12 +33,12 @@
 | Stream | Status | Current focus | Gate |
 |--------|--------|---------------|------|
 | S1 Foundation | 🟡 Closeout / hygiene | Tag `v0.0.1-foundation`, verify branch protection, keep repo hygiene rolling | G1 |
-| S2 Profile & Identity | 🟡 Active | signed `CapabilityGrant` envelope, additive `KeyPair` + signed profile round-trip evidence, the dedicated `profile-valid` against `profile.v0` proof, the signed-profile fixture parity check that revalidates its embedded profile against the base contract, and the Linux-backed real-binary `init | show` CLI proof landed; remaining work is `profile.v0.json` freeze plus CLI `export | import | grant | revoke` | G2 |
-| S3 Agent Center | 🟡 Convergence active | reference agents, local `ferros agent ...` CLI, and the `cargo run --bin ferros -- demo` path via the `ferros` binary landed; JSON/RPC and post-G2 contract hardening remain | G3 |
+| S2 Profile & Identity | ✅ G2 closed / handoff | the frozen unsigned `profile.v0.json` consumer contract, the Rust-local `SignedProfileDocument` v0 boundary, and the real-binary `init | grant | export | import | revoke | show` lifecycle proof are landed; immediate work is to hold that boundary steady for downstream consumers | G2 |
+| S3 Agent Center | 🟡 Convergence active | reference agents, local `ferros agent ...` CLI, and the `cargo run --bin ferros -- demo` path via the `ferros` binary landed; JSON/RPC and broader CLI/harness hardening remain | G3 |
 | S4 Runtime / OS Core | 🟡 Convergence active | `ferros-runtime`, in-memory executor and bus, policy property tests, the `cargo run --bin ferros -- demo` path, and the `ferros-core --no-default-features` compile slice landed; broader `no_std` and host hardening remain | G3 |
 | S5 UX | 🟨 Phase A active; Phase B blocked on G3 | real landing page and honest status banner shipped; prototype-authority cleanup and archive mapping are underway, while the local agent-center web shell remains post-G3 work | post-G3 |
 | S6 Ecosystem Harvest | 🟡 Active | ADR-018/019/020 landed; `ferros-data` is now a root workspace member while downstream extraction stays stream-owned | rolling |
-| S7 Smart-Home Hub | ⬜ Blocked on G2/G3 | hardware runway and reference-hardware prep are now explicit, while pairing semantics remain provisional until the upstream profile and runtime seams stabilize | G4 |
+| S7 Smart-Home Hub | ⬜ Blocked on G3 | hardware runway and reference-hardware prep are now explicit, while pairing semantics remain provisional until the upstream runtime and agent seams stabilize | G4 |
 | S8 Docs / Governance | 🟡 Active (background) | status/gate/contracts truth-sync baseline is in repo; doctrine plus the ADR index/roadmap/research baseline are now landed; `SECURITY.md`, `THREAT-MODEL.md`, `GOVERNANCE.md`, `CODE_OF_CONDUCT.md`, and contributor intake templates now exist, while issue seeding remains open | rolling |
 
 ---
@@ -48,9 +48,9 @@
 | Tag | Status | Condition |
 |-----|--------|-----------|
 | `v0.0.1-foundation` | 🟡 | G1 closed; tag pending |
-| `v0.0.2-profile` | ⬜ | S2 profile v0 frozen |
+| `v0.0.2-profile` | 🟡 | G2 closed; tag pending |
 | `v0.0.3-runtime` | 🟡 | `ferros-runtime`, policy property tests, the `cargo run --bin ferros -- demo` path, and the `ferros-core --no-default-features` compile slice landed; broader `no_std` and host hardening remain |
-| `v0.0.4-agents` | 🟡 | reference agents, local CLI, and the `ferros`-binary demo path landed; JSON/RPC and post-G2 contract hardening remain |
+| `v0.0.4-agents` | 🟡 | reference agents, local CLI, and the `ferros`-binary demo path landed; JSON/RPC and broader hardening remain |
 | `v0.0.5-harvest` | 🟡 | harvest ADRs landed; downstream extraction continues |
 | `v0.1.0-rc` | ⬜ | MVP: S1+S2+S3+S4 functional |
 | `v0.1.0` | ⬜ | Agent center local web shell (S5 Phase B) |
@@ -66,7 +66,7 @@ S1 Foundation → G1 → S2 Profile → G2 → S3 Agent Center → G3 → S7 Hub
                   └→ S4 Runtime ─────────────────────────┘
 ```
 
-The **profile → agent center** path is the gating path. Everything else is parallel.
+The **agent center + runtime convergence** path is now the gating path. The profile boundary is frozen; everything else is parallel behind G3.
 
 ---
 
@@ -74,7 +74,8 @@ The **profile → agent center** path is the gating path. Everything else is par
 
 | Date | Event |
 |------|-------|
-| 2026-04-24 | S2, S4, S5, S6, and S7 all advanced in a non-overlapping subagent batch: S2 tightened signed-profile fixture parity against the base profile contract, S4 improved the shared `MessageEnvelope` portability proof with `--no-default-features` and `thumbv7em-none-eabi` validation, S6 added an exactly-one-parent ordered-child migration guard, S5 added prototype-authority banners plus an archive map, and S7 expanded hardware runway documentation without claiming pairing semantics are frozen. |
+| 2026-04-24 | S2 closed G2 with the final real-binary profile CLI lifecycle proof: `ferros profile init | grant | export | import | revoke | show` now runs against temp-file-backed local state, `show` stays within the unsigned `profile.v0.json` boundary, revoked persisted grant state stays inside the frozen `capability-grant.v0.json` envelope shape, and G3 is now the active gate. |
+| 2026-04-24 | S2, S4, S5, S6, and S7 all advanced in a non-overlapping subagent batch: S2 froze `profile.v0.json` as the unsigned published v0 consumer contract, kept `SignedProfileDocument` Rust-local at v0, and tightened signed-profile fixture parity so the embedded profile revalidates against that frozen boundary; S4 improved the shared `MessageEnvelope` portability proof with `--no-default-features` and `thumbv7em-none-eabi` validation, S6 added an exactly-one-parent ordered-child migration guard, S5 added prototype-authority banners plus an archive map, and S7 expanded hardware runway documentation without claiming pairing semantics are frozen. |
 | 2026-04-24 | S8 truth-sync corrected the contributor intake state: `.github/ISSUE_TEMPLATE/stream-task.md` and `.github/PULL_REQUEST_TEMPLATE.md` were already present and are now treated as the current intake baseline rather than open work. |
 | 2026-04-24 | S8 landed the missing governance skeleton files: `THREAT-MODEL.md`, `GOVERNANCE.md`, and `CODE_OF_CONDUCT.md`. The threat model is intentionally partial and keyed to the current G2/G3/G4 posture rather than claiming production hardening. |
 | 2026-04-24 | S8 landed the ADR context-lock baseline: `DOCTRINE.md`, ADR-022, the ADR index and roadmap, the research-note and evidence lanes, and the first ACC card/deck projection research note; `docs/ORCHESTRATION.md` was also downgraded to historical governance context rather than the active execution authority. |
@@ -97,7 +98,7 @@ The **profile → agent center** path is the gating path. Everything else is par
 | Blocker | Affects | Owner |
 |---------|---------|-------|
 | `v0.0.1-foundation` tag is not yet created; required status checks on `main` are not yet verified in branch protection | S1 | S1 |
-| `ferros-profile` still needs `schemas/profile.v0.json` freeze and CLI `export | import | grant | revoke` for G2; key material plus the additive signed profile round-trip are now landed in `cargo test -p ferros-profile`, the minimal `init | show` slice includes a Linux real-binary proof in `cargo test -p ferros-node`, and the dedicated `schemas/fixtures/profile-valid.json` golden fixture proof against the current `schemas/profile.v0.json` candidate remains landed in `cargo test -p ferros-profile` and H1 | S2, S3, S7 | S2 |
-| `ferros-agents` and the local `ferros` CLI still need a stable post-G2 grant contract, JSON/RPC surface, and broader harness/CI hardening | S3, S5 | S3 |
+| A recorded green hosted CI run reference is still pending for the landed `cargo check -p ferros-core --no-default-features` plus `cargo run --bin ferros -- demo` workflow steps required to close G3 | S3, S4, S5, S7 | S3 + S4 |
+| `ferros-agents` and the local `ferros` CLI still need a stable JSON/RPC surface and broader harness/CI hardening | S3, S5 | S3 |
 | `ferros-runtime` now has landed policy property tests, but still needs target-level `no_std` hardening beyond the current `--no-default-features` compile slice and host-path hardening beyond the in-memory demo | S4, S3, S7 | S4 |
 | S5 Phase A is live on the landing page, but the local web shell remains blocked behind G3 and the S3 JSON/RPC surface | S5 | S5 |

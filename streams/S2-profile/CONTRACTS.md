@@ -12,15 +12,15 @@ These are the cross-stream interfaces that S2 publishes. Other streams **must no
 | `KeyPair` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created |
 | `CapabilityGrant` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created |
 | `ConsentManifest` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created |
-| `SignedProfileDocument` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created as an additive signed envelope; base `profile.v0.json` unchanged |
-| `schemas/profile.v0.json` | JSON Schema | `schemas/profile.v0.json` | 🟡 Drafted; exercised by `ferros-profile` tests |
+| `SignedProfileDocument` type | Rust type | `crates/ferros-profile/src/lib.rs` | ✅ Created as a Rust-local signed envelope at v0; embedded-profile parity stays tied to `profile.v0.json` |
+| `schemas/profile.v0.json` | JSON Schema | `schemas/profile.v0.json` | ✅ Frozen unsigned published v0 consumer contract; exercised by `ferros-profile` tests and the H1 validator |
 | `schemas/capability-grant.v0.json` | JSON Schema | `schemas/capability-grant.v0.json` | ✅ Frozen signed envelope; exercised by `ferros-profile` tests |
 
 ---
 
 ## Current repo state
 
-`schemas/profile.v0.json` remains the S2-owned draft freeze candidate referenced by the `ferros-profile` test suite. `KeyPair` now owns Ed25519 key generation plus local device labeling, derives `ProfileId` from the verifying key, and signs the additive `SignedProfileDocument` envelope without mutating the base `ProfileDocument` or `profile.v0.json` consumer contract. The signed profile payload is reconstructed from `profile_id`, the canonicalized `profile` object, and the optional `revoked_at` / `revocation_reason` fields; `signer_public_key` and `signature` remain envelope-only fields and are never part of the signed payload. This signed-profile envelope is currently a Rust-level contract and focused test surface, not a separately frozen JSON Schema.
+`schemas/profile.v0.json` is now the frozen S2-owned unsigned published v0 consumer contract referenced by the `ferros-profile` parity tests and the H1 contract validator. `KeyPair` now owns Ed25519 key generation plus local device labeling, derives `ProfileId` from the verifying key, and signs the additive `SignedProfileDocument` envelope without mutating the base `ProfileDocument` or `profile.v0.json` consumer contract. The signed profile payload is reconstructed from `profile_id`, the canonicalized `profile` object, and the optional `revoked_at` / `revocation_reason` fields; `signer_public_key` and `signature` remain envelope-only fields and are never part of the signed payload. `SignedProfileDocument` remains a Rust-local v0 contract and focused test surface rather than a published signed-profile schema, and the signed-profile fixture now revalidates its embedded `profile` payload against `profile.v0.json` to keep that boundary honest.
 
 `schemas/capability-grant.v0.json` continues to freeze the signed grant envelope contract, `schemas/fixtures/grant-valid.json` anchors the happy path, `schemas/fixtures/grant-invalid-sig.json` anchors invalid-signature rejection, and `SignedCapabilityGrant` preserves the current flattened envelope shape without changing the runtime `CapabilityGrant` or `CapabilityGrantView` consumer boundary.
 
@@ -39,7 +39,7 @@ The grant verification contract is now published in `schemas/capability-grant.v0
 
 ## Schema freeze policy
 
-`profile.v0.json` remains the draft freeze candidate. The additive `SignedProfileDocument` path deliberately did not mutate that base schema. `capability-grant.v0.json` is now frozen at the stripped-payload signed-envelope contract described above and must not be mutated in place; new grant fields go into a `v1` schema with explicit migration rules. Once `profile.v0.json` is likewise frozen, it must follow the same rule. See `ROADMAP.md` — coordination rules.
+`profile.v0.json` is now frozen as the unsigned published v0 consumer contract and must not be mutated in place. The additive `SignedProfileDocument` path deliberately stays Rust-local at v0 and is enforced through parity coverage that revalidates the embedded `profile` payload against `profile.v0.json`; if signed-profile portability is needed later, it must publish a separate versioned schema rather than widen `profile.v0.json` in place. `capability-grant.v0.json` is now frozen at the stripped-payload signed-envelope contract described above and must not be mutated in place; new grant fields go into a `v1` schema with explicit migration rules. See `ROADMAP.md` — coordination rules.
 
 ---
 
