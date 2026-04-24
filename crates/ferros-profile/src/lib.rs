@@ -1,11 +1,18 @@
 #![forbid(unsafe_code)]
 
-use std::{collections::BTreeSet, fmt, fs, io, path::Path};
+use std::{
+    collections::BTreeSet,
+    fmt,
+    fs::{self, OpenOptions},
+    io::{self, Write},
+    path::{Path, PathBuf},
+};
 
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use ferros_core::CapabilityGrantView;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProfileId(String);
@@ -373,9 +380,85 @@ pub struct ProfileDocument {
     pub seal_chain: Vec<SealEntry>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProfileDocumentError {
+    InvalidCreatedAt(String),
+}
+
+impl fmt::Display for ProfileDocumentError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidCreatedAt(created_at) => write!(
+                f,
+                "created_at must be a valid RFC3339 date-time, got {created_at:?}"
+            ),
+        }
+    }
+}
+
 impl ProfileDocument {
     pub fn from_json_str(input: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(input)
+    }
+
+    pub fn fresh(
+        display_name: impl Into<String>,
+        created_at: impl Into<String>,
+    ) -> Result<Self, ProfileDocumentError> {
+        let display_name = display_name.into();
+        let created_at = validate_created_at(created_at.into())?;
+        let genesis_seal = initial_profile_seal(&display_name, &created_at);
+
+        Ok(Self {
+            meta: ProfileMeta {
+                version: "1.0".to_owned(),
+                created: created_at.clone(),
+                last_modified: created_at.clone(),
+                assistance_level: 1,
+                genesis_hash: genesis_seal.clone(),
+                current_seal: genesis_seal.clone(),
+                seal_count: 1,
+                stage: 0,
+            },
+            identity: ProfileIdentity {
+                name: display_name.clone(),
+                avatar: "star".to_owned(),
+                class: None,
+                stream_affinity: None,
+                title: "Newcomer".to_owned(),
+                joined_date: created_at.clone(),
+                streak_days: 0,
+                longest_streak: 0,
+            },
+            attributes: default_profile_attributes(),
+            skills: default_profile_skills(),
+            achievements: vec![json!({
+                "id": "genesis_pioneer",
+                "name": "Genesis Pioneer",
+                "desc": "Created a FERROS profile",
+                "icon": "trophy",
+                "unlocked": true,
+                "unlockedAt": created_at.clone(),
+            })],
+            journal: vec![json!({
+                "ts": created_at.clone(),
+                "text": format!("Profile created for {display_name}"),
+                "type": "system",
+            })],
+            credentials: Vec::new(),
+            seal_chain: vec![SealEntry {
+                task_id: "genesis".to_owned(),
+                seal: genesis_seal,
+                previous_seal: "genesis".to_owned(),
+                timestamp: created_at,
+                data: json!({
+                    "event": "profile_created",
+                    "name": display_name,
+                }),
+                hash_algorithm: "sha256".to_owned(),
+                nonce: 0,
+            }],
+        })
     }
 
     pub fn to_json_string_pretty(&self) -> Result<String, serde_json::Error> {
@@ -392,6 +475,8 @@ impl ProfileDocument {
 
 #[derive(Debug)]
 pub enum ProfileStoreError {
+    AlreadyExists(PathBuf),
+    InvalidProfile(ProfileDocumentError),
     Io(io::Error),
     Serde(serde_json::Error),
 }
@@ -399,9 +484,19 @@ pub enum ProfileStoreError {
 impl fmt::Display for ProfileStoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::AlreadyExists(path) => {
+                write!(f, "profile already exists at {}", path.display())
+            }
+            Self::InvalidProfile(error) => write!(f, "{error}"),
             Self::Io(error) => write!(f, "{error}"),
             Self::Serde(error) => write!(f, "{error}"),
         }
+    }
+}
+
+impl From<ProfileDocumentError> for ProfileStoreError {
+    fn from(value: ProfileDocumentError) -> Self {
+        Self::InvalidProfile(value)
     }
 }
 
@@ -425,6 +520,35 @@ pub trait ProfileStore {
         path: &Path,
         profile: &ProfileDocument,
     ) -> Result<(), ProfileStoreError>;
+
+    fn create_profile(
+        &self,
+        path: &Path,
+        profile: &ProfileDocument,
+    ) -> Result<(), ProfileStoreError> {
+        if path.exists() {
+            return Err(ProfileStoreError::AlreadyExists(path.to_path_buf()));
+        }
+
+        self.save_profile(path, profile)
+    }
+}
+
+pub fn init_profile<S: ProfileStore>(
+    store: &S,
+    path: &Path,
+    display_name: impl Into<String>,
+    created_at: impl Into<String>,
+) -> Result<ProfileDocument, ProfileStoreError> {
+    let profile = ProfileDocument::fresh(display_name, created_at)?;
+    store.create_profile(path, &profile)?;
+    store.load_profile(path)
+}
+
+fn validate_created_at(created_at: String) -> Result<String, ProfileDocumentError> {
+    OffsetDateTime::parse(&created_at, &Rfc3339)
+        .map(|_| created_at.clone())
+        .map_err(|_| ProfileDocumentError::InvalidCreatedAt(created_at))
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -450,6 +574,91 @@ impl ProfileStore for FileSystemProfileStore {
         let serialized = profile.to_json_string_pretty()?;
         fs::write(path, serialized)?;
         Ok(())
+    }
+
+    fn create_profile(
+        &self,
+        path: &Path,
+        profile: &ProfileDocument,
+    ) -> Result<(), ProfileStoreError> {
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
+        let serialized = profile.to_json_string_pretty()?;
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)
+            .map_err(|error| {
+                if error.kind() == io::ErrorKind::AlreadyExists {
+                    ProfileStoreError::AlreadyExists(path.to_path_buf())
+                } else {
+                    ProfileStoreError::Io(error)
+                }
+            })?;
+
+        file.write_all(serialized.as_bytes())?;
+        Ok(())
+    }
+}
+
+fn default_profile_attributes() -> Value {
+    json!({
+        "Discipline": default_attribute("amber", "discipline"),
+        "Knowledge": default_attribute("blue", "knowledge"),
+        "Craft": default_attribute("cyan", "craft"),
+        "Governance": default_attribute("purple", "governance"),
+        "Wellness": default_attribute("green", "wellness"),
+        "Community": default_attribute("pink", "community"),
+    })
+}
+
+fn default_attribute(color: &str, icon: &str) -> Value {
+    json!({
+        "level": 1,
+        "xp": 0,
+        "xpToNext": 100,
+        "color": color,
+        "icon": icon,
+    })
+}
+
+fn default_profile_skills() -> Value {
+    json!({
+        "A": [],
+        "B": [],
+        "C": [],
+    })
+}
+
+fn initial_profile_seal(display_name: &str, created_at: &str) -> String {
+    let mut slug = display_name
+        .chars()
+        .chain(created_at.chars())
+        .filter_map(|character| {
+            if character.is_ascii_alphanumeric() {
+                Some(character.to_ascii_lowercase())
+            } else if matches!(character, ' ' | '-' | '_' | ':') {
+                Some('-')
+            } else {
+                None
+            }
+        })
+        .collect::<String>();
+
+    while slug.contains("--") {
+        slug = slug.replace("--", "-");
+    }
+
+    let slug = slug.trim_matches('-');
+
+    if slug.is_empty() {
+        "profile-genesis".to_owned()
+    } else {
+        format!("profile-genesis-{slug}")
     }
 }
 
@@ -509,14 +718,17 @@ mod tests {
     use ed25519_dalek::SigningKey;
 
     use super::{
-        foundation_contract_preview, CapabilityGrant, CapabilityGrantSignatureError,
-        ConsentManifest, ConsentManifestError, FileSystemProfileStore, ProfileDocument,
-        ProfileId, ProfileIdError, ProfileStore, SignedCapabilityGrant,
+        foundation_contract_preview, init_profile, CapabilityGrant,
+        CapabilityGrantSignatureError, ConsentManifest, ConsentManifestError,
+        FileSystemProfileStore, ProfileDocument, ProfileDocumentError, ProfileId,
+        ProfileIdError, ProfileStore, ProfileStoreError, SignedCapabilityGrant,
     };
     use serde_json::Value;
 
     const MINIMAL_STAGE0_FIXTURE: &str =
         include_str!("../../../schemas/fixtures/minimal-stage0-profile.json");
+    const PROFILE_VALID_FIXTURE: &str =
+        include_str!("../../../schemas/fixtures/profile-valid.json");
     const GRANT_VALID_FIXTURE: &str = include_str!("../../../schemas/fixtures/grant-valid.json");
     const GRANT_INVALID_SIGNATURE_FIXTURE: &str =
         include_str!("../../../schemas/fixtures/grant-invalid-sig.json");
@@ -1064,12 +1276,107 @@ mod tests {
     }
 
     #[test]
+    fn profile_valid_fixture_round_trips_and_matches_profile_v0_contract() {
+        let fixture =
+            serde_json::from_str::<Value>(PROFILE_VALID_FIXTURE).expect("fixture should parse");
+        let profile = serde_json::from_value::<ProfileDocument>(fixture.clone())
+            .expect("fixture should deserialize");
+        let serialized = serde_json::to_value(&profile).expect("profile should convert to JSON");
+
+        assert_eq!(profile.identity.name, "Fixture Pilot");
+        assert!(profile.has_genesis_seal());
+        assert_eq!(serialized, fixture);
+        assert_matches_profile_v0_contract(&serialized);
+    }
+
+    #[test]
     fn serialized_profile_document_matches_profile_v0_contract() {
         let profile =
             ProfileDocument::from_json_str(MINIMAL_STAGE0_FIXTURE).expect("fixture should parse");
         let serialized = serde_json::to_value(&profile).expect("profile should convert to JSON");
 
         assert_matches_profile_v0_contract(&serialized);
+    }
+
+    #[test]
+    fn fresh_profile_document_matches_profile_v0_contract() {
+        let profile = ProfileDocument::fresh("Wave Pilot", "2026-04-23T10:00:00Z")
+            .expect("valid RFC3339 timestamp should build a fresh profile");
+        let serialized = serde_json::to_value(&profile).expect("profile should convert to JSON");
+
+        assert_eq!(profile.identity.name, "Wave Pilot");
+        assert!(profile.has_genesis_seal());
+        assert_matches_profile_v0_contract(&serialized);
+    }
+
+    #[test]
+    fn fresh_profile_document_rejects_invalid_created_at() {
+        let error = ProfileDocument::fresh("Wave Pilot", "not-a-timestamp")
+            .expect_err("invalid created_at should be rejected at the constructor boundary");
+
+        assert_eq!(
+            error,
+            ProfileDocumentError::InvalidCreatedAt("not-a-timestamp".to_owned())
+        );
+    }
+
+    #[test]
+    fn init_profile_creates_new_profile_document_in_store() {
+        let store = FileSystemProfileStore;
+        let path = unique_temp_profile_path("init");
+
+        let profile = init_profile(
+            &store,
+            &path,
+            "Wave Pilot",
+            "2026-04-23T10:00:00Z",
+        )
+        .expect("init should create a new profile");
+
+        let loaded = store
+            .load_profile(&path)
+            .expect("new profile should load from disk");
+
+        assert_eq!(profile, loaded);
+        assert_eq!(loaded.identity.name, "Wave Pilot");
+        assert!(loaded.has_genesis_seal());
+
+        let _ = std::fs::remove_file(&path);
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::remove_dir(parent);
+        }
+    }
+
+    #[test]
+    fn init_profile_rejects_existing_target_path() {
+        let store = FileSystemProfileStore;
+        let path = unique_temp_profile_path("init-existing");
+
+        init_profile(
+            &store,
+            &path,
+            "Wave Pilot",
+            "2026-04-23T10:00:00Z",
+        )
+        .expect("initial profile should create");
+
+        let error = init_profile(
+            &store,
+            &path,
+            "Wave Pilot",
+            "2026-04-23T10:01:00Z",
+        )
+        .expect_err("second init should not overwrite an existing profile");
+
+        assert!(matches!(
+            error,
+            ProfileStoreError::AlreadyExists(existing_path) if existing_path == path
+        ));
+
+        let _ = std::fs::remove_file(&path);
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::remove_dir(parent);
+        }
     }
 
     #[test]

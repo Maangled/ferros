@@ -75,7 +75,7 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 | Schema | Owner | Path | Consumers | Status |
 |--------|-------|------|-----------|--------|
 | Profile | S2 | `schemas/profile.v0.json` | S3, S7 | ✅ Created |
-| CapabilityGrant | S2 | `schemas/capability-grant.v0.json` | S3, S4, S7 | ✅ Created |
+| CapabilityGrant | S2 | `schemas/capability-grant.v0.json` | S3, S4, S7 | ✅ Frozen signed envelope; cargo test + H1 harness-covered |
 | AgentManifest | S3 | `schemas/agent-manifest.v0.json` | S4, S5, S7 | ⬜ Not yet created |
 
 ### CLI APIs

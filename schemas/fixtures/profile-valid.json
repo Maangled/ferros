@@ -1,0 +1,67 @@
+{
+  "meta": {
+    "version": "1.0",
+    "created": "2026-04-23T04:00:00Z",
+    "lastModified": "2026-04-23T04:00:00Z",
+    "assistanceLevel": 1,
+    "genesisHash": "profile-genesis-fixture-pilot2026-04-23t04-00-00z",
+    "currentSeal": "profile-genesis-fixture-pilot2026-04-23t04-00-00z",
+    "sealCount": 1,
+    "stage": 0
+  },
+  "identity": {
+    "name": "Fixture Pilot",
+    "avatar": "star",
+    "class": null,
+    "streamAffinity": null,
+    "title": "Newcomer",
+    "joinedDate": "2026-04-23T04:00:00Z",
+    "streakDays": 0,
+    "longestStreak": 0
+  },
+  "attributes": {
+    "Discipline": { "level": 1, "xp": 0, "xpToNext": 100, "color": "amber", "icon": "discipline" },
+    "Knowledge": { "level": 1, "xp": 0, "xpToNext": 100, "color": "blue", "icon": "knowledge" },
+    "Craft": { "level": 1, "xp": 0, "xpToNext": 100, "color": "cyan", "icon": "craft" },
+    "Governance": { "level": 1, "xp": 0, "xpToNext": 100, "color": "purple", "icon": "governance" },
+    "Wellness": { "level": 1, "xp": 0, "xpToNext": 100, "color": "green", "icon": "wellness" },
+    "Community": { "level": 1, "xp": 0, "xpToNext": 100, "color": "pink", "icon": "community" }
+  },
+  "skills": {
+    "A": [],
+    "B": [],
+    "C": []
+  },
+  "achievements": [
+    {
+      "id": "genesis_pioneer",
+      "name": "Genesis Pioneer",
+      "desc": "Created a FERROS profile",
+      "icon": "trophy",
+      "unlocked": true,
+      "unlockedAt": "2026-04-23T04:00:00Z"
+    }
+  ],
+  "journal": [
+    {
+      "ts": "2026-04-23T04:00:00Z",
+      "text": "Profile created for Fixture Pilot",
+      "type": "system"
+    }
+  ],
+  "credentials": [],
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal": "profile-genesis-fixture-pilot2026-04-23t04-00-00z",
+      "previousSeal": "genesis",
+      "timestamp": "2026-04-23T04:00:00Z",
+      "data": {
+        "event": "profile_created",
+        "name": "Fixture Pilot"
+      },
+      "hashAlgorithm": "sha256",
+      "nonce": 0
+    }
+  ]
+}

@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>H1 — FERROS Contract Validator</h1>
-<div class="meta">Harness version 1.1 &nbsp;|&nbsp; Gates: C1-C7, V3a (structural), C6 consumption (PR 13) &nbsp;|&nbsp; Run on file:// in Chrome</div>
+<div class="meta">Harness version 1.2 &nbsp;|&nbsp; Gates: C1-C7, V3a (structural), C6 consumption (PR 13), S2 CapabilityGrant v0 evidence &nbsp;|&nbsp; Run on file:// in Chrome</div>
 
 <div id="groups"></div>
 <div class="summary-bar" id="summary-bar"></div>
@@ -54,8 +54,8 @@ var VALIDATE_KEYWORDS = [
 
 // Keywords that are known/expected in schemas but produce no validation behaviour
 var META_KEYWORDS = [
-  '$schema','$id','$defs','title','description',
-  'default','format','examples'
+  '$schema','$id','$defs','definitions','title','description',
+  'default','format','examples','$comment','x-ferros-signature'
 ];
 
 var ALL_KNOWN_KEYWORDS = VALIDATE_KEYWORDS.concat(META_KEYWORDS);
@@ -83,18 +83,27 @@ function validate(data, schema, rootSchema) {
     }
   }
 
-  // $ref — local #/$defs/ only
+  // $ref — local #/$defs/ and #/definitions/ only
   if (schema.$ref !== undefined) {
     var ref = schema.$ref;
-    if (ref.indexOf('#/$defs/') !== 0) {
-      return { valid: false, errors: ['FAIL-LOUD: $ref "' + ref + '" is not a local #/$defs/ reference — only local $defs are supported.'], failLoud: true };
+    var refPrefix = null;
+    var refContainer = null;
+    if (ref.indexOf('#/$defs/') === 0) {
+      refPrefix = '#/$defs/';
+      refContainer = '$defs';
+    } else if (ref.indexOf('#/definitions/') === 0) {
+      refPrefix = '#/definitions/';
+      refContainer = 'definitions';
+    } else {
+      return { valid: false, errors: ['FAIL-LOUD: $ref "' + ref + '" is not a local #/$defs/ or #/definitions/ reference — only local root definitions are supported.'], failLoud: true };
     }
-    var defName = ref.slice(8); // strip '#/$defs/'
-    if (!rootSchema.$defs || !rootSchema.$defs[defName]) {
-      return { valid: false, errors: ['$ref resolution failed: "$defs.' + defName + '" not found in root schema'] };
+    var defName = ref.slice(refPrefix.length);
+    var rootDefinitions = rootSchema[refContainer];
+    if (!rootDefinitions || !rootDefinitions[defName]) {
+      return { valid: false, errors: ['$ref resolution failed: "' + refContainer + '.' + defName + '" not found in root schema'] };
     }
     // Merge ONLY the $ref target — do not carry outer schema keywords (they were already handled or don't apply)
-    return validate(data, rootSchema.$defs[defName], rootSchema);
+    return validate(data, rootDefinitions[defName], rootSchema);
   }
 
   // type
@@ -270,7 +279,7 @@ function deepEqual(a, b) {
 }
 
 /* Recursively collect all keyword names from a schema object.
-   Skips treating keys inside 'properties' and '$defs' maps as schema keywords
+  Skips treating keys inside 'properties', '$defs', and 'definitions' maps as schema keywords
    (those keys are property/definition names, not schema vocabulary). */
 function collectKeywords(obj, out) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
@@ -278,9 +287,9 @@ function collectKeywords(obj, out) {
   for (var i = 0; i < keys.length; i++) {
     var k = keys[i];
     out[k] = true;
-    // 'properties' and '$defs' map property/definition names to sub-schemas.
+    // 'properties', '$defs', and 'definitions' map property/definition names to sub-schemas.
     // Don't add those names as keywords — recurse into the sub-schema values directly.
-    if (k === 'properties' || k === '$defs') {
+    if (k === 'properties' || k === '$defs' || k === 'definitions') {
       var mapObj = obj[k];
       if (mapObj && typeof mapObj === 'object' && !Array.isArray(mapObj)) {
         var mapKeys = Object.keys(mapObj);
@@ -288,6 +297,8 @@ function collectKeywords(obj, out) {
           collectKeywords(mapObj[mapKeys[mi]], out);
         }
       }
+    } else if (k === 'x-ferros-signature') {
+      continue;
     } else {
       collectKeywords(obj[k], out);
     }
@@ -343,7 +354,7 @@ function runTest(group, name, fn) {
    GROUP 1 — Schema keyword audit
    Each FERROS schema must only contain keywords from ALL_KNOWN_KEYWORDS.
    ========================================================================== */
-var g1 = addGroup('Group 1 — Schema keyword audit (7 expected PASS)');
+var g1 = addGroup('Group 1 — Schema keyword audit');
 
 for (var si = 0; si < FERROS_SCHEMAS.length; si++) {
   (function(entry) {
@@ -366,7 +377,61 @@ for (var si = 0; si < FERROS_SCHEMAS.length; si++) {
 /* ==========================================================================
    GROUP 2 — Golden fixture positive validation (expect PASS)
    ========================================================================== */
-var g2 = addGroup('Group 2 — Golden fixture positive validation (18 expected PASS)');
+var g2 = addGroup('Group 2 — Golden fixture positive validation and S2 signing contract checks');
+
+runTest(g2, 'grant-valid validates against SCHEMA_CAPABILITY_GRANT_V0', function() {
+  var data = stripFixtureMeta(FIXTURE_GRANT_VALID);
+  var r = validate(data, SCHEMA_CAPABILITY_GRANT_V0);
+  if (r.valid) {
+    return { pass: true, detail: 'signed CapabilityGrant fixture matches the frozen S2 envelope schema' };
+  }
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+runTest(g2, 'profile-valid validates against SCHEMA_PROFILE_V0', function() {
+  var data = stripFixtureMeta(FIXTURE_PROFILE_VALID);
+  var r = validate(data, SCHEMA_PROFILE_V0);
+  if (r.valid) {
+    return { pass: true, detail: 'dedicated S2 golden profile fixture matches the draft profile.v0 freeze candidate' };
+  }
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+runTest(g2, 'SCHEMA_CAPABILITY_GRANT_V0 publishes the stripped-payload signing contract', function() {
+  var signing = SCHEMA_CAPABILITY_GRANT_V0['x-ferros-signature'];
+  if (!signing || typeof signing !== 'object' || Array.isArray(signing)) {
+    return { pass: false, error: 'x-ferros-signature metadata is missing from SCHEMA_CAPABILITY_GRANT_V0' };
+  }
+
+  var expectedFields = ['profile_id', 'capability', 'revoked_at', 'revocation_reason'];
+  var expectedOptionalFields = ['revoked_at', 'revocation_reason'];
+  var expectedActive = '{"profile_id":"profile-alpha","capability":"consent.read"}';
+  var expectedRevoked = '{"profile_id":"profile-alpha","capability":"consent.read","revoked_at":"2026-04-23T00:00:00Z","revocation_reason":"manual revoke"}';
+
+  if (signing.algorithm !== 'Ed25519') {
+    return { pass: false, error: 'expected algorithm=Ed25519, got ' + JSON.stringify(signing.algorithm) };
+  }
+  if (signing.payload_encoding !== 'utf-8') {
+    return { pass: false, error: 'expected payload_encoding=utf-8, got ' + JSON.stringify(signing.payload_encoding) };
+  }
+  if (!deepEqual(signing.payload_fields_in_order, expectedFields)) {
+    return { pass: false, error: 'payload_fields_in_order drifted: ' + JSON.stringify(signing.payload_fields_in_order) };
+  }
+  if (!deepEqual(signing.payload_optional_fields, expectedOptionalFields)) {
+    return { pass: false, error: 'payload_optional_fields drifted: ' + JSON.stringify(signing.payload_optional_fields) };
+  }
+  if (!signing.canonical_payload_examples || signing.canonical_payload_examples.active !== expectedActive) {
+    return { pass: false, error: 'active canonical payload example drifted: ' + JSON.stringify(signing.canonical_payload_examples && signing.canonical_payload_examples.active) };
+  }
+  if (signing.canonical_payload_examples.revoked !== expectedRevoked) {
+    return { pass: false, error: 'revoked canonical payload example drifted: ' + JSON.stringify(signing.canonical_payload_examples.revoked) };
+  }
+  if (typeof signing.verification_rule !== 'string' || signing.verification_rule.indexOf('signer_public_key and signature') === -1) {
+    return { pass: false, error: 'verification_rule is missing the stripped-payload verification requirement' };
+  }
+
+  return { pass: true, detail: 'Ed25519 stripped-payload signing rule matches the published S2 freeze contract' };
+});
 
 // 2a: full-profile-stage3 → SCHEMA_PROFILE (C2)
 runTest(g2, 'full-profile-stage3 validates against SCHEMA_PROFILE', function() {
@@ -676,6 +741,15 @@ runTest(g3, 'SCHEMA_AUDIT_RECORD rejects invalid-missing-session-id-alias-log (s
    ========================================================================== */
 var g4 = addGroup('Group 4 — Semantic failures classified (not detectable by JSON Schema)');
 
+runTest(g4, 'SCHEMA_CAPABILITY_GRANT_V0 accepts grant-invalid-sig (signature verification is semantic, ferros-profile owns)', function() {
+  var data = stripFixtureMeta(FIXTURE_GRANT_INVALID_SIG);
+  var r = validate(data, SCHEMA_CAPABILITY_GRANT_V0);
+  if (r.valid) {
+    return { pass: true, detail: 'PASS (expected): schema validates the signed-envelope shape; Ed25519 signature failure is semantic and covered by ferros-profile tests.' };
+  }
+  return { pass: false, error: 'unexpected schema rejection — investigate capability-grant.v0 drift: ' + r.errors.slice(0, 3).join(' | ') };
+});
+
 // 4a: invalid-broken-seal-chain — schema validates fine; chain break is semantic (H4 owns)
 runTest(g4, 'SCHEMA_PROFILE accepts broken-seal-chain (chain break is semantic, tested in H4)', function() {
   var data = stripFixtureMeta(FIXTURE_INVALID_BROKEN_SEAL_CHAIN);
@@ -954,13 +1028,13 @@ summaryBar.innerHTML =
 var resultObj = {
   timestamp: new Date().toISOString(),
   harnessId: 'H1',
-  harnessVersion: '1.1',
+  harnessVersion: '1.2',
   status: overallStatus,
   summary: { total: allTests.length, passed: passed, failed: failed, skipped: skipped },
   gates: {
-    C1_schema_keyword_coverage: 'SUPPORTED: type,properties,required,additionalProperties,items,minLength,maxLength,pattern,enum,const,minimum,maximum,minItems,oneOf,$ref',
+    C1_schema_keyword_coverage: 'SUPPORTED validation keywords: type,properties,required,additionalProperties,items,minLength,maxLength,pattern,enum,const,minimum,maximum,minItems,oneOf,$ref. Metadata-only keywords accepted: $schema,$id,$defs,definitions,title,description,default,format,examples,$comment,x-ferros-signature.',
     C2_unsupported_keyword_behaviour: 'FAIL-LOUD — validator returns {valid:false,failLoud:true} immediately',
-    C3_ref_scope: 'LOCAL ONLY — #/$defs/<name> resolved from rootSchema.$defs',
+    C3_ref_scope: 'LOCAL ONLY — #/$defs/<name> and #/definitions/<name> resolved from the corresponding root-schema definition map',
     C4_type_coercion: 'NONE — null/array/object/string/number/integer/boolean checked strictly',
     C5_format_enforcement: 'INFORMATIONAL — format keyword acknowledged, not validated',
     C6_oneOf_semantics: 'STRICT — exactly 1 must match, validator recurses into each branch',

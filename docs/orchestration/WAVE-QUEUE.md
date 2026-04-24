@@ -4,44 +4,7 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 
 ## Ready
 
-### WAVE-2026-04-23-01
-
-- Title: Freeze `CapabilityGrant` signing and verification evidence
-- Status: ready
-- Priority: P0
-- Gate: G2
-- Owning streams: S2 primary, S8 truth-sync if docs move
-- Goal: Finish the shared contract, harness, and gate-truth evidence for the now-landed signed and verifiable `CapabilityGrant` path without widening beyond the frozen stripped-payload signing rule.
-- Anchor files: `schemas/capability-grant.v0.json`, `docs/contracts/CONTRACTS-OVERVIEW.md`, `tools/generate-harness-constants.ps1`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`, `docs/gates/G2.md`
-- Validation: `cargo test -p ferros-profile`; confirm shared contract and harness surfaces match `schemas/capability-grant.v0.json`
-- Constraints: Keep the slice inside G2 evidence. Do not start the full profile CLI here. Limit follow-up to contract, harness, and gate truth-sync for the signed `CapabilityGrant` boundary.
-- Last update: 2026-04-23
-
-### WAVE-2026-04-23-02
-
-- Title: Add S4 policy property tests
-- Status: ready
-- Priority: P1
-- Gate: G3
-- Owning streams: S4 primary
-- Goal: Add property tests for `DenyByDefaultPolicy` that prove deny-by-default invariants across grant ordering and profile/capability mismatches without widening into unrelated runtime work.
-- Anchor files: `crates/ferros-core/src/capability.rs`, `crates/ferros-core/tests/capability_policy.rs`, `crates/ferros-core/Cargo.toml`
-- Validation: `cargo test -p ferros-core`
-- Constraints: Keep the slice focused on policy properties and test dependencies. Do not claim full embedded readiness or broader `no_std` completion.
-- Last update: 2026-04-23
-
-### WAVE-2026-04-23-03
-
-- Title: Land the minimal S2 profile CLI slice
-- Status: ready
-- Priority: P2
-- Gate: G2
-- Owning streams: S2 primary, S3 consumer awareness if contracts shift
-- Goal: Ship the smallest useful `ferros profile init | show` path with filesystem-backed storage, using the already-landed `ProfileStore` as the persistence boundary.
-- Anchor files: `crates/ferros-profile/src/lib.rs`, `crates/ferros-node/src/bin/ferros.rs`, `crates/ferros-node/src/lib.rs`, `docs/gates/G2.md`
-- Validation: `cargo test -p ferros-profile -p ferros-node`
-- Constraints: Keep the slice to `init` and `show` unless the implementation naturally supports one more subcommand with test coverage. Do not widen into import/export or signing in the same wave.
-- Last update: 2026-04-23
+None.
 
 ## In Progress
 
@@ -63,6 +26,71 @@ None.
 - Last update: 2026-04-23
 
 ## Done
+
+### WAVE-2026-04-23-05
+
+- Title: Add Linux-backed `ferros profile init` to `show` proof
+- Status: done
+- Priority: P1
+- Gate: G2
+- Owning streams: S2 primary, S1 support if CI or workflow surfaces move, S8 truth-sync if gate docs change
+- Goal: Land a repo-backed Linux proof for `ferros profile init` followed by `ferros profile show`, using the already-landed minimal CLI path without widening into `export | import | grant | revoke`.
+- Anchor files: `.github/workflows/ci.yml`, `crates/ferros-node/src/bin/ferros.rs`, `crates/ferros-node/src/lib.rs`, `docs/gates/G2.md`, `STATUS.md`
+- Validation: local `cargo test -p ferros-profile -p ferros-node`; repo-hosted Linux workflow or equivalent scripted proof for `ferros profile init` then `ferros profile show`
+- Constraints: Keep the slice focused on Linux-backed evidence for the current `init | show` path. Do not start the remaining profile CLI subcommands in this wave.
+- Last update: 2026-04-23
+
+### WAVE-2026-04-23-04
+
+- Title: Freeze profile.v0 golden fixture evidence
+- Status: done
+- Priority: P0
+- Gate: G2
+- Owning streams: S2 primary, S8 truth-sync if docs or harness surfaces move
+- Goal: Add the dedicated frozen `schemas/fixtures/profile-valid.json` artifact, prove it matches `schemas/profile.v0.json`, and sync any harness or gate surfaces that still assume profile freeze evidence is missing.
+- Anchor files: `schemas/profile.v0.json`, `schemas/fixtures/profile-valid.json`, `crates/ferros-profile/src/lib.rs`, `tools/generate-harness-constants.ps1`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`, `docs/gates/G2.md`, `STATUS.md`
+- Validation: `cargo test -p ferros-profile`; regenerate harness constants if fixture coverage changes; confirm H1 contract validator still passes for the profile schema set
+- Constraints: Keep the slice to profile fixture freeze evidence and truth-sync. Do not widen into new CLI subcommands or profile signing work.
+- Last update: 2026-04-23
+
+### WAVE-2026-04-23-03
+
+- Title: Land the minimal S2 profile CLI slice
+- Status: done
+- Priority: P2
+- Gate: G2
+- Owning streams: S2 primary, S3 consumer awareness if contracts shift
+- Goal: Ship the smallest useful `ferros profile init | show` path with filesystem-backed storage, using the already-landed `ProfileStore` as the persistence boundary.
+- Anchor files: `crates/ferros-profile/src/lib.rs`, `crates/ferros-node/src/bin/ferros.rs`, `crates/ferros-node/src/lib.rs`, `docs/gates/G2.md`
+- Validation: `cargo test -p ferros-profile -p ferros-node`
+- Constraints: Keep the slice to `init` and `show` unless the implementation naturally supports one more subcommand with test coverage. Do not widen into import/export or signing in the same wave.
+- Last update: 2026-04-23
+
+### WAVE-2026-04-23-02
+
+- Title: Add S4 policy property tests
+- Status: done
+- Priority: P1
+- Gate: G3
+- Owning streams: S4 primary
+- Goal: Add property tests for `DenyByDefaultPolicy` that prove deny-by-default invariants across grant ordering and profile/capability mismatches without widening into unrelated runtime work.
+- Anchor files: `crates/ferros-core/src/capability.rs`, `crates/ferros-core/tests/capability_policy.rs`, `crates/ferros-core/Cargo.toml`
+- Validation: `cargo test -p ferros-core`
+- Constraints: Keep the slice focused on policy properties and test dependencies. Do not claim full embedded readiness or broader `no_std` completion.
+- Last update: 2026-04-23
+
+### WAVE-2026-04-23-01
+
+- Title: Freeze `CapabilityGrant` signing and verification evidence
+- Status: done
+- Priority: P0
+- Gate: G2
+- Owning streams: S2 primary, S8 truth-sync if docs move
+- Goal: Finish the shared contract, harness, and gate-truth evidence for the now-landed signed and verifiable `CapabilityGrant` path without widening beyond the frozen stripped-payload signing rule.
+- Anchor files: `schemas/capability-grant.v0.json`, `docs/contracts/CONTRACTS-OVERVIEW.md`, `tools/generate-harness-constants.ps1`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`, `docs/gates/G2.md`
+- Validation: `cargo test -p ferros-profile`; confirm shared contract and harness surfaces match `schemas/capability-grant.v0.json`
+- Constraints: Keep the slice inside G2 evidence. Do not start the full profile CLI here. Limit follow-up to contract, harness, and gate truth-sync for the signed `CapabilityGrant` boundary.
+- Last update: 2026-04-23
 
 ### WAVE-2026-04-23-D01
 

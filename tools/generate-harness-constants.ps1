@@ -39,14 +39,18 @@ if (-not (Test-Path $fixturesDir)) {
 }
 
 function ConvertTo-JsConstName {
-  param([string]$filename)
+  param(
+    [string]$filename,
+    [bool]$isSchema
+  )
   # "profile.schema.json"       -> "SCHEMA_PROFILE"
+  # "capability-grant.v0.json"  -> "SCHEMA_CAPABILITY_GRANT_V0"
   # "full-profile-stage3.json"  -> "FIXTURE_FULL_PROFILE_STAGE3"
   # "invalid-broken-seal-chain.json" -> "FIXTURE_INVALID_BROKEN_SEAL_CHAIN"
   $base = [System.IO.Path]::GetFileNameWithoutExtension($filename)  # strip .json
   $base = $base -replace '\.schema$', ''                             # strip .schema
   $base = $base.ToUpper() -replace '[^A-Z0-9]', '_'
-  if ($filename -match '\.schema\.json$') {
+  if ($isSchema) {
     return "SCHEMA_$base"
   } else {
     return "FIXTURE_$base"
@@ -88,16 +92,19 @@ $lines += "// DO NOT EDIT MANUALLY -- run the generator to regenerate."
 $lines += "// Deterministic output -- regenerate and diff to verify freshness."
 $lines += "//"
 $lines += "// Source:"
-$lines += "//   Schemas:  schemas/*.schema.json"
+$lines += "//   Schemas:  schemas/*.schema.json, schemas/capability-grant.v0.json, and schemas/profile.v0.json"
 $lines += "//   Fixtures: schemas/fixtures/*.json"
 $lines += ""
 
 $fileCount = 0
+$extraHarnessSchemas = @("capability-grant.v0.json", "profile.v0.json")
 
 # --- Schemas ---
-$schemaFiles = Get-ChildItem -Path $schemasDir -Filter "*.schema.json" | Sort-Object Name
+$schemaFiles = Get-ChildItem -Path $schemasDir -File |
+  Where-Object { $_.Name -match '\.schema\.json$' -or $extraHarnessSchemas -contains $_.Name } |
+  Sort-Object Name
 if ($schemaFiles.Count -eq 0) {
-  Write-Warning "No *.schema.json files found in $schemasDir"
+  Write-Warning "No harness schema files found in $schemasDir"
 }
 
 $lines += "// =================================================="
@@ -106,7 +113,7 @@ $lines += "// =================================================="
 $lines += ""
 
 foreach ($file in $schemaFiles) {
-  $constName = ConvertTo-JsConstName $file.Name
+  $constName = ConvertTo-JsConstName $file.Name $true
   $raw = Get-Content -Path $file.FullName -Raw -Encoding UTF8
 
   # Validate JSON
@@ -140,7 +147,7 @@ $goldenFixtures  = @()
 $negativeFixtures = @()
 
 foreach ($file in $fixtureFiles) {
-  $constName = ConvertTo-JsConstName $file.Name
+  $constName = ConvertTo-JsConstName $file.Name $false
   $raw = Get-Content -Path $file.FullName -Raw -Encoding UTF8
 
   # Validate JSON
@@ -160,7 +167,7 @@ foreach ($file in $fixtureFiles) {
 
   $stem = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
   $fixtureEntry = "  {name: `"$stem`", file: `"$($file.Name)`", fixture: $constName}"
-  if ($file.Name -like "invalid-*") {
+  if ($stem -match '(^|-)invalid(-|$)') {
     $negativeFixtures += $fixtureEntry
   } else {
     $goldenFixtures += $fixtureEntry
@@ -176,7 +183,7 @@ $lines += ""
 # FERROS_SCHEMAS — named objects for schema lookup
 $schemaEntries = @()
 foreach ($file in $schemaFiles) {
-  $constName = ConvertTo-JsConstName $file.Name
+  $constName = ConvertTo-JsConstName $file.Name $true
   $stem = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
   $stem = $stem -replace '\.schema$', ''
   $schemaEntries += "  {name: `"$stem`", file: `"$($file.Name)`", schema: $constName}"

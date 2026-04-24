@@ -10,6 +10,7 @@ ferros-agents = { path = "../ferros-agents" }
 ferros-core = { path = "../ferros-core" }
 ferros-profile = { path = "../ferros-profile" }
 ferros-runtime = { path = "../ferros-runtime" }
+time = { version = "=0.3.36", features = ["formatting"] }
 
 [lib]
 path = "src/lib.rs"

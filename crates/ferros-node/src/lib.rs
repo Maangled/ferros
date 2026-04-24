@@ -6,6 +6,7 @@ use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use ferros_agents::{
     Agent, AgentManifest, AgentRegistry, AgentStatus, EchoAgent, InMemoryAgentRegistry,
@@ -16,12 +17,19 @@ use ferros_core::{
     MessageEnvelope, MessageEnvelopeError, PolicyDecision, PolicyEngine,
     RequesterProfileIdError,
 };
-use ferros_profile::{CapabilityGrant, ProfileId, ProfileIdError};
+use ferros_profile::{
+    init_profile, CapabilityGrant, FileSystemProfileStore, ProfileId, ProfileIdError,
+    ProfileStore, ProfileStoreError,
+};
 use ferros_runtime::{Executor, InMemoryExecutor, InMemoryMessageBus, MessageBus};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 const DEFAULT_PROFILE_ID: &str = "profile-alpha";
+const DEFAULT_PROFILE_NAME: &str = "Fresh Start";
 const CLI_STATE_DIRECTORY: &str = "ferros";
 const CLI_STATE_FILE: &str = "agent-center.state";
+const CLI_PROFILE_DIRECTORY: &str = ".ferros";
+const CLI_PROFILE_FILE: &str = "profile.json";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DemoSummary {
@@ -141,11 +149,18 @@ pub enum AgentCliCommand {
     Logs { name: Option<String> },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProfileCliCommand {
+    Init { path: PathBuf },
+    Show { path: PathBuf },
+}
+
 #[derive(Debug)]
 pub enum CliError {
     Usage(&'static str),
     InvalidState(String),
     Io(io::Error),
+    Profile(ProfileStoreError),
     Runtime(DemoError),
 }
 
@@ -155,6 +170,7 @@ impl fmt::Display for CliError {
             Self::Usage(message) => write!(f, "{message}"),
             Self::InvalidState(message) => write!(f, "invalid CLI state: {message}"),
             Self::Io(error) => write!(f, "{error}"),
+            Self::Profile(error) => write!(f, "{error}"),
             Self::Runtime(error) => write!(f, "{error}"),
         }
     }
@@ -163,6 +179,12 @@ impl fmt::Display for CliError {
 impl From<io::Error> for CliError {
     fn from(value: io::Error) -> Self {
         Self::Io(value)
+    }
+}
+
+impl From<ProfileStoreError> for CliError {
+    fn from(value: ProfileStoreError) -> Self {
+        Self::Profile(value)
     }
 }
 
@@ -562,6 +584,10 @@ pub fn execute_agent_cli(command: AgentCliCommand) -> Result<Vec<String>, CliErr
     execute_agent_cli_with_state_path(command, &cli_state_path())
 }
 
+pub fn execute_profile_cli(command: ProfileCliCommand) -> Result<Vec<String>, CliError> {
+    execute_profile_cli_with_store(command, &FileSystemProfileStore)
+}
+
 fn execute_agent_cli_with_state_path(
     command: AgentCliCommand,
     state_path: &Path,
@@ -660,6 +686,35 @@ fn execute_agent_cli_with_state_path(
     }
 }
 
+fn execute_profile_cli_with_store<S: ProfileStore>(
+    command: ProfileCliCommand,
+    store: &S,
+) -> Result<Vec<String>, CliError> {
+    match command {
+        ProfileCliCommand::Init { path } => {
+            let profile = init_profile(
+                store,
+                &path,
+                DEFAULT_PROFILE_NAME,
+                current_profile_timestamp(),
+            )?;
+
+            Ok(vec![
+                format!("initialized profile at {}", path.display()),
+                format!("profile name: {}", profile.identity.name),
+            ])
+        }
+        ProfileCliCommand::Show { path } => {
+            let profile = store.load_profile(&path)?;
+            let rendered = profile
+                .to_json_string_pretty()
+                .map_err(ProfileStoreError::Serde)?;
+
+            Ok(rendered.lines().map(str::to_owned).collect())
+        }
+    }
+}
+
 fn runtime_with_state(state_path: &Path) -> Result<DemoRuntime, CliError> {
     let state = CliState::load(state_path)?;
     runtime_with_state_from_loaded_state(&state)
@@ -689,6 +744,40 @@ fn cli_state_path() -> PathBuf {
     std::env::temp_dir()
         .join(CLI_STATE_DIRECTORY)
         .join(CLI_STATE_FILE)
+}
+
+pub fn default_profile_path() -> PathBuf {
+    if let Some(explicit_path) = std::env::var_os("FERROS_PROFILE_PATH") {
+        let explicit_path = PathBuf::from(explicit_path);
+
+        if !explicit_path.as_os_str().is_empty() {
+            return explicit_path;
+        }
+    }
+
+    profile_home_dir()
+        .unwrap_or_else(std::env::temp_dir)
+        .join(CLI_PROFILE_DIRECTORY)
+        .join(CLI_PROFILE_FILE)
+}
+
+fn profile_home_dir() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+}
+
+fn current_profile_timestamp() -> String {
+    OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .unwrap_or_else(|_| {
+            let seconds = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+
+            format!("1970-01-01T00:00:{:02}Z", seconds % 60)
+        })
 }
 
 fn format_agent_summary(record: &AgentRecord) -> String {
@@ -791,10 +880,12 @@ pub fn run_demo() -> Result<DemoSummary, DemoError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        execute_agent_cli_with_state_path, run_demo, AgentCliCommand, DemoError, DemoRuntime,
+        default_profile_path, execute_agent_cli_with_state_path, execute_profile_cli_with_store,
+        run_demo, AgentCliCommand, CliError, DemoError, DemoRuntime, ProfileCliCommand,
+        DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{EchoAgent, TimerAgent};
-    use ferros_profile::{CapabilityGrant, ProfileId};
+    use ferros_profile::{CapabilityGrant, FileSystemProfileStore, ProfileDocument, ProfileId};
     use std::fs;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -972,6 +1063,82 @@ mod tests {
         cleanup_state_path(&state_path);
     }
 
+    #[test]
+    fn profile_cli_init_and_show_round_trip_profile_document() {
+        let store = FileSystemProfileStore;
+        let profile_path = unique_profile_path("init-show");
+
+        let init_lines = execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &store,
+        )
+        .expect("profile init should succeed");
+
+        assert!(init_lines
+            .iter()
+            .any(|line| line == &format!("initialized profile at {}", profile_path.display())));
+        assert!(init_lines
+            .iter()
+            .any(|line| line == &format!("profile name: {DEFAULT_PROFILE_NAME}")));
+
+        let show_lines = execute_profile_cli_with_store(
+            ProfileCliCommand::Show {
+                path: profile_path.clone(),
+            },
+            &store,
+        )
+        .expect("profile show should succeed");
+        let rendered = show_lines.join("\n");
+        let profile =
+            ProfileDocument::from_json_str(&rendered).expect("show output should be valid JSON");
+
+        assert_eq!(profile.identity.name, DEFAULT_PROFILE_NAME);
+        assert!(profile.has_genesis_seal());
+
+        cleanup_state_path(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
+    fn profile_cli_init_rejects_existing_profile_file() {
+        let store = FileSystemProfileStore;
+        let profile_path = unique_profile_path("init-existing");
+
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &store,
+        )
+        .expect("first init should succeed");
+
+        let error = execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &store,
+        )
+        .expect_err("second init should fail");
+
+        assert!(matches!(
+            error,
+            CliError::Profile(ferros_profile::ProfileStoreError::AlreadyExists(existing_path))
+                if existing_path == profile_path
+        ));
+
+        cleanup_state_path(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
+    fn default_profile_path_uses_profile_file_name() {
+        let path = default_profile_path();
+
+        assert_eq!(path.file_name().and_then(|value| value.to_str()), Some("profile.json"));
+    }
+
     fn unique_state_path(test_name: &str) -> PathBuf {
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -980,7 +1147,24 @@ mod tests {
         std::env::temp_dir().join(format!("ferros-node-{test_name}-{nonce}.state"))
     }
 
+    fn unique_profile_path(test_name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be after epoch")
+            .as_nanos();
+
+        std::env::temp_dir()
+            .join("ferros-node-profiles")
+            .join(format!("{test_name}-{nonce}.json"))
+    }
+
     fn cleanup_state_path(path: &PathBuf) {
         let _ = fs::remove_file(path);
+    }
+
+    fn cleanup_parent_dir(path: &PathBuf) {
+        if let Some(parent) = path.parent() {
+            let _ = fs::remove_dir(parent);
+        }
     }
 }

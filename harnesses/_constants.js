@@ -4,7 +4,7 @@
 // Deterministic output -- regenerate and diff to verify freshness.
 //
 // Source:
-//   Schemas:  schemas/*.schema.json
+//   Schemas:  schemas/*.schema.json, schemas/capability-grant.v0.json, and schemas/profile.v0.json
 //   Fixtures: schemas/fixtures/*.json
 
 // ==================================================
@@ -133,6 +133,70 @@ var SCHEMA_AUDIT_RECORD = {
           "description": "Data needed to reverse this action"
         }
       }
+    }
+  }
+};
+
+// Source: schemas/capability-grant.v0.json
+var SCHEMA_CAPABILITY_GRANT_V0 = {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ferros.local/schemas/capability-grant.v0.json",
+  "title": "FERROS Capability Grant v0",
+  "description": "S2-owned capability grant schema candidate for G2 freeze. Mirrors the current ferros-profile signed CapabilityGrant envelope, including Ed25519 signer material and revocation metadata.",
+  "$comment": "Normative signing contract: reconstruct the signed payload from only profile_id, capability, and the optional revoked_at and revocation_reason fields. Omit absent optional fields entirely. Serialize that stripped payload as UTF-8 JSON with no insignificant whitespace and with members emitted in exactly this order: profile_id, capability, revoked_at, revocation_reason. signer_public_key and signature are envelope-only fields and are never part of the signed payload. Verifiers must verify that stripped payload before trusting the embedded grant fields.",
+  "x-ferros-signature": {
+    "algorithm": "Ed25519",
+    "payload_encoding": "utf-8",
+    "payload_fields_in_order": [
+      "profile_id",
+      "capability",
+      "revoked_at",
+      "revocation_reason"
+    ],
+    "payload_optional_fields": [
+      "revoked_at",
+      "revocation_reason"
+    ],
+    "payload_member_rules": "Construct a new JSON object from only the listed grant fields, omit absent optional fields, serialize without insignificant whitespace, and use standard JSON string escaping.",
+    "verification_rule": "Verify signer_public_key and signature against that stripped payload before treating the embedded grant as trusted input.",
+    "canonical_payload_examples": {
+      "active": "{\"profile_id\":\"profile-alpha\",\"capability\":\"consent.read\"}",
+      "revoked": "{\"profile_id\":\"profile-alpha\",\"capability\":\"consent.read\",\"revoked_at\":\"2026-04-23T00:00:00Z\",\"revocation_reason\":\"manual revoke\"}"
+    }
+  },
+  "type": "object",
+  "required": ["profile_id", "capability", "signer_public_key", "signature"],
+  "additionalProperties": false,
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "description": "Granted FERROS profile identity as currently serialized by ferros-profile."
+    },
+    "capability": {
+      "type": "string",
+      "description": "Granted capability token understood by downstream policy consumers."
+    },
+    "revoked_at": {
+      "type": "string",
+      "description": "Optional timestamp marking when the grant was revoked in the current pre-signature revocation model."
+    },
+    "revocation_reason": {
+      "type": "string",
+      "description": "Optional human-readable reason recorded when the grant is revoked."
+    },
+    "signer_public_key": {
+      "type": "string",
+      "description": "Hex-encoded Ed25519 verifying key that must verify the stripped canonical payload defined by this schema.",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Hex-encoded Ed25519 signature over the stripped canonical payload defined by this schema.",
+      "minLength": 128,
+      "maxLength": 128,
+      "pattern": "^[0-9a-f]{128}$"
     }
   }
 };
@@ -569,6 +633,209 @@ var SCHEMA_PROFILE = {
         "Governance": { "$ref": "#/$defs/attribute" },
         "Wellness": { "$ref": "#/$defs/attribute" },
         "Community": { "$ref": "#/$defs/attribute" }
+      }
+    },
+    "skills": {
+      "type": "object",
+      "required": ["A", "B", "C"],
+      "additionalProperties": false,
+      "properties": {
+        "A": { "type": "array", "items": { "type": "string" } },
+        "B": { "type": "array", "items": { "type": "string" } },
+        "C": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "achievement": {
+      "type": "object",
+      "required": ["id", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+        "name": { "type": "string" },
+        "desc": { "type": "string", "default": "" },
+        "icon": { "type": "string", "default": "" },
+        "unlocked": { "type": "boolean", "default": false },
+        "unlockedAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "journalEntry": {
+      "type": "object",
+      "required": ["ts", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "ts": { "type": "string", "format": "date-time" },
+        "text": { "type": "string" },
+        "type": { "type": "string", "enum": ["activity", "journal", "system", "claim-event", "claimed-alias", "claimed-recovery"], "default": "journal" },
+        "seal": { "type": ["string", "null"] },
+        "aliasId": { "type": ["string", "null"], "description": "Alias identifier for claimed entries." },
+        "aliasName": { "type": ["string", "null"], "description": "Alias display name for claimed entries." },
+        "linkedTo": { "type": ["string", "null"], "description": "Genesis hash of the claiming profile." },
+        "claimId": { "type": ["string", "null"], "description": "Unique claim session identifier." },
+        "sealBroken": { "type": "boolean", "description": "True if the source log had integrity warnings." }
+      }
+    },
+    "credential": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "issuedAt": { "type": ["string", "null"], "format": "date-time" },
+        "data": { "type": "object" }
+      }
+    },
+    "seal": {
+      "type": "object",
+      "required": ["taskId", "seal", "previousSeal", "timestamp", "data", "hashAlgorithm", "nonce"],
+      "additionalProperties": false,
+      "properties": {
+        "taskId": { "type": "string" },
+        "seal": { "type": "string" },
+        "previousSeal": { "type": "string", "description": "'genesis' for the first seal, otherwise the seal hash of the prior entry" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "data": { "description": "Arbitrary JSON-serializable task data" },
+        "hashAlgorithm": { "type": "string", "enum": ["sha256", "djb2"], "description": "Algorithm used to compute this seal hash" },
+        "nonce": { "type": ["integer", "number"], "description": "Random nonce consumed during seal computation, persisted for deterministic re-verification" }
+      }
+    },
+    "auditEntry": {
+      "type": "object",
+      "required": ["ts", "action"],
+      "additionalProperties": false,
+      "properties": {
+        "ts": { "type": "string", "format": "date-time" },
+        "action": { "type": "string", "enum": ["seal-added", "profile-saved", "profile-imported", "alias-claimed", "recovery-claimed"] },
+        "detail": { "description": "Optional action-specific data", "type": ["object", "null"] }
+      }
+    }
+  }
+};
+
+// Source: schemas/profile.v0.json
+var SCHEMA_PROFILE_V0 = {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ferros.local/schemas/profile.v0.json",
+  "title": "FERROS Profile v0",
+  "description": "S2-owned profile schema candidate for G2 freeze. Derived from the existing FERROS profile contract and used to enforce Rust schema parity in ferros-profile.",
+  "type": "object",
+  "required": ["meta", "identity", "attributes", "skills", "achievements", "journal", "credentials", "sealChain"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": { "$ref": "#/definitions/meta" },
+    "identity": { "$ref": "#/definitions/identity" },
+    "attributes": { "$ref": "#/definitions/attributes" },
+    "skills": { "$ref": "#/definitions/skills" },
+    "achievements": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/achievement" }
+    },
+    "journal": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/journalEntry" }
+    },
+    "credentials": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/credential" }
+    },
+    "sealChain": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/seal" }
+    },
+    "auditTrail": {
+      "type": "array",
+      "description": "C10 bounded audit ring buffer. Cap: 1000 entries, FIFO eviction.",
+      "items": { "$ref": "#/definitions/auditEntry" }
+    },
+    "schedule": {
+      "type": "object",
+      "description": "Legacy migration field carried forward from the Phase 0 profile contract.",
+      "properties": {
+        "archetype": { "type": ["string", "null"] },
+        "activeDeck": { "type": ["string", "null"] },
+        "wakeTime": { "type": "string" },
+        "sleepTime": { "type": "string" },
+        "slots": { "type": "array" }
+      }
+    },
+    "completions": {
+      "type": "object",
+      "description": "Legacy migration field carried forward from the Phase 0 profile contract."
+    },
+    "creditLog": {
+      "type": "object",
+      "description": "Legacy migration field carried forward from the Phase 0 profile contract."
+    },
+    "bag": {
+      "type": "array",
+      "description": "Legacy migration field carried forward from the Phase 0 profile contract.",
+      "items": { "type": "object" }
+    }
+  },
+  "definitions": {
+    "meta": {
+      "type": "object",
+      "required": ["version", "created", "lastModified", "assistanceLevel", "genesisHash", "currentSeal", "sealCount", "stage"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
+        "created": { "type": ["string", "null"], "format": "date-time" },
+        "lastModified": { "type": ["string", "null"], "format": "date-time" },
+        "assistanceLevel": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "genesisHash": { "type": ["string", "null"] },
+        "currentSeal": { "type": ["string", "null"] },
+        "sealCount": { "type": "integer", "minimum": 0 },
+        "stage": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "anchoredToLedger": { "type": "boolean", "default": false },
+        "ledgerTxHash": { "type": ["string", "null"], "default": null },
+        "schemaVersion": { "type": "integer", "description": "Internal structural version used by migrateProfileStructure(). Distinct from meta.version (interchange version)." },
+        "claimedAliasSessions": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Canonical dedupe index for claimed alias/recovery log sessions." },
+        "xp": { "type": "integer", "minimum": 0, "default": 0, "description": "Cumulative XP from alias/recovery log claims." },
+        "sealBroken": { "type": "boolean", "default": false, "description": "True if imported profile had a broken seal chain." },
+        "revision": { "type": "integer", "minimum": 0, "default": 0, "description": "Monotonically increasing counter for cross-tab coordination." }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "required": ["name", "avatar", "class", "streamAffinity", "title", "joinedDate", "streakDays", "longestStreak"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "class": { "type": ["string", "null"], "enum": ["Architect", "Engineer", "Scholar", "Artisan", "Healer", "Guardian", "Guided", "Community", null] },
+        "streamAffinity": { "type": ["string", "null"], "enum": ["A", "B", "C", null] },
+        "title": { "type": "string" },
+        "joinedDate": { "type": ["string", "null"], "format": "date-time" },
+        "streakDays": { "type": "integer", "minimum": 0 },
+        "longestStreak": { "type": "integer", "minimum": 0 },
+        "archetype": { "type": ["string", "null"] },
+        "wakeTime": { "type": "string" },
+        "sleepTime": { "type": "string" },
+        "categoryInterests": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "attribute": {
+      "type": "object",
+      "required": ["level", "xp", "xpToNext", "color", "icon"],
+      "additionalProperties": false,
+      "properties": {
+        "level": { "type": "integer", "minimum": 1 },
+        "xp": { "type": "integer", "minimum": 0 },
+        "xpToNext": { "type": "integer", "minimum": 1 },
+        "color": { "type": "string" },
+        "icon": { "type": "string" }
+      }
+    },
+    "attributes": {
+      "type": "object",
+      "required": ["Discipline", "Knowledge", "Craft", "Governance", "Wellness", "Community"],
+      "additionalProperties": false,
+      "properties": {
+        "Discipline": { "$ref": "#/definitions/attribute" },
+        "Knowledge": { "$ref": "#/definitions/attribute" },
+        "Craft": { "$ref": "#/definitions/attribute" },
+        "Governance": { "$ref": "#/definitions/attribute" },
+        "Wellness": { "$ref": "#/definitions/attribute" },
+        "Community": { "$ref": "#/definitions/attribute" }
       }
     },
     "skills": {
@@ -1351,6 +1618,22 @@ var FIXTURE_FULL_PROFILE_STAGE3 = {
       "nonce": 1618033988
     }
   ]
+};
+
+// Source: schemas/fixtures/grant-invalid-sig.json
+var FIXTURE_GRANT_INVALID_SIG = {
+  "profile_id": "profile-alpha",
+  "capability": "consent.read",
+  "signer_public_key": "8907668126536768cdb51c9f1643ff77447bff0e3fc6b4a78cd0fab53a6c590c",
+  "signature": "0a4ae2cef35856cc1116b06705b0e2ad9661559e6d26f7846bd84e14156e2a298c12d7391976d1bdde780c9dbb9ea9cc3cf7fb98483608bceda3db25cb071b0b"
+};
+
+// Source: schemas/fixtures/grant-valid.json
+var FIXTURE_GRANT_VALID = {
+  "profile_id": "profile-alpha",
+  "capability": "consent.read",
+  "signer_public_key": "8907668126536768cdb51c9f1643ff77447bff0e3fc6b4a78cd0fab53a6c590c",
+  "signature": "4a4ae2cef35856cc1116b06705b0e2ad9661559e6d26f7846bd84e14156e2a298c12d7391976d1bdde780c9dbb9ea9cc3cf7fb98483608bceda3db25cb071b0b"
 };
 
 // Source: schemas/fixtures/invalid-arena-export-missing-card-reference.json
@@ -2211,6 +2494,75 @@ var FIXTURE_PROFILE_TEMPLATE_ARCHETYPE_SEAM = {
   "bag": []
 };
 
+// Source: schemas/fixtures/profile-valid.json
+var FIXTURE_PROFILE_VALID = {
+  "meta": {
+    "version": "1.0",
+    "created": "2026-04-23T04:00:00Z",
+    "lastModified": "2026-04-23T04:00:00Z",
+    "assistanceLevel": 1,
+    "genesisHash": "profile-genesis-fixture-pilot2026-04-23t04-00-00z",
+    "currentSeal": "profile-genesis-fixture-pilot2026-04-23t04-00-00z",
+    "sealCount": 1,
+    "stage": 0
+  },
+  "identity": {
+    "name": "Fixture Pilot",
+    "avatar": "star",
+    "class": null,
+    "streamAffinity": null,
+    "title": "Newcomer",
+    "joinedDate": "2026-04-23T04:00:00Z",
+    "streakDays": 0,
+    "longestStreak": 0
+  },
+  "attributes": {
+    "Discipline": { "level": 1, "xp": 0, "xpToNext": 100, "color": "amber", "icon": "discipline" },
+    "Knowledge": { "level": 1, "xp": 0, "xpToNext": 100, "color": "blue", "icon": "knowledge" },
+    "Craft": { "level": 1, "xp": 0, "xpToNext": 100, "color": "cyan", "icon": "craft" },
+    "Governance": { "level": 1, "xp": 0, "xpToNext": 100, "color": "purple", "icon": "governance" },
+    "Wellness": { "level": 1, "xp": 0, "xpToNext": 100, "color": "green", "icon": "wellness" },
+    "Community": { "level": 1, "xp": 0, "xpToNext": 100, "color": "pink", "icon": "community" }
+  },
+  "skills": {
+    "A": [],
+    "B": [],
+    "C": []
+  },
+  "achievements": [
+    {
+      "id": "genesis_pioneer",
+      "name": "Genesis Pioneer",
+      "desc": "Created a FERROS profile",
+      "icon": "trophy",
+      "unlocked": true,
+      "unlockedAt": "2026-04-23T04:00:00Z"
+    }
+  ],
+  "journal": [
+    {
+      "ts": "2026-04-23T04:00:00Z",
+      "text": "Profile created for Fixture Pilot",
+      "type": "system"
+    }
+  ],
+  "credentials": [],
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal": "profile-genesis-fixture-pilot2026-04-23t04-00-00z",
+      "previousSeal": "genesis",
+      "timestamp": "2026-04-23T04:00:00Z",
+      "data": {
+        "event": "profile_created",
+        "name": "Fixture Pilot"
+      },
+      "hashAlgorithm": "sha256",
+      "nonce": 0
+    }
+  ]
+};
+
 // Source: schemas/fixtures/quota-boundary-profile.json
 var FIXTURE_QUOTA_BOUNDARY_PROFILE = {
   "$comment": "Golden fixture: profile near localStorage quota boundary — large journal, many seals, long credential list. Used to test quota-handling and near-limit behavior.",
@@ -2527,10 +2879,12 @@ var FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN = {
 
 var FERROS_SCHEMAS = [
   {name: "audit-record", file: "audit-record.schema.json", schema: SCHEMA_AUDIT_RECORD},
+  {name: "capability-grant.v0", file: "capability-grant.v0.json", schema: SCHEMA_CAPABILITY_GRANT_V0},
   {name: "card", file: "card.schema.json", schema: SCHEMA_CARD},
   {name: "deck", file: "deck.schema.json", schema: SCHEMA_DECK},
   {name: "identity", file: "identity.schema.json", schema: SCHEMA_IDENTITY},
   {name: "profile", file: "profile.schema.json", schema: SCHEMA_PROFILE},
+  {name: "profile.v0", file: "profile.v0.json", schema: SCHEMA_PROFILE_V0},
   {name: "schedule-event", file: "schedule-event.schema.json", schema: SCHEMA_SCHEDULE_EVENT},
   {name: "template", file: "template.schema.json", schema: SCHEMA_TEMPLATE}
 ];
@@ -2541,11 +2895,13 @@ var FERROS_GOLDEN_FIXTURES = [
   {name: "claimed-alias-merge-result", file: "claimed-alias-merge-result.json", fixture: FIXTURE_CLAIMED_ALIAS_MERGE_RESULT},
   {name: "deck-card-assembly-seam", file: "deck-card-assembly-seam.json", fixture: FIXTURE_DECK_CARD_ASSEMBLY_SEAM},
   {name: "full-profile-stage3", file: "full-profile-stage3.json", fixture: FIXTURE_FULL_PROFILE_STAGE3},
+  {name: "grant-valid", file: "grant-valid.json", fixture: FIXTURE_GRANT_VALID},
   {name: "maximum-template-schedule", file: "maximum-template-schedule.json", fixture: FIXTURE_MAXIMUM_TEMPLATE_SCHEDULE},
   {name: "mid-stage1-profile", file: "mid-stage1-profile.json", fixture: FIXTURE_MID_STAGE1_PROFILE},
   {name: "minimal-stage0-profile", file: "minimal-stage0-profile.json", fixture: FIXTURE_MINIMAL_STAGE0_PROFILE},
   {name: "profile-export-envelope", file: "profile-export-envelope.json", fixture: FIXTURE_PROFILE_EXPORT_ENVELOPE},
   {name: "profile-template-archetype-seam", file: "profile-template-archetype-seam.json", fixture: FIXTURE_PROFILE_TEMPLATE_ARCHETYPE_SEAM},
+  {name: "profile-valid", file: "profile-valid.json", fixture: FIXTURE_PROFILE_VALID},
   {name: "quota-boundary-profile", file: "quota-boundary-profile.json", fixture: FIXTURE_QUOTA_BOUNDARY_PROFILE},
   {name: "recovery-session-log", file: "recovery-session-log.json", fixture: FIXTURE_RECOVERY_SESSION_LOG},
   {name: "schedule-event-source-seam", file: "schedule-event-source-seam.json", fixture: FIXTURE_SCHEDULE_EVENT_SOURCE_SEAM},
@@ -2553,6 +2909,7 @@ var FERROS_GOLDEN_FIXTURES = [
   {name: "template-to-events-golden", file: "template-to-events-golden.json", fixture: FIXTURE_TEMPLATE_TO_EVENTS_GOLDEN}
 ];
 var FERROS_NEGATIVE_FIXTURES = [
+  {name: "grant-invalid-sig", file: "grant-invalid-sig.json", fixture: FIXTURE_GRANT_INVALID_SIG},
   {name: "invalid-arena-export-missing-card-reference", file: "invalid-arena-export-missing-card-reference.json", fixture: FIXTURE_INVALID_ARENA_EXPORT_MISSING_CARD_REFERENCE},
   {name: "invalid-arena-export-unsupported-control", file: "invalid-arena-export-unsupported-control.json", fixture: FIXTURE_INVALID_ARENA_EXPORT_UNSUPPORTED_CONTROL},
   {name: "invalid-arena-export-wrong-type", file: "invalid-arena-export-wrong-type.json", fixture: FIXTURE_INVALID_ARENA_EXPORT_WRONG_TYPE},
@@ -2567,5 +2924,5 @@ var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-template-to-events-missing-source-type", file: "invalid-template-to-events-missing-source-type.json", fixture: FIXTURE_INVALID_TEMPLATE_TO_EVENTS_MISSING_SOURCE_TYPE}
 ];
 
-// Total files embedded: 35
-// Schemas: 7 | Golden fixtures: 16 | Negative fixtures: 12
+// Total files embedded: 40
+// Schemas: 9 | Golden fixtures: 18 | Negative fixtures: 13
