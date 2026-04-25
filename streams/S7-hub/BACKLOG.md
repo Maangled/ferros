@@ -11,12 +11,14 @@
 - [x] Land the runway-only six-checkpoint pairing map bounded by S2 consumer surfaces (`ProfileId`, `CapabilityGrant`) and the current S3/S4 seams
 - [x] Land the queue-ready S2 consumer-boundary question list for bootstrap, grant check, deny visibility, persistence, revocation, and re-registration without freezing protocol steps
 - [x] Consume the published S2 consumer-boundary answers into an S7-owned handoff/assumptions slice without freezing handshake order, storage layout, or re-registration choreography
+- [x] Land the docs-only S7 seam brief keyed to the current S3 registration and inspection surfaces plus the current S4 policy and restart seams
 
 ## Next runway
 
 - [ ] Turn the bridge runway contract into a DUT-side evidence checklist once a real hub/bridge path exists; keep the first proof at one registered bridge agent and one real entity
-- [ ] Turn the published S2 consumer-boundary handoff into an S7-owned seam brief keyed to the exact S3 registry/list/log and S4 restart/policy APIs still needed before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest
-- [ ] Keep that seam brief docs-only and non-implementation until the concrete S3/S4 APIs exist
+- [x] Route the landed seam brief to S3 and S4 and record which registration, inspection, policy, and restart surfaces are already sufficient versus still unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest
+- [ ] Keep the returned seam classifications as upstream dependency locks: S3 still owes the first hub-facing wrapper boundary, and S4 now publishes only validated local profile/grant reload plus fixed reference-runtime state replay while durable hub restart/re-registration semantics remain unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest
+- [ ] Keep that seam handoff docs-only and non-implementation until the concrete S3/S4 APIs exist
 - [ ] Recheck runway pairing notes against `docs/hub/reference-hardware.md`, `streams/S7-hub/CONTRACTS.md`, `STATUS.md`, and `docs/gates/G4.md` whenever S7 wording moves, S2 consumer-boundary rules change, or new S3/S4 seam details publish
 
 ## Later runway prep

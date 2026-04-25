@@ -39,6 +39,31 @@
 
 ---
 
+## S7 runway classification
+
+This is an S4-owned classification of the landed S7 seam brief. It does not turn the current runtime helpers into a finished hub contract, and it does not authorize `crates/ferros-hub/` scaffolding.
+
+| Surface | S4-owned classification |
+|---------|-------------------------|
+| `CapabilityRequest`, `CapabilityGrantView`, `PolicyEngine::evaluate`, `DenyByDefaultPolicy`, `PolicyDecision`, `PolicyDenialReason` | Sufficient now for S7 runway planning as the authoritative policy and deny-reason boundary. S7 should consume these S4 types and reasons instead of inventing any hub-local grant or deny model. |
+| current `ferros-runtime` executor plus in-process bus boundary | Sufficient now only to name the current runtime container S7 expects a future hub to wrap. It is not, by itself, a published restart or re-registration contract. |
+| nearest reload helpers `runtime_with_state(state_path)`, `CliState::load(path)`, and `LocalProfileStore::load_local_profile(path)` | A narrow docs-only reload boundary is now published for S7 runway planning: validated local profile/grant reload plus fixed reference-runtime state replay are described here, while a broader hub-facing restart API and durable re-registration contract remain unpublished. |
+
+- The S4 policy seam is already strong enough for S7 runway planning.
+- The published reload boundary is intentionally narrow: validated local profile/grant reload plus fixed reference-runtime state replay are in bounds today, while broader durable hub-facing restart and re-registration semantics remain unpublished.
+
+### Narrow published reload boundary
+
+This subsection is docs-only and S4-owned. It records the exact current helper behavior S7 may rely on now without turning the helpers into a finished hub contract.
+
+| Helper | What S7 may rely on now | What remains unpublished |
+|--------|-------------------------|--------------------------|
+| `runtime_with_state(state_path)` in `crates/ferros-node/src/lib.rs` | It calls `CliState::load(state_path)`, then `build_reference_runtime()`, and replays persisted state only onto that fixed reference runtime. `Registered` leaves the default registration set as-is; `Running` and `Stopped` are replayed; unsupported persisted statuses error. It does not discover arbitrary agents. | This is still a node-local helper over the fixed reference runtime, not a durable hub-facing restart or re-registration API. |
+| `CliState::load(path)` in `crates/ferros-node/src/lib.rs` | It reads the exact path passed in, returns the default empty state when the file is missing, and accepts only persisted `status` and `log` lines. Malformed lines, unknown entry kinds, and unsupported statuses error. | This does not publish a hub-owned file format, storage contract, or restart choreography beyond the current strict node-local parser. |
+| `LocalProfileStore::load_local_profile(path)` in `crates/ferros-profile/src/lib.rs` | It returns `LocalProfileState::new(load_profile, load_key_pair, load_signed_grants)`. Missing signed-grants state becomes an empty grant list, and `LocalProfileState::new` validates that each signed grant verifies, matches the local profile id, matches the local signer public key, and does not duplicate a capability. | This publishes validated local profile/grant reload only. It does not publish durable hub restart, pairing, or re-registration semantics. |
+
+---
+
 ## Note on `no_std`
 
 `ferros-core` currently exposes `std` as its default feature in `Cargo.toml` and uses `#![cfg_attr(not(feature = "std"), no_std)]` plus `extern crate alloc` in `src/lib.rs` to keep the current core surface portable. The honest validation slice for this wave is host-side `cargo check -p ferros-core --no-default-features`. Embedded-target validation (`--target thumbv7em-none-eabi`) and CI enforcement remain open work.

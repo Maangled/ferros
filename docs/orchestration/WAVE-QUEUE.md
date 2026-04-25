@@ -4,17 +4,17 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 
 ## Ready
 
-### WAVE-2026-04-24-14
+### WAVE-2026-04-24-16
 
-- Title: Turn the published S2 handoff into an S7 seam brief
+- Title: Publish a narrow hub-facing restart/reload boundary for S7 runway
 - Status: ready
 - Priority: P1
 - Gate: G4 runway
-- Owning streams: S7 primary, S3 and S4 consumer awareness, S8 truth-sync if queue or stream docs move
-- Goal: Turn the published S2 consumer-boundary handoff into an S7-owned seam brief keyed to the exact S3 registry/list/log and S4 restart/policy APIs still needed before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest.
-- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/CONTRACTS.md`, `streams/S7-hub/BACKLOG.md`
-- Validation: editor diagnostics on touched S7 docs; verify the seam brief stays consistent with `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/CONTRACTS.md`, `docs/hub/reference-hardware.md`, `STATUS.md`, and `docs/gates/G4.md`
-- Constraints: Keep the slice docs-only and S7-owned. Do not reopen S2 answer docs unless the seam inventory exposes a contradiction, do not scaffold `crates/ferros-hub/`, do not define Home Assistant bridge internals, do not freeze handshake order, and do not claim G4 evidence.
+- Owning streams: S4 primary, S7 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Turn the currently named reload helpers into an explicit S4-owned docs-only boundary that states what restart-safe state, reload, and re-registration guarantees S7 may rely on now versus what remains unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest.
+- Anchor files: `streams/S4-runtime/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: editor diagnostics on touched S4 and S7 docs; verify the published boundary stays consistent with the landed S7 seam brief in `streams/S7-hub/README.md` and `streams/S7-hub/CONTRACTS.md`, plus `STATUS.md` and `docs/gates/G4.md`
+- Constraints: Keep the slice docs-only and S4-owned. Do not change runtime code, do not scaffold `crates/ferros-hub/`, do not define pairing, reboot, or re-registration choreography beyond the narrow published boundary, do not invent new policy semantics, and do not claim G4 evidence.
 - Last update: 2026-04-24
 
 ## In Progress
@@ -26,6 +26,32 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-24-15
+
+- Title: Route the landed S7 seam brief to S3 and S4
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S3 primary, S4 primary, S7 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Consume the landed S7 seam brief in S3- and S4-owned docs by recording which current registration, inspection, policy, and restart surfaces are already sufficient versus still unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest.
+- Anchor files: `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/BACKLOG.md`, `streams/S4-runtime/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: editor diagnostics on touched S3, S4, and S7 docs; verify the seam-classification pass stays consistent with the landed S7 seam brief in `streams/S7-hub/README.md` and `streams/S7-hub/CONTRACTS.md`, plus `docs/hub/reference-hardware.md`, `STATUS.md`, and `docs/gates/G4.md`
+- Constraints: Keep the slice docs-only and non-implementation until the concrete S3/S4 APIs exist. Do not reopen S2 answer docs, do not rewrite the landed S7 seam inventory unless it exposes a contradiction, do not scaffold `crates/ferros-hub/`, do not define Home Assistant bridge internals, do not ratify pairing or reboot choreography, and do not claim G4 evidence.
+- Last update: 2026-04-24
+
+### WAVE-2026-04-24-14
+
+- Title: Turn the published S2 handoff into an S7 seam brief
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S7 primary, S3 and S4 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Turn the published S2 consumer-boundary handoff into an S7-owned seam brief keyed to the exact S3 registry/list/log and S4 restart/policy APIs still needed before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest.
+- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/CONTRACTS.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: editor diagnostics on touched S7 docs; verify the seam brief stays consistent with `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/CONTRACTS.md`, `docs/hub/reference-hardware.md`, `STATUS.md`, and `docs/gates/G4.md`
+- Constraints: Keep the slice docs-only and S7-owned. Do not reopen S2 answer docs unless the seam inventory exposes a contradiction, do not scaffold `crates/ferros-hub/`, do not define Home Assistant bridge internals, do not freeze handshake order, and do not claim G4 evidence.
+- Last update: 2026-04-24
 
 ### WAVE-2026-04-24-13
 

@@ -26,6 +26,19 @@ S7 owns deployment-facing hub surfaces. It does not get to redefine S2 profile o
 
 ---
 
+## Exact upstream seams S7 still needs named
+
+This section records the concrete S3 and S4 surfaces S7 can honestly point at today. It does not turn them into a finished hub contract, and it does not authorize `crates/ferros-hub/` scaffolding.
+
+| Upstream seam | Exact current surface | Why S7 cares | Why it is not enough yet |
+|---------------|-----------------------|--------------|--------------------------|
+| S3 registration seam | `AgentRegistry::register`, `AgentRegistry::deregister`, `AgentRegistry::list`, `AgentRegistry::describe` | The first bridge slice must register as a visible FERROS agent, not as hidden stream-local state. | S3 has not yet published a hub-owned lifecycle wrapper or bridge-specific registration contract. |
+| S3 inspection seam | local `ferros agent list`, `ferros agent describe`, `ferros agent logs`; read-first `agent.list`, `agent.describe`, `grant.list`, `denyLog.list` | S7 needs an honest local observation path for bridge presence, grant reads, and deny visibility. | S3 still treats transport serving, remote observation, and privileged writes as open work. |
+| S4 policy seam | `CapabilityRequest`, `CapabilityGrantView`, `PolicyEngine::evaluate`, `DenyByDefaultPolicy`, `PolicyDecision`, `PolicyDenialReason` | S7 needs a named policy boundary for grant checks and deny reasons instead of inventing a hub-local grant model. | S4 has not yet published the final hub-facing wrapper around those policy types or their operator-visible propagation. |
+| S4 restart seam | nearest current reload helpers are `runtime_with_state(state_path)`, `CliState::load(state_path)`, and `LocalProfileStore::load_local_profile(path)` | S7 needs a real restart and re-registration contract before it can name a reboot-safe pairing flow honestly. | These are still node-local reload helpers, not a stable S4-owned hub restart API. |
+
+---
+
 ## Pairing boundary note
 
 The future hub pairing flow must end in signed, reboot-survivable, revocable capability grants because launch requires those properties in practice. That does not mean the exact handshake should be frozen in these docs yet. Until `ferros-hub` exists and the S2/S3/S4 implementation seams are concrete, S7 should track constraints, storage needs, and validation expectations rather than pretend the protocol is already settled.

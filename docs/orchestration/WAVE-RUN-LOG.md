@@ -2,6 +2,22 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+## 2026-04-24 — WAVE-2026-04-24-15
+
+- Selected item: `WAVE-2026-04-24-15`
+- Result: Recorded the already-landed S3/S4/S7 docs-only seam-classification completion in orchestration. The repo had already updated `streams/S3-agent-center/CONTRACTS.md` and `streams/S3-agent-center/BACKLOG.md` to classify the current registration and local/read-first inspection surface as sufficient for S7 runway planning at one-bridge-agent/local-observation scope while routing the next S3-owned follow-up to the first hub-facing wrapper boundary; `streams/S4-runtime/CONTRACTS.md` and `streams/S4-runtime/BACKLOG.md` already classified the current policy surface as sufficient for runway planning while marking the restart/reload boundary as the next S4-owned follow-up; and `streams/S7-hub/BACKLOG.md` already recorded the route-to-S3/S4 handoff as landed plus the returned dependency locks that S3 still owes the first hub-facing wrapper boundary and S4 still owes a published restart/reload boundary before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest. This orchestration lane only recorded that completion, the docs-only cross-stream dependency locks, the lack of implementation changes or G4 evidence movement, and the next Ready seed on the narrower S4 restart/reload-boundary follow-up.
+- Files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Recorded the landed validation outcome with clean editor diagnostics on `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/BACKLOG.md`, `streams/S4-runtime/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`, and `streams/S7-hub/BACKLOG.md`; final editor diagnostics stayed clean on `docs/orchestration/WAVE-QUEUE.md` and `docs/orchestration/WAVE-RUN-LOG.md`.
+- Next follow-up: `WAVE-2026-04-24-16`
+
+## 2026-04-24 — WAVE-2026-04-24-14
+
+- Selected item: `WAVE-2026-04-24-14`
+- Result: Recorded the landed S7 docs-only seam-brief slice in orchestration. The repo already updated `streams/S7-hub/README.md` with an S7 seam brief that names the exact S3 registration and inspection surfaces (`AgentRegistry::register`, `AgentRegistry::deregister`, `AgentRegistry::list`, `AgentRegistry::describe`, local `ferros agent list`, `ferros agent describe`, `ferros agent logs`, and read-first `agent.list`, `agent.describe`, `grant.list`, `denyLog.list`) plus the exact S4 policy and restart surfaces (`CapabilityRequest`, `CapabilityGrantView`, `PolicyEngine::evaluate`, `DenyByDefaultPolicy`, `PolicyDecision`, `PolicyDenialReason`, and the nearest current reload helpers `runtime_with_state(state_path)`, `CliState::load(state_path)`, and `LocalProfileStore::load_local_profile(path)`). `streams/S7-hub/CONTRACTS.md` now carries the matching exact-upstream-seams table, and `streams/S7-hub/BACKLOG.md` marks the seam brief landed and routes the next docs-only handoff to S3 and S4. No S2 or orchestration docs were touched in the implementation lane, and no G4 evidence movement is claimed. Because Ready would otherwise be empty, this invocation also seeded the next honest docs-only follow-on for S3 and S4 seam classification.
+- Files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Recorded the landed validation outcome with clean editor diagnostics on `streams/S7-hub/README.md`, `streams/S7-hub/CONTRACTS.md`, and `streams/S7-hub/BACKLOG.md`; the consistency check against `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/CONTRACTS.md`, `docs/hub/reference-hardware.md`, `STATUS.md`, and `docs/gates/G4.md` passed; final editor diagnostics stayed clean on the touched orchestration files.
+- Next follow-up: `WAVE-2026-04-24-15`
+
 ## 2026-04-24 — WAVE-2026-04-24-13
 
 - Selected item: `WAVE-2026-04-24-13`

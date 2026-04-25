@@ -99,6 +99,22 @@ Outcome: S7 now has a provisional consumer-boundary handoff from S2, not an auth
 
 ---
 
+## S7 seam brief before hub planning is honest
+
+This seam brief stays docs-only. It names the exact current S3 and S4 surfaces S7 can point at today, what S7 may honestly assume from them, and what still remains unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest.
+
+| Upstream seam | Exact current surface S7 can name | What S7 may assume now | What still remains unpublished or open |
+|---------------|-----------------------------------|------------------------|----------------------------------------|
+| S3 registration surface | `AgentRegistry::register`, `AgentRegistry::deregister`, `AgentRegistry::list`, `AgentRegistry::describe` | The first HA bridge slice must be legible as one registered agent that can be listed and described through the same S3-owned registration boundary as other agents. | No hub-owned registration wrapper or lifecycle contract exists yet, so S7 cannot claim a final bridge registration flow or a multi-agent topology. |
+| S3 operator inspection surface | local `ferros agent list`, `ferros agent describe`, `ferros agent logs`; read-first `agent.list`, `agent.describe`, `grant.list`, `denyLog.list` | The first bridge evidence slice can plan around these local inspection paths for agent presence, grant-state reads, and deny-log observation. | No published remote or HA-facing observation contract exists yet, and S3 still treats transport serving and privileged writes as open work. |
+| S4 consent policy surface | `CapabilityRequest`, `CapabilityGrantView`, `PolicyEngine::evaluate`, `DenyByDefaultPolicy`, `PolicyDecision`, `PolicyDenialReason` | Grant checks and deny outcomes must ultimately compose through these S4 policy types and reasons instead of any S7-local grant logic. | The exact hub wrapper around policy evaluation and the operator-facing deny-propagation path are not yet published as S4-owned hub seams. |
+| S4 restart and reload surface | No published hub-facing restart API; nearest current reload seams are `runtime_with_state(state_path)`, `CliState::load(state_path)`, and `LocalProfileStore::load_local_profile(path)` | Restart honesty currently means S7 can only trust state that reloads through those existing local validation paths. | There is still no stable runtime restart or re-registration contract for hubs, so S7 cannot freeze reboot choreography or treat current node-local helpers as the final seam. |
+
+- S7 may now plan against the named S3 and S4 surfaces above, but it must still escalate missing hub-facing contracts to the owning streams instead of filling the gaps with stream-local protocol rules.
+- The next honest runway step is to route this seam brief to S3 and S4 and record which of the named surfaces are already sufficient, which need a hub-facing wrapper, and which remain unpublished.
+
+---
+
 ## What this stream blocks
 
 - **Launch (G4).** S7 owns the launch gate, and the remaining blocker is real hardware and hub evidence.
@@ -135,6 +151,6 @@ Outcome: S7 now has a provisional consumer-boundary handoff from S2, not an auth
 
 1. Keep `docs/hub/reference-hardware.md` current with the chosen runway hardware, topology assumptions, and evidence fields.
 2. Select the exact first `x86_64` Pack B device and one fallback `aarch64` Pack A device for bring-up.
-3. Turn the published S2 handoff above into an S7-owned seam brief keyed to the exact S3 registry/list/log APIs and S4 restart/policy APIs that must land before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest.
-4. Keep the G4 evidence map tied to the exact S2 consumer dependencies plus the eventual S3/S4 APIs named in that seam brief.
-5. Keep that seam brief docs-only and non-implementation in this wave: no `crates/ferros-hub/` scaffold and no Home Assistant bridge internals.
+3. Route the landed seam brief above to S3 and S4 and record which registration, inspection, policy, and restart surfaces are already sufficient versus still unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest.
+4. Keep the G4 evidence map tied to the exact S2 consumer dependencies plus the S3/S4 seams named in that brief and any upstream answers that follow.
+5. Keep that follow-up docs-only and non-implementation: no `crates/ferros-hub/` scaffold and no Home Assistant bridge internals.
