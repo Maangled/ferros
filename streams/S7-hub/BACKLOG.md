@@ -10,13 +10,14 @@
 - [x] Define the first Home Assistant bridge runway contract at one bridge agent, one real entity, runtime-enforced capability checks, operator-visible deny traces, and restart-safe FERROS state
 - [x] Land the runway-only six-checkpoint pairing map bounded by S2 consumer surfaces (`ProfileId`, `CapabilityGrant`) and the current S3/S4 seams
 - [x] Land the queue-ready S2 consumer-boundary question list for bootstrap, grant check, deny visibility, persistence, revocation, and re-registration without freezing protocol steps
+- [x] Consume the published S2 consumer-boundary answers into an S7-owned handoff/assumptions slice without freezing handshake order, storage layout, or re-registration choreography
 
 ## Next runway
 
 - [ ] Turn the bridge runway contract into a DUT-side evidence checklist once a real hub/bridge path exists; keep the first proof at one registered bridge agent and one real entity
-- [ ] Route the landed S2 consumer-boundary question list to S2 and record the answers before S7 names any authoritative pairing flow
-- [ ] Draft a post-G3 pairing/design handoff that can become an implementation plan once real hub and runtime APIs exist
-- [ ] Recheck runway pairing notes against `docs/hub/reference-hardware.md`, `streams/S7-hub/CONTRACTS.md`, `STATUS.md`, and `docs/gates/G4.md` whenever S7 wording moves or S2 answers land
+- [ ] Turn the published S2 consumer-boundary handoff into an S7-owned seam brief keyed to the exact S3 registry/list/log and S4 restart/policy APIs still needed before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest
+- [ ] Keep that seam brief docs-only and non-implementation until the concrete S3/S4 APIs exist
+- [ ] Recheck runway pairing notes against `docs/hub/reference-hardware.md`, `streams/S7-hub/CONTRACTS.md`, `STATUS.md`, and `docs/gates/G4.md` whenever S7 wording moves, S2 consumer-boundary rules change, or new S3/S4 seam details publish
 
 ## Later runway prep
 

@@ -4,17 +4,17 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 
 ## Ready
 
-### WAVE-2026-04-24-12
+### WAVE-2026-04-24-14
 
-- Title: Publish S2 pairing boundary answers for S7 runway
+- Title: Turn the published S2 handoff into an S7 seam brief
 - Status: ready
 - Priority: P1
 - Gate: G4 runway
-- Owning streams: S2 primary, S7 consumer awareness, S8 truth-sync if queue or stream docs move
-- Goal: Publish S2-owned answers to the six-row S7 consumer-boundary question list by documenting how bootstrap, grant check, deny visibility, persistence, revocation, and re-registration consume the stable `ProfileId` and `CapabilityGrant` surface without widening the frozen v0 consumer contracts before S7 names an authoritative pairing flow.
-- Anchor files: `streams/S2-profile/README.md`, `streams/S2-profile/CONTRACTS.md`
-- Validation: editor diagnostics on touched S2 docs; verify the published answers stay consistent with the six-row S7 consumer-boundary question list in `streams/S7-hub/README.md`, with the frozen `schemas/profile.v0.json` and `schemas/capability-grant.v0.json` boundaries, and with `docs/gates/G2.md` and `STATUS.md`
-- Constraints: Keep the slice docs-only and S2-owned. Do not mutate `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`, do not reopen `streams/S7-hub/README.md` or `streams/S7-hub/BACKLOG.md` unless an answer exposes a contradiction, do not scaffold `crates/ferros-hub/`, do not define Home Assistant bridge internals, do not ratify handshake order, and do not claim G4 evidence.
+- Owning streams: S7 primary, S3 and S4 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Turn the published S2 consumer-boundary handoff into an S7-owned seam brief keyed to the exact S3 registry/list/log and S4 restart/policy APIs still needed before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest.
+- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/CONTRACTS.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: editor diagnostics on touched S7 docs; verify the seam brief stays consistent with `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/CONTRACTS.md`, `docs/hub/reference-hardware.md`, `STATUS.md`, and `docs/gates/G4.md`
+- Constraints: Keep the slice docs-only and S7-owned. Do not reopen S2 answer docs unless the seam inventory exposes a contradiction, do not scaffold `crates/ferros-hub/`, do not define Home Assistant bridge internals, do not freeze handshake order, and do not claim G4 evidence.
 - Last update: 2026-04-24
 
 ## In Progress
@@ -26,6 +26,32 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-24-13
+
+- Title: Draft the S7 pairing/design handoff from landed S2 answers
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S7 primary, S3 and S4 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Consume the published S2 answers for bootstrap, grant check, deny visibility, persistence, revocation, and re-registration into an S7-owned provisional pairing/design handoff that states what S7 may now assume from the stable S2 consumer boundary and what still remains open before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest.
+- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: editor diagnostics on touched S7 docs; verify the handoff stays consistent with `streams/S2-profile/README.md`, `streams/S2-profile/CONTRACTS.md`, `streams/S7-hub/CONTRACTS.md`, `docs/hub/reference-hardware.md`, `STATUS.md`, and `docs/gates/G4.md`
+- Constraints: Keep the slice docs-only and S7-owned. Do not reopen S2 answer docs, do not scaffold `crates/ferros-hub/`, do not define Home Assistant bridge internals, do not ratify handshake order, and do not claim G4 evidence.
+- Last update: 2026-04-24
+
+### WAVE-2026-04-24-12
+
+- Title: Publish S2 pairing boundary answers for S7 runway
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S2 primary, S7 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Publish S2-owned answers to the six-row S7 consumer-boundary question list by documenting how bootstrap, grant check, deny visibility, persistence, revocation, and re-registration consume the stable `ProfileId` and `CapabilityGrant` surface without widening the frozen v0 consumer contracts before S7 names an authoritative pairing flow.
+- Anchor files: `streams/S2-profile/README.md`, `streams/S2-profile/CONTRACTS.md`
+- Validation: editor diagnostics on touched S2 docs; verify the published answers stay consistent with the six-row S7 consumer-boundary question list in `streams/S7-hub/README.md`, with the frozen `schemas/profile.v0.json` and `schemas/capability-grant.v0.json` boundaries, and with `docs/gates/G2.md` and `STATUS.md`
+- Constraints: Keep the slice docs-only and S2-owned. Do not mutate `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`, do not reopen `streams/S7-hub/README.md` or `streams/S7-hub/BACKLOG.md` unless an answer exposes a contradiction, do not scaffold `crates/ferros-hub/`, do not define Home Assistant bridge internals, do not ratify handshake order, and do not claim G4 evidence.
+- Last update: 2026-04-24
 
 ### WAVE-2026-04-24-11
 

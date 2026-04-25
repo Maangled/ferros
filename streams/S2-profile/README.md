@@ -51,6 +51,21 @@ This stream is intentionally insulated from raw legacy-repo input: the G2 identi
 
 ---
 
+## S7 consumer-boundary answers
+
+These answers are S2-owned answers to the six open questions listed in `streams/S7-hub/README.md` and publish what S7 may rely on from S2 today. They keep the frozen `ProfileId` and `CapabilityGrant` v0 boundary steady, do not freeze handshake order, and do not ratify a final pairing protocol.
+
+| Checkpoint | S2 answer |
+|------------|-----------|
+| bootstrap | S7 may assume durable identity bootstrap exists only when S2 can reload a locally persisted `KeyPair`; the stable `ProfileId` is derived from that Ed25519 verifying key, and that bootstrap identity state alone does not imply any existing `CapabilityGrant` yet. S2 does not publish who creates that state or in what order first-start pairing occurs. |
+| grant check | Treat a capability as present and active only when a persisted signed grant for that capability verifies, binds to the local `ProfileId`, matches the local signer public key, and is not revoked. |
+| deny visibility | At the S2 boundary, denied capability use is distinguishable only as missing grant state, revoked grant state, or invalid/mismatched signed grant material. S2 does not define how S4 or S7 must surface those outcomes in logs or UI. |
+| persistence | After restart or power cycle, S7 may rely only on local profile and grant state that reloads and passes S2 local validation before reuse. `FileSystemProfileStore` is current filesystem-first implementation evidence, but its on-disk layout is not a published cross-stream contract. |
+| revocation | A previously accepted grant becomes unusable when the signed envelope carries `revoked_at` and `revocation_reason`, has been re-signed, still verifies, and therefore reads as revoked. |
+| re-registration | Treat a returning bridge agent as the same identity and grant context only when reload yields the same `ProfileId` from the persisted key and the relevant signed grants still verify, match that identity and signer, and remain active. Otherwise S7 should require a new approval path. |
+
+---
+
 ## Definition of done (G2)
 
 - [x] `ferros-profile` crate builds and passes `cargo test` locally.

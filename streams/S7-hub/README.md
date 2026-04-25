@@ -35,7 +35,7 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 - Treat `docs/hub/reference-hardware.md` as the hardware recipe authority for this wave and keep it aligned to the evidence G4 will eventually require.
 - Use the Pack B `x86_64` lane as the first bring-up target unless real hardware availability forces a Pi-first pass, because it improves shell access, log capture, rollback, and restart debugging while staying launch-valid.
 - Keep the first Home Assistant lab topology separate from the device under test so later restart and deny-observability evidence can be attributed cleanly.
-- Keep pairing notes at the level of constraints and open questions bound to S2 consumer surfaces plus the S3/S4 seams that will eventually enforce them.
+- Keep pairing notes at the level of consumed S2 consumer-boundary assumptions plus the S3/S4 seams still missing before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest.
 - Map each unchecked G4 evidence item to one upstream seam and one S7-owned proof point before any `ferros-hub` crate or HA bridge work is proposed.
 
 ---
@@ -61,7 +61,7 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 ## Pairing posture (runway only)
 
 - S7 currently treats pairing as a bounded consumer-side design problem, not a stream-local protocol that can be ratified from planning docs alone.
-- S2 gives S7 stable names to plan around today: `ProfileId` and `CapabilityGrant`.
+- S2 has now published the consumer-boundary answers S7 can plan around: `ProfileId` is derived from the persisted local verifying key, and `CapabilityGrant` state is usable only when the signed envelope verifies, binds locally, and is not revoked.
 - S7 can document hub obligations now: operator approval checkpoints, signed-grant persistence, revocation expectations, restart and power-cycle survival, and consent-deny observability.
 - S7 should not freeze handshake order, signing ceremony details, or authoritative grant semantics just because G3 is closed; the real hub-facing S3/S4 seams are still not concrete enough to lock the protocol details.
 
@@ -82,18 +82,20 @@ This map is runway-only. It binds provisional pairing checkpoints to the current
 
 ---
 
-## S2 consumer-boundary questions S7 needs answered before naming an authoritative pairing flow
+## S7 handoff assumptions from published S2 consumer boundaries
 
-These queue-ready S2-facing questions are the next step after the landed six-checkpoint map. They keep S7 in runway mode, do not freeze handshake order, and do not redefine `ProfileId` or `CapabilityGrant` semantics from S7 docs.
+This handoff is provisional and consumer-boundary only. It records what S7 may assume now from S2 and what still remains open before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest.
 
-| Checkpoint | S2 consumer-boundary question S7 still needs answered | Why S7 needs the answer |
-|------------|--------------------------------------------------------|--------------------------|
-| bootstrap | What minimum `ProfileId`-bound device state may S7 assume already exists and is durable before the hub attempts any first-start pairing action? | S7 needs a stable consumer-side boundary for initial device identity without inventing a hub-local bootstrap ceremony. |
-| grant check | What consumer-visible condition tells S7 it is valid to treat a `CapabilityGrant` as present for bridge-agent exposure and runtime grant checks? | S7 needs to know what it can gate on without defining its own approval or grant-issuance order. |
-| deny visibility | Which denied `CapabilityGrant` conditions should remain distinguishable at the consumer boundary when S7 surfaces a rejected action to operators? | S7 needs to route deny evidence to HA UI or `ferros agent logs` without changing S2 grant semantics. |
-| persistence | What persisted `ProfileId` or `CapabilityGrant` material may S7 rely on after restart and full power cycle, and what freshness boundary should S7 expect before reusing it? | S7 needs to plan durable storage and reload checks without claiming storage ownership or a final on-disk model. |
-| revocation | What consumer-visible revocation state or signal should cause S7 to stop treating a previously accepted `CapabilityGrant` as usable? | S7 needs a concrete upstream boundary for revocation handling instead of inventing stream-local revocation rules. |
-| re-registration | After restart, what S2-bound condition lets S7 treat a returning bridge agent as still operating under the same `ProfileId` and grant context versus requiring a new approval path? | S7 needs to know what can survive restart before it names any authoritative re-registration flow. |
+| Checkpoint | What S7 may assume now from S2 | What stays open before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest |
+|------------|--------------------------------|----------------------------------------------------------------------------------------------------------|
+| bootstrap | Durable identity bootstrap is honest only when S2 can reload a locally persisted `KeyPair`; `ProfileId` is derived from that Ed25519 verifying key, and bootstrap identity alone does not imply any `CapabilityGrant` exists yet. | Who creates the first-start state, what operator approval path exists, and the exact bootstrap order remain open. |
+| grant check | Treat a capability as present only when a persisted signed grant envelope verifies, binds to the local `ProfileId`, matches the local signer public key, and is not revoked. | Where that verified grant state first composes with the S3 registry/list path and the S4 runtime policy seam remains open until real APIs exist. |
+| deny visibility | At the S2 boundary, deny causes stay limited to missing grant state, revoked grant state, or invalid/mismatched signed grant material. | How S4 deny logging preserves those causes and how S7 exposes them through FERROS logs or HA-facing surfaces remains open. |
+| persistence | After restart or power cycle, only local profile and grant state that reloads and passes S2 local validation is reusable; current filesystem-first persistence is implementation evidence, not a published on-disk contract. | Storage ownership, on-disk layout, and restart choreography remain open. |
+| revocation | A previously accepted grant becomes unusable when the signed envelope carries `revoked_at` and `revocation_reason`, has been re-signed, still verifies, and therefore reads as revoked. | How revocation propagates through S4 runtime policy, S3 observation surfaces, and operator recovery remains open. |
+| re-registration | Treat a returning bridge agent as the same identity and grant context only when reload yields the same `ProfileId` from the persisted key and the relevant signed grants still verify, match that identity and signer, and remain active. | The exact re-registration choreography, restart order, and HA recovery path remain open. |
+
+Outcome: S7 now has a provisional consumer-boundary handoff from S2, not an authoritative pairing flow or implementation plan.
 
 ---
 
@@ -133,6 +135,6 @@ These queue-ready S2-facing questions are the next step after the landed six-che
 
 1. Keep `docs/hub/reference-hardware.md` current with the chosen runway hardware, topology assumptions, and evidence fields.
 2. Select the exact first `x86_64` Pack B device and one fallback `aarch64` Pack A device for bring-up.
-3. Route the S2 consumer-boundary question list above to S2 and record the answers before S7 names any authoritative pairing flow.
-4. Keep the G4 evidence map tied to the exact S2 consumer dependencies and S3/S4 seams that must land before an implementation plan is honest.
-5. Prepare the post-G3 design handoff for `ferros-hub` without scaffolding the crate or bridge in this wave.
+3. Turn the published S2 handoff above into an S7-owned seam brief keyed to the exact S3 registry/list/log APIs and S4 restart/policy APIs that must land before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest.
+4. Keep the G4 evidence map tied to the exact S2 consumer dependencies plus the eventual S3/S4 APIs named in that seam brief.
+5. Keep that seam brief docs-only and non-implementation in this wave: no `crates/ferros-hub/` scaffold and no Home Assistant bridge internals.

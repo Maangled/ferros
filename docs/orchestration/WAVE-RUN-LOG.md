@@ -2,6 +2,14 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+## 2026-04-24 — WAVE-2026-04-24-13
+
+- Selected item: `WAVE-2026-04-24-13`
+- Result: Recorded the landed S7 docs-only pairing/design handoff in orchestration and repaired the stale queue lineage so the queue again matches repo truth. The repo already updated `streams/S7-hub/README.md` with an S7-owned provisional handoff that states what S7 may now assume from the published S2 consumer boundaries across bootstrap, grant check, deny visibility, persistence, revocation, and re-registration, names what stays open, and routes the immediate next step to an S7-owned seam brief keyed to the exact S3 registry/list/log and S4 restart/policy APIs. `streams/S7-hub/BACKLOG.md` already marks the consume pass landed and replaces the obsolete route-to-S2 follow-up with that seam-brief follow-up. No S2 or orchestration docs were touched in the implementation lane itself, and no G4 evidence movement is claimed. Because the queue was one step stale, this invocation also retired the already-published `WAVE-2026-04-24-12` S2 answer slice from Ready to Done before seeding the next honest S7-ready item.
+- Files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Recorded the landed validation outcome with clean editor diagnostics on `streams/S7-hub/README.md` and `streams/S7-hub/BACKLOG.md`; consistency checks against `streams/S2-profile/README.md`, `streams/S2-profile/CONTRACTS.md`, `streams/S7-hub/CONTRACTS.md`, `docs/hub/reference-hardware.md`, `STATUS.md`, and `docs/gates/G4.md` passed; final editor diagnostics stayed clean on the touched orchestration files.
+- Next follow-up: `WAVE-2026-04-24-14`
+
 ## 2026-04-24 — WAVE-2026-04-24-11
 
 - Selected item: `WAVE-2026-04-24-11`
