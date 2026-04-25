@@ -1577,7 +1577,7 @@ pub struct SealEntry {
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use ed25519_dalek::SigningKey;
@@ -1816,6 +1816,16 @@ mod tests {
         std::env::temp_dir()
             .join("ferros-profile-tests")
             .join(format!("{test_name}-{timestamp}.json"))
+    }
+
+    fn cleanup_local_profile_artifacts(path: &Path) {
+        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_file(FileSystemProfileStore::key_pair_path(path));
+        let _ = std::fs::remove_file(FileSystemProfileStore::signed_grants_path(path));
+
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::remove_dir(parent);
+        }
     }
 
     #[test]
@@ -2448,7 +2458,7 @@ mod tests {
     }
 
     #[test]
-    fn file_system_profile_store_round_trips_local_profile_state() {
+    fn reload_boundary_load_local_profile_round_trips_valid_persisted_state() {
         let store = FileSystemProfileStore;
         let path = unique_temp_profile_path("local-state");
         let profile = ProfileDocument::fresh("Wave Pilot", "2026-04-23T10:00:00Z")
@@ -2475,12 +2485,68 @@ mod tests {
         assert_eq!(loaded.key_pair.secret_key_hex(), key_pair.secret_key_hex());
         assert_eq!(loaded.signed_grants, vec![signed_grant]);
 
-        let _ = std::fs::remove_file(&path);
-        let _ = std::fs::remove_file(FileSystemProfileStore::key_pair_path(&path));
-        let _ = std::fs::remove_file(FileSystemProfileStore::signed_grants_path(&path));
-        if let Some(parent) = path.parent() {
-            let _ = std::fs::remove_dir(parent);
-        }
+        cleanup_local_profile_artifacts(&path);
+    }
+
+    #[test]
+    fn reload_boundary_load_local_profile_defaults_missing_signed_grants_to_empty() {
+        let store = FileSystemProfileStore;
+        let path = unique_temp_profile_path("local-state-missing-grants");
+        let profile = ProfileDocument::fresh("Wave Pilot", "2026-04-23T10:00:00Z")
+            .expect("fresh profile should build");
+        let key_pair = test_key_pair();
+
+        store
+            .create_local_profile(&path, &profile, &key_pair)
+            .expect("local profile should persist");
+
+        let loaded = store
+            .load_local_profile(&path)
+            .expect("missing signed grants should default to an empty list");
+
+        assert_eq!(loaded.profile, profile);
+        assert_eq!(loaded.key_pair.public_key_hex(), key_pair.public_key_hex());
+        assert!(loaded.signed_grants.is_empty());
+
+        cleanup_local_profile_artifacts(&path);
+    }
+
+    #[test]
+    fn reload_boundary_load_local_profile_rejects_grants_for_a_different_local_signer() {
+        let store = FileSystemProfileStore;
+        let path = unique_temp_profile_path("local-state-invalid-signer");
+        let profile = ProfileDocument::fresh("Wave Pilot", "2026-04-23T10:00:00Z")
+            .expect("fresh profile should build");
+        let key_pair = test_key_pair();
+        let foreign_key_pair =
+            KeyPair::from_secret_key_hex("backup-device", &encode_hex(&[0x55; 32]))
+                .expect("backup key pair should decode");
+        let foreign_signed_grant = foreign_key_pair
+            .sign_grant(&CapabilityGrant::new(
+                foreign_key_pair.profile_id(),
+                "consent.read",
+            ))
+            .expect("foreign grant should sign");
+
+        store
+            .create_local_profile(&path, &profile, &key_pair)
+            .expect("local profile should persist");
+        store
+            .save_signed_grants(&path, std::slice::from_ref(&foreign_signed_grant))
+            .expect("foreign signed grant should persist");
+
+        let error = store
+            .load_local_profile(&path)
+            .expect_err("foreign grants should be rejected during reload");
+
+        assert!(matches!(
+            error,
+            ProfileStoreError::InvalidLocalState(message)
+                if message.contains("grant consent.read")
+                    && message.contains("does not match local key pair")
+        ));
+
+        cleanup_local_profile_artifacts(&path);
     }
 
     #[test]

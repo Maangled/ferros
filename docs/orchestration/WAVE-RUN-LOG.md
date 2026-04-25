@@ -2,6 +2,30 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+## 2026-04-25 — WAVE-2026-04-24-18
+
+- Selected item: `WAVE-2026-04-24-18`
+- Result: WAVE-2026-04-24-18 is complete. The repo had already updated `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/BACKLOG.md`, and `streams/S7-hub/BACKLOG.md` with the docs-only S3 boundary publication and returned dependency lock, naming `AgentRegistry` plus local/read-first inspection surfaces as the current honest runway boundary while keeping hub-facing lifecycle-wrapper, richer remote observation wrapper, and remote control/write contract unpublished before bridge control flows are honest. This orchestration lane only recorded that completion, seeded the next Ready item, and did not move S4 restart/reload semantics, pairing choreography, schemas, code, `crates/ferros-hub/` scaffold work, or G4 evidence.
+- Files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: editor diagnostics clean on `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/BACKLOG.md`, and `streams/S7-hub/BACKLOG.md`; final editor diagnostics clean on `docs/orchestration/WAVE-QUEUE.md` and `docs/orchestration/WAVE-RUN-LOG.md`
+- Next follow-up: `WAVE-2026-04-25-01`
+
+## 2026-04-24 — WAVE-2026-04-24-17
+
+- Selected item: `WAVE-2026-04-24-17`
+- Result: WAVE-2026-04-24-17 is complete. The repo had already updated `crates/ferros-node/src/lib.rs` with focused tests that lock exact-path CliState reload, missing-path default-empty behavior, fixed reference-runtime rebuild, replay of persisted Running and Stopped state only, no log replay, and current error paths for unknown persisted agents and unsupported persisted statuses. The repo had already updated `crates/ferros-profile/src/lib.rs` with focused tests that lock successful local-profile reload, missing signed-grants defaulting to an empty list, and InvalidLocalState rejection when persisted grant material is validly signed but not local to the reloaded profile. The repo had already updated `streams/S4-runtime/BACKLOG.md` to mark the reload-boundary tests landed. This orchestration lane only recorded that code-backed S4 boundary-lock completion, seeded the next Ready item, and did not move broader hub restart semantics, pairing, schema, or G4 evidence.
+- Files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo test -p ferros-node reload_boundary_` passed; `cargo test -p ferros-profile reload_boundary_` passed; editor diagnostics clean on `crates/ferros-node/src/lib.rs`, `crates/ferros-profile/src/lib.rs`, and `streams/S4-runtime/BACKLOG.md`; final editor diagnostics clean on `docs/orchestration/WAVE-QUEUE.md` and `docs/orchestration/WAVE-RUN-LOG.md`
+- Next follow-up: `WAVE-2026-04-24-18`
+
+## 2026-04-24 — WAVE-2026-04-24-16
+
+- Selected item: `WAVE-2026-04-24-16`
+- Result: Recorded the already-landed docs-only S4 restart/reload-boundary publication in orchestration. The repo had already updated `streams/S4-runtime/CONTRACTS.md` to publish the explicit S4-owned boundary that currently allows S7 to rely on exact-path `CliState::load(path)` reload, `runtime_with_state(state_path)` rebuilding the fixed reference runtime while replaying only persisted Registered/Running/Stopped state, and `LocalProfileStore::load_local_profile(path)` reloading profile/key/grant material only when local validation succeeds, while keeping durable hub restart, pairing, and re-registration semantics explicitly unpublished. `streams/S4-runtime/BACKLOG.md` already marks that boundary landed and routes the next S4-owned follow-up to focused `ferros-node` and `ferros-profile` tests that lock it, `streams/S7-hub/BACKLOG.md` already records the returned dependency lock, and `streams/S7-hub/README.md` only repaired stale follow-up wording exposed by validation. This orchestration lane only recorded that landed docs-only scope, the returned S7 dependency lock, the lack of runtime code changes, `ferros-hub` scaffold movement, or G4 evidence movement, and the new Ready seed around focused S4 boundary-lock tests.
+- Files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Recorded the landed validation outcome with clean editor diagnostics on `streams/S4-runtime/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S7-hub/BACKLOG.md`, and `streams/S7-hub/README.md`; final editor diagnostics stayed clean on `docs/orchestration/WAVE-QUEUE.md` and `docs/orchestration/WAVE-RUN-LOG.md`.
+- Next follow-up: `WAVE-2026-04-24-17`
+
 ## 2026-04-24 — WAVE-2026-04-24-15
 
 - Selected item: `WAVE-2026-04-24-15`

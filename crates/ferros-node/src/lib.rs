@@ -1425,13 +1425,13 @@ mod tests {
     use super::{
         default_profile_path, execute_agent_cli_with_state_path, execute_agent_read_rpc_json,
         execute_agent_read_rpc_with_store_and_paths, execute_profile_cli_with_store,
-        route_shell_request_with_store_and_paths, run_demo, serve_local_shell_with_listener,
-        AgentCliCommand, CliError, CliState, DemoError, DemoRuntime, HttpRequest,
-        ProfileCliCommand, DEFAULT_PROFILE_NAME,
+        route_shell_request_with_store_and_paths, run_demo, runtime_with_state,
+        serve_local_shell_with_listener, AgentCliCommand, CliError, CliState, DemoError,
+        DemoRuntime, HttpRequest, ProfileCliCommand, DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
-        EchoAgent, TimerAgent, JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_INVALID_PARAMS,
+        AgentStatus, EchoAgent, TimerAgent, JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_INVALID_PARAMS,
         JSON_RPC_INVALID_REQUEST, JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE,
         METHOD_AGENT_LIST, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
     };
@@ -1610,6 +1610,105 @@ mod tests {
             logs,
             vec!["started:echo".to_string(), "stopped:echo".to_string()]
         );
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn reload_boundary_cli_state_load_reads_exact_path_and_defaults_missing_path() {
+        let state_path = unique_state_path("reload-cli-state");
+        let other_path = unique_state_path("reload-cli-state-other");
+        let missing_path = unique_state_path("reload-cli-state-missing");
+
+        let mut state = CliState::default();
+        state.set_status("echo", AgentStatus::Running);
+        state.log_entries.push("started:echo".to_owned());
+        state.save(&state_path).expect("state should save");
+
+        let mut other_state = CliState::default();
+        other_state.set_status("timer", AgentStatus::Stopped);
+        other_state.save(&other_path).expect("other state should save");
+
+        let loaded = CliState::load(&state_path).expect("state should load from the provided path");
+        let missing =
+            CliState::load(&missing_path).expect("missing state should default to empty");
+
+        assert_eq!(loaded, state);
+        assert_ne!(loaded, other_state);
+        assert_eq!(missing, CliState::default());
+
+        cleanup_state_path(&state_path);
+        cleanup_state_path(&other_path);
+        cleanup_state_path(&missing_path);
+    }
+
+    #[test]
+    fn reload_boundary_runtime_with_state_rebuilds_reference_runtime_without_replaying_logs() {
+        let state_path = unique_state_path("reload-runtime");
+        let mut state = CliState::default();
+        state.set_status("echo", AgentStatus::Running);
+        state.set_status("timer", AgentStatus::Stopped);
+        state.log_entries.push("started:echo".to_owned());
+        state.log_entries.push("stopped:timer".to_owned());
+        state.save(&state_path).expect("state should save");
+
+        let runtime = runtime_with_state(&state_path)
+            .expect("runtime should rebuild from persisted reference agent state");
+        let records = runtime
+            .agent_records()
+            .into_iter()
+            .map(|record| (record.manifest.name.as_str().to_owned(), record.status))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            records,
+            vec![
+                ("echo".to_owned(), AgentStatus::Running),
+                ("timer".to_owned(), AgentStatus::Stopped),
+            ]
+        );
+        assert!(runtime.log_entries().is_empty());
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn reload_boundary_runtime_with_state_preserves_unknown_agent_error_path() {
+        let state_path = unique_state_path("reload-runtime-unknown-agent");
+        let mut state = CliState::default();
+        state.set_status("missing", AgentStatus::Running);
+        state.save(&state_path).expect("state should save");
+
+        let error = match runtime_with_state(&state_path) {
+            Ok(_) => panic!("unknown persisted agents should fail"),
+            Err(error) => error,
+        };
+
+        assert!(matches!(
+            error,
+            CliError::Runtime(DemoError::UnknownAgent(name)) if name == "missing"
+        ));
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn reload_boundary_runtime_with_state_rejects_unsupported_persisted_status() {
+        let state_path = unique_state_path("reload-runtime-unsupported-status");
+        let mut state = CliState::default();
+        state.set_status("echo", AgentStatus::Failed);
+        state.save(&state_path).expect("state should save");
+
+        let error = match runtime_with_state(&state_path) {
+            Ok(_) => panic!("unsupported persisted status should be rejected"),
+            Err(error) => error,
+        };
+
+        assert!(matches!(
+            error,
+            CliError::InvalidState(message)
+                if message == "unsupported persisted status for echo: failed"
+        ));
 
         cleanup_state_path(&state_path);
     }

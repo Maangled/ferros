@@ -65,18 +65,26 @@
 | S5 UX | Read-first JSON/RPC API — current agent center web shell boundary for list, describe, grant-state, and deny-log views |
 | S7 Hub | `AgentRegistry` plus local/read-first inspection surfaces — runway planning only for one bridge agent at the shared registry boundary |
 
-## S7 runway classification
+## First S7 hub-facing wrapper boundary
 
-This is an S3-owned classification of the landed S7 seam brief and does not turn the current local/read-first surfaces into a final hub contract.
+This is the first S3-owned hub-facing wrapper-boundary note for S7 runway planning. It publishes only what is currently sufficient on `AgentRegistry` plus local/read-first inspection surfaces and does not turn those surfaces into a final hub contract.
 
-| Surface | S3-owned classification |
-|---------|-------------------------|
-| `AgentRegistry::register` and `AgentRegistry::deregister` | Sufficient now to plan one bridge agent entering and leaving the shared registry boundary, but no hub-owned long-running lifecycle wrapper or restart/re-registration contract is published. |
-| `AgentRegistry::list` and `AgentRegistry::describe` | Sufficient now to plan that the first bridge slice must be listable and describable, including required-capability inspection, but no multi-agent topology, bridge packaging contract, or remote inspection wrapper is published from these methods alone. |
-| local `ferros agent list` and `ferros agent describe` | Sufficient now as the on-device operator path for bridge presence/detail inspection, but still a thin local wrapper rather than a published hub-owned API. |
-| local `ferros agent logs` | Sufficient now as the on-device FERROS-side deny/lifecycle observation path, but no log streaming, HA-facing presentation, subscription contract, or bridge-specific operator workflow is published. |
-| read-first `agent.list` and `agent.describe` | Sufficient now as typed read-only inspection shapes on the current local host/shell path, but no hub-facing remote inspection transport, health/subscription model, or write companion is published. |
-| read-first `grant.list` and `denyLog.list` | Sufficient now as typed read-only grant/deny inspection shapes for runway evidence planning, but no privileged grant/revoke actions, remote deny propagation contract, or bridge control flow is published. |
+### Currently sufficient now
 
-- Current registration plus local/read-first inspection surfaces are enough for S7 runway planning at one-bridge-agent/local-observation scope.
-- Hub-facing lifecycle and richer remote observation/control contracts remain unpublished.
+| Surface | Current published truth | What S7 may treat as sufficient now |
+|---------|-------------------------|-------------------------------------|
+| `AgentRegistry::register` and `AgentRegistry::deregister` | Shared registry entry/exit seam only | Enough to plan one bridge agent entering and leaving the shared registry boundary |
+| `AgentRegistry::list` and `AgentRegistry::describe` | Shared registry inspection seam only | Enough to require that the first bridge slice be listable and describable, including required-capability inspection |
+| local `ferros agent list`, `ferros agent describe`, and `ferros agent logs` | Thin local, read-first operator wrappers only | Enough for on-device bridge presence/detail plus deny/lifecycle observation |
+| read-first `agent.list`, `agent.describe`, `grant.list`, and `denyLog.list` | Typed read-only inspection shapes on the current local host/shell path only | Enough for runway evidence planning and shell-side inspection without freezing remote control |
+
+### Still unpublished before bridge control flows are honest
+
+| Surface area | Current status |
+|--------------|----------------|
+| Hub-facing lifecycle wrapper | Unpublished. No S3 contract yet defines a hub-owned wrapper for long-running bridge lifecycle, wrapper-owned status transitions, or an authoritative bridge control surface. |
+| Richer remote observation wrapper | Unpublished. No S3 contract yet defines remote inspection transport, health/subscription/log-streaming, or HA-facing observation wrappers beyond the current local/read-first surfaces. |
+| Remote control or write contract | Unpublished. No S3 contract yet defines privileged lifecycle actions, grant writes, or bridge-control sequencing on top of the current registry and read-first inspection surfaces. |
+
+- This slice keeps the dependency lock narrow: S7 may plan against `AgentRegistry` plus local/read-first inspection surfaces only.
+- This slice does not publish pairing choreography, bridge-control choreography, schema changes, or any G4 evidence surface.

@@ -111,7 +111,7 @@ This seam brief stays docs-only. It names the exact current S3 and S4 surfaces S
 | S4 restart and reload surface | No published hub-facing restart API; nearest current reload seams are `runtime_with_state(state_path)`, `CliState::load(state_path)`, and `LocalProfileStore::load_local_profile(path)` | Restart honesty currently means S7 can only trust state that reloads through those existing local validation paths. | There is still no stable runtime restart or re-registration contract for hubs, so S7 cannot freeze reboot choreography or treat current node-local helpers as the final seam. |
 
 - S7 may now plan against the named S3 and S4 surfaces above, but it must still escalate missing hub-facing contracts to the owning streams instead of filling the gaps with stream-local protocol rules.
-- The next honest runway step is to route this seam brief to S3 and S4 and record which of the named surfaces are already sufficient, which need a hub-facing wrapper, and which remain unpublished.
+- The next honest runway step is to treat the returned S3 and S4 seam classifications as dependency locks and keep S7 docs aligned as upstream wrapper and restart contracts change.
 
 ---
 
@@ -151,6 +151,6 @@ This seam brief stays docs-only. It names the exact current S3 and S4 surfaces S
 
 1. Keep `docs/hub/reference-hardware.md` current with the chosen runway hardware, topology assumptions, and evidence fields.
 2. Select the exact first `x86_64` Pack B device and one fallback `aarch64` Pack A device for bring-up.
-3. Route the landed seam brief above to S3 and S4 and record which registration, inspection, policy, and restart surfaces are already sufficient versus still unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest.
+3. Keep the returned S3 and S4 seam classifications as upstream dependency locks and keep S7 docs aligned as upstream wrapper and restart contracts change.
 4. Keep the G4 evidence map tied to the exact S2 consumer dependencies plus the S3/S4 seams named in that brief and any upstream answers that follow.
 5. Keep that follow-up docs-only and non-implementation: no `crates/ferros-hub/` scaffold and no Home Assistant bridge internals.

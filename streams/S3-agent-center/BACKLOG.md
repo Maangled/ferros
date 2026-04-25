@@ -21,8 +21,9 @@
 - [x] Thin local CLI: `ferros agent list | describe | run | stop | logs`
 - [x] Focused deny-by-default coverage across manifest authorization and demo/runtime denial logging
 - [x] Land S3-owned docs-only seam classification for S7 runway planning against current registry plus local/read-first inspection surfaces
+- [x] Publish the first hub-facing wrapper boundary for S7: lock what is currently honest on `AgentRegistry` plus local/read-first inspection surfaces while keeping hub-facing lifecycle-wrapper and richer remote observation/control unpublished
 - [ ] Harden `ferros-node demo` into a reusable runtime-host integration layer
-- [ ] Publish the first hub-facing wrapper boundary for S7: decide what stays on `AgentRegistry` plus local/read-first inspection surfaces and what additional lifecycle or remote-observation contract must exist before bridge control flows are honest
+- [ ] Publish the next S3 follow-up only when a real wrapper/API slice exists: define the hub-facing lifecycle wrapper and any richer remote observation/control contract without inventing pairing choreography, bridge-control sequencing, or S4 restart/reload semantics
 
 ## Later
 

@@ -23,7 +23,7 @@
 - [x] Land S4-owned docs-only seam classification for S7 runway planning against the current policy surface and the narrow published reload boundary while broader durable hub-facing restart/re-registration semantics remain unpublished
 - [ ] Harden the current in-memory host path beyond the convergence demo
 - [x] Publish the narrow docs-only S7 reload boundary: validated local profile/grant reload plus fixed reference-runtime state replay are published today, while broader durable hub-facing restart/re-registration semantics remain unpublished
-- [ ] Add focused `ferros-node` and `ferros-profile` tests that lock the published reload boundary without widening into durable hub-facing restart or re-registration semantics
+- [x] Add focused `ferros-node` and `ferros-profile` tests that lock the published reload boundary without widening into durable hub-facing restart or re-registration semantics
 
 ## Later
 

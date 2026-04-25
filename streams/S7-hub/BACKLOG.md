@@ -17,7 +17,7 @@
 
 - [ ] Turn the bridge runway contract into a DUT-side evidence checklist once a real hub/bridge path exists; keep the first proof at one registered bridge agent and one real entity
 - [x] Route the landed seam brief to S3 and S4 and record which registration, inspection, policy, and restart surfaces are already sufficient versus still unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest
-- [ ] Keep the returned seam classifications as upstream dependency locks: S3 still owes the first hub-facing wrapper boundary, and S4 now publishes only validated local profile/grant reload plus fixed reference-runtime state replay while durable hub restart/re-registration semantics remain unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest
+- [ ] Keep the returned seam classifications as upstream dependency locks: S3 now publishes only `AgentRegistry` plus local/read-first inspection surfaces as the honest runway boundary, while hub-facing lifecycle-wrapper and richer remote observation/control remain unpublished; S4 now publishes only validated local profile/grant reload plus fixed reference-runtime state replay while durable hub restart/re-registration semantics remain unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest
 - [ ] Keep that seam handoff docs-only and non-implementation until the concrete S3/S4 APIs exist
 - [ ] Recheck runway pairing notes against `docs/hub/reference-hardware.md`, `streams/S7-hub/CONTRACTS.md`, `STATUS.md`, and `docs/gates/G4.md` whenever S7 wording moves, S2 consumer-boundary rules change, or new S3/S4 seam details publish
 

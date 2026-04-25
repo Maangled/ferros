@@ -4,18 +4,18 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 
 ## Ready
 
-### WAVE-2026-04-24-16
+### WAVE-2026-04-25-01
 
-- Title: Publish a narrow hub-facing restart/reload boundary for S7 runway
+- Title: Land the first real S3 hub-facing wrapper/API slice for S7 runway
 - Status: ready
 - Priority: P1
 - Gate: G4 runway
-- Owning streams: S4 primary, S7 consumer awareness, S8 truth-sync if queue or stream docs move
-- Goal: Turn the currently named reload helpers into an explicit S4-owned docs-only boundary that states what restart-safe state, reload, and re-registration guarantees S7 may rely on now versus what remains unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest.
-- Anchor files: `streams/S4-runtime/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S7-hub/BACKLOG.md`
-- Validation: editor diagnostics on touched S4 and S7 docs; verify the published boundary stays consistent with the landed S7 seam brief in `streams/S7-hub/README.md` and `streams/S7-hub/CONTRACTS.md`, plus `STATUS.md` and `docs/gates/G4.md`
-- Constraints: Keep the slice docs-only and S4-owned. Do not change runtime code, do not scaffold `crates/ferros-hub/`, do not define pairing, reboot, or re-registration choreography beyond the narrow published boundary, do not invent new policy semantics, and do not claim G4 evidence.
-- Last update: 2026-04-24
+- Owning streams: S3 primary, S7 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Add the narrowest real S3 wrapper/API implementation surface on top of the current registry and read-first inspection seams so S3 can honestly publish the next hub-facing lifecycle-wrapper or richer observation contract once that implementation exists, without inventing pairing choreography, bridge-control sequencing, or S4 restart/reload semantics.
+- Anchor files: `crates/ferros-agents/src/registry.rs`, `crates/ferros-agents/src/rpc.rs`, `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/BACKLOG.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: focused `cargo test -p ferros-agents` and `cargo test -p ferros-node` coverage for the new wrapper/API slice; editor diagnostics on touched S3 and S7 docs if publication wording moves; verify the landed publication names only the code-backed wrapper/API surface that actually exists and keeps pairing choreography, bridge-control sequencing, S4 restart/reload semantics, schemas, and G4 evidence unpublished unless they truly land
+- Constraints: Keep the slice S3-owned and implementation-backed. Do not publish a new wrapper/API contract without landing the real implementation surface it names. Do not invent pairing choreography, bridge-control sequencing, or S4 restart/reload semantics. Do not touch schemas, STATUS.md, docs/gates/G4.md, or crates/ferros-hub/, and do not claim G4 evidence.
+- Last update: 2026-04-25
 
 ## In Progress
 
@@ -26,6 +26,45 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-24-18
+
+- Title: Publish the first hub-facing wrapper boundary for S7 runway
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S3 primary, S7 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Publish an S3-owned docs-only wrapper boundary for S7 by deciding what stays on `AgentRegistry` plus local/read-first inspection surfaces and what additional lifecycle or remote-observation contract must exist before bridge control flows are honest.
+- Anchor files: `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/BACKLOG.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: editor diagnostics on touched S3 and S7 docs; verify the published boundary names only `AgentRegistry` plus local/read-first inspection surfaces as currently sufficient and keeps hub-facing lifecycle-wrapper, remote-observation, pairing, schema, and G4 surfaces explicitly unpublished
+- Constraints: Keep the slice docs-only and S3-owned. Do not change code, do not reopen S4 restart/reload semantics, do not define pairing or bridge-control choreography, do not touch schemas, `STATUS.md`, `docs/gates/G4.md`, or other shared truth surfaces, do not scaffold `crates/ferros-hub/`, and do not claim G4 evidence.
+- Last update: 2026-04-25
+
+### WAVE-2026-04-24-17
+
+- Title: Lock the published S4 restart/reload boundary with focused tests
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S4 primary, S8 truth-sync if queue or stream docs move
+- Goal: Add focused `ferros-node` and `ferros-profile` tests that lock only the currently published S4 restart/reload boundary: exact-path `CliState::load(path)` reload, `runtime_with_state(state_path)` rebuilding the fixed reference runtime while replaying only persisted Registered/Running/Stopped state, and `LocalProfileStore::load_local_profile(path)` reloading profile/key/grant material only when local validation succeeds.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `crates/ferros-profile/src/lib.rs`, `streams/S4-runtime/BACKLOG.md`
+- Validation: focused `cargo test -p ferros-node` coverage for `CliState::load(path)` and `runtime_with_state(state_path)` plus focused `cargo test -p ferros-profile` coverage for `LocalProfileStore::load_local_profile(path)` success and invalid-local-state rejection; editor diagnostics on touched S4 docs if backlog or contract wording moves
+- Constraints: Keep the slice S4-owned and boundary-lock only. Do not widen into pairing, durable hub restart, re-registration choreography, `crates/ferros-hub/` scaffolding, shared schema changes, or G4 evidence claims.
+- Last update: 2026-04-24
+
+### WAVE-2026-04-24-16
+
+- Title: Publish a narrow hub-facing restart/reload boundary for S7 runway
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S4 primary, S7 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Turn the currently named reload helpers into an explicit S4-owned docs-only boundary that states what restart-safe state, reload, and re-registration guarantees S7 may rely on now versus what remains unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest.
+- Anchor files: `streams/S4-runtime/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: editor diagnostics on touched S4 and S7 docs; verify the published boundary stays consistent with the landed S7 seam brief in `streams/S7-hub/README.md` and `streams/S7-hub/CONTRACTS.md`, plus `STATUS.md` and `docs/gates/G4.md`
+- Constraints: Keep the slice docs-only and S4-owned. Do not change runtime code, do not scaffold `crates/ferros-hub/`, do not define pairing, reboot, or re-registration choreography beyond the narrow published boundary, do not invent new policy semantics, and do not claim G4 evidence.
+- Last update: 2026-04-24
 
 ### WAVE-2026-04-24-15
 
