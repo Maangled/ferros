@@ -4,18 +4,18 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 
 ## Ready
 
-### WAVE-2026-04-23-09
+### WAVE-2026-04-24-12
 
-- Title: Execute S5 Phase A archive and link-hygiene pack
+- Title: Publish S2 pairing boundary answers for S7 runway
 - Status: ready
 - Priority: P1
-- Gate: post-G3 runway
-- Owning streams: S5 primary, S8 truth-sync if archive surfaces move
-- Goal: Verify inbound links, archive the inactive top-level HTML prototypes to `docs/legacy/`, and keep the real `site/` surface clean for the later local shell without starting localhost UI work yet.
-- Anchor files: `site/index.html`, `streams/S5-ux/DOCS-HTML-PROTOTYPE-AUDIT.md`, `docs/`, `docs/legacy/`
-- Validation: editor diagnostics on touched files; grep inbound references before moving any prototype files so active links are not broken
-- Constraints: Keep `docs/agent-command-center.html` and `docs/forge-workbench.html` active. Do not start the S5 Phase B local web shell in this wave.
-- Last update: 2026-04-23
+- Gate: G4 runway
+- Owning streams: S2 primary, S7 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Publish S2-owned answers to the six-row S7 consumer-boundary question list by documenting how bootstrap, grant check, deny visibility, persistence, revocation, and re-registration consume the stable `ProfileId` and `CapabilityGrant` surface without widening the frozen v0 consumer contracts before S7 names an authoritative pairing flow.
+- Anchor files: `streams/S2-profile/README.md`, `streams/S2-profile/CONTRACTS.md`
+- Validation: editor diagnostics on touched S2 docs; verify the published answers stay consistent with the six-row S7 consumer-boundary question list in `streams/S7-hub/README.md`, with the frozen `schemas/profile.v0.json` and `schemas/capability-grant.v0.json` boundaries, and with `docs/gates/G2.md` and `STATUS.md`
+- Constraints: Keep the slice docs-only and S2-owned. Do not mutate `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`, do not reopen `streams/S7-hub/README.md` or `streams/S7-hub/BACKLOG.md` unless an answer exposes a contradiction, do not scaffold `crates/ferros-hub/`, do not define Home Assistant bridge internals, do not ratify handshake order, and do not claim G4 evidence.
+- Last update: 2026-04-24
 
 ## In Progress
 
@@ -26,6 +26,97 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-24-11
+
+- Title: Write the S2 consumer questions before naming an authoritative S7 pairing flow
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S7 primary, S2 consumer awareness if pairing dependency wording shifts, S8 truth-sync if queue or stream docs move
+- Goal: Turn the current open pairing questions plus the landed six-checkpoint pairing map into the explicit S2 consumer-question list S7 still needs answered before naming an authoritative pairing flow, without widening into `ferros-hub` scaffolding, Home Assistant bridge internals, or ratified handshake order.
+- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: editor diagnostics on touched S7 docs; verify the consumer-question list stays consistent with `docs/hub/reference-hardware.md`, `streams/S7-hub/CONTRACTS.md`, `STATUS.md`, and `docs/gates/G4.md`, including reconciling any stale `streams/S7-hub/BACKLOG.md` row that still treats the landed checkpoint map as open
+- Constraints: Treat the current open pairing questions and the landed checkpoint map as fixed input. Do not redefine `ProfileId` or `CapabilityGrant`, do not scaffold `crates/ferros-hub/`, do not define authoritative handshake steps, and do not claim G4 evidence. Do not reopen `docs/hub/reference-hardware.md` or shared truth surfaces unless the question list exposes a contradiction.
+- Last update: 2026-04-24
+
+### WAVE-2026-04-24-10
+
+- Title: Map the first S7 pairing checkpoints against current seams
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S7 primary, S8 truth-sync if queue or stream docs move
+- Goal: Turn the newly defined bridge runway contract into a small pairing-checkpoint map across bootstrap, grant check, deny visibility, persistence, revocation, and re-registration using the current S2, S3, and S4 seams, without widening into `ferros-hub` scaffolding, HA fork work, or an authoritative pairing protocol.
+- Anchor files: `docs/hub/reference-hardware.md`, `streams/S7-hub/README.md`
+- Validation: editor diagnostics on touched S7 and hardware-runway docs; verify the checkpoint map stays consistent with `streams/S7-hub/CONTRACTS.md`, `streams/S7-hub/BACKLOG.md`, `STATUS.md`, and `docs/gates/G4.md`
+- Constraints: Treat the landed bridge contract as fixed input. Do not reopen `streams/S7-hub/CONTRACTS.md`, `streams/S7-hub/BACKLOG.md`, or `streams/S7-hub/PROGRESS.md` unless a contradiction is found. Do not scaffold `crates/ferros-hub/`, define HA transport internals, or claim G4 evidence.
+- Last update: 2026-04-24
+
+### WAVE-2026-04-24-09
+
+- Title: Define the first S7 Home Assistant bridge runway contract
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S7 primary, S8 truth-sync if queue or stream docs move
+- Goal: Define the first Home Assistant bridge runway contract at one bridge agent, one real entity minimum evidence, operator-visible deny attribution, restart-safe FERROS-side state, and the external HA fork boundary without widening into `ferros-hub` scaffolding, HA component internals, or claimed G4 evidence.
+- Anchor files: `streams/S7-hub/CONTRACTS.md`, `streams/S7-hub/BACKLOG.md`, `streams/S7-hub/PROGRESS.md`
+- Validation: editor diagnostics on touched S7 docs
+- Constraints: Keep the slice docs-only and runway-only. Do not scaffold `crates/ferros-hub/`, do not change `Maangled/home-assistant`, do not freeze the reconnect or pairing protocol, and do not claim G4 evidence.
+- Last update: 2026-04-24
+
+### WAVE-2026-04-23-09
+
+- Title: Execute S5 Phase A archive and link-hygiene pack
+- Status: done
+- Priority: P1
+- Gate: post-G3 runway
+- Owning streams: S5 primary, S8 truth-sync if archive surfaces move
+- Goal: Verify inbound links, archive the inactive top-level HTML prototypes to `docs/legacy/`, and keep the real `site/` surface clean for the later local shell without starting localhost UI work yet.
+- Anchor files: `site/index.html`, `streams/S5-ux/DOCS-HTML-PROTOTYPE-AUDIT.md`, `docs/`, `docs/legacy/`
+- Validation: editor diagnostics on touched files; grep inbound references before moving any prototype files so active links are not broken
+- Constraints: Keep `docs/agent-command-center.html` and `docs/forge-workbench.html` active. Do not start the S5 Phase B local web shell in this wave.
+- Last update: 2026-04-24
+
+### WAVE-2026-04-24-08
+
+- Title: Harden read-first JSON-RPC error coverage
+- Status: done
+- Priority: P1
+- Gate: post-G3 contract hardening
+- Owning streams: S3 primary, S4 host awareness, S5 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Strengthen the current read-first JSON-RPC boundary by locking negative-path behavior for the four existing read methods and proving one live `POST /rpc` error path through the localhost shell host without widening into new methods, transport changes, or write actions.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/PROGRESS.md`, `streams/S3-agent-center/CONTRACTS.md`
+- Validation: `cargo test -p ferros-node agent_read_rpc_`; `cargo test -p ferros-node shell_listener_posts_json_rpc_`
+- Constraints: Keep the slice read-first. Do not add write actions, subscriptions, health endpoints, transport adapters, or shared contract changes unless the existing read contract semantics actually move.
+- Last update: 2026-04-24
+
+### WAVE-2026-04-24-07
+
+- Title: Map the first x86_64 S7 bring-up contract
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S7 primary, S8 truth-sync if queue or stream docs move
+- Goal: Turn the active S7 runway into a concrete first-device contract by choosing the Pack B `x86_64` lane as the preferred first bring-up target, mapping unchecked G4 evidence to upstream seams and S7-owned proof points, and keeping the Home Assistant lab topology honest without widening into `ferros-hub` or HA bridge code.
+- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `streams/S7-hub/CONTRACTS.md`, `docs/hub/reference-hardware.md`, `streams/S7-hub/PROGRESS.md`
+- Validation: editor diagnostics on touched S7 and hardware-runway docs
+- Constraints: Keep the slice in runway mode. Do not scaffold `crates/ferros-hub/`, do not freeze pairing protocol order, do not claim G4 evidence, and do not redefine `LAUNCH.md` or `docs/gates/G4.md` from this wave.
+- Last update: 2026-04-24
+
+### WAVE-2026-04-24-06
+
+- Title: Add listener-level localhost shell smoke coverage
+- Status: done
+- Priority: P1
+- Gate: post-G3 host hardening
+- Owning streams: S4 primary, S5 consumer awareness, S8 truth-sync if queue or stream surfaces move
+- Goal: Harden the current `ferros-node shell` host seam by exercising the real TCP listener path for `GET /` and `POST /rpc` without widening into new JSON/RPC methods, transport changes, or `ferros-hub` work.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `streams/S4-runtime/PROGRESS.md`
+- Validation: `cargo test -p ferros-node shell_`
+- Constraints: Keep the slice read-first and host-local. Do not add write actions, health endpoints, transport adapters, persistence changes, or hub semantics in this wave.
+- Last update: 2026-04-24
 
 ### WAVE-2026-04-24-05
 

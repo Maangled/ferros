@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-24 — Read-first JSON-RPC error paths locked with focused coverage
+
+- Added focused `crates/ferros-node/src/lib.rs` tests for unsupported JSON-RPC version, missing `agentName` on `agent.describe`, unknown agent lookup, and unknown method names against the existing read-first handler.
+- Added a listener-level `POST /rpc` smoke that proves the live localhost shell host returns the same structured JSON-RPC invalid-params envelope over TCP, not just through direct handler calls.
+- Kept the contract unchanged: no new methods, no write actions, no transport expansion, and no privileged flows.
+- Validation passed with `cargo test -p ferros-node agent_read_rpc_` and `cargo test -p ferros-node shell_listener_posts_json_rpc_`.
+
 ## 2026-04-23 — Thin local `ferros agent` CLI landed
 
 - Added `crates/ferros-node/src/bin/ferros.rs` and the matching `AgentCliCommand` execution path for `agent list | describe | run | stop | logs`.

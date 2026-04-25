@@ -28,7 +28,7 @@ This spec tracks FERROS’s intended agent-driven content and operations model. 
 - `README.md` — canonical percentage and explicit blocker note.
 - `docs/AGENT_GUIDE.md` — current agent roles, constraints, and repo conventions.
 - `docs/agent-command-center.html` — current command-center prototype surface.
-- `docs/home-hud-dashboard.html` — current dashboard-side agent activity surface.
+- `docs/legacy/home-hud-dashboard.html` — archived dashboard-side agent activity surface.
 - `docs/architecture-overview.md` — agent-hosting layer and capability model context.
 - `docs/progress/user-identity-system.md` — dependency bottleneck for safe agent action.
 

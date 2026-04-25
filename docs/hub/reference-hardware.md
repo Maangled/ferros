@@ -6,7 +6,7 @@
 
 ## Current mode
 
-- S7 is still in runway mode. G4 cannot close until G3 is green and a real `ferros-hub` binary runs on physical home hardware.
+- S7 is still in runway mode. G3 is already closed; G4 cannot close until real hardware, `ferros-hub`, and Home Assistant evidence exist.
 - This file is planning and evidence-prep only until a device moves into the confirmed evidence table below.
 - `LAUNCH.md` and `docs/gates/G4.md` remain the authoritative launch criteria. This file should not be used to imply that launch evidence already exists.
 
@@ -47,8 +47,51 @@ This section is planning shorthand only. A "pack" is a candidate bundle of devic
 | Pack | Primary candidate | Acceptable fallback | Planned runway use | Why it is practical now | Future validation target |
 |------|-------------------|---------------------|--------------------|-------------------------|--------------------------|
 | Pack A - Pi lane | Raspberry Pi 5 (8 GB) with 32-128 GB USB 3 SSD, wired Ethernet, and official PSU | Raspberry Pi 4 (4 GB) with high-endurance microSD only if the SSD path is not ready yet | Primary `aarch64` device for first in-lab prep | Closest match to the expected home-hub form factor and easy to reproduce later | Later prove reboot-safe state and cold-boot recovery on the chosen storage medium |
-| Pack B - x86_64 lane | Intel NUC, Lenovo Tiny, or Beelink-class mini PC with 8 GB RAM, 128 GB SSD, and wired Ethernet | Spare small-form-factor PC or home server with SSD and stable LAN access | Primary observability-first device while G3 still blocks honest implementation runs | Easier shell access, rollback, and log capture for early hardware prep | Later prove the same restart and power-cycle behavior once the runtime path exists |
+| Pack B - x86_64 lane | Intel NUC, Lenovo Tiny, or Beelink-class mini PC with 8 GB RAM, 128 GB SSD, and wired Ethernet | Spare small-form-factor PC or home server with SSD and stable LAN access | First observability-first bring-up lane with G4 active | Easier shell access, rollback, and log capture for early hardware prep | Later prove the same restart and power-cycle behavior once the runtime path exists |
 | Pack C - HA companion lane | Separate Home Assistant host on HA Green/Yellow, Raspberry Pi 4, or small x86_64 box on the same LAN | Existing always-on home server on the same LAN | First lab-side HA environment, kept separate from the device under test when possible | Keeps device restarts and HA uptime distinguishable in later notes | Later confirm that device-only and HA-only restarts can be observed separately once integration exists |
+
+---
+
+## First bring-up contract (x86_64-first)
+
+The first honest bring-up target is **Pack B - x86_64 lane** with **Pack C - HA companion lane**. This is not a launch redefinition; it is the most practical first integration target because it maximizes shell access, log capture, rollback, and power-cycle observation while staying inside the launch-valid hardware classes in `LAUNCH.md`.
+
+Pack A remains the required `aarch64` follow-on for Pi-class evidence, but S7 should earn its first concrete end-to-end bring-up on the more observable `x86_64` lane unless hardware availability forces a Pi-first pass.
+
+### First lab topology contract
+
+| Role | Contract for the first bring-up | Why this is the first pass |
+|------|--------------------------------|----------------------------|
+| Device under test | Pack B `x86_64` mini PC or home server with SSD and wired LAN | Easiest path for SSH, rollback, logs, and repeated restart experiments |
+| Home Assistant host | Separate Pack C device on the same LAN | Keeps DUT-only restarts and HA uptime distinguishable |
+| Operator station | Separate laptop or desktop for SSH, dashboard observation, and evidence capture | Avoids turning the DUT into the only observation surface |
+| Power arrangement | DUT power can be cut without taking HA down | Required for later cold-boot and recovery proof |
+
+### G4 evidence map for the first bring-up
+
+| G4 evidence item | Upstream seam to watch | First bring-up proof point |
+|------------------|------------------------|----------------------------|
+| Cross-compile `ferros-hub` | S4 packaging seam plus eventual S7 hub wrapper | Successful `x86_64-unknown-linux-gnu` build on the Pack B class |
+| Physical device run | S4 host seam stable enough to wrap | One real Pack B DUT session, not laptop or VM |
+| Device profile persists | S2 CLI plus the eventual hub storage path | `ferros profile init` on the DUT, then restart and reload the same profile |
+| HA bridge agent is listed | S3 registry/list seam | `ferros agent list` on the DUT shows the bridge agent once it exists |
+| Real HA entity is visible | HA fork plus runtime registration seam | One real entity on the separate HA host dashboard |
+| Consent deny is visible | S4 deny logs plus S3 log surface plus HA visibility | One denied request captured in logs and surfaced to the operator |
+| Full power-cycle survival | S2 persisted state plus S4 re-registration | DUT-only cold boot restores profile, bridge agent, and HA-visible state |
+| Independent install | Reproducible operator notes | Same bring-up contract repeated on a second non-primary home setup |
+
+## Runway pairing checkpoint map for the first lab
+
+This map is evidence-prep only for the Pack B `x86_64` device under test plus the separate Pack C Home Assistant host. It ties the six provisional pairing checkpoints to current S2 consumer surfaces plus the S3 registry/list/log surfaces and S4 runtime policy, deny logging, and restart seams. It does not define HA transport internals, freeze handshake order, or claim G4 evidence.
+
+| Checkpoint | DUT/lab observation target | Current seam map | What stays open |
+|------------|----------------------------|------------------|-----------------|
+| bootstrap | Confirm that the Pack B DUT has a persistent state path ready for `ProfileId`-bound material before HA is involved, and capture the first local logs around bootstrap once implementation exists. | S2 `ProfileId`; S4 restart seam; Pack B DUT storage prep. | Who creates the initial device state and the exact first-start ceremony remain provisional. |
+| grant check | Observe the first grant-gated bridge-agent exposure from the DUT side before treating HA entity visibility as valid. | S2 `CapabilityGrant`; S3 registry/list surfaces; S4 runtime policy. | The exact ordering between registration, approval, and grant issuance remains open. |
+| deny visibility | Keep the Pack C HA host separate so a denied action can be attributed to the DUT without a coupled restart, and stage local log capture plus dashboard observation for that check. | S4 deny logging; S3 log surface; separate HA host topology. | Whether the first operator-visible proof lands in HA UI, `ferros agent logs`, or both remains open. |
+| persistence | Record the DUT mount point or storage path that would later hold `ProfileId` and `CapabilityGrant` material, then use clean restarts as the first observational checkpoint. | S2 `ProfileId` and `CapabilityGrant`; S4 restart seam. | Final storage ownership and on-disk layout remain open. |
+| revocation | Treat revoked `CapabilityGrant` state as a later DUT-side observation target that should change runtime behavior without inventing a hub-local grant model. | S2 `CapabilityGrant`; S4 runtime policy; S4 deny logging. | Revocation propagation and operator workflow remain provisional. |
+| re-registration | Use the separate-host topology to observe whether the DUT-side bridge agent returns through the S3 registry/list surfaces after restart while the HA host stays up. | S3 registry/list surfaces; S4 restart seam; separate HA host topology. | Final reconnect choreography and HA-side recovery details remain open. |
 
 ---
 

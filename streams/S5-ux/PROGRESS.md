@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-24 - Five docs prototypes archived into docs/legacy
+
+- Moved `home-hud-dashboard.html`, `architecture-design-lab.html`, `architecture-design-lab-builder.html`, `ferros-mind-map.html`, and `ferros-project-map.html` from `docs/` into `docs/legacy/`.
+- Updated the archive truth surfaces to record the verified split: `agent-command-center.html` and `forge-workbench.html` stay as active priors in `docs/`, while `personal-profile.html`, `schedule-ledger.html`, `deployment-roadmap.html`, `algo-trading-arena.html`, and `ferros-showcase.html` remain in `docs/` for now because current repo links still target them.
+- Fixed the moved `ferros-mind-map.html` relative links so archive peers stay same-folder and kept docs-root targets now resolve through `../`.
+
 ## 2026-04-24 — Same-origin localhost shell acceptance harness landed
 
 - Added `harnesses/localhost-shell-acceptance-harness.html` as a dedicated live-shell acceptance surface served by `ferros-node shell` rather than stretching the older file-based prototype harness past its real boundary.

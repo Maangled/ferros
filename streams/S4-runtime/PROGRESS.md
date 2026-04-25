@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-24 — Localhost shell host seam hardened with listener-level smoke coverage
+
+- Extracted a bounded listener loop in `crates/ferros-node/src/lib.rs` so the localhost shell host can be exercised through a real `TcpListener` in focused tests instead of only through route-level units.
+- Added real socket-smoke coverage for `GET /` and `POST /rpc`, proving the current shell host serves the embedded shell HTML and returns a live `agent.list` JSON-RPC response through the same HTTP parser and writer used by `ferros-node shell`.
+- Kept the slice shallow and read-first: no new JSON/RPC methods, no transport expansion, no persistence changes, and no `ferros-hub` semantics.
+- Focused validation passed with `cargo test -p ferros-node shell_`.
+
 ## 2026-04-23 — S4 docs truth-synced to the current `ferros-core` boundary
 
 - Updated the S4 stream docs to describe the current `ferros-core` boundary honestly: `std` remains the default feature, while `#![cfg_attr(not(feature = "std"), no_std)]` and `alloc` keep the core slice portable.

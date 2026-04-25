@@ -13,7 +13,7 @@
 
 - [x] Confirm `/site/` layout in repo reality
 - [x] Add honest status banner to the real landing page (links to `STATUS.md`)
-- [ ] Execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once inbound links are checked
+- [ ] Repoint current repo links before moving the remaining historical docs-root HTML files
 - [ ] Verify no dead links in site
 
 ## Phase B (active)

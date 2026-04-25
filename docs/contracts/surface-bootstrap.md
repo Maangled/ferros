@@ -61,7 +61,7 @@ All initialization occurs at parse time with no event listener. Inner IIFEs may 
 </script>
 ```
 
-Used by: `home-hud-dashboard.html`.
+Used by: `docs/legacy/home-hud-dashboard.html`.
 
 Relies on DOM being available because the script tag is after all markup.
 
@@ -193,7 +193,7 @@ Requirements:
 | Surface | Loads FerrosCore | Uses _embed.js | Uses iframes | Init Pattern |
 |---------|-----------------|----------------|--------------|--------------|
 | personal-profile.html | Yes | No | No | DOMContentLoaded |
-| home-hud-dashboard.html | No | No | No | Bottom-of-body |
+| docs/legacy/home-hud-dashboard.html | No | No | No | Bottom-of-body |
 | schedule-ledger.html | No | No | No | Immediate IIFE |
 | forge-workbench.html | No | No | Yes (manual) | Immediate IIFE |
 | algo-trading-arena.html | No | No | No | Immediate IIFE |

@@ -2,11 +2,11 @@
 
 **Current:** 1%
 **Phase:** Prototype
-**Status:** Prototype exists in `docs/home-hud-dashboard.html`.
+**Status:** Archived prototype exists in `docs/legacy/home-hud-dashboard.html`.
 
 ## What This Is
 
-This spec tracks the FERROS home dashboard prototype in `docs/home-hud-dashboard.html`. The current page shows a kiosk-style home interface with schedule, device controls, cameras, project cards, and agent activity, but it remains a standalone visual and interaction prototype.
+This spec tracks the FERROS home dashboard prototype in `docs/legacy/home-hud-dashboard.html`. The current page shows a kiosk-style home interface with schedule, device controls, cameras, project cards, and agent activity, but it remains a standalone visual and interaction prototype.
 
 ## Milestone Gates
 
@@ -26,7 +26,7 @@ This spec tracks the FERROS home dashboard prototype in `docs/home-hud-dashboard
 ## Dependencies
 
 - `README.md` — canonical percentage and platform positioning.
-- `docs/home-hud-dashboard.html` — current prototype surface.
+- `docs/legacy/home-hud-dashboard.html` — archived prototype surface.
 - `docs/deployment-roadmap.html` — practical hardware and kiosk deployment context.
 - `docs/architecture-overview.md` — Phase 3 device-control direction and local-first architecture.
 - `docs/agent-command-center.html` — adjacent coordination surface for future agent actions.

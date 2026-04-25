@@ -637,6 +637,15 @@ pub fn local_shell_url(port: u16) -> String {
 pub fn serve_local_shell(port: u16) -> io::Result<()> {
     let listener = TcpListener::bind(("127.0.0.1", port))?;
 
+    serve_local_shell_with_listener(listener, None)
+}
+
+fn serve_local_shell_with_listener(
+    listener: TcpListener,
+    max_connections: Option<usize>,
+) -> io::Result<()> {
+    let mut handled_connections = 0_usize;
+
     for incoming in listener.incoming() {
         let mut stream = incoming?;
 
@@ -647,6 +656,12 @@ pub fn serve_local_shell(port: u16) -> io::Result<()> {
                 format!("FERROS shell server error: {error}"),
             );
             let _ = write_http_response(&mut stream, response);
+        }
+
+        handled_connections += 1;
+
+        if max_connections.is_some_and(|limit| handled_connections >= limit) {
+            break;
         }
     }
 
@@ -1410,16 +1425,22 @@ mod tests {
     use super::{
         default_profile_path, execute_agent_cli_with_state_path, execute_agent_read_rpc_json,
         execute_agent_read_rpc_with_store_and_paths, execute_profile_cli_with_store,
-        route_shell_request_with_store_and_paths, run_demo, AgentCliCommand, CliError, CliState,
-        DemoError, DemoRuntime, HttpRequest, ProfileCliCommand, DEFAULT_PROFILE_NAME,
+        route_shell_request_with_store_and_paths, run_demo, serve_local_shell_with_listener,
+        AgentCliCommand, CliError, CliState, DemoError, DemoRuntime, HttpRequest,
+        ProfileCliCommand, DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
-        AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResult, EchoAgent, TimerAgent,
-        METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
+        AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
+        EchoAgent, TimerAgent, JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_INVALID_PARAMS,
+        JSON_RPC_INVALID_REQUEST, JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE,
+        METHOD_AGENT_LIST, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
     };
     use ferros_profile::{CapabilityGrant, FileSystemProfileStore, ProfileDocument, ProfileId};
     use std::fs;
+    use std::io::{Read, Write};
+    use std::net::{Shutdown, TcpListener, TcpStream};
     use std::path::{Path, PathBuf};
+    use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -1615,6 +1636,115 @@ mod tests {
             }
             other => panic!("unexpected RPC result: {other:?}"),
         }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn agent_read_rpc_rejects_unsupported_jsonrpc_version() {
+        let state_path = unique_state_path("rpc-invalid-version");
+        let profile_path = unique_profile_path("rpc-invalid-version");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest {
+                jsonrpc: "1.0".to_owned(),
+                id: "req-invalid-version".to_owned(),
+                method: METHOD_AGENT_LIST.to_owned(),
+                params: AgentJsonRpcParams::default(),
+            },
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("invalid version RPC should return a JSON-RPC error");
+
+        assert_rpc_error(
+            &response,
+            JSON_RPC_INVALID_REQUEST,
+            "unsupported JSON-RPC version: 1.0",
+        );
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn agent_read_rpc_requires_agent_name_for_describe() {
+        let state_path = unique_state_path("rpc-describe-missing-params");
+        let profile_path = unique_profile_path("rpc-describe-missing-params");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-describe-missing-params",
+                METHOD_AGENT_DESCRIBE,
+                AgentJsonRpcParams::default(),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("missing describe params should return a JSON-RPC error");
+
+        assert_rpc_error(
+            &response,
+            JSON_RPC_INVALID_PARAMS,
+            "agentName parameter is required for agent.describe",
+        );
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn agent_read_rpc_returns_not_found_for_unknown_agent() {
+        let state_path = unique_state_path("rpc-agent-not-found");
+        let profile_path = unique_profile_path("rpc-agent-not-found");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-agent-not-found",
+                METHOD_AGENT_DESCRIBE,
+                AgentJsonRpcParams::for_agent("missing"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("unknown agent RPC should return a JSON-RPC error");
+
+        assert_rpc_error(
+            &response,
+            JSON_RPC_AGENT_NOT_FOUND,
+            "agent not found: missing",
+        );
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn agent_read_rpc_rejects_unknown_method_names() {
+        let state_path = unique_state_path("rpc-unknown-method");
+        let profile_path = unique_profile_path("rpc-unknown-method");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-unknown-method",
+                "agent.write",
+                AgentJsonRpcParams::default(),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("unknown methods should return a JSON-RPC error");
+
+        assert_rpc_error(
+            &response,
+            JSON_RPC_METHOD_NOT_FOUND,
+            "unknown JSON-RPC method: agent.write",
+        );
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);
@@ -1855,6 +1985,119 @@ mod tests {
     }
 
     #[test]
+    fn shell_listener_serves_local_shell_html_over_tcp() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("listener should bind");
+        let address = listener.local_addr().expect("listener should report local addr");
+
+        let server = thread::spawn(move || {
+            serve_local_shell_with_listener(listener, Some(1)).expect("shell listener should serve one request");
+        });
+
+        let mut stream = TcpStream::connect(address).expect("client should connect");
+        stream
+            .write_all(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
+            .expect("request should write");
+        stream
+            .shutdown(Shutdown::Write)
+            .expect("client write-half should shut down");
+
+        let response = read_stream_to_string(&mut stream);
+
+        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
+        assert!(response.contains("Content-Type: text/html; charset=utf-8"));
+        assert!(response.contains("Cache-Control: no-store"));
+        assert!(response.contains("FERROS Local Shell"));
+
+        server.join().expect("listener thread should exit cleanly");
+    }
+
+    #[test]
+    fn shell_listener_posts_json_rpc_agent_list_over_tcp() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("listener should bind");
+        let address = listener.local_addr().expect("listener should report local addr");
+        let request = serde_json::to_string(&AgentJsonRpcRequest::new(
+            "req-socket",
+            METHOD_AGENT_LIST,
+            AgentJsonRpcParams::default(),
+        ))
+        .expect("request should serialize");
+
+        let server = thread::spawn(move || {
+            serve_local_shell_with_listener(listener, Some(1)).expect("shell listener should serve one request");
+        });
+
+        let mut stream = TcpStream::connect(address).expect("client should connect");
+        let request_bytes = format!(
+            "POST /rpc HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            request.len(),
+            request,
+        );
+        stream
+            .write_all(request_bytes.as_bytes())
+            .expect("request should write");
+        stream
+            .shutdown(Shutdown::Write)
+            .expect("client write-half should shut down");
+
+        let response = read_stream_to_string(&mut stream);
+        let payload = parse_http_response_json(&response);
+
+        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
+        match payload.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentList { agents } => {
+                assert_eq!(agents.len(), 2);
+                assert_eq!(agents[0].name, "echo");
+                assert_eq!(agents[1].name, "timer");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        server.join().expect("listener thread should exit cleanly");
+    }
+
+    #[test]
+    fn shell_listener_posts_json_rpc_invalid_params_error_over_tcp() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("listener should bind");
+        let address = listener.local_addr().expect("listener should report local addr");
+        let request = serde_json::to_string(&AgentJsonRpcRequest::new(
+            "req-invalid-params",
+            METHOD_AGENT_DESCRIBE,
+            AgentJsonRpcParams::default(),
+        ))
+        .expect("request should serialize");
+
+        let server = thread::spawn(move || {
+            serve_local_shell_with_listener(listener, Some(1))
+                .expect("shell listener should serve one request");
+        });
+
+        let mut stream = TcpStream::connect(address).expect("client should connect");
+        let request_bytes = format!(
+            "POST /rpc HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            request.len(),
+            request,
+        );
+        stream
+            .write_all(request_bytes.as_bytes())
+            .expect("request should write");
+        stream
+            .shutdown(Shutdown::Write)
+            .expect("client write-half should shut down");
+
+        let response = read_stream_to_string(&mut stream);
+        let payload = parse_http_response_json(&response);
+
+        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
+        assert_rpc_error(
+            &payload,
+            JSON_RPC_INVALID_PARAMS,
+            "agentName parameter is required for agent.describe",
+        );
+
+        server.join().expect("listener thread should exit cleanly");
+    }
+
+    #[test]
     fn shell_route_returns_not_found_for_unknown_paths() {
         let state_path = unique_state_path("shell-404");
         let profile_path = unique_profile_path("shell-404");
@@ -1989,5 +2232,32 @@ mod tests {
         let _ = fs::remove_file(path.with_extension("key.json"));
         let _ = fs::remove_file(path.with_extension("grants.json"));
         cleanup_parent_dir(path);
+    }
+
+    fn read_stream_to_string(stream: &mut TcpStream) -> String {
+        let mut response = String::new();
+        stream
+            .read_to_string(&mut response)
+            .expect("response should read as UTF-8");
+        response
+    }
+
+    fn parse_http_response_json(response: &str) -> AgentJsonRpcResponse {
+        let (_, body) = response
+            .split_once("\r\n\r\n")
+            .expect("HTTP response should contain a header terminator");
+        serde_json::from_str(body).expect("HTTP response JSON should deserialize")
+    }
+
+    fn assert_rpc_error(response: &AgentJsonRpcResponse, code: i32, message: &str) {
+        assert!(response.result.is_none(), "expected no JSON-RPC result payload");
+
+        let error = response
+            .error
+            .as_ref()
+            .expect("expected JSON-RPC error payload");
+
+        assert_eq!(error.code, code);
+        assert_eq!(error.message, message);
     }
 }

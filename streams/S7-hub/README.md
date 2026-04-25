@@ -33,8 +33,10 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 ## Current lane
 
 - Treat `docs/hub/reference-hardware.md` as the hardware recipe authority for this wave and keep it aligned to the evidence G4 will eventually require.
-- Decide the first physical hardware targets and Home Assistant topology.
+- Use the Pack B `x86_64` lane as the first bring-up target unless real hardware availability forces a Pi-first pass, because it improves shell access, log capture, rollback, and restart debugging while staying launch-valid.
+- Keep the first Home Assistant lab topology separate from the device under test so later restart and deny-observability evidence can be attributed cleanly.
 - Keep pairing notes at the level of constraints and open questions bound to S2 consumer surfaces plus the S3/S4 seams that will eventually enforce them.
+- Map each unchecked G4 evidence item to one upstream seam and one S7-owned proof point before any `ferros-hub` crate or HA bridge work is proposed.
 
 ---
 
@@ -61,22 +63,43 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 - S7 currently treats pairing as a bounded consumer-side design problem, not a stream-local protocol that can be ratified from planning docs alone.
 - S2 gives S7 stable names to plan around today: `ProfileId` and `CapabilityGrant`.
 - S7 can document hub obligations now: operator approval checkpoints, signed-grant persistence, revocation expectations, restart and power-cycle survival, and consent-deny observability.
-- S7 should not freeze handshake order, signing ceremony details, or authoritative grant semantics until G3 closes and the real S3/S4 seams are available.
+- S7 should not freeze handshake order, signing ceremony details, or authoritative grant semantics just because G3 is closed; the real hub-facing S3/S4 seams are still not concrete enough to lock the protocol details.
 
 ---
 
-## Open pairing questions
+## Runway pairing checkpoint map
 
-- What minimum device bootstrap state must exist before the hub can request, receive, or store grants on first start?
-- Which runtime boundary owns grant persistence and revocation fan-out in practice: hub-local storage, S4 runtime policy, or an S3 registration seam?
-- At what agent-registration point must grant checks gate Home Assistant entity exposure?
-- What operator-visible deny path is required between runtime logs and the HA dashboard to satisfy G4 evidence without redefining S2 grant semantics?
+This map is runway-only. It binds provisional pairing checkpoints to the current S2 consumer surfaces plus the S3 registry/list/log surfaces and S4 runtime policy, deny logging, and restart seams. It does not ratify handshake order, grant-issuance ceremony, or an authoritative pairing protocol.
+
+| Checkpoint | Current seam map | What stays open |
+|------------|------------------|-----------------|
+| bootstrap | Use S2 `ProfileId` as the device-side identity surface S7 plans around; use the S4 restart seam as the boundary that will eventually prove whether bootstrap state is present before and after restart. | Who creates the initial device state, what first-start approval path exists, and the exact bootstrap order remain provisional. |
+| grant check | Use S2 `CapabilityGrant` as the grant currency; use S4 runtime policy as the enforcement seam; use the S3 registry/list surfaces as the place S7 expects to observe whether the bridge agent is present when checks begin. | The exact point where registration, approval, and grant issuance must occur remains open. |
+| deny visibility | Use S4 deny logging as the source of truth for rejected capability use; use the S3 log surface as the FERROS-side inspection path while HA-facing visibility remains an integration outcome. | The final operator-visible split between HA UI and FERROS logs remains open. |
+| persistence | Treat S2 `ProfileId` and `CapabilityGrant` state as the material that must survive clean restart and full power cycle; use the S4 restart seam as the boundary S7 plans around for reload. | Storage ownership, on-disk layout, and durability choreography remain open until the real hub exists. |
+| revocation | Treat revoked S2 `CapabilityGrant` state as something S4 runtime policy and deny logging must reflect once implementation exists. | Revocation propagation, fan-out, and operator workflow remain provisional. |
+| re-registration | Use the S3 registry/list surfaces as the checkpoint for the bridge agent returning after restart; use the S4 restart seam as the host/runtime recovery boundary. | Reconnect order, refresh behavior, and the exact relationship between re-registration and HA recovery remain open. |
+
+---
+
+## S2 consumer-boundary questions S7 needs answered before naming an authoritative pairing flow
+
+These queue-ready S2-facing questions are the next step after the landed six-checkpoint map. They keep S7 in runway mode, do not freeze handshake order, and do not redefine `ProfileId` or `CapabilityGrant` semantics from S7 docs.
+
+| Checkpoint | S2 consumer-boundary question S7 still needs answered | Why S7 needs the answer |
+|------------|--------------------------------------------------------|--------------------------|
+| bootstrap | What minimum `ProfileId`-bound device state may S7 assume already exists and is durable before the hub attempts any first-start pairing action? | S7 needs a stable consumer-side boundary for initial device identity without inventing a hub-local bootstrap ceremony. |
+| grant check | What consumer-visible condition tells S7 it is valid to treat a `CapabilityGrant` as present for bridge-agent exposure and runtime grant checks? | S7 needs to know what it can gate on without defining its own approval or grant-issuance order. |
+| deny visibility | Which denied `CapabilityGrant` conditions should remain distinguishable at the consumer boundary when S7 surfaces a rejected action to operators? | S7 needs to route deny evidence to HA UI or `ferros agent logs` without changing S2 grant semantics. |
+| persistence | What persisted `ProfileId` or `CapabilityGrant` material may S7 rely on after restart and full power cycle, and what freshness boundary should S7 expect before reusing it? | S7 needs to plan durable storage and reload checks without claiming storage ownership or a final on-disk model. |
+| revocation | What consumer-visible revocation state or signal should cause S7 to stop treating a previously accepted `CapabilityGrant` as usable? | S7 needs a concrete upstream boundary for revocation handling instead of inventing stream-local revocation rules. |
+| re-registration | After restart, what S2-bound condition lets S7 treat a returning bridge agent as still operating under the same `ProfileId` and grant context versus requiring a new approval path? | S7 needs to know what can survive restart before it names any authoritative re-registration flow. |
 
 ---
 
 ## What this stream blocks
 
-- **Launch (G4).** S7 owns the launch gate, but G4 still depends on G3 closing and on real hardware evidence.
+- **Launch (G4).** S7 owns the launch gate, and the remaining blocker is real hardware and hub evidence.
 
 ---
 
@@ -109,7 +132,7 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 ## Immediate next steps
 
 1. Keep `docs/hub/reference-hardware.md` current with the chosen runway hardware, topology assumptions, and evidence fields.
-2. Select the first physical `aarch64` and `x86_64` candidates for bring-up.
-3. Record pairing constraints and open questions without freezing the final handshake before implementation work starts.
-4. Map the open questions above to the exact S2 consumer dependencies and S3/S4 seams that must land before an implementation plan is honest.
+2. Select the exact first `x86_64` Pack B device and one fallback `aarch64` Pack A device for bring-up.
+3. Route the S2 consumer-boundary question list above to S2 and record the answers before S7 names any authoritative pairing flow.
+4. Keep the G4 evidence map tied to the exact S2 consumer dependencies and S3/S4 seams that must land before an implementation plan is honest.
 5. Prepare the post-G3 design handoff for `ferros-hub` without scaffolding the crate or bridge in this wave.

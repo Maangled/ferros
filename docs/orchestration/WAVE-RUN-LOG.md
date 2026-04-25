@@ -2,6 +2,62 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+## 2026-04-24 — WAVE-2026-04-24-11
+
+- Selected item: `WAVE-2026-04-24-11`
+- Result: Recorded the already-landed S7 docs-only pairing-boundary slice in orchestration without widening into implementation; the repo already updated `streams/S7-hub/README.md` to replace the generic open pairing questions with an explicit six-row S2 consumer-boundary question list aligned to bootstrap, grant check, deny visibility, persistence, revocation, and re-registration, routed the immediate next step to S2, and updated `streams/S7-hub/BACKLOG.md` to mark both the six-checkpoint pairing map and the new question list as landed while replacing the old follow-up with routing those questions to S2 and recording the answers; no fresh S7 content edits were made in this invocation; no G4 evidence movement is claimed.
+- Files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Recorded the landed validation outcome with clean editor diagnostics on `streams/S7-hub/README.md` and `streams/S7-hub/BACKLOG.md`, plus passed consistency checks against `docs/hub/reference-hardware.md`, `streams/S7-hub/CONTRACTS.md`, `STATUS.md`, and `docs/gates/G4.md`.
+- Next follow-up: `WAVE-2026-04-24-12`
+
+## 2026-04-24 — WAVE-2026-04-24-10
+
+- Selected item: `WAVE-2026-04-24-10`
+- Result: Recorded the already-landed S7 pairing-checkpoint docs slice in orchestration only. The repo already added a runway-only six-checkpoint pairing map to `streams/S7-hub/README.md` and `docs/hub/reference-hardware.md` covering bootstrap, grant check, deny visibility, persistence, revocation, and re-registration, tied that map to the current S2 `ProfileId` and `CapabilityGrant` seams plus the S3 registry/list/log and S4 runtime policy, deny logging, and restart seams, and corrected stale pre-G3 wording in those same docs. No fresh S7 content edits were made in this invocation, and no G4 evidence movement is claimed.
+- Files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Recorded the landed validation outcome: editor diagnostics were clean on `STATUS.md`, `streams/S7-hub/README.md`, and `docs/hub/reference-hardware.md`; the consistency pass against `streams/S7-hub/CONTRACTS.md`, `STATUS.md`, and `docs/gates/G4.md` passed, but `streams/S7-hub/BACKLOG.md` still carries a stale open checkpoint-mapping row, so backlog consistency remains open for the next follow-up.
+- Next follow-up: `WAVE-2026-04-24-11`
+
+## 2026-04-24 — WAVE-2026-04-24-09
+
+- Selected item: `WAVE-2026-04-24-09`
+- Result: Recorded the landed S7 runway closeout in orchestration without widening into implementation. The repo already defines the first Home Assistant bridge runway contract in `streams/S7-hub/CONTRACTS.md`, syncs `streams/S7-hub/BACKLOG.md` and `streams/S7-hub/PROGRESS.md`, and keeps the scope at one bridge agent, one real entity minimum evidence, operator-visible deny attribution, restart-safe FERROS-side state, and the external `Maangled/home-assistant` fork boundary. No new S7 content edits were made in this invocation; the queue and run log now reflect that the generic bridge-assumption slice is complete.
+- Files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Recorded the landed validation outcome: editor diagnostics were clean on the touched S7 docs.
+- Next follow-up: `WAVE-2026-04-24-10`
+
+## 2026-04-24 — WAVE-2026-04-23-09
+
+- Selected item: `WAVE-2026-04-23-09`
+- Result: Recorded the landed S5 Phase A archive and link-hygiene closeout in orchestration. The repo already archived the inactive top-level HTML prototypes to `docs/legacy/`, kept the still-active docs-root surfaces in place, synced the S5 authority docs, and repaired the stale inbound references created by the archive move. No new S5 content edits were made in this invocation; the queue and run log now reflect the completed cleanup pack.
+- Files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Recorded the landed validation outcome: editor diagnostics were clean on the touched files, and grep had already confirmed that old docs-root references such as `docs/home-hud-dashboard.html` and `docs/ferros-project-map.html` were removed after repair.
+- Next follow-up: `WAVE-2026-04-24-09`
+
+## 2026-04-24 — WAVE-2026-04-24-08
+
+- Selected item: `WAVE-2026-04-24-08`
+- Result: Hardened the current read-first JSON-RPC boundary without changing its shape. `crates/ferros-node/src/lib.rs` now has focused tests that lock the existing error-envelope behavior for unsupported JSON-RPC version, missing `agentName` on `agent.describe`, unknown method names, and unknown agents, plus a real listener-level `POST /rpc` smoke that proves the live localhost shell host returns the same structured invalid-params response over TCP.
+- Files: `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/PROGRESS.md`, `streams/S3-agent-center/CONTRACTS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Passed `cargo test -p ferros-node agent_read_rpc_` and `cargo test -p ferros-node shell_listener_posts_json_rpc_`; the focused suite covered the direct handler and the live listener path without widening into broader workspace checks.
+- Next follow-up: `WAVE-2026-04-23-09` remains the only ready queue item, but if launch-path leverage still outranks cleanup, the next higher-value follow-on is a new queued slice around the first reusable `ferros-hub` wrapper seam or explicit Home Assistant bridge assumptions rather than Phase A archive moves.
+
+## 2026-04-24 — WAVE-2026-04-24-07
+
+- Selected item: `WAVE-2026-04-24-07`
+- Result: Converted the active S7 runway into a concrete first bring-up contract without widening into implementation. The S7 stream and hardware-runway docs now treat the Pack B `x86_64` lane as the preferred first bring-up target, keep Pack C as the separate Home Assistant companion host, and map each unchecked G4 evidence item to one upstream seam and one S7-owned proof point so future `ferros-hub` work can be judged against a concrete runway rather than broad intent.
+- Files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `streams/S7-hub/CONTRACTS.md`, `docs/hub/reference-hardware.md`, `streams/S7-hub/PROGRESS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Editor diagnostics stayed clean on the touched S7 and hardware-runway docs; no code or gate-truth validation was required because the slice stayed in runway mode and did not change executable surfaces.
+- Next follow-up: `WAVE-2026-04-23-09` remains the ready queue head. If launch-path leverage continues to outrank Phase A cleanup, queue the next S3/S7 follow-on around HA bridge assumptions or the first reusable `ferros-hub` wrapper seam only after the upstream host and contract surfaces are concrete enough.
+
+## 2026-04-24 — WAVE-2026-04-24-06
+
+- Selected item: `WAVE-2026-04-24-06`
+- Result: Hardened the current localhost shell host seam without widening the read-first contract. `crates/ferros-node/src/lib.rs` now exposes a bounded listener loop that the test suite can drive directly, and the new listener-level smoke tests prove that the real shell host serves `GET /` and answers `POST /rpc` with a live `agent.list` response through the same TCP, HTTP parse, and response-write path used by `ferros-node shell`.
+- Files: `crates/ferros-node/src/lib.rs`, `streams/S4-runtime/PROGRESS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Passed `cargo test -p ferros-node shell_`, including the existing route tests plus the new real-socket listener smokes for shell HTML and JSON-RPC agent list responses; final editor diagnostics stayed clean on the touched S4 and orchestration files.
+- Next follow-up: `WAVE-2026-04-23-09` remains the ready queue head. If consumer reliability and G4 alignment continue to outrank Phase A cleanup, queue the S7 bring-up-contract slice before archive work.
+
 ## 2026-04-24 — WAVE-2026-04-24-05
 
 - Selected item: `WAVE-2026-04-24-05`
