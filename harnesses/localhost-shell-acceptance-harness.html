@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>H9 — FERROS Localhost Shell Acceptance Harness</h1>
-<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates route switching, live registry detail, empty-state grant and deny handling, and read-only audit visibility &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
+<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates the aggregated <code>agent.snapshot</code> seam, local inspector reuse, route switching, empty-state grant and deny handling, and read-only audit visibility &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
 
 <button onclick="runJourney()">Run Journey</button>
 
@@ -103,6 +103,50 @@ function getDoc() {
   return document.getElementById('sut').contentDocument;
 }
 
+function getFrameWindow() {
+  return document.getElementById('sut').contentWindow;
+}
+
+function installRpcMonitor() {
+  var frameWindow = getFrameWindow();
+  if (!frameWindow || typeof frameWindow.fetch !== 'function') return false;
+  if (frameWindow.__h9RpcMonitorInstalled) return true;
+
+  var originalFetch = frameWindow.fetch.bind(frameWindow);
+  frameWindow.__h9ObservedRpcMethods = [];
+  frameWindow.fetch = function(input, init) {
+    var url = typeof input === 'string' ? input : input && input.url ? input.url : '';
+    var options = init || {};
+    var method = options.method || input && input.method || 'GET';
+    if (String(method).toUpperCase() === 'POST' && String(url).indexOf('/rpc') !== -1) {
+      try {
+        var payload = typeof options.body === 'string' ? JSON.parse(options.body) : null;
+        if (payload && payload.method) {
+          frameWindow.__h9ObservedRpcMethods.push(payload.method);
+        }
+      } catch (error) {
+        frameWindow.__h9ObservedRpcMethods.push('parse-error');
+      }
+    }
+    return originalFetch(input, init);
+  };
+  frameWindow.__h9RpcMonitorInstalled = true;
+  return true;
+}
+
+function resetRpcMonitor() {
+  var frameWindow = getFrameWindow();
+  if (frameWindow && frameWindow.__h9ObservedRpcMethods) {
+    frameWindow.__h9ObservedRpcMethods.length = 0;
+  }
+}
+
+function observedRpcMethods() {
+  var frameWindow = getFrameWindow();
+  if (!frameWindow || !frameWindow.__h9ObservedRpcMethods) return [];
+  return frameWindow.__h9ObservedRpcMethods.slice();
+}
+
 function reloadShellFrame() {
   return new Promise(function(resolve) {
     var iframe = document.getElementById('sut');
@@ -135,6 +179,10 @@ async function runJourney() {
   addResult('Setup', 'Shell iframe loaded from same-origin / route', loaded, loaded ? 'live shell DOM is readable from harness route' : '', loaded ? '' : 'timed out waiting for localhost shell iframe');
   if (!loaded) return;
 
+  var monitorInstalled = installRpcMonitor();
+  addResult('Setup', 'Same-origin fetch monitor installs on the shell iframe', monitorInstalled, monitorInstalled ? 'manual refresh and local selection RPCs are observable' : '', monitorInstalled ? '' : 'could not wrap iframe window.fetch');
+  if (!monitorInstalled) return;
+
   var doc = getDoc();
   var ready = await waitFor(function() {
     doc = getDoc();
@@ -151,22 +199,41 @@ async function runJourney() {
   addResult('A: Registry', 'Agent count pill matches the rendered list', doc.getElementById('agent-count-pill').textContent === String(agentRows.length), 'pill=' + doc.getElementById('agent-count-pill').textContent + ', rows=' + agentRows.length);
 
   try {
+    resetRpcMonitor();
+    await click(doc, '#refresh-button', 'refresh button');
+    var refreshSettled = await waitFor(function() {
+      doc = getDoc();
+      return observedRpcMethods().length > 0 && doc.getElementById('connection-state').dataset.state === 'ready';
+    }, 5000);
+    var refreshMethods = observedRpcMethods();
+    var snapshotOnly = refreshSettled && refreshMethods.length === 1 && refreshMethods[0] === 'agent.snapshot';
+    addResult('B: Snapshot Seam', 'Manual refresh uses only the aggregated agent.snapshot seam', snapshotOnly, 'methods=' + (refreshMethods.join(', ') || 'none'), snapshotOnly ? '' : 'expected exactly one agent.snapshot call during manual refresh');
+  } catch (error) {
+    addResult('B: Snapshot Seam', 'Manual refresh uses only the aggregated agent.snapshot seam', false, '', error.message);
+  }
+
+  try {
     await click(doc, '[data-route="agents"]', 'agents route button');
     await waitFor(function() {
       doc = getDoc();
       return doc.getElementById('active-route-pill').textContent.trim() === 'agents' && doc.querySelector('[data-focus-agent="timer"]');
     }, 3000);
+    resetRpcMonitor();
     await click(doc, '[data-focus-agent="timer"]', 'timer focus row');
     var timerSelected = await waitFor(function() {
       doc = getDoc();
       return doc.getElementById('status-selected').textContent.trim() === 'timer';
     }, 3000);
-    addResult('B: Inspector', 'Selecting timer updates the selected status rail', timerSelected, timerSelected ? 'status-selected=timer' : '', timerSelected ? '' : 'timer selection did not propagate to status rail');
+    addResult('C: Inspector', 'Selecting timer updates the selected status rail', timerSelected, timerSelected ? 'status-selected=timer' : '', timerSelected ? '' : 'timer selection did not propagate to status rail');
+
+    var selectionMethods = observedRpcMethods();
+    var reusesSnapshot = timerSelected && selectionMethods.length === 0;
+    addResult('C: Inspector', 'Selecting timer reuses loaded snapshot state without extra RPCs', reusesSnapshot, 'methods=' + (selectionMethods.join(', ') || 'none'), reusesSnapshot ? '' : 'expected zero additional RPC methods while selecting a loaded agent');
 
     var inspectorHasTimer = doc.getElementById('inspector-content').textContent.toLowerCase().indexOf('timer') !== -1;
-    addResult('B: Inspector', 'Inspector renders live timer detail', inspectorHasTimer, inspectorHasTimer ? 'timer detail visible in inspector' : '', inspectorHasTimer ? '' : 'inspector did not show timer detail');
+    addResult('C: Inspector', 'Inspector renders live timer detail', inspectorHasTimer, inspectorHasTimer ? 'timer detail visible in inspector' : '', inspectorHasTimer ? '' : 'inspector did not show timer detail');
   } catch (error) {
-    addResult('B: Inspector', 'Selecting timer updates the inspector', false, '', error.message);
+    addResult('C: Inspector', 'Selecting timer updates the inspector', false, '', error.message);
   }
 
   try {
@@ -179,7 +246,8 @@ async function runJourney() {
 
     if (grantsRoute) {
       doc.getElementById('profile-path-input').value = '/definitely/missing/profile.json';
-      doc.getElementById('profile-path-input').dispatchEvent(new Event('input', { bubbles: true }));
+      var FrameEvent = getFrameWindow().Event;
+      doc.getElementById('profile-path-input').dispatchEvent(new FrameEvent('input', { bubbles: true }));
       await click(doc, '#refresh-button', 'refresh button');
       var stillReady = await waitFor(function() {
         doc = getDoc();

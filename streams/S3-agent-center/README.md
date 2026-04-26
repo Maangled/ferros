@@ -43,7 +43,7 @@ Build the coordination surface that lets users register, inspect, authorize, and
 
 ## What this stream blocks
 
-- **S4 UX hooks:** The landed local CLI is the current runtime UX while reusable host/API surfaces remain open.
+- **S4 UX hooks:** The landed local CLI plus reusable in-memory demo host are the current runtime UX while broader lifecycle/write host surfaces remain open.
 - **S5 Phase B:** The local web shell talks to `ferros-agents` over JSON/RPC.
 - **Contributor onboarding:** Bringing a second contributor on becomes leverage-positive once S3 is functional.
 
@@ -77,7 +77,6 @@ Build the coordination surface that lets users register, inspect, authorize, and
 
 ## Immediate next steps
 
-1. Harden the `ferros-node demo` path into a reusable runtime-host integration surface.
-2. Expand deny-by-default evidence from the current manifest/runtime assertions into a dedicated lifecycle/log harness.
-3. Keep the current CLI local-only until the post-G3 JSON/RPC boundary for S5 is designed and accepted.
-4. Freeze the post-G2 S3 contracts once the S2 and S4 dependency surfaces settle.
+1. Expand deny-by-default evidence from the current manifest/runtime assertions into a dedicated lifecycle/log harness.
+2. Keep the current CLI and reusable in-memory host local-only until a real lifecycle/write wrapper surface exists and is accepted.
+3. Freeze the post-G2 S3 contracts once the S2 and S4 dependency surfaces settle.

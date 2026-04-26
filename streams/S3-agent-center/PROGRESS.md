@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-25 — Demo host hardened into a reusable in-memory host layer
+
+- Added reusable `DemoRuntime::reference_host()` and `DemoRuntime::run_reference_demo_cycle()` methods so the current reference-agent host path is no longer only a one-off top-level demo script.
+- Reused that same host bootstrap for persisted CLI-state replay, keeping the in-memory demo, shell/RPC host, and local CLI reconstruction paths aligned on one reference host surface.
+- Kept the slice below any published lifecycle/write wrapper or broader S4 runtime-host guarantee.
+- Validation passed with `cargo test -p ferros-node demo_`.
+
 ## 2026-04-24 — Read-first JSON-RPC error paths locked with focused coverage
 
 - Added focused `crates/ferros-node/src/lib.rs` tests for unsupported JSON-RPC version, missing `agentName` on `agent.describe`, unknown agent lookup, and unknown method names against the existing read-first handler.

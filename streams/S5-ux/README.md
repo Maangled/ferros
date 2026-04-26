@@ -1,7 +1,7 @@
 # S5 — UX
 
 **Stream:** S5  
-**Status:** 🟨 Phase A active on the real landing page; Phase B localhost read slice landed  
+**Status:** 🟨 Phase A active on the real landing page; Phase B localhost observation slice landed  
 **Gate:** Contributes to launch-readiness; no blocking gate owned solely by S5
 
 ---
@@ -65,7 +65,7 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 
 **Phase B:**
 - [x] Local web shell at `http://localhost:<port>` served by `ferros-node`.
-- [x] Agent list, agent describe, capability grant view — no fake data.
+- [x] Agent registry/detail, capability grant state, and deny-log observation consume the aggregated `agent.snapshot` read seam — no fake data.
 - [x] Deny log visible in the UI.
 
 The current Phase B slice is intentionally read-first. Privileged grant/revoke actions and broader browser acceptance coverage remain follow-up work.
@@ -92,4 +92,4 @@ The current Phase B slice is intentionally read-first. Privileged grant/revoke a
 
 1. Verify the remaining site links and archive candidates against current inbound references.
 2. Execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once link hygiene is confirmed.
-3. Add focused UI acceptance coverage for `ferros-node shell` and the current `/rpc` read path before widening into privileged write flows.
+3. Keep the shell observation-only while upstream write surfaces remain unpublished, then stage privileged grant/revoke shell intents without bypassing S2/S3/S4 consent boundaries.

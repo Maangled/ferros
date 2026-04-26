@@ -459,7 +459,7 @@
         <span class="panel-label">FERROS local shell</span>
         <h1 class="identity-title">Agent Center Read Surface</h1>
         <p class="identity-subtitle">
-          Fixed-slot localhost shell powered by the landed read-first JSON-RPC routes. This slice stays read-heavy on purpose: agent list, agent detail, grant state, and deny log are real; privileged writes remain future work.
+          Fixed-slot localhost shell powered by the landed read-first <code>agent.snapshot</code> JSON-RPC route. This slice stays observation-only on purpose: agent, grant-state, and deny-log views are real; privileged writes remain future work.
         </p>
         <div class="identity-meta">
           <span class="state-pill">route <span id="active-route-pill">agents</span></span>
@@ -478,7 +478,7 @@
       <section class="shell-notes">
         <div class="note-card">
           <div class="shell-note-title">Current lane contract</div>
-          <p class="shell-note-copy">Consumes <code>agent.list</code>, <code>agent.describe</code>, <code>grant.list</code>, and <code>denyLog.list</code> only. Consent and grant-write surfaces stay visible as owned future slots rather than fake actions.</p>
+          <p class="shell-note-copy">Consumes <code>agent.snapshot</code> only for live agent, grant-state, and deny-log observation. Consent and grant-write surfaces stay visible as owned future slots rather than fake actions.</p>
         </div>
       </section>
     </header>
@@ -530,17 +530,17 @@
           <article class="metric-card">
             <div class="metric-label">Registered agents</div>
             <div class="metric-value" id="metric-agents">0</div>
-            <div class="metric-copy">Current runtime registry rows through <code>agent.list</code>.</div>
+            <div class="metric-copy">Detailed runtime agent rows from <code>agent.snapshot</code>.</div>
           </article>
           <article class="metric-card">
             <div class="metric-label">Grant rows</div>
             <div class="metric-value" id="metric-grants">0</div>
-            <div class="metric-copy">Active or revoked grant state through <code>grant.list</code>.</div>
+            <div class="metric-copy">Active or revoked grant state from the same <code>agent.snapshot</code> read.</div>
           </article>
           <article class="metric-card">
             <div class="metric-label">Deny entries</div>
             <div class="metric-value" id="metric-denies">0</div>
-            <div class="metric-copy">Persisted deny evidence through <code>denyLog.list</code>.</div>
+            <div class="metric-copy">Persisted deny evidence from the same <code>agent.snapshot</code> read.</div>
           </article>
           <article class="metric-card">
             <div class="metric-label">Connection</div>
@@ -693,27 +693,46 @@
       return value;
     }
 
+    function snapshotParams() {
+      const profilePath = selectedProfilePath();
+      return profilePath ? { profilePath } : {};
+    }
+
+    function selectedAgentRecord() {
+      return state.agents.find((agent) => agent.name === state.selectedAgent) || null;
+    }
+
+    function reconcileSelectedAgent() {
+      const selectedAgent = selectedAgentRecord();
+      if (selectedAgent) {
+        setStatusSelection(selectedAgent.name);
+        return;
+      }
+
+      if (state.agents.length > 0) {
+        state.selectedAgent = state.agents[0].name;
+        setStatusSelection(state.selectedAgent);
+        return;
+      }
+
+      state.selectedAgent = null;
+      setStatusSelection('none');
+    }
+
     async function refreshShell() {
       setConnection('connecting', 'warming');
       try {
-        const [agentList, grantList, denyLog] = await Promise.all([
-          rpc('agent.list'),
-          rpc('grant.list', selectedProfilePath() ? { profilePath: selectedProfilePath() } : {}),
-          rpc('denyLog.list'),
-        ]);
+        const snapshotResult = await rpc('agent.snapshot', snapshotParams());
+        const snapshot = snapshotResult.snapshot || {};
 
-        state.agents = agentList.agents || [];
-        state.grants = grantList.grants || [];
-        state.denyEntries = denyLog.entries || [];
+        state.agents = snapshot.agents || [];
+        state.grants = snapshot.grants || [];
+        state.denyEntries = snapshot.denyLog || [];
+        state.selectedGrantIndex = state.grants[state.selectedGrantIndex ?? -1] ? state.selectedGrantIndex : null;
+        state.selectedDenyIndex = state.denyEntries[state.selectedDenyIndex ?? -1] ? state.selectedDenyIndex : null;
         state.errors = 0;
 
-        if (!state.selectedAgent && state.agents.length > 0) {
-          state.selectedAgent = state.agents[0].name;
-        }
-
-        if (state.selectedAgent) {
-          await loadAgentDetail(state.selectedAgent);
-        }
+        reconcileSelectedAgent();
 
         setConnection('ready', 'live');
         render();
@@ -723,13 +742,6 @@
         setStatusSelection('none');
         renderOffline(error instanceof Error ? error.message : String(error));
       }
-    }
-
-    async function loadAgentDetail(agentName) {
-      const detail = await rpc('agent.describe', { agentName });
-      state.selectedAgent = detail.agent.name;
-      state.selectedAgentDetail = detail.agent;
-      setStatusSelection(agentName);
     }
 
     function render() {
@@ -797,8 +809,9 @@
         </article>`;
 
       document.querySelectorAll('[data-agent-name]').forEach((button) => {
-        button.addEventListener('click', async () => {
-          await loadAgentDetail(button.dataset.agentName);
+        button.addEventListener('click', () => {
+          state.selectedAgent = button.dataset.agentName;
+          setStatusSelection(state.selectedAgent);
           render();
         });
       });
@@ -836,9 +849,10 @@
         </article>`).join('') || emptyNote('No deny entries', 'The deny log is currently clear.');
 
       document.querySelectorAll('[data-focus-agent]').forEach((button) => {
-        button.addEventListener('click', async () => {
+        button.addEventListener('click', () => {
           state.route = 'agents';
-          await loadAgentDetail(button.dataset.focusAgent);
+          state.selectedAgent = button.dataset.focusAgent;
+          setStatusSelection(state.selectedAgent);
           render();
         });
       });
@@ -866,13 +880,14 @@
 
     function renderInspector() {
       const inspector = document.getElementById('inspector-content');
+      const selectedAgent = selectedAgentRecord();
 
-      if (state.route === 'agents' && state.selectedAgentDetail) {
+      if (state.route === 'agents' && selectedAgent) {
         inspector.innerHTML = `
-          <div class="detail-pair"><div class="detail-key">Agent</div><div class="detail-value">${escapeHtml(state.selectedAgentDetail.name)}</div></div>
-          <div class="detail-pair"><div class="detail-key">Status</div><div class="detail-value">${escapeHtml(state.selectedAgentDetail.status)}</div></div>
-          <div class="detail-pair"><div class="detail-key">Version</div><div class="detail-value">${escapeHtml(state.selectedAgentDetail.version)}</div></div>
-          <div class="detail-pair"><div class="detail-key">Required capabilities</div><div class="detail-value">${renderCapabilities(state.selectedAgentDetail.requiredCapabilities)}</div></div>`;
+          <div class="detail-pair"><div class="detail-key">Agent</div><div class="detail-value">${escapeHtml(selectedAgent.name)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Status</div><div class="detail-value">${escapeHtml(selectedAgent.status)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Version</div><div class="detail-value">${escapeHtml(selectedAgent.version)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Required capabilities</div><div class="detail-value">${renderCapabilities(selectedAgent.requiredCapabilities)}</div></div>`;
         return;
       }
 
@@ -924,11 +939,11 @@
     function centerSubtitle() {
       switch (state.route) {
         case 'grants':
-          return 'Grant rows reflect the current local profile state through the landed read-first RPC contract.';
+          return 'Grant rows reflect the current local profile state through the loaded agent.snapshot read.';
         case 'denyLog':
-          return 'Deny-log rows stay inside the current persisted shell state and promote a selected event into the inspector.';
+          return 'Deny-log rows stay inside the current persisted shell state loaded through agent.snapshot.';
         default:
-          return 'Agent registry and detail now read through the landed JSON-RPC route set with no fake data.';
+          return 'Agent registry and detail now read through the loaded agent.snapshot seam with no fake data.';
       }
     }
 

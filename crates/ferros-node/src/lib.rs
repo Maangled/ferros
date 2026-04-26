@@ -11,11 +11,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use ferros_agents::{
     Agent, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult, AgentManifest,
-    AgentRegistry, AgentRpcAgentDetail, AgentRpcAgentSummary, AgentStatus, DenyLogEntry, EchoAgent,
-    GrantStateRecord, InMemoryAgentRegistry, ReferenceAgentError, RegistryError, TimerAgent,
+    AgentRegistry, AgentRpcAgentDetail, AgentRpcAgentSummary, AgentRpcSnapshot, AgentStatus,
+    DenyLogEntry, EchoAgent, GrantStateRecord, InMemoryAgentRegistry, ReferenceAgentError,
+    RegistryError, TimerAgent,
     JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_INVALID_PARAMS, JSON_RPC_INVALID_REQUEST,
     JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_DENY_LOG_LIST,
-    METHOD_GRANT_LIST,
+    METHOD_AGENT_SNAPSHOT, METHOD_GRANT_LIST,
 };
 use ferros_core::{
     Capability, CapabilityError, CapabilityGrantView, CapabilityRequest, DenyByDefaultPolicy,
@@ -324,6 +325,23 @@ impl DemoRuntime {
         }
     }
 
+    pub fn reference_host() -> Result<Self, DemoError> {
+        let profile_id = ProfileId::new(DEFAULT_PROFILE_ID)?;
+        let grants = vec![
+            CapabilityGrant::new(profile_id.clone(), "agent.echo"),
+            CapabilityGrant::new(profile_id.clone(), "agent.timer"),
+        ];
+        let mut runtime = Self::new(grants);
+
+        let echo = EchoAgent::new(profile_id.clone());
+        let timer = TimerAgent::new(profile_id);
+
+        runtime.register(echo.manifest(), Box::new(echo))?;
+        runtime.register(timer.manifest(), Box::new(timer))?;
+
+        Ok(runtime)
+    }
+
     pub fn register(
         &mut self,
         manifest: AgentManifest,
@@ -518,6 +536,39 @@ impl DemoRuntime {
         hosted.agent.poll().map_err(Into::into)
     }
 
+    pub fn run_reference_demo_cycle(&mut self) -> Result<DemoSummary, DemoError> {
+        self.start_agent("echo")?;
+        self.start_agent("timer")?;
+
+        let echo_response = self
+            .send_message("echo", "echo", "agent.echo", b"hello")?
+            .ok_or(DemoError::MissingEchoResponse)?;
+
+        let denied_requests = match self.send_message("echo", "echo", "agent.admin", b"nope")
+        {
+            Ok(_) => 0,
+            Err(DemoError::AuthorizationDenied(_)) => 1,
+            Err(error) => return Err(error),
+        };
+
+        let timer_event = self
+            .poll_agent("timer")?
+            .into_iter()
+            .next()
+            .ok_or(DemoError::MissingTimerEvent)?;
+
+        self.stop_agent("echo")?;
+        self.stop_agent("timer")?;
+
+        Ok(DemoSummary {
+            started_agents: self.list_agents(),
+            echo_response: String::from_utf8_lossy(&echo_response).into_owned(),
+            timer_event: String::from_utf8_lossy(&timer_event).into_owned(),
+            denied_requests,
+            log_entries: self.log_entries().to_vec(),
+        })
+    }
+
     #[must_use]
     pub fn log_entries(&self) -> &[String] {
         &self.log_entries
@@ -569,6 +620,24 @@ impl DemoRuntime {
         nonce
     }
 
+    fn replay_cli_state(&mut self, state: &CliState) -> Result<(), CliError> {
+        for (name, status) in &state.agent_statuses {
+            match status {
+                AgentStatus::Registered => {}
+                AgentStatus::Running => self.start_agent_internal(name, false)?,
+                AgentStatus::Stopped => self.stop_agent_internal(name, false)?,
+                _ => {
+                    return Err(CliError::InvalidState(format!(
+                        "unsupported persisted status for {name}: {}",
+                        format_agent_status(*status)
+                    )));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn map_infallible_executor(error: Infallible) -> DemoError {
         match error {}
     }
@@ -579,20 +648,7 @@ impl DemoRuntime {
 }
 
 pub fn build_reference_runtime() -> Result<DemoRuntime, DemoError> {
-    let profile_id = ProfileId::new(DEFAULT_PROFILE_ID)?;
-    let grants = vec![
-        CapabilityGrant::new(profile_id.clone(), "agent.echo"),
-        CapabilityGrant::new(profile_id.clone(), "agent.timer"),
-    ];
-    let mut runtime = DemoRuntime::new(grants);
-
-    let echo = EchoAgent::new(profile_id.clone());
-    let timer = TimerAgent::new(profile_id);
-
-    runtime.register(echo.manifest(), Box::new(echo))?;
-    runtime.register(timer.manifest(), Box::new(timer))?;
-
-    Ok(runtime)
+    DemoRuntime::reference_host()
 }
 
 pub fn execute_agent_cli(command: AgentCliCommand) -> Result<Vec<String>, CliError> {
@@ -966,6 +1022,46 @@ fn execute_agent_read_rpc_with_store_and_paths<S: LocalProfileStore>(
                 },
             ))
         }
+        METHOD_AGENT_SNAPSHOT => {
+            let state = CliState::load(state_path)?;
+            let runtime = runtime_with_state_from_loaded_state(&state)?;
+            let agent_name = params.agent_name.as_deref();
+            let agents = if let Some(agent_name) = agent_name {
+                let Some(agent) = runtime.describe_agent(agent_name) else {
+                    return Ok(AgentJsonRpcResponse::error(
+                        id,
+                        JSON_RPC_AGENT_NOT_FOUND,
+                        format!("agent not found: {agent_name}"),
+                    ));
+                };
+
+                vec![agent_record_to_rpc_detail(agent)]
+            } else {
+                runtime
+                    .agent_records()
+                    .into_iter()
+                    .map(agent_record_to_rpc_detail)
+                    .collect()
+            };
+            let profile_path = params
+                .profile_path
+                .as_deref()
+                .map(PathBuf::from)
+                .unwrap_or_else(|| default_profile_path.to_path_buf());
+            let grants = load_grant_state_records(store, &profile_path)?;
+            let deny_log = deny_log_entries(&state, agent_name);
+
+            Ok(AgentJsonRpcResponse::success(
+                id,
+                AgentJsonRpcResult::AgentSnapshot {
+                    snapshot: AgentRpcSnapshot {
+                        agents,
+                        grants,
+                        deny_log,
+                    },
+                },
+            ))
+        }
         METHOD_GRANT_LIST => {
             let profile_path = params
                 .profile_path
@@ -1172,21 +1268,8 @@ fn runtime_with_state(state_path: &Path) -> Result<DemoRuntime, CliError> {
 }
 
 fn runtime_with_state_from_loaded_state(state: &CliState) -> Result<DemoRuntime, CliError> {
-    let mut runtime = build_reference_runtime()?;
-
-    for (name, status) in &state.agent_statuses {
-        match status {
-            AgentStatus::Registered => {}
-            AgentStatus::Running => runtime.start_agent_internal(name, false)?,
-            AgentStatus::Stopped => runtime.stop_agent_internal(name, false)?,
-            _ => {
-                return Err(CliError::InvalidState(format!(
-                    "unsupported persisted status for {name}: {}",
-                    format_agent_status(*status)
-                )));
-            }
-        }
-    }
+    let mut runtime = DemoRuntime::reference_host()?;
+    runtime.replay_cli_state(state)?;
 
     Ok(runtime)
 }
@@ -1387,37 +1470,8 @@ fn parse_deny_log_entry(entry_id: usize, entry: &str) -> Option<DenyLogEntry> {
 }
 
 pub fn run_demo() -> Result<DemoSummary, DemoError> {
-    let mut runtime = build_reference_runtime()?;
-
-    runtime.start_agent("echo")?;
-    runtime.start_agent("timer")?;
-
-    let echo_response = runtime
-        .send_message("echo", "echo", "agent.echo", b"hello")?
-        .ok_or(DemoError::MissingEchoResponse)?;
-
-    let denied_requests = match runtime.send_message("echo", "echo", "agent.admin", b"nope") {
-        Ok(_) => 0,
-        Err(DemoError::AuthorizationDenied(_)) => 1,
-        Err(error) => return Err(error),
-    };
-
-    let timer_event = runtime
-        .poll_agent("timer")?
-        .into_iter()
-        .next()
-        .ok_or(DemoError::MissingTimerEvent)?;
-
-    runtime.stop_agent("echo")?;
-    runtime.stop_agent("timer")?;
-
-    Ok(DemoSummary {
-        started_agents: runtime.list_agents(),
-        echo_response: String::from_utf8_lossy(&echo_response).into_owned(),
-        timer_event: String::from_utf8_lossy(&timer_event).into_owned(),
-        denied_requests,
-        log_entries: runtime.log_entries().to_vec(),
-    })
+    let mut runtime = DemoRuntime::reference_host()?;
+    runtime.run_reference_demo_cycle()
 }
 
 #[cfg(test)]
@@ -1431,9 +1485,9 @@ mod tests {
     };
     use ferros_agents::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
-        AgentStatus, EchoAgent, TimerAgent, JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_INVALID_PARAMS,
+        AgentStatus, EchoAgent, JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_INVALID_PARAMS,
         JSON_RPC_INVALID_REQUEST, JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE,
-        METHOD_AGENT_LIST, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
+        METHOD_AGENT_LIST, METHOD_AGENT_SNAPSHOT, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
     };
     use ferros_profile::{CapabilityGrant, FileSystemProfileStore, ProfileDocument, ProfileId};
     use std::fs;
@@ -1461,23 +1515,26 @@ mod tests {
     }
 
     #[test]
+    fn demo_host_bootstraps_reference_agents_and_reuses_demo_cycle() {
+        let mut runtime = DemoRuntime::reference_host().expect("reference host should build");
+
+        assert_eq!(
+            runtime.list_agents(),
+            vec!["echo".to_string(), "timer".to_string()]
+        );
+
+        let summary = runtime
+            .run_reference_demo_cycle()
+            .expect("reference demo cycle should succeed");
+
+        assert_eq!(summary.echo_response, "hello");
+        assert_eq!(summary.timer_event, "tick-1");
+        assert_eq!(summary.denied_requests, 1);
+    }
+
+    #[test]
     fn runtime_lists_registered_reference_agents() {
-        let profile_id = ProfileId::new("profile-alpha").expect("valid profile id");
-        let grants = vec![
-            CapabilityGrant::new(profile_id.clone(), "agent.echo"),
-            CapabilityGrant::new(profile_id.clone(), "agent.timer"),
-        ];
-        let mut runtime = DemoRuntime::new(grants);
-
-        let echo = EchoAgent::new(profile_id.clone());
-        let timer = TimerAgent::new(profile_id);
-
-        runtime
-            .register(echo.manifest(), Box::new(echo))
-            .expect("echo should register");
-        runtime
-            .register(timer.manifest(), Box::new(timer))
-            .expect("timer should register");
+        let runtime = DemoRuntime::reference_host().expect("reference host should build");
 
         assert_eq!(
             runtime.list_agents(),
@@ -1881,6 +1938,100 @@ mod tests {
     }
 
     #[test]
+    fn agent_read_rpc_snapshot_filters_agent_and_deny_log_and_uses_profile_path() {
+        let store = FileSystemProfileStore;
+        let state_path = unique_state_path("rpc-snapshot-filtered");
+        let profile_path = unique_profile_path("rpc-snapshot-filtered");
+        let mut state = CliState::default();
+
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &store,
+        )
+        .expect("profile init should succeed");
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Grant {
+                path: profile_path.clone(),
+                capability: "agent.echo".to_owned(),
+            },
+            &store,
+        )
+        .expect("profile grant should succeed");
+
+        state.set_status("echo", AgentStatus::Running);
+        state.log_entries.push(
+            "denied:echo:agent.admin:Denied(NoGrantsPresented)".to_owned(),
+        );
+        state
+            .log_entries
+            .push("denied-start:timer missing agent.timer".to_owned());
+        state.save(&state_path).expect("state file should save");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-snapshot-filtered",
+                METHOD_AGENT_SNAPSHOT,
+                AgentJsonRpcParams {
+                    agent_name: Some("echo".to_owned()),
+                    profile_path: Some(profile_path.display().to_string()),
+                },
+            ),
+            &state_path,
+            &unique_profile_path("rpc-snapshot-filtered-default"),
+            &store,
+        )
+        .expect("snapshot RPC should succeed");
+
+        match response.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentSnapshot { snapshot } => {
+                assert_eq!(snapshot.agents.len(), 1);
+                assert_eq!(snapshot.agents[0].name, "echo");
+                assert_eq!(snapshot.agents[0].status, "running");
+                assert_eq!(snapshot.agents[0].required_capabilities.len(), 1);
+                assert_eq!(snapshot.grants.len(), 1);
+                assert_eq!(snapshot.grants[0].capability, "agent.echo");
+                assert_eq!(snapshot.deny_log.len(), 1);
+                assert_eq!(snapshot.deny_log[0].agent_name.as_deref(), Some("echo"));
+                assert_eq!(snapshot.deny_log[0].capability.as_deref(), Some("agent.admin"));
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_profile_artifacts(&unique_profile_path("rpc-snapshot-filtered-default"));
+    }
+
+    #[test]
+    fn agent_read_rpc_snapshot_returns_not_found_for_unknown_agent() {
+        let state_path = unique_state_path("rpc-snapshot-agent-not-found");
+        let profile_path = unique_profile_path("rpc-snapshot-agent-not-found");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-snapshot-agent-not-found",
+                METHOD_AGENT_SNAPSHOT,
+                AgentJsonRpcParams::for_agent("missing"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("unknown snapshot agent RPC should return a JSON-RPC error");
+
+        assert_rpc_error(
+            &response,
+            JSON_RPC_AGENT_NOT_FOUND,
+            "agent not found: missing",
+        );
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
     fn agent_read_rpc_lists_signed_grant_state_from_local_profile() {
         let store = FileSystemProfileStore;
         let state_path = unique_state_path("rpc-grants");
@@ -2147,6 +2298,51 @@ mod tests {
                 assert_eq!(agents.len(), 2);
                 assert_eq!(agents[0].name, "echo");
                 assert_eq!(agents[1].name, "timer");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        server.join().expect("listener thread should exit cleanly");
+    }
+
+    #[test]
+    fn shell_listener_posts_json_rpc_agent_snapshot_over_tcp() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("listener should bind");
+        let address = listener.local_addr().expect("listener should report local addr");
+        let request = serde_json::to_string(&AgentJsonRpcRequest::new(
+            "req-snapshot-socket",
+            METHOD_AGENT_SNAPSHOT,
+            AgentJsonRpcParams::default(),
+        ))
+        .expect("request should serialize");
+
+        let server = thread::spawn(move || {
+            serve_local_shell_with_listener(listener, Some(1))
+                .expect("shell listener should serve one request");
+        });
+
+        let mut stream = TcpStream::connect(address).expect("client should connect");
+        let request_bytes = format!(
+            "POST /rpc HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            request.len(),
+            request,
+        );
+        stream
+            .write_all(request_bytes.as_bytes())
+            .expect("request should write");
+        stream
+            .shutdown(Shutdown::Write)
+            .expect("client write-half should shut down");
+
+        let response = read_stream_to_string(&mut stream);
+        let payload = parse_http_response_json(&response);
+
+        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
+        match payload.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentSnapshot { snapshot } => {
+                assert_eq!(snapshot.agents.len(), 2);
+                assert_eq!(snapshot.agents[0].name, "echo");
+                assert_eq!(snapshot.agents[1].name, "timer");
             }
             other => panic!("unexpected RPC result: {other:?}"),
         }

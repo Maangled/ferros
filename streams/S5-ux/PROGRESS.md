@@ -4,6 +4,14 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-25 - Snapshot seam consumed in the live shell and harness
+
+- Switched the shell from fan-out `agent.list` / `grant.list` / `denyLog.list` plus `agent.describe` to one `agent.snapshot` read and local snapshot reuse for inspector selection.
+- Updated the same-origin localhost acceptance harness so it monitors `/rpc` fetches, asserts exactly one `agent.snapshot` refresh call, asserts zero extra RPCs while selecting a loaded agent, and drives the iframe profile-path input through the correct frame-window event constructor.
+- Live browser validation passed at `http://127.0.0.1:4317/` and `http://127.0.0.1:4317/harnesses/localhost-shell-acceptance.html`, with the harness finishing 16/16 checks against the real local shell.
+- Kept the slice observation-only: no privileged writes, no grant mutation claims, and no G4 evidence.
+- Editor diagnostics are clean on the touched S5 files in this session.
+
 ## 2026-04-24 - Five docs prototypes archived into docs/legacy
 
 - Moved `home-hud-dashboard.html`, `architecture-design-lab.html`, `architecture-design-lab-builder.html`, `ferros-mind-map.html`, and `ferros-project-map.html` from `docs/` into `docs/legacy/`.

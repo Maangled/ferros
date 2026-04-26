@@ -4,17 +4,17 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 
 ## Ready
 
-### WAVE-2026-04-25-01
+### WAVE-2026-04-25-04
 
-- Title: Land the first real S3 hub-facing wrapper/API slice for S7 runway
+- Title: Expand deny-by-default evidence into a dedicated lifecycle/log harness
 - Status: ready
 - Priority: P1
-- Gate: G4 runway
-- Owning streams: S3 primary, S7 consumer awareness, S8 truth-sync if queue or stream docs move
-- Goal: Add the narrowest real S3 wrapper/API implementation surface on top of the current registry and read-first inspection seams so S3 can honestly publish the next hub-facing lifecycle-wrapper or richer observation contract once that implementation exists, without inventing pairing choreography, bridge-control sequencing, or S4 restart/reload semantics.
-- Anchor files: `crates/ferros-agents/src/registry.rs`, `crates/ferros-agents/src/rpc.rs`, `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/BACKLOG.md`, `streams/S7-hub/BACKLOG.md`
-- Validation: focused `cargo test -p ferros-agents` and `cargo test -p ferros-node` coverage for the new wrapper/API slice; editor diagnostics on touched S3 and S7 docs if publication wording moves; verify the landed publication names only the code-backed wrapper/API surface that actually exists and keeps pairing choreography, bridge-control sequencing, S4 restart/reload semantics, schemas, and G4 evidence unpublished unless they truly land
-- Constraints: Keep the slice S3-owned and implementation-backed. Do not publish a new wrapper/API contract without landing the real implementation surface it names. Do not invent pairing choreography, bridge-control sequencing, or S4 restart/reload semantics. Do not touch schemas, STATUS.md, docs/gates/G4.md, or crates/ferros-hub/, and do not claim G4 evidence.
+- Gate: post-G3 contract hardening
+- Owning streams: S3 primary, S4 host awareness, S8 truth-sync if queue or stream docs move
+- Goal: Expand deny-by-default evidence from the current manifest authorization plus `ferros-node` demo/runtime denial-log assertions into a dedicated lifecycle/log harness around the current reusable in-memory host and local `ferros` agent state path so the repo proves denied lifecycle attempts and deny-log observation together without publishing lifecycle/write wrapper APIs, richer remote observation/control transport, S5 privileged grant/revoke UX, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Anchor files: `crates/ferros-agents/src/manifest.rs`, `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`
+- Validation: focused `cargo test -p ferros-agents manifest_authorization_`; focused `cargo test -p ferros-node agent_cli_`; focused `cargo test -p ferros-node agent_read_rpc_`; editor diagnostics on touched S3 docs if wording moves; verify the slice stays inside deny-by-default lifecycle/log evidence and does not publish lifecycle/write wrapper or richer remote observation/control contracts, S5 privileged grant/revoke UX, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence
+- Constraints: Keep the slice S3-owned and evidence-backed. Keep the current CLI and reusable in-memory host local-only. Do not publish lifecycle/write wrapper or richer remote observation/control contracts. Do not widen into S5 privileged grant/revoke UX, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
 - Last update: 2026-04-25
 
 ## In Progress
@@ -26,6 +26,45 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-25-03
+
+- Title: Harden `ferros-node demo` into a reusable runtime-host integration layer
+- Status: done
+- Priority: P1
+- Gate: post-G3 runtime-host hardening
+- Owning streams: S3 primary, S4 host awareness, S8 truth-sync if queue or stream docs move
+- Goal: Turn the current deterministic `ferros-node demo` path into a reusable runtime-host integration layer around the existing registry, reference-agent, and deny-by-default seams so later lifecycle/write wrapper work can build on a code-backed host surface without inventing pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/PROGRESS.md`, `streams/S3-agent-center/README.md`
+- Validation: parent-thread checks passed. `cargo test -p ferros-node demo_` passed. `cargo test -p ferros-node reload_boundary_runtime_with_state_` passed. `cargo run -p ferros-node --bin ferros -- demo` printed the stable deterministic output (`started: echo,timer`, `echo: hello`, `timer: tick-1`, `denied: 1`). `get_errors` is clean on `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/PROGRESS.md`, and `streams/S3-agent-center/README.md`.
+- Constraints: Keep the slice S3-owned and implementation-backed. Respect the current S4 host/runtime hardening constraint beyond the in-memory demo and only take the minimum shared host-trait alignment directly required for the reusable layer. Do not publish lifecycle/write wrapper/API contracts or S5 privileged flows until those code-backed surfaces actually exist.
+- Last update: 2026-04-25
+
+### WAVE-2026-04-25-02
+
+- Title: Consume the landed agent.snapshot observation surface in the S5 local shell
+- Status: done
+- Priority: P1
+- Gate: post-G3 consumer reliability
+- Owning streams: S5 primary, S3 consumer awareness, S8 truth-sync if docs move
+- Goal: Consume the landed read-only agent.snapshot surface in `site/agent-center-shell.html` and the same-origin localhost-shell acceptance path so the user-end shell can render current agent, grant-state, and deny-log observation from one aggregated read without inventing lifecycle/write UX, pairing choreography, bridge-control sequencing, or S4 restart/reload semantics.
+- Anchor files: `site/agent-center-shell.html`, `harnesses/localhost-shell-acceptance-harness.html`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/PROGRESS.md`, `streams/S5-ux/README.md`
+- Validation: parent-thread checks passed. `get_errors` is clean on `site/agent-center-shell.html`, `harnesses/localhost-shell-acceptance-harness.html`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/PROGRESS.md`, and `streams/S5-ux/README.md`. Live browser validation at `http://127.0.0.1:4317/` showed the real shell in ready/live state with snapshot-based copy and aggregated metrics. Same-origin live harness validation at `http://127.0.0.1:4317/harnesses/localhost-shell-acceptance.html` passed 16/16 checks against the real local shell, including snapshot-only manual refresh, zero extra RPCs on loaded-agent selection, grants empty-state degradation, deny-log visibility, and read-only audit copy.
+- Constraints: Keep the slice observation-only and S5-owned. Do not add lifecycle/write UX, consent or grant mutation flows, pairing choreography, bridge-control sequencing, or S4 restart/reload changes. Do not touch schemas, `crates/ferros-hub`, or G4 evidence, and only truth-sync S5 docs that actually move.
+- Last update: 2026-04-25
+
+### WAVE-2026-04-25-01
+
+- Title: Land the first real S3 hub-facing wrapper/API slice for S7 runway
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S3 primary, S7 consumer awareness, S8 truth-sync if queue or stream docs move
+- Goal: Add the narrowest real S3 wrapper/API implementation surface on top of the current registry and read-first inspection seams so S3 can honestly publish the next hub-facing lifecycle-wrapper or richer observation contract once that implementation exists, without inventing pairing choreography, bridge-control sequencing, or S4 restart/reload semantics.
+- Anchor files: `crates/ferros-agents/src/registry.rs`, `crates/ferros-agents/src/rpc.rs`, `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/BACKLOG.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: focused `cargo test -p ferros-agents` and `cargo test -p ferros-node` coverage for the new wrapper/API slice; editor diagnostics on touched S3 and S7 docs if publication wording moves; verify the landed publication names only the code-backed wrapper/API surface that actually exists and keeps pairing choreography, bridge-control sequencing, S4 restart/reload semantics, schemas, and G4 evidence unpublished unless they truly land
+- Constraints: Keep the slice S3-owned and implementation-backed. Do not publish a new wrapper/API contract without landing the real implementation surface it names. Do not invent pairing choreography, bridge-control sequencing, or S4 restart/reload semantics. Do not touch schemas, STATUS.md, docs/gates/G4.md, or crates/ferros-hub/, and do not claim G4 evidence.
+- Last update: 2026-04-25
 
 ### WAVE-2026-04-24-18
 

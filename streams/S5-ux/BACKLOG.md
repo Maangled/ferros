@@ -24,8 +24,9 @@
 - [x] Agent detail surface
 - [x] Capability grant surface
 - [x] Deny log surface
+- [x] Aggregate agent registry/detail, grant-state, and deny-log observation through the single `agent.snapshot` read seam
 - [x] Wire to real `ferros-node` backend — no fake data
-- [x] Add focused UI acceptance coverage for `ferros-node shell` plus `/rpc`
+- [x] Same-origin UI acceptance for `ferros-node shell` plus `/rpc` proves snapshot-only refresh and inspector reuse from loaded shell state
 - [ ] Stage privileged grant/revoke shell intents without bypassing S2/S3/S4 consent boundaries
 
 ## Later (Phase C — post-G3)

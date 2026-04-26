@@ -22,17 +22,19 @@
 - [x] Focused deny-by-default coverage across manifest authorization and demo/runtime denial logging
 - [x] Land S3-owned docs-only seam classification for S7 runway planning against current registry plus local/read-first inspection surfaces
 - [x] Publish the first hub-facing wrapper boundary for S7: lock what is currently honest on `AgentRegistry` plus local/read-first inspection surfaces while keeping hub-facing lifecycle-wrapper and richer remote observation/control unpublished
-- [ ] Harden `ferros-node demo` into a reusable runtime-host integration layer
-- [ ] Publish the next S3 follow-up only when a real wrapper/API slice exists: define the hub-facing lifecycle wrapper and any richer remote observation/control contract without inventing pairing choreography, bridge-control sequencing, or S4 restart/reload semantics
+- [x] Land the narrow read-only wrapper/API slice: aggregated `agent.snapshot` JSON/RPC observation over current agent detail, grant-state, and deny-log sources
+- [x] Harden `ferros-node demo` into a reusable runtime-host integration layer
+- [ ] Expand deny-by-default evidence from the current manifest/runtime assertions into a dedicated lifecycle/log harness
+- [ ] Publish the next S3 follow-up only when a real lifecycle/write wrapper/API slice exists: define the hub-facing lifecycle wrapper and any richer remote observation/control contract without inventing pairing choreography, bridge-control sequencing, or S4 restart/reload semantics
 
 ## Later
 
 - [ ] Concrete Unix domain socket and named pipe adapters for the bus boundary
-- [ ] JSON/RPC layer for S5 Phase B web shell
+- [ ] Lifecycle/write JSON/RPC follow-up for S5 Phase B web shell once a real privileged wrapper slice exists
 - [ ] Agent capability introspection (describe why denied)
 - [ ] Agent manifest versioning
 
 ## Blocked
 
 - Final G3 contract freeze still depends on G2 locking `ProfileId` and `CapabilityGrant`.
-- Reusable runtime-host/API convergence still depends on S4 stabilizing shared execution traits.
+- Broader lifecycle/write host/API convergence still depends on S4 stabilizing shared execution traits.

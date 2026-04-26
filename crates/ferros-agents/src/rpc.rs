@@ -5,6 +5,7 @@ use crate::manifest::CapabilityRequirement;
 pub const JSON_RPC_VERSION: &str = "2.0";
 pub const METHOD_AGENT_LIST: &str = "agent.list";
 pub const METHOD_AGENT_DESCRIBE: &str = "agent.describe";
+pub const METHOD_AGENT_SNAPSHOT: &str = "agent.snapshot";
 pub const METHOD_GRANT_LIST: &str = "grant.list";
 pub const METHOD_DENY_LOG_LIST: &str = "denyLog.list";
 
@@ -113,6 +114,7 @@ pub struct AgentJsonRpcError {
 pub enum AgentJsonRpcResult {
     AgentList { agents: Vec<AgentRpcAgentSummary> },
     AgentDetail { agent: AgentRpcAgentDetail },
+    AgentSnapshot { snapshot: AgentRpcSnapshot },
     GrantList { grants: Vec<GrantStateRecord> },
     DenyLog { entries: Vec<DenyLogEntry> },
 }
@@ -131,6 +133,14 @@ pub struct AgentRpcAgentDetail {
     pub version: String,
     pub status: String,
     pub required_capabilities: Vec<CapabilityRequirement>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentRpcSnapshot {
+    pub agents: Vec<AgentRpcAgentDetail>,
+    pub grants: Vec<GrantStateRecord>,
+    pub deny_log: Vec<DenyLogEntry>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -161,8 +171,11 @@ pub struct DenyLogEntry {
 mod tests {
     use super::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
-        AgentRpcAgentSummary, DenyLogEntry, METHOD_AGENT_LIST,
+        AgentRpcAgentDetail, AgentRpcAgentSummary, AgentRpcSnapshot, DenyLogEntry,
+        GrantStateRecord, METHOD_AGENT_LIST,
     };
+    use crate::manifest::CapabilityRequirement;
+    use ferros_profile::ProfileId;
 
     #[test]
     fn request_round_trips_through_json_with_empty_params_omitted() {
@@ -198,6 +211,45 @@ mod tests {
     }
 
     #[test]
+    fn response_round_trips_agent_snapshot_payloads() {
+        let response = AgentJsonRpcResponse::success(
+            "req-snapshot",
+            AgentJsonRpcResult::AgentSnapshot {
+                snapshot: AgentRpcSnapshot {
+                    agents: vec![AgentRpcAgentDetail {
+                        name: "echo".to_owned(),
+                        version: "0.1.0".to_owned(),
+                        status: "running".to_owned(),
+                        required_capabilities: vec![CapabilityRequirement::new(
+                            ProfileId::new("profile-alpha").expect("valid profile id"),
+                            "agent.echo",
+                        )],
+                    }],
+                    grants: vec![GrantStateRecord {
+                        profile_id: "profile-alpha".to_owned(),
+                        capability: "agent.echo".to_owned(),
+                        is_active: true,
+                        revoked_at: None,
+                        revocation_reason: None,
+                    }],
+                    deny_log: vec![DenyLogEntry {
+                        entry_id: 2,
+                        kind: "denied".to_owned(),
+                        message: "echo:agent.admin:Denied(NoGrantsPresented)".to_owned(),
+                        agent_name: Some("echo".to_owned()),
+                        capability: Some("agent.admin".to_owned()),
+                    }],
+                },
+            },
+        );
+        let encoded = serde_json::to_string_pretty(&response).expect("response should serialize");
+        let decoded: AgentJsonRpcResponse =
+            serde_json::from_str(&encoded).expect("response should deserialize");
+
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
     fn result_tags_agent_list_payloads_with_kind() {
         let response = AgentJsonRpcResponse::success(
             "req-3",
@@ -213,5 +265,35 @@ mod tests {
 
         assert_eq!(encoded["result"]["kind"], "agentList");
         assert_eq!(encoded["result"]["agents"][0]["name"], "echo");
+    }
+
+    #[test]
+    fn result_tags_agent_snapshot_payloads_with_kind_and_camel_case_fields() {
+        let response = AgentJsonRpcResponse::success(
+            "req-4",
+            AgentJsonRpcResult::AgentSnapshot {
+                snapshot: AgentRpcSnapshot {
+                    agents: vec![AgentRpcAgentDetail {
+                        name: "echo".to_owned(),
+                        version: "0.1.0".to_owned(),
+                        status: "registered".to_owned(),
+                        required_capabilities: Vec::new(),
+                    }],
+                    grants: Vec::new(),
+                    deny_log: vec![DenyLogEntry {
+                        entry_id: 1,
+                        kind: "deniedStart".to_owned(),
+                        message: "echo missing agent.echo".to_owned(),
+                        agent_name: Some("echo".to_owned()),
+                        capability: Some("agent.echo".to_owned()),
+                    }],
+                },
+            },
+        );
+        let encoded = serde_json::to_value(response).expect("response should serialize to JSON");
+
+        assert_eq!(encoded["result"]["kind"], "agentSnapshot");
+        assert!(encoded["result"]["snapshot"].get("denyLog").is_some());
+        assert_eq!(encoded["result"]["snapshot"]["agents"][0]["name"], "echo");
     }
 }
