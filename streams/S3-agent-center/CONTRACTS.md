@@ -34,9 +34,23 @@
 - The current `ferros agent` surface is intentionally local-only: it rebuilds the reference runtime per invocation and persists minimal status/log state in the temp directory, so it should not be treated as the post-G3 JSON/RPC contract.
 - The first post-G3 JSON/RPC surface is intentionally read-first: `agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, and `denyLog.list` now exist as typed JSON/RPC request and response shapes in `crates/ferros-agents/src/rpc.rs`, with a local host handler in `crates/ferros-node/src/lib.rs` backed by the current runtime, persisted grant state, and deny-log state.
 - Focused `ferros-node` tests now lock the current read-first error-envelope behavior for unsupported JSON-RPC version, missing `agentName` on `agent.describe`, unknown method names, and unknown agents, including a live `POST /rpc` socket smoke through the localhost shell host.
-- The read-first JSON/RPC surface is currently served only through the local shell host and does not yet publish a broader remote transport contract, health endpoints, subscriptions, or privileged write actions. Grant creation/revoke flows remain shell intents plus future post-read contract work rather than part of this read-first contract.
-- Current deny-by-default evidence is scoped to manifest authorization results plus `ferros-node` demo/runtime denial logging; a broader policy/log harness surface remains open.
+- The read-first JSON/RPC surface is currently served only through the local shell host and does not yet publish a broader remote transport contract, health endpoints, subscriptions, or privileged write actions. Grant creation/revoke flows remain shell intents plus future post-read contract work rather than part of this read-first contract, and S4 restart/reload semantics remain unpublished/open on this boundary.
+- Current deny-by-default evidence now spans manifest authorization results plus a dedicated local lifecycle/log harness around the `ferros` agent state path: denied lifecycle attempts persist `denied-start:*` entries into CLI state, `ferros agent logs` exposes them, and `denyLog.list` can observe them through the read-first local shell host. Broader remote or write-side policy/log harness surfaces remain open.
+- The first local-only lifecycle/write seam is now implementation-backed through the current `ferros` CLI/state path: `ferros agent run` and `ferros agent stop` mutate only the persisted local state path, while `agent.describe` and `agent.snapshot` provide stable read-after-write observation of those local lifecycle transitions on that same path. This still does not publish a broader lifecycle/write wrapper/API or any remote-control contract.
 - `EchoAgent` and `TimerAgent` are intentionally in-crate convergence fixtures for G3 prep; they can be split into dedicated crates later if that improves packaging or release boundaries.
+
+---
+
+## Minimum first lifecycle/write entry bar
+
+The minimum local-only slice below is now landed. It remains below any broader lifecycle/write wrapper, richer remote observation/control surface, or privileged UX claim; S4 restart/reload semantics also remain unpublished/open at this boundary.
+
+| Required element | Current seam to reuse | Minimum semantics | Still not implied |
+|------------------|-----------------------|-------------------|-------------------|
+| Local host/write seam | `DemoRuntime::reference_host()` and `run_reference_demo_cycle()` in `crates/ferros-node` | The first wrapper/API slice stays local-only and reuses the current in-memory host path instead of defining a new remote host surface | No remote transport, broader host/lifecycle contract, or S4 restart/reload semantics are published |
+| Local CLI/state path | current `ferros agent` CLI behavior plus persisted local state path | Landed locally: every write attempt goes through the current local path and remains deny-by-default on each lifecycle/write attempt | No privileged UX, grant-write, or bridge-control contract is published |
+| Read-after-write observation | local CLI inspection plus read-first JSON/RPC methods (`agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, `denyLog.list`) | Landed locally: allowed and denied write attempts are observable through stable read-after-write checks on the current local/read-first surfaces | No richer remote observation/control, subscriptions, or streaming contract is published |
+| Evidence bar | dedicated deny-by-default lifecycle/log harness | Landed locally: focused harness coverage proves the deny-by-default write path and the resulting read-after-write observation on the current local-only seam | No G4 evidence or broader remote-control validation surface is implied |
 
 ---
 

@@ -24,8 +24,10 @@
 - [x] Publish the first hub-facing wrapper boundary for S7: lock what is currently honest on `AgentRegistry` plus local/read-first inspection surfaces while keeping hub-facing lifecycle-wrapper and richer remote observation/control unpublished
 - [x] Land the narrow read-only wrapper/API slice: aggregated `agent.snapshot` JSON/RPC observation over current agent detail, grant-state, and deny-log sources
 - [x] Harden `ferros-node demo` into a reusable runtime-host integration layer
-- [ ] Expand deny-by-default evidence from the current manifest/runtime assertions into a dedicated lifecycle/log harness
-- [ ] Publish the next S3 follow-up only when a real lifecycle/write wrapper/API slice exists: define the hub-facing lifecycle wrapper and any richer remote observation/control contract without inventing pairing choreography, bridge-control sequencing, or S4 restart/reload semantics
+- [x] Expand deny-by-default evidence from the current manifest/runtime assertions into a dedicated lifecycle/log harness
+- [x] Land the docs-only entry bar for the next S3 follow-up: keep lifecycle/write wrapper, richer remote observation/control, privileged UX, grant-write, bridge-control, and S4 restart/reload claims unpublished until a code-backed local-only slice exists
+- [x] Land the minimum code-backed local-only lifecycle/write slice by reusing `DemoRuntime::reference_host()` / `run_reference_demo_cycle()`, the current local CLI/state-path behavior, the local CLI inspection plus JSON/RPC read methods for stable read-after-write observation, and the dedicated deny-by-default lifecycle/log harness before any broader wrapper/API contract is published; that minimum local-only slice still does not publish remote transport, richer remote observation/control, grant writes, bridge-control choreography, or S4 restart/reload semantics
+- [ ] Publish the first broader lifecycle/write wrapper/API slice only when a real code-backed surface exists above the current local-only seam and still keeps remote transport, richer remote observation/control, privileged UX, grant writes, bridge-control choreography, and S4 restart/reload semantics unpublished until they actually land
 
 ## Later
 

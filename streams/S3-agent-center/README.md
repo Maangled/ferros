@@ -57,7 +57,7 @@ Build the coordination surface that lets users register, inspect, authorize, and
 - [x] Current deny-by-default evidence exists in manifest authorization coverage plus demo/runtime denial-log assertions.
 - [x] Thin local `ferros agent list | describe | run | stop | logs` wrapper is functional against the reference agents.
 - [x] IPC bus transport abstraction is in place; concrete socket/pipe adapters remain open.
-- [ ] Broader deny-by-default lifecycle/log harness coverage for final G3 closure.
+- [x] Broader deny-by-default lifecycle/log harness coverage for final G3 closure.
 
 ---
 
@@ -75,8 +75,17 @@ Build the coordination surface that lets users register, inspect, authorize, and
 
 ---
 
+## Minimum first lifecycle/write entry bar
+
+- The first honest S3 lifecycle/write slice now exists only as a narrow, code-backed, local-only seam over the current `ferros-node` surfaces: `DemoRuntime::reference_host()`, `run_reference_demo_cycle()`, and the current CLI/state-path behavior.
+- The published inspection boundary stays read-first: local CLI inspection plus the current JSON/RPC read methods (`agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, `denyLog.list`) now provide stable local read-after-write observation of the current local lifecycle path; S4 restart/reload semantics remain unpublished/open at this boundary.
+- Every write attempt on this seam remains deny-by-default and is backed by focused lifecycle/log harness evidence.
+- This still does not publish remote transport, richer remote observation/control, privileged UX claims, grant writes, bridge-control choreography, or S4 restart/reload semantics.
+
+---
+
 ## Immediate next steps
 
-1. Expand deny-by-default evidence from the current manifest/runtime assertions into a dedicated lifecycle/log harness.
-2. Keep the current CLI and reusable in-memory host local-only until a real lifecycle/write wrapper surface exists and is accepted.
-3. Freeze the post-G2 S3 contracts once the S2 and S4 dependency surfaces settle.
+1. Keep the current local CLI plus read-first inspection surfaces as the only published boundary until a broader code-backed lifecycle/write wrapper surface exists; S4 restart/reload semantics remain unpublished/open there.
+2. Make the next implementation wave only the narrowest surface above this landed local-only seam, without publishing remote transport, richer remote observation/control, privileged UX, grant writes, bridge-control choreography, or S4 restart/reload semantics early.
+3. Freeze the post-G2 S3 contracts only after that next surface exists and the S2 and S4 dependency surfaces settle.

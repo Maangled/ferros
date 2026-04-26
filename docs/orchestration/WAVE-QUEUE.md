@@ -4,17 +4,17 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 
 ## Ready
 
-### WAVE-2026-04-25-04
+### WAVE-2026-04-25-07
 
-- Title: Expand deny-by-default evidence into a dedicated lifecycle/log harness
+- Title: Define the minimum first broader lifecycle/write wrapper/API entry bar above the local-only seam
 - Status: ready
 - Priority: P1
-- Gate: post-G3 contract hardening
+- Gate: post-G3 broader lifecycle/write prep
 - Owning streams: S3 primary, S4 host awareness, S8 truth-sync if queue or stream docs move
-- Goal: Expand deny-by-default evidence from the current manifest authorization plus `ferros-node` demo/runtime denial-log assertions into a dedicated lifecycle/log harness around the current reusable in-memory host and local `ferros` agent state path so the repo proves denied lifecycle attempts and deny-log observation together without publishing lifecycle/write wrapper APIs, richer remote observation/control transport, S5 privileged grant/revoke UX, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
-- Anchor files: `crates/ferros-agents/src/manifest.rs`, `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`
-- Validation: focused `cargo test -p ferros-agents manifest_authorization_`; focused `cargo test -p ferros-node agent_cli_`; focused `cargo test -p ferros-node agent_read_rpc_`; editor diagnostics on touched S3 docs if wording moves; verify the slice stays inside deny-by-default lifecycle/log evidence and does not publish lifecycle/write wrapper or richer remote observation/control contracts, S5 privileged grant/revoke UX, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence
-- Constraints: Keep the slice S3-owned and evidence-backed. Keep the current CLI and reusable in-memory host local-only. Do not publish lifecycle/write wrapper or richer remote observation/control contracts. Do not widen into S5 privileged grant/revoke UX, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Goal: Use the landed local-only `ferros agent run` / `ferros agent stop` state-path seam, the current read-first `agent.describe`, `agent.snapshot`, `grant.list`, and `denyLog.list` observation surfaces, and the dedicated deny-by-default lifecycle/log evidence as fixed input to define the smallest honest first broader lifecycle/write wrapper/API slice S3 could publish next, naming the minimum additional code-backed surface required above the landed local-only seam before any broader wrapper/API, remote transport, richer remote observation/control, privileged UX, grant-write semantics, bridge-control sequencing, or broader S4 restart/reload claim is honest.
+- Anchor files: `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/README.md`
+- Validation: `get_errors` clean on touched S3 docs; verify the landed wording uses the local-only seam as fixed input, defines only the minimum first broader wrapper/API entry bar above it, and keeps remote transport, richer remote observation/control, privileged UX, grant-write semantics, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, and G4 evidence unpublished until a code-backed surface exists.
+- Constraints: Keep the wave docs-only/prep and S3-owned. Do not change code. Do not publish a broader lifecycle/write wrapper/API or remote/control contract as landed without a code-backed surface. Do not widen into remote transport, richer remote observation/control, privileged UX, grant-write semantics, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
 - Last update: 2026-04-25
 
 ## In Progress
@@ -26,6 +26,45 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-25-06
+
+- Title: Land the first local-only lifecycle/write seam through the current CLI/state path
+- Status: done
+- Priority: P1
+- Gate: post-G3 local-only lifecycle/write seam
+- Owning streams: S3 primary, S4 host awareness, S8 truth-sync if queue or stream docs move
+- Goal: Reuse `DemoRuntime::reference_host()`, `run_reference_demo_cycle()`, the current local CLI/state-path behavior, the current local CLI inspection plus read-first JSON-RPC methods, and the dedicated deny-by-default lifecycle/log harness to land the narrowest real local-only lifecycle/write seam through the existing CLI/state path, without publishing a lifecycle/write wrapper/API, richer remote observation/control, privileged UX, grant-write, bridge-control, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/README.md`
+- Validation: parent-thread checks passed. `cargo test -p ferros-node agent_read_rpc_observes_cli_lifecycle_state_after_local_run_and_stop` passed. `cargo test -p ferros-node agent_cli_` passed. `cargo test -p ferros-node agent_read_rpc_` passed. `get_errors` is clean on `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/README.md`, and `streams/S3-agent-center/PROGRESS.md`.
+- Constraints: Keep the slice S3-owned, implementation-backed, and local-only through the existing CLI/state path. Reuse the documented local seams instead of publishing a wrapper/API or remote-control surface. Do not widen into richer remote observation/control, privileged UX, grant-write, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Last update: 2026-04-25
+
+### WAVE-2026-04-25-05
+
+- Title: Define the minimum first lifecycle/write wrapper entry bar
+- Status: done
+- Priority: P1
+- Gate: post-G3 lifecycle/write prep
+- Owning streams: S3 primary, S4 host awareness, S8 truth-sync if queue or stream docs move
+- Goal: Use the landed reusable in-memory host plus dedicated deny-by-default lifecycle/log evidence as fixed input to define the smallest honest first lifecycle/write wrapper/API slice S3 could publish next, naming which current local-only seams may be reused and which write-side semantics must exist before any wrapper, richer remote observation/control, or privileged UX claim is honest.
+- Anchor files: `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/README.md`
+- Validation: parent-thread checks passed. `get_errors` is clean on `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, and `streams/S3-agent-center/README.md`. The landed wording was reread directly and keeps lifecycle/write wrapper/API, richer remote observation/control, privileged UX, grant-write, bridge-control, and broader S4 restart/reload semantics unpublished while naming `DemoRuntime::reference_host()`, `run_reference_demo_cycle()`, the current local CLI/state path, the current local CLI inspection plus read-first JSON-RPC methods, and the dedicated deny-by-default lifecycle/log harness as the local-only seams to reuse before any honest lifecycle/write publication.
+- Constraints: Keep the wave docs-only/prep and S3-owned. Do not change code. Do not publish lifecycle/write wrapper or remote-control contract text as landed.
+- Last update: 2026-04-25
+
+### WAVE-2026-04-25-04
+
+- Title: Expand deny-by-default evidence into a dedicated lifecycle/log harness
+- Status: done
+- Priority: P1
+- Gate: post-G3 contract hardening
+- Owning streams: S3 primary, S4 host awareness, S8 truth-sync if queue or stream docs move
+- Goal: Expand deny-by-default evidence from the current manifest authorization plus `ferros-node` demo/runtime denial-log assertions into a dedicated lifecycle/log harness around the current reusable in-memory host and local `ferros` agent state path so the repo proves denied lifecycle attempts and deny-log observation together without publishing lifecycle/write wrapper APIs, richer remote observation/control transport, S5 privileged grant/revoke UX, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Anchor files: `crates/ferros-agents/src/manifest.rs`, `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`
+- Validation: parent-thread checks passed. `cargo test -p ferros-agents manifest_authorization_` passed. `cargo test -p ferros-node agent_cli_` passed. `cargo test -p ferros-node agent_read_rpc_` passed. `get_errors` is clean on `crates/ferros-node/src/lib.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/PROGRESS.md`, and `streams/S3-agent-center/README.md`.
+- Constraints: Keep the slice S3-owned and evidence-backed. Keep the current CLI and reusable in-memory host local-only. Do not publish lifecycle/write wrapper or richer remote observation/control contracts. Do not widen into S5 privileged grant/revoke UX, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Last update: 2026-04-25
 
 ### WAVE-2026-04-25-03
 

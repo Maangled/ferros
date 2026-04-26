@@ -4,6 +4,19 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-25 — First local-only lifecycle/write seam landed through the CLI/state path
+
+- Added focused `crates/ferros-node/src/lib.rs` coverage that drives `ferros agent run` and `ferros agent stop` through the existing local state path, then proves `agent.describe` and `agent.snapshot` observe the resulting running and stopped state on the same path.
+- Kept the seam local-only and below any broader wrapper/API claim: the landed slice reuses the current CLI/state path, current read-first inspection surfaces, and the dedicated deny-by-default lifecycle/log harness instead of publishing remote transport, richer remote observation/control, privileged UX, grant writes, bridge-control choreography, or S4 restart/reload semantics.
+- Validation passed with focused `cargo test -p ferros-node agent_read_rpc_observes_cli_lifecycle_state_after_local_run_and_stop`, `cargo test -p ferros-node agent_cli_`, and `cargo test -p ferros-node agent_read_rpc_`.
+
+## 2026-04-25 — Denied lifecycle/log harness landed on the local state path
+
+- Added focused `crates/ferros-node/src/lib.rs` harness coverage that drives a denied `ferros agent run echo` attempt through the local state path, proves the agent stays registered, persists the `denied-start:echo missing agent.echo` evidence, and exposes that evidence through both `ferros agent logs` and `denyLog.list`.
+- Adjusted the local CLI state-path execution so denied lifecycle attempts persist their runtime log evidence before returning the authorization error.
+- Kept the slice local-only and evidence-backed: no lifecycle/write wrapper APIs, no richer remote observation/control transport, and no S5 privileged-flow work.
+- Validation passed with focused `cargo test -p ferros-node agent_cli_denied_run_` and `cargo test -p ferros-node agent_read_rpc_exposes_denied_lifecycle_`.
+
 ## 2026-04-25 — Demo host hardened into a reusable in-memory host layer
 
 - Added reusable `DemoRuntime::reference_host()` and `DemoRuntime::run_reference_demo_cycle()` methods so the current reference-agent host path is no longer only a one-off top-level demo script.

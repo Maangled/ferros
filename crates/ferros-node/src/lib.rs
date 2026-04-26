@@ -331,6 +331,12 @@ impl DemoRuntime {
             CapabilityGrant::new(profile_id.clone(), "agent.echo"),
             CapabilityGrant::new(profile_id.clone(), "agent.timer"),
         ];
+
+        Self::reference_host_with_grants(grants)
+    }
+
+    fn reference_host_with_grants(grants: Vec<CapabilityGrant>) -> Result<Self, DemoError> {
+        let profile_id = ProfileId::new(DEFAULT_PROFILE_ID)?;
         let mut runtime = Self::new(grants);
 
         let echo = EchoAgent::new(profile_id.clone());
@@ -1096,9 +1102,18 @@ fn execute_agent_cli_with_state_path(
     command: AgentCliCommand,
     state_path: &Path,
 ) -> Result<Vec<String>, CliError> {
+    execute_agent_cli_with_runtime_loader(command, state_path, runtime_with_state_from_loaded_state)
+}
+
+fn execute_agent_cli_with_runtime_loader(
+    command: AgentCliCommand,
+    state_path: &Path,
+    runtime_loader: fn(&CliState) -> Result<DemoRuntime, CliError>,
+) -> Result<Vec<String>, CliError> {
     match command {
         AgentCliCommand::List => {
-            let runtime = runtime_with_state(state_path)?;
+            let state = CliState::load(state_path)?;
+            let runtime = runtime_loader(&state)?;
             let mut lines = vec!["name\tversion\tstatus".to_owned()];
 
             lines.extend(
@@ -1111,7 +1126,8 @@ fn execute_agent_cli_with_state_path(
             Ok(lines)
         }
         AgentCliCommand::Describe { name } => {
-            let runtime = runtime_with_state(state_path)?;
+            let state = CliState::load(state_path)?;
+            let runtime = runtime_loader(&state)?;
             let record = runtime
                 .describe_agent(&name)
                 .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
@@ -1120,18 +1136,32 @@ fn execute_agent_cli_with_state_path(
         }
         AgentCliCommand::Run { name } => {
             let mut state = CliState::load(state_path)?;
-            let mut runtime = runtime_with_state_from_loaded_state(&state)?;
+            let mut runtime = runtime_loader(&state)?;
             let record = runtime
                 .describe_agent(&name)
                 .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
 
             if record.status != AgentStatus::Running {
-                runtime.start_agent(&name)?;
-                state.set_status(&name, AgentStatus::Running);
-                state
-                    .log_entries
-                    .extend(runtime.log_entries().iter().cloned());
-                state.save(state_path)?;
+                let start_result = runtime.start_agent(&name);
+
+                if !runtime.log_entries().is_empty() {
+                    state
+                        .log_entries
+                        .extend(runtime.log_entries().iter().cloned());
+                }
+
+                match start_result {
+                    Ok(()) => {
+                        state.set_status(&name, AgentStatus::Running);
+                        state.save(state_path)?;
+                    }
+                    Err(error) => {
+                        if !runtime.log_entries().is_empty() {
+                            state.save(state_path)?;
+                        }
+                        return Err(error.into());
+                    }
+                }
             }
 
             let status = runtime
@@ -1143,7 +1173,7 @@ fn execute_agent_cli_with_state_path(
         }
         AgentCliCommand::Stop { name } => {
             let mut state = CliState::load(state_path)?;
-            let mut runtime = runtime_with_state_from_loaded_state(&state)?;
+            let mut runtime = runtime_loader(&state)?;
             runtime
                 .describe_agent(&name)
                 .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
@@ -1477,7 +1507,8 @@ pub fn run_demo() -> Result<DemoSummary, DemoError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        default_profile_path, execute_agent_cli_with_state_path, execute_agent_read_rpc_json,
+        default_profile_path, execute_agent_cli_with_runtime_loader,
+        execute_agent_cli_with_state_path, execute_agent_read_rpc_json,
         execute_agent_read_rpc_with_store_and_paths, execute_profile_cli_with_store,
         route_shell_request_with_store_and_paths, run_demo, runtime_with_state,
         serve_local_shell_with_listener, AgentCliCommand, CliError, CliState, DemoError,
@@ -1667,6 +1698,138 @@ mod tests {
             logs,
             vec!["started:echo".to_string(), "stopped:echo".to_string()]
         );
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn agent_read_rpc_observes_cli_lifecycle_state_after_local_run_and_stop() {
+        let state_path = unique_state_path("rpc-cli-lifecycle");
+        let profile_path = unique_profile_path("rpc-cli-lifecycle");
+
+        execute_agent_cli_with_state_path(
+            AgentCliCommand::Run {
+                name: "echo".to_string(),
+            },
+            &state_path,
+        )
+        .expect("run should succeed");
+
+        let running_detail = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-cli-lifecycle-running-detail",
+                METHOD_AGENT_DESCRIBE,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("describe RPC should succeed after local run");
+
+        match running_detail.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentDetail { agent } => {
+                assert_eq!(agent.name, "echo");
+                assert_eq!(agent.status, "running");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        let running_snapshot = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-cli-lifecycle-running-snapshot",
+                METHOD_AGENT_SNAPSHOT,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("snapshot RPC should succeed after local run");
+
+        match running_snapshot.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentSnapshot { snapshot } => {
+                assert_eq!(snapshot.agents.len(), 1);
+                assert_eq!(snapshot.agents[0].name, "echo");
+                assert_eq!(snapshot.agents[0].status, "running");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        execute_agent_cli_with_state_path(
+            AgentCliCommand::Stop {
+                name: "echo".to_string(),
+            },
+            &state_path,
+        )
+        .expect("stop should succeed");
+
+        let stopped_snapshot = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-cli-lifecycle-stopped-snapshot",
+                METHOD_AGENT_SNAPSHOT,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("snapshot RPC should succeed after local stop");
+
+        match stopped_snapshot.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentSnapshot { snapshot } => {
+                assert_eq!(snapshot.agents.len(), 1);
+                assert_eq!(snapshot.agents[0].name, "echo");
+                assert_eq!(snapshot.agents[0].status, "stopped");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    fn denied_reference_runtime_from_loaded_state(state: &CliState) -> Result<DemoRuntime, CliError> {
+        let mut runtime =
+            DemoRuntime::reference_host_with_grants(Vec::new()).map_err(CliError::from)?;
+        runtime.replay_cli_state(state)?;
+        Ok(runtime)
+    }
+
+    #[test]
+    fn agent_cli_denied_run_persists_deny_start_without_mutating_agent_state() {
+        let state_path = unique_state_path("lifecycle-denied-start");
+
+        let error = execute_agent_cli_with_runtime_loader(
+            AgentCliCommand::Run {
+                name: "echo".to_string(),
+            },
+            &state_path,
+            denied_reference_runtime_from_loaded_state,
+        )
+        .expect_err("run should be denied without grants");
+
+        assert!(matches!(
+            error,
+            CliError::Runtime(DemoError::AuthorizationDenied(message))
+                if message == "echo missing agent.echo"
+        ));
+
+        let describe = execute_agent_cli_with_runtime_loader(
+            AgentCliCommand::Describe {
+                name: "echo".to_string(),
+            },
+            &state_path,
+            denied_reference_runtime_from_loaded_state,
+        )
+        .expect("describe should still succeed after denied run");
+
+        assert!(describe.iter().any(|line| line == "status: registered"));
+
+        let logs = execute_agent_cli_with_state_path(AgentCliCommand::Logs { name: None }, &state_path)
+            .expect("logs should reflect the denied lifecycle attempt");
+
+        assert_eq!(logs, vec!["denied-start:echo missing agent.echo".to_string()]);
 
         cleanup_state_path(&state_path);
     }
@@ -2114,6 +2277,46 @@ mod tests {
                 assert_eq!(entries[0].agent_name.as_deref(), Some("echo"));
                 assert_eq!(entries[0].capability.as_deref(), Some("agent.admin"));
                 assert_eq!(entries[0].kind, "denied");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn agent_read_rpc_exposes_denied_lifecycle_entries_from_cli_state() {
+        let state_path = unique_state_path("rpc-denied-lifecycle");
+        let profile_path = unique_profile_path("rpc-denied-lifecycle");
+
+        execute_agent_cli_with_runtime_loader(
+            AgentCliCommand::Run {
+                name: "echo".to_string(),
+            },
+            &state_path,
+            denied_reference_runtime_from_loaded_state,
+        )
+        .expect_err("run should be denied without grants");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-denied-lifecycle",
+                METHOD_DENY_LOG_LIST,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("deny log RPC should succeed");
+
+        match response.result.expect("result should be present") {
+            AgentJsonRpcResult::DenyLog { entries } => {
+                assert_eq!(entries.len(), 1);
+                assert_eq!(entries[0].kind, "deniedStart");
+                assert_eq!(entries[0].agent_name.as_deref(), Some("echo"));
+                assert_eq!(entries[0].capability.as_deref(), Some("agent.echo"));
             }
             other => panic!("unexpected RPC result: {other:?}"),
         }
