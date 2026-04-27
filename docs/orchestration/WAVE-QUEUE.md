@@ -4,18 +4,18 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 
 ## Ready
 
-### WAVE-2026-04-26-07
+### WAVE-2026-04-27-02
 
-- Title: Expose richer local deny-reason introspection on the `LocalAgentApi` seam
+- Title: Define the minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy
 - Status: ready
 - Priority: P1
-- Gate: post-G3 local wrapper/API hardening
-- Owning streams: S3 primary, S4 support, S8 truth-sync if docs move
-- Goal: Reuse the landed local-only `LocalAgentApi` path to preserve and expose missing-capability deny detail on the same local lifecycle/read-after-write seam without widening into write JSON/RPC, browser control, remote transport, grant writes, bridge-control choreography, or broader S4 restart/reload claims.
-- Anchor files: `crates/ferros-node/src/lib.rs`, `crates/ferros-node/src/bin/ferros.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`
-- Validation: Focused `cargo test -p ferros-node local_agent_api_` and `cargo test -p ferros-node agent_cli_`; add `cargo test -p ferros-node agent_read_rpc_` and `cargo test -p ferros-node shell_listener_posts_json_rpc_` if read payloads move; `get_errors` clean on touched owner docs.
-- Constraints: Keep the hot lane narrow around `crates/ferros-node/src/lib.rs`. Do not publish write JSON/RPC, browser control, remote transport, grant-write semantics, bridge-control choreography, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
-- Last update: 2026-04-26
+- Gate: post-G3 local/browser control prep
+- Owning streams: S5 primary, S3 contract awareness, S4 support awareness, S8 truth-sync if docs move
+- Goal: Use the landed local-only `agent.run` / `agent.stop` backend slice and the newly landed selected-agent shell intent copy as fixed input to define the smallest honest browser-issued local lifecycle control bar, including where consent/audit gating begins, before the shell is allowed to send write RPC.
+- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`
+- Validation: `get_errors` clean on touched owner docs.
+- Constraints: Keep the wave docs-only and S5-owned. Do not change shell code. Do not wire browser-issued writes, publish grant/revoke actions, broaden remote transport, introduce broader privileged UX, or publish broader S4 restart/reload semantics without a later code-backed follow-up.
+- Last update: 2026-04-27
 
 ## In Progress
 
@@ -26,6 +26,71 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-27-01
+
+- Title: Stage selected-agent shell intent copy and read-only slot affordances on the live localhost shell
+- Status: done
+- Priority: P1
+- Gate: post-G3 local/browser control prep
+- Owning streams: S5 primary
+- Goal: Use the landed shell-intent boundary to stage selected-agent lifecycle intent copy and read-only affordances in the focus, tools, and consent/audit slots on the current localhost shell without wiring browser-issued writes, grant/revoke actions, or broader browser control.
+- Anchor files: `site/agent-center-shell.html`, `harnesses/localhost-shell-acceptance-harness.html`, `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/PROGRESS.md`
+- Validation: `get_errors` is clean on `site/agent-center-shell.html`, `harnesses/localhost-shell-acceptance-harness.html`, `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, and `streams/S5-ux/PROGRESS.md`. Live browser validation at `http://127.0.0.1:4317/` proved selected-agent intent copy updates with agent selection and flips between `agent.run` and `agent.stop` after out-of-band local CLI `run` / `stop` plus refresh. `cargo run -p ferros-node --bin ferros -- agent run echo` passed. `cargo run -p ferros-node --bin ferros -- agent stop echo` passed. Same-origin live harness validation at `http://127.0.0.1:4317/harnesses/localhost-shell-acceptance.html` passed 19 checks, failed 0, and skipped 8 operator/optional checks.
+- Constraints: Keep the shell read-only. Do not wire browser-issued writes, publish grant/revoke actions, broaden remote transport, introduce broader privileged UX, or publish broader S4 restart/reload semantics.
+- Last update: 2026-04-27
+
+### WAVE-2026-04-26-10
+
+- Title: Define the minimum first shell-intent entry bar above the landed local-only lifecycle/write JSON-RPC slice
+- Status: done
+- Priority: P1
+- Gate: post-G3 local/browser control prep
+- Owning streams: S5 primary, S3 contract awareness, S4 support awareness, S8 truth-sync if docs move
+- Goal: Use the landed local-only `agent.run` / `agent.stop` JSON-RPC slice on the current localhost shell host, the current observation-only shell, and the stable read-after-write observation path as fixed input to define the smallest honest next shell-intent surface before publishing real browser controls, grant writes, remote transport, bridge-control choreography, or broader S4 restart/reload claims.
+- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`
+- Validation: `get_errors` is clean on `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/PROGRESS.md`, `streams/S3-agent-center/CONTRACTS.md`, and `streams/S4-runtime/BACKLOG.md`.
+- Constraints: Keep the wave docs-only and S5-owned. Do not change shell code. Do not publish real browser controls, grant/revoke actions, remote transport, bridge-control choreography, broader privileged UX, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence as landed without a code-backed follow-up.
+- Last update: 2026-04-27
+
+### WAVE-2026-04-26-09
+
+- Title: Land the minimum local-only lifecycle/write JSON/RPC slice through the current localhost shell host
+- Status: done
+- Priority: P1
+- Gate: post-G3 local/browser write slice
+- Owning streams: S3 primary, S4 support, S5 consumer awareness, S8 truth-sync if docs move
+- Goal: Reuse the landed `LocalAgentApi` seam and the current localhost shell host to add only the smallest local-only JSON/RPC lifecycle/write slice for `agent.run` and `agent.stop`, keep `agent.describe`, `agent.snapshot`, and `denyLog.list` as the read-after-write observation path, and avoid publishing browser control, remote transport, grant writes, bridge-control choreography, or broader S4 restart/reload claims.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `crates/ferros-agents/src/rpc.rs`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S5-ux/README.md`, `streams/S4-runtime/BACKLOG.md`
+- Validation: `cargo test -p ferros-node agent_write_rpc_` passed. `cargo test -p ferros-node shell_listener_posts_json_rpc_` passed. `cargo test -p ferros-node agent_read_rpc_` passed. `cargo test -p ferros-agents` passed. `cargo xtask ci` passed. `get_errors` is clean on `streams/S3-agent-center/README.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/PROGRESS.md`, `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/PROGRESS.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S4-runtime/PROGRESS.md`, `STATUS.md`, and `docs/contracts/CONTRACTS-OVERVIEW.md`.
+- Constraints: Keep the slice local-only through the current localhost shell host and the landed `LocalAgentApi` seam. Do not publish browser control, remote transport, grant writes, bridge-control choreography, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Last update: 2026-04-26
+
+### WAVE-2026-04-26-08
+
+- Title: Define the minimum first local write JSON/RPC entry bar above `LocalAgentApi`
+- Status: done
+- Priority: P1
+- Gate: post-G3 local/browser write prep
+- Owning streams: S3 primary, S5 consumer awareness, S4 support awareness, S8 truth-sync if docs move
+- Goal: Use the landed local-only `LocalAgentApi` seam, the stable local CLI and deny-log summaries, and the current read-first localhost shell host as fixed input to define the smallest honest next write-side contract above the local path before publishing browser control, write JSON/RPC, remote transport, grant writes, bridge-control choreography, or broader S4 restart/reload claims.
+- Anchor files: `streams/S3-agent-center/README.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`
+- Validation: `get_errors` is clean on `streams/S3-agent-center/README.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/PROGRESS.md`, `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, and `streams/S5-ux/PROGRESS.md`.
+- Constraints: Keep the wave docs-only and S3-owned. Do not change code. Do not publish write JSON/RPC, browser control, remote transport, privileged UX, grant writes, bridge-control choreography, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence as landed without a code-backed local-only slice.
+- Last update: 2026-04-26
+
+### WAVE-2026-04-26-07
+
+- Title: Expose richer local deny-reason introspection on the `LocalAgentApi` seam
+- Status: done
+- Priority: P1
+- Gate: post-G3 local wrapper/API hardening
+- Owning streams: S3 primary, S4 support, S8 truth-sync if docs move
+- Goal: Reuse the landed local-only `LocalAgentApi` path to preserve and expose missing-capability deny detail on the same local lifecycle/read-after-write seam without widening into write JSON/RPC, browser control, remote transport, grant writes, bridge-control choreography, or broader S4 restart/reload claims.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `crates/ferros-node/src/bin/ferros.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`
+- Validation: `cargo test -p ferros-node local_agent_api_` passed. `cargo test -p ferros-node agent_cli_` passed. `cargo xtask ci` passed, which also covered the broader `ferros-node` read-path and shell-host suites. `get_errors` is clean on `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/README.md`, `streams/S3-agent-center/PROGRESS.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S4-runtime/PROGRESS.md`, `STATUS.md`, and `docs/contracts/CONTRACTS-OVERVIEW.md`.
+- Constraints: Keep the hot lane narrow around `crates/ferros-node/src/lib.rs`. Do not publish write JSON/RPC, browser control, remote transport, grant-write semantics, bridge-control choreography, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Last update: 2026-04-26
 
 ### WAVE-2026-04-26-06
 

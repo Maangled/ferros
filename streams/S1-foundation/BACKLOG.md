@@ -30,7 +30,7 @@
 
 ## Later
 
-- [ ] Release workflow (`release.yml`)
+- [x] Release workflow (`release.yml`)
 - [ ] Dependabot / Renovate config for dependency updates
 - [ ] MSRV policy documented in `README.md`
 - [ ] Continue moving active HTML surfaces into `docs/surfaces/active/` per ADR-017

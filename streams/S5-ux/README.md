@@ -45,7 +45,7 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 ## Dependencies
 
 - **S1 (G1):** Site structure landed; remaining Phase A work continues on the real `/site/index.html`.
-- **S3 + S4 (post-G3):** the first read-first JSON/RPC API from S3 now exists for Phase B; privileged write flows remain later follow-up work.
+- **S3 + S4 (post-G3):** the current localhost shell host now exposes a local-only `agent.run` / `agent.stop` JSON/RPC slice above `LocalAgentApi`, and the Phase B shell now stages selected-agent lifecycle intent copy against that backend slice while still keeping browser-issued writes out; broader browser control and privileged write flows remain later follow-up work.
 
 ---
 
@@ -69,7 +69,18 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 - [x] Deny log visible in the UI.
 - [x] Operator-assisted localhost acceptance can prove local `ferros agent run | stop` changes read back through the same `agent.snapshot` refresh seam without adding shell write controls; live deny generation remains outside the shell and can only be observed when pre-seeded through the existing local lifecycle/log seam.
 
-The current Phase B slice is intentionally read-first. Privileged grant/revoke actions and broader browser acceptance coverage remain follow-up work.
+The current Phase B slice is intentionally read-first and still read-only. Privileged grant/revoke actions and broader browser acceptance coverage remain follow-up work.
+
+The shell now stages selected-agent lifecycle intent copy and read-only slot affordances above the upstream local-only lifecycle/write JSON/RPC slice, but it still does not submit browser-issued writes.
+
+## First shell-intent slice
+
+The first shell-side follow-up above the landed localhost `agent.run` / `agent.stop` backend slice is now landed as selected-agent intent copy and read-only slot affordances:
+
+- Scope it to the currently selected agent on the current localhost shell only; do not invent a second browser-side control path or imply remote transport.
+- Stage intent as shell copy and read-only affordances in the existing focus, tools, and consent/audit slots so the user can see where local lifecycle intent belongs before the shell is allowed to send write RPC.
+- Keep read-after-intent observation on the current manual refresh plus `agent.snapshot`, `agent.describe`, and `denyLog.list` surfaces instead of introducing subscriptions, background polling claims, or a second observation path.
+- Keep grant/revoke actions, consent resolution, browser-issued privileged writes, broader browser control, and S4 restart/reload semantics out of scope until a later code-backed follow-up exists.
 
 **Phase C:**
 - [ ] `ferros-core` compiles to `wasm32-unknown-unknown` with `no_std`.
@@ -93,4 +104,4 @@ The current Phase B slice is intentionally read-first. Privileged grant/revoke a
 
 1. Verify the remaining site links and archive candidates against current inbound references.
 2. Execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once link hygiene is confirmed.
-3. Keep the shell observation-only while upstream write surfaces remain unpublished, then stage privileged grant/revoke shell intents without bypassing S2/S3/S4 consent boundaries.
+3. Decide whether any browser-issued local lifecycle action should exist above the staged shell-intent copy, and if so, keep consent/audit gating explicit without bypassing S2/S3/S4 boundaries.

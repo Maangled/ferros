@@ -32,6 +32,7 @@
 - `InMemoryAgentRegistry` uses `BTreeMap` ordering so `list()` stays deterministic and avoids the unordered `String`-key registry shape rejected by ADR-018.
 - `BusTransport` is transport-scoped only: it binds and connects `BusEndpoint` values, while channels exchange opaque `Vec<u8>` payloads so S4 hosts can layer sockets, named pipes, or future local transports without freezing a wire format yet.
 - The current local operator surface is intentionally local-only: `LocalAgentApi` in `crates/ferros-node/src/lib.rs` now publishes the first broader typed `list | describe | run | stop | logs` wrapper/API slice above CLI formatting while still routing through the internal `LocalAgentController`, rebuilding the reference runtime per invocation, and persisting minimal status/log state in the temp directory. It should not be treated as the post-G3 JSON/RPC or remote-control contract.
+- The landed `LocalAgentApi` seam now also preserves richer deny detail on local denied lifecycle attempts: the denied `run` path carries typed missing-capability detail in the local error path while the CLI and persisted deny-log summary text stay stable on the same local state path.
 - The first post-G3 JSON/RPC surface is intentionally read-first: `agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, and `denyLog.list` now exist as typed JSON/RPC request and response shapes in `crates/ferros-agents/src/rpc.rs`, with a local host handler in `crates/ferros-node/src/lib.rs` backed by the current runtime, persisted grant state, and deny-log state.
 - Focused `ferros-node` tests now lock the current read-first error-envelope behavior for unsupported JSON-RPC version, missing `agentName` on `agent.describe`, unknown method names, and unknown agents, including a live `POST /rpc` socket smoke through the localhost shell host.
 - The read-first JSON/RPC surface is currently served only through the local shell host and does not yet publish a broader remote transport contract, health endpoints, subscriptions, or privileged write actions. Grant creation/revoke flows remain shell intents plus future post-read contract work rather than part of this read-first contract, and S4 restart/reload semantics remain unpublished/open on this boundary.
@@ -48,7 +49,7 @@ The minimum local-only slice below is landed, and the first broader local-only w
 | Required element | Landed surface | Landed semantics | Still not implied |
 |------------------|----------------|------------------|-------------------|
 | Local host/write seam | `LocalAgentApi` over `LocalAgentController`, `DemoRuntime::reference_host()`, and `run_reference_demo_cycle()` in `crates/ferros-node` | The first wrapper/API slice stays local-only, sits above CLI formatting, and reuses the current in-memory host path instead of defining a new remote host surface | No remote transport, broader host/lifecycle contract, or S4 restart/reload semantics are published |
-| Local CLI/state path | current `ferros agent` CLI behavior plus persisted local state path | Landed locally: every write attempt still goes through the current local path and remains deny-by-default on each lifecycle/write attempt, while `LocalAgentApi` now exposes typed local list/detail/lifecycle/log results above that path | No privileged UX, grant-write, or bridge-control contract is published |
+| Local CLI/state path | current `ferros agent` CLI behavior plus persisted local state path | Landed locally: every write attempt still goes through the current local path and remains deny-by-default on each lifecycle/write attempt, while `LocalAgentApi` now exposes typed local list/detail/lifecycle/log results and typed local deny detail above that path | No privileged UX, grant-write, or bridge-control contract is published |
 | Read-after-write observation | local CLI inspection plus read-first JSON/RPC methods (`agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, `denyLog.list`) | Landed locally: allowed and denied write attempts remain observable through stable read-after-write checks on the current local/read-first surfaces after `LocalAgentApi` calls or CLI calls on the same path | No richer remote observation/control, subscriptions, or streaming contract is published |
 | Evidence bar | focused `local_agent_api_`, `agent_cli_`, `agent_read_rpc_`, and `shell_listener_posts_json_rpc_` coverage | Landed locally: focused coverage proves the deny-by-default write path and the resulting read-after-write observation on the current local-only seam and the first broader local wrapper/API slice | No G4 evidence or broader remote-control validation surface is implied |
 
@@ -73,6 +74,20 @@ The minimum local-only slice below is landed, and the first broader local-only w
 
 ---
 
+## First local-only lifecycle/write JSON/RPC slice
+
+The table below defines the local-only lifecycle/write JSON/RPC surface that is now landed on the current localhost shell host without widening into browser control, remote transport, grant writes, or broader restart/reload claims.
+
+| Landed element | Landed surface | Landed semantics | Still not implied |
+|----------------|----------------|------------------|-------------------|
+| Host/transport scope | current localhost shell host only | The first write-side JSON/RPC slice stays local-only on the same host path currently used by the shell and the read methods | No remote transport, auth model, or browser-control claim is published |
+| Write methods | `agent.run` and `agent.stop` routed through `LocalAgentApi` on the same local state path | The landed write methods reuse the current code-backed local lifecycle seam instead of inventing a second write path or a broader privileged surface | No grant writes, bridge-control choreography, or broader privileged UX contract is published |
+| Read-after-write observation | current read-first `agent.describe`, `agent.snapshot`, and `denyLog.list` methods | Allowed and denied writes remain observable through the already-landed read path and stable deny-log summaries | No richer remote observation/control, subscriptions, or streaming contract is published |
+| Deny behavior | current local deny-detail path plus stable CLI / deny-log summaries on denied writes, with a local-only authorization error envelope on the JSON/RPC path | The write slice stays aligned to the landed local-only deny behavior and does not claim a broader remote-control error model | No broader shared write-side error contract or remote-control guarantee is published |
+| Evidence bar | focused local JSON/RPC lifecycle coverage plus localhost shell-host coverage for allowed and denied writes on the same path | The landed write-side RPC surface is still local-only, deny-by-default, and observable through the landed read path | No broader remote-control validation surface or G4 evidence is implied |
+
+---
+
 ## Downstream consumers
 
 | Stream | What it consumes |
@@ -93,6 +108,17 @@ This is the first S3-owned hub-facing wrapper-boundary note for S7 runway planni
 | `AgentRegistry::list` and `AgentRegistry::describe` | Shared registry inspection seam only | Enough to require that the first bridge slice be listable and describable, including required-capability inspection |
 | local `ferros agent list`, `ferros agent describe`, and `ferros agent logs` | Thin local, read-first operator wrappers only | Enough for on-device bridge presence/detail plus deny/lifecycle observation |
 | read-first `agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, and `denyLog.list` | Typed read-only inspection shapes on the current local host/shell path only | Enough for runway evidence planning and shell-side inspection without freezing remote control |
+
+## First shell-intent consumer boundary
+
+The table below defines the next honest S5 consumer publication above the landed local-only lifecycle/write JSON-RPC slice without turning that backend capability into real browser control.
+
+| Consumer element | Minimum next S5 surface | Why this is the honest next bar | Still not implied |
+|------------------|-------------------------|---------------------------------|-------------------|
+| Shell scope | current localhost shell only | Keeps the staged shell intent tied to the same localhost host and local state path already used by the landed backend slice | No remote transport, auth model, or broader browser-control claim is published |
+| Lifecycle intent | selected-agent copy and read-only slot affordances for `agent.run` / `agent.stop` | Lets S5 show where local lifecycle intent belongs without sending write RPC from the browser or inventing a second control path | No browser-issued write action, consent-resolution flow, or grant/revoke contract is published |
+| Read-after-intent observation | manual refresh plus current `agent.snapshot`, `agent.describe`, and `denyLog.list` observation | Keeps S5 on the landed read-after-write path instead of inventing subscriptions, push state, or a second observation seam | No streaming, subscription, or richer remote observation/control contract is published |
+| Consent and audit copy | existing shell consent/audit slot as visible ownership only | Preserves the future home for privileged actions without claiming that the shell can yet submit or resolve them | No privileged UX, grant-write, or bridge-control choreography contract is published |
 
 ### Still unpublished before bridge control flows are honest
 

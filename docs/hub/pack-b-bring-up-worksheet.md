@@ -47,6 +47,17 @@ Use this worksheet to capture the first Pack B bring-up session against the exis
 | Session notes | Tester, location class, and exact hardware identifiers are ready to capture | |
 | Pairing boundary | Notes stay at the level of constraints and open questions only | |
 
+## Operator rehearsal prep
+
+Fill these notes before the first real bring-up session. They are prep prompts only and do not claim that any G4 item is already satisfied.
+
+| Rehearsal | What to decide before the session | Session capture |
+|-----------|-----------------------------------|-----------------|
+| Clean reboot path | Exact reboot command or console action, plus the first post-reboot checks to verify the DUT is back on the LAN | |
+| DUT-only cold-boot path | Exact way to remove and restore DUT power without taking the HA host down, plus the expected wait time before the DUT should be reachable again | |
+| Consent-deny observation | Which terminal panes, dashboards, or logs will stay open so one denied request can be captured once that path exists | |
+| Artifact capture path | Exact directory or note bundle where screenshots, command transcripts, and timestamps for the session will be stored | |
+
 ## G4 evidence-capture placeholders
 
 Leave these rows blank until a real session produces artifacts. These placeholders are keyed to the existing G4 evidence map in `docs/hub/reference-hardware.md`. They are capture fields only, not completion claims.

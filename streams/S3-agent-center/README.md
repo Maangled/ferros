@@ -81,13 +81,25 @@ The first broader slice above the current local-only lifecycle/write seam is now
 
 - `LocalAgentApi` reuses the current code-backed local seams in `ferros-node`: `DemoRuntime::reference_host()`, `run_reference_demo_cycle()`, the persisted local state path, and the internal `LocalAgentController`, instead of inventing a second write path or a remote host surface.
 - The published inspection boundary stays read-first: local CLI inspection plus the current JSON/RPC read methods (`agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, `denyLog.list`) continue to provide stable local read-after-write observation of the landed wrapper/API slice; S4 restart/reload semantics remain unpublished/open at this boundary.
-- Every write attempt on `LocalAgentApi` remains deny-by-default and is backed by focused local wrapper, CLI, lifecycle/log, JSON/RPC, and shell-host test coverage on the same local path.
+- Every write attempt on `LocalAgentApi` remains deny-by-default and is backed by focused local wrapper, CLI, lifecycle/log, JSON/RPC, and shell-host test coverage on the same local path; denied local `run` attempts now preserve typed missing-capability detail while keeping the CLI and deny-log summaries stable.
 - This still does not publish remote transport, richer remote observation/control, privileged UX claims, grant writes, bridge-control choreography, or S4 restart/reload semantics.
+
+---
+
+## First local-only lifecycle/write JSON/RPC slice
+
+The first write-side JSON/RPC follow-up above the landed `LocalAgentApi` slice is now implementation-backed and still stays local-only on the current localhost shell host:
+
+- The current localhost shell host now accepts `agent.run` and `agent.stop` JSON/RPC methods; no remote adapter, auth model, or broader transport guarantee is implied.
+- Those write methods route through `LocalAgentApi` on the same persisted local state path already used by the local CLI and current wrapper instead of inventing a second write path.
+- Read-after-write observation stays on the current read-first methods, especially `agent.describe`, `agent.snapshot`, and `denyLog.list`, so the landed write slice still reuses the existing observation path.
+- Denied writes keep the same local deny behavior: the persisted deny-log summaries stay stable on the local seam, while the JSON/RPC write path returns a local-only authorization error envelope rather than publishing a broader remote-control contract.
+- Browser control, privileged UX, grant writes, bridge-control choreography, richer remote observation/control, and broader S4 restart/reload semantics stay unpublished until a later code-backed follow-up exists.
 
 ---
 
 ## Immediate next steps
 
-1. Keep `LocalAgentApi`, the current local CLI, and the current read-first inspection surfaces aligned on one local state path until a richer code-backed follow-up actually lands; S4 restart/reload semantics remain unpublished/open there.
-2. Make the next implementation wave only the narrowest follow-up above the landed `LocalAgentApi` slice, without publishing remote transport, richer remote observation/control, privileged UX, grant writes, bridge-control choreography, or S4 restart/reload semantics early.
-3. Freeze the post-G2 S3 contracts only after that next surface exists and the S2 and S4 dependency surfaces settle.
+1. Keep `LocalAgentApi`, the current local CLI, the landed localhost `agent.run` / `agent.stop` JSON/RPC methods, and the current read-first inspection methods aligned on one local state path.
+2. Keep the shell UI itself observation-only until an explicit S5-owned follow-up decides how, or whether, it should drive the landed local-only write methods.
+3. Keep browser control, privileged UX, grant writes, bridge-control choreography, richer remote observation/control, and broader S4 restart/reload semantics unpublished until later code-backed follow-up work exists.

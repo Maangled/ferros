@@ -4,6 +4,24 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-26 — Minimum local-only lifecycle/write JSON/RPC slice landed on the localhost shell host
+
+- Extended `crates/ferros-agents/src/rpc.rs` and `crates/ferros-node/src/lib.rs` so the current localhost shell host now accepts local-only `agent.run` and `agent.stop` JSON/RPC methods above the landed `LocalAgentApi` seam.
+- Kept the slice narrow: the write methods still route through `LocalAgentApi` on the same persisted local state path, `agent.describe`, `agent.snapshot`, and `denyLog.list` remain the read-after-write observation path, and browser control plus broader remote/write claims remain unpublished.
+- Focused validation passed with `cargo test -p ferros-node agent_write_rpc_`, `cargo test -p ferros-node shell_listener_posts_json_rpc_`, `cargo test -p ferros-node agent_read_rpc_`, and `cargo test -p ferros-agents`.
+
+## 2026-04-26 — Minimum first local write JSON/RPC entry bar defined above `LocalAgentApi`
+
+- Clarified the S3 owner docs so the next honest write-side publication above the landed local-only `LocalAgentApi` seam is only a local-only JSON/RPC lifecycle slice on the current localhost shell host, not browser control or a broader remote-control contract.
+- Defined that minimum next bar narrowly: only `agent.run` and `agent.stop` may move first, they must still route through `LocalAgentApi` on the same persisted local state path, and the current read-first `agent.describe`, `agent.snapshot`, and `denyLog.list` methods remain the read-after-write observation path.
+- Kept browser control, grant writes, bridge-control choreography, richer remote observation/control, and broader S4 restart/reload semantics unpublished until a later code-backed follow-up exists.
+
+## 2026-04-26 — Local deny-reason introspection landed on the `LocalAgentApi` seam
+
+- Extended `crates/ferros-node/src/lib.rs` so the local-only `LocalAgentApi` surface now preserves typed missing-capability detail on denied `run` attempts instead of flattening the local deny path to summary text only.
+- Kept the slice local-only and narrow: the CLI still renders the same denial summary, the persisted deny-log text stays stable, and the read-first JSON/RPC plus localhost shell observation surfaces remain unchanged.
+- Focused validation passed with `cargo test -p ferros-node local_agent_api_` and `cargo test -p ferros-node agent_cli_`.
+
 ## 2026-04-26 — First broader local-only wrapper/API slice landed above the CLI formatter
 
 - Added `LocalAgentApi` in `crates/ferros-node/src/lib.rs` so the first broader lifecycle/write wrapper/API slice above the current local-only seam now exists as a typed local `list | describe | run | stop | logs` surface instead of only CLI-formatted lines.

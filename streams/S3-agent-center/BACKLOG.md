@@ -28,13 +28,15 @@
 - [x] Land the docs-only entry bar for the next S3 follow-up: keep lifecycle/write wrapper, richer remote observation/control, privileged UX, grant-write, bridge-control, and S4 restart/reload claims unpublished until a code-backed local-only slice exists
 - [x] Land the minimum code-backed local-only lifecycle/write slice by reusing `DemoRuntime::reference_host()` / `run_reference_demo_cycle()`, the current local CLI/state-path behavior, the local CLI inspection plus JSON/RPC read methods for stable read-after-write observation, and the dedicated deny-by-default lifecycle/log harness before any broader wrapper/API contract is published; that minimum local-only slice still does not publish remote transport, richer remote observation/control, grant writes, bridge-control choreography, or S4 restart/reload semantics
 - [x] Publish the first broader lifecycle/write wrapper/API slice as the local-only typed `LocalAgentApi` surface in `crates/ferros-node/src/lib.rs`, keeping remote transport, richer remote observation/control, privileged UX, grant writes, bridge-control choreography, and S4 restart/reload semantics unpublished until they actually land
-- [ ] Expose richer local deny-reason introspection on the landed `LocalAgentApi` seam before widening into write JSON/RPC, browser control, remote transport, grant writes, bridge-control choreography, or broader S4 restart/reload claims
+- [x] Expose richer local deny-reason introspection on the landed `LocalAgentApi` seam before widening into write JSON/RPC, browser control, remote transport, grant writes, bridge-control choreography, or broader S4 restart/reload claims
+- [x] Define the minimum first local write JSON/RPC entry bar above the landed `LocalAgentApi` seam while keeping browser control, remote transport, grant writes, bridge-control choreography, and broader S4 restart/reload claims unpublished until a code-backed local-only slice exists
+- [x] Land the minimum local-only lifecycle/write JSON/RPC slice through the current localhost shell host over `LocalAgentApi`, limited to `agent.run` and `agent.stop`, while keeping the current read-first methods as the read-after-write observation path and leaving grant writes, browser control, remote transport, bridge-control choreography, and broader S4 restart/reload claims unpublished
 
 ## Later
 
 - [ ] Concrete Unix domain socket and named pipe adapters for the bus boundary
-- [ ] Lifecycle/write JSON/RPC follow-up for S5 Phase B web shell once a real privileged wrapper slice exists
-- [ ] Agent capability introspection (describe why denied)
+- [ ] Broader write JSON/RPC and browser-control follow-up for S5 Phase B after the minimum local-only lifecycle slice is implementation-backed
+- [ ] Read-first or remote capability introspection beyond the current local-only deny-detail path
 - [ ] Agent manifest versioning
 
 ## Blocked

@@ -4,6 +4,28 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-27 - Selected-agent lifecycle intent copy landed in the live shell
+
+- Extended `site/agent-center-shell.html` so the live localhost shell now stages selected-agent lifecycle intent copy and read-only slot affordances against the landed local-only `agent.run` / `agent.stop` backend slice without issuing browser writes.
+- Extended `harnesses/localhost-shell-acceptance-harness.html` so the same-origin shell acceptance path now checks that selected-agent intent copy updates in the audit and tools slots and flips between `agent.run` and `agent.stop` as local state changes are observed.
+- Kept the shell read-only: grant/revoke, consent resolution, browser-issued lifecycle writes, and broader browser control remain out of scope.
+
+## 2026-04-27 - Minimum first shell-intent entry bar defined above the landed local-only lifecycle/write slice
+
+- Defined the next honest S5 publication boundary above the landed localhost `agent.run` / `agent.stop` backend slice: the first shell follow-up is selected-agent intent copy and slot ownership only, not a browser-issued write flow.
+- Locked the observation rule for that future shell-intent slice to the existing manual refresh plus `agent.snapshot`, `agent.describe`, and `denyLog.list` path so S5 does not invent a second observation seam while staging the UI.
+- Kept grant/revoke actions, consent resolution, browser-issued privileged writes, broader browser control, and broader S4 restart/reload claims explicitly out of scope.
+
+## 2026-04-26 - Upstream local-only lifecycle/write JSON-RPC slice landed, but the shell stays observation-only
+
+- Truth-synced the S5 owner docs to the newly landed S3/S4 boundary: the current localhost shell host now supports local-only `agent.run` and `agent.stop` JSON/RPC methods above `LocalAgentApi`.
+- Kept the Phase B shell itself observation-only in the docs because S5 has not yet staged UI intents or controls on top of that local-only backend slice, and grant/revoke plus broader browser-control work remain out of scope.
+
+## 2026-04-26 - Phase B write-side dependency narrowed to the future local-only JSON/RPC lifecycle slice
+
+- Truth-synced the S5 owner docs to the newly defined S3 boundary: the next honest write-side dependency for the shell is only a local-only `agent.run` / `agent.stop` JSON/RPC slice above `LocalAgentApi` on the current localhost shell host.
+- Kept the shell observation-only in the docs until that code-backed slice exists, and kept grant/revoke plus broader browser-control work explicitly out of scope for the current Phase B state.
+
 ## 2026-04-26 - Operator-assisted local lifecycle observation added to the live shell harness
 
 - Extended `harnesses/localhost-shell-acceptance-harness.html` so the same-origin acceptance path can pause for out-of-band local `ferros agent run echo` and `ferros agent stop echo` commands, refresh the shell, and prove those local lifecycle changes still read back through exactly one `agent.snapshot` call.

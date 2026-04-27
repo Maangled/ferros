@@ -12,11 +12,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use ferros_agents::{
     Agent, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult, AgentManifest,
     AgentRegistry, AgentRpcAgentDetail, AgentRpcAgentSummary, AgentRpcSnapshot, AgentStatus,
-    DenyLogEntry, EchoAgent, GrantStateRecord, InMemoryAgentRegistry, ReferenceAgentError,
-    RegistryError, TimerAgent,
-    JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_INVALID_PARAMS, JSON_RPC_INVALID_REQUEST,
-    JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_DENY_LOG_LIST,
-    METHOD_AGENT_SNAPSHOT, METHOD_GRANT_LIST,
+    CapabilityRequirement, DenyLogEntry, EchoAgent, GrantStateRecord, InMemoryAgentRegistry,
+    ReferenceAgentError, RegistryError, TimerAgent, JSON_RPC_AGENT_NOT_FOUND,
+    JSON_RPC_AUTHORIZATION_DENIED, JSON_RPC_INVALID_PARAMS, JSON_RPC_INVALID_REQUEST,
+    JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_AGENT_RUN,
+    METHOD_AGENT_SNAPSHOT, METHOD_AGENT_STOP, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
 };
 use ferros_core::{
     Capability, CapabilityError, CapabilityGrantView, CapabilityRequest, DenyByDefaultPolicy,
@@ -53,10 +53,44 @@ pub struct DemoSummary {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthorizationDenyDetail {
+    pub summary: String,
+    pub missing_requirements: Vec<CapabilityRequirement>,
+}
+
+impl AuthorizationDenyDetail {
+    fn from_missing_requirements(
+        agent_name: &str,
+        missing_requirements: Vec<CapabilityRequirement>,
+    ) -> Self {
+        let summary = format!(
+            "{agent_name} missing {}",
+            missing_requirements
+                .iter()
+                .map(|requirement| requirement.capability.as_str())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+
+        Self {
+            summary,
+            missing_requirements,
+        }
+    }
+
+    fn from_summary(summary: impl Into<String>) -> Self {
+        Self {
+            summary: summary.into(),
+            missing_requirements: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DemoError {
     UnknownAgent(String),
     ManifestMissingCapabilities(String),
-    AuthorizationDenied(String),
+    AuthorizationDenied(AuthorizationDenyDetail),
     MissingEchoResponse,
     MissingTimerEvent,
     Profile(ProfileIdError),
@@ -74,7 +108,9 @@ impl fmt::Display for DemoError {
             Self::ManifestMissingCapabilities(name) => {
                 write!(f, "agent {name} has no declared capabilities")
             }
-            Self::AuthorizationDenied(message) => write!(f, "authorization denied: {message}"),
+            Self::AuthorizationDenied(detail) => {
+                write!(f, "authorization denied: {}", detail.summary)
+            }
             Self::MissingEchoResponse => write!(f, "echo agent did not return a response"),
             Self::MissingTimerEvent => write!(f, "timer agent did not emit an event"),
             Self::Profile(error) => write!(f, "{error}"),
@@ -216,7 +252,10 @@ impl LocalAgentApi {
         }
     }
 
-    pub fn execute(&self, command: LocalAgentApiCommand) -> Result<LocalAgentApiResponse, CliError> {
+    pub fn execute(
+        &self,
+        command: LocalAgentApiCommand,
+    ) -> Result<LocalAgentApiResponse, CliError> {
         execute_local_agent_api_with_state_path(command, &self.state_path)
     }
 }
@@ -467,16 +506,10 @@ impl DemoRuntime {
             return Ok(());
         }
 
-        let message = format!(
-            "{name} missing {}",
-            missing
-                .iter()
-                .map(|requirement| requirement.capability.as_str())
-                .collect::<Vec<_>>()
-                .join(",")
-        );
-        self.log_entries.push(format!("denied-start:{message}"));
-        Err(DemoError::AuthorizationDenied(message))
+        let detail = AuthorizationDenyDetail::from_missing_requirements(name, missing);
+        self.log_entries
+            .push(format!("denied-start:{}", detail.summary));
+        Err(DemoError::AuthorizationDenied(detail))
     }
 
     pub fn stop_agent(&mut self, name: &str) -> Result<(), DemoError> {
@@ -610,8 +643,7 @@ impl DemoRuntime {
             .send_message("echo", "echo", "agent.echo", b"hello")?
             .ok_or(DemoError::MissingEchoResponse)?;
 
-        let denied_requests = match self.send_message("echo", "echo", "agent.admin", b"nope")
-        {
+        let denied_requests = match self.send_message("echo", "echo", "agent.admin", b"nope") {
             Ok(_) => 0,
             Err(DemoError::AuthorizationDenied(_)) => 1,
             Err(error) => return Err(error),
@@ -660,9 +692,11 @@ impl DemoRuntime {
             return Ok(());
         }
 
-        let message = format!("{name}:{capability}:{decision:?}");
-        self.log_entries.push(format!("denied:{message}"));
-        Err(DemoError::AuthorizationDenied(message))
+        let summary = format!("{name}:{capability}:{decision:?}");
+        self.log_entries.push(format!("denied:{summary}"));
+        Err(DemoError::AuthorizationDenied(
+            AuthorizationDenyDetail::from_summary(summary),
+        ))
     }
 
     fn evaluate_policy(
@@ -772,12 +806,31 @@ fn serve_local_shell_with_listener(
     listener: TcpListener,
     max_connections: Option<usize>,
 ) -> io::Result<()> {
-    let mut handled_connections = 0_usize;
+    serve_local_shell_with_store_and_paths(
+        listener,
+        max_connections,
+        &cli_state_path(),
+        &default_profile_path(),
+        &FileSystemProfileStore,
+    )
+}
 
-    for incoming in listener.incoming() {
+fn serve_local_shell_with_store_and_paths<S: LocalProfileStore>(
+    listener: TcpListener,
+    max_connections: Option<usize>,
+    state_path: &Path,
+    default_profile_path: &Path,
+    store: &S,
+) -> io::Result<()> {
+    for (handled_connections, incoming) in listener.incoming().enumerate() {
         let mut stream = incoming?;
 
-        if let Err(error) = handle_shell_connection(&mut stream) {
+        if let Err(error) = handle_shell_connection_with_store_and_paths(
+            &mut stream,
+            state_path,
+            default_profile_path,
+            store,
+        ) {
             let response = text_response(
                 500,
                 "Internal Server Error",
@@ -786,9 +839,7 @@ fn serve_local_shell_with_listener(
             let _ = write_http_response(&mut stream, response);
         }
 
-        handled_connections += 1;
-
-        if max_connections.is_some_and(|limit| handled_connections >= limit) {
+        if max_connections.is_some_and(|limit| handled_connections + 1 >= limit) {
             break;
         }
     }
@@ -811,21 +862,18 @@ struct HttpResponse {
     body: Vec<u8>,
 }
 
-fn handle_shell_connection(stream: &mut TcpStream) -> io::Result<()> {
+fn handle_shell_connection_with_store_and_paths<S: LocalProfileStore>(
+    stream: &mut TcpStream,
+    state_path: &Path,
+    default_profile_path: &Path,
+    store: &S,
+) -> io::Result<()> {
     let Some(request) = read_http_request(stream)? else {
         return Ok(());
     };
-    let response = route_shell_request(request);
+    let response =
+        route_shell_request_with_store_and_paths(request, state_path, default_profile_path, store);
     write_http_response(stream, response)
-}
-
-fn route_shell_request(request: HttpRequest) -> HttpResponse {
-    route_shell_request_with_store_and_paths(
-        request,
-        &cli_state_path(),
-        &default_profile_path(),
-        &FileSystemProfileStore,
-    )
 }
 
 fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
@@ -1040,6 +1088,22 @@ fn execute_agent_read_rpc_with_store_and_paths<S: LocalProfileStore>(
     default_profile_path: &Path,
     store: &S,
 ) -> Result<AgentJsonRpcResponse, CliError> {
+    execute_agent_rpc_with_store_and_paths_and_runtime_loader(
+        request,
+        state_path,
+        default_profile_path,
+        store,
+        runtime_with_state_from_loaded_state,
+    )
+}
+
+fn execute_agent_rpc_with_store_and_paths_and_runtime_loader<S: LocalProfileStore>(
+    request: AgentJsonRpcRequest,
+    state_path: &Path,
+    default_profile_path: &Path,
+    store: &S,
+    runtime_loader: fn(&CliState) -> Result<DemoRuntime, CliError>,
+) -> Result<AgentJsonRpcResponse, CliError> {
     let AgentJsonRpcRequest {
         jsonrpc,
         id,
@@ -1057,7 +1121,8 @@ fn execute_agent_read_rpc_with_store_and_paths<S: LocalProfileStore>(
 
     match method.as_str() {
         METHOD_AGENT_LIST => {
-            let runtime = runtime_with_state(state_path)?;
+            let state = CliState::load(state_path)?;
+            let runtime = runtime_loader(&state)?;
             let agents = runtime
                 .agent_records()
                 .into_iter()
@@ -1078,7 +1143,8 @@ fn execute_agent_read_rpc_with_store_and_paths<S: LocalProfileStore>(
                 ));
             };
 
-            let runtime = runtime_with_state(state_path)?;
+            let state = CliState::load(state_path)?;
+            let runtime = runtime_loader(&state)?;
             let Some(agent) = runtime.describe_agent(agent_name) else {
                 return Ok(AgentJsonRpcResponse::error(
                     id,
@@ -1094,9 +1160,57 @@ fn execute_agent_read_rpc_with_store_and_paths<S: LocalProfileStore>(
                 },
             ))
         }
+        METHOD_AGENT_RUN | METHOD_AGENT_STOP => {
+            let Some(agent_name) = params.agent_name.as_deref() else {
+                return Ok(AgentJsonRpcResponse::error(
+                    id,
+                    JSON_RPC_INVALID_PARAMS,
+                    format!("agentName parameter is required for {method}"),
+                ));
+            };
+
+            let command = if method == METHOD_AGENT_RUN {
+                LocalAgentApiCommand::Run {
+                    name: agent_name.to_owned(),
+                }
+            } else {
+                LocalAgentApiCommand::Stop {
+                    name: agent_name.to_owned(),
+                }
+            };
+
+            match execute_local_agent_api_with_runtime_loader(command, state_path, runtime_loader) {
+                Ok(LocalAgentApiResponse::AgentLifecycle { agent }) => {
+                    Ok(AgentJsonRpcResponse::success(
+                        id,
+                        AgentJsonRpcResult::AgentLifecycle {
+                            agent: agent_record_to_rpc_detail(agent),
+                        },
+                    ))
+                }
+                Ok(other) => Err(CliError::InvalidState(format!(
+                    "unexpected local agent API response for {method}: {other:?}"
+                ))),
+                Err(CliError::Runtime(DemoError::UnknownAgent(name))) => {
+                    Ok(AgentJsonRpcResponse::error(
+                        id,
+                        JSON_RPC_AGENT_NOT_FOUND,
+                        format!("agent not found: {name}"),
+                    ))
+                }
+                Err(CliError::Runtime(DemoError::AuthorizationDenied(detail))) => {
+                    Ok(AgentJsonRpcResponse::error(
+                        id,
+                        JSON_RPC_AUTHORIZATION_DENIED,
+                        format!("authorization denied: {}", detail.summary),
+                    ))
+                }
+                Err(error) => Err(error),
+            }
+        }
         METHOD_AGENT_SNAPSHOT => {
             let state = CliState::load(state_path)?;
-            let runtime = runtime_with_state_from_loaded_state(&state)?;
+            let runtime = runtime_loader(&state)?;
             let agent_name = params.agent_name.as_deref();
             let agents = if let Some(agent_name) = agent_name {
                 let Some(agent) = runtime.describe_agent(agent_name) else {
@@ -1164,6 +1278,7 @@ fn execute_agent_read_rpc_with_store_and_paths<S: LocalProfileStore>(
     }
 }
 
+#[cfg(test)]
 fn runtime_with_state(state_path: &Path) -> Result<DemoRuntime, CliError> {
     let state = CliState::load(state_path)?;
     runtime_with_state_from_loaded_state(&state)
@@ -1436,14 +1551,16 @@ fn execute_profile_cli_with_store<S: LocalProfileStore>(
 }
 
 fn current_profile_timestamp() -> String {
-    OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_else(|_| {
-        let seconds = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+    OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .unwrap_or_else(|_| {
+            let seconds = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
 
-        format!("1970-01-01T00:00:{:02}Z", seconds % 60)
-    })
+            format!("1970-01-01T00:00:{:02}Z", seconds % 60)
+        })
 }
 
 fn format_agent_summary(record: &AgentRecord) -> String {
@@ -1638,17 +1755,21 @@ mod tests {
     use super::{
         default_profile_path, execute_agent_cli_with_runtime_loader,
         execute_agent_cli_with_state_path, execute_agent_read_rpc_json,
-        execute_agent_read_rpc_with_store_and_paths, execute_local_agent_api_with_runtime_loader,
-        execute_profile_cli_with_store, route_shell_request_with_store_and_paths, run_demo,
-        runtime_with_state, serve_local_shell_with_listener, AgentCliCommand, CliError,
-        CliState, DemoError, DemoRuntime, HttpRequest, LocalAgentApi, LocalAgentApiCommand,
-        LocalAgentApiResponse, ProfileCliCommand, DEFAULT_PROFILE_NAME,
+        execute_agent_read_rpc_with_store_and_paths,
+        execute_agent_rpc_with_store_and_paths_and_runtime_loader,
+        execute_local_agent_api_with_runtime_loader, execute_profile_cli_with_store,
+        route_shell_request_with_store_and_paths, run_demo, runtime_with_state,
+        serve_local_shell_with_listener, serve_local_shell_with_store_and_paths, AgentCliCommand,
+        AuthorizationDenyDetail, CliError, CliState, DemoError, DemoRuntime, HttpRequest,
+        LocalAgentApi, LocalAgentApiCommand, LocalAgentApiResponse, ProfileCliCommand,
+        DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
-        AgentStatus, EchoAgent, JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_INVALID_PARAMS,
-        JSON_RPC_INVALID_REQUEST, JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE,
-        METHOD_AGENT_LIST, METHOD_AGENT_SNAPSHOT, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
+        AgentStatus, EchoAgent, JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_AUTHORIZATION_DENIED,
+        JSON_RPC_INVALID_PARAMS, JSON_RPC_INVALID_REQUEST, JSON_RPC_METHOD_NOT_FOUND,
+        METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_AGENT_RUN, METHOD_AGENT_SNAPSHOT,
+        METHOD_AGENT_STOP, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
     };
     use ferros_profile::{CapabilityGrant, FileSystemProfileStore, ProfileDocument, ProfileId};
     use std::fs;
@@ -1720,10 +1841,18 @@ mod tests {
             .start_agent("echo")
             .expect_err("revoked grant should deny start");
 
-        assert_eq!(
-            error,
-            DemoError::AuthorizationDenied("echo missing agent.echo".to_string())
-        );
+        match error {
+            DemoError::AuthorizationDenied(detail) => {
+                assert_eq!(detail.summary, "echo missing agent.echo");
+                assert_eq!(detail.missing_requirements.len(), 1);
+                assert_eq!(detail.missing_requirements[0].capability, "agent.echo");
+                assert_eq!(
+                    detail.missing_requirements[0].profile_id.as_str(),
+                    "profile-alpha"
+                );
+            }
+            other => panic!("unexpected authorization result: {other:?}"),
+        }
         assert!(runtime
             .log_entries()
             .iter()
@@ -1749,7 +1878,9 @@ mod tests {
 
         assert_eq!(
             error,
-            DemoError::AuthorizationDenied("echo:agent.echo:Denied(NoGrantsPresented)".to_string(),)
+            DemoError::AuthorizationDenied(AuthorizationDenyDetail::from_summary(
+                "echo:agent.echo:Denied(NoGrantsPresented)"
+            ),)
         );
         assert!(runtime
             .log_entries()
@@ -1893,7 +2024,10 @@ mod tests {
 
         match logs {
             LocalAgentApiResponse::AgentLogs { entries } => {
-                assert_eq!(entries, vec!["started:echo".to_string(), "stopped:echo".to_string()]);
+                assert_eq!(
+                    entries,
+                    vec!["started:echo".to_string(), "stopped:echo".to_string()]
+                );
             }
             other => panic!("unexpected local agent API log result: {other:?}"),
         }
@@ -1988,7 +2122,9 @@ mod tests {
         cleanup_profile_artifacts(&profile_path);
     }
 
-    fn denied_reference_runtime_from_loaded_state(state: &CliState) -> Result<DemoRuntime, CliError> {
+    fn denied_reference_runtime_from_loaded_state(
+        state: &CliState,
+    ) -> Result<DemoRuntime, CliError> {
         let mut runtime =
             DemoRuntime::reference_host_with_grants(Vec::new()).map_err(CliError::from)?;
         runtime.replay_cli_state(state)?;
@@ -2010,8 +2146,14 @@ mod tests {
 
         assert!(matches!(
             error,
-            CliError::Runtime(DemoError::AuthorizationDenied(message))
-                if message == "echo missing agent.echo"
+            CliError::Runtime(DemoError::AuthorizationDenied(AuthorizationDenyDetail {
+                summary,
+                missing_requirements,
+            }))
+                if summary == "echo missing agent.echo"
+                && missing_requirements.len() == 1
+                && missing_requirements[0].capability == "agent.echo"
+                && missing_requirements[0].profile_id.as_str() == "profile-alpha"
         ));
 
         let describe = execute_agent_cli_with_runtime_loader(
@@ -2025,10 +2167,14 @@ mod tests {
 
         assert!(describe.iter().any(|line| line == "status: registered"));
 
-        let logs = execute_agent_cli_with_state_path(AgentCliCommand::Logs { name: None }, &state_path)
-            .expect("logs should reflect the denied lifecycle attempt");
+        let logs =
+            execute_agent_cli_with_state_path(AgentCliCommand::Logs { name: None }, &state_path)
+                .expect("logs should reflect the denied lifecycle attempt");
 
-        assert_eq!(logs, vec!["denied-start:echo missing agent.echo".to_string()]);
+        assert_eq!(
+            logs,
+            vec!["denied-start:echo missing agent.echo".to_string()]
+        );
 
         cleanup_state_path(&state_path);
     }
@@ -2048,8 +2194,14 @@ mod tests {
 
         assert!(matches!(
             error,
-            CliError::Runtime(DemoError::AuthorizationDenied(message))
-                if message == "echo missing agent.echo"
+            CliError::Runtime(DemoError::AuthorizationDenied(AuthorizationDenyDetail {
+                summary,
+                missing_requirements,
+            }))
+                if summary == "echo missing agent.echo"
+                && missing_requirements.len() == 1
+                && missing_requirements[0].capability == "agent.echo"
+                && missing_requirements[0].profile_id.as_str() == "profile-alpha"
         ));
 
         let describe = execute_local_agent_api_with_runtime_loader(
@@ -2075,7 +2227,10 @@ mod tests {
 
         match logs {
             LocalAgentApiResponse::AgentLogs { entries } => {
-                assert_eq!(entries, vec!["denied-start:echo missing agent.echo".to_string()]);
+                assert_eq!(
+                    entries,
+                    vec!["denied-start:echo missing agent.echo".to_string()]
+                );
             }
             other => panic!("unexpected local agent API log result: {other:?}"),
         }
@@ -2096,11 +2251,12 @@ mod tests {
 
         let mut other_state = CliState::default();
         other_state.set_status("timer", AgentStatus::Stopped);
-        other_state.save(&other_path).expect("other state should save");
+        other_state
+            .save(&other_path)
+            .expect("other state should save");
 
         let loaded = CliState::load(&state_path).expect("state should load from the provided path");
-        let missing =
-            CliState::load(&missing_path).expect("missing state should default to empty");
+        let missing = CliState::load(&missing_path).expect("missing state should default to empty");
 
         assert_eq!(loaded, state);
         assert_ne!(loaded, other_state);
@@ -2373,9 +2529,9 @@ mod tests {
         .expect("profile grant should succeed");
 
         state.set_status("echo", AgentStatus::Running);
-        state.log_entries.push(
-            "denied:echo:agent.admin:Denied(NoGrantsPresented)".to_owned(),
-        );
+        state
+            .log_entries
+            .push("denied:echo:agent.admin:Denied(NoGrantsPresented)".to_owned());
         state
             .log_entries
             .push("denied-start:timer missing agent.timer".to_owned());
@@ -2406,7 +2562,10 @@ mod tests {
                 assert_eq!(snapshot.grants[0].capability, "agent.echo");
                 assert_eq!(snapshot.deny_log.len(), 1);
                 assert_eq!(snapshot.deny_log[0].agent_name.as_deref(), Some("echo"));
-                assert_eq!(snapshot.deny_log[0].capability.as_deref(), Some("agent.admin"));
+                assert_eq!(
+                    snapshot.deny_log[0].capability.as_deref(),
+                    Some("agent.admin")
+                );
             }
             other => panic!("unexpected RPC result: {other:?}"),
         }
@@ -2597,6 +2756,194 @@ mod tests {
     }
 
     #[test]
+    fn agent_write_rpc_runs_and_stops_agent_over_local_state_path() {
+        let state_path = unique_state_path("rpc-write-lifecycle");
+        let profile_path = unique_profile_path("rpc-write-lifecycle");
+
+        let run_response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-write-run",
+                METHOD_AGENT_RUN,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("run RPC should succeed");
+
+        match run_response.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentLifecycle { agent } => {
+                assert_eq!(agent.name, "echo");
+                assert_eq!(agent.status, "running");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        let running_snapshot = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-write-run-snapshot",
+                METHOD_AGENT_SNAPSHOT,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("snapshot RPC should succeed after run");
+
+        match running_snapshot.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentSnapshot { snapshot } => {
+                assert_eq!(snapshot.agents.len(), 1);
+                assert_eq!(snapshot.agents[0].name, "echo");
+                assert_eq!(snapshot.agents[0].status, "running");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        let stop_response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-write-stop",
+                METHOD_AGENT_STOP,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("stop RPC should succeed");
+
+        match stop_response.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentLifecycle { agent } => {
+                assert_eq!(agent.name, "echo");
+                assert_eq!(agent.status, "stopped");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        let stopped_snapshot = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-write-stop-snapshot",
+                METHOD_AGENT_SNAPSHOT,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("snapshot RPC should succeed after stop");
+
+        match stopped_snapshot.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentSnapshot { snapshot } => {
+                assert_eq!(snapshot.agents.len(), 1);
+                assert_eq!(snapshot.agents[0].name, "echo");
+                assert_eq!(snapshot.agents[0].status, "stopped");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn agent_write_rpc_requires_agent_name_for_run() {
+        let state_path = unique_state_path("rpc-write-missing-agent-name");
+        let profile_path = unique_profile_path("rpc-write-missing-agent-name");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-write-missing-agent-name",
+                METHOD_AGENT_RUN,
+                AgentJsonRpcParams::default(),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("missing run params should return a JSON-RPC error");
+
+        assert_rpc_error(
+            &response,
+            JSON_RPC_INVALID_PARAMS,
+            "agentName parameter is required for agent.run",
+        );
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn agent_write_rpc_denied_run_persists_deny_start_without_mutating_agent_state() {
+        let state_path = unique_state_path("rpc-write-denied-start");
+        let profile_path = unique_profile_path("rpc-write-denied-start");
+
+        let response = execute_agent_rpc_with_store_and_paths_and_runtime_loader(
+            AgentJsonRpcRequest::new(
+                "req-write-denied-start",
+                METHOD_AGENT_RUN,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+            denied_reference_runtime_from_loaded_state,
+        )
+        .expect("denied run should return a JSON-RPC error envelope");
+
+        assert_rpc_error(
+            &response,
+            JSON_RPC_AUTHORIZATION_DENIED,
+            "authorization denied: echo missing agent.echo",
+        );
+
+        let describe = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-write-denied-describe",
+                METHOD_AGENT_DESCRIBE,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("describe RPC should still succeed after denied run");
+
+        match describe.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentDetail { agent } => {
+                assert_eq!(agent.name, "echo");
+                assert_eq!(agent.status, "registered");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        let deny_log = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-write-denied-log",
+                METHOD_DENY_LOG_LIST,
+                AgentJsonRpcParams::for_agent("echo"),
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("deny log RPC should succeed after denied run");
+
+        match deny_log.result.expect("result should be present") {
+            AgentJsonRpcResult::DenyLog { entries } => {
+                assert_eq!(entries.len(), 1);
+                assert_eq!(entries[0].kind, "deniedStart");
+                assert_eq!(entries[0].agent_name.as_deref(), Some("echo"));
+                assert_eq!(entries[0].capability.as_deref(), Some("agent.echo"));
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
     fn shell_route_serves_local_shell_html() {
         let state_path = unique_state_path("shell-html");
         let profile_path = unique_profile_path("shell-html");
@@ -2689,10 +3036,13 @@ mod tests {
     #[test]
     fn shell_listener_serves_local_shell_html_over_tcp() {
         let listener = TcpListener::bind(("127.0.0.1", 0)).expect("listener should bind");
-        let address = listener.local_addr().expect("listener should report local addr");
+        let address = listener
+            .local_addr()
+            .expect("listener should report local addr");
 
         let server = thread::spawn(move || {
-            serve_local_shell_with_listener(listener, Some(1)).expect("shell listener should serve one request");
+            serve_local_shell_with_listener(listener, Some(1))
+                .expect("shell listener should serve one request");
         });
 
         let mut stream = TcpStream::connect(address).expect("client should connect");
@@ -2716,7 +3066,9 @@ mod tests {
     #[test]
     fn shell_listener_posts_json_rpc_agent_list_over_tcp() {
         let listener = TcpListener::bind(("127.0.0.1", 0)).expect("listener should bind");
-        let address = listener.local_addr().expect("listener should report local addr");
+        let address = listener
+            .local_addr()
+            .expect("listener should report local addr");
         let request = serde_json::to_string(&AgentJsonRpcRequest::new(
             "req-socket",
             METHOD_AGENT_LIST,
@@ -2725,7 +3077,8 @@ mod tests {
         .expect("request should serialize");
 
         let server = thread::spawn(move || {
-            serve_local_shell_with_listener(listener, Some(1)).expect("shell listener should serve one request");
+            serve_local_shell_with_listener(listener, Some(1))
+                .expect("shell listener should serve one request");
         });
 
         let mut stream = TcpStream::connect(address).expect("client should connect");
@@ -2760,7 +3113,9 @@ mod tests {
     #[test]
     fn shell_listener_posts_json_rpc_agent_snapshot_over_tcp() {
         let listener = TcpListener::bind(("127.0.0.1", 0)).expect("listener should bind");
-        let address = listener.local_addr().expect("listener should report local addr");
+        let address = listener
+            .local_addr()
+            .expect("listener should report local addr");
         let request = serde_json::to_string(&AgentJsonRpcRequest::new(
             "req-snapshot-socket",
             METHOD_AGENT_SNAPSHOT,
@@ -2805,7 +3160,9 @@ mod tests {
     #[test]
     fn shell_listener_posts_json_rpc_invalid_params_error_over_tcp() {
         let listener = TcpListener::bind(("127.0.0.1", 0)).expect("listener should bind");
-        let address = listener.local_addr().expect("listener should report local addr");
+        let address = listener
+            .local_addr()
+            .expect("listener should report local addr");
         let request = serde_json::to_string(&AgentJsonRpcRequest::new(
             "req-invalid-params",
             METHOD_AGENT_DESCRIBE,
@@ -2842,6 +3199,64 @@ mod tests {
         );
 
         server.join().expect("listener thread should exit cleanly");
+    }
+
+    #[test]
+    fn shell_listener_posts_json_rpc_agent_run_over_tcp() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("listener should bind");
+        let address = listener
+            .local_addr()
+            .expect("listener should report local addr");
+        let state_path = unique_state_path("shell-rpc-run");
+        let profile_path = unique_profile_path("shell-rpc-run");
+        let request = serde_json::to_string(&AgentJsonRpcRequest::new(
+            "req-run-socket",
+            METHOD_AGENT_RUN,
+            AgentJsonRpcParams::for_agent("echo"),
+        ))
+        .expect("request should serialize");
+
+        let server_state_path = state_path.clone();
+        let server_profile_path = profile_path.clone();
+        let server = thread::spawn(move || {
+            serve_local_shell_with_store_and_paths(
+                listener,
+                Some(1),
+                &server_state_path,
+                &server_profile_path,
+                &FileSystemProfileStore,
+            )
+            .expect("shell listener should serve one request");
+        });
+
+        let mut stream = TcpStream::connect(address).expect("client should connect");
+        let request_bytes = format!(
+            "POST /rpc HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            request.len(),
+            request,
+        );
+        stream
+            .write_all(request_bytes.as_bytes())
+            .expect("request should write");
+        stream
+            .shutdown(Shutdown::Write)
+            .expect("client write-half should shut down");
+
+        let response = read_stream_to_string(&mut stream);
+        let payload = parse_http_response_json(&response);
+
+        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
+        match payload.result.expect("result should be present") {
+            AgentJsonRpcResult::AgentLifecycle { agent } => {
+                assert_eq!(agent.name, "echo");
+                assert_eq!(agent.status, "running");
+            }
+            other => panic!("unexpected RPC result: {other:?}"),
+        }
+
+        server.join().expect("listener thread should exit cleanly");
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
     }
 
     #[test]
@@ -2997,7 +3412,10 @@ mod tests {
     }
 
     fn assert_rpc_error(response: &AgentJsonRpcResponse, code: i32, message: &str) {
-        assert!(response.result.is_none(), "expected no JSON-RPC result payload");
+        assert!(
+            response.result.is_none(),
+            "expected no JSON-RPC result payload"
+        );
 
         let error = response
             .error

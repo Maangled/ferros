@@ -10,6 +10,7 @@ S1 is the foundation layer. It does not consume contracts from other streams. It
 |----------|------|----------|--------|
 | Cargo workspace layout | Convention | `Cargo.toml` (root) | ✅ Implemented |
 | CI pipeline contract | Workflow | `.github/workflows/ci.yml` | ✅ Implemented |
+| Release candidate bundle workflow | Workflow | `.github/workflows/release.yml` | ✅ Implemented |
 | Rust edition + toolchain pin | File | `rust-toolchain.toml` | ✅ Implemented |
 | CODEOWNERS | File | `CODEOWNERS` | ✅ Implemented |
 | Integration branch convention | Workflow | `.github/workflows/integration.yml` | ✅ Implemented |

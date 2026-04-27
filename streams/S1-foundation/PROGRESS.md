@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-26 — Release candidate bundle workflow landed
+
+- Added `.github/workflows/release.yml` as a manual release-candidate bundle workflow that verifies the workspace, reruns the `ferros-core` thumb-target `--no-default-features` check, and uploads stamped source archives plus a small manifest artifact.
+- Added concurrency guards to `.github/workflows/ci.yml` and `.github/workflows/integration.yml` so duplicate runs on the same ref do not stack unnecessarily.
+- Kept the slice repo-local and S1-owned: no tag creation, no branch-protection changes, no README edits, and no shared truth updates.
+
 ## 2026-04-23 — G1 closed
 
 - CI run #24812246339 on `main` (commit `6230495`) completed with all 7 jobs green: `fmt + clippy`, `build (ubuntu-latest)`, `build (macos-latest)`, `build (windows-latest)`, `test (ubuntu-latest)`, `test (macos-latest)`, `test (windows-latest)`.

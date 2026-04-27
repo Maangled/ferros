@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-26 — Local bundle import made rollback-safe on invalid grant state
+
+- Hardened `crates/ferros-profile/src/lib.rs` so `import_profile_bundle` now removes partially created local profile artifacts if signed-grant persistence or the final reload step fails after the profile and key files have already been written.
+- Added a focused regression that corrupts an exported bundle grant signature, proves import rejects it, and proves the target profile, key, and grant files are all rolled back instead of being left behind as partial local state.
+- Validation passed with `cargo test -p ferros-profile reload_boundary_load_local_profile`, `cargo test -p ferros-profile file_system_profile_store`, and `cargo test -p ferros-profile`.
+
 ## 2026-04-24 — Real-binary profile CLI lifecycle closed G2
 
 - Landed the remaining `ferros profile grant | export | import | revoke` path through the real `ferros` binary against temp-file-backed local state, completing the existing `init | show` slice.

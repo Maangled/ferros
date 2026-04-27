@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-26 — ferros-data migration-first boundary hardened with ordered manifest coverage
+
+- Extended `crates/ferros-data/src/lib.rs` to publish the ordered migration path manifest for the baseline and ordered-child tightening SQL files instead of leaving that sequence implicit in tests only.
+- Tightened the crate-local ADR-020 proof so the combined migration coverage now checks both sides of the final ordered-child contract: at least one parent must be present, and both parent columns cannot be present at the same time.
+- Validation passed with `cargo test -p ferros-data`.
+
 ## 2026-04-23 — ferros-data admitted to the root workspace
 
 - Added `crates/ferros-data/` to the root Cargo workspace and removed the crate-local standalone `[workspace]` marker used during the earlier isolated scaffold phase.

@@ -4,6 +4,11 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-26 — Pack B operator rehearsal notes added to the runway docs
+
+- Extended `docs/hub/reference-hardware.md` and `docs/hub/pack-b-bring-up-worksheet.md` with prep-only operator rehearsal prompts for clean reboot, DUT-only cold boot, consent-deny observation, and artifact capture discipline.
+- Kept the slice runway-only and evidence-prep only: no `crates/ferros-hub/` scaffold, no Home Assistant bridge implementation, no `docs/gates/G4.md` edits, and no launch or hardware evidence claims.
+
 ## 2026-04-26 — Pack B bring-up worksheet prepared from the runway map
 
 - Added `docs/hub/pack-b-bring-up-worksheet.md` as the first operator worksheet for Pack B x86_64 bring-up sessions plus a separate Pack C Home Assistant host.

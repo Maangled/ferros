@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>H9 — FERROS Localhost Shell Acceptance Harness</h1>
-<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates the aggregated <code>agent.snapshot</code> seam, local inspector reuse, route switching, empty-state grant and deny handling, read-only audit visibility, and operator-assisted live observation after local CLI run/stop updates &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
+<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates the aggregated <code>agent.snapshot</code> seam, local inspector reuse, staged selected-agent lifecycle intent copy, route switching, empty-state grant and deny handling, read-only audit visibility, and operator-assisted live observation after local CLI run/stop updates &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
 
 <button onclick="runJourney()">Run Journey</button>
 
@@ -171,6 +171,11 @@ function inspectorDetailValue(doc, key) {
   return '';
 }
 
+function textById(doc, id) {
+  var element = doc.getElementById(id);
+  return element ? element.textContent.trim().toLowerCase() : '';
+}
+
 async function refreshThroughSnapshot(doc) {
   resetRpcMonitor();
   await click(doc, '#refresh-button', 'refresh button');
@@ -274,6 +279,14 @@ async function runJourney() {
 
     var inspectorHasTimer = doc.getElementById('inspector-content').textContent.toLowerCase().indexOf('timer') !== -1;
     addResult('C: Inspector', 'Inspector renders live timer detail', inspectorHasTimer, inspectorHasTimer ? 'timer detail visible in inspector' : '', inspectorHasTimer ? '' : 'inspector did not show timer detail');
+
+    var timerIntentCopy = textById(doc, 'intent-note-copy');
+    var timerIntentVisible = timerIntentCopy.indexOf('timer') !== -1 && timerIntentCopy.indexOf('agent.run') !== -1;
+    addResult('C: Inspector', 'Selecting timer updates the staged lifecycle intent copy', timerIntentVisible, 'intent=' + (timerIntentCopy || 'missing'), timerIntentVisible ? '' : 'selected-agent lifecycle intent copy did not update for timer');
+
+    var timerToolsCopy = textById(doc, 'tools-copy');
+    var timerToolsVisible = timerToolsCopy.indexOf('timer') !== -1 && timerToolsCopy.indexOf('agent.run') !== -1;
+    addResult('C: Inspector', 'Tools slot stages timer lifecycle intent without extra RPCs', timerToolsVisible, 'tools=' + (timerToolsCopy || 'missing'), timerToolsVisible ? '' : 'tools slot did not stage the selected timer lifecycle intent');
   } catch (error) {
     addResult('C: Inspector', 'Selecting timer updates the inspector', false, '', error.message);
   }
@@ -350,9 +363,14 @@ async function runJourney() {
       var runningInspectorStatus = inspectorDetailValue(doc, 'Status');
       var runningObserved = runningListStatus === 'running' && runningInspectorStatus === 'running';
       addResult('E: Lifecycle Observation', 'Shell observes echo as running after local CLI run', runningObserved, 'list=' + (runningListStatus || 'missing') + ', inspector=' + (runningInspectorStatus || 'missing'), runningObserved ? '' : 'echo did not read back as running after the assisted local CLI run');
+
+      var runningIntentCopy = textById(doc, 'intent-note-copy');
+      var runningIntentVisible = runningIntentCopy.indexOf('echo') !== -1 && runningIntentCopy.indexOf('agent.stop') !== -1;
+      addResult('E: Lifecycle Observation', 'Lifecycle intent copy flips to agent.stop after local CLI run', runningIntentVisible, 'intent=' + (runningIntentCopy || 'missing'), runningIntentVisible ? '' : 'selected-agent lifecycle intent did not flip to agent.stop after the assisted local CLI run');
     } else {
       addResult('E: Lifecycle Observation', 'Manual echo run refresh still uses only the aggregated agent.snapshot seam', 'skip', 'operator skipped assisted local CLI run');
       addResult('E: Lifecycle Observation', 'Shell observes echo as running after local CLI run', 'skip', 'operator skipped assisted local CLI run');
+      addResult('E: Lifecycle Observation', 'Lifecycle intent copy flips to agent.stop after local CLI run', 'skip', 'operator skipped assisted local CLI run');
     }
 
     var stopConfirmed = operatorConfirm('Manual lifecycle step: stop echo', [
@@ -373,9 +391,14 @@ async function runJourney() {
       var stoppedInspectorStatus = inspectorDetailValue(doc, 'Status');
       var stoppedObserved = stoppedListStatus === 'stopped' && stoppedInspectorStatus === 'stopped';
       addResult('E: Lifecycle Observation', 'Shell observes echo as stopped after local CLI stop', stoppedObserved, 'list=' + (stoppedListStatus || 'missing') + ', inspector=' + (stoppedInspectorStatus || 'missing'), stoppedObserved ? '' : 'echo did not read back as stopped after the assisted local CLI stop');
+
+      var stoppedIntentCopy = textById(doc, 'intent-note-copy');
+      var stoppedIntentVisible = stoppedIntentCopy.indexOf('echo') !== -1 && stoppedIntentCopy.indexOf('agent.run') !== -1;
+      addResult('E: Lifecycle Observation', 'Lifecycle intent copy flips back to agent.run after local CLI stop', stoppedIntentVisible, 'intent=' + (stoppedIntentCopy || 'missing'), stoppedIntentVisible ? '' : 'selected-agent lifecycle intent did not flip back to agent.run after the assisted local CLI stop');
     } else {
       addResult('E: Lifecycle Observation', 'Manual echo stop refresh still uses only the aggregated agent.snapshot seam', 'skip', 'operator skipped assisted local CLI stop');
       addResult('E: Lifecycle Observation', 'Shell observes echo as stopped after local CLI stop', 'skip', 'operator skipped assisted local CLI stop');
+      addResult('E: Lifecycle Observation', 'Lifecycle intent copy flips back to agent.run after local CLI stop', 'skip', 'operator skipped assisted local CLI stop');
     }
   } catch (error) {
     addResult('E: Lifecycle Observation', 'Operator-assisted local lifecycle observation flow completes', false, '', error.message);
@@ -413,6 +436,10 @@ async function runJourney() {
 
   var readOnlyVisible = doc.getElementById('audit-panel').textContent.indexOf('Read-only on purpose') !== -1;
   addResult('G: Audit Slot', 'Audit slot preserves the read-only contract copy', readOnlyVisible, readOnlyVisible ? 'read-only note visible' : '', readOnlyVisible ? '' : 'read-only audit note missing');
+
+  var auditCopy = textById(doc, 'intent-note-copy');
+  var routeAwareAuditVisible = auditCopy.indexOf('agent.') !== -1 || auditCopy.indexOf('still does not submit lifecycle or grant writes') !== -1 || auditCopy.indexOf('does not stage grant.create or grant.revoke') !== -1;
+  addResult('G: Audit Slot', 'Audit slot exposes route-scoped non-privileged copy without browser controls', routeAwareAuditVisible, routeAwareAuditVisible ? 'audit=' + auditCopy : '', routeAwareAuditVisible ? '' : 'route-scoped non-privileged audit copy missing from the audit slot');
 }
 </script>
 </body>

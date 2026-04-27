@@ -1254,6 +1254,12 @@ impl FileSystemProfileStore {
         Ok(())
     }
 
+    fn remove_local_profile_artifacts(&self, profile_path: &Path) {
+        let _ = fs::remove_file(profile_path);
+        let _ = fs::remove_file(Self::key_pair_path(profile_path));
+        let _ = fs::remove_file(Self::signed_grants_path(profile_path));
+    }
+
     fn load_key_pair(&self, profile_path: &Path) -> Result<KeyPair, ProfileStoreError> {
         let contents = fs::read_to_string(Self::key_pair_path(profile_path))?;
         let stored: StoredKeyPair = serde_json::from_str(&contents)?;
@@ -1398,9 +1404,19 @@ impl LocalProfileStore for FileSystemProfileStore {
         let state = bundle.into_local_state()?;
 
         self.create_local_profile(profile_path, &state.profile, &state.key_pair)?;
-        self.save_signed_grants(profile_path, &state.signed_grants)?;
 
-        self.load_local_profile(profile_path)
+        if let Err(error) = self.save_signed_grants(profile_path, &state.signed_grants) {
+            self.remove_local_profile_artifacts(profile_path);
+            return Err(error);
+        }
+
+        match self.load_local_profile(profile_path) {
+            Ok(local_state) => Ok(local_state),
+            Err(error) => {
+                self.remove_local_profile_artifacts(profile_path);
+                Err(error)
+            }
+        }
     }
 }
 
@@ -2595,6 +2611,64 @@ mod tests {
         let _ = std::fs::remove_file(&imported_path);
         let _ = std::fs::remove_file(FileSystemProfileStore::key_pair_path(&imported_path));
         let _ = std::fs::remove_file(FileSystemProfileStore::signed_grants_path(&imported_path));
+        if let Some(parent) = source_path.parent() {
+            let _ = std::fs::remove_dir(parent);
+        }
+    }
+
+    #[test]
+    fn file_system_profile_store_import_rolls_back_partial_state_when_bundle_grants_are_invalid() {
+        let store = FileSystemProfileStore;
+        let source_path = unique_temp_profile_path("bundle-source-invalid-grant");
+        let bundle_path =
+            unique_temp_profile_path("bundle-invalid-grant").with_extension("bundle.json");
+        let imported_path = unique_temp_profile_path("bundle-imported-invalid-grant");
+
+        let profile = ProfileDocument::fresh("Wave Pilot", "2026-04-23T10:00:00Z")
+            .expect("fresh profile should build");
+        let key_pair = test_key_pair();
+        let signed_grant = key_pair
+            .sign_grant(&CapabilityGrant::new(key_pair.profile_id(), "consent.read"))
+            .expect("grant should sign");
+
+        store
+            .create_local_profile(&source_path, &profile, &key_pair)
+            .expect("source state should persist");
+        store
+            .save_signed_grants(&source_path, std::slice::from_ref(&signed_grant))
+            .expect("source grants should persist");
+        store
+            .export_profile_bundle(&source_path, &bundle_path)
+            .expect("bundle should export");
+
+        let mut bundle_json: Value = serde_json::from_str(
+            &std::fs::read_to_string(&bundle_path).expect("bundle should be readable"),
+        )
+        .expect("bundle JSON should parse");
+        bundle_json["grants"][0]["signature"] = Value::String("00".repeat(64));
+        std::fs::write(
+            &bundle_path,
+            serde_json::to_string_pretty(&bundle_json).expect("bundle JSON should serialize"),
+        )
+        .expect("mutated bundle should persist");
+
+        let error = store
+            .import_profile_bundle(&bundle_path, &imported_path)
+            .expect_err("invalid bundle grants should be rejected");
+
+        assert!(matches!(
+            error,
+            ProfileStoreError::CapabilityGrantSignature(
+                CapabilityGrantSignatureError::SignatureMismatch
+            )
+        ));
+        assert!(!imported_path.exists());
+        assert!(!FileSystemProfileStore::key_pair_path(&imported_path).exists());
+        assert!(!FileSystemProfileStore::signed_grants_path(&imported_path).exists());
+
+        cleanup_local_profile_artifacts(&source_path);
+        let _ = std::fs::remove_file(&bundle_path);
+        cleanup_local_profile_artifacts(&imported_path);
         if let Some(parent) = source_path.parent() {
             let _ = std::fs::remove_dir(parent);
         }

@@ -1,0 +1,64 @@
+name: Release Candidate Bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release or RC label to stamp onto the uploaded source bundles"
+        required: true
+        type: string
+
+concurrency:
+  group: release-bundle-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-bundle:
+    name: verify + bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt,clippy
+
+      - name: Install thumbv7em-none-eabi target
+        run: rustup target add thumbv7em-none-eabi
+
+      - name: Verify workspace
+        run: cargo xtask ci
+
+      - name: Verify ferros-core thumb target without default features
+        run: cargo check -p ferros-core --target thumbv7em-none-eabi --no-default-features
+
+      - name: Prepare release bundle directory
+        run: mkdir -p dist
+
+      - name: Archive source tarball
+        run: git archive --format=tar.gz --output=dist/ferros-${{ inputs.version }}-source.tar.gz HEAD
+
+      - name: Archive source zip
+        run: git archive --format=zip --output=dist/ferros-${{ inputs.version }}-source.zip HEAD
+
+      - name: Write bundle manifest
+        run: |
+          cat <<EOF > dist/manifest.txt
+          version=${{ inputs.version }}
+          ref=${{ github.ref }}
+          sha=${{ github.sha }}
+          workflow=${{ github.workflow }}
+          EOF
+
+      - name: Upload release candidate bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ferros-${{ inputs.version }}-source-bundle
+          path: dist/

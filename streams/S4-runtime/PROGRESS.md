@@ -4,6 +4,18 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-26 — Narrow S4 support landed for the first local-only lifecycle/write JSON-RPC slice
+
+- Refined `crates/ferros-node/src/lib.rs` so the current localhost shell host now routes local-only `agent.run` and `agent.stop` JSON-RPC methods through the landed `LocalAgentApi` seam on the same persisted local state path.
+- Kept the S4 support narrow: the read-first observation methods stay the read-after-write path, and the slice still does not publish remote transport, browser control, grant writes, or broader S4 restart/reload guarantees.
+- Focused validation passed with `cargo test -p ferros-node agent_write_rpc_`, `cargo test -p ferros-node shell_listener_posts_json_rpc_`, and `cargo test -p ferros-node agent_read_rpc_`.
+
+## 2026-04-26 — Narrow S4 support kept the local deny-detail follow-up below broader host publication
+
+- Refined `crates/ferros-node/src/lib.rs` so the landed local-only `LocalAgentApi` seam now preserves typed missing-capability detail on denied local lifecycle attempts without widening beyond the current host/controller boundary.
+- Kept the S4 support narrow: CLI denial summaries, persisted deny logs, read-first JSON/RPC behavior, and broader restart/reload publication all remain unchanged.
+- Focused validation passed with `cargo test -p ferros-node local_agent_api_` and `cargo test -p ferros-node agent_cli_`.
+
 ## 2026-04-26 — Narrow S4 support landed for the first broader local-only wrapper/API slice
 
 - Refactored `crates/ferros-node/src/lib.rs` so the extracted local host-controller seam now supports a published local-only `LocalAgentApi` wrapper above CLI formatting instead of leaving the first broader slice only as docs.

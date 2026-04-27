@@ -27,7 +27,9 @@
 - [x] Add focused `ferros-node` and `ferros-profile` tests that lock the published reload boundary without widening into durable hub-facing restart or re-registration semantics
 - [x] Extract the first internal local host-controller surface above the current CLI/state path without publishing a broader lifecycle/write wrapper/API or remote-control contract
 - [x] Support the first broader local-only lifecycle/write wrapper/API slice above the extracted controller seam without publishing remote transport, remote-control semantics, or broader S4 restart/reload semantics
-- [ ] Keep S4 support narrow while the next S3 follow-up exposes richer local deny-reason introspection on the landed `LocalAgentApi` seam without widening into remote transport or broader restart/reload publication
+- [x] Keep S4 support narrow while the next S3 follow-up exposes richer local deny-reason introspection on the landed `LocalAgentApi` seam without widening into remote transport or broader restart/reload publication
+- [x] Keep S4 support narrow while the next S3 follow-up exposes the first local-only `agent.run` / `agent.stop` JSON-RPC slice through the current localhost shell host without widening into remote transport or broader restart/reload publication
+- [x] Keep S4 support narrow while S5 defines the first shell-intent entry bar above the landed local-only `agent.run` / `agent.stop` JSON-RPC slice without widening into browser-issued writes or broader restart/reload publication
 
 ## Later
 

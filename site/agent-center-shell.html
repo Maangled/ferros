@@ -457,9 +457,9 @@
     <header class="panel top-edge">
       <section>
         <span class="panel-label">FERROS local shell</span>
-        <h1 class="identity-title">Agent Center Read Surface</h1>
+        <h1 class="identity-title">Agent Center Observation + Intent Prep</h1>
         <p class="identity-subtitle">
-          Fixed-slot localhost shell powered by the landed read-first <code>agent.snapshot</code> JSON-RPC route. This slice stays observation-only on purpose: agent, grant-state, and deny-log views are real; privileged writes remain future work.
+          Fixed-slot localhost shell powered by the landed read-first <code>agent.snapshot</code> JSON-RPC route and the current local-only <code>agent.run</code> / <code>agent.stop</code> backend slice. This shell stays read-only on purpose: agent, grant-state, and deny-log views are real, and selected-agent lifecycle intent is staged in-slot without browser-issued writes.
         </p>
         <div class="identity-meta">
           <span class="state-pill">route <span id="active-route-pill">agents</span></span>
@@ -478,7 +478,7 @@
       <section class="shell-notes">
         <div class="note-card">
           <div class="shell-note-title">Current lane contract</div>
-          <p class="shell-note-copy">Consumes <code>agent.snapshot</code> only for live agent, grant-state, and deny-log observation. Consent and grant-write surfaces stay visible as owned future slots rather than fake actions.</p>
+          <p class="shell-note-copy">Consumes <code>agent.snapshot</code> for live observation and stages selected-agent lifecycle intent against the landed local-only <code>agent.run</code> / <code>agent.stop</code> backend slice. Consent and grant-write surfaces stay visible as owned future slots rather than fake browser writes.</p>
         </div>
       </section>
     </header>
@@ -606,7 +606,7 @@
         <div>
           <span class="panel-label">Bottom-right <span class="anchor-pill">consent / audit anchor</span></span>
           <h2 class="panel-title">Consent and audit</h2>
-          <p class="panel-subtitle">Visible home for privileged actions even before write flows exist.</p>
+          <p class="panel-subtitle">Visible home for staged lifecycle intent and future privileged actions even before write flows exist.</p>
         </div>
         <div class="panel-actions">
           <button type="button" data-collapse-target="audit-panel">Collapse</button>
@@ -614,8 +614,12 @@
       </div>
       <div class="panel-body shell-notes">
         <div class="note-card">
+          <div id="intent-note-title" class="shell-note-title">Selected lifecycle intent</div>
+          <p id="intent-note-copy" class="shell-note-copy">Select an agent to stage the current local lifecycle intent. The shell still does not send writes.</p>
+        </div>
+        <div class="note-card">
           <div class="shell-note-title">Read-only on purpose</div>
-          <p class="shell-note-copy">Grant creation and revoke actions are not wired yet. This shell keeps their home slot visible so Phase B does not invent a modal stack or fake write flow before the S3/S5 write contract exists.</p>
+          <p class="shell-note-copy">Grant creation, revoke, and browser-issued lifecycle actions are not wired yet. This shell keeps their home slot visible so Phase B does not invent a modal stack or fake write flow before the S3/S5 write contract exists.</p>
         </div>
         <div class="note-card">
           <div class="shell-note-title">Latest deny event</div>
@@ -702,6 +706,23 @@
       return state.agents.find((agent) => agent.name === state.selectedAgent) || null;
     }
 
+    function lifecycleIntentFor(agent) {
+      if (!agent) {
+        return null;
+      }
+
+      const method = agent.status === 'running' ? 'agent.stop' : 'agent.run';
+      return {
+        agentName: agent.name,
+        status: agent.status,
+        method,
+      };
+    }
+
+    function selectedLifecycleIntent() {
+      return lifecycleIntentFor(selectedAgentRecord());
+    }
+
     function reconcileSelectedAgent() {
       const selectedAgent = selectedAgentRecord();
       if (selectedAgent) {
@@ -781,6 +802,8 @@
           <div class="shell-note-title">Inspector waiting</div>
           <p class="shell-note-copy">No live object detail is available while the RPC surface is offline.</p>
         </div>`;
+      document.getElementById('intent-note-title').textContent = 'Lifecycle intent unavailable';
+      document.getElementById('intent-note-copy').textContent = 'No selected lifecycle intent is available while the localhost RPC surface is offline.';
       document.getElementById('latest-deny-copy').textContent = 'No deny event available while the shell is offline.';
       document.getElementById('status-error-count').textContent = String(state.errors);
     }
@@ -827,12 +850,16 @@
 
       document.getElementById('center-subtitle').textContent = centerSubtitle();
 
-      agentsSurface.innerHTML = state.agents.map((agent) => `
+      agentsSurface.innerHTML = state.agents.map((agent) => {
+        const intent = lifecycleIntentFor(agent);
+        const intentLabel = intent ? `intent ${intent.method} staged` : 'inspect agent';
+        return `
         <article class="table-row ${agent.name === state.selectedAgent ? 'is-selected' : ''}" data-focus-agent="${agent.name}">
           <strong>${escapeHtml(agent.name)}</strong>
           <small>${escapeHtml(agent.status)} · version ${escapeHtml(agent.version)}</small>
-          <div class="table-row-meta"><span>Route focus</span><span>inspect agent</span></div>
-        </article>`).join('') || emptyNote('No registry rows', 'The runtime still exposes a valid read surface, but no agents are currently visible.');
+          <div class="table-row-meta"><span>Route focus</span><span>${escapeHtml(intentLabel)}</span></div>
+        </article>`;
+      }).join('') || emptyNote('No registry rows', 'The runtime still exposes a valid read surface, but no agents are currently visible.');
 
       grantsSurface.innerHTML = state.grants.map((grant, index) => `
         <article class="table-row ${index === state.selectedGrantIndex ? 'is-selected' : ''}" data-grant-index="${index}">
@@ -921,6 +948,12 @@
     }
 
     function renderToolsCopy() {
+      const lifecycleIntent = selectedLifecycleIntent();
+      if (state.route === 'agents' && lifecycleIntent) {
+        document.getElementById('tools-copy').textContent = `${lifecycleIntent.agentName} is ${lifecycleIntent.status}. The first shell-intent bar stages ${lifecycleIntent.method} ownership here only; submit the action locally, then refresh through agent.snapshot.`;
+        return;
+      }
+
       const copy = {
         agents: 'Agents route shows live registry rows and promotes a selected agent into the inspector slot.',
         grants: 'Grants route reads the local profile state through the current S3/S2 boundary with no mock grant rows.',
@@ -930,6 +963,21 @@
     }
 
     function renderAuditCopy() {
+      const lifecycleIntent = selectedLifecycleIntent();
+      const intentTitle = document.getElementById('intent-note-title');
+      const intentCopy = document.getElementById('intent-note-copy');
+
+      if (state.route === 'agents' && lifecycleIntent) {
+        intentTitle.textContent = 'Selected lifecycle intent';
+        intentCopy.textContent = `${lifecycleIntent.agentName} is currently ${lifecycleIntent.status}. The backend localhost slice already supports ${lifecycleIntent.method}, but this shell still stages that intent only in-slot. Use the local CLI or a future consent flow, then refresh to observe the result through agent.snapshot.`;
+      } else if (state.route === 'grants') {
+        intentTitle.textContent = 'Grant control remains future work';
+        intentCopy.textContent = 'Grant rows are live, but this shell does not stage grant.create or grant.revoke. The consent/audit slot stays visible so those actions do not appear as fake browser controls.';
+      } else {
+        intentTitle.textContent = 'Deny observation only';
+        intentCopy.textContent = 'Deny entries remain read-only evidence. Local lifecycle denies can read back here after refresh, but this shell still does not submit lifecycle or grant writes.';
+      }
+
       const latest = state.denyEntries[0];
       document.getElementById('latest-deny-copy').textContent = latest
         ? `${latest.agentName || 'runtime'} · ${latest.message}`

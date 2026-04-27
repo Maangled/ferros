@@ -157,6 +157,19 @@ These targets are intentionally forward-looking. They describe what later hardwa
 
 ---
 
+## Operator rehearsal notes to prepare now
+
+These notes stay prep-only. They are meant to make the first real Pack B session boring and repeatable once the implementation path exists; they do not count as G4 evidence on their own.
+
+| Rehearsal | What to capture now | Why it matters later |
+|-----------|---------------------|----------------------|
+| Clean reboot rehearsal | Exact command or console path the operator will use for a normal reboot, plus what services or indicators should be checked first after the device returns | Later restart-safe profile and grant evidence is weaker if the operator improvises the reboot path during capture |
+| DUT-only cold-boot rehearsal | Exact power-cut method, expected boot delay, and the first signs that the DUT is back without disturbing the separate HA host | Full power-cycle evidence depends on an isolated DUT reset path rather than a whole-lab restart |
+| Consent-deny rehearsal | Which terminal, dashboard, or logfile windows will stay open to observe one denied request once the bridge exists | Consent-deny evidence is hard to trust if the observation path is decided after the event happens |
+| Artifact capture discipline | Where screenshots, shell transcripts, boot notes, and timestamps will be stored during the session | Launch evidence later needs one artifact trail per session instead of reconstructed notes |
+
+---
+
 ## Evidence fields to capture once implementation exists
 
 Fill this in only when the real on-device path exists. Until then, this table is a runway template.

@@ -5,6 +5,8 @@ use crate::manifest::CapabilityRequirement;
 pub const JSON_RPC_VERSION: &str = "2.0";
 pub const METHOD_AGENT_LIST: &str = "agent.list";
 pub const METHOD_AGENT_DESCRIBE: &str = "agent.describe";
+pub const METHOD_AGENT_RUN: &str = "agent.run";
+pub const METHOD_AGENT_STOP: &str = "agent.stop";
 pub const METHOD_AGENT_SNAPSHOT: &str = "agent.snapshot";
 pub const METHOD_GRANT_LIST: &str = "grant.list";
 pub const METHOD_DENY_LOG_LIST: &str = "denyLog.list";
@@ -12,6 +14,7 @@ pub const METHOD_DENY_LOG_LIST: &str = "denyLog.list";
 pub const JSON_RPC_INVALID_REQUEST: i32 = -32600;
 pub const JSON_RPC_METHOD_NOT_FOUND: i32 = -32601;
 pub const JSON_RPC_INVALID_PARAMS: i32 = -32602;
+pub const JSON_RPC_AUTHORIZATION_DENIED: i32 = -32003;
 pub const JSON_RPC_AGENT_NOT_FOUND: i32 = -32004;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -114,6 +117,7 @@ pub struct AgentJsonRpcError {
 pub enum AgentJsonRpcResult {
     AgentList { agents: Vec<AgentRpcAgentSummary> },
     AgentDetail { agent: AgentRpcAgentDetail },
+    AgentLifecycle { agent: AgentRpcAgentDetail },
     AgentSnapshot { snapshot: AgentRpcSnapshot },
     GrantList { grants: Vec<GrantStateRecord> },
     DenyLog { entries: Vec<DenyLogEntry> },
@@ -172,7 +176,7 @@ mod tests {
     use super::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
         AgentRpcAgentDetail, AgentRpcAgentSummary, AgentRpcSnapshot, DenyLogEntry,
-        GrantStateRecord, METHOD_AGENT_LIST,
+        GrantStateRecord, METHOD_AGENT_LIST, METHOD_AGENT_RUN,
     };
     use crate::manifest::CapabilityRequirement;
     use ferros_profile::ProfileId;
@@ -250,6 +254,29 @@ mod tests {
     }
 
     #[test]
+    fn response_round_trips_agent_lifecycle_payloads() {
+        let response = AgentJsonRpcResponse::success(
+            "req-lifecycle",
+            AgentJsonRpcResult::AgentLifecycle {
+                agent: AgentRpcAgentDetail {
+                    name: "echo".to_owned(),
+                    version: "0.1.0".to_owned(),
+                    status: "running".to_owned(),
+                    required_capabilities: vec![CapabilityRequirement::new(
+                        ProfileId::new("profile-alpha").expect("valid profile id"),
+                        "agent.echo",
+                    )],
+                },
+            },
+        );
+        let encoded = serde_json::to_string_pretty(&response).expect("response should serialize");
+        let decoded: AgentJsonRpcResponse =
+            serde_json::from_str(&encoded).expect("response should deserialize");
+
+        assert_eq!(decoded, response);
+    }
+
+    #[test]
     fn result_tags_agent_list_payloads_with_kind() {
         let response = AgentJsonRpcResponse::success(
             "req-3",
@@ -265,6 +292,22 @@ mod tests {
 
         assert_eq!(encoded["result"]["kind"], "agentList");
         assert_eq!(encoded["result"]["agents"][0]["name"], "echo");
+    }
+
+    #[test]
+    fn request_round_trips_run_method_with_agent_name() {
+        let request = AgentJsonRpcRequest::new(
+            "req-run",
+            METHOD_AGENT_RUN,
+            AgentJsonRpcParams::for_agent("echo"),
+        );
+        let encoded = serde_json::to_value(&request).expect("request should serialize");
+        let decoded: AgentJsonRpcRequest =
+            serde_json::from_value(encoded.clone()).expect("request should deserialize");
+
+        assert_eq!(decoded, request);
+        assert_eq!(encoded["method"], METHOD_AGENT_RUN);
+        assert_eq!(encoded["params"]["agentName"], "echo");
     }
 
     #[test]
