@@ -58,12 +58,20 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install thumbv7em-none-eabi target
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: rustup target add thumbv7em-none-eabi
+
       - name: Cargo test
         run: cargo test --workspace --all-targets
 
       - name: Cargo check ferros-core without default features
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo check -p ferros-core --no-default-features
+
+      - name: Cargo check ferros-core for thumbv7em-none-eabi without default features
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: cargo check -p ferros-core --target thumbv7em-none-eabi --no-default-features
 
       - name: Cargo run ferros demo
         if: ${{ matrix.os == 'ubuntu-latest' }}

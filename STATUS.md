@@ -2,7 +2,7 @@
 
 > Dashboard, not a diary. Each section shows current state. Details live in stream PROGRESS.md files.
 >
-> Last updated: 2026-04-24
+> Last updated: 2026-04-26
 
 ---
 
@@ -34,11 +34,11 @@
 |--------|--------|---------------|------|
 | S1 Foundation | 🟡 Closeout / hygiene | Tag `v0.0.1-foundation`, verify branch protection, keep repo hygiene rolling | G1 |
 | S2 Profile & Identity | ✅ G2 closed / handoff | the frozen unsigned `profile.v0.json` consumer contract, the Rust-local `SignedProfileDocument` v0 boundary, and the real-binary `init | grant | export | import | revoke | show` lifecycle proof are landed; immediate work is to hold that boundary steady for downstream consumers | G2 |
-| S3 Agent Center | 🟡 Post-G3 read contract landed | reference agents, local `ferros agent ...` CLI, the `cargo run --bin ferros -- demo` path, and the first read-first JSON/RPC contract for `agent.list`, `agent.describe`, `grant.list`, and `denyLog.list` are now in repo; broader harness coverage, transport serving, and privileged writes remain | post-G3 |
-| S4 Runtime / OS Core | 🟡 Post-G3 hardening | `ferros-runtime`, in-memory executor and bus, policy property tests, the `cargo run --bin ferros -- demo` path, and the `ferros-core --no-default-features` compile slice landed; the current node host now exposes the first read-only S3 contract over the same runtime state, while broader `no_std` and host hardening remain | post-G3 |
-| S5 UX | 🟨 Phase A archive/link-hygiene landed; Phase B localhost read slice landed | real landing page and honest status banner shipped; the Phase A archive/link-hygiene pass and docs-root reference repairs are landed, and the first fixed-slot localhost shell now reads live agent, grant-state, and deny-log data through `ferros-node` while broader browser acceptance and privileged write actions remain | post-G3 |
+| S3 Agent Center | 🟡 Post-G3 read contract plus first broader local-only wrapper/API slice landed | reference agents, local `ferros agent ...` CLI, the `cargo run --bin ferros -- demo` path, the read-first JSON/RPC contract for `agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, and `denyLog.list`, the first code-backed local-only lifecycle/read-after-write seam, and the first broader local-only `LocalAgentApi` wrapper/API slice above that seam are now in repo; broader transport and privileged writes remain open | post-G3 |
+| S4 Runtime / OS Core | 🟡 Post-G3 hardening | `ferros-runtime`, in-memory executor and bus, policy property tests, the `cargo run --bin ferros -- demo` path, the `ferros-core --no-default-features` compile slice, and a local `thumbv7em-none-eabi --no-default-features` proof are now in repo; CI is configured to enforce the same thumb-target check while broader `no_std` and host hardening remain | post-G3 |
+| S5 UX | 🟨 Phase A archive/link-hygiene landed; Phase B localhost observation slice landed | real landing page and honest status banner shipped; the Phase A archive/link-hygiene pass and docs-root reference repairs are landed, the fixed-slot localhost shell reads live agent, grant-state, and deny-log data through `ferros-node`, and operator-assisted localhost acceptance now proves local `ferros agent run | stop` changes read back through the same `agent.snapshot` refresh seam while privileged writes and live deny generation remain outside the shell | post-G3 |
 | S6 Ecosystem Harvest | 🟡 Active | ADR-018/019/020 landed; `ferros-data` is now a root workspace member while downstream extraction stays stream-owned | rolling |
-| S7 Smart-Home Hub | 🟡 G4 runway active | the hardware runway, `x86_64`-first bring-up plan, and first Home Assistant bridge runway contract are now explicit; pairing semantics stay provisional while a real `ferros-hub` binary, HA bridge implementation, and physical-device evidence remain open | G4 |
+| S7 Smart-Home Hub | 🟡 G4 runway active | the hardware runway, `x86_64`-first bring-up plan, first Home Assistant bridge runway contract, and first Pack B bring-up worksheet are now explicit; pairing semantics stay provisional while a real `ferros-hub` binary, HA bridge implementation, and physical-device evidence remain open | G4 |
 | S8 Docs / Governance | 🟡 Active (background) | status/gate/contracts truth-sync baseline is in repo; doctrine plus the ADR index/roadmap/research baseline are now landed; `SECURITY.md`, `THREAT-MODEL.md`, `GOVERNANCE.md`, `CODE_OF_CONDUCT.md`, and contributor intake templates now exist, while issue seeding remains open | rolling |
 
 ---
@@ -53,7 +53,7 @@
 | `v0.0.4-agents` | 🟡 | G3 is closed and the first read-first JSON/RPC contract is landed; tag pending while broader harness hardening, transport serving, and privileged writes remain |
 | `v0.0.5-harvest` | 🟡 | harvest ADRs landed; downstream extraction continues |
 | `v0.1.0-rc` | 🟡 | MVP gate path G1 → G2 → G3 is now closed; tag pending |
-| `v0.1.0` | 🟡 | First localhost shell slice is landed via `ferros-node shell`; broader browser acceptance and privileged write actions remain |
+| `v0.1.0` | 🟡 | First localhost shell slice is landed via `ferros-node shell`, and operator-assisted local run/stop observation is now covered; privileged write actions and broader browser control remain |
 | `v0.2.0-rc` | ⬜ | `ferros-hub` pairing demo on x86_64 |
 | `v0.2.0` | ⬜ | **Launch** — hub on Pi with HA, consent enforced, reboot-safe |
 
@@ -74,6 +74,8 @@ The **agent center + runtime convergence** path is now closed at G3. The active 
 
 | Date | Event |
 |------|-------|
+| 2026-04-26 | S3/S4 landed the first broader local-only wrapper/API slice above the current CLI/state path: `crates/ferros-node/src/lib.rs` now publishes `LocalAgentApi` as a typed local `list | describe | run | stop | logs` surface above CLI formatting while still reusing the same local state path, deny-by-default behavior, read-first JSON/RPC observation, and localhost shell host. |
+| 2026-04-26 | A five-lane owner batch advanced in parallel: S2 truth-synced its backlog to the already-closed G2 boundary, S3 fixed the first broader lifecycle/write wrapper/API entry bar above the landed local-only seam, S5 extended the same-origin localhost harness to prove operator-assisted local run/stop observation through one `agent.snapshot` refresh, S7 prepared the first Pack B bring-up worksheet from the existing hardware runway map, and S4 reran the local `thumbv7em-none-eabi --no-default-features` proof green while CI remains configured to enforce that same check. |
 | 2026-04-24 | S5 landed the first localhost shell slice: `site/agent-center-shell.html` now renders a fixed-slot agent-center shell, `crates/ferros-node/src/lib.rs` serves it at `GET /` with `POST /rpc` backed by the read-first S3 JSON/RPC contract, and live browser validation against `ferros-node shell 4317` proved real agent, grant-state, and deny-log reads without widening into privileged writes. |
 | 2026-04-24 | S3 landed the first read-first JSON/RPC contract in `crates/ferros-agents/src/rpc.rs` plus a local host handler in `crates/ferros-node/src/lib.rs`, covering `agent.list`, `agent.describe`, `grant.list`, and `denyLog.list` with focused `cargo test -p ferros-agents -p ferros-node` validation and without widening into HTTP serving or privileged write actions. |
 | 2026-04-24 | G3 closed: CI #20 (`run 24902870499`, commit `8383b67` on `main`) completed successfully after the hosted Ubuntu workflow began running both `cargo check -p ferros-core --no-default-features` and `cargo run --bin ferros -- demo`; G4 is now the active gate. |
@@ -101,7 +103,7 @@ The **agent center + runtime convergence** path is now closed at G3. The active 
 | Blocker | Affects | Owner |
 |---------|---------|-------|
 | `v0.0.1-foundation` tag is not yet created; required status checks on `main` are not yet verified in branch protection | S1 | S1 |
-| `ferros-agents` and the local `ferros` host path now have the first stable read-first JSON/RPC surface, but still need broader harness coverage, transport serving, and privileged write actions before the shell is feature-complete | S3, S5 | S3 |
-| `ferros-runtime` closed G3, but still needs target-level `no_std` hardening beyond the current `--no-default-features` compile slice and host-path hardening beyond the in-memory demo | S4, S3, S7 | S4 |
-| S5 now has a real localhost shell served by `ferros-node`, and the Phase A archive/link-hygiene pack plus docs-root reference repairs are landed, but broader browser acceptance and privileged grant/revoke actions are still open | S5 | S5 |
+| `ferros-agents` and the local `ferros` host path now have the first stable read-first JSON/RPC surface, a code-backed local-only lifecycle/read-after-write seam, and the first broader local-only `LocalAgentApi` wrapper/API slice, but still need transport serving beyond the current local shell host plus privileged write actions before the shell is feature-complete | S3, S5 | S3 |
+| `ferros-runtime` closed G3, but still needs target-level `no_std` hardening beyond the current local `--no-default-features` plus `thumbv7em-none-eabi` compile proof and host-path hardening beyond the in-memory demo | S4, S3, S7 | S4 |
+| S5 now has a real localhost shell served by `ferros-node`, the Phase A archive/link-hygiene pack plus docs-root reference repairs are landed, and operator-assisted run/stop observation is covered, but broader browser control, live deny-generation proof, and privileged grant/revoke actions are still open | S5 | S5 |
 | S7 runway is no longer blocked on G3, and the first Home Assistant bridge runway contract is now defined, but a real `ferros-hub` binary, HA bridge implementation, and physical-device evidence are still absent | S7 | S7 |

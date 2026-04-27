@@ -75,17 +75,19 @@ Build the coordination surface that lets users register, inspect, authorize, and
 
 ---
 
-## Minimum first lifecycle/write entry bar
+## First broader lifecycle/write wrapper/API slice
 
-- The first honest S3 lifecycle/write slice now exists only as a narrow, code-backed, local-only seam over the current `ferros-node` surfaces: `DemoRuntime::reference_host()`, `run_reference_demo_cycle()`, and the current CLI/state-path behavior.
-- The published inspection boundary stays read-first: local CLI inspection plus the current JSON/RPC read methods (`agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, `denyLog.list`) now provide stable local read-after-write observation of the current local lifecycle path; S4 restart/reload semantics remain unpublished/open at this boundary.
-- Every write attempt on this seam remains deny-by-default and is backed by focused lifecycle/log harness evidence.
+The first broader slice above the current local-only lifecycle/write seam is now landed as `LocalAgentApi` in `crates/ferros-node/src/lib.rs`. It stays local-only and keeps the surface narrow:
+
+- `LocalAgentApi` reuses the current code-backed local seams in `ferros-node`: `DemoRuntime::reference_host()`, `run_reference_demo_cycle()`, the persisted local state path, and the internal `LocalAgentController`, instead of inventing a second write path or a remote host surface.
+- The published inspection boundary stays read-first: local CLI inspection plus the current JSON/RPC read methods (`agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, `denyLog.list`) continue to provide stable local read-after-write observation of the landed wrapper/API slice; S4 restart/reload semantics remain unpublished/open at this boundary.
+- Every write attempt on `LocalAgentApi` remains deny-by-default and is backed by focused local wrapper, CLI, lifecycle/log, JSON/RPC, and shell-host test coverage on the same local path.
 - This still does not publish remote transport, richer remote observation/control, privileged UX claims, grant writes, bridge-control choreography, or S4 restart/reload semantics.
 
 ---
 
 ## Immediate next steps
 
-1. Keep the current local CLI plus read-first inspection surfaces as the only published boundary until a broader code-backed lifecycle/write wrapper surface exists; S4 restart/reload semantics remain unpublished/open there.
-2. Make the next implementation wave only the narrowest surface above this landed local-only seam, without publishing remote transport, richer remote observation/control, privileged UX, grant writes, bridge-control choreography, or S4 restart/reload semantics early.
+1. Keep `LocalAgentApi`, the current local CLI, and the current read-first inspection surfaces aligned on one local state path until a richer code-backed follow-up actually lands; S4 restart/reload semantics remain unpublished/open there.
+2. Make the next implementation wave only the narrowest follow-up above the landed `LocalAgentApi` slice, without publishing remote transport, richer remote observation/control, privileged UX, grant writes, bridge-control choreography, or S4 restart/reload semantics early.
 3. Freeze the post-G2 S3 contracts only after that next surface exists and the S2 and S4 dependency surfaces settle.

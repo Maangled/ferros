@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>H9 — FERROS Localhost Shell Acceptance Harness</h1>
-<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates the aggregated <code>agent.snapshot</code> seam, local inspector reuse, route switching, empty-state grant and deny handling, and read-only audit visibility &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
+<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates the aggregated <code>agent.snapshot</code> seam, local inspector reuse, route switching, empty-state grant and deny handling, read-only audit visibility, and operator-assisted live observation after local CLI run/stop updates &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
 
 <button onclick="runJourney()">Run Journey</button>
 
@@ -42,8 +42,9 @@
 <script>
 var results = [];
 
-function addResult(group, name, pass, detail, error) {
-  results.push({ group: group, name: name, pass: pass, detail: detail || '', error: error || '' });
+function addResult(group, name, status, detail, error) {
+  var normalized = status === 'skip' ? 'skip' : status ? 'pass' : 'fail';
+  results.push({ group: group, name: name, status: normalized, detail: detail || '', error: error || '' });
   renderResults();
 }
 
@@ -58,8 +59,8 @@ function renderResults() {
   Object.keys(groups).forEach(function(group) {
     html += '<h2>' + escapeHtml(group) + '</h2>';
     groups[group].forEach(function(result) {
-      var cls = result.pass ? 'pass' : 'fail';
-      var label = result.pass ? 'PASS' : 'FAIL';
+      var cls = result.status;
+      var label = result.status.toUpperCase();
       html += '<div class="test"><span class="badge ' + cls + '">' + label + '</span><div><div class="test-name">' + escapeHtml(result.name) + '</div>';
       if (result.detail) html += '<div class="test-detail">' + escapeHtml(result.detail) + '</div>';
       if (result.error) html += '<div class="test-error">' + escapeHtml(result.error) + '</div>';
@@ -69,11 +70,12 @@ function renderResults() {
 
   document.getElementById('groups').innerHTML = html;
 
-  var passCount = results.filter(function(result) { return result.pass; }).length;
-  var failCount = results.length - passCount;
+  var passCount = results.filter(function(result) { return result.status === 'pass'; }).length;
+  var failCount = results.filter(function(result) { return result.status === 'fail'; }).length;
+  var skipCount = results.filter(function(result) { return result.status === 'skip'; }).length;
   var bar = document.getElementById('summary-bar');
   bar.className = 'summary-bar ' + (failCount > 0 ? 'has-fail' : 'all-pass');
-  bar.innerHTML = '<span class="summary-stat">' + passCount + ' passed</span><span class="summary-stat">' + failCount + ' failed</span><span>' + results.length + ' total</span>';
+  bar.innerHTML = '<span class="summary-stat">' + passCount + ' passed</span><span class="summary-stat">' + failCount + ' failed</span><span class="summary-stat">' + skipCount + ' skipped</span><span>' + results.length + ' total</span>';
 
   document.getElementById('result-json').textContent = JSON.stringify(results, null, 2);
 }
@@ -145,6 +147,46 @@ function observedRpcMethods() {
   var frameWindow = getFrameWindow();
   if (!frameWindow || !frameWindow.__h9ObservedRpcMethods) return [];
   return frameWindow.__h9ObservedRpcMethods.slice();
+}
+
+function agentRowStatus(doc, agentName) {
+  var row = doc.querySelector('[data-agent-name="' + agentName + '"]');
+  if (!row) return '';
+  var small = row.querySelector('small');
+  var text = small ? small.textContent : row.textContent;
+  var match = text.match(/status\s+([a-z-]+)/i);
+  return match ? match[1].toLowerCase() : '';
+}
+
+function inspectorDetailValue(doc, key) {
+  var pairs = doc.querySelectorAll('#inspector-content .detail-pair');
+  for (var index = 0; index < pairs.length; index += 1) {
+    var pair = pairs[index];
+    var detailKey = pair.querySelector('.detail-key');
+    var detailValue = pair.querySelector('.detail-value');
+    if (detailKey && detailValue && detailKey.textContent.trim().toLowerCase() === key.toLowerCase()) {
+      return detailValue.textContent.trim().toLowerCase();
+    }
+  }
+  return '';
+}
+
+async function refreshThroughSnapshot(doc) {
+  resetRpcMonitor();
+  await click(doc, '#refresh-button', 'refresh button');
+  var settled = await waitFor(function() {
+    doc = getDoc();
+    return observedRpcMethods().length > 0 && doc.getElementById('connection-state').dataset.state === 'ready';
+  }, 5000);
+
+  return {
+    settled: settled,
+    methods: observedRpcMethods(),
+  };
+}
+
+function operatorConfirm(title, instructions) {
+  return window.confirm(title + '\n\n' + instructions.join('\n'));
 }
 
 function reloadShellFrame() {
@@ -278,8 +320,99 @@ async function runJourney() {
     addResult('D: Deny Log', 'Deny log route journey completes', false, '', error.message);
   }
 
+  try {
+    await click(doc, '[data-route="agents"]', 'agents route button');
+    await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('active-route-pill').textContent.trim() === 'agents' && doc.querySelector('[data-focus-agent="echo"]');
+    }, 3000);
+    await click(doc, '[data-focus-agent="echo"]', 'echo focus row');
+    await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('status-selected').textContent.trim() === 'echo';
+    }, 3000);
+
+    var runConfirmed = operatorConfirm('Manual lifecycle step: run echo', [
+      'In another terminal from the repo root, run:',
+      'cargo run -p ferros-node --bin ferros -- agent run echo',
+      '',
+      'Return here and click OK after the command succeeds.',
+      'Click Cancel to skip this assisted proof.'
+    ]);
+
+    if (runConfirmed) {
+      var runRefresh = await refreshThroughSnapshot(doc);
+      doc = getDoc();
+      var runSnapshotOnly = runRefresh.settled && runRefresh.methods.length === 1 && runRefresh.methods[0] === 'agent.snapshot';
+      addResult('E: Lifecycle Observation', 'Manual echo run refresh still uses only the aggregated agent.snapshot seam', runSnapshotOnly, 'methods=' + (runRefresh.methods.join(', ') || 'none'), runSnapshotOnly ? '' : 'expected exactly one agent.snapshot call after local CLI run');
+
+      var runningListStatus = agentRowStatus(doc, 'echo');
+      var runningInspectorStatus = inspectorDetailValue(doc, 'Status');
+      var runningObserved = runningListStatus === 'running' && runningInspectorStatus === 'running';
+      addResult('E: Lifecycle Observation', 'Shell observes echo as running after local CLI run', runningObserved, 'list=' + (runningListStatus || 'missing') + ', inspector=' + (runningInspectorStatus || 'missing'), runningObserved ? '' : 'echo did not read back as running after the assisted local CLI run');
+    } else {
+      addResult('E: Lifecycle Observation', 'Manual echo run refresh still uses only the aggregated agent.snapshot seam', 'skip', 'operator skipped assisted local CLI run');
+      addResult('E: Lifecycle Observation', 'Shell observes echo as running after local CLI run', 'skip', 'operator skipped assisted local CLI run');
+    }
+
+    var stopConfirmed = operatorConfirm('Manual lifecycle step: stop echo', [
+      'In another terminal from the repo root, run:',
+      'cargo run -p ferros-node --bin ferros -- agent stop echo',
+      '',
+      'Return here and click OK after the command succeeds.',
+      'Click Cancel to skip this assisted proof.'
+    ]);
+
+    if (stopConfirmed) {
+      var stopRefresh = await refreshThroughSnapshot(doc);
+      doc = getDoc();
+      var stopSnapshotOnly = stopRefresh.settled && stopRefresh.methods.length === 1 && stopRefresh.methods[0] === 'agent.snapshot';
+      addResult('E: Lifecycle Observation', 'Manual echo stop refresh still uses only the aggregated agent.snapshot seam', stopSnapshotOnly, 'methods=' + (stopRefresh.methods.join(', ') || 'none'), stopSnapshotOnly ? '' : 'expected exactly one agent.snapshot call after local CLI stop');
+
+      var stoppedListStatus = agentRowStatus(doc, 'echo');
+      var stoppedInspectorStatus = inspectorDetailValue(doc, 'Status');
+      var stoppedObserved = stoppedListStatus === 'stopped' && stoppedInspectorStatus === 'stopped';
+      addResult('E: Lifecycle Observation', 'Shell observes echo as stopped after local CLI stop', stoppedObserved, 'list=' + (stoppedListStatus || 'missing') + ', inspector=' + (stoppedInspectorStatus || 'missing'), stoppedObserved ? '' : 'echo did not read back as stopped after the assisted local CLI stop');
+    } else {
+      addResult('E: Lifecycle Observation', 'Manual echo stop refresh still uses only the aggregated agent.snapshot seam', 'skip', 'operator skipped assisted local CLI stop');
+      addResult('E: Lifecycle Observation', 'Shell observes echo as stopped after local CLI stop', 'skip', 'operator skipped assisted local CLI stop');
+    }
+  } catch (error) {
+    addResult('E: Lifecycle Observation', 'Operator-assisted local lifecycle observation flow completes', false, '', error.message);
+  }
+
+  try {
+    await click(doc, '[data-route="denyLog"]', 'deny log route button');
+    await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('active-route-pill').textContent === 'denyLog';
+    }, 3000);
+
+    var denyConfirmed = operatorConfirm('Optional deny observation step', [
+      'If you have already pre-seeded a deny entry through the dedicated local lifecycle/log seam, click OK to refresh and verify that the shell observes it.',
+      '',
+      'If not, click Cancel. Live deny generation still remains outside the current shell and CLI surface.'
+    ]);
+
+    if (denyConfirmed) {
+      var denyRefresh = await refreshThroughSnapshot(doc);
+      doc = getDoc();
+      var denySnapshotOnly = denyRefresh.settled && denyRefresh.methods.length === 1 && denyRefresh.methods[0] === 'agent.snapshot';
+      addResult('F: Deny Observation', 'Manual deny refresh still uses only the aggregated agent.snapshot seam', denySnapshotOnly, 'methods=' + (denyRefresh.methods.join(', ') || 'none'), denySnapshotOnly ? '' : 'expected exactly one agent.snapshot call after external deny-state injection');
+
+      var denyRows = doc.querySelectorAll('[data-deny-index]').length;
+      var denyObserved = denyRows > 0 || doc.getElementById('deny-surface').textContent.indexOf('No deny entries') === -1;
+      addResult('F: Deny Observation', 'Shell observes deny evidence after external local-state injection', denyObserved, denyObserved ? 'deny rows=' + denyRows : 'deny surface still shows the empty state', denyObserved ? '' : 'no deny entry became visible after the assisted refresh');
+    } else {
+      addResult('F: Deny Observation', 'Manual deny refresh still uses only the aggregated agent.snapshot seam', 'skip', 'optional because live deny generation remains outside the current shell and CLI surface');
+      addResult('F: Deny Observation', 'Shell observes deny evidence after external local-state injection', 'skip', 'optional because live deny generation remains outside the current shell and CLI surface');
+    }
+  } catch (error) {
+    addResult('F: Deny Observation', 'Optional deny observation flow completes', false, '', error.message);
+  }
+
   var readOnlyVisible = doc.getElementById('audit-panel').textContent.indexOf('Read-only on purpose') !== -1;
-  addResult('E: Audit Slot', 'Audit slot preserves the read-only contract copy', readOnlyVisible, readOnlyVisible ? 'read-only note visible' : '', readOnlyVisible ? '' : 'read-only audit note missing');
+  addResult('G: Audit Slot', 'Audit slot preserves the read-only contract copy', readOnlyVisible, readOnlyVisible ? 'read-only note visible' : '', readOnlyVisible ? '' : 'read-only audit note missing');
 }
 </script>
 </body>

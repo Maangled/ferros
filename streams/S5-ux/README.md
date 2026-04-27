@@ -67,6 +67,7 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 - [x] Local web shell at `http://localhost:<port>` served by `ferros-node`.
 - [x] Agent registry/detail, capability grant state, and deny-log observation consume the aggregated `agent.snapshot` read seam — no fake data.
 - [x] Deny log visible in the UI.
+- [x] Operator-assisted localhost acceptance can prove local `ferros agent run | stop` changes read back through the same `agent.snapshot` refresh seam without adding shell write controls; live deny generation remains outside the shell and can only be observed when pre-seeded through the existing local lifecycle/log seam.
 
 The current Phase B slice is intentionally read-first. Privileged grant/revoke actions and broader browser acceptance coverage remain follow-up work.
 

@@ -4,18 +4,18 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 
 ## Ready
 
-### WAVE-2026-04-25-07
+### WAVE-2026-04-26-07
 
-- Title: Define the minimum first broader lifecycle/write wrapper/API entry bar above the local-only seam
+- Title: Expose richer local deny-reason introspection on the `LocalAgentApi` seam
 - Status: ready
 - Priority: P1
-- Gate: post-G3 broader lifecycle/write prep
-- Owning streams: S3 primary, S4 host awareness, S8 truth-sync if queue or stream docs move
-- Goal: Use the landed local-only `ferros agent run` / `ferros agent stop` state-path seam, the current read-first `agent.describe`, `agent.snapshot`, `grant.list`, and `denyLog.list` observation surfaces, and the dedicated deny-by-default lifecycle/log evidence as fixed input to define the smallest honest first broader lifecycle/write wrapper/API slice S3 could publish next, naming the minimum additional code-backed surface required above the landed local-only seam before any broader wrapper/API, remote transport, richer remote observation/control, privileged UX, grant-write semantics, bridge-control sequencing, or broader S4 restart/reload claim is honest.
-- Anchor files: `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/README.md`
-- Validation: `get_errors` clean on touched S3 docs; verify the landed wording uses the local-only seam as fixed input, defines only the minimum first broader wrapper/API entry bar above it, and keeps remote transport, richer remote observation/control, privileged UX, grant-write semantics, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, and G4 evidence unpublished until a code-backed surface exists.
-- Constraints: Keep the wave docs-only/prep and S3-owned. Do not change code. Do not publish a broader lifecycle/write wrapper/API or remote/control contract as landed without a code-backed surface. Do not widen into remote transport, richer remote observation/control, privileged UX, grant-write semantics, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
-- Last update: 2026-04-25
+- Gate: post-G3 local wrapper/API hardening
+- Owning streams: S3 primary, S4 support, S8 truth-sync if docs move
+- Goal: Reuse the landed local-only `LocalAgentApi` path to preserve and expose missing-capability deny detail on the same local lifecycle/read-after-write seam without widening into write JSON/RPC, browser control, remote transport, grant writes, bridge-control choreography, or broader S4 restart/reload claims.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `crates/ferros-node/src/bin/ferros.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`
+- Validation: Focused `cargo test -p ferros-node local_agent_api_` and `cargo test -p ferros-node agent_cli_`; add `cargo test -p ferros-node agent_read_rpc_` and `cargo test -p ferros-node shell_listener_posts_json_rpc_` if read payloads move; `get_errors` clean on touched owner docs.
+- Constraints: Keep the hot lane narrow around `crates/ferros-node/src/lib.rs`. Do not publish write JSON/RPC, browser control, remote transport, grant-write semantics, bridge-control choreography, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Last update: 2026-04-26
 
 ## In Progress
 
@@ -26,6 +26,97 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-26-06
+
+- Title: Publish the first broader lifecycle/write wrapper/API slice above the local-only seam
+- Status: done
+- Priority: P1
+- Gate: post-G3 broader lifecycle/write slice
+- Owning streams: S3 primary, S4 support, S8 truth-sync if docs move
+- Goal: Reuse the newly isolated internal local host-controller seam above argv parsing to land the smallest real code-backed broader lifecycle/write wrapper/API slice S3 can honestly publish above the current local-only path while preserving the current local host/state path and read-first observation surfaces.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `crates/ferros-node/src/bin/ferros.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`
+- Validation: `cargo test -p ferros-node local_agent_api_`, `cargo test -p ferros-node agent_cli_`, `cargo test -p ferros-node agent_read_rpc_`, and `cargo test -p ferros-node shell_listener_posts_json_rpc_` all passed; `get_errors` is clean on `crates/ferros-node/src/lib.rs`, `crates/ferros-node/src/bin/ferros.rs`, `streams/S3-agent-center/BACKLOG.md`, `streams/S3-agent-center/README.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/PROGRESS.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S4-runtime/PROGRESS.md`, `STATUS.md`, and `docs/contracts/CONTRACTS-OVERVIEW.md`.
+- Constraints: Keep the slice narrow around the newly extracted internal controller seam in `crates/ferros-node/src/lib.rs`. Do not publish remote transport, richer remote observation/control, privileged UX, grant-write semantics, bridge-control choreography, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Last update: 2026-04-26
+
+### WAVE-2026-04-26-05
+
+- Title: Extract the first internal local host-controller surface above the CLI/state path
+- Status: done
+- Priority: P1
+- Gate: post-G3 host-controller extraction
+- Owning streams: S4 primary, S3 coordination, S8 truth-sync if docs move
+- Goal: Now that the local-only seam is documented above and the shell can prove local `run` / `stop` observation through `agent.snapshot`, extract the next smallest code-backed internal local host-controller surface above argv parsing but still below any published broader lifecycle/write wrapper/API or remote-control contract.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `crates/ferros-node/src/bin/ferros.rs`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`
+- Validation: Focused `cargo test -p ferros-node agent_cli_`, `cargo test -p ferros-node agent_read_rpc_`, and `cargo test -p ferros-node shell_listener_posts_json_rpc_` all passed; `get_errors` is clean on `crates/ferros-node/src/lib.rs`, `streams/S4-runtime/BACKLOG.md`, `streams/S4-runtime/PROGRESS.md`, `streams/S3-agent-center/CONTRACTS.md`, and `streams/S3-agent-center/PROGRESS.md`.
+- Constraints: Keep the slice narrow around `crates/ferros-node/src/lib.rs` as the hot root abstraction. No remote transport, no privileged UX, no grant-write semantics, no bridge-control choreography, no published broader lifecycle/write wrapper/API, no S4 restart/reload publication, no schemas, no `crates/ferros-hub`, and no G4 evidence.
+- Last update: 2026-04-26
+
+### WAVE-2026-04-26-04
+
+- Title: Truth-sync the S2 backlog to the closed G2 boundary
+- Status: done
+- Priority: P1
+- Gate: G2 truth-sync
+- Owning streams: S2 primary, S8 truth-sync if queue or stream docs move
+- Goal: Remove stale pre-freeze and unfinished-CLI wording from the S2 backlog, mark the already-closed G2 boundary items landed, and replace them with post-G2 parity and local CLI hardening follow-on wording without reopening the frozen profile or grant contracts.
+- Anchor files: `streams/S2-profile/BACKLOG.md`
+- Validation: `get_errors` is clean on `streams/S2-profile/BACKLOG.md`.
+- Constraints: Keep the slice backlog-only and S2-owned. Do not reopen the closed G2 boundary, mutate frozen schemas, widen CLI claims beyond the landed evidence, or claim new gate movement.
+- Last update: 2026-04-26
+
+### WAVE-2026-04-26-03
+
+- Title: Prepare the first Pack B bring-up worksheet from the runway map
+- Status: done
+- Priority: P1
+- Gate: G4 runway
+- Owning streams: S7 primary, S8 truth-sync if queue or stream docs move
+- Goal: Derive the first Pack B bring-up worksheet from `docs/hub/reference-hardware.md` so the runway maps to an operator-usable worksheet without claiming hub implementation, Home Assistant bridge implementation, physical-device proof, launch truth, or G4 evidence.
+- Anchor files: `docs/hub/pack-b-bring-up-worksheet.md`, `streams/S7-hub/BACKLOG.md`, `streams/S7-hub/PROGRESS.md`
+- Validation: `get_errors` is clean on `docs/hub/pack-b-bring-up-worksheet.md`, `streams/S7-hub/BACKLOG.md`, and `streams/S7-hub/PROGRESS.md`.
+- Constraints: Keep the slice docs-only and S7-owned. Do not widen into `crates/ferros-hub`, Home Assistant bridge implementation, pairing ratification, launch truth, or G4 evidence.
+- Last update: 2026-04-26
+
+### WAVE-2026-04-26-02
+
+- Title: Add operator-assisted localhost shell observation proof over the local lifecycle seam
+- Status: done
+- Priority: P1
+- Gate: post-G3 consumer reliability
+- Owning streams: S5 primary, S3 contract awareness, S8 truth-sync if queue or stream docs move
+- Goal: Extend the same-origin localhost harness so it can pause for out-of-band local `ferros agent run echo` / `ferros agent stop echo` commands, refresh the shell, and prove those state changes still read back through exactly one `agent.snapshot` call while keeping the shell observation-only and live deny generation outside the current shell/CLI surface.
+- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/README.md`, `streams/S5-ux/PROGRESS.md`
+- Validation: `get_errors` is clean on `harnesses/localhost-shell-acceptance-harness.html`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/README.md`, and `streams/S5-ux/PROGRESS.md`. Harness reload with auto-skipped operator prompts produced 16 passed, 0 failed, 6 skipped. Live shell validation passed after restoring `cargo run -p ferros-node --bin ferros-node -- shell 4317`; `cargo run -p ferros-node --bin ferros -- agent run echo` followed by browser refresh showed one `agent.snapshot` call and echo observed as running; `cargo run -p ferros-node --bin ferros -- agent stop echo` followed by refresh showed one `agent.snapshot` call and echo observed as stopped.
+- Constraints: Keep the slice observation-only and S5-owned. Do not add privileged writes, live deny generation, grant mutation flows, remote transport, bridge-control choreography, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Last update: 2026-04-26
+
+### WAVE-2026-04-26-01
+
+- Title: Validate the local thumbv7em none-default-features proof and CI enforcement slice
+- Status: done
+- Priority: P1
+- Gate: post-G3 hardening
+- Owning streams: S4 primary, S1 CI awareness, S8 truth-sync if queue or stream docs move
+- Goal: Validate the existing local `ferros-core` `thumbv7em-none-eabi` `no-default-features` proof and current CI enforcement slice without widening into a new hosted CI claim, broader `no_std` publication, host hardening, schemas, `crates/ferros-hub`, or G4 evidence.
+- Anchor files: `.github/workflows/ci.yml`, `streams/S4-runtime/README.md`, `streams/S4-runtime/PROGRESS.md`
+- Validation: `cargo check -p ferros-core --target thumbv7em-none-eabi --no-default-features` passed. `cargo check -p ferros-core --no-default-features` passed. `cargo test -p ferros-core` passed. `get_errors` is clean on `.github/workflows/ci.yml`; the matching S4 docs were already clean in the parent thread.
+- Constraints: Keep the slice proof-only and S4-owned. Do not claim a new hosted CI run in this batch. Do not widen into broader `no_std` publication, remote/control work, schemas, `crates/ferros-hub`, or G4 evidence.
+- Last update: 2026-04-26
+
+### WAVE-2026-04-25-07
+
+- Title: Define the minimum first broader lifecycle/write wrapper/API entry bar above the local-only seam
+- Status: done
+- Priority: P1
+- Gate: post-G3 broader lifecycle/write prep
+- Owning streams: S3 primary, S4 host awareness, S8 truth-sync if queue or stream docs move
+- Goal: Use the landed local-only `ferros agent run` / `ferros agent stop` state-path seam, the current read-first `agent.describe`, `agent.snapshot`, `grant.list`, and `denyLog.list` observation surfaces, and the dedicated deny-by-default lifecycle/log evidence as fixed input to define the smallest honest first broader lifecycle/write wrapper/API slice S3 could publish next, naming the minimum additional code-backed surface required above the landed local-only seam before any broader wrapper/API, remote transport, richer remote observation/control, privileged UX, grant-write semantics, bridge-control sequencing, or broader S4 restart/reload claim is honest.
+- Anchor files: `streams/S3-agent-center/README.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/PROGRESS.md`
+- Validation: `get_errors` is clean on `streams/S3-agent-center/README.md`, `streams/S3-agent-center/CONTRACTS.md`, and `streams/S3-agent-center/PROGRESS.md`.
+- Constraints: Keep the wave docs-only/prep and S3-owned. Do not change code. Do not publish a broader lifecycle/write wrapper/API or remote/control contract as landed without a code-backed surface. Do not widen into remote transport, richer remote observation/control, privileged UX, grant-write semantics, pairing choreography, bridge-control sequencing, broader S4 restart/reload semantics, schemas, `crates/ferros-hub`, or G4 evidence.
+- Last update: 2026-04-26
 
 ### WAVE-2026-04-25-06
 

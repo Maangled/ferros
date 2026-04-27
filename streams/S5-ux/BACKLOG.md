@@ -27,6 +27,7 @@
 - [x] Aggregate agent registry/detail, grant-state, and deny-log observation through the single `agent.snapshot` read seam
 - [x] Wire to real `ferros-node` backend — no fake data
 - [x] Same-origin UI acceptance for `ferros-node shell` plus `/rpc` proves snapshot-only refresh and inspector reuse from loaded shell state
+- [x] Operator-assisted localhost acceptance proves local `ferros agent run | stop` state changes are observable through the same `agent.snapshot` refresh seam without adding shell write controls; deny generation remains outside the current shell/CLI surface
 - [ ] Stage privileged grant/revoke shell intents without bypassing S2/S3/S4 consent boundaries
 
 ## Later (Phase C — post-G3)

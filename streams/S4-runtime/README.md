@@ -20,7 +20,7 @@ Legacy runtime or agent prior art should enter this stream through S6 ADRs, not 
   - Capability and consent primitives (types for capabilities, policy rules, decisions).
   - Message envelope type (sender, recipient, capability, payload, nonce).
   - Policy engine: evaluate a `CapabilityGrant` against a request → allow/deny.
-  - `std`/`no_std` boundary: `std` stays the default feature, while the core slice must continue to compile with `--no-default-features`; embedded-target validation remains open.
+  - `std`/`no_std` boundary: `std` stays the default feature, while the core slice must continue to compile with `--no-default-features`; this wave records a local `cargo check -p ferros-core --target thumbv7em-none-eabi --no-default-features` proof and configures CI to enforce the same check.
 - `ferros-runtime` crate:
   - In-process executor (single-threaded to start; multi-threaded opt-in later).
   - In-process message bus: route messages between hosted agents.
@@ -62,7 +62,7 @@ Legacy runtime or agent prior art should enter this stream through S6 ADRs, not 
 - [x] 10+ unit tests covering capability grant/deny scenarios.
 - [ ] Property tests (via `proptest` or `quickcheck`) for the policy engine.
 - [x] Host-side `cargo check -p ferros-core --no-default-features` passes for the current `ferros-core` slice.
-- [ ] Embedded-target / CI `no_std` validation for `ferros-core` remains open.
+- [x] Local `cargo check -p ferros-core --target thumbv7em-none-eabi --no-default-features` proof is recorded, and CI is configured to enforce the same check.
 
 G3 is still open while the unchecked items above remain incomplete.
 
@@ -88,6 +88,6 @@ G3 is still open while the unchecked items above remain incomplete.
 
 1. Harden the current `ferros-node demo` host path into reusable runtime infrastructure.
 2. Add property tests for the policy engine and message path invariants.
-3. Extend the current host-side `--no-default-features` compile slice into explicit embedded-target and CI validation for `ferros-core`.
+3. Keep the explicit `thumbv7em-none-eabi` + `--no-default-features` validation slice green while broader `no_std` hardening stays narrow.
 4. Review accepted S6 ADRs for runtime-relevant prior art before widening lifecycle or queue abstractions.
 5. Re-check the current `CapabilityGrant` wiring once G2 freezes the contract.

@@ -16,6 +16,7 @@
 - [x] Unit tests: 10+ grant/deny scenarios
 - [x] Property tests for policy engine (`proptest`)
 - [x] Validate the current `ferros-core` std/no_std boundary with a host-side `cargo check -p ferros-core --no-default-features`
+- [x] Record a local `cargo check -p ferros-core --target thumbv7em-none-eabi --no-default-features` proof and configure CI to enforce the same check
 - [x] Scaffold `crates/ferros-runtime/` — executor + in-process bus boundary
 - [x] Scaffold `crates/ferros-node/` binary
 - [x] `ferros demo` subcommand
@@ -24,10 +25,12 @@
 - [ ] Harden the current in-memory host path beyond the convergence demo
 - [x] Publish the narrow docs-only S7 reload boundary: validated local profile/grant reload plus fixed reference-runtime state replay are published today, while broader durable hub-facing restart/re-registration semantics remain unpublished
 - [x] Add focused `ferros-node` and `ferros-profile` tests that lock the published reload boundary without widening into durable hub-facing restart or re-registration semantics
+- [x] Extract the first internal local host-controller surface above the current CLI/state path without publishing a broader lifecycle/write wrapper/API or remote-control contract
+- [x] Support the first broader local-only lifecycle/write wrapper/API slice above the extracted controller seam without publishing remote transport, remote-control semantics, or broader S4 restart/reload semantics
+- [ ] Keep S4 support narrow while the next S3 follow-up exposes richer local deny-reason introspection on the landed `LocalAgentApi` seam without widening into remote transport or broader restart/reload publication
 
 ## Later
 
-- [ ] Extend the current host-side `--no-default-features` slice into CI-backed embedded-target `no_std` validation for `ferros-core`
 - [ ] Multi-threaded executor option
 - [ ] Persistent bus message log (for audit)
 

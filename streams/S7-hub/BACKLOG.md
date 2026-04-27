@@ -23,7 +23,7 @@
 
 ## Later runway prep
 
-- [ ] Prepare the first evidence-capture worksheet for on-device sessions without claiming G4 evidence yet
+- [x] Prepare the first evidence-capture worksheet for on-device sessions without claiming G4 evidence yet (`docs/hub/pack-b-bring-up-worksheet.md`)
 - [ ] Outline the operator notes needed for power-cycle validation and consent-deny observation
 - [ ] Prepare the eventual `docs/hub/install.md` doc scope as a placeholder only, not runnable install instructions
 - [ ] Queue the G4 evidence handoff points that must be satisfied before any launch claim

@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-26 — Pack B bring-up worksheet prepared from the runway map
+
+- Added `docs/hub/pack-b-bring-up-worksheet.md` as the first operator worksheet for Pack B x86_64 bring-up sessions plus a separate Pack C Home Assistant host.
+- Kept `docs/hub/reference-hardware.md` as the authority and mirrored its topology, pre-run checks, and G4 evidence rows into capture placeholders only.
+- Kept the slice prep-only: no `crates/ferros-hub/` scaffold, no Home Assistant bridge implementation, no `docs/gates/G4.md` edits, and no launch or hardware evidence claims.
+
 ## 2026-04-24 — First Home Assistant bridge runway contract defined
 
 - Added a narrow bridge contract in `streams/S7-hub/CONTRACTS.md` that fixes the first FERROS-side assumptions at one bridge agent through the S3 registry/list path, manifest-declared `CapabilityRequirement` values bounded by S2 `CapabilityGrant` state, one real-entity minimum evidence slice, operator-visible deny attribution, restart-safe FERROS state, and the external HA-fork boundary.

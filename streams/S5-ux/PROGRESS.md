@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-26 - Operator-assisted local lifecycle observation added to the live shell harness
+
+- Extended `harnesses/localhost-shell-acceptance-harness.html` so the same-origin acceptance path can pause for out-of-band local `ferros agent run echo` and `ferros agent stop echo` commands, refresh the shell, and prove those local lifecycle changes still read back through exactly one `agent.snapshot` call.
+- Kept the shell observation-only: the harness adds no shell write controls, and live deny generation remains outside the current shell and CLI surface, so deny observation stays optional and only applies when external local state is pre-seeded.
+- Truth-synced the S5 backlog and README to distinguish the landed operator-assisted lifecycle observation proof from the still-open privileged write and broader browser-control follow-up.
+
 ## 2026-04-25 - Snapshot seam consumed in the live shell and harness
 
 - Switched the shell from fan-out `agent.list` / `grant.list` / `denyLog.list` plus `agent.describe` to one `agent.snapshot` read and local snapshot reuse for inspector selection.

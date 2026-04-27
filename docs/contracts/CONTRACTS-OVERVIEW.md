@@ -67,7 +67,7 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 |-------|-------|-------|-----------|--------|
 | `Agent` | S3 | `ferros-agents` | S4 (executor), S7 (hub) | 🟡 Created and exercised by the local demo / CLI path; post-G2 hardening remains |
 | `AgentRegistry` | S3 | `ferros-agents` | S5 (web shell), S7 (hub) | 🟡 Created and exercised by the local demo / CLI path; remote API work remains |
-| `PolicyEngine` | S4 | `ferros-core` | S3 (spawn gate), S7 (hub consent) | ✅ Created; current repo validates policy property tests plus the `--no-default-features` compile slice |
+| `PolicyEngine` | S4 | `ferros-core` | S3 (spawn gate), S7 (hub consent) | ✅ Created; current repo validates policy property tests plus the `--no-default-features` and `thumbv7em-none-eabi --no-default-features` compile proofs |
 | `Executor` | S4 | `ferros-runtime` | S3 (agent hosting) | ✅ Created |
 
 ### JSON Schemas
@@ -83,14 +83,14 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 | Command | Owner | Consumers | Status |
 |---------|-------|-----------|--------|
 | `ferros profile init\|show\|export\|import\|grant\|revoke` | S2 | S7 (pairing scripts), S8 (docs) | ✅ Landed through the real `ferros` binary; `show` stays on the frozen unsigned `profile.v0.json` boundary and persisted grant state stays within the frozen `capability-grant.v0.json` envelope |
-| `ferros agent list\|describe\|run\|stop\|logs` | S3 | S5 (web shell), S7 (hub admin) | 🟡 This remains the current local operational surface in the `ferros` binary; the first shared read-first JSON/RPC contract is now landed separately, while privileged writes and broader hardening remain open |
+| `ferros agent list\|describe\|run\|stop\|logs` | S3 | S5 (web shell), S7 (hub admin) | 🟡 This remains the current local operational surface in the `ferros` binary, and `ferros-node` now also publishes the first broader local-only typed wrapper/API slice as `LocalAgentApi`; the shared read-first JSON/RPC contract is landed separately, while privileged writes and broader hardening remain open |
 
 ### IPC / RPC
 
 | Protocol | Owner | Consumers | Status |
 |----------|-------|-----------|--------|
 | In-process bus (`MessageBus` trait + `MessageEnvelope` payload contract) | S4 | S3 (agent routing) | ✅ Created and backing the current local demo path; the shared payload boundary now has explicit message-envelope tests plus `--no-default-features` and `thumbv7em-none-eabi` compile proof in the current repo workflow |
-| Read-first JSON/RPC contract (agent center) | S3 | S5 Phase B (web shell) | 🟡 Defined in `crates/ferros-agents/src/rpc.rs` and hosted locally via `crates/ferros-node/src/lib.rs`; current methods are `agent.list`, `agent.describe`, `grant.list`, and `denyLog.list`, while HTTP serving and privileged writes remain open |
+| Read-first JSON/RPC contract (agent center) | S3 | S5 Phase B (web shell) | 🟡 Defined in `crates/ferros-agents/src/rpc.rs` and hosted locally via `crates/ferros-node/src/lib.rs`; current methods are `agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, and `denyLog.list`, with the same-origin localhost shell now using `agent.snapshot` as its aggregated read seam while the first broader local-only `LocalAgentApi` wrapper/API slice is landed separately and remote transport plus privileged writes remain open |
 
 ---
 

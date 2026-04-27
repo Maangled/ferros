@@ -4,6 +4,24 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-26 — Narrow S4 support landed for the first broader local-only wrapper/API slice
+
+- Refactored `crates/ferros-node/src/lib.rs` so the extracted local host-controller seam now supports a published local-only `LocalAgentApi` wrapper above CLI formatting instead of leaving the first broader slice only as docs.
+- Kept the S4 support narrow: the landed slice still reuses the current reference-host bootstrap and local state path, and it does not publish remote transport, remote-control semantics, or broader S4 restart/reload guarantees.
+- Focused validation passed with `cargo test -p ferros-node local_agent_api_`, `cargo test -p ferros-node agent_cli_`, `cargo test -p ferros-node agent_read_rpc_`, and `cargo test -p ferros-node shell_listener_posts_json_rpc_`.
+
+## 2026-04-26 — First internal local host-controller surface extracted above argv parsing
+
+- Refactored the current local `ferros agent` lifecycle/log path in `crates/ferros-node/src/lib.rs` so a dedicated internal `LocalAgentController` now owns the state-path and runtime-loader behavior above argv parsing instead of leaving that controller logic flattened inside the CLI execution function.
+- Kept the slice internal and local-only: the extracted surface is not a published broader lifecycle/write wrapper/API, not a remote-control contract, and not a broader S4 restart/reload publication.
+- Focused validation passed with `cargo test -p ferros-node agent_cli_`, `cargo test -p ferros-node agent_read_rpc_`, and `cargo test -p ferros-node shell_listener_posts_json_rpc_`.
+
+## 2026-04-26 — `ferros-core` thumb-target `no_std` proof wired into CI
+
+- Recorded the honest embedded-target proof as local `cargo check -p ferros-core --target thumbv7em-none-eabi --no-default-features`.
+- Updated GitHub Actions to install `thumbv7em-none-eabi` on the Ubuntu test lane and run the same `ferros-core` check there.
+- Truth-synced the S4-owned docs to say CI is configured to enforce that thumb-target check, without claiming a remote workflow pass.
+
 ## 2026-04-24 — Localhost shell host seam hardened with listener-level smoke coverage
 
 - Extracted a bounded listener loop in `crates/ferros-node/src/lib.rs` so the localhost shell host can be exercised through a real `TcpListener` in focused tests instead of only through route-level units.

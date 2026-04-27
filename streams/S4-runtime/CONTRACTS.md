@@ -11,7 +11,7 @@
 | `CapabilityGrantView` trait | Rust trait | `crates/ferros-core/src/capability.rs` | ✅ Created |
 | `PolicyEngine` trait | Rust trait | `crates/ferros-core/src/capability.rs` | ✅ Created |
 | `MessageEnvelope` type | Rust type | `crates/ferros-core/src/message.rs` | ✅ Created |
-| `ferros-core` `std`/`no_std` boundary | Cargo feature boundary | `crates/ferros-core/Cargo.toml`, `crates/ferros-core/src/lib.rs` | 🟡 `std` is still the default feature; host `--no-default-features` compile slice is validated, but embedded-target / CI validation remains open |
+| `ferros-core` `std`/`no_std` boundary | Cargo feature boundary | `crates/ferros-core/Cargo.toml`, `crates/ferros-core/src/lib.rs` | 🟡 `std` is still the default feature; local `thumbv7em-none-eabi` + `--no-default-features` proof is recorded, and CI is configured to enforce the same check |
 | `Executor` trait | Rust trait | `crates/ferros-runtime/src/executor.rs` | ✅ Created |
 | In-process bus protocol | Rust trait | `crates/ferros-runtime/src/bus.rs` | ✅ Created |
 | `InMemoryExecutor` type | Rust type | `crates/ferros-runtime/src/executor.rs` | 🟡 Convergence implementation created |
@@ -66,4 +66,4 @@ This subsection is docs-only and S4-owned. It records the exact current helper b
 
 ## Note on `no_std`
 
-`ferros-core` currently exposes `std` as its default feature in `Cargo.toml` and uses `#![cfg_attr(not(feature = "std"), no_std)]` plus `extern crate alloc` in `src/lib.rs` to keep the current core surface portable. The honest validation slice for this wave is host-side `cargo check -p ferros-core --no-default-features`. Embedded-target validation (`--target thumbv7em-none-eabi`) and CI enforcement remain open work.
+`ferros-core` currently exposes `std` as its default feature in `Cargo.toml` and uses `#![cfg_attr(not(feature = "std"), no_std)]` plus `extern crate alloc` in `src/lib.rs` to keep the current core surface portable. The honest proof now recorded for this slice is local `cargo check -p ferros-core --no-default-features`, local `cargo check -p ferros-core --target thumbv7em-none-eabi --no-default-features`, and CI configured to run that same thumb-target check. This does not claim a remote workflow pass.

@@ -4,6 +4,24 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-26 — First broader local-only wrapper/API slice landed above the CLI formatter
+
+- Added `LocalAgentApi` in `crates/ferros-node/src/lib.rs` so the first broader lifecycle/write wrapper/API slice above the current local-only seam now exists as a typed local `list | describe | run | stop | logs` surface instead of only CLI-formatted lines.
+- Kept the landed slice local-only and narrow: `LocalAgentApi` still reuses the current local state path, the internal `LocalAgentController`, the current read-first JSON/RPC observation surfaces, and the deny-by-default lifecycle/log evidence rather than publishing remote transport, richer remote observation/control, privileged UX, grant writes, bridge-control choreography, or S4 restart/reload semantics.
+- Focused validation passed with `cargo test -p ferros-node local_agent_api_`, `cargo test -p ferros-node agent_cli_`, `cargo test -p ferros-node agent_read_rpc_`, and `cargo test -p ferros-node shell_listener_posts_json_rpc_`.
+
+## 2026-04-26 — Internal local host-controller surface extracted above the CLI parser
+
+- Refactored `crates/ferros-node/src/lib.rs` so the current local `ferros agent` lifecycle/log path now routes through an internal `LocalAgentController` above argv parsing instead of keeping that controller logic flattened in the CLI execution function.
+- Kept the extraction below any published broader lifecycle/write wrapper/API or remote-control contract: the local state-path seam, read-first JSON/RPC observation surfaces, and deny-by-default evidence stay the same.
+- Focused validation passed with `cargo test -p ferros-node agent_cli_`, `cargo test -p ferros-node agent_read_rpc_`, and `cargo test -p ferros-node shell_listener_posts_json_rpc_`.
+
+## 2026-04-26 — Broader wrapper/API entry bar fixed above the local-only seam
+
+- Clarified the S3 owner docs so the landed local-only `ferros agent run` / `ferros agent stop` seam is explicit fixed input rather than the publishable broader wrapper/API slice.
+- Defined the minimum first broader lifecycle/write wrapper/API entry bar above that seam: reuse the current local host and CLI/state path, preserve read-first observation through `agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, and `denyLog.list`, and keep deny-by-default lifecycle/log evidence on the same local path.
+- Kept remote transport, richer remote observation/control, privileged UX, grant writes, bridge-control choreography, and S4 restart/reload semantics unpublished.
+
 ## 2026-04-25 — First local-only lifecycle/write seam landed through the CLI/state path
 
 - Added focused `crates/ferros-node/src/lib.rs` coverage that drives `ferros agent run` and `ferros agent stop` through the existing local state path, then proves `agent.describe` and `agent.snapshot` observe the resulting running and stopped state on the same path.

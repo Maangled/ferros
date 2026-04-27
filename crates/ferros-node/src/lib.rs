@@ -162,6 +162,66 @@ pub enum AgentCliCommand {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LocalAgentApiCommand {
+    List,
+    Describe { name: String },
+    Run { name: String },
+    Stop { name: String },
+    Logs { name: Option<String> },
+}
+
+impl From<AgentCliCommand> for LocalAgentApiCommand {
+    fn from(value: AgentCliCommand) -> Self {
+        match value {
+            AgentCliCommand::List => Self::List,
+            AgentCliCommand::Describe { name } => Self::Describe { name },
+            AgentCliCommand::Run { name } => Self::Run { name },
+            AgentCliCommand::Stop { name } => Self::Stop { name },
+            AgentCliCommand::Logs { name } => Self::Logs { name },
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LocalAgentApiResponse {
+    AgentList { agents: Vec<AgentRecord> },
+    AgentDetail { agent: AgentRecord },
+    AgentLifecycle { agent: AgentRecord },
+    AgentLogs { entries: Vec<String> },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalAgentApi {
+    state_path: PathBuf,
+}
+
+impl Default for LocalAgentApi {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl LocalAgentApi {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            state_path: cli_state_path(),
+        }
+    }
+
+    #[must_use]
+    pub fn at_state_path(state_path: impl Into<PathBuf>) -> Self {
+        Self {
+            state_path: state_path.into(),
+        }
+    }
+
+    pub fn execute(&self, command: LocalAgentApiCommand) -> Result<LocalAgentApiResponse, CliError> {
+        execute_local_agent_api_with_state_path(command, &self.state_path)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProfileCliCommand {
     Init { path: PathBuf },
     Show { path: PathBuf },
@@ -657,6 +717,12 @@ pub fn build_reference_runtime() -> Result<DemoRuntime, DemoError> {
     DemoRuntime::reference_host()
 }
 
+pub fn execute_local_agent_api(
+    command: LocalAgentApiCommand,
+) -> Result<LocalAgentApiResponse, CliError> {
+    LocalAgentApi::new().execute(command)
+}
+
 pub fn execute_agent_cli(command: AgentCliCommand) -> Result<Vec<String>, CliError> {
     execute_agent_cli_with_state_path(command, &cli_state_path())
 }
@@ -1098,6 +1164,189 @@ fn execute_agent_read_rpc_with_store_and_paths<S: LocalProfileStore>(
     }
 }
 
+fn runtime_with_state(state_path: &Path) -> Result<DemoRuntime, CliError> {
+    let state = CliState::load(state_path)?;
+    runtime_with_state_from_loaded_state(&state)
+}
+
+fn runtime_with_state_from_loaded_state(state: &CliState) -> Result<DemoRuntime, CliError> {
+    let mut runtime = DemoRuntime::reference_host().map_err(CliError::from)?;
+    runtime.replay_cli_state(state)?;
+    Ok(runtime)
+}
+
+fn cli_state_path() -> PathBuf {
+    std::env::temp_dir()
+        .join(CLI_STATE_DIRECTORY)
+        .join(CLI_STATE_FILE)
+}
+
+pub fn default_profile_path() -> PathBuf {
+    if let Some(explicit_path) = std::env::var_os("FERROS_PROFILE_PATH") {
+        let explicit_path = PathBuf::from(explicit_path);
+
+        if !explicit_path.as_os_str().is_empty() {
+            return explicit_path;
+        }
+    }
+
+    profile_home_dir()
+        .unwrap_or_else(std::env::temp_dir)
+        .join(CLI_PROFILE_DIRECTORY)
+        .join(CLI_PROFILE_FILE)
+}
+
+fn profile_home_dir() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+}
+
+struct LocalAgentController<'a> {
+    state_path: &'a Path,
+    runtime_loader: fn(&CliState) -> Result<DemoRuntime, CliError>,
+}
+
+impl<'a> LocalAgentController<'a> {
+    fn new(
+        state_path: &'a Path,
+        runtime_loader: fn(&CliState) -> Result<DemoRuntime, CliError>,
+    ) -> Self {
+        Self {
+            state_path,
+            runtime_loader,
+        }
+    }
+
+    fn execute(&self, command: LocalAgentApiCommand) -> Result<LocalAgentApiResponse, CliError> {
+        match command {
+            LocalAgentApiCommand::List => self.list(),
+            LocalAgentApiCommand::Describe { name } => self.describe(&name),
+            LocalAgentApiCommand::Run { name } => self.run(&name),
+            LocalAgentApiCommand::Stop { name } => self.stop(&name),
+            LocalAgentApiCommand::Logs { name } => self.logs(name.as_deref()),
+        }
+    }
+
+    fn list(&self) -> Result<LocalAgentApiResponse, CliError> {
+        let state = CliState::load(self.state_path)?;
+        let runtime = (self.runtime_loader)(&state)?;
+
+        Ok(LocalAgentApiResponse::AgentList {
+            agents: runtime.agent_records(),
+        })
+    }
+
+    fn describe(&self, name: &str) -> Result<LocalAgentApiResponse, CliError> {
+        let state = CliState::load(self.state_path)?;
+        let runtime = (self.runtime_loader)(&state)?;
+        let agent = runtime
+            .describe_agent(name)
+            .ok_or_else(|| DemoError::UnknownAgent(name.to_owned()))?;
+
+        Ok(LocalAgentApiResponse::AgentDetail { agent })
+    }
+
+    fn run(&self, name: &str) -> Result<LocalAgentApiResponse, CliError> {
+        let mut state = CliState::load(self.state_path)?;
+        let mut runtime = (self.runtime_loader)(&state)?;
+        let record = runtime
+            .describe_agent(name)
+            .ok_or_else(|| DemoError::UnknownAgent(name.to_owned()))?;
+
+        if record.status != AgentStatus::Running {
+            let start_result = runtime.start_agent(name);
+
+            if !runtime.log_entries().is_empty() {
+                state
+                    .log_entries
+                    .extend(runtime.log_entries().iter().cloned());
+            }
+
+            match start_result {
+                Ok(()) => {
+                    state.set_status(name, AgentStatus::Running);
+                    state.save(self.state_path)?;
+                }
+                Err(error) => {
+                    if !runtime.log_entries().is_empty() {
+                        state.save(self.state_path)?;
+                    }
+                    return Err(error.into());
+                }
+            }
+        }
+
+        let agent = runtime
+            .describe_agent(name)
+            .ok_or_else(|| DemoError::UnknownAgent(name.to_owned()))?;
+
+        Ok(LocalAgentApiResponse::AgentLifecycle { agent })
+    }
+
+    fn stop(&self, name: &str) -> Result<LocalAgentApiResponse, CliError> {
+        let mut state = CliState::load(self.state_path)?;
+        let mut runtime = (self.runtime_loader)(&state)?;
+        runtime
+            .describe_agent(name)
+            .ok_or_else(|| DemoError::UnknownAgent(name.to_owned()))?;
+
+        if runtime
+            .describe_agent(name)
+            .map(|record| record.status)
+            .ok_or_else(|| DemoError::UnknownAgent(name.to_owned()))?
+            != AgentStatus::Stopped
+        {
+            runtime.stop_agent(name)?;
+            state.set_status(name, AgentStatus::Stopped);
+            state
+                .log_entries
+                .extend(runtime.log_entries().iter().cloned());
+            state.save(self.state_path)?;
+        }
+
+        let agent = runtime
+            .describe_agent(name)
+            .ok_or_else(|| DemoError::UnknownAgent(name.to_owned()))?;
+
+        Ok(LocalAgentApiResponse::AgentLifecycle { agent })
+    }
+
+    fn logs(&self, name: Option<&str>) -> Result<LocalAgentApiResponse, CliError> {
+        let state = CliState::load(self.state_path)?;
+        let entries = if let Some(name) = name {
+            state
+                .log_entries
+                .into_iter()
+                .filter(|entry| entry.contains(name))
+                .collect::<Vec<_>>()
+        } else {
+            state.log_entries
+        };
+
+        Ok(LocalAgentApiResponse::AgentLogs { entries })
+    }
+}
+
+fn execute_local_agent_api_with_state_path(
+    command: LocalAgentApiCommand,
+    state_path: &Path,
+) -> Result<LocalAgentApiResponse, CliError> {
+    execute_local_agent_api_with_runtime_loader(
+        command,
+        state_path,
+        runtime_with_state_from_loaded_state,
+    )
+}
+
+fn execute_local_agent_api_with_runtime_loader(
+    command: LocalAgentApiCommand,
+    state_path: &Path,
+    runtime_loader: fn(&CliState) -> Result<DemoRuntime, CliError>,
+) -> Result<LocalAgentApiResponse, CliError> {
+    LocalAgentController::new(state_path, runtime_loader).execute(command)
+}
+
 fn execute_agent_cli_with_state_path(
     command: AgentCliCommand,
     state_path: &Path,
@@ -1110,114 +1359,8 @@ fn execute_agent_cli_with_runtime_loader(
     state_path: &Path,
     runtime_loader: fn(&CliState) -> Result<DemoRuntime, CliError>,
 ) -> Result<Vec<String>, CliError> {
-    match command {
-        AgentCliCommand::List => {
-            let state = CliState::load(state_path)?;
-            let runtime = runtime_loader(&state)?;
-            let mut lines = vec!["name\tversion\tstatus".to_owned()];
-
-            lines.extend(
-                runtime
-                    .agent_records()
-                    .into_iter()
-                    .map(|record| format_agent_summary(&record)),
-            );
-
-            Ok(lines)
-        }
-        AgentCliCommand::Describe { name } => {
-            let state = CliState::load(state_path)?;
-            let runtime = runtime_loader(&state)?;
-            let record = runtime
-                .describe_agent(&name)
-                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
-
-            Ok(format_agent_description(&record))
-        }
-        AgentCliCommand::Run { name } => {
-            let mut state = CliState::load(state_path)?;
-            let mut runtime = runtime_loader(&state)?;
-            let record = runtime
-                .describe_agent(&name)
-                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
-
-            if record.status != AgentStatus::Running {
-                let start_result = runtime.start_agent(&name);
-
-                if !runtime.log_entries().is_empty() {
-                    state
-                        .log_entries
-                        .extend(runtime.log_entries().iter().cloned());
-                }
-
-                match start_result {
-                    Ok(()) => {
-                        state.set_status(&name, AgentStatus::Running);
-                        state.save(state_path)?;
-                    }
-                    Err(error) => {
-                        if !runtime.log_entries().is_empty() {
-                            state.save(state_path)?;
-                        }
-                        return Err(error.into());
-                    }
-                }
-            }
-
-            let status = runtime
-                .describe_agent(&name)
-                .map(|updated| updated.status)
-                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
-
-            Ok(vec![format!("{}\t{}", name, format_agent_status(status))])
-        }
-        AgentCliCommand::Stop { name } => {
-            let mut state = CliState::load(state_path)?;
-            let mut runtime = runtime_loader(&state)?;
-            runtime
-                .describe_agent(&name)
-                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
-
-            if runtime
-                .describe_agent(&name)
-                .map(|record| record.status)
-                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?
-                != AgentStatus::Stopped
-            {
-                runtime.stop_agent(&name)?;
-                state.set_status(&name, AgentStatus::Stopped);
-                state
-                    .log_entries
-                    .extend(runtime.log_entries().iter().cloned());
-                state.save(state_path)?;
-            }
-
-            let status = runtime
-                .describe_agent(&name)
-                .map(|record| record.status)
-                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
-
-            Ok(vec![format!("{}\t{}", name, format_agent_status(status))])
-        }
-        AgentCliCommand::Logs { name } => {
-            let state = CliState::load(state_path)?;
-            let entries = if let Some(name) = name {
-                state
-                    .log_entries
-                    .into_iter()
-                    .filter(|entry| entry.contains(&name))
-                    .collect::<Vec<_>>()
-            } else {
-                state.log_entries
-            };
-
-            if entries.is_empty() {
-                Ok(vec!["no log entries".to_owned()])
-            } else {
-                Ok(entries)
-            }
-        }
-    }
+    execute_local_agent_api_with_runtime_loader(command.into(), state_path, runtime_loader)
+        .map(format_local_agent_api_response)
 }
 
 fn execute_profile_cli_with_store<S: LocalProfileStore>(
@@ -1292,56 +1435,15 @@ fn execute_profile_cli_with_store<S: LocalProfileStore>(
     }
 }
 
-fn runtime_with_state(state_path: &Path) -> Result<DemoRuntime, CliError> {
-    let state = CliState::load(state_path)?;
-    runtime_with_state_from_loaded_state(&state)
-}
-
-fn runtime_with_state_from_loaded_state(state: &CliState) -> Result<DemoRuntime, CliError> {
-    let mut runtime = DemoRuntime::reference_host()?;
-    runtime.replay_cli_state(state)?;
-
-    Ok(runtime)
-}
-
-fn cli_state_path() -> PathBuf {
-    std::env::temp_dir()
-        .join(CLI_STATE_DIRECTORY)
-        .join(CLI_STATE_FILE)
-}
-
-pub fn default_profile_path() -> PathBuf {
-    if let Some(explicit_path) = std::env::var_os("FERROS_PROFILE_PATH") {
-        let explicit_path = PathBuf::from(explicit_path);
-
-        if !explicit_path.as_os_str().is_empty() {
-            return explicit_path;
-        }
-    }
-
-    profile_home_dir()
-        .unwrap_or_else(std::env::temp_dir)
-        .join(CLI_PROFILE_DIRECTORY)
-        .join(CLI_PROFILE_FILE)
-}
-
-fn profile_home_dir() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(PathBuf::from)
-}
-
 fn current_profile_timestamp() -> String {
-    OffsetDateTime::now_utc()
-        .format(&Rfc3339)
-        .unwrap_or_else(|_| {
-            let seconds = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
+    OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_else(|_| {
+        let seconds = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
 
-            format!("1970-01-01T00:00:{:02}Z", seconds % 60)
-        })
+        format!("1970-01-01T00:00:{:02}Z", seconds % 60)
+    })
 }
 
 fn format_agent_summary(record: &AgentRecord) -> String {
@@ -1349,6 +1451,33 @@ fn format_agent_summary(record: &AgentRecord) -> String {
         "{}\t{}\t{}",
         record.manifest.name.as_str(),
         record.manifest.version,
+        format_agent_status(record.status)
+    )
+}
+
+fn format_local_agent_api_response(response: LocalAgentApiResponse) -> Vec<String> {
+    match response {
+        LocalAgentApiResponse::AgentList { agents } => {
+            let mut lines = vec!["name\tversion\tstatus".to_owned()];
+            lines.extend(agents.iter().map(format_agent_summary));
+            lines
+        }
+        LocalAgentApiResponse::AgentDetail { agent } => format_agent_description(&agent),
+        LocalAgentApiResponse::AgentLifecycle { agent } => vec![format_agent_lifecycle(&agent)],
+        LocalAgentApiResponse::AgentLogs { entries } => {
+            if entries.is_empty() {
+                vec!["no log entries".to_owned()]
+            } else {
+                entries
+            }
+        }
+    }
+}
+
+fn format_agent_lifecycle(record: &AgentRecord) -> String {
+    format!(
+        "{}\t{}",
+        record.manifest.name.as_str(),
         format_agent_status(record.status)
     )
 }
@@ -1509,10 +1638,11 @@ mod tests {
     use super::{
         default_profile_path, execute_agent_cli_with_runtime_loader,
         execute_agent_cli_with_state_path, execute_agent_read_rpc_json,
-        execute_agent_read_rpc_with_store_and_paths, execute_profile_cli_with_store,
-        route_shell_request_with_store_and_paths, run_demo, runtime_with_state,
-        serve_local_shell_with_listener, AgentCliCommand, CliError, CliState, DemoError,
-        DemoRuntime, HttpRequest, ProfileCliCommand, DEFAULT_PROFILE_NAME,
+        execute_agent_read_rpc_with_store_and_paths, execute_local_agent_api_with_runtime_loader,
+        execute_profile_cli_with_store, route_shell_request_with_store_and_paths, run_demo,
+        runtime_with_state, serve_local_shell_with_listener, AgentCliCommand, CliError,
+        CliState, DemoError, DemoRuntime, HttpRequest, LocalAgentApi, LocalAgentApiCommand,
+        LocalAgentApiResponse, ProfileCliCommand, DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
@@ -1647,6 +1777,28 @@ mod tests {
     }
 
     #[test]
+    fn local_agent_api_lists_reference_agents_without_cli_formatting() {
+        let state_path = unique_state_path("local-api-list");
+
+        let response = LocalAgentApi::at_state_path(&state_path)
+            .execute(LocalAgentApiCommand::List)
+            .expect("local agent API list should succeed");
+
+        match response {
+            LocalAgentApiResponse::AgentList { agents } => {
+                assert_eq!(agents.len(), 2);
+                assert_eq!(agents[0].manifest.name.as_str(), "echo");
+                assert_eq!(agents[0].status, AgentStatus::Registered);
+                assert_eq!(agents[1].manifest.name.as_str(), "timer");
+                assert_eq!(agents[1].status, AgentStatus::Registered);
+            }
+            other => panic!("unexpected local agent API result: {other:?}"),
+        }
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
     fn agent_cli_persists_run_stop_and_logs() {
         let state_path = unique_state_path("lifecycle");
 
@@ -1698,6 +1850,53 @@ mod tests {
             logs,
             vec!["started:echo".to_string(), "stopped:echo".to_string()]
         );
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn local_agent_api_persists_run_stop_and_logs_without_cli_formatting() {
+        let state_path = unique_state_path("local-api-lifecycle");
+        let api = LocalAgentApi::at_state_path(&state_path);
+
+        let running = api
+            .execute(LocalAgentApiCommand::Run {
+                name: "echo".to_string(),
+            })
+            .expect("local agent API run should succeed");
+
+        match running {
+            LocalAgentApiResponse::AgentLifecycle { agent } => {
+                assert_eq!(agent.manifest.name.as_str(), "echo");
+                assert_eq!(agent.status, AgentStatus::Running);
+            }
+            other => panic!("unexpected local agent API run result: {other:?}"),
+        }
+
+        let stopped = api
+            .execute(LocalAgentApiCommand::Stop {
+                name: "echo".to_string(),
+            })
+            .expect("local agent API stop should succeed");
+
+        match stopped {
+            LocalAgentApiResponse::AgentLifecycle { agent } => {
+                assert_eq!(agent.manifest.name.as_str(), "echo");
+                assert_eq!(agent.status, AgentStatus::Stopped);
+            }
+            other => panic!("unexpected local agent API stop result: {other:?}"),
+        }
+
+        let logs = api
+            .execute(LocalAgentApiCommand::Logs { name: None })
+            .expect("local agent API logs should succeed");
+
+        match logs {
+            LocalAgentApiResponse::AgentLogs { entries } => {
+                assert_eq!(entries, vec!["started:echo".to_string(), "stopped:echo".to_string()]);
+            }
+            other => panic!("unexpected local agent API log result: {other:?}"),
+        }
 
         cleanup_state_path(&state_path);
     }
@@ -1830,6 +2029,56 @@ mod tests {
             .expect("logs should reflect the denied lifecycle attempt");
 
         assert_eq!(logs, vec!["denied-start:echo missing agent.echo".to_string()]);
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn local_agent_api_denied_run_persists_deny_start_without_mutating_agent_state() {
+        let state_path = unique_state_path("local-api-denied-start");
+
+        let error = execute_local_agent_api_with_runtime_loader(
+            LocalAgentApiCommand::Run {
+                name: "echo".to_string(),
+            },
+            &state_path,
+            denied_reference_runtime_from_loaded_state,
+        )
+        .expect_err("local agent API run should be denied without grants");
+
+        assert!(matches!(
+            error,
+            CliError::Runtime(DemoError::AuthorizationDenied(message))
+                if message == "echo missing agent.echo"
+        ));
+
+        let describe = execute_local_agent_api_with_runtime_loader(
+            LocalAgentApiCommand::Describe {
+                name: "echo".to_string(),
+            },
+            &state_path,
+            denied_reference_runtime_from_loaded_state,
+        )
+        .expect("local agent API describe should succeed after denied run");
+
+        match describe {
+            LocalAgentApiResponse::AgentDetail { agent } => {
+                assert_eq!(agent.manifest.name.as_str(), "echo");
+                assert_eq!(agent.status, AgentStatus::Registered);
+            }
+            other => panic!("unexpected local agent API detail result: {other:?}"),
+        }
+
+        let logs = LocalAgentApi::at_state_path(&state_path)
+            .execute(LocalAgentApiCommand::Logs { name: None })
+            .expect("local agent API logs should reflect the denied lifecycle attempt");
+
+        match logs {
+            LocalAgentApiResponse::AgentLogs { entries } => {
+                assert_eq!(entries, vec!["denied-start:echo missing agent.echo".to_string()]);
+            }
+            other => panic!("unexpected local agent API log result: {other:?}"),
+        }
 
         cleanup_state_path(&state_path);
     }
