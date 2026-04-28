@@ -17,7 +17,197 @@ Optional fields (additive, layered on top of the existing field order without br
 
 ## Ready
 
-None.
+### WAVE-2026-04-28-19
+
+- Title: Local consent snapshot enrichment for browser-facing consumers
+- Status: ready
+- Priority: P1
+- Gate: G4 / D1 local consent runway
+- Owning streams: S2 primary
+- Goal: Extend the landed local consent snapshot so downstream local consumers can render grant and consent readiness without reopening frozen S2 contracts or inventing browser-local identity rules.
+- Anchor files: `crates/ferros-profile/src/lib.rs`
+- Validation: `cargo test -p ferros-profile local_consent_snapshot_`; `cargo test -p ferros-profile reload_boundary_load_local_profile_`
+- Constraints: Do not edit `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`. No browser grant or revoke mutation. Keep the surface local-only.
+- Last update: 2026-04-28
+- size: S
+- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-24, WAVE-2026-04-28-25]
+- track: code
+
+### WAVE-2026-04-28-21
+
+- Title: Admit local-push envelope into harness constants and contract validation
+- Status: ready
+- Priority: P1
+- Gate: G4 local push audit substrate
+- Owning streams: S6 primary, S1 support
+- Goal: Add the local-push audit envelope schema to the existing harness constant generation and contract validator so the new schema has an executable consumer before broader queue-clear use.
+- Anchor files: `tools/generate-harness-constants.ps1`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
+- Validation: `get_errors` clean on touched tool and harness files; file:// run of `harnesses/ferros-contract-validator.html` stays green after regeneration
+- Constraints: Additive harness admission only. Do not widen JSON Schema vocabulary unless required by the schema. No CI or shared-truth edits.
+- Last update: 2026-04-28
+- size: L
+- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-24, WAVE-2026-04-28-25]
+- track: code
+
+### WAVE-2026-04-28-24
+
+- Title: Acceptance harness proves allowed-write lifecycle path on the live shell
+- Status: ready
+- Priority: P1
+- Gate: post-G3 local shell acceptance proof
+- Owning streams: S5 primary
+- Goal: Extend the localhost shell acceptance harness so it proves the positive local-only lifecycle path: one armed allowed write, one post-write snapshot refresh, and no duplicate lifecycle RPC for a single click.
+- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `get_errors` clean on `harnesses/localhost-shell-acceptance-harness.html`; same-origin run of `/harnesses/localhost-shell-acceptance.html` passes the added lifecycle checks
+- Constraints: Prove the existing local-only path only. No hardware, no remote host, and no gate-closing claims.
+- Last update: 2026-04-28
+- size: S
+- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-25]
+- track: code
+
+### WAVE-2026-04-28-25
+
+- Title: Codify the first local profile-surface code slice in owner docs
+- Status: ready
+- Priority: P2
+- Gate: post-G3 local profile surface prep
+- Owning streams: S5 primary, S2 consumer awareness
+- Goal: Convert the profile-surface handoff into an owner-backed next-code slice so the queue can open a real adapter wave without reopening the frozen S2 contract or widening browser privileges.
+- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S2-profile/README.md`
+- Validation: `get_errors` clean on all 3 anchor files
+- Constraints: Docs-only. Do not edit frozen S2 schemas. No browser grant or revoke actions and no remote profile access.
+- Last update: 2026-04-28
+- size: S
+- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-24]
+- track: code
+
+### WAVE-2026-04-28-26
+
+- Title: ferros-node runway summary consumes LocalRunwayState
+- Status: ready
+- Priority: P1
+- Gate: G4 / D1 local runway observation
+- Owning streams: S4 primary, S5 consumer awareness
+- Goal: Consume the landed runtime runway state inside the `ferros-node` runway summary so checkpoint progress comes from one typed local state model instead of duplicated node-local checklist logic.
+- Anchor files: `crates/ferros-node/src/lib.rs`
+- Validation: `cargo test -p ferros-node local_agent_api_runway_summary_serializes_and_tracks_profile_and_deny_observation`; `cargo test -p ferros-node shell_route_gets_local_runway_summary_json`
+- Constraints: Read-only local shell surface only. No remote transport, no hardware, and no gate-truth edits.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-18
+- track: code
+
+### WAVE-2026-04-28-27
+
+- Title: Shell runway route honors explicit profile-path selection and checkpoint progress
+- Status: ready
+- Priority: P1
+- Gate: G4 / D1 runway shell observation
+- Owning streams: S5 primary, S4 support
+- Goal: Make the live shell runway route read the operator-selected local profile path and render checkpoint progress from the enriched runway summary without widening into write-side profile control.
+- Anchor files: `site/agent-center-shell.html`
+- Validation: `cargo test -p ferros-node shell_route_gets_local_runway_summary_json`; `cargo test -p ferros-node shell_route_serves_local_shell_html`; `get_errors` clean on `site/agent-center-shell.html`
+- Constraints: Reuse the current local profile-path selection only. No browser grant writes, no remote profile access, and no gate claims.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-26
+- track: code
+
+### WAVE-2026-04-28-28
+
+- Title: Acceptance harness proves runway profile-path and checkpoint rendering
+- Status: ready
+- Priority: P1
+- Gate: G4 / D1 runway acceptance proof
+- Owning streams: S5 primary
+- Goal: Extend the localhost acceptance harness so it proves the runway route reflects the selected profile path, renders checkpoint progress, and keeps the route non-evidentiary and local-only.
+- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `get_errors` clean on `harnesses/localhost-shell-acceptance-harness.html`; same-origin run of `/harnesses/localhost-shell-acceptance.html` passes the added runway checks
+- Constraints: Same-origin acceptance only. No D1 or G4 evidence claim. No hardware session assumptions.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-27
+- track: code
+
+### WAVE-2026-04-28-29
+
+- Title: Profile adapter returns structured local status and error payloads for the shell
+- Status: ready
+- Priority: P1
+- Gate: post-G3 local profile adapter
+- Owning streams: S5 primary, S2 consumer awareness, S4 support awareness
+- Goal: Refine the existing local `/profile` adapter so `init`, `show`, `export`, and `import` return structured success and rejection payloads the shell can render without inventing a new browser schema or mutating grant state.
+- Anchor files: `crates/ferros-node/src/lib.rs`
+- Validation: `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter`; `cargo test -p ferros-node shell_route_posts_profile_export_and_import_through_local_adapter`; `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions`
+- Constraints: Preserve S2 overwrite, parse, verify, and rollback behavior. No new shared write-side JSON-RPC contract. No grant or revoke mutation.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-26
+- track: code
+
+### WAVE-2026-04-28-30
+
+- Title: Shell profile surface consumes structured local adapter results
+- Status: ready
+- Priority: P1
+- Gate: post-G3 local profile surface
+- Owning streams: S5 primary, S2 consumer awareness
+- Goal: Render the structured local profile adapter results in the shell so operator-selected `init`, `show`, `export`, and `import` outcomes are legible without exposing frozen-contract internals or widening privileges.
+- Anchor files: `site/agent-center-shell.html`
+- Validation: `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter`; `cargo test -p ferros-node shell_route_posts_profile_export_and_import_through_local_adapter`; `cargo test -p ferros-node shell_route_serves_local_shell_html`; `get_errors` clean on `site/agent-center-shell.html`
+- Constraints: Keep the surface local-only and same-origin. No grant or revoke controls, no remote profile access, and no schema edits.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-29
+- track: code
+
+### WAVE-2026-04-28-31
+
+- Title: Acceptance harness closes the local lifecycle, deny, and profile adapter proof loop
+- Status: ready
+- Priority: P1
+- Gate: post-G3 local shell proof hardening
+- Owning streams: S5 primary, S3 awareness
+- Goal: Finish the local shell proof loop in the same-origin acceptance harness: lifecycle allow and deny behavior, refreshed deny visibility, and local profile adapter outcomes must all read back through existing local surfaces only.
+- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `get_errors` clean on `harnesses/localhost-shell-acceptance-harness.html`; same-origin run of `/harnesses/localhost-shell-acceptance.html` passes the added lifecycle, deny, and profile checks
+- Constraints: No new browser-side state cache, no remote sync claim, no hardware evidence, and no gate-close wording. If WAVE-2026-04-28-28 already landed, extend the same harness instead of forking a second acceptance path.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-30
+- track: code
+
+### WAVE-2026-04-28-32
+
+- Title: Typed local-push envelope emission lands in burst-driven .tmp/push output
+- Status: ready
+- Priority: P1
+- Gate: G4 local push audit execution
+- Owning streams: S6 primary, S1 support
+- Goal: Use the typed local-push envelope boundary to emit real local envelope artifacts into `.tmp/push` and expose a focused burst helper path so queue-clear runs stop relying on markdown-only digests for that seam.
+- Anchor files: `crates/ferros-data/src/lib.rs`, `xtask/src/main.rs`, `.tmp/push/`
+- Validation: `cargo test -p ferros-data`; `cargo check -p xtask`; `cargo xtask burst`
+- Constraints: Keep output local-only and non-partner-facing. No remote upload, no hardware session, and no frozen S2 schema touch.
+- Last update: 2026-04-28
+- size: L
+- serial-after: WAVE-2026-04-28-20
+- track: code
+
+### WAVE-2026-04-28-33
+
+- Title: Final serial truth-sync after runway, profile, and local-push owner waves
+- Status: ready
+- Priority: P2
+- Gate: rolling truth-sync after owner lanes
+- Owning streams: S8 primary
+- Goal: Reconcile shared truth only after substantive owner waves land: update the minimal set of progress and status surfaces needed to reflect the new runway, profile, shell, harness, and local-push reality without overstating D1 or G4.
+- Anchor files: `STATUS.md`, `streams/S4-runtime/PROGRESS.md`, `streams/S5-ux/PROGRESS.md`, `streams/S6-harvest/PROGRESS.md`
+- Validation: `get_errors` clean on all touched truth surfaces; diff review confirms no gate promotion and no hardware claim
+- Constraints: Final serial wave only. Do not run before owner slices land. No gate closes, no ADR promotion, and no hardware or HA bridge claim.
+- Last update: 2026-04-28
+- size: L
+- serial-after: WAVE-2026-04-28-32
+- track: code
 
 ## In Progress
 
@@ -25,286 +215,88 @@ None.
 
 ## Blocked
 
-### WAVE-2026-04-28-18
-
-- Title: Close Batch G localhost profile surface adapter validation
-- Status: blocked
-- Priority: P1
-- Gate: D1 profile/control runway
-- Owning streams: S5 primary; S2/S3 consumer awareness
-- Goal: Complete focused Rust validation and final truth-close for the newly wired localhost profile adapter checkpoint: `POST /profile` on `ferros-node`, S5 profile route/buttons, and harness proof that profile `show` uses `/profile` without sending JSON-RPC while grant/revoke controls stay absent.
-- Anchor files: `crates/ferros-node/src/lib.rs`, `crates/ferros-node/Cargo.toml`, `Cargo.lock`, `site/agent-center-shell.html`, `harnesses/localhost-shell-acceptance-harness.html`, `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/PROGRESS.md`, `streams/S2-profile/README.md`, `STATUS.md`
-- Validation: Pending `cargo fmt --check` and focused `cargo test -p ferros-node shell_route_posts_profile -- --nocapture` (or broader `cargo test -p ferros-node shell_route_`) once local Rust toolchain execution is available. Current sandbox returned `Access is denied` before `rustc -vV`; escalation was rejected by the environment usage gate. Node inline-script syntax checks for shell and harness passed.
-- Constraints: Keep frozen S2 schemas untouched. Do not expose profile `grant` or `revoke` in the browser. Do not widen the read-first JSON/RPC contract, remote transport, D1/G4 evidence, or ADR-024 status/body.
-- Last update: 2026-04-28
-- size: L
-- solo: true
-- track: code
+None.
 
 ## Done
 
-### WAVE-2026-04-28-17
+### WAVE-2026-04-28-22
 
-- Title: S8 glossary and doc-batch template cleanup
-- Status: done
-- Priority: P2
-- Gate: orchestration/substrate clarity
-- Owning streams: S8 primary
-- Goal: Recorded glossary candidates and doc-batch summary template notes for later S8 cleanup without changing orchestration policy, gate truth, or contributor issue seeding.
-- Anchor files: `docs/research/S8-glossary-doc-batch-template.md`
-- Validation: Direct readback passed. Forbidden-claim scan found only stop-line/template references to evidence surfaces. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No policy change, width-ceiling change, gate evidence edit, or contributor issue seeding.
-- Last update: 2026-04-28
-- size: S
-- parallel-safe-with: [WAVE-2026-04-28-10, WAVE-2026-04-28-11, WAVE-2026-04-28-12, WAVE-2026-04-28-13, WAVE-2026-04-28-14, WAVE-2026-04-28-15, WAVE-2026-04-28-16]
-- track: code
-
-### WAVE-2026-04-28-16
-
-- Title: S6 asset-library onramp scaffold boundary
-- Status: done
-- Priority: P2
-- Gate: asset/onramp runway
-- Owning streams: S6 primary; S5/S8 consumer awareness
-- Goal: Sketched the asset-library scaffold as proposed material under ADR-023 and ADR-024 constraints, separating S6 provenance/harvest ownership from future S5 review surfaces and system-track ledger/legal decisions.
-- Anchor files: `docs/research/S6-asset-library-onramp-scaffold.md`
-- Validation: Direct readback passed. Forbidden-claim scan found ADR-024 and ratification references only as Proposed/stop-line wording. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. ADR-024 remains Proposed. No ledger finality, legal finality, prior-art code import, or canonical-state write claimed.
-- Last update: 2026-04-28
-- size: S
-- parallel-safe-with: [WAVE-2026-04-28-10, WAVE-2026-04-28-11, WAVE-2026-04-28-12, WAVE-2026-04-28-13, WAVE-2026-04-28-14, WAVE-2026-04-28-15, WAVE-2026-04-28-17]
-- track: code
-
-### WAVE-2026-04-28-15
-
-- Title: S4/S7 reboot-safe state rehearsal checklist
+- Title: xtask burst helper grows queue-clear focused runway commands
 - Status: done
 - Priority: P1
-- Gate: pre-D1 reboot-safe runway
-- Owning streams: S4 primary; S7 consumer awareness
-- Goal: Converted the Batch E restart and power-cycle notes into a rehearsal checklist that separates local restart observations from future hardware power-cycle evidence.
-- Anchor files: `docs/research/S4-S7-reboot-safe-state-rehearsal.md`
-- Validation: Direct readback passed. Forbidden-claim scan found only explicit non-evidence and D1/G4 distinction wording. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No S4 restart API publication, `ferros-hub` scaffold, hardware finding, D1 evidence, or G4 evidence.
+- Gate: queue-clear tooling substrate
+- Owning streams: S1 primary
+- Goal: Expand the landed burst helper so aggressive code-track drains have focused commands for runway, profile, and local-push follow-ups instead of relying on one static burst text block.
+- Anchor files: `xtask/src/main.rs`
+- Validation: `cargo check -p xtask`; `cargo xtask burst`
+- Constraints: Additive helper only. No workspace-wide CI policy changes. Keep commands local and code-track scoped.
 - Last update: 2026-04-28
 - size: S
-- parallel-safe-with: [WAVE-2026-04-28-10, WAVE-2026-04-28-11, WAVE-2026-04-28-12, WAVE-2026-04-28-13, WAVE-2026-04-28-14, WAVE-2026-04-28-16, WAVE-2026-04-28-17]
+- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-23, WAVE-2026-04-28-24, WAVE-2026-04-28-25]
 - track: code
 
-### WAVE-2026-04-28-14
+### WAVE-2026-04-28-23
 
-- Title: S7 HA bridge seam catalog
+- Title: Shell deny and lifecycle outcome rendering above existing local-only surfaces
 - Status: done
 - Priority: P1
-- Gate: G4 runway / D1 stand-in clarity
-- Owning streams: S7 primary; S2/S3/S4/S5/S6 consumer awareness
-- Goal: Cataloged the current seams a future HA bridge must consume, named the D1 stand-in boundary, and listed missing implementation seams before real bridge work is honest.
-- Anchor files: `docs/research/S7-ha-bridge-seam-catalog.md`
-- Validation: Direct readback passed. Forbidden-claim scan found only explicit non-evidence/stop-line references. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No `crates/ferros-hub/` scaffold, pairing freeze, HA bridge execution, hardware finding, or G4 evidence claim.
+- Gate: post-G3 local shell operator proof
+- Owning streams: S5 primary, S3 awareness
+- Goal: Use the current local-only `agent.run`, `agent.stop`, `agent.snapshot`, and `denyLog.list` surfaces to render specific blocked, denied, and post-refresh lifecycle states on the live shell without adding new RPC methods.
+- Anchor files: `site/agent-center-shell.html`
+- Validation: `cargo test -p ferros-node shell_route_serves_local_shell_html`; `get_errors` clean on `site/agent-center-shell.html`
+- Constraints: No new RPC methods. No grant or revoke controls. No remote transport. No shadow browser audit store.
 - Last update: 2026-04-28
 - size: S
-- parallel-safe-with: [WAVE-2026-04-28-10, WAVE-2026-04-28-11, WAVE-2026-04-28-12, WAVE-2026-04-28-13, WAVE-2026-04-28-15, WAVE-2026-04-28-16, WAVE-2026-04-28-17]
+- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-24, WAVE-2026-04-28-25]
 - track: code
 
-### WAVE-2026-04-28-13
+### WAVE-2026-04-28-20
 
-- Title: S5 onramp consent surface wireframe
+- Title: Typed local-push audit envelope boundary in ferros-data
 - Status: done
 - Priority: P1
-- Gate: D1 consent/control runway
-- Owning streams: S5 primary; S7/S6 consumer awareness
-- Goal: Turned ADR-023 into a concrete S5 inbox-style onramp consent surface shape for proposed material, including HA entity, profile bundle, and future asset/library proposal examples.
-- Anchor files: `docs/research/S5-onramp-consent-surface-wireframe.md`
-- Validation: Direct readback passed. Forbidden-claim scan found only stop-line references to ADR-024 and D1 evidence. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No external calls, accept/reject persistence, HA bridge transport, ADR-024 promotion, or D1 evidence.
-- Last update: 2026-04-28
-- size: S
-- parallel-safe-with: [WAVE-2026-04-28-10, WAVE-2026-04-28-11, WAVE-2026-04-28-12, WAVE-2026-04-28-14, WAVE-2026-04-28-15, WAVE-2026-04-28-16, WAVE-2026-04-28-17]
-- track: code
-
-### WAVE-2026-04-28-12
-
-- Title: S3 deny-log UX and error-envelope seam
-- Status: done
-- Priority: P1
-- Gate: D1 consent/deny visibility runway
-- Owning streams: S3 primary; S5 consumer awareness
-- Goal: Named what S5 can render from the current local deny-log, `agent.snapshot`, and lifecycle write-error surfaces without adding new methods or remote-control semantics.
-- Anchor files: `docs/research/S3-deny-log-ux-error-seam.md`
-- Validation: Direct readback passed. Forbidden-claim scan found only explicit stop-line references to evidence surfaces. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No new S3 methods, remote transport, shared remote error envelope, D1/G4 evidence, or consent-audit contract change.
-- Last update: 2026-04-28
-- size: S
-- parallel-safe-with: [WAVE-2026-04-28-10, WAVE-2026-04-28-11, WAVE-2026-04-28-13, WAVE-2026-04-28-14, WAVE-2026-04-28-15, WAVE-2026-04-28-16, WAVE-2026-04-28-17]
-- track: code
-
-### WAVE-2026-04-28-11
-
-- Title: S5 profile surface implementation handoff
-- Status: done
-- Priority: P1
-- Gate: D1 profile/control runway
-- Owning streams: S5 primary; S2 consumer awareness
-- Goal: Defined the smallest browser-visible profile surface handoff for `init`, `show`, `export`, and `import`, keeping S5 as a consumer of the frozen S2 contract and routing any localhost adapter addition to an explicitly scoped later code wave.
-- Anchor files: `docs/research/S5-profile-surface-implementation-handoff.md`
-- Validation: Direct readback passed. Frozen schema names appeared only as fixed inputs and stop lines; no frozen file was modified. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No schema edit, G2 evidence rewrite, grant/revoke mutation, remote profile access, or D1 evidence.
-- Last update: 2026-04-28
-- size: S
-- parallel-safe-with: [WAVE-2026-04-28-10, WAVE-2026-04-28-12, WAVE-2026-04-28-13, WAVE-2026-04-28-14, WAVE-2026-04-28-15, WAVE-2026-04-28-16, WAVE-2026-04-28-17]
-- track: code
-
-### WAVE-2026-04-28-10
-
-- Title: S5 live lifecycle harness proof checklist
-- Status: done
-- Priority: P1
-- Gate: D1 consent/control runway
-- Owning streams: S5 primary; S3/S4 consumer awareness
-- Goal: Defined the next live proof checklist for the already-landed lifecycle bar, covering no-write-before-arm, no-write-without-active-grant, single write on an armed allowed action, and read-after-write refresh through `agent.snapshot`.
-- Anchor files: `docs/research/S5-live-lifecycle-harness-proof.md`
-- Validation: Direct readback passed. Forbidden-claim scan found only explicit non-evidence and stop-line wording. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No grant/revoke actions, remote transport, shell code, harness code, D1 evidence, G4 evidence, or S4 restart/reload semantics.
-- Last update: 2026-04-28
-- size: S
-- parallel-safe-with: [WAVE-2026-04-28-11, WAVE-2026-04-28-12, WAVE-2026-04-28-13, WAVE-2026-04-28-14, WAVE-2026-04-28-15, WAVE-2026-04-28-16, WAVE-2026-04-28-17]
-- track: code
-
-### WAVE-2026-04-28-09
-
-- Title: Land consent-gated browser lifecycle control on the localhost shell
-- Status: done
-- Priority: P1
-- Gate: post-G3 local/browser control prep
-- Owning streams: S5 primary; S3/S4 consumer awareness
-- Goal: Wired the current localhost shell to the existing local-only `agent.run` / `agent.stop` JSON-RPC slice with a browser-side consent/audit gate that checks loaded active grants and an explicit arm checkbox before any write RPC is transmitted, then refreshes through the existing `agent.snapshot` observation path.
-- Anchor files: `site/agent-center-shell.html`, `harnesses/localhost-shell-acceptance-harness.html`, `crates/ferros-node/src/lib.rs`, `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/PROGRESS.md`, `streams/S3-agent-center/README.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/PROGRESS.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S4-runtime/PROGRESS.md`
-- Validation: `cargo fmt --check`; `cargo test -p ferros-node shell_route_`; `cargo test -p ferros-node agent_write_rpc_`; `cargo test -p ferros-node shell_listener_posts_json_rpc_`; Node syntax check on shell/harness inline scripts; localhost route checks for `/` and `/harnesses/localhost-shell-acceptance.html`. Live browser harness execution not run in-session.
-- Constraints: Kept the slice local-only and limited to selected-agent `agent.run` / `agent.stop`. No grant/revoke actions, new RPC methods, remote transport, schema changes, D1/G4 evidence claims, or broader S4 restart/reload semantics.
+- Gate: G4 local push audit substrate
+- Owning streams: S6 primary, S4 awareness
+- Goal: Turn the landed local-push audit envelope boundary into typed Rust-local data structures and boundary helpers so `.tmp/push` follow-ups do not rely on markdown-only stand-ins.
+- Anchor files: `crates/ferros-data/src/lib.rs`, `schemas/local-push-audit-envelope.schema.json`
+- Validation: `cargo test -p ferros-data`; `get_errors` clean on `schemas/local-push-audit-envelope.schema.json`
+- Constraints: Preserve local-only and explicit-operator-consent semantics. No frozen S2 schema touch. No remote upload or HA-facing claim.
 - Last update: 2026-04-28
 - size: L
+- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-24, WAVE-2026-04-28-25]
 - track: code
 
-### WAVE-2026-04-28-08
+### WAVE-2026-04-28-18
 
-- Title: S8 contributor onboarding checklist
-- Status: done
-- Priority: P2
-- Gate: contributor readiness
-- Owning streams: S8 primary
-- Goal: Created a contributor onboarding checklist that routes new contributors through current repo truth, stream selection, queue discipline, validation posture, hard stop lines, and the D1/G4 distinction without claiming launch readiness.
-- Anchor files: `docs/research/S8-contributor-onboarding-checklist.md`
-- Validation: Direct readback and forbidden-claim scan passed. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No issue seeding, templates, governance authority, D1 evidence, or G4 evidence changed.
-- Last update: 2026-04-28
-- size: S
-- track: code
-
-### WAVE-2026-04-28-07
-
-- Title: S7 power-cycle recovery protocol
+- Title: Runtime local runway checkpoint helpers and tests
 - Status: done
 - Priority: P1
-- Gate: pre-D1 power-cycle runway
-- Owning streams: S7 primary; S1 and S4 consumer awareness
-- Goal: Composed the S1 boot-sequence and S4 restart/reload inputs into a D1-ready power-cycle recovery protocol with preconditions, operator steps, expected FERROS-side state after reboot, known unknowns, and an explicit recursion-denied note.
-- Anchor files: `docs/research/S7-power-cycle-recovery-protocol.md`
-- Validation: Direct readback and forbidden-claim scan passed. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No hardware findings, D1 evidence, G4 evidence, `ferros-hub` scaffold, or bridge protocol details claimed.
+- Gate: G4 / D1 local runway substrate
+- Owning streams: S4 primary
+- Goal: Tighten the landed `LocalRunwayState` checkpoint scaffold so it has shell-consumable helpers and focused tests before `ferros-node` consumes it. Keep the state machine local-only and non-evidentiary.
+- Anchor files: `crates/ferros-runtime/src/local_runway.rs`, `crates/ferros-runtime/src/lib.rs`
+- Validation: `cargo test -p ferros-runtime`
+- Constraints: Runtime-only. No node, shell, hardware, remote transport, or gate-truth edits.
 - Last update: 2026-04-28
 - size: S
-- serial-after: WAVE-2026-04-28-03
-- track: code
-
-### WAVE-2026-04-28-06
-
-- Title: S2 profile recovery UX runway
-- Status: done
-- Priority: P1
-- Gate: pre-D1 profile/consent runway
-- Owning streams: S2 primary; S5 consumer awareness
-- Goal: Defined the profile recovery UX runway above the frozen S2 contract: current local recovery building blocks, UX principles, S5 surface slots, recovery states, D1 relationship, and out-of-scope sync/key-wrap claims.
-- Anchor files: `docs/research/S2-profile-recovery-ux.md`
-- Validation: Direct readback and forbidden-claim scan passed. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. Frozen schemas untouched. G2 not reopened. No new profile schema, passphrase-wrap, or browser profile write claimed.
-- Last update: 2026-04-28
-- size: S
-- track: code
-
-### WAVE-2026-04-28-05
-
-- Title: S5 shell navigation depth audit
-- Status: done
-- Priority: P1
-- Gate: pre-D1 UX planning
-- Owning streams: S5 primary
-- Goal: Audited the current localhost shell against the S5 six-degree reach rule, separating reachable D1 observation tasks from future privileged workflows and feeding Batch F consent/control definitions.
-- Anchor files: `docs/research/S5-shell-navigation-depth-audit.md`
-- Validation: Direct readback and forbidden-claim scan passed. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No shell HTML, harness, browser-issued write, grant/revoke, or privileged UX change.
-- Last update: 2026-04-28
-- size: S
-- track: code
-
-### WAVE-2026-04-28-04
-
-- Title: S3 remote transport boundary
-- Status: done
-- Priority: P1
-- Gate: post-G3 contract hardening
-- Owning streams: S3 primary; S5 and S7 consumer awareness
-- Goal: Defined what the current local/read-first S3 transport publishes and what remains unpublished before any remote transport, auth, subscription, or HA-facing transport claim is honest.
-- Anchor files: `docs/research/S3-remote-transport-boundary.md`
-- Validation: Direct readback and forbidden-claim scan passed. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No JSON/RPC code, method, remote transport, auth model, or HA-facing semantics changed.
-- Last update: 2026-04-28
-- size: S
-- track: code
-
-### WAVE-2026-04-28-03
-
-- Title: S4 restart/reload boundary spec
-- Status: done
-- Priority: P1
-- Gate: pre-D1 runtime/consent runway
-- Owning streams: S4 primary; S7 consumer awareness
-- Goal: Published a docs-only boundary spec for current restart/reload seams, restart levels, D1 interpretation, unpublished hub surfaces, and validation expectations.
-- Anchor files: `docs/research/S4-restart-reload-boundary.md`
-- Validation: Direct readback and forbidden-claim scan passed. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No crate changes, broader S4 restart/reload API publication, `ferros-hub` scaffold, D1 evidence, or G4 evidence.
-- Last update: 2026-04-28
-- size: S
-- track: code
-
-### WAVE-2026-04-28-02
-
-- Title: S1 supervisor boundary note
-- Status: done
-- Priority: P2
-- Gate: post-G3 runtime runway
-- Owning streams: S1 primary; S4 consumer awareness
-- Goal: Defined the current supervisor/process boundary in repo terms, separating CI/release/local shell truth from unpublished service manager, restart-on-failure, install, and launch surfaces.
-- Anchor files: `docs/research/S1-supervisor-boundary-note.md`
-- Validation: Direct readback and forbidden-claim scan passed. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No workflow, service manager, install, branch-protection, tag, or G4 launch claim changed.
-- Last update: 2026-04-28
-- size: S
+- parallel-safe-with: [WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-24, WAVE-2026-04-28-25]
 - track: code
 
 ### WAVE-2026-04-28-01
 
-- Title: S1 boot-sequence D1 target research
+- Title: Recursive G4 push scaffolding and breadth probe
 - Status: done
-- Priority: P1
-- Gate: pre-D1 runtime/consent runway
-- Owning streams: S1 primary; S7 consumer awareness
-- Goal: Documented minimum boot-sequence expectations for the D1 target path, current repo-backed inputs, boot checkpoints, transcript shape, session-owned gaps, and stop lines.
-- Anchor files: `docs/research/S1-boot-sequence-d1-target.md`
-- Validation: Direct readback and forbidden-claim scan passed. `get_errors` command unavailable in this sandbox, so no IDE diagnostic result is claimed.
-- Constraints: Docs-only. No workflow, release, branch-protection, tag, hardware, D1 evidence, G4 evidence, or closed G1 evidence wording changed.
+- Priority: P0
+- Gate: G4 / D1 runway stress push
+- Owning streams: S3, S4, S5, S6, S7, S8 support; S2 consumer-awareness only
+- Goal: Convert the 2026-04-28 top-level push directive into a bounded repo-backed generation pass that expands G4 and D1 runway surface area across disjoint runtime, schema, harness, tooling, and shell surfaces while preserving doctrine guardrails and emitting per-batch digests under `.tmp/push/`.
+- Anchor files: `crates/ferros-runtime/src/`, `crates/ferros-node/src/`, `crates/ferros-data/src/`, `schemas/`, `harnesses/`, `xtask/src/`, `site/`, `.tmp/push/`
+- Validation: `cargo test -p ferros-runtime`; `cargo test -p ferros-profile local_consent_snapshot_`; `cargo test -p ferros-data`; `cargo check -p xtask`; `cargo xtask burst`; `cargo test -p ferros-node runway_summary`; `cargo test -p ferros-node shell_listener_posts_json_rpc_`; `get_errors` clean on touched Rust, HTML, schema, queue, log, and digest surfaces.
+- Constraints: Preserve frozen `schemas/profile.v0.json` and `schemas/capability-grant.v0.json`; keep consent-first and local-sovereignty invariants explicit in every generated surface; do not widen shared-truth edits beyond required bookkeeping; keep queue IDs stable and run-log entries append-only.
 - Last update: 2026-04-28
-- size: S
+- size: L
+- solo: true
 - track: code
 
 ### WAVE-2026-04-27-16

@@ -19,7 +19,7 @@ The runtime is still the local Copilot chat surface. The repo stores the queue, 
 3. The orchestrator lane-plans the wave, uses bounded recursion only when a lane earns one more planning pass, validates lane scope before launch, routes failed lanes through log triage, then returns the integration result.
 4. Reinvoke the driver for the next wave.
 
-This is **Interactive Mode** — the default. For Batch Mode (multiple Ready waves per invocation without per-wave human re-invocation), see `docs/orchestration/BATCH-MODE.md`. All lane policy rules below apply inside every wave regardless of mode.
+Interactive Mode is the single-wave posture. For Batch Mode (multiple Ready waves per invocation without per-wave human re-invocation), see `docs/orchestration/BATCH-MODE.md`. When the explicit objective is `clear the queue`, Batch Mode runs in **Queue-Clear** posture: it keeps draining the selected queue, emits doc-batch summaries as non-blocking review artifacts, and stops only when a hard Batch Mode stop condition fires or the scoped queue is empty. All lane policy rules below apply inside every wave regardless of mode.
 
 ## Default lane policy
 
@@ -64,7 +64,7 @@ Until that migration, the inline self-review posture is acceptable for `size: S`
 
 - No background autonomy after the chat turn ends.
 - No GitHub-hosted execution of the `.agent.md` stack.
-- No silent batching of multiple queue items unless the user explicitly invokes Batch Mode (see `docs/orchestration/BATCH-MODE.md`).
+- No silent batching of multiple queue items unless the user explicitly invokes Batch Mode or explicitly asks to clear or drain a queue (see `docs/orchestration/BATCH-MODE.md`).
 
 ## Queue discipline
 

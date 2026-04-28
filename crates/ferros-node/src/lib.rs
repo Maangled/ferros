@@ -228,6 +228,91 @@ pub enum LocalAgentApiResponse {
     AgentLogs { entries: Vec<String> },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalRunwaySummary {
+    pub surface: String,
+    pub scope: String,
+    pub evidence: String,
+    pub profile_path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile_name: Option<String>,
+    pub agent_count: usize,
+    pub agents: Vec<LocalRunwayAgentSummary>,
+    pub grant_count: usize,
+    pub active_grant_count: usize,
+    pub revoked_grant_count: usize,
+    pub deny_count: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_deny: Option<LocalRunwayDenySummary>,
+    pub checklist: Vec<LocalRunwayChecklistItem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalRunwayAgentSummary {
+    pub name: String,
+    pub version: String,
+    pub status: String,
+    pub required_capabilities: Vec<String>,
+}
+
+impl From<AgentRecord> for LocalRunwayAgentSummary {
+    fn from(value: AgentRecord) -> Self {
+        Self {
+            name: value.manifest.name.as_str().to_owned(),
+            version: value.manifest.version.to_string(),
+            status: format_agent_status(value.status).to_owned(),
+            required_capabilities: value
+                .manifest
+                .required_capabilities
+                .into_iter()
+                .map(|requirement| requirement.capability)
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalRunwayDenySummary {
+    pub entry_id: usize,
+    pub kind: String,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capability: Option<String>,
+}
+
+impl From<DenyLogEntry> for LocalRunwayDenySummary {
+    fn from(value: DenyLogEntry) -> Self {
+        Self {
+            entry_id: value.entry_id,
+            kind: value.kind,
+            message: value.message,
+            agent_name: value.agent_name,
+            capability: value.capability,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LocalRunwayChecklistStatus {
+    Observed,
+    Pending,
+    Error,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalRunwayChecklistItem {
+    pub item: String,
+    pub status: LocalRunwayChecklistStatus,
+    pub detail: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalAgentApi {
     state_path: PathBuf,
@@ -259,6 +344,21 @@ impl LocalAgentApi {
         command: LocalAgentApiCommand,
     ) -> Result<LocalAgentApiResponse, CliError> {
         execute_local_agent_api_with_state_path(command, &self.state_path)
+    }
+
+    pub fn runway_summary(&self) -> Result<LocalRunwaySummary, CliError> {
+        self.runway_summary_with_store_and_profile_path(
+            &default_profile_path(),
+            &FileSystemProfileStore,
+        )
+    }
+
+    fn runway_summary_with_store_and_profile_path<S: LocalProfileStore>(
+        &self,
+        profile_path: &Path,
+        store: &S,
+    ) -> Result<LocalRunwaySummary, CliError> {
+        build_local_runway_summary_with_store(&self.state_path, profile_path, store)
     }
 }
 
@@ -922,6 +1022,9 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
             content_type: "text/html; charset=utf-8",
             body: LOCAL_SHELL_ACCEPTANCE_HARNESS_HTML.as_bytes().to_vec(),
         },
+        ("GET", "/runway-summary") | ("GET", "/runway-summary.json") => {
+            route_shell_runway_summary_request(state_path, default_profile_path, store)
+        }
         ("POST", "/rpc") => {
             route_shell_rpc_request(request.body, state_path, default_profile_path, store)
         }
@@ -967,6 +1070,35 @@ fn route_shell_profile_request<S: LocalProfileStore>(
             500,
             "Internal Server Error",
             format!("failed to serialize profile response: {error}"),
+        ),
+    }
+}
+
+fn route_shell_runway_summary_request<S: LocalProfileStore>(
+    state_path: &Path,
+    default_profile_path: &Path,
+    store: &S,
+) -> HttpResponse {
+    match LocalAgentApi::at_state_path(state_path)
+        .runway_summary_with_store_and_profile_path(default_profile_path, store)
+    {
+        Ok(summary) => match serde_json::to_string_pretty(&summary) {
+            Ok(body) => HttpResponse {
+                status_code: 200,
+                status_text: "OK",
+                content_type: "application/json; charset=utf-8",
+                body: body.into_bytes(),
+            },
+            Err(error) => text_response(
+                500,
+                "Internal Server Error",
+                format!("failed to serialize runway summary: {error}"),
+            ),
+        },
+        Err(error) => text_response(
+            500,
+            "Internal Server Error",
+            format!("failed to build runway summary: {error}"),
         ),
     }
 }
@@ -1194,15 +1326,19 @@ fn execute_profile_shell_request_with_store<S: LocalProfileStore>(
 
     match command {
         Ok(command) => match execute_profile_cli_with_store(command, store) {
-            Ok(lines) => ProfileShellResponse {
-                ok: true,
-                action,
-                profile_path: profile_path.display().to_string(),
-                bundle_path: bundle_path.map(|path| path.display().to_string()),
-                profile: profile_value_for_action(action.as_str(), store, &profile_path),
-                lines,
-                error: None,
-            },
+            Ok(lines) => {
+                let profile = profile_value_for_action(action.as_str(), store, &profile_path);
+
+                ProfileShellResponse {
+                    ok: true,
+                    action,
+                    profile_path: profile_path.display().to_string(),
+                    bundle_path: bundle_path.map(|path| path.display().to_string()),
+                    profile,
+                    lines,
+                    error: None,
+                }
+            }
             Err(error) => ProfileShellResponse {
                 ok: false,
                 action,
@@ -1248,6 +1384,182 @@ fn profile_value_for_action<S: LocalProfileStore>(
             .ok()
             .and_then(|profile| serde_json::to_value(profile).ok()),
         _ => None,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct LocalRunwayProfileObservation {
+    profile_name: Option<String>,
+    grant_count: usize,
+    active_grant_count: usize,
+    revoked_grant_count: usize,
+    checklist_item: LocalRunwayChecklistItem,
+}
+
+fn build_local_runway_summary_with_store<S: LocalProfileStore>(
+    state_path: &Path,
+    profile_path: &Path,
+    store: &S,
+) -> Result<LocalRunwaySummary, CliError> {
+    let state = CliState::load(state_path)?;
+    let runtime = runtime_with_state_from_loaded_state(&state)?;
+    let agents = runtime
+        .agent_records()
+        .into_iter()
+        .map(LocalRunwayAgentSummary::from)
+        .collect::<Vec<_>>();
+    let deny_entries = deny_log_entries(&state, None);
+    let deny_count = deny_entries.len();
+    let latest_deny = deny_entries.into_iter().last().map(LocalRunwayDenySummary::from);
+    let profile_observation = observe_local_runway_profile(store, profile_path);
+
+    let stand_in_agent = match runtime.describe_agent("echo") {
+        Some(agent) => LocalRunwayChecklistItem {
+            item: "namedStandInAgent".to_owned(),
+            status: LocalRunwayChecklistStatus::Observed,
+            detail: format!(
+                "echo available with status {}",
+                format_agent_status(agent.status)
+            ),
+        },
+        None => LocalRunwayChecklistItem {
+            item: "namedStandInAgent".to_owned(),
+            status: LocalRunwayChecklistStatus::Error,
+            detail: "echo stand-in agent missing from local reference host".to_owned(),
+        },
+    };
+
+    let consent_flow = match latest_deny.as_ref() {
+        Some(deny) => LocalRunwayChecklistItem {
+            item: "consentFlowVisibility".to_owned(),
+            status: LocalRunwayChecklistStatus::Observed,
+            detail: format_local_runway_deny_detail(deny),
+        },
+        None => {
+            let (status, detail) = match profile_observation.checklist_item.status {
+                LocalRunwayChecklistStatus::Error => (
+                    LocalRunwayChecklistStatus::Error,
+                    "profile observation failed before deny visibility could be checked"
+                        .to_owned(),
+                ),
+                LocalRunwayChecklistStatus::Observed => (
+                    LocalRunwayChecklistStatus::Pending,
+                    format!(
+                        "{} loaded; no deny entry observed yet",
+                        profile_observation
+                            .profile_name
+                            .as_deref()
+                            .unwrap_or("local profile")
+                    ),
+                ),
+                LocalRunwayChecklistStatus::Pending => (
+                    LocalRunwayChecklistStatus::Pending,
+                    "awaiting local profile initialization or deny observation".to_owned(),
+                ),
+            };
+
+            LocalRunwayChecklistItem {
+                item: "consentFlowVisibility".to_owned(),
+                status,
+                detail,
+            }
+        }
+    };
+
+    let power_cycle = LocalRunwayChecklistItem {
+        item: "powerCycleStatus".to_owned(),
+        status: LocalRunwayChecklistStatus::Pending,
+        detail: "power-cycle observation remains pending on this local-only surface"
+            .to_owned(),
+    };
+
+    Ok(LocalRunwaySummary {
+        surface: "local-runway-summary".to_owned(),
+        scope: "local-only".to_owned(),
+        evidence: "non-evidentiary".to_owned(),
+        profile_path: profile_path.display().to_string(),
+        profile_name: profile_observation.profile_name,
+        agent_count: agents.len(),
+        agents,
+        grant_count: profile_observation.grant_count,
+        active_grant_count: profile_observation.active_grant_count,
+        revoked_grant_count: profile_observation.revoked_grant_count,
+        deny_count,
+        latest_deny,
+        checklist: vec![
+            profile_observation.checklist_item,
+            stand_in_agent,
+            consent_flow,
+            power_cycle,
+        ],
+    })
+}
+
+fn observe_local_runway_profile<S: LocalProfileStore>(
+    store: &S,
+    profile_path: &Path,
+) -> LocalRunwayProfileObservation {
+    match store.load_local_profile(profile_path) {
+        Ok(state) => {
+            let profile_name = state.profile.identity.name.clone();
+            let grants = state
+                .signed_grants
+                .into_iter()
+                .map(|signed_grant| grant_state_record(signed_grant.grant))
+                .collect::<Vec<_>>();
+            let grant_count = grants.len();
+            let active_grant_count = grants.iter().filter(|grant| grant.is_active).count();
+            let revoked_grant_count = grant_count.saturating_sub(active_grant_count);
+
+            LocalRunwayProfileObservation {
+                profile_name: Some(profile_name.clone()),
+                grant_count,
+                active_grant_count,
+                revoked_grant_count,
+                checklist_item: LocalRunwayChecklistItem {
+                    item: "profileInit".to_owned(),
+                    status: LocalRunwayChecklistStatus::Observed,
+                    detail: format!("loaded {profile_name} with {grant_count} local grants"),
+                },
+            }
+        }
+        Err(ProfileStoreError::Io(error)) if error.kind() == io::ErrorKind::NotFound => {
+            LocalRunwayProfileObservation {
+                profile_name: None,
+                grant_count: 0,
+                active_grant_count: 0,
+                revoked_grant_count: 0,
+                checklist_item: LocalRunwayChecklistItem {
+                    item: "profileInit".to_owned(),
+                    status: LocalRunwayChecklistStatus::Pending,
+                    detail: format!(
+                        "no local profile observed at {}",
+                        profile_path.display()
+                    ),
+                },
+            }
+        }
+        Err(error) => LocalRunwayProfileObservation {
+            profile_name: None,
+            grant_count: 0,
+            active_grant_count: 0,
+            revoked_grant_count: 0,
+            checklist_item: LocalRunwayChecklistItem {
+                item: "profileInit".to_owned(),
+                status: LocalRunwayChecklistStatus::Error,
+                detail: format!("failed to load local profile: {error}"),
+            },
+        },
+    }
+}
+
+fn format_local_runway_deny_detail(deny: &LocalRunwayDenySummary) -> String {
+    match (deny.agent_name.as_deref(), deny.capability.as_deref()) {
+        (Some(agent_name), Some(capability)) => {
+            format!("latest deny observed for {agent_name} on {capability}")
+        }
+        (Some(agent_name), None) => format!("latest deny observed for {agent_name}"),
+        _ => format!("latest deny observed: {}", deny.message),
     }
 }
 
@@ -1930,7 +2242,9 @@ mod tests {
         route_shell_request_with_store_and_paths, run_demo, runtime_with_state,
         serve_local_shell_with_listener, serve_local_shell_with_store_and_paths, AgentCliCommand,
         AuthorizationDenyDetail, CliError, CliState, DemoError, DemoRuntime, HttpRequest,
-        LocalAgentApi, LocalAgentApiCommand, LocalAgentApiResponse, ProfileCliCommand,
+        LocalAgentApi, LocalAgentApiCommand, LocalAgentApiResponse,
+        LocalRunwayChecklistStatus, LocalRunwaySummary, ProfileCliCommand,
+        ProfileShellResponse,
         DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
@@ -2202,6 +2516,95 @@ mod tests {
         }
 
         cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn local_agent_api_runway_summary_serializes_and_tracks_profile_and_deny_observation() {
+        let state_path = unique_state_path("local-api-runway-summary");
+        let profile_path = unique_profile_path("local-api-runway-summary");
+        let store = FileSystemProfileStore;
+        let api = LocalAgentApi::at_state_path(&state_path);
+
+        let missing_summary = api
+            .runway_summary_with_store_and_profile_path(&profile_path, &store)
+            .expect("runway summary should load without a profile");
+        let missing_profile = missing_summary
+            .checklist
+            .iter()
+            .find(|item| item.item == "profileInit")
+            .expect("profile checklist item should be present");
+        let missing_consent = missing_summary
+            .checklist
+            .iter()
+            .find(|item| item.item == "consentFlowVisibility")
+            .expect("consent checklist item should be present");
+
+        assert_eq!(missing_summary.surface, "local-runway-summary");
+        assert_eq!(missing_summary.scope, "local-only");
+        assert_eq!(missing_summary.evidence, "non-evidentiary");
+        assert_eq!(missing_summary.profile_path, profile_path.display().to_string());
+        assert_eq!(missing_summary.agent_count, 2);
+        assert_eq!(missing_summary.deny_count, 0);
+        assert!(missing_summary.latest_deny.is_none());
+        assert_eq!(missing_profile.status, LocalRunwayChecklistStatus::Pending);
+        assert_eq!(missing_consent.status, LocalRunwayChecklistStatus::Pending);
+
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &store,
+        )
+        .expect("profile init should succeed");
+
+        let error = execute_local_agent_api_with_runtime_loader(
+            LocalAgentApiCommand::Run {
+                name: "echo".to_string(),
+            },
+            &state_path,
+            denied_reference_runtime_from_loaded_state,
+        )
+        .expect_err("denied runtime should persist a deny log entry");
+        assert!(matches!(
+            error,
+            CliError::Runtime(DemoError::AuthorizationDenied(_))
+        ));
+
+        let observed_summary = api
+            .runway_summary_with_store_and_profile_path(&profile_path, &store)
+            .expect("runway summary should load after profile init and deny");
+        let observed_profile = observed_summary
+            .checklist
+            .iter()
+            .find(|item| item.item == "profileInit")
+            .expect("profile checklist item should be present");
+        let observed_consent = observed_summary
+            .checklist
+            .iter()
+            .find(|item| item.item == "consentFlowVisibility")
+            .expect("consent checklist item should be present");
+        let payload = serde_json::to_value(&observed_summary)
+            .expect("runway summary should serialize to JSON");
+
+        assert_eq!(observed_summary.profile_name.as_deref(), Some(DEFAULT_PROFILE_NAME));
+        assert_eq!(observed_summary.grant_count, 0);
+        assert_eq!(observed_summary.deny_count, 1);
+        assert_eq!(observed_profile.status, LocalRunwayChecklistStatus::Observed);
+        assert_eq!(observed_consent.status, LocalRunwayChecklistStatus::Observed);
+        assert_eq!(
+            observed_summary
+                .latest_deny
+                .as_ref()
+                .and_then(|deny| deny.agent_name.as_deref()),
+            Some("echo")
+        );
+        assert_eq!(payload["surface"].as_str(), Some("local-runway-summary"));
+        assert_eq!(payload["latestDeny"]["kind"].as_str(), Some("deniedStart"));
+        assert!(payload["checklist"].is_array());
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
     }
 
     #[test]
@@ -3178,6 +3581,59 @@ mod tests {
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn shell_route_gets_local_runway_summary_json() {
+        let state_path = unique_state_path("shell-runway-summary");
+        let profile_path = unique_profile_path("shell-runway-summary");
+        let store = FileSystemProfileStore;
+
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &store,
+        )
+        .expect("profile init should succeed");
+
+        execute_local_agent_api_with_runtime_loader(
+            LocalAgentApiCommand::Run {
+                name: "echo".to_string(),
+            },
+            &state_path,
+            denied_reference_runtime_from_loaded_state,
+        )
+        .expect_err("denied runtime should record a deny entry before summary read");
+
+        let response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "GET".to_owned(),
+                path: "/runway-summary.json".to_owned(),
+                body: Vec::new(),
+            },
+            &state_path,
+            &profile_path,
+            &store,
+        );
+        let payload: LocalRunwaySummary = serde_json::from_slice(&response.body)
+            .expect("runway summary response should parse");
+
+        assert_eq!(response.status_code, 200);
+        assert_eq!(response.content_type, "application/json; charset=utf-8");
+        assert_eq!(payload.surface, "local-runway-summary");
+        assert_eq!(payload.scope, "local-only");
+        assert_eq!(payload.profile_path, profile_path.display().to_string());
+        assert_eq!(payload.deny_count, 1);
+        assert!(payload.agent_count >= 2);
+        assert!(payload
+            .checklist
+            .iter()
+            .any(|item| item.item == "powerCycleStatus"));
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
     }
 
     #[test]

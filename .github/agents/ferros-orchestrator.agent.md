@@ -42,7 +42,7 @@ Your job is to:
 1. Read the current gate and status surfaces first: `STATUS.md`, `docs/gates/G2.md`, and `docs/gates/G3.md`.
 2. Invoke **FERROS Lane Architect Agent** to break the request into stream-owned lanes and identify which can run in parallel.
 3. If the lane plan marks a lane as a recursion candidate, invoke **FERROS Recursion Controller Agent** before asking for one more lane-planning pass.
-4. Use **FERROS Lane Validator Agent** to confirm lane scope and validation before launch. Fill up to **5 safe top-level repo-editing lanes** when the repo state supports it, and keep the total lane count across all depths at or below **12**.
+4. Use **FERROS Lane Validator Agent** to confirm lane scope and validation before launch. Fill up to **8 safe top-level repo-editing lanes** when the repo state supports it, and keep the total lane count across all depths at or below **12**.
 5. Launch the independent implementation lanes with the owning stream agents.
 6. If a lane fails validation or implementation, invoke **FERROS Log Triage Agent** and follow its escalation path before re-planning the lane.
 7. After those lanes finish, run **FERROS Lane Validator Agent** post-flight on the changed lanes, then invoke **FERROS Integration Reviewer Agent** to check gate truth, contract alignment, and cross-stream coherence.
@@ -54,7 +54,7 @@ Your job is to:
 - Do not mix multiple owning streams into a single delegated implementation lane unless the request is truly inseparable.
 - Do not claim a gate moved unless the repo evidence actually changed.
 - Keep S2 as the default serial gate owner when identity or grant semantics are involved.
-- Do not force the full 5-lane budget when the available safe lanes overlap on files, contracts, or shared truth surfaces.
+- Do not force the full 8-lane budget when the available safe lanes overlap on files, contracts, or shared truth surfaces.
 - Do not exceed a recursion depth of 2 or a total of 12 lanes across a single wave.
 - Treat shared truth surfaces such as `STATUS.md`, gate docs, contracts overview, queue files, CI files, and root manifests as reconciliation targets unless one lane clearly owns them.
 

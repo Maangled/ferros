@@ -29,11 +29,25 @@ Batch Mode processes only `size: S` waves by default. `size: L` waves require ex
 
 The **target planning width** for Batch Mode runs is 8 waves per batch, matching the queue backfill depth this document is designed to support. The editing-lane ceiling is now 8, matching this planning target, after two consecutive conditional-pass Batch Mode runs were recorded (BATCH-2026-04-27 + BATCH-2026-04-27-B). See `LOCAL-DRIVER.md` for the revert clause.
 
+### Queue-Clear Mode (drain posture)
+
+Queue-Clear Mode is not a separate orchestration system. It is an explicit **Batch Mode objective**: the user tells the driver to clear or drain a queue, and the driver keeps opening successive batch segments on that scoped queue until the queue is empty or a hard stop fires.
+
+Examples:
+- "Clear the code queue."
+- "Drain the system queue until a hard stop fires."
+- "Run Batch Mode and keep clearing Ready code-track waves."
+
+Queue-Clear Mode keeps the same lane ceilings, validation rules, and gatekeeper contract as Batch Mode. The difference is scheduling intent:
+- `stop-clean` closes the current batch segment, not the overall queue-clear run.
+- The run-length cap emits a doc-batch artifact and opens the next segment automatically when no hard stop fired.
+- Human doc-batch review remains the re-entry surface, but it is asynchronous and non-blocking while queue clear is active.
+
 ---
 
-## Stop Conditions
+## Stop Conditions And Segment Boundaries
 
-Any one of the following fires → stop the batch and wait for human re-entry:
+Any one of the following fires. Conditions 1, 2, 3, 4, and 6 are **hard stops**. Condition 5 is a **segment boundary**: it closes the current batch segment, emits the normal doc-batch artifact, and in Queue-Clear Mode immediately opens the next segment when no hard stop fired.
 
 1. **Validation failed** on the just-landed wave.
 2. **Wave tag:** the just-finished wave or the next Ready wave is tagged `priority: P0`, `gate-close`, `solo: true`, or touches a frozen schema.
@@ -52,7 +66,7 @@ Any one of the following fires → stop the batch and wait for human re-entry:
 
    Overrun fires on undeclared touches to: `crates/**`, `schemas/**`, `.github/workflows/**`, `tools/**`, undeclared shared-truth surfaces (`STATUS.md`, gate docs, `CONTRACTS-OVERVIEW.md`), another stream's anchor files, or a non-owner stream's `PROGRESS.md`.
 4. **Track boundary:** the next Ready wave's `track` value differs from the current batch's track.
-5. **Run-length cap:** 8 waves have landed in the current batch.
+5. **Run-length cap:** 8 waves have landed in the current batch segment. Emit the doc-batch summary and either continue automatically in Queue-Clear Mode or halt cleanly in bounded Batch Mode.
 6. **Escalation chain exhausted:** the validator escalated to Log Triage, and Log Triage escalated to Trace Analyst without resolving the failure.
 
 ---
@@ -70,7 +84,7 @@ Each wave landing in Batch Mode is reviewed by a lightweight **Gatekeeper** step
 
 **Decision:** one of:
 - `continue` — batch proceeds to the next Ready wave
-- `stop-clean` — batch halts gracefully; human re-entry at the next normal doc-batch checkpoint
+- `stop-clean` — the current batch segment closes cleanly; Queue-Clear Mode may emit the doc-batch file and continue immediately into the next segment on the same scoped queue
 - `stop-escalate` — batch halts; human re-entry required before any further automation
 
 **Rationale:** one paragraph appended to `WAVE-RUN-LOG.md` as a sub-entry of the wave record.
@@ -121,7 +135,7 @@ The file summarises:
 - Which stream PROGRESS.md phases advanced
 - What is queued next and why
 
-The human reviews the doc-batch file and decides whether to run another batch, redirect the queue, or switch to Interactive Mode.
+The human reviews the doc-batch file and decides whether to redirect the queue, switch modes, or intervene. In Queue-Clear Mode, doc-batch emission is not by itself a blocking checkpoint: the driver keeps draining the scoped queue until it empties or a hard stop fires.
 
 ### 2. Hardware demo ready
 
@@ -146,7 +160,7 @@ Batch Mode scopes each run to one track. The three track queues are:
 | `docs/orchestration/SYSTEM-QUEUE.md` | `system` | Legal, ledger, asset, onramp |
 | `docs/orchestration/HARDWARE-QUEUE.md` | `hardware` | Firmware, bring-up, UX sessions |
 
-A Batch Mode run that reaches a track-boundary stop condition (condition 4 above) simply halts at that boundary. The human re-invokes with the target track explicitly named if they want to continue in a different track.
+A Batch Mode run that reaches a track-boundary stop condition (condition 4 above) simply halts at that boundary. Queue-Clear Mode drains the scoped track queue by default; it does not silently hop into a different track unless the original invocation named that broader scope.
 
 ---
 

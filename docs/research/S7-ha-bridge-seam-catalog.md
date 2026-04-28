@@ -1,5 +1,44 @@
 # S7 HA Bridge Seam Catalog
 
+Status: runway only. This note does not claim a landed HA bridge, D1 evidence, or G4 evidence.
+
+## Purpose
+
+Catalog the local-only seams a future `ferros-hub` or HA bridge must consume before FERROS can honestly publish a reboot-safe Home Assistant path. This is a planning surface for the current G4 and D1 runway, not an implementation contract.
+
+## Reusable local seams
+
+- Agent registry observation already exists through the local `ferros agent list`, `ferros agent describe`, and localhost shell read surfaces.
+- Agent lifecycle state already reads back through `agent.snapshot` plus the local-only `agent.run` and `agent.stop` path.
+- Grant visibility already reads through the current local profile path and deny-by-default policy evaluation.
+- The new `/runway-summary.json` shell route exposes a local-only observation bundle for profile, deny, and stand-in agent readiness without widening JSON-RPC.
+
+## Consent boundaries
+
+- Registration is not consent. A bridge may discover or stage material, but runtime execution still depends on an explicit grant.
+- Any Home Assistant entity or external material remains proposed FERROS material until a FERROS-owned acceptance surface moves it across the boundary.
+- Grant creation, grant revoke, remote bridge control, and external authority remain out of scope for this note.
+
+## Reboot and replay hooks
+
+- `LocalProfileStore::load_local_profile(path)` is the current local profile reload seam.
+- `CliState::load(path)` is the current local runtime-state replay seam.
+- `runtime_with_state(state_path)` is the current local runtime rebuild seam.
+- Power-cycle proof remains pending. Current restart-safe seams are local reload helpers only, not hardware evidence.
+
+## Missing honest implementation seams
+
+- No real `ferros-hub` binary exists yet.
+- No published HA bridge transport or pairing choreography exists yet.
+- No reboot-safe local storage proof exists for the future bridge path.
+- No hardware-backed D1 or G4 evidence is recorded from this note.
+
+## Feed-forward hooks
+
+- S5 can consume the local runway summary surface to stage an operator-readable launch checklist without widening privileges.
+- S6 can keep local push and audit envelopes local-only until a real bridge artifact flow exists.
+- S7 should treat power-cycle and re-registration as separate proofs from local process restart.# S7 HA Bridge Seam Catalog
+
 Status: Batch F research handoff. This catalog names the current seams a future HA bridge must consume before `crates/ferros-hub/` exists.
 
 ## Current Seam Inventory

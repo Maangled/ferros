@@ -11,8 +11,12 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
+        CommandKind::Burst => {
+            print!("{BURST_TEXT}");
+            ExitCode::SUCCESS
+        }
         CommandKind::Help => {
-            print_help();
+            print!("{HELP_TEXT}");
             ExitCode::SUCCESS
         }
     }
@@ -21,6 +25,7 @@ fn main() -> ExitCode {
 #[derive(Debug, PartialEq, Eq)]
 enum CommandKind {
     Ci,
+    Burst,
     Help,
 }
 
@@ -34,6 +39,7 @@ where
         .and_then(|arg| arg.into_string().ok())
     {
         Some(command) if command == "ci" => CommandKind::Ci,
+        Some(command) if command == "burst" => CommandKind::Burst,
         _ => CommandKind::Help,
     }
 }
@@ -72,12 +78,35 @@ fn run_step(program: &str, args: &[&str]) -> Result<(), String> {
     }
 }
 
-fn print_help() {
-    println!("FERROS xtask");
-    println!();
-    println!("Usage:");
-    println!("  cargo xtask ci      Run fmt, clippy, build, and test for the current workspace");
-}
+const HELP_TEXT: &str = "\
+FERROS xtask
+
+Usage:
+    cargo xtask ci      Run fmt, clippy, build, and test for the current workspace
+    cargo xtask burst   Print the current queue-clear opener surfaces and focused validation commands
+";
+
+const BURST_TEXT: &str = "\
+FERROS queue-clear opener burst support
+
+Ready opener waves:
+    - WAVE-2026-04-28-18 runtime local runway checkpoint helpers
+    - WAVE-2026-04-28-20 typed local-push audit envelope boundary
+    - WAVE-2026-04-28-22 queue-clear focused xtask support
+    - WAVE-2026-04-28-23 shell deny and lifecycle outcome rendering
+
+Focused validation:
+    - cargo test -p ferros-runtime
+    - cargo test -p ferros-data
+    - cargo check -p xtask
+    - cargo xtask burst
+    - cargo test -p ferros-node shell_route_serves_local_shell_html
+
+Queued serial follow-ons:
+    - WAVE-2026-04-28-26 ferros-node runway summary consumes LocalRunwayState
+    - WAVE-2026-04-28-27 shell runway route honors checkpoint progress
+    - WAVE-2026-04-28-29 profile adapter returns structured local status payloads
+";
 
 #[cfg(test)]
 mod tests {
@@ -91,6 +120,12 @@ mod tests {
     }
 
     #[test]
+    fn parses_burst_command() {
+        let args = vec![OsString::from("burst")];
+        assert_eq!(parse_command(args), CommandKind::Burst);
+    }
+
+    #[test]
     fn defaults_to_help_without_arguments() {
         let args: Vec<OsString> = Vec::new();
         assert_eq!(parse_command(args), CommandKind::Help);
@@ -100,5 +135,16 @@ mod tests {
     fn defaults_to_help_for_unknown_command() {
         let args = vec![OsString::from("unknown")];
         assert_eq!(parse_command(args), CommandKind::Help);
+    }
+
+    #[test]
+    fn help_text_mentions_burst_command() {
+        assert!(super::HELP_TEXT.contains("cargo xtask burst"));
+    }
+
+    #[test]
+    fn burst_text_mentions_queue_clear_opener_and_shell_validation() {
+        assert!(super::BURST_TEXT.contains("WAVE-2026-04-28-22"));
+        assert!(super::BURST_TEXT.contains("shell_route_serves_local_shell_html"));
     }
 }

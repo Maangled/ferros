@@ -597,6 +597,10 @@
             <strong>Profile</strong>
             <small>Local init, show, export, and import through the profile adapter.</small>
           </button>
+          <button class="route-button" data-route="runway" type="button">
+            <strong>Runway</strong>
+            <small>Local-only launch checklist from <code>/runway-summary.json</code>.</small>
+          </button>
           <button class="route-button" data-route="denyLog" type="button">
             <strong>Deny log</strong>
             <small>Deny-by-default evidence from current persisted shell log state.</small>
@@ -645,6 +649,7 @@
         <section id="agents-surface" class="table-list"></section>
         <section id="grants-surface" class="table-list hidden"></section>
         <section id="profile-surface" class="table-list hidden"></section>
+        <section id="runway-surface" class="table-list hidden"></section>
         <section id="deny-surface" class="table-list hidden"></section>
       </div>
     </main>
@@ -737,6 +742,10 @@
           <div id="lifecycle-control-state" class="lifecycle-state" data-state="blocked" aria-live="polite">No lifecycle action is ready.</div>
         </div>
         <div class="note-card">
+          <div class="shell-note-title">Lifecycle outcome</div>
+          <p id="lifecycle-outcome-copy" class="shell-note-copy">No lifecycle outcome recorded yet.</p>
+        </div>
+        <div class="note-card">
           <div class="shell-note-title">Privileged limits remain closed</div>
           <p class="shell-note-copy">Grant creation, grant revoke, and remote transport are still not wired. Lifecycle control remains selected-agent <code>agent.run</code> / <code>agent.stop</code> over localhost RPC; profile <code>grant</code> and <code>revoke</code> are not exposed through the profile adapter.</p>
         </div>
@@ -769,6 +778,8 @@
       selectedGrantIndex: null,
       denyEntries: [],
       selectedDenyIndex: null,
+      runway: null,
+      selectedRunwayIndex: null,
       errors: 0,
       connection: 'connecting',
       rpcHealth: 'warming',
@@ -778,6 +789,10 @@
         busy: false,
         status: 'blocked',
         message: '',
+        outcome: {
+          kind: 'idle',
+          detail: 'No lifecycle outcome recorded yet.',
+        },
       },
       profileSurface: {
         busy: false,
@@ -850,6 +865,16 @@
       return response.json();
     }
 
+    async function fetchRunwaySummary() {
+      const response = await fetch('/runway-summary.json');
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return response.json();
+    }
+
     function selectedProfilePath() {
       const value = document.getElementById('profile-path-input').value.trim();
       document.getElementById('status-profile').textContent = value || 'default';
@@ -891,6 +916,10 @@
         state.lifecycleControl.armed = false;
         state.lifecycleControl.message = '';
         state.lifecycleControl.status = 'blocked';
+        state.lifecycleControl.outcome = {
+          kind: 'idle',
+          detail: 'Select or run a lifecycle action to record an outcome.',
+        };
       }
 
       state.selectedAgent = agentName;
@@ -955,6 +984,10 @@
       state.lifecycleControl.status = status;
     }
 
+    function setLifecycleOutcome(kind, detail) {
+      state.lifecycleControl.outcome = { kind, detail };
+    }
+
     function reconcileSelectedAgent() {
       const selectedAgent = selectedAgentRecord();
       if (selectedAgent) {
@@ -974,13 +1007,18 @@
       setConnection('connecting', 'warming');
       try {
         const snapshotResult = await rpc('agent.snapshot', snapshotParams());
+        const runwaySummary = await fetchRunwaySummary().catch(() => null);
         const snapshot = snapshotResult.snapshot || {};
 
         state.agents = snapshot.agents || [];
         state.grants = snapshot.grants || [];
         state.denyEntries = snapshot.denyLog || [];
+        state.runway = runwaySummary;
         state.selectedGrantIndex = state.grants[state.selectedGrantIndex ?? -1] ? state.selectedGrantIndex : null;
         state.selectedDenyIndex = state.denyEntries[state.selectedDenyIndex ?? -1] ? state.selectedDenyIndex : null;
+        state.selectedRunwayIndex = state.runway && state.runway.checklist && state.runway.checklist[state.selectedRunwayIndex ?? -1]
+          ? state.selectedRunwayIndex
+          : (state.runway && state.runway.checklist && state.runway.checklist.length > 0 ? 0 : null);
         state.errors = 0;
 
         reconcileSelectedAgent();
@@ -1010,6 +1048,7 @@
       renderInspector();
       renderToolsCopy();
       renderAuditCopy();
+      renderLifecycleOutcome();
       renderLifecycleControl();
       renderProfileActionButtons();
     }
@@ -1029,6 +1068,7 @@
 
       document.getElementById('grants-surface').innerHTML = '';
       document.getElementById('profile-surface').innerHTML = '';
+      document.getElementById('runway-surface').innerHTML = '';
       document.getElementById('deny-surface').innerHTML = '';
       document.getElementById('inspector-content').innerHTML = `
         <div class="note-card">
@@ -1037,8 +1077,10 @@
         </div>`;
       document.getElementById('intent-note-title').textContent = 'Lifecycle intent unavailable';
       document.getElementById('intent-note-copy').textContent = 'No selected lifecycle intent is available while the localhost RPC surface is offline.';
+      document.getElementById('lifecycle-outcome-copy').textContent = 'Lifecycle outcome unavailable while the localhost RPC surface is offline.';
       document.getElementById('latest-deny-copy').textContent = 'No deny event available while the shell is offline.';
       setLifecycleControlStatus('No lifecycle action is available while the localhost RPC surface is offline.', 'error');
+      setLifecycleOutcome('error', 'The shell is offline, so no lifecycle outcome can be refreshed.');
       renderLifecycleControl();
       document.getElementById('status-error-count').textContent = String(state.errors);
     }
@@ -1078,10 +1120,12 @@
       const agentsSurface = document.getElementById('agents-surface');
       const grantsSurface = document.getElementById('grants-surface');
       const profileSurface = document.getElementById('profile-surface');
+      const runwaySurface = document.getElementById('runway-surface');
       const denySurface = document.getElementById('deny-surface');
       agentsSurface.classList.toggle('hidden', state.route !== 'agents');
       grantsSurface.classList.toggle('hidden', state.route !== 'grants');
       profileSurface.classList.toggle('hidden', state.route !== 'profile');
+      runwaySurface.classList.toggle('hidden', state.route !== 'runway');
       denySurface.classList.toggle('hidden', state.route !== 'denyLog');
 
       document.getElementById('center-subtitle').textContent = centerSubtitle();
@@ -1105,6 +1149,8 @@
         </article>`).join('') || emptyNote('No grant rows', 'Grant state is empty for the current local profile path.');
 
       profileSurface.innerHTML = profileSurfaceHtml();
+
+      runwaySurface.innerHTML = runwaySurfaceHtml();
 
       denySurface.innerHTML = state.denyEntries.map((entry, index) => `
         <article class="table-row ${index === state.selectedDenyIndex ? 'is-selected' : ''}" data-deny-index="${index}">
@@ -1140,6 +1186,16 @@
           render();
         });
       });
+
+      document.querySelectorAll('[data-runway-index]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.route = 'runway';
+          state.selectedRunwayIndex = Number(button.dataset.runwayIndex);
+          setStatusSelection(`runway:${state.runway.checklist[state.selectedRunwayIndex].item}`);
+          renderInspector();
+          render();
+        });
+      });
     }
 
     function profileSurfaceHtml() {
@@ -1168,6 +1224,31 @@
           ${lines}
           ${profile}
         </article>`;
+    }
+
+    function runwaySurfaceHtml() {
+      const summary = state.runway;
+      if (!summary) {
+        return emptyNote('Runway summary unavailable', 'The local shell could not load /runway-summary.json yet.');
+      }
+
+      const latestDeny = summary.latestDeny
+        ? `${summary.latestDeny.agentName || 'runtime'} · ${summary.latestDeny.message}`
+        : 'no deny observed';
+      const checklist = (summary.checklist || []).map((item, index) => `
+        <article class="table-row ${index === state.selectedRunwayIndex ? 'is-selected' : ''}" data-runway-index="${index}">
+          <strong>${escapeHtml(item.item)}</strong>
+          <small>${escapeHtml(item.status)} · ${escapeHtml(item.detail)}</small>
+          <div class="table-row-meta"><span>${escapeHtml(summary.surface)}</span><span>${escapeHtml(summary.scope)}</span></div>
+        </article>`).join('');
+
+      return `
+        <article class="note-card">
+          <div class="shell-note-title">Local runway summary</div>
+          <p class="shell-note-copy">${escapeHtml(summary.profileName || 'No local profile observed')} · ${summary.agentCount} agents · ${summary.activeGrantCount}/${summary.grantCount} active grants · ${summary.denyCount} deny entries.</p>
+          <p class="shell-note-copy">Scope ${escapeHtml(summary.scope)} · evidence ${escapeHtml(summary.evidence)} · latest deny ${escapeHtml(latestDeny)}.</p>
+        </article>
+        ${checklist || emptyNote('No runway checklist', 'The runway route loaded, but no checklist items were returned.')}`;
     }
 
     function renderInspector() {
@@ -1204,6 +1285,22 @@
         return;
       }
 
+      if (state.route === 'runway' && state.runway) {
+        const summary = state.runway;
+        const item = summary.checklist && summary.checklist.length > 0
+          ? summary.checklist[state.selectedRunwayIndex ?? 0]
+          : null;
+        inspector.innerHTML = `
+          <div class="detail-pair"><div class="detail-key">Surface</div><div class="detail-value">${escapeHtml(summary.surface)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Scope</div><div class="detail-value">${escapeHtml(summary.scope)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Evidence</div><div class="detail-value">${escapeHtml(summary.evidence)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Profile path</div><div class="detail-value">${escapeHtml(summary.profilePath || 'default')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Checklist item</div><div class="detail-value">${escapeHtml(item ? item.item : 'none')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Checklist status</div><div class="detail-value">${escapeHtml(item ? item.status : 'none')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Checklist detail</div><div class="detail-value">${escapeHtml(item ? item.detail : 'no checklist detail loaded')}</div></div>`;
+        return;
+      }
+
       if (state.route === 'denyLog' && state.denyEntries[state.selectedDenyIndex ?? -1]) {
         const entry = state.denyEntries[state.selectedDenyIndex];
         inspector.innerHTML = `
@@ -1233,6 +1330,7 @@
         agents: 'Agents route shows live registry rows and promotes a selected agent into the inspector slot.',
         grants: 'Grants route reads the local profile state through the current S3/S2 boundary with no mock grant rows.',
         profile: 'Profile route uses the local /profile adapter for init, show, export, and import without sending JSON-RPC grant writes.',
+        runway: 'Runway route reads the local-only /runway-summary.json surface for checklist, deny, and stand-in readiness observation.',
         denyLog: 'Deny log route uses persisted deny evidence only; route filtering stays in-slot and does not open overlays.',
       };
       document.getElementById('tools-copy').textContent = copy[state.route];
@@ -1252,6 +1350,9 @@
       } else if (state.route === 'profile') {
         intentTitle.textContent = 'Profile adapter is local only';
         intentCopy.textContent = 'Profile init, show, export, and import use the same-origin /profile adapter. Profile grant and revoke stay closed here.';
+      } else if (state.route === 'runway') {
+        intentTitle.textContent = 'Runway observation only';
+        intentCopy.textContent = 'Runway checklist rows come from the local-only /runway-summary.json surface. Power-cycle and bridge proof remain pending and non-evidentiary here.';
       } else {
         intentTitle.textContent = 'Deny observation only';
         intentCopy.textContent = 'Deny entries remain read-only evidence. If a transmitted lifecycle RPC is denied by the backend, the shell refreshes through agent.snapshot so persisted deny evidence can read back here.';
@@ -1261,6 +1362,22 @@
       document.getElementById('latest-deny-copy').textContent = latest
         ? `${latest.agentName || 'runtime'} · ${latest.message}`
         : 'No deny events recorded in the current shell state yet.';
+    }
+
+    function renderLifecycleOutcome() {
+      const outcome = state.lifecycleControl.outcome;
+      const latestDeny = state.denyEntries[0];
+      const fallback = {
+        idle: 'No lifecycle outcome recorded yet.',
+        blocked: 'The last lifecycle attempt was blocked locally before any write RPC was sent.',
+        denied: latestDeny
+          ? `The backend denied the last lifecycle attempt and persisted deny evidence for ${latestDeny.agentName || 'runtime'}.`
+          : 'The backend denied the last lifecycle attempt and the shell refreshed deny evidence.',
+        completed: 'The last lifecycle attempt completed and the shell refreshed through agent.snapshot.',
+        error: 'The last lifecycle attempt failed after the shell refreshed local state.',
+      };
+
+      document.getElementById('lifecycle-outcome-copy').textContent = outcome.detail || fallback[outcome.kind] || fallback.idle;
     }
 
     function renderLifecycleControl() {
@@ -1346,6 +1463,7 @@
 
       if (!intent) {
         setLifecycleControlStatus('Select an agent before sending a local lifecycle action.', 'blocked');
+        setLifecycleOutcome('blocked', 'No selected agent means no lifecycle RPC was transmitted.');
         renderLifecycleControl();
         return;
       }
@@ -1353,12 +1471,14 @@
       if (!gate.allowed) {
         state.lifecycleControl.armed = false;
         setLifecycleControlStatus(gate.copy, 'blocked');
+        setLifecycleOutcome('blocked', gate.copy);
         renderLifecycleControl();
         return;
       }
 
       if (!state.lifecycleControl.armed) {
         setLifecycleControlStatus(`Arm ${intent.agentName} before sending ${intent.method}. No write RPC was transmitted.`, 'blocked');
+        setLifecycleOutcome('blocked', `${intent.method} stayed local-only because the operator arm checkbox was not set.`);
         renderLifecycleControl();
         return;
       }
@@ -1372,11 +1492,18 @@
         state.lifecycleControl.armed = false;
         await refreshShell();
         setLifecycleControlStatus(`${intent.method} completed for ${intent.agentName}; refreshed through agent.snapshot.`, 'ready');
+        setLifecycleOutcome('completed', `${intent.method} completed for ${intent.agentName} and the shell refreshed through agent.snapshot.`);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        const lowered = message.toLowerCase();
         state.lifecycleControl.armed = false;
         await refreshShell();
         setLifecycleControlStatus(`${intent.method} returned ${message}; refreshed through agent.snapshot so persisted deny evidence remains visible.`, 'error');
+        if (lowered.includes('denied') || lowered.includes('forbidden')) {
+          setLifecycleOutcome('denied', `${intent.method} was denied by the backend and the shell reloaded persisted deny evidence for ${intent.agentName}.`);
+        } else {
+          setLifecycleOutcome('error', `${intent.method} failed with ${message} after the shell refreshed local state.`);
+        }
       } finally {
         state.lifecycleControl.busy = false;
         render();
@@ -1389,6 +1516,8 @@
           return 'Grant rows reflect the current local profile state through the loaded agent.snapshot read.';
         case 'profile':
           return 'Profile actions use the local /profile adapter for init, show, export, and import only.';
+        case 'runway':
+          return 'Runway rows come from the local-only /runway-summary.json surface and remain non-evidentiary.';
         case 'denyLog':
           return 'Deny-log rows stay inside the current persisted shell state loaded through agent.snapshot.';
         default:
@@ -1456,7 +1585,11 @@
       state.lifecycleControl.armed = event.target.checked;
       state.lifecycleControl.message = '';
       state.lifecycleControl.status = event.target.checked ? 'ready' : 'blocked';
+      if (!event.target.checked) {
+        setLifecycleOutcome('blocked', 'The lifecycle arm was cleared before any write RPC was transmitted.');
+      }
       renderLifecycleControl();
+      renderLifecycleOutcome();
     });
     document.getElementById('lifecycle-submit-button').addEventListener('click', submitLifecycleControl);
 

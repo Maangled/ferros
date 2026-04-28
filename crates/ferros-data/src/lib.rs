@@ -10,14 +10,229 @@ pub const MIGRATION_PATHS: [&str; 2] = [
     BASELINE_MIGRATION_PATH,
     ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_PATH,
 ];
+pub const LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_PATH: &str =
+    "schemas/local-push-audit-envelope.schema.json";
+pub const LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID: &str =
+    "https://ferros.local/schemas/local-push-audit-envelope.schema.json";
+pub const LOCAL_PUSH_AUDIT_ENVELOPE_VERSION: &str = "1.0";
+pub const LOCAL_PUSH_DIGEST_ROOT: &str = ".tmp/push/";
 
 #[cfg(test)]
 const ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_SQL: &str =
     include_str!("../migrations/0002_ordered_child_single_parent_scope.sql");
+#[cfg(test)]
+const LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA: &str =
+    include_str!("../../../schemas/local-push-audit-envelope.schema.json");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthoritySource {
     SqlMigrations,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalEnvelopeAuthority {
+    LocalOnly,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConsentBoundary {
+    ExplicitOperatorConsent,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalEnvelopeKind {
+    LocalPush,
+    LocalAudit,
+}
+
+impl LocalEnvelopeKind {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::LocalPush => "local-push",
+            Self::LocalAudit => "local-audit",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalPushSurface {
+    PushDigest,
+    RunwayObservation,
+    AuditTrace,
+}
+
+impl LocalPushSurface {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::PushDigest => "push-digest",
+            Self::RunwayObservation => "runway-observation",
+            Self::AuditTrace => "audit-trace",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalArtifactRole {
+    Anchor,
+    Input,
+    Output,
+    Evidence,
+}
+
+impl LocalArtifactRole {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Anchor => "anchor",
+            Self::Input => "input",
+            Self::Output => "output",
+            Self::Evidence => "evidence",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalDigestAlgorithm {
+    Sha256,
+    Blake3,
+    Other,
+}
+
+impl LocalDigestAlgorithm {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Sha256 => "sha256",
+            Self::Blake3 => "blake3",
+            Self::Other => "other",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalPushScope {
+    pub batch_id: Option<String>,
+    pub wave_id: Option<String>,
+    pub lane_id: Option<String>,
+    pub stream: String,
+    pub surface: LocalPushSurface,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalPushArtifact {
+    pub path: String,
+    pub role: LocalArtifactRole,
+    pub digest_ref: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalPushDigest {
+    pub label: String,
+    pub algorithm: LocalDigestAlgorithm,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalPushObservation {
+    pub target: String,
+    pub status: &'static str,
+    pub summary: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalPushAuditEnvelope {
+    pub envelope_version: &'static str,
+    pub envelope_type: LocalEnvelopeKind,
+    pub created_at: String,
+    pub scope: LocalPushScope,
+    pub artifacts: Vec<LocalPushArtifact>,
+    pub digests: Vec<LocalPushDigest>,
+    pub observations: Vec<LocalPushObservation>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LocalPushAuditEnvelopeError {
+    EmptyArtifacts,
+    InvalidRelativePath(String),
+    InvalidStream(String),
+    EmptyReason,
+}
+
+impl LocalPushAuditEnvelope {
+    pub fn new(
+        envelope_type: LocalEnvelopeKind,
+        created_at: impl Into<String>,
+        scope: LocalPushScope,
+        artifacts: Vec<LocalPushArtifact>,
+    ) -> Result<Self, LocalPushAuditEnvelopeError> {
+        let envelope = Self {
+            envelope_version: LOCAL_PUSH_AUDIT_ENVELOPE_VERSION,
+            envelope_type,
+            created_at: created_at.into(),
+            scope,
+            artifacts,
+            digests: Vec::new(),
+            observations: Vec::new(),
+            notes: Vec::new(),
+        };
+
+        envelope.validate()?;
+        Ok(envelope)
+    }
+
+    pub fn validate(&self) -> Result<(), LocalPushAuditEnvelopeError> {
+        if self.artifacts.is_empty() {
+            return Err(LocalPushAuditEnvelopeError::EmptyArtifacts);
+        }
+
+        if self.scope.reason.trim().is_empty() {
+            return Err(LocalPushAuditEnvelopeError::EmptyReason);
+        }
+
+        match self.scope.stream.as_str() {
+            "S1" | "S2" | "S3" | "S4" | "S5" | "S6" | "S7" | "S8" => {}
+            other => {
+                return Err(LocalPushAuditEnvelopeError::InvalidStream(
+                    other.to_owned(),
+                ))
+            }
+        }
+
+        for artifact in &self.artifacts {
+            if artifact.path.starts_with('/')
+                || artifact.path.contains(':')
+                || artifact.path.trim().is_empty()
+            {
+                return Err(LocalPushAuditEnvelopeError::InvalidRelativePath(
+                    artifact.path.clone(),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn with_digest(mut self, digest: LocalPushDigest) -> Self {
+        self.digests.push(digest);
+        self
+    }
+
+    #[must_use]
+    pub fn with_observation(mut self, observation: LocalPushObservation) -> Self {
+        self.observations.push(observation);
+        self
+    }
+
+    #[must_use]
+    pub fn with_note(mut self, note: impl Into<String>) -> Self {
+        self.notes.push(note.into());
+        self
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +249,15 @@ pub struct DataBoundary {
     pub snapshots_use_jsonb: bool,
     pub application_prevalidation_required: bool,
     pub revision_base: RevisionBaseFields,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LocalPushAuditEnvelopeBoundary {
+    pub authority: LocalEnvelopeAuthority,
+    pub consent_boundary: ConsentBoundary,
+    pub supports_digests: bool,
+    pub supports_runway_observation: bool,
+    pub kinds: [LocalEnvelopeKind; 2],
 }
 
 impl DataBoundary {
@@ -58,16 +282,40 @@ impl DataBoundary {
     }
 }
 
+impl LocalPushAuditEnvelopeBoundary {
+    #[must_use]
+    pub const fn doctrine_safe() -> Self {
+        Self {
+            authority: LocalEnvelopeAuthority::LocalOnly,
+            consent_boundary: ConsentBoundary::ExplicitOperatorConsent,
+            supports_digests: true,
+            supports_runway_observation: true,
+            kinds: [LocalEnvelopeKind::LocalPush, LocalEnvelopeKind::LocalAudit],
+        }
+    }
+}
+
 #[must_use]
 pub const fn ferros_data_boundary() -> DataBoundary {
     DataBoundary::migration_first()
 }
 
+#[must_use]
+pub const fn local_push_audit_boundary() -> LocalPushAuditEnvelopeBoundary {
+    LocalPushAuditEnvelopeBoundary::doctrine_safe()
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        ferros_data_boundary, ADR_REFERENCE, BASELINE_MIGRATION_PATH, BASELINE_MIGRATION_SQL,
-        MIGRATION_AUTHORITY, MIGRATION_PATHS, ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_PATH,
+        ferros_data_boundary, local_push_audit_boundary, LocalArtifactRole,
+        LocalDigestAlgorithm, LocalEnvelopeKind, LocalPushArtifact,
+        LocalPushAuditEnvelope, LocalPushAuditEnvelopeError, LocalPushDigest,
+        LocalPushObservation, LocalPushScope, LocalPushSurface, ADR_REFERENCE,
+        BASELINE_MIGRATION_PATH, BASELINE_MIGRATION_SQL, LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA,
+        LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID, LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_PATH,
+        LOCAL_PUSH_AUDIT_ENVELOPE_VERSION, LOCAL_PUSH_DIGEST_ROOT, MIGRATION_AUTHORITY,
+        MIGRATION_PATHS, ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_PATH,
         ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_SQL,
     };
 
@@ -136,5 +384,119 @@ mod tests {
         assert!(combined_sql.contains(
             "check ( not ( parent_card_id is not null and parent_deck_id is not null ) )"
         ));
+    }
+
+    #[test]
+    fn local_push_audit_boundary_stays_local_and_consent_first() {
+        let boundary = local_push_audit_boundary();
+
+        assert!(boundary.supports_digests);
+        assert!(boundary.supports_runway_observation);
+        assert_eq!(boundary.kinds.len(), 2);
+    }
+
+    #[test]
+    fn local_push_audit_schema_metadata_stays_aligned() {
+        assert_eq!(
+            LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_PATH,
+            "schemas/local-push-audit-envelope.schema.json"
+        );
+        assert_eq!(
+            LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID,
+            "https://ferros.local/schemas/local-push-audit-envelope.schema.json"
+        );
+        assert_eq!(LOCAL_PUSH_AUDIT_ENVELOPE_VERSION, "1.0");
+        assert_eq!(LOCAL_PUSH_DIGEST_ROOT, ".tmp/push/");
+        assert!(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA.contains(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID));
+        assert!(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA.contains("local-only"));
+        assert!(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA.contains("explicit-operator-consent"));
+    }
+
+    #[test]
+    fn local_push_audit_envelope_accepts_local_scope_and_relative_artifacts() {
+        let envelope = LocalPushAuditEnvelope::new(
+            LocalEnvelopeKind::LocalPush,
+            "2026-04-28T12:00:00Z",
+            LocalPushScope {
+                batch_id: Some("BATCH-2026-04-28-G".to_owned()),
+                wave_id: Some("WAVE-2026-04-28-20".to_owned()),
+                lane_id: Some("L5".to_owned()),
+                stream: "S6".to_owned(),
+                surface: LocalPushSurface::PushDigest,
+                reason: "queue-clear local digest emission".to_owned(),
+            },
+            vec![LocalPushArtifact {
+                path: ".tmp/push/batch-1-digest.md".to_owned(),
+                role: LocalArtifactRole::Output,
+                digest_ref: Some("batch-1".to_owned()),
+            }],
+        )
+        .expect("local envelope should validate")
+        .with_digest(LocalPushDigest {
+            label: "batch-1".to_owned(),
+            algorithm: LocalDigestAlgorithm::Sha256,
+            value: "deadbeef".to_owned(),
+        })
+        .with_observation(LocalPushObservation {
+            target: "runway-summary".to_owned(),
+            status: "planned",
+            summary: Some("consumer pending".to_owned()),
+        })
+        .with_note("local-only artifact");
+
+        assert_eq!(envelope.envelope_version, "1.0");
+        assert_eq!(envelope.envelope_type.as_str(), "local-push");
+        assert_eq!(envelope.scope.surface.as_str(), "push-digest");
+        assert_eq!(envelope.artifacts[0].role.as_str(), "output");
+        assert_eq!(envelope.digests[0].algorithm.as_str(), "sha256");
+    }
+
+    #[test]
+    fn local_push_audit_envelope_rejects_absolute_paths_and_unknown_streams() {
+        let absolute_path = LocalPushAuditEnvelope::new(
+            LocalEnvelopeKind::LocalAudit,
+            "2026-04-28T12:00:00Z",
+            LocalPushScope {
+                batch_id: None,
+                wave_id: None,
+                lane_id: None,
+                stream: "S6".to_owned(),
+                surface: LocalPushSurface::AuditTrace,
+                reason: "absolute path must fail".to_owned(),
+            },
+            vec![LocalPushArtifact {
+                path: "/tmp/push.md".to_owned(),
+                role: LocalArtifactRole::Output,
+                digest_ref: None,
+            }],
+        );
+        let invalid_stream = LocalPushAuditEnvelope::new(
+            LocalEnvelopeKind::LocalPush,
+            "2026-04-28T12:00:00Z",
+            LocalPushScope {
+                batch_id: None,
+                wave_id: None,
+                lane_id: None,
+                stream: "SX".to_owned(),
+                surface: LocalPushSurface::PushDigest,
+                reason: "invalid stream must fail".to_owned(),
+            },
+            vec![LocalPushArtifact {
+                path: ".tmp/push/batch-1.md".to_owned(),
+                role: LocalArtifactRole::Output,
+                digest_ref: None,
+            }],
+        );
+
+        assert_eq!(
+            absolute_path,
+            Err(LocalPushAuditEnvelopeError::InvalidRelativePath(
+                "/tmp/push.md".to_owned()
+            ))
+        );
+        assert_eq!(
+            invalid_stream,
+            Err(LocalPushAuditEnvelopeError::InvalidStream("SX".to_owned()))
+        );
     }
 }

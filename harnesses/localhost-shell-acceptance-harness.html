@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>H9 — FERROS Localhost Shell Acceptance Harness</h1>
-<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates the aggregated <code>agent.snapshot</code> seam, local inspector reuse, consent-gated selected-agent lifecycle control, route switching, empty-state grant and deny handling, scoped audit visibility, and operator-assisted live observation after local CLI run/stop updates &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
+<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates the aggregated <code>agent.snapshot</code> seam, local inspector reuse, the local-only <code>/runway-summary.json</code> read surface, consent-gated selected-agent lifecycle control, route switching, empty-state grant and deny handling, scoped audit visibility, and operator-assisted live observation after local CLI run/stop updates &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
 
 <button onclick="runJourney()">Run Journey</button>
 
@@ -263,7 +263,7 @@ async function runJourney() {
   if (!ready) return;
 
   var routeButtons = doc.querySelectorAll('[data-route]');
-  addResult('A: Registry', 'Four route buttons are visible', routeButtons.length === 4, 'found ' + routeButtons.length + ' route buttons');
+  addResult('A: Registry', 'Five route buttons are visible', routeButtons.length === 5, 'found ' + routeButtons.length + ' route buttons');
 
   var agentRows = doc.querySelectorAll('[data-agent-name]');
   addResult('A: Registry', 'Live agent list renders the reference agents', agentRows.length >= 2, 'agent rows=' + agentRows.length);
@@ -356,6 +356,28 @@ async function runJourney() {
     }
   } catch (error) {
     addResult('C: Grants', 'Grants route journey completes', false, '', error.message);
+  }
+
+  try {
+    await click(doc, '[data-route="runway"]', 'runway route button');
+    var runwayRoute = await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('active-route-pill').textContent === 'runway'
+        && doc.getElementById('runway-surface').textContent.toLowerCase().indexOf('local runway summary') !== -1;
+    }, 3000);
+    addResult('C: Runway', 'Runway route activates', runwayRoute, runwayRoute ? 'route=runway' : '', runwayRoute ? '' : 'runway route did not activate');
+
+    if (runwayRoute) {
+      var runwayText = doc.getElementById('runway-surface').textContent.toLowerCase();
+      var checklistVisible = runwayText.indexOf('power cycle') !== -1 || runwayText.indexOf('powercyclestatus') !== -1;
+      addResult('C: Runway', 'Runway surface renders checklist state', checklistVisible, checklistVisible ? 'runway checklist visible' : '', checklistVisible ? '' : 'runway checklist copy did not render');
+
+      var inspectorText = doc.getElementById('inspector-content').textContent.toLowerCase();
+      var inspectorShowsRunway = inspectorText.indexOf('local-only') !== -1 && inspectorText.indexOf('non-evidentiary') !== -1;
+      addResult('C: Runway', 'Inspector renders local-only runway detail', inspectorShowsRunway, inspectorShowsRunway ? 'inspector shows runway scope and evidence' : '', inspectorShowsRunway ? '' : 'runway inspector detail did not render');
+    }
+  } catch (error) {
+    addResult('C: Runway', 'Runway route journey completes', false, '', error.message);
   }
 
   try {

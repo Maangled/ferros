@@ -689,6 +689,80 @@ impl ConsentManifest {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalConsentGrantSnapshot {
+    pub capability: String,
+    pub is_active: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revoked_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revocation_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalConsentSnapshot {
+    pub profile_id: ProfileId,
+    pub device_label: String,
+    pub total_grants: usize,
+    pub active_grant_count: usize,
+    pub revoked_grant_count: usize,
+    pub grants: Vec<LocalConsentGrantSnapshot>,
+}
+
+impl LocalConsentSnapshot {
+    #[must_use]
+    pub fn from_local_state(state: &LocalProfileState) -> Self {
+        let grants = state
+            .signed_grants
+            .iter()
+            .map(|signed_grant| LocalConsentGrantSnapshot {
+                capability: signed_grant.grant.capability.clone(),
+                is_active: !signed_grant.grant.is_revoked(),
+                revoked_at: signed_grant.grant.revoked_at.clone(),
+                revocation_reason: signed_grant.grant.revocation_reason.clone(),
+            })
+            .collect::<Vec<_>>();
+        let active_grant_count = grants.iter().filter(|grant| grant.is_active).count();
+        let revoked_grant_count = grants.len().saturating_sub(active_grant_count);
+
+        Self {
+            profile_id: state.key_pair.profile_id(),
+            device_label: state.key_pair.device_label().to_owned(),
+            total_grants: grants.len(),
+            active_grant_count,
+            revoked_grant_count,
+            grants,
+        }
+    }
+
+    #[must_use]
+    pub fn active_capabilities(&self) -> Vec<&str> {
+        self.grants
+            .iter()
+            .filter(|grant| grant.is_active)
+            .map(|grant| grant.capability.as_str())
+            .collect()
+    }
+
+    #[must_use]
+    pub fn revoked_capabilities(&self) -> Vec<&str> {
+        self.grants
+            .iter()
+            .filter(|grant| !grant.is_active)
+            .map(|grant| grant.capability.as_str())
+            .collect()
+    }
+}
+
+impl LocalProfileState {
+    #[must_use]
+    pub fn consent_snapshot(&self) -> LocalConsentSnapshot {
+        LocalConsentSnapshot::from_local_state(self)
+    }
+}
+
 impl CapabilityGrantView for CapabilityGrant {
     fn profile_id(&self) -> &str {
         self.profile_id.as_str()
@@ -1601,9 +1675,10 @@ mod tests {
     use super::{
         encode_hex, foundation_contract_preview, init_profile, CapabilityGrant,
         CapabilityGrantSignatureError, ConsentManifest, ConsentManifestError,
-        FileSystemProfileStore, KeyPair, KeyPairError, LocalProfileStore, ProfileDocument,
-        ProfileDocumentError, ProfileId, ProfileIdError, ProfileSignatureError, ProfileStore,
-        ProfileStoreError, SignedCapabilityGrant, SignedProfileDocument,
+        FileSystemProfileStore, KeyPair, KeyPairError, LocalConsentSnapshot,
+        LocalProfileStore, ProfileDocument, ProfileDocumentError, ProfileId, ProfileIdError,
+        ProfileSignatureError, ProfileStore, ProfileStoreError, SignedCapabilityGrant,
+        SignedProfileDocument,
     };
     use serde_json::Value;
 
@@ -2160,6 +2235,57 @@ mod tests {
             "2026-04-23T00:05:00Z",
             "missing capability",
         ));
+    }
+
+    #[test]
+    fn local_consent_snapshot_tracks_active_and_revoked_grants() {
+        let key_pair = test_key_pair();
+        let profile_id = key_pair.profile_id();
+        let profile = ProfileDocument::fresh("Local Pilot", "2026-04-28T10:00:00Z")
+            .expect("fresh profile should build");
+        let active = CapabilityGrant::new(profile_id.clone(), "consent.read")
+            .sign(&test_signing_key())
+            .expect("active grant should sign");
+        let mut revoked = CapabilityGrant::new(profile_id, "consent.write")
+            .sign(&test_signing_key())
+            .expect("revoked grant should sign");
+        revoked
+            .revoke(
+                &test_signing_key(),
+                "2026-04-28T10:05:00Z",
+                "user revoked write access",
+            )
+            .expect("revocation should succeed");
+
+        let state = super::LocalProfileState::new(profile, key_pair, vec![active, revoked])
+            .expect("local state should validate");
+        let snapshot = state.consent_snapshot();
+
+        assert_eq!(snapshot.device_label, "local-test-device");
+        assert_eq!(snapshot.total_grants, 2);
+        assert_eq!(snapshot.active_grant_count, 1);
+        assert_eq!(snapshot.revoked_grant_count, 1);
+        assert_eq!(snapshot.active_capabilities(), vec!["consent.read"]);
+        assert_eq!(snapshot.revoked_capabilities(), vec!["consent.write"]);
+    }
+
+    #[test]
+    fn local_consent_snapshot_serializes_with_camel_case_fields() {
+        let key_pair = test_key_pair();
+        let profile = ProfileDocument::fresh("Local Pilot", "2026-04-28T10:00:00Z")
+            .expect("fresh profile should build");
+        let signed_grant = CapabilityGrant::new(key_pair.profile_id(), "consent.read")
+            .sign(&test_signing_key())
+            .expect("grant should sign");
+        let state = super::LocalProfileState::new(profile, key_pair, vec![signed_grant])
+            .expect("local state should validate");
+        let payload = serde_json::to_value(LocalConsentSnapshot::from_local_state(&state))
+            .expect("snapshot should serialize");
+
+        assert!(payload.get("profileId").is_some());
+        assert_eq!(payload["activeGrantCount"], 1);
+        assert_eq!(payload["revokedGrantCount"], 0);
+        assert!(payload["grants"].is_array());
     }
 
     #[test]
