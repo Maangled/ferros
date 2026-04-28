@@ -152,6 +152,18 @@
       transform: translateY(-1px);
     }
 
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    button:disabled:hover {
+      background: rgba(122, 167, 201, 0.08);
+      border-color: rgba(122, 167, 201, 0.24);
+      transform: none;
+    }
+
     button.is-active {
       background: linear-gradient(90deg, rgba(112, 214, 193, 0.22), rgba(122, 176, 247, 0.2));
       border-color: rgba(112, 214, 193, 0.42);
@@ -165,6 +177,13 @@
       color: var(--text);
       border-radius: 12px;
       padding: 11px 12px;
+    }
+
+    input[type="checkbox"] {
+      width: auto;
+      min-width: 18px;
+      min-height: 18px;
+      accent-color: var(--accent);
     }
 
     .top-edge {
@@ -396,6 +415,76 @@
       text-transform: uppercase;
     }
 
+    .lifecycle-control {
+      display: grid;
+      gap: 12px;
+    }
+
+    .checkbox-control {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .lifecycle-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .lifecycle-action-button {
+      border-color: rgba(112, 214, 193, 0.42);
+      background: rgba(112, 214, 193, 0.14);
+    }
+
+    .lifecycle-action-button[data-method="agent.stop"] {
+      border-color: rgba(255, 139, 123, 0.42);
+      background: rgba(255, 139, 123, 0.12);
+    }
+
+    .profile-output {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    .lifecycle-state {
+      border: 1px solid rgba(122, 167, 201, 0.16);
+      border-radius: 10px;
+      padding: 10px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.45;
+      background: rgba(7, 14, 21, 0.42);
+    }
+
+    .lifecycle-state[data-state="ready"] {
+      color: var(--ok);
+      border-color: rgba(115, 212, 165, 0.32);
+      background: rgba(115, 212, 165, 0.1);
+    }
+
+    .lifecycle-state[data-state="blocked"],
+    .lifecycle-state[data-state="busy"] {
+      color: var(--warn);
+      border-color: rgba(245, 191, 99, 0.32);
+      background: rgba(245, 191, 99, 0.1);
+    }
+
+    .lifecycle-state[data-state="error"] {
+      color: var(--danger);
+      border-color: rgba(255, 139, 123, 0.32);
+      background: rgba(255, 139, 123, 0.1);
+    }
+
     .status-indicator[data-state="ready"] {
       color: var(--ok);
       border-color: rgba(115, 212, 165, 0.4);
@@ -457,9 +546,9 @@
     <header class="panel top-edge">
       <section>
         <span class="panel-label">FERROS local shell</span>
-        <h1 class="identity-title">Agent Center Observation + Intent Prep</h1>
+        <h1 class="identity-title">Agent Center Observation + Local Control</h1>
         <p class="identity-subtitle">
-          Fixed-slot localhost shell powered by the landed read-first <code>agent.snapshot</code> JSON-RPC route and the current local-only <code>agent.run</code> / <code>agent.stop</code> backend slice. This shell stays read-only on purpose: agent, grant-state, and deny-log views are real, and selected-agent lifecycle intent is staged in-slot without browser-issued writes.
+          Fixed-slot localhost shell powered by the landed read-first <code>agent.snapshot</code> JSON-RPC route and the current local-only <code>agent.run</code> / <code>agent.stop</code> backend slice. Agent, grant-state, and deny-log views are real, and selected-agent lifecycle writes stay localhost-only behind a grant-aware consent gate.
         </p>
         <div class="identity-meta">
           <span class="state-pill">route <span id="active-route-pill">agents</span></span>
@@ -478,7 +567,7 @@
       <section class="shell-notes">
         <div class="note-card">
           <div class="shell-note-title">Current lane contract</div>
-          <p class="shell-note-copy">Consumes <code>agent.snapshot</code> for live observation and stages selected-agent lifecycle intent against the landed local-only <code>agent.run</code> / <code>agent.stop</code> backend slice. Consent and grant-write surfaces stay visible as owned future slots rather than fake browser writes.</p>
+          <p class="shell-note-copy">Consumes <code>agent.snapshot</code> for live observation and may send selected-agent <code>agent.run</code> / <code>agent.stop</code> only after an active loaded grant is confirmed. Grant-write surfaces stay visible as owned future slots rather than fake browser controls.</p>
         </div>
       </section>
     </header>
@@ -503,6 +592,10 @@
           <button class="route-button" data-route="grants" type="button">
             <strong>Grants</strong>
             <small>Real grant state from the current local profile path.</small>
+          </button>
+          <button class="route-button" data-route="profile" type="button">
+            <strong>Profile</strong>
+            <small>Local init, show, export, and import through the profile adapter.</small>
           </button>
           <button class="route-button" data-route="denyLog" type="button">
             <strong>Deny log</strong>
@@ -551,6 +644,7 @@
 
         <section id="agents-surface" class="table-list"></section>
         <section id="grants-surface" class="table-list hidden"></section>
+        <section id="profile-surface" class="table-list hidden"></section>
         <section id="deny-surface" class="table-list hidden"></section>
       </div>
     </main>
@@ -587,12 +681,25 @@
       </div>
       <div class="panel-body shell-controls">
         <div class="control-row">
-          <label for="profile-path-input">Grant profile path</label>
+          <label for="profile-path-input">Local profile path</label>
           <input id="profile-path-input" type="text" placeholder="Uses ferros default when left empty" />
+        </div>
+        <div class="control-row">
+          <label for="profile-bundle-input">Profile bundle path</label>
+          <input id="profile-bundle-input" type="text" placeholder="Required for export and import" />
         </div>
         <div class="control-row">
           <label for="agent-filter-input">Agent filter</label>
           <input id="agent-filter-input" type="text" placeholder="Filter registry rows by name" />
+        </div>
+        <div class="note-card">
+          <div class="shell-note-title">Profile adapter</div>
+          <div class="lifecycle-actions">
+            <button class="profile-action-button" data-profile-action="init" type="button">Init</button>
+            <button class="profile-action-button" data-profile-action="show" type="button">Show</button>
+            <button class="profile-action-button" data-profile-action="export" type="button">Export</button>
+            <button class="profile-action-button" data-profile-action="import" type="button">Import</button>
+          </div>
         </div>
         <div class="note-card">
           <div class="shell-note-title">Current route scope</div>
@@ -606,7 +713,7 @@
         <div>
           <span class="panel-label">Bottom-right <span class="anchor-pill">consent / audit anchor</span></span>
           <h2 class="panel-title">Consent and audit</h2>
-          <p class="panel-subtitle">Visible home for staged lifecycle intent and future privileged actions even before write flows exist.</p>
+          <p class="panel-subtitle">Visible home for consent-gated local lifecycle actions and future privileged flows.</p>
         </div>
         <div class="panel-actions">
           <button type="button" data-collapse-target="audit-panel">Collapse</button>
@@ -615,11 +722,23 @@
       <div class="panel-body shell-notes">
         <div class="note-card">
           <div id="intent-note-title" class="shell-note-title">Selected lifecycle intent</div>
-          <p id="intent-note-copy" class="shell-note-copy">Select an agent to stage the current local lifecycle intent. The shell still does not send writes.</p>
+          <p id="intent-note-copy" class="shell-note-copy">Select an agent to stage the current local lifecycle intent.</p>
+        </div>
+        <div class="note-card lifecycle-control" id="lifecycle-control">
+          <div class="shell-note-title">Local lifecycle control</div>
+          <p id="lifecycle-gate-copy" class="shell-note-copy">Select an agent and load an active matching grant before sending a local lifecycle action.</p>
+          <label class="checkbox-control" for="lifecycle-arm-checkbox">
+            <input id="lifecycle-arm-checkbox" type="checkbox" />
+            <span>Arm this selected-agent lifecycle write for the current localhost shell only.</span>
+          </label>
+          <div class="lifecycle-actions">
+            <button id="lifecycle-submit-button" class="lifecycle-action-button" data-method="none" type="button">Select an agent</button>
+          </div>
+          <div id="lifecycle-control-state" class="lifecycle-state" data-state="blocked" aria-live="polite">No lifecycle action is ready.</div>
         </div>
         <div class="note-card">
-          <div class="shell-note-title">Read-only on purpose</div>
-          <p class="shell-note-copy">Grant creation, revoke, and browser-issued lifecycle actions are not wired yet. This shell keeps their home slot visible so Phase B does not invent a modal stack or fake write flow before the S3/S5 write contract exists.</p>
+          <div class="shell-note-title">Privileged limits remain closed</div>
+          <p class="shell-note-copy">Grant creation, grant revoke, and remote transport are still not wired. Lifecycle control remains selected-agent <code>agent.run</code> / <code>agent.stop</code> over localhost RPC; profile <code>grant</code> and <code>revoke</code> are not exposed through the profile adapter.</p>
         </div>
         <div class="note-card">
           <div class="shell-note-title">Latest deny event</div>
@@ -654,6 +773,22 @@
       connection: 'connecting',
       rpcHealth: 'warming',
       selectedLabel: 'none',
+      lifecycleControl: {
+        armed: false,
+        busy: false,
+        status: 'blocked',
+        message: '',
+      },
+      profileSurface: {
+        busy: false,
+        action: null,
+        ok: null,
+        profilePath: '',
+        bundlePath: '',
+        lines: [],
+        profile: null,
+        error: '',
+      },
     };
 
     function setConnection(stateLabel, detail) {
@@ -691,10 +826,38 @@
       return payload.result;
     }
 
+    async function profileAdapter(action) {
+      const profilePath = selectedProfilePath();
+      const bundlePath = selectedProfileBundlePath();
+      const body = { action };
+      if (profilePath) {
+        body.profilePath = profilePath;
+      }
+      if (bundlePath) {
+        body.bundlePath = bundlePath;
+      }
+
+      const response = await fetch('/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return response.json();
+    }
+
     function selectedProfilePath() {
       const value = document.getElementById('profile-path-input').value.trim();
       document.getElementById('status-profile').textContent = value || 'default';
       return value;
+    }
+
+    function selectedProfileBundlePath() {
+      return document.getElementById('profile-bundle-input').value.trim();
     }
 
     function snapshotParams() {
@@ -723,6 +886,75 @@
       return lifecycleIntentFor(selectedAgentRecord());
     }
 
+    function setSelectedAgent(agentName) {
+      if (state.selectedAgent !== agentName) {
+        state.lifecycleControl.armed = false;
+        state.lifecycleControl.message = '';
+        state.lifecycleControl.status = 'blocked';
+      }
+
+      state.selectedAgent = agentName;
+      setStatusSelection(agentName || 'none');
+    }
+
+    function requirementProfileId(requirement) {
+      return requirement.profileId ?? requirement.profile_id ?? '';
+    }
+
+    function requirementLabel(requirement) {
+      const profileId = requirementProfileId(requirement) || 'unknown-profile';
+      return `${profileId}:${requirement.capability || 'unknown-capability'}`;
+    }
+
+    function grantMatchesRequirement(grant, requirement) {
+      const grantProfileId = grant.profileId ?? grant.profile_id;
+      const grantCapability = grant.capability;
+      const isActive = grant.isActive ?? grant.is_active;
+      return Boolean(isActive)
+        && grantProfileId === requirementProfileId(requirement)
+        && grantCapability === requirement.capability;
+    }
+
+    function lifecycleGateFor(intent) {
+      if (!intent) {
+        return {
+          allowed: false,
+          status: 'blocked',
+          copy: 'Select an agent before sending a local lifecycle action.',
+        };
+      }
+
+      const agent = selectedAgentRecord();
+      const requirements = (agent && agent.requiredCapabilities) || [];
+      if (requirements.length === 0) {
+        return {
+          allowed: false,
+          status: 'blocked',
+          copy: `${intent.method} is blocked before /rpc because the selected agent did not publish required capabilities in the loaded snapshot.`,
+        };
+      }
+
+      const missing = requirements.filter((requirement) => !state.grants.some((grant) => grantMatchesRequirement(grant, requirement)));
+      if (missing.length > 0) {
+        return {
+          allowed: false,
+          status: 'blocked',
+          copy: `${intent.method} is blocked before /rpc. Load an active grant for ${missing.map(requirementLabel).join(', ')} before transmitting this write.`,
+        };
+      }
+
+      return {
+        allowed: true,
+        status: state.lifecycleControl.armed ? 'ready' : 'blocked',
+        copy: `Active grant state is loaded for ${requirements.map(requirementLabel).join(', ')}. Arm the selected-agent control before sending ${intent.method}.`,
+      };
+    }
+
+    function setLifecycleControlStatus(message, status) {
+      state.lifecycleControl.message = message;
+      state.lifecycleControl.status = status;
+    }
+
     function reconcileSelectedAgent() {
       const selectedAgent = selectedAgentRecord();
       if (selectedAgent) {
@@ -731,13 +963,11 @@
       }
 
       if (state.agents.length > 0) {
-        state.selectedAgent = state.agents[0].name;
-        setStatusSelection(state.selectedAgent);
+        setSelectedAgent(state.agents[0].name);
         return;
       }
 
-      state.selectedAgent = null;
-      setStatusSelection('none');
+      setSelectedAgent(null);
     }
 
     async function refreshShell() {
@@ -780,6 +1010,8 @@
       renderInspector();
       renderToolsCopy();
       renderAuditCopy();
+      renderLifecycleControl();
+      renderProfileActionButtons();
     }
 
     function renderOffline(message) {
@@ -796,6 +1028,7 @@
         </article>`;
 
       document.getElementById('grants-surface').innerHTML = '';
+      document.getElementById('profile-surface').innerHTML = '';
       document.getElementById('deny-surface').innerHTML = '';
       document.getElementById('inspector-content').innerHTML = `
         <div class="note-card">
@@ -805,6 +1038,8 @@
       document.getElementById('intent-note-title').textContent = 'Lifecycle intent unavailable';
       document.getElementById('intent-note-copy').textContent = 'No selected lifecycle intent is available while the localhost RPC surface is offline.';
       document.getElementById('latest-deny-copy').textContent = 'No deny event available while the shell is offline.';
+      setLifecycleControlStatus('No lifecycle action is available while the localhost RPC surface is offline.', 'error');
+      renderLifecycleControl();
       document.getElementById('status-error-count').textContent = String(state.errors);
     }
 
@@ -833,8 +1068,7 @@
 
       document.querySelectorAll('[data-agent-name]').forEach((button) => {
         button.addEventListener('click', () => {
-          state.selectedAgent = button.dataset.agentName;
-          setStatusSelection(state.selectedAgent);
+          setSelectedAgent(button.dataset.agentName);
           render();
         });
       });
@@ -843,9 +1077,11 @@
     function renderSurface() {
       const agentsSurface = document.getElementById('agents-surface');
       const grantsSurface = document.getElementById('grants-surface');
+      const profileSurface = document.getElementById('profile-surface');
       const denySurface = document.getElementById('deny-surface');
       agentsSurface.classList.toggle('hidden', state.route !== 'agents');
       grantsSurface.classList.toggle('hidden', state.route !== 'grants');
+      profileSurface.classList.toggle('hidden', state.route !== 'profile');
       denySurface.classList.toggle('hidden', state.route !== 'denyLog');
 
       document.getElementById('center-subtitle').textContent = centerSubtitle();
@@ -868,6 +1104,8 @@
           <div class="table-row-meta"><span>${grant.revokedAt ? escapeHtml(grant.revokedAt) : 'not revoked'}</span><span>grant state</span></div>
         </article>`).join('') || emptyNote('No grant rows', 'Grant state is empty for the current local profile path.');
 
+      profileSurface.innerHTML = profileSurfaceHtml();
+
       denySurface.innerHTML = state.denyEntries.map((entry, index) => `
         <article class="table-row ${index === state.selectedDenyIndex ? 'is-selected' : ''}" data-deny-index="${index}">
           <strong>${escapeHtml(entry.agentName || 'runtime')}</strong>
@@ -878,8 +1116,7 @@
       document.querySelectorAll('[data-focus-agent]').forEach((button) => {
         button.addEventListener('click', () => {
           state.route = 'agents';
-          state.selectedAgent = button.dataset.focusAgent;
-          setStatusSelection(state.selectedAgent);
+          setSelectedAgent(button.dataset.focusAgent);
           render();
         });
       });
@@ -903,6 +1140,34 @@
           render();
         });
       });
+    }
+
+    function profileSurfaceHtml() {
+      const surface = state.profileSurface;
+      if (surface.busy) {
+        return emptyNote('Profile action running', `${surface.action || 'profile'} is using the local /profile adapter.`);
+      }
+
+      if (surface.ok === null) {
+        return emptyNote('Profile adapter ready', 'Choose init, show, export, or import from the tools panel.');
+      }
+
+      const statusTitle = surface.ok ? `Profile ${surface.action} complete` : `Profile ${surface.action} blocked`;
+      const pathCopy = `profile ${surface.profilePath || 'default'}${surface.bundlePath ? ` | bundle ${surface.bundlePath}` : ''}`;
+      const lines = surface.lines.length > 0
+        ? `<pre class="profile-output">${escapeHtml(surface.lines.join('\n'))}</pre>`
+        : `<p class="shell-note-copy">${escapeHtml(surface.error || pathCopy)}</p>`;
+      const profile = surface.profile
+        ? `<pre class="profile-output">${escapeHtml(JSON.stringify(surface.profile, null, 2))}</pre>`
+        : '';
+
+      return `
+        <article class="note-card">
+          <div class="shell-note-title">${escapeHtml(statusTitle)}</div>
+          <p class="shell-note-copy">${escapeHtml(pathCopy)}</p>
+          ${lines}
+          ${profile}
+        </article>`;
     }
 
     function renderInspector() {
@@ -929,6 +1194,16 @@
         return;
       }
 
+      if (state.route === 'profile') {
+        const surface = state.profileSurface;
+        inspector.innerHTML = `
+          <div class="detail-pair"><div class="detail-key">Adapter</div><div class="detail-value">/profile</div></div>
+          <div class="detail-pair"><div class="detail-key">Last action</div><div class="detail-value">${escapeHtml(surface.action || 'none')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Profile path</div><div class="detail-value">${escapeHtml(surface.profilePath || 'default')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Result</div><div class="detail-value">${surface.ok === null ? 'waiting' : surface.ok ? 'ok' : 'blocked'}</div></div>`;
+        return;
+      }
+
       if (state.route === 'denyLog' && state.denyEntries[state.selectedDenyIndex ?? -1]) {
         const entry = state.denyEntries[state.selectedDenyIndex];
         inspector.innerHTML = `
@@ -950,13 +1225,14 @@
     function renderToolsCopy() {
       const lifecycleIntent = selectedLifecycleIntent();
       if (state.route === 'agents' && lifecycleIntent) {
-        document.getElementById('tools-copy').textContent = `${lifecycleIntent.agentName} is ${lifecycleIntent.status}. The first shell-intent bar stages ${lifecycleIntent.method} ownership here only; submit the action locally, then refresh through agent.snapshot.`;
+        document.getElementById('tools-copy').textContent = `${lifecycleIntent.agentName} is ${lifecycleIntent.status}. The local lifecycle control checks loaded active grants before sending ${lifecycleIntent.method}, then refreshes through agent.snapshot.`;
         return;
       }
 
       const copy = {
         agents: 'Agents route shows live registry rows and promotes a selected agent into the inspector slot.',
         grants: 'Grants route reads the local profile state through the current S3/S2 boundary with no mock grant rows.',
+        profile: 'Profile route uses the local /profile adapter for init, show, export, and import without sending JSON-RPC grant writes.',
         denyLog: 'Deny log route uses persisted deny evidence only; route filtering stays in-slot and does not open overlays.',
       };
       document.getElementById('tools-copy').textContent = copy[state.route];
@@ -969,13 +1245,16 @@
 
       if (state.route === 'agents' && lifecycleIntent) {
         intentTitle.textContent = 'Selected lifecycle intent';
-        intentCopy.textContent = `${lifecycleIntent.agentName} is currently ${lifecycleIntent.status}. The backend localhost slice already supports ${lifecycleIntent.method}, but this shell still stages that intent only in-slot. Use the local CLI or a future consent flow, then refresh to observe the result through agent.snapshot.`;
+        intentCopy.textContent = `${lifecycleIntent.agentName} is currently ${lifecycleIntent.status}. The shell can send ${lifecycleIntent.method} only after the active-grant gate and arm checkbox both pass, then it refreshes through agent.snapshot.`;
       } else if (state.route === 'grants') {
         intentTitle.textContent = 'Grant control remains future work';
-        intentCopy.textContent = 'Grant rows are live, but this shell does not stage grant.create or grant.revoke. The consent/audit slot stays visible so those actions do not appear as fake browser controls.';
+        intentCopy.textContent = 'Grant rows are live and the lifecycle gate consumes them, but this shell does not stage grant.create or grant.revoke.';
+      } else if (state.route === 'profile') {
+        intentTitle.textContent = 'Profile adapter is local only';
+        intentCopy.textContent = 'Profile init, show, export, and import use the same-origin /profile adapter. Profile grant and revoke stay closed here.';
       } else {
         intentTitle.textContent = 'Deny observation only';
-        intentCopy.textContent = 'Deny entries remain read-only evidence. Local lifecycle denies can read back here after refresh, but this shell still does not submit lifecycle or grant writes.';
+        intentCopy.textContent = 'Deny entries remain read-only evidence. If a transmitted lifecycle RPC is denied by the backend, the shell refreshes through agent.snapshot so persisted deny evidence can read back here.';
       }
 
       const latest = state.denyEntries[0];
@@ -984,10 +1263,132 @@
         : 'No deny events recorded in the current shell state yet.';
     }
 
+    function renderLifecycleControl() {
+      const intent = selectedLifecycleIntent();
+      const gate = lifecycleGateFor(intent);
+      const gateCopy = document.getElementById('lifecycle-gate-copy');
+      const checkbox = document.getElementById('lifecycle-arm-checkbox');
+      const submitButton = document.getElementById('lifecycle-submit-button');
+      const stateBox = document.getElementById('lifecycle-control-state');
+      const method = intent ? intent.method : 'none';
+
+      gateCopy.textContent = gate.copy;
+      checkbox.checked = state.lifecycleControl.armed;
+      checkbox.disabled = !intent || state.lifecycleControl.busy;
+      submitButton.dataset.method = method;
+      submitButton.textContent = intent ? `Send ${intent.method}` : 'Select an agent';
+      submitButton.disabled = !intent || state.lifecycleControl.busy;
+
+      const status = state.lifecycleControl.busy
+        ? 'busy'
+        : (state.lifecycleControl.message ? state.lifecycleControl.status : gate.status);
+      stateBox.dataset.state = status;
+      stateBox.textContent = state.lifecycleControl.busy
+        ? `Sending ${intent ? intent.method : 'lifecycle action'} through the current localhost RPC path.`
+        : (state.lifecycleControl.message || gate.copy);
+    }
+
+    function renderProfileActionButtons() {
+      document.querySelectorAll('[data-profile-action]').forEach((button) => {
+        button.disabled = state.profileSurface.busy;
+      });
+    }
+
+    async function submitProfileAction(action) {
+      state.route = 'profile';
+      state.profileSurface = {
+        busy: true,
+        action,
+        ok: null,
+        profilePath: selectedProfilePath() || 'default',
+        bundlePath: selectedProfileBundlePath(),
+        lines: [],
+        profile: null,
+        error: '',
+      };
+      render();
+
+      try {
+        const payload = await profileAdapter(action);
+        state.profileSurface = {
+          busy: false,
+          action: payload.action || action,
+          ok: Boolean(payload.ok),
+          profilePath: payload.profilePath || 'default',
+          bundlePath: payload.bundlePath || '',
+          lines: payload.lines || [],
+          profile: payload.profile || null,
+          error: payload.error || '',
+        };
+
+        if (payload.ok && (action === 'init' || action === 'import')) {
+          await refreshShell();
+        }
+      } catch (error) {
+        state.profileSurface = {
+          busy: false,
+          action,
+          ok: false,
+          profilePath: selectedProfilePath() || 'default',
+          bundlePath: selectedProfileBundlePath(),
+          lines: [],
+          profile: null,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      } finally {
+        render();
+      }
+    }
+
+    async function submitLifecycleControl() {
+      const intent = selectedLifecycleIntent();
+      const gate = lifecycleGateFor(intent);
+
+      if (!intent) {
+        setLifecycleControlStatus('Select an agent before sending a local lifecycle action.', 'blocked');
+        renderLifecycleControl();
+        return;
+      }
+
+      if (!gate.allowed) {
+        state.lifecycleControl.armed = false;
+        setLifecycleControlStatus(gate.copy, 'blocked');
+        renderLifecycleControl();
+        return;
+      }
+
+      if (!state.lifecycleControl.armed) {
+        setLifecycleControlStatus(`Arm ${intent.agentName} before sending ${intent.method}. No write RPC was transmitted.`, 'blocked');
+        renderLifecycleControl();
+        return;
+      }
+
+      state.lifecycleControl.busy = true;
+      setLifecycleControlStatus('', 'busy');
+      renderLifecycleControl();
+
+      try {
+        await rpc(intent.method, { agentName: intent.agentName });
+        state.lifecycleControl.armed = false;
+        await refreshShell();
+        setLifecycleControlStatus(`${intent.method} completed for ${intent.agentName}; refreshed through agent.snapshot.`, 'ready');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        state.lifecycleControl.armed = false;
+        await refreshShell();
+        setLifecycleControlStatus(`${intent.method} returned ${message}; refreshed through agent.snapshot so persisted deny evidence remains visible.`, 'error');
+      } finally {
+        state.lifecycleControl.busy = false;
+        render();
+      }
+    }
+
     function centerSubtitle() {
       switch (state.route) {
         case 'grants':
           return 'Grant rows reflect the current local profile state through the loaded agent.snapshot read.';
+        case 'profile':
+          return 'Profile actions use the local /profile adapter for init, show, export, and import only.';
         case 'denyLog':
           return 'Deny-log rows stay inside the current persisted shell state loaded through agent.snapshot.';
         default:
@@ -1048,6 +1449,16 @@
     document.getElementById('refresh-button').addEventListener('click', refreshShell);
     document.getElementById('profile-path-input').addEventListener('change', refreshShell);
     document.getElementById('agent-filter-input').addEventListener('input', renderAgentList);
+    document.querySelectorAll('[data-profile-action]').forEach((button) => {
+      button.addEventListener('click', () => submitProfileAction(button.dataset.profileAction));
+    });
+    document.getElementById('lifecycle-arm-checkbox').addEventListener('change', (event) => {
+      state.lifecycleControl.armed = event.target.checked;
+      state.lifecycleControl.message = '';
+      state.lifecycleControl.status = event.target.checked ? 'ready' : 'blocked';
+      renderLifecycleControl();
+    });
+    document.getElementById('lifecycle-submit-button').addEventListener('click', submitLifecycleControl);
 
     refreshShell();
   </script>

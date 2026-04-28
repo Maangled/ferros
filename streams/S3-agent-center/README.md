@@ -101,5 +101,5 @@ The first write-side JSON/RPC follow-up above the landed `LocalAgentApi` slice i
 ## Immediate next steps
 
 1. Keep `LocalAgentApi`, the current local CLI, the landed localhost `agent.run` / `agent.stop` JSON/RPC methods, and the current read-first inspection methods aligned on one local state path.
-2. Keep the shell UI itself observation-only until an explicit S5-owned follow-up decides how, or whether, it should drive the landed local-only write methods.
-3. Keep browser control, privileged UX, grant writes, bridge-control choreography, richer remote observation/control, and broader S4 restart/reload semantics unpublished until later code-backed follow-up work exists.
+2. Keep S5's landed lifecycle control bar consuming only the existing local-only `agent.run` / `agent.stop` methods, with read-after-write observation through the current `agent.snapshot`, `agent.describe`, and `denyLog.list` path.
+3. Keep broader browser control, privileged UX, grant writes, bridge-control choreography, richer remote observation/control, and broader S4 restart/reload semantics unpublished until later code-backed follow-up work exists.

@@ -31,6 +31,7 @@
 - [x] Keep S4 support narrow while the next S3 follow-up exposes the first local-only `agent.run` / `agent.stop` JSON-RPC slice through the current localhost shell host without widening into remote transport or broader restart/reload publication
 - [x] Keep S4 support narrow while S5 defines the first shell-intent entry bar above the landed local-only `agent.run` / `agent.stop` JSON-RPC slice without widening into browser-issued writes or broader restart/reload publication
 - [x] Keep S4 support narrow while S5 defines the minimum consent-gated browser-issued lifecycle control bar: S5's stated consent-gate entry bar is downstream of S4's already-landed deny-by-default enforcement; no new S4 work is implied by S5's bar definition, and S4 restart/reload semantics remain out of scope for that bar
+- [x] Keep S4 support narrow while S5 lands the minimum browser lifecycle control bar above the existing local-only RPC path; no new runtime method, remote transport, or restart/reload guarantee is published
 
 ## Later
 

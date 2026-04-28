@@ -90,7 +90,7 @@ The table below defines the local-only lifecycle/write JSON/RPC surface that is 
 
 ## S5 Phase B lifecycle control bar — S3 consumer-awareness
 
-S5 has defined the minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy. When that bar lands as code, S5 will consume `agent.run` and `agent.stop` from the current landed local-only lifecycle/write JSON/RPC slice. No new S3 RPC methods are implied by S5's stated bar definition. The read-after-write observation path (`agent.describe`, `agent.snapshot`, `denyLog.list`) is unchanged. Grant/revoke actions and broader browser control are out of scope for this bar.
+S5 has landed the minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy. It consumes only `agent.run` and `agent.stop` from the current landed local-only lifecycle/write JSON/RPC slice. No new S3 RPC methods are implied by S5's bar. The read-after-write observation path (`agent.describe`, `agent.snapshot`, `denyLog.list`) is unchanged. Grant/revoke actions and broader browser control remain out of scope for this bar.
 
 ---
 
@@ -117,7 +117,7 @@ This is the first S3-owned hub-facing wrapper-boundary note for S7 runway planni
 
 ## First shell-intent consumer boundary
 
-The table below defines the next honest S5 consumer publication above the landed local-only lifecycle/write JSON-RPC slice without turning that backend capability into real browser control.
+Historical note: this was the S5 consumer boundary before the 2026-04-28 lifecycle control bar landed. It is retained as the prior read-only intent slice; the current wired bar is described in the S5 lifecycle control section above.
 
 | Consumer element | Minimum next S5 surface | Why this is the honest next bar | Still not implied |
 |------------------|-------------------------|---------------------------------|-------------------|

@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>H9 — FERROS Localhost Shell Acceptance Harness</h1>
-<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates the aggregated <code>agent.snapshot</code> seam, local inspector reuse, staged selected-agent lifecycle intent copy, route switching, empty-state grant and deny handling, read-only audit visibility, and operator-assisted live observation after local CLI run/stop updates &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
+<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates the aggregated <code>agent.snapshot</code> seam, local inspector reuse, consent-gated selected-agent lifecycle control, route switching, empty-state grant and deny handling, scoped audit visibility, and operator-assisted live observation after local CLI run/stop updates &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
 
 <button onclick="runJourney()">Run Journey</button>
 
@@ -116,6 +116,7 @@ function installRpcMonitor() {
 
   var originalFetch = frameWindow.fetch.bind(frameWindow);
   frameWindow.__h9ObservedRpcMethods = [];
+  frameWindow.__h9ObservedProfileActions = [];
   frameWindow.fetch = function(input, init) {
     var url = typeof input === 'string' ? input : input && input.url ? input.url : '';
     var options = init || {};
@@ -128,6 +129,16 @@ function installRpcMonitor() {
         }
       } catch (error) {
         frameWindow.__h9ObservedRpcMethods.push('parse-error');
+      }
+    }
+    if (String(method).toUpperCase() === 'POST' && String(url).indexOf('/profile') !== -1) {
+      try {
+        var profilePayload = typeof options.body === 'string' ? JSON.parse(options.body) : null;
+        if (profilePayload && profilePayload.action) {
+          frameWindow.__h9ObservedProfileActions.push(profilePayload.action);
+        }
+      } catch (error) {
+        frameWindow.__h9ObservedProfileActions.push('parse-error');
       }
     }
     return originalFetch(input, init);
@@ -143,10 +154,23 @@ function resetRpcMonitor() {
   }
 }
 
+function resetProfileMonitor() {
+  var frameWindow = getFrameWindow();
+  if (frameWindow && frameWindow.__h9ObservedProfileActions) {
+    frameWindow.__h9ObservedProfileActions.length = 0;
+  }
+}
+
 function observedRpcMethods() {
   var frameWindow = getFrameWindow();
   if (!frameWindow || !frameWindow.__h9ObservedRpcMethods) return [];
   return frameWindow.__h9ObservedRpcMethods.slice();
+}
+
+function observedProfileActions() {
+  var frameWindow = getFrameWindow();
+  if (!frameWindow || !frameWindow.__h9ObservedProfileActions) return [];
+  return frameWindow.__h9ObservedProfileActions.slice();
 }
 
 function agentRowStatus(doc, agentName) {
@@ -239,7 +263,7 @@ async function runJourney() {
   if (!ready) return;
 
   var routeButtons = doc.querySelectorAll('[data-route]');
-  addResult('A: Registry', 'Three route buttons are visible', routeButtons.length === 3, 'found ' + routeButtons.length + ' route buttons');
+  addResult('A: Registry', 'Four route buttons are visible', routeButtons.length === 4, 'found ' + routeButtons.length + ' route buttons');
 
   var agentRows = doc.querySelectorAll('[data-agent-name]');
   addResult('A: Registry', 'Live agent list renders the reference agents', agentRows.length >= 2, 'agent rows=' + agentRows.length);
@@ -287,6 +311,23 @@ async function runJourney() {
     var timerToolsCopy = textById(doc, 'tools-copy');
     var timerToolsVisible = timerToolsCopy.indexOf('timer') !== -1 && timerToolsCopy.indexOf('agent.run') !== -1;
     addResult('C: Inspector', 'Tools slot stages timer lifecycle intent without extra RPCs', timerToolsVisible, 'tools=' + (timerToolsCopy || 'missing'), timerToolsVisible ? '' : 'tools slot did not stage the selected timer lifecycle intent');
+
+    var lifecycleButton = doc.getElementById('lifecycle-submit-button');
+    var lifecycleCheckbox = doc.getElementById('lifecycle-arm-checkbox');
+    var lifecycleControlVisible = lifecycleButton && lifecycleCheckbox && lifecycleButton.dataset.method === 'agent.run';
+    addResult('C: Inspector', 'Lifecycle control reflects the selected timer run method', lifecycleControlVisible, lifecycleControlVisible ? 'button method=' + lifecycleButton.dataset.method : '', lifecycleControlVisible ? '' : 'lifecycle control did not stage agent.run for timer');
+
+    resetRpcMonitor();
+    await click(doc, '#lifecycle-submit-button', 'lifecycle submit button');
+    var gateSettled = await waitFor(function() {
+      doc = getDoc();
+      var stateCopy = textById(doc, 'lifecycle-control-state');
+      return stateCopy.indexOf('blocked before /rpc') !== -1 || stateCopy.indexOf('no write rpc') !== -1 || stateCopy.indexOf('arm timer') !== -1 || stateCopy.indexOf('load an active grant') !== -1;
+    }, 3000);
+    var gateMethods = observedRpcMethods();
+    var noLifecycleWrite = gateMethods.indexOf('agent.run') === -1 && gateMethods.indexOf('agent.stop') === -1;
+    var gateStateCopy = textById(doc, 'lifecycle-control-state');
+    addResult('C: Inspector', 'Lifecycle gate blocks an unarmed or missing-grant click before write RPC', gateSettled && noLifecycleWrite, 'methods=' + (gateMethods.join(', ') || 'none') + '; state=' + (gateStateCopy || 'missing'), gateSettled && noLifecycleWrite ? '' : 'expected no agent.run or agent.stop before the control gate is satisfied');
   } catch (error) {
     addResult('C: Inspector', 'Selecting timer updates the inspector', false, '', error.message);
   }
@@ -315,6 +356,38 @@ async function runJourney() {
     }
   } catch (error) {
     addResult('C: Grants', 'Grants route journey completes', false, '', error.message);
+  }
+
+  try {
+    await click(doc, '[data-route="profile"]', 'profile route button');
+    var profileRoute = await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('active-route-pill').textContent === 'profile';
+    }, 3000);
+    addResult('C: Profile Adapter', 'Profile route activates', profileRoute, profileRoute ? 'route=profile' : '', profileRoute ? '' : 'profile route did not activate');
+
+    if (profileRoute) {
+      var profileButtons = doc.querySelectorAll('[data-profile-action]');
+      addResult('C: Profile Adapter', 'Profile adapter exposes four local actions', profileButtons.length === 4, 'actions=' + profileButtons.length);
+
+      resetRpcMonitor();
+      resetProfileMonitor();
+      doc.getElementById('profile-path-input').value = '/definitely/missing/profile.json';
+      await click(doc, '[data-profile-action="show"]', 'profile show button');
+      var profileSettled = await waitFor(function() {
+        doc = getDoc();
+        return doc.getElementById('profile-surface').textContent.toLowerCase().indexOf('profile show') !== -1;
+      }, 5000);
+      var profileActions = observedProfileActions();
+      var rpcMethods = observedRpcMethods();
+      var profileOnly = profileSettled && profileActions.length === 1 && profileActions[0] === 'show' && rpcMethods.length === 0;
+      addResult('C: Profile Adapter', 'Profile show uses /profile without sending JSON-RPC', profileOnly, 'profile=' + (profileActions.join(', ') || 'none') + '; rpc=' + (rpcMethods.join(', ') || 'none'), profileOnly ? '' : 'expected profile show to avoid /rpc');
+
+      var grantRevokeAbsent = doc.querySelector('[data-profile-action="grant"]') === null && doc.querySelector('[data-profile-action="revoke"]') === null;
+      addResult('C: Profile Adapter', 'Profile grant and revoke controls stay absent', grantRevokeAbsent, grantRevokeAbsent ? 'grant/revoke action buttons not present' : '', grantRevokeAbsent ? '' : 'profile grant/revoke controls must remain closed');
+    }
+  } catch (error) {
+    addResult('C: Profile Adapter', 'Profile adapter route journey completes', false, '', error.message);
   }
 
   try {
@@ -412,9 +485,9 @@ async function runJourney() {
     }, 3000);
 
     var denyConfirmed = operatorConfirm('Optional deny observation step', [
-      'If you have already pre-seeded a deny entry through the dedicated local lifecycle/log seam, click OK to refresh and verify that the shell observes it.',
+      'If you have already pre-seeded a deny entry through the dedicated local lifecycle/log seam, or a lifecycle RPC was denied by the backend, click OK to refresh and verify that the shell observes it.',
       '',
-      'If not, click Cancel. Live deny generation still remains outside the current shell and CLI surface.'
+      'If not, click Cancel. This optional step only checks the read-back surface for persisted deny evidence.'
     ]);
 
     if (denyConfirmed) {
@@ -427,19 +500,19 @@ async function runJourney() {
       var denyObserved = denyRows > 0 || doc.getElementById('deny-surface').textContent.indexOf('No deny entries') === -1;
       addResult('F: Deny Observation', 'Shell observes deny evidence after external local-state injection', denyObserved, denyObserved ? 'deny rows=' + denyRows : 'deny surface still shows the empty state', denyObserved ? '' : 'no deny entry became visible after the assisted refresh');
     } else {
-      addResult('F: Deny Observation', 'Manual deny refresh still uses only the aggregated agent.snapshot seam', 'skip', 'optional because live deny generation remains outside the current shell and CLI surface');
-      addResult('F: Deny Observation', 'Shell observes deny evidence after external local-state injection', 'skip', 'optional because live deny generation remains outside the current shell and CLI surface');
+      addResult('F: Deny Observation', 'Manual deny refresh still uses only the aggregated agent.snapshot seam', 'skip', 'optional because persisted deny state may not be pre-seeded');
+      addResult('F: Deny Observation', 'Shell observes deny evidence after external local-state injection', 'skip', 'optional because persisted deny state may not be pre-seeded');
     }
   } catch (error) {
     addResult('F: Deny Observation', 'Optional deny observation flow completes', false, '', error.message);
   }
 
-  var readOnlyVisible = doc.getElementById('audit-panel').textContent.indexOf('Read-only on purpose') !== -1;
-  addResult('G: Audit Slot', 'Audit slot preserves the read-only contract copy', readOnlyVisible, readOnlyVisible ? 'read-only note visible' : '', readOnlyVisible ? '' : 'read-only audit note missing');
+  var privilegedLimitsVisible = doc.getElementById('audit-panel').textContent.indexOf('Privileged limits remain closed') !== -1;
+  addResult('G: Audit Slot', 'Audit slot preserves the privileged-limit contract copy', privilegedLimitsVisible, privilegedLimitsVisible ? 'privileged-limit note visible' : '', privilegedLimitsVisible ? '' : 'privileged-limit audit note missing');
 
   var auditCopy = textById(doc, 'intent-note-copy');
-  var routeAwareAuditVisible = auditCopy.indexOf('agent.') !== -1 || auditCopy.indexOf('still does not submit lifecycle or grant writes') !== -1 || auditCopy.indexOf('does not stage grant.create or grant.revoke') !== -1;
-  addResult('G: Audit Slot', 'Audit slot exposes route-scoped non-privileged copy without browser controls', routeAwareAuditVisible, routeAwareAuditVisible ? 'audit=' + auditCopy : '', routeAwareAuditVisible ? '' : 'route-scoped non-privileged audit copy missing from the audit slot');
+  var routeAwareAuditVisible = auditCopy.indexOf('agent.') !== -1 || auditCopy.indexOf('does not stage grant.create or grant.revoke') !== -1 || auditCopy.indexOf('deny entries remain read-only evidence') !== -1;
+  addResult('G: Audit Slot', 'Audit slot exposes route-scoped lifecycle-control copy', routeAwareAuditVisible, routeAwareAuditVisible ? 'audit=' + auditCopy : '', routeAwareAuditVisible ? '' : 'route-scoped audit copy missing from the audit slot');
 }
 </script>
 </body>

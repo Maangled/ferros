@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-28 - S5 lifecycle bar consumed the existing local RPC seam
+
+- Truth-synced S3 owner docs after S5 landed the browser lifecycle control bar on top of the existing local-only `agent.run` / `agent.stop` methods.
+- Kept S3 unchanged: no new JSON/RPC methods, no grant-write contract, no remote transport, no richer observation path, and no broader browser-control publication beyond S5's local selected-agent bar.
+- Focused validation for the consumed seam remained green with `cargo test -p ferros-node agent_write_rpc_` and `cargo test -p ferros-node shell_listener_posts_json_rpc_`.
+
 ## 2026-04-26 — Minimum local-only lifecycle/write JSON/RPC slice landed on the localhost shell host
 
 - Extended `crates/ferros-agents/src/rpc.rs` and `crates/ferros-node/src/lib.rs` so the current localhost shell host now accepts local-only `agent.run` and `agent.stop` JSON/RPC methods above the landed `LocalAgentApi` seam.

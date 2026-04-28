@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-28 - Narrow S4 support held for S5 lifecycle control
+
+- Kept S4's runtime surface unchanged while S5 landed the browser lifecycle control bar above the existing local-only `agent.run` / `agent.stop` RPC path.
+- Added served-asset assertions in `crates/ferros-node/src/lib.rs` so the shell route tests lock that the embedded shell and same-origin harness include the lifecycle-control gate.
+- Focused validation passed with `cargo test -p ferros-node shell_route_`, `cargo test -p ferros-node agent_write_rpc_`, and `cargo test -p ferros-node shell_listener_posts_json_rpc_`.
+- No new runtime method, remote transport, grant-write surface, D1/G4 evidence, or broader restart/reload guarantee was published.
+
 ## 2026-04-26 — Narrow S4 support landed for the first local-only lifecycle/write JSON-RPC slice
 
 - Refined `crates/ferros-node/src/lib.rs` so the current localhost shell host now routes local-only `agent.run` and `agent.stop` JSON-RPC methods through the landed `LocalAgentApi` seam on the same persisted local state path.

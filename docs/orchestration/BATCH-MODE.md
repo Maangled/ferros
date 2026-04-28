@@ -1,6 +1,6 @@
 # FERROS Batch Mode
 
-Batch Mode is an explicit, user-invoked operating mode that coexists with the existing Interactive Mode defined in `LOCAL-DRIVER.md`. Neither mode alters the lane policy (≤5 repo-editing lanes, ≤12 total). Batch Mode changes **how many queue items the driver processes per invocation**, not how each individual wave executes.
+Batch Mode is an explicit, user-invoked operating mode that coexists with the existing Interactive Mode defined in `LOCAL-DRIVER.md`. Neither mode alters the lane policy (≤8 repo-editing lanes, ≤12 total). Batch Mode changes **how many queue items the driver processes per invocation**, not how each individual wave executes.
 
 ---
 

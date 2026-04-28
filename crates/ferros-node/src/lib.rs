@@ -9,6 +9,8 @@ use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use serde::{Deserialize, Serialize};
+
 use ferros_agents::{
     Agent, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult, AgentManifest,
     AgentRegistry, AgentRpcAgentDetail, AgentRpcAgentSummary, AgentRpcSnapshot, AgentStatus,
@@ -268,6 +270,31 @@ pub enum ProfileCliCommand {
     Import { path: PathBuf, bundle_path: PathBuf },
     Grant { path: PathBuf, capability: String },
     Revoke { path: PathBuf, capability: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProfileShellRequest {
+    action: String,
+    #[serde(default)]
+    profile_path: Option<String>,
+    #[serde(default)]
+    bundle_path: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProfileShellResponse {
+    ok: bool,
+    action: String,
+    profile_path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bundle_path: Option<String>,
+    lines: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
 }
 
 #[derive(Debug)]
@@ -898,7 +925,49 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
         ("POST", "/rpc") => {
             route_shell_rpc_request(request.body, state_path, default_profile_path, store)
         }
+        ("POST", "/profile") => {
+            route_shell_profile_request(request.body, default_profile_path, store)
+        }
         _ => text_response(404, "Not Found", "FERROS local shell route not found"),
+    }
+}
+
+fn route_shell_profile_request<S: LocalProfileStore>(
+    body: Vec<u8>,
+    default_profile_path: &Path,
+    store: &S,
+) -> HttpResponse {
+    let request_json = match String::from_utf8(body) {
+        Ok(request_json) => request_json,
+        Err(_) => {
+            return text_response(400, "Bad Request", "request body must be valid UTF-8");
+        }
+    };
+
+    let request: ProfileShellRequest = match serde_json::from_str(&request_json) {
+        Ok(request) => request,
+        Err(error) => {
+            return text_response(
+                400,
+                "Bad Request",
+                format!("invalid profile request: {error}"),
+            );
+        }
+    };
+
+    let response = execute_profile_shell_request_with_store(request, default_profile_path, store);
+    match serde_json::to_string_pretty(&response) {
+        Ok(body) => HttpResponse {
+            status_code: 200,
+            status_text: "OK",
+            content_type: "application/json; charset=utf-8",
+            body: body.into_bytes(),
+        },
+        Err(error) => text_response(
+            500,
+            "Internal Server Error",
+            format!("failed to serialize profile response: {error}"),
+        ),
     }
 }
 
@@ -1079,6 +1148,106 @@ fn text_response(
         status_text,
         content_type: "text/plain; charset=utf-8",
         body: message.into().into_bytes(),
+    }
+}
+
+fn execute_profile_shell_request_with_store<S: LocalProfileStore>(
+    request: ProfileShellRequest,
+    default_profile_path: &Path,
+    store: &S,
+) -> ProfileShellResponse {
+    let action = request.action.trim().to_ascii_lowercase();
+    let profile_path = requested_profile_path(request.profile_path.as_deref(), default_profile_path);
+    let bundle_path = request
+        .bundle_path
+        .as_deref()
+        .and_then(non_empty_trimmed)
+        .map(PathBuf::from);
+
+    let command = match action.as_str() {
+        "init" => Ok(ProfileCliCommand::Init {
+            path: profile_path.clone(),
+        }),
+        "show" => Ok(ProfileCliCommand::Show {
+            path: profile_path.clone(),
+        }),
+        "export" => match bundle_path.clone() {
+            Some(bundle_path) => Ok(ProfileCliCommand::Export {
+                path: profile_path.clone(),
+                bundle_path,
+            }),
+            None => Err("bundlePath is required for profile export".to_owned()),
+        },
+        "import" => match bundle_path.clone() {
+            Some(bundle_path) => Ok(ProfileCliCommand::Import {
+                path: profile_path.clone(),
+                bundle_path,
+            }),
+            None => Err("bundlePath is required for profile import".to_owned()),
+        },
+        "grant" | "revoke" => Err(
+            "profile grant and revoke are not exposed through the localhost profile surface"
+                .to_owned(),
+        ),
+        _ => Err(format!("unsupported profile action: {action}")),
+    };
+
+    match command {
+        Ok(command) => match execute_profile_cli_with_store(command, store) {
+            Ok(lines) => ProfileShellResponse {
+                ok: true,
+                action,
+                profile_path: profile_path.display().to_string(),
+                bundle_path: bundle_path.map(|path| path.display().to_string()),
+                profile: profile_value_for_action(action.as_str(), store, &profile_path),
+                lines,
+                error: None,
+            },
+            Err(error) => ProfileShellResponse {
+                ok: false,
+                action,
+                profile_path: profile_path.display().to_string(),
+                bundle_path: bundle_path.map(|path| path.display().to_string()),
+                lines: Vec::new(),
+                profile: None,
+                error: Some(error.to_string()),
+            },
+        },
+        Err(error) => ProfileShellResponse {
+            ok: false,
+            action,
+            profile_path: profile_path.display().to_string(),
+            bundle_path: bundle_path.map(|path| path.display().to_string()),
+            lines: Vec::new(),
+            profile: None,
+            error: Some(error),
+        },
+    }
+}
+
+fn requested_profile_path(value: Option<&str>, default_profile_path: &Path) -> PathBuf {
+    value
+        .and_then(non_empty_trimmed)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| default_profile_path.to_path_buf())
+}
+
+fn non_empty_trimmed(value: &str) -> Option<&str> {
+    let trimmed = value.trim();
+    (!trimmed.is_empty()).then_some(trimmed)
+}
+
+fn profile_value_for_action<S: LocalProfileStore>(
+    action: &str,
+    store: &S,
+    profile_path: &Path,
+) -> Option<serde_json::Value> {
+    match action {
+        "init" | "show" | "import" => store
+            .load_profile(profile_path)
+            .ok()
+            .and_then(|profile| serde_json::to_value(profile).ok()),
+        _ => None,
     }
 }
 
@@ -2964,6 +3133,10 @@ mod tests {
         assert_eq!(response.status_code, 200);
         assert!(html.contains("FERROS Local Shell"));
         assert!(html.contains("/rpc"));
+        assert!(html.contains("/profile"));
+        assert!(html.contains("data-profile-action=\"show\""));
+        assert!(html.contains("lifecycle-submit-button"));
+        assert!(html.contains("lifecycle-arm-checkbox"));
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);
@@ -3008,6 +3181,182 @@ mod tests {
     }
 
     #[test]
+    fn shell_route_posts_profile_init_and_show_through_local_adapter() {
+        let state_path = unique_state_path("shell-profile-init");
+        let profile_path = unique_profile_path("shell-profile-init");
+        let profile_path_string = profile_path.display().to_string();
+        let init_body = serde_json::to_vec(&serde_json::json!({
+            "action": "init",
+            "profilePath": profile_path_string,
+        }))
+        .expect("profile init request should serialize");
+
+        let init_response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "POST".to_owned(),
+                path: "/profile".to_owned(),
+                body: init_body,
+            },
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        );
+        let init_payload: ProfileShellResponse =
+            serde_json::from_slice(&init_response.body).expect("profile response should parse");
+
+        assert_eq!(init_response.status_code, 200);
+        assert!(init_payload.ok);
+        assert_eq!(init_payload.action, "init");
+        assert_eq!(
+            init_payload.profile.as_ref().expect("profile should return")["identity"]["name"]
+                .as_str(),
+            Some(DEFAULT_PROFILE_NAME)
+        );
+
+        let show_body = serde_json::to_vec(&serde_json::json!({
+            "action": "show",
+            "profilePath": profile_path.display().to_string(),
+        }))
+        .expect("profile show request should serialize");
+        let show_response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "POST".to_owned(),
+                path: "/profile".to_owned(),
+                body: show_body,
+            },
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        );
+        let show_payload: ProfileShellResponse =
+            serde_json::from_slice(&show_response.body).expect("profile response should parse");
+
+        assert_eq!(show_response.status_code, 200);
+        assert!(show_payload.ok);
+        assert_eq!(show_payload.action, "show");
+        assert!(show_payload
+            .lines
+            .iter()
+            .any(|line| line.contains("\"name\": \"Fresh Start\"")));
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
+    fn shell_route_posts_profile_export_and_import_through_local_adapter() {
+        let state_path = unique_state_path("shell-profile-bundle");
+        let source_path = unique_profile_path("shell-profile-bundle-source");
+        let imported_path = unique_profile_path("shell-profile-bundle-imported");
+        let bundle_path = unique_profile_path("shell-profile-bundle").with_extension("bundle.json");
+        let store = FileSystemProfileStore;
+
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: source_path.clone(),
+            },
+            &store,
+        )
+        .expect("source profile init should succeed");
+
+        let export_body = serde_json::to_vec(&serde_json::json!({
+            "action": "export",
+            "profilePath": source_path.display().to_string(),
+            "bundlePath": bundle_path.display().to_string(),
+        }))
+        .expect("profile export request should serialize");
+        let export_response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "POST".to_owned(),
+                path: "/profile".to_owned(),
+                body: export_body,
+            },
+            &state_path,
+            &source_path,
+            &store,
+        );
+        let export_payload: ProfileShellResponse =
+            serde_json::from_slice(&export_response.body).expect("profile response should parse");
+
+        assert_eq!(export_response.status_code, 200);
+        assert!(export_payload.ok);
+        assert_eq!(export_payload.action, "export");
+        assert!(bundle_path.exists());
+
+        let import_body = serde_json::to_vec(&serde_json::json!({
+            "action": "import",
+            "profilePath": imported_path.display().to_string(),
+            "bundlePath": bundle_path.display().to_string(),
+        }))
+        .expect("profile import request should serialize");
+        let import_response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "POST".to_owned(),
+                path: "/profile".to_owned(),
+                body: import_body,
+            },
+            &state_path,
+            &source_path,
+            &store,
+        );
+        let import_payload: ProfileShellResponse =
+            serde_json::from_slice(&import_response.body).expect("profile response should parse");
+
+        assert_eq!(import_response.status_code, 200);
+        assert!(import_payload.ok);
+        assert_eq!(import_payload.action, "import");
+        assert_eq!(
+            import_payload.profile.as_ref().expect("profile should return")["identity"]["name"]
+                .as_str(),
+            Some(DEFAULT_PROFILE_NAME)
+        );
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&source_path);
+        cleanup_profile_artifacts(&imported_path);
+        cleanup_parent_dir(&source_path);
+        cleanup_parent_dir(&imported_path);
+        let _ = fs::remove_file(&bundle_path);
+    }
+
+    #[test]
+    fn shell_route_profile_adapter_rejects_grant_mutation_actions() {
+        let state_path = unique_state_path("shell-profile-reject-grant");
+        let profile_path = unique_profile_path("shell-profile-reject-grant");
+        let request_body = serde_json::to_vec(&serde_json::json!({
+            "action": "grant",
+            "profilePath": profile_path.display().to_string(),
+        }))
+        .expect("profile grant request should serialize");
+
+        let response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "POST".to_owned(),
+                path: "/profile".to_owned(),
+                body: request_body,
+            },
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        );
+        let payload: ProfileShellResponse =
+            serde_json::from_slice(&response.body).expect("profile response should parse");
+
+        assert_eq!(response.status_code, 200);
+        assert!(!payload.ok);
+        assert_eq!(payload.action, "grant");
+        assert!(payload
+            .error
+            .expect("error should be present")
+            .contains("not exposed through the localhost profile surface"));
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
     fn shell_route_serves_localhost_acceptance_harness() {
         let state_path = unique_state_path("shell-harness-html");
         let profile_path = unique_profile_path("shell-harness-html");
@@ -3028,6 +3377,9 @@ mod tests {
         assert_eq!(response.status_code, 200);
         assert!(html.contains("FERROS Localhost Shell Acceptance Harness"));
         assert!(html.contains("iframe id=\"sut\" src=\"/\""));
+        assert!(html.contains("Profile show uses /profile without sending JSON-RPC"));
+        assert!(html
+            .contains("Lifecycle gate blocks an unarmed or missing-grant click before write RPC"));
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);

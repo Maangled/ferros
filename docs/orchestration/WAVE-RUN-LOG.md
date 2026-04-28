@@ -4,6 +4,426 @@ Newest entry first. Each entry records one local driver invocation.
 
 ---
 
+## BATCH-2026-04-28-G - Code-Track Batch Mode Checkpoint (Validation Blocked)
+
+- **Batch open/checkpoint:** 2026-04-28
+- **Track:** code
+- **Declared code lanes:** backend profile adapter; shell/harness profile surface; serial truth reconciliation
+- **Theme:** First Implementation Push - localhost profile surface above frozen S2 CLI paths
+- **Gatekeeper model:** GPT-5 inline self-review
+- **Editing-lane ceiling:** 8 (not saturated because hot implementation anchors overlap)
+- **Lane Architect summary:** current state was code/system queues empty, hardware parked, D1 active/not closed, G4 active, ADR-024 Proposed, and Batch F had identified the minimum S5 profile surface as a critical next blocker. Proposed lanes were a serial backend adapter on `ferros-node`, a shell/harness consumer lane, and a final truth-sync lane. Parallel fan-out was deliberately limited because `crates/ferros-node/src/lib.rs`, `site/agent-center-shell.html`, and the harness are shared hot files. Recursion was denied because the lane touched a narrow owner boundary and no child plan would reduce integration risk.
+- **Result:** Checkpoint only, not a clean batch close. `POST /profile` is wired locally in `ferros-node` for profile `init`, `show`, `export`, and `import`, while profile `grant` and `revoke` return a closed-surface error. The localhost shell now has a Profile route and tools for those four actions, and the same-origin harness now monitors `/profile` separately from `/rpc` and checks that profile `show` does not transmit JSON-RPC. The code queue carries WAVE-2026-04-28-18 as a blocked validation/closeout item.
+- **Validation:** Node inline-script syntax checks passed for `site/agent-center-shell.html` and `harnesses/localhost-shell-acceptance-harness.html`. Static checks found no `data-profile-action="grant"` or `data-profile-action="revoke"` controls. Rust validation is blocked in this environment: `cargo fmt --check` failed before metadata with `Access is denied`, and `cargo test -p ferros-node shell_route_posts_profile -- --nocapture` failed before `rustc -vV` with `Access is denied`; both escalation requests were rejected by the environment usage gate. No D1/G4 evidence, frozen schema, remote transport, or ADR-024 claims are made.
+
+```json
+{
+  "batch_id": "BATCH-2026-04-28-G",
+  "track": "code",
+  "status": "validation-blocked-checkpoint",
+  "waves": [
+    {
+      "wave_id": "WAVE-2026-04-28-18",
+      "decision": "stop-blocked",
+      "stop_conditions_evaluated": {
+        "1_validation_failed": "blocked - cargo fmt/test cannot execute rustc in this sandbox due Access is denied; escalation rejected by environment usage gate",
+        "2_wave_tag": "code implementation above frozen S2 contract; no P0, gate-close, schema, ADR-024, or hardware execution flags",
+        "3_diff_overrun": "controlled L-sized serial checkpoint across one crate, one shell asset, one harness asset, and truth-sync placeholders; no frozen schemas or gate evidence tables touched",
+        "4_track_boundary": "code-track only; system and hardware queues remain untouched, hardware remains parked",
+        "5_run_length_cap": "stopped after first implementation checkpoint because validation could not complete",
+        "6_escalation_chain": "toolchain execution required escalation, but escalation was unavailable due environment usage limit"
+      },
+      "rationale": "The profile surface advanced the critical S5/S2 blocker without widening JSON-RPC, exposing grant/revoke, touching frozen schemas, or claiming D1/G4 evidence, but Rust validation must run before the wave can close cleanly."
+    }
+  ],
+  "batch_verdict": "blocked",
+  "revert_clause_triggered": false,
+  "revert_clause_note": "Blocked by local toolchain access/usage gating rather than an overrun, frozen-surface touch, or gatekeeper failure; width-8 remains under watch until WAVE-2026-04-28-18 closes."
+}
+```
+
+---
+
+## BATCH-2026-04-28-F - Code-Track Batch Mode Run (Sixth Batch)
+
+- **Batch open/close:** 2026-04-28
+- **Track:** code
+- **Waves in batch (declared order):** WAVE-2026-04-28-10 through WAVE-2026-04-28-17 (8 waves)
+- **Theme:** D1 Consent / Control Definition and HA Bridge Planning
+- **Gatekeeper model:** GPT-5 inline self-review
+- **Editing-lane ceiling:** 8 (revert clause remains armed)
+- **Lane Architect summary:** current state was code/system queues empty, hardware parked, D1 active/not closed, G4 active, ADR-024 Proposed, and WAVE-2026-04-28-09 had just landed the local-only S5 lifecycle control bar. Proposed lanes were eight docs-only new-file anchors: S5 live lifecycle harness proof, S5/S2 profile surface implementation handoff, S3 deny-log UX/error seam, S5 onramp consent wireframe, S7 HA bridge seam catalog, S4/S7 reboot-safe rehearsal, S6 asset-library onramp scaffold, and S8 glossary/doc-batch template cleanup. Serial dependency: shared truth surfaces landed after all owner lanes. Parallel-safe batch: all eight owner anchors were non-overlapping. Recursion: considered and denied for all lanes because each had one anchor file and no child seam would reduce risk.
+- **Result:** Complete. Eight docs-only Batch F handoffs landed under `docs/research/`, converting Batch D/E research and the WAVE-2026-04-28-09 lifecycle implementation into the next D1/control and HA-bridge runway set without touching code, schemas, gates, ADR-024, or hardware evidence.
+- **Validation:** Direct readback passed for all eight new files. Frozen-surface/forbidden-claim scans found only expected fixed-input or stop-line references to schemas, gates, D1/G4 evidence, and ADR-024 Proposed status. `Get-Command get_errors` failed because `get_errors` is not available in this shell, so no IDE diagnostic result is claimed. Hardware session window check: no human-named device/session window exists, so hardware remains parked.
+
+```json
+{
+  "batch_id": "BATCH-2026-04-28-F",
+  "track": "code",
+  "waves": [
+    {
+      "wave_id": "WAVE-2026-04-28-10",
+      "decision": "continue",
+      "stop_conditions_evaluated": {
+        "1_validation_failed": "not failed - direct readback passed; forbidden-claim scan found only non-evidence and stop-line wording; get_errors unavailable",
+        "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+        "3_diff_overrun": "none - one docs-only anchor plus later bookkeeping",
+        "4_track_boundary": "next wave is code track - clear",
+        "5_run_length_cap": "1 of 8 - continue",
+        "6_escalation_chain": "no triage or trace escalation - clear"
+      },
+      "rationale": "The lifecycle proof checklist stayed above the already-landed local-only bar and did not add shell code, grant/revoke actions, remote transport, D1 evidence, or G4 evidence."
+    },
+    {
+      "wave_id": "WAVE-2026-04-28-11",
+      "decision": "continue",
+      "stop_conditions_evaluated": {
+        "1_validation_failed": "not failed - direct readback passed; frozen schema references were fixed inputs and stop lines only; get_errors unavailable",
+        "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+        "3_diff_overrun": "none - one docs-only anchor plus later bookkeeping",
+        "4_track_boundary": "next wave is code track - clear",
+        "5_run_length_cap": "2 of 8 - continue",
+        "6_escalation_chain": "no triage or trace escalation - clear"
+      },
+      "rationale": "The profile surface handoff kept S5 as an S2 consumer and routed any localhost adapter or new RPC methods to an explicitly scoped later code wave."
+    },
+    {
+      "wave_id": "WAVE-2026-04-28-12",
+      "decision": "continue",
+      "stop_conditions_evaluated": {
+        "1_validation_failed": "not failed - direct readback passed; evidence references were stop-line wording only; get_errors unavailable",
+        "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+        "3_diff_overrun": "none - one docs-only anchor plus later bookkeeping",
+        "4_track_boundary": "next wave is code track - clear",
+        "5_run_length_cap": "3 of 8 - continue",
+        "6_escalation_chain": "no triage or trace escalation - clear"
+      },
+      "rationale": "The deny-log UX seam used existing `denyLog.list`, `agent.snapshot`, and lifecycle error surfaces without adding S3 methods or remote-control semantics."
+    },
+    {
+      "wave_id": "WAVE-2026-04-28-13",
+      "decision": "continue",
+      "stop_conditions_evaluated": {
+        "1_validation_failed": "not failed - direct readback passed; ADR-024 and D1 references were explicit stop lines; get_errors unavailable",
+        "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+        "3_diff_overrun": "none - one docs-only anchor plus later bookkeeping",
+        "4_track_boundary": "next wave is code track - clear",
+        "5_run_length_cap": "4 of 8 - continue",
+        "6_escalation_chain": "no triage or trace escalation - clear"
+      },
+      "rationale": "The onramp consent wireframe applied ADR-023 as proposed-material quarantine and did not wire external calls, persistence, HA transport, or evidence claims."
+    },
+    {
+      "wave_id": "WAVE-2026-04-28-14",
+      "decision": "continue",
+      "stop_conditions_evaluated": {
+        "1_validation_failed": "not failed - direct readback passed; G4 references were non-evidence and stop-line wording; get_errors unavailable",
+        "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+        "3_diff_overrun": "none - one docs-only anchor plus later bookkeeping",
+        "4_track_boundary": "next wave is code track - clear",
+        "5_run_length_cap": "5 of 8 - continue",
+        "6_escalation_chain": "no triage or trace escalation - clear"
+      },
+      "rationale": "The HA bridge seam catalog named missing S7 implementation seams and kept `ferros-hub`, pairing order, hardware findings, and G4 evidence out of scope."
+    },
+    {
+      "wave_id": "WAVE-2026-04-28-15",
+      "decision": "continue",
+      "stop_conditions_evaluated": {
+        "1_validation_failed": "not failed - direct readback passed; D1/G4 wording distinguishes rehearsal from evidence; get_errors unavailable",
+        "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+        "3_diff_overrun": "none - one docs-only anchor plus later bookkeeping",
+        "4_track_boundary": "next wave is code track - clear",
+        "5_run_length_cap": "6 of 8 - continue",
+        "6_escalation_chain": "no triage or trace escalation - clear"
+      },
+      "rationale": "The reboot-safe rehearsal checklist separated local restart rehearsal from future physical power-cycle evidence without publishing a broader S4 restart API."
+    },
+    {
+      "wave_id": "WAVE-2026-04-28-16",
+      "decision": "continue",
+      "stop_conditions_evaluated": {
+        "1_validation_failed": "not failed - direct readback passed; ADR-024 references preserve Proposed/non-ratified status; get_errors unavailable",
+        "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+        "3_diff_overrun": "none - one docs-only anchor plus later bookkeeping",
+        "4_track_boundary": "next wave is code track - clear",
+        "5_run_length_cap": "7 of 8 - continue",
+        "6_escalation_chain": "no triage or trace escalation - clear"
+      },
+      "rationale": "The S6 scaffold boundary kept asset/library material as proposed onramp input and did not ratify ADR-024, claim ledger finality, or import prior-art code."
+    },
+    {
+      "wave_id": "WAVE-2026-04-28-17",
+      "decision": "stop-clean",
+      "stop_conditions_evaluated": {
+        "1_validation_failed": "not failed - direct readback passed; glossary/template references stayed non-policy and non-evidence; get_errors unavailable",
+        "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+        "3_diff_overrun": "none - one docs-only anchor plus serial bookkeeping",
+        "4_track_boundary": "no further Ready code-track waves after close - queue exhausted",
+        "5_run_length_cap": "8 of 8 - declared batch scope reached",
+        "6_escalation_chain": "no triage or trace escalation - clear"
+      },
+      "rationale": "The S8 glossary/template note stayed below policy change, then the batch closed after all eight declared docs-only lanes. Because get_errors is unavailable in this shell, the batch closes as a conditional pass with a validation-hook ambiguity rather than claiming IDE diagnostics."
+    }
+  ],
+  "batch_verdict": "conditional-pass",
+  "conditional_reason": "get_errors is unavailable in the shell; all available direct readback and forbidden-surface scans passed",
+  "revert_clause_triggered": false
+}
+```
+
+---
+
+## 2026-04-28 - WAVE-2026-04-28-09
+
+- Selected item: `WAVE-2026-04-28-09`
+- Result: Complete. The localhost shell now has a consent-gated selected-agent lifecycle control bar for `agent.run` / `agent.stop` only. The browser checks loaded active grant rows and an explicit arm checkbox before any write RPC leaves the shell, then refreshes through `agent.snapshot` after success or backend denial. The same-origin harness now verifies an unarmed or missing-grant click does not transmit `agent.run` / `agent.stop`.
+- Lane Architect summary: current state was code/system queues empty, hardware parked, S5 lifecycle control listed as the critical open browser-control blocker, and S3/S4 already publishing the local-only backend path. Lanes were S5 shell wiring, acceptance harness proof, and serial S3/S4/S5 truth-sync. No recursion approved: the lane touched a narrow hot surface and added no child seam.
+- Files: `site/agent-center-shell.html`, `harnesses/localhost-shell-acceptance-harness.html`, `crates/ferros-node/src/lib.rs`, `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S5-ux/PROGRESS.md`, `streams/S3-agent-center/README.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S3-agent-center/PROGRESS.md`, `streams/S4-runtime/BACKLOG.md`, `streams/S4-runtime/PROGRESS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`, `STATUS.md`.
+- Validation: `cargo fmt --check` passed. `cargo test -p ferros-node shell_route_` passed after stopping the local shell server that had locked `target/debug/ferros-node.exe`. Earlier focused validation also passed for `cargo test -p ferros-node agent_write_rpc_` and `cargo test -p ferros-node shell_listener_posts_json_rpc_`. Node syntax check passed for the shell and harness inline scripts. Local route checks returned HTTP 200 for `/` and `/harnesses/localhost-shell-acceptance.html` and confirmed the lifecycle/gate assets were served. Live browser harness execution was not run in-session.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-09",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "not failed - focused Rust tests, rustfmt check, node syntax check, and local route checks passed; live browser harness execution not run",
+    "2_wave_tag": "interactive code wave - no P0, gate-close, frozen-schema, ADR-024, or hardware execution flags",
+    "3_diff_overrun": "controlled L-sized wave - shell, harness, one ferros-node test file, stream truth-sync, and orchestration bookkeeping touched; no frozen schemas or gate evidence tables touched",
+    "4_track_boundary": "code-track only; system and hardware queues remain untouched, hardware remains parked",
+    "5_run_length_cap": "single interactive wave - stop after completion",
+    "6_escalation_chain": "cargo required escalation to execute the local Rust toolchain; no contract, schema, remote-transport, or evidence escalation triggered"
+  },
+  "decision": "stop-clean",
+  "rationale": "The critical S5 browser-control blocker advanced through the existing local-only S3/S4 lifecycle RPC path. The implementation stayed limited to selected-agent run/stop, added a pre-write grant/arm gate, kept grant/revoke and remote transport closed, and did not claim D1 or G4 evidence."
+}
+```
+
+---
+
+## BATCH-2026-04-28-E — Code-Track Batch Mode Run (Fifth Batch)
+
+- **Batch open:** 2026-04-28
+- **Track:** code
+- **Waves in batch (declared order):** WAVE-2026-04-28-01 through WAVE-2026-04-28-08 (8 waves)
+- **Theme:** Runtime / Consent Seam Hardening
+- **Gatekeeper model:** GPT-5 inline self-review
+- **Editing-lane ceiling:** 8 (revert clause remains armed)
+- **Lane Architect summary:** current state is post-BATCH-D with code/system queues empty, hardware parked, D1 active/not closed, G4 active, ADR-024 Proposed. Proposed lanes are eight docs-only new-file anchors: S1 boot sequence, S1 supervisor boundary, S4 restart/reload, S3 remote transport, S5 shell navigation depth, S2 profile recovery UX, S7 power-cycle protocol, and S8 contributor onboarding checklist. Serial dependency: WAVE-2026-04-28-07 runs after WAVE-2026-04-28-01 and WAVE-2026-04-28-03. Parallel-safe batch: WAVE-2026-04-28-01 through -06 and -08 have non-overlapping anchors. Recursion: WAVE-2026-04-28-07 considered and denied because one S7-owned anchor is sufficient and no child seam reduces risk.
+- **Validation note:** `get_errors` is not available as a shell command in this sandbox (`Get-Command get_errors` failed during Phase 0). Direct file readback, forbidden-claim scan, and scope scan passed. This is recorded as a batch-level substrate ambiguity, not as a frozen-surface or escalation failure.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-08
+
+- Selected item: `WAVE-2026-04-28-08`
+- Result: Complete. `docs/research/S8-contributor-onboarding-checklist.md` created. It gives a read-first order, stream-selection table, gate-awareness table, queue discipline, validation checklist, hard stop lines, and PR shape guidance for contributors. It explicitly distinguishes D1 from G4 and does not seed issues or change templates.
+- Files: `docs/research/S8-contributor-onboarding-checklist.md`
+- Validation: Direct readback passed. Forbidden-claim scan found no D1/G4 closure or launch-ready claim. `get_errors` unavailable; no IDE diagnostic result claimed.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-08",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "not failed - direct readback and forbidden-claim scan passed; get_errors unavailable in this sandbox",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+    "3_diff_overrun": "none - only declared anchor file touched, plus bookkeeping-exempt WAVE-QUEUE.md and WAVE-RUN-LOG.md",
+    "4_track_boundary": "no further Ready code-track waves - queue exhausted",
+    "5_run_length_cap": "8 of 8 - run length cap reached; all declared waves complete",
+    "6_escalation_chain": "no triage or trace escalation - clear"
+  },
+  "decision": "stop-clean",
+  "rationale": "Wave -08 completed the contributor onboarding checklist without changing templates, governance authority, gates, schemas, or evidence tables. The batch reached 8 of 8 declared docs-only waves and the code queue is exhausted. Because get_errors is unavailable in this shell, the batch closes as a conditional pass with a validation-hook ambiguity rather than a clean pass."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-07
+
+- Selected item: `WAVE-2026-04-28-07`
+- Result: Complete. `docs/research/S7-power-cycle-recovery-protocol.md` created. It composes S1 boot and S4 restart/reload inputs into a D1-ready power-cycle protocol with preconditions, operator steps, comparison rows, D1/G4 split, known unknowns, and findings handoff. Recursion was considered and denied in-file.
+- Files: `docs/research/S7-power-cycle-recovery-protocol.md`
+- Validation: Direct readback passed. Forbidden-claim scan found only explicit non-evidence/stop-line language. `get_errors` unavailable; no IDE diagnostic result claimed.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-07",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "not failed - direct readback and forbidden-claim scan passed; get_errors unavailable in this sandbox",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+    "3_diff_overrun": "none - only declared anchor file touched, plus bookkeeping-exempt WAVE-QUEUE.md and WAVE-RUN-LOG.md",
+    "4_track_boundary": "next wave WAVE-2026-04-28-08 is code-track - clear",
+    "5_run_length_cap": "7 of 8 - continue",
+    "6_escalation_chain": "no triage or trace escalation - clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -07 honored its serial dependency on S1 boot-sequence and S4 restart/reload inputs, denied recursion for a one-anchor S7 scope, and kept hardware findings plus D1/G4 evidence out of scope. Proceeding to the final S8 wave."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-06
+
+- Selected item: `WAVE-2026-04-28-06`
+- Result: Complete. `docs/research/S2-profile-recovery-ux.md` created. It defines profile recovery as local file recovery above the frozen S2 contract, names current `show/export/import` building blocks, S5 surface slots, recovery states, D1 relationship, and out-of-scope sync/key-wrap/browser-write claims.
+- Files: `docs/research/S2-profile-recovery-ux.md`
+- Validation: Direct readback passed. Frozen schemas referenced only as stop lines/current contracts; not modified. `get_errors` unavailable; no IDE diagnostic result claimed.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-06",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "not failed - direct readback and forbidden-claim scan passed; get_errors unavailable in this sandbox",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+    "3_diff_overrun": "none - only declared anchor file touched, plus bookkeeping-exempt WAVE-QUEUE.md and WAVE-RUN-LOG.md",
+    "4_track_boundary": "next wave WAVE-2026-04-28-07 is code-track - clear",
+    "5_run_length_cap": "6 of 8 - continue",
+    "6_escalation_chain": "no triage or trace escalation - clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -06 kept S2 recovery UX inside the frozen G2 contract, did not touch schemas, and provided Batch F input for a profile surface. Proceeding to the serial S7 power-cycle protocol."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-05
+
+- Selected item: `WAVE-2026-04-28-05`
+- Result: Complete. `docs/research/S5-shell-navigation-depth-audit.md` created. It audits the current localhost shell against the six-degree reach rule, separates current D1 observation tasks from future privileged workflows, and feeds Batch F consent/control definitions.
+- Files: `docs/research/S5-shell-navigation-depth-audit.md`
+- Validation: Direct readback passed. No shell/harness file modified. `get_errors` unavailable; no IDE diagnostic result claimed.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-05",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "not failed - direct readback and forbidden-claim scan passed; get_errors unavailable in this sandbox",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+    "3_diff_overrun": "none - only declared anchor file touched, plus bookkeeping-exempt WAVE-QUEUE.md and WAVE-RUN-LOG.md",
+    "4_track_boundary": "next wave WAVE-2026-04-28-06 is code-track - clear",
+    "5_run_length_cap": "5 of 8 - continue",
+    "6_escalation_chain": "no triage or trace escalation - clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -05 produced a shell navigation audit without touching the shell, harness, or browser-control surfaces. It keeps D1 observation separate from future privileged actions. Proceeding to S2 profile recovery UX."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-04
+
+- Selected item: `WAVE-2026-04-28-04`
+- Result: Complete. `docs/research/S3-remote-transport-boundary.md` created. It defines the current local/read-first S3 surface, names unpublished remote/auth/subscription/HA transport areas, and gives consumer guidance for S5, S7, S4, and S8.
+- Files: `docs/research/S3-remote-transport-boundary.md`
+- Validation: Direct readback passed. No JSON/RPC code, method, transport, or auth model changed. `get_errors` unavailable; no IDE diagnostic result claimed.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-04",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "not failed - direct readback and forbidden-claim scan passed; get_errors unavailable in this sandbox",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+    "3_diff_overrun": "none - only declared anchor file touched, plus bookkeeping-exempt WAVE-QUEUE.md and WAVE-RUN-LOG.md",
+    "4_track_boundary": "next wave WAVE-2026-04-28-05 is code-track - clear",
+    "5_run_length_cap": "4 of 8 - continue",
+    "6_escalation_chain": "no triage or trace escalation - clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -04 kept S3's transport truth local-only and did not widen the JSON/RPC or remote-control contract. Proceeding to S5 navigation-depth audit."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-03
+
+- Selected item: `WAVE-2026-04-28-03`
+- Result: Complete. `docs/research/S4-restart-reload-boundary.md` created. It records current reload helpers, restart levels, boundary rules, D1-ready interpretation, unpublished hub surfaces, validation trail, and S7 handoff.
+- Files: `docs/research/S4-restart-reload-boundary.md`
+- Validation: Direct readback passed. No crate, hub scaffold, or evidence table touched. `get_errors` unavailable; no IDE diagnostic result claimed.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-03",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "not failed - direct readback and forbidden-claim scan passed; get_errors unavailable in this sandbox",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+    "3_diff_overrun": "none - only declared anchor file touched, plus bookkeeping-exempt WAVE-QUEUE.md and WAVE-RUN-LOG.md",
+    "4_track_boundary": "next wave WAVE-2026-04-28-04 is code-track - clear",
+    "5_run_length_cap": "3 of 8 - continue",
+    "6_escalation_chain": "no triage or trace escalation - clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -03 published a docs-only restart/reload boundary while keeping durable hub restart, re-registration, and G4 evidence unpublished. This also unblocks the later serial S7 power-cycle protocol. Proceeding to S3 remote transport boundary."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-02
+
+- Selected item: `WAVE-2026-04-28-02`
+- Result: Complete. `docs/research/S1-supervisor-boundary-note.md` created. It separates current foundation/workflow/local shell truth from unpublished supervisor, service manager, install, restart-on-failure, and launch surfaces.
+- Files: `docs/research/S1-supervisor-boundary-note.md`
+- Validation: Direct readback passed. No workflow, tag, branch-protection, or service file touched. `get_errors` unavailable; no IDE diagnostic result claimed.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-02",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "not failed - direct readback and forbidden-claim scan passed; get_errors unavailable in this sandbox",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+    "3_diff_overrun": "none - only declared anchor file touched, plus bookkeeping-exempt WAVE-QUEUE.md and WAVE-RUN-LOG.md",
+    "4_track_boundary": "next wave WAVE-2026-04-28-03 is code-track - clear",
+    "5_run_length_cap": "2 of 8 - continue",
+    "6_escalation_chain": "no triage or trace escalation - clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -02 clarified the supervisor boundary without claiming a daemon, installer, launch service, or G4 readiness. Proceeding to S4 restart/reload."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-01
+
+- Selected item: `WAVE-2026-04-28-01`
+- Result: Complete. `docs/research/S1-boot-sequence-d1-target.md` created. It documents current repo-backed boot inputs, D1 boot checkpoints, a minimal transcript shape, what remains session-owned, stop lines, and the S7 handoff for power-cycle planning.
+- Files: `docs/research/S1-boot-sequence-d1-target.md`
+- Validation: Direct readback passed. Forbidden-claim scan found only explicit stop-line text. `get_errors` unavailable; no IDE diagnostic result claimed.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-01",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "not failed - direct readback and forbidden-claim scan passed; get_errors unavailable in this sandbox",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags - clear",
+    "3_diff_overrun": "none - only declared anchor file touched, plus bookkeeping-exempt WAVE-QUEUE.md and WAVE-RUN-LOG.md",
+    "4_track_boundary": "next wave WAVE-2026-04-28-02 is code-track - clear",
+    "5_run_length_cap": "1 of 8 - continue",
+    "6_escalation_chain": "no triage or trace escalation - clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -01 created the S1 boot-sequence research note with no workflow, release, gate, hardware, or evidence-table changes. Proceeding to the S1 supervisor boundary note."
+}
+```
+
+---
+
+## 2026-04-28 — SUBSTRATE-2026-04-28-01
+
+- Selected item: Phase 0 substrate sanity prelude
+- Mode: Interactive substrate-refinement
+- Result: Complete. `docs/orchestration/BATCH-MODE.md` now aligns its opening lane-policy summary with the already-ratified width-8 lane ceiling in `docs/orchestration/LOCAL-DRIVER.md` and the later Batch Mode planning-width text. This is a consistency cleanup only; no ceiling change was made.
+- Files: `docs/orchestration/BATCH-MODE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: Confirmed the stale `≤5 repo-editing lanes` wording is removed and the file still records the 8-wave planning target plus LOCAL-DRIVER revert clause reference. `get_errors` is not available as a shell command in this sandbox (`Get-Command get_errors` failed), so no IDE diagnostics result is claimed here.
+- Constraints: No crate, schema, harness, workflow, gate, ADR, queue, or status surface modified. No D1/G4 evidence claimed. ADR-024 remains Proposed. Frozen schemas untouched.
+
+---
+
 ## BATCH-2026-04-27-D — Code-Track Batch Mode Run (Fourth Batch)
 
 - **Batch open:** 2026-04-27

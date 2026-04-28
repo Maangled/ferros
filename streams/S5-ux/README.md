@@ -4,6 +4,8 @@
 **Status:** 🟨 Phase A active on the real landing page; Phase B localhost observation slice landed  
 **Gate:** Contributes to launch-readiness; no blocking gate owned solely by S5
 
+> Current checkpoint: the localhost profile surface is wired for `init`, `show`, `export`, and `import` through a local `/profile` adapter, but it is not cleanly closed until Rust validation can run under WAVE-2026-04-28-18.
+
 ---
 
 ## Mission
@@ -45,7 +47,7 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 ## Dependencies
 
 - **S1 (G1):** Site structure landed; remaining Phase A work continues on the real `/site/index.html`.
-- **S3 + S4 (post-G3):** the current localhost shell host now exposes a local-only `agent.run` / `agent.stop` JSON/RPC slice above `LocalAgentApi`, and the Phase B shell now stages selected-agent lifecycle intent copy against that backend slice while still keeping browser-issued writes out; broader browser control and privileged write flows remain later follow-up work.
+- **S3 + S4 (post-G3):** the current localhost shell host exposes a local-only `agent.run` / `agent.stop` JSON/RPC slice above `LocalAgentApi`, and the Phase B shell now wires a selected-agent lifecycle control bar against that backend slice. The browser gate checks loaded active grant rows before transmitting either write. A local `/profile` adapter checkpoint now backs `init`, `show`, `export`, and `import` only, but Rust validation is still blocked. Grant/revoke actions, remote transport, and broader privileged flows remain later follow-up work.
 
 ---
 
@@ -67,11 +69,12 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 - [x] Local web shell at `http://localhost:<port>` served by `ferros-node`.
 - [x] Agent registry/detail, capability grant state, and deny-log observation consume the aggregated `agent.snapshot` read seam — no fake data.
 - [x] Deny log visible in the UI.
-- [x] Operator-assisted localhost acceptance can prove local `ferros agent run | stop` changes read back through the same `agent.snapshot` refresh seam without adding shell write controls; live deny generation remains outside the shell and can only be observed when pre-seeded through the existing local lifecycle/log seam.
+- [x] Operator-assisted localhost acceptance can prove local `ferros agent run | stop` changes read back through the same `agent.snapshot` refresh seam.
+- [x] Browser-issued local lifecycle control bar is wired for selected-agent `agent.run` / `agent.stop` only. The shell checks loaded active grant rows before write RPC transmission, requires an explicit arm checkbox, refreshes through `agent.snapshot` after success or backend denial, and the same-origin harness now proves an unarmed or missing-grant click does not transmit `agent.run` / `agent.stop`.
 
-The current Phase B slice is intentionally read-first and still read-only. Privileged grant/revoke actions and broader browser acceptance coverage remain follow-up work.
+The current Phase B slice is still read-first for observation, with one narrow localhost-only lifecycle write bar. A localhost-only profile surface checkpoint exists for `init`, `show`, `export`, and `import`, but it is not cleanly closed until the focused Rust validation in WAVE-2026-04-28-18 can run. Privileged grant/revoke actions, remote transport, and broader browser acceptance coverage remain follow-up work.
 
-The shell now stages selected-agent lifecycle intent copy and read-only slot affordances above the upstream local-only lifecycle/write JSON/RPC slice, but it still does not submit browser-issued writes.
+The shell now stages selected-agent lifecycle intent copy and can submit selected-agent `agent.run` / `agent.stop` only through the grant-aware local lifecycle bar.
 
 ## First shell-intent slice
 
@@ -102,15 +105,15 @@ The first shell-side follow-up above the landed localhost `agent.run` / `agent.s
 
 ## Phase B: browser-issued lifecycle control bar
 
-The minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy is defined as follows. This is the stated next honest surface; it does not yet exist as wired browser code.
+The minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy is now wired in `site/agent-center-shell.html` and covered by `harnesses/localhost-shell-acceptance-harness.html`.
 
 | Constraint | Definition |
 |------------|------------|
 | Scope | `agent.run` and `agent.stop` only, for the currently selected agent on the current localhost shell. No other write actions, no grant mutation, no `revoke`, no broader browser control. |
-| Consent/audit gating | Gating begins **before** the write RPC is sent from the browser. The shell must confirm a capability grant exists for the requested action before transmitting the call. |
-| Deny visibility | A denied request must be observable in the shell's deny-log slot after the attempt without requiring navigation away from the current view. |
-| Deny-by-default demonstration | At least one denied request must be loggable and visible through the current S3 deny-log surface before the control bar is declared wired. |
-| Publication gate | This control bar lands only after the consent/audit gating path is observable in the shell, S4 deny-by-default enforcement is confirmed through the S3 read path after a lifecycle attempt, and a harness proves the consent gate fires before the write RPC is transmitted. |
+| Consent/audit gating | Gating begins **before** the write RPC is sent from the browser. The shell checks the loaded `agent.snapshot` grant rows for each selected agent's required capabilities and requires an explicit arm checkbox before transmitting the call. |
+| Deny visibility | If the backend denies a transmitted lifecycle request, the shell refreshes through `agent.snapshot` so any persisted deny evidence remains visible through the audit slot and deny-log route without requiring a separate observation path. |
+| Deny-by-default demonstration | The S3/S4 backend path remains covered by focused denied-lifecycle RPC tests that persist a deny-log entry. The shell harness covers the browser pre-write gate; live operator proof still depends on having persisted deny state or a backend denial to read back. |
+| Publication gate | The wired bar is limited to selected-agent local lifecycle actions. Focused Rust route/RPC tests and the same-origin harness asset now cover the served control surface and the pre-write browser gate; live harness validation remains the session-level proof when the localhost shell is running. |
 
 Grant/revoke actions, consent resolution for non-lifecycle operations, broader browser control, and S4 restart/reload semantics remain out of scope for this bar and require a separate follow-up.
 
@@ -118,14 +121,14 @@ Grant/revoke actions, consent resolution for non-lifecycle operations, broader b
 
 ## Phase B: minimum profile surface entry bar
 
-The minimum honest first browser profile surface entry bar above the frozen S2 contract is defined as follows. This is the stated next profile surface; it does not yet exist as wired browser code.
+The minimum honest first browser profile surface entry bar above the frozen S2 contract is now wired as a checkpoint in `site/agent-center-shell.html` and `crates/ferros-node/src/lib.rs`, but it remains pending Rust validation/closeout under WAVE-2026-04-28-18.
 
 | Constraint | Definition |
 |------------|------------|
 | Scope | `init`, `show`, `export`, `import` only. Localhost-only. No grant mutation. No `revoke`. No re-negotiation of the S2 contract. |
-| Backend | Each slot calls the already-frozen CLI path (`ferros profile init`, `show`, `export`, `import`) through the JSON/RPC surface or a thin local adapter. Does not reopen `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`. |
+| Backend | Each slot calls the already-frozen CLI path (`ferros profile init`, `show`, `export`, `import`) through the thin local `/profile` adapter. Does not reopen `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`, and does not widen the read-first JSON/RPC contract. |
 | Prior art | `docs/legacy/personal-profile.html` is the shape reference only. Does not constitute G2 re-evidence. |
-| Publication gate | This profile surface lands only after the four CLI paths are confirmed reachable through the localhost shell host and a harness proves the surface stays within the frozen S2 boundary. |
+| Publication gate | The implementation checkpoint is present and Node syntax checks pass, but the surface lands cleanly only after `cargo fmt --check` and focused `ferros-node` profile route tests can run. The harness now checks `/profile` separately from `/rpc` and proves profile `grant` / `revoke` controls are absent. |
 
 Grant mutation, `revoke`, remote profile access, and any S2 contract reopening remain explicitly out of scope for this surface.
 

@@ -68,7 +68,7 @@ These answers are S2-owned answers to the six open questions listed in `streams/
 
 ## S5 consumer-awareness note
 
-S5 has defined the minimum honest first browser profile surface entry bar above the frozen S2 contract. When that surface lands as code, S5 will consume `ferros profile init`, `show`, `export`, and `import` only through the localhost shell, backed by the already-frozen `schemas/profile.v0.json` contract. S5 does not reopen G2 or mutate the S2 contract. Grant mutation, `revoke`, and remote profile access are explicitly out of scope for S5's stated profile surface. This is a read/init consumer relationship; S2's frozen boundary is unchanged.
+S5 has wired a checkpoint of the minimum honest first browser profile surface entry bar above the frozen S2 contract. The checkpoint consumes `ferros profile init`, `show`, `export`, and `import` only through the localhost `/profile` adapter, backed by the already-frozen `schemas/profile.v0.json` contract. It is not cleanly closed until focused Rust validation can run under WAVE-2026-04-28-18. S5 does not reopen G2 or mutate the S2 contract. Grant mutation, `revoke`, and remote profile access are explicitly out of scope for S5's stated profile surface. This is a read/init consumer relationship; S2's frozen boundary is unchanged.
 
 ---
 

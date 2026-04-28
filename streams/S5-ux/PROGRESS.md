@@ -4,6 +4,22 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-28 - Localhost profile surface checkpoint wired, Rust validation blocked
+
+- Added a Profile route and profile action controls to `site/agent-center-shell.html` for local `init`, `show`, `export`, and `import` only.
+- Wired those controls to a same-origin `/profile` adapter in `crates/ferros-node/src/lib.rs`, backed by the existing S2 CLI/store paths rather than the read-first JSON/RPC contract.
+- Extended `harnesses/localhost-shell-acceptance-harness.html` so it monitors `/profile` separately from `/rpc` and checks that profile `show` does not transmit JSON-RPC while profile `grant` and `revoke` controls stay absent.
+- Node inline-script syntax checks passed for the shell and harness. Rust validation is blocked in this environment because cargo cannot execute the local Rust toolchain (`Access is denied`) and escalation was rejected by the environment usage gate, so the profile surface remains an implementation checkpoint rather than a cleanly closed S5 item.
+- Kept frozen S2 schemas untouched and did not add browser profile grant/revoke, remote profile access, D1/G4 evidence, or ADR-024 changes.
+
+## 2026-04-28 - Consent-gated browser lifecycle control bar landed
+
+- Extended `site/agent-center-shell.html` so the live localhost shell can send selected-agent `agent.run` / `agent.stop` over the existing local-only RPC path only after the loaded grant rows satisfy the agent's required capabilities and the operator arms the action.
+- Extended `harnesses/localhost-shell-acceptance-harness.html` so the same-origin harness proves an unarmed or missing-grant lifecycle click does not transmit `agent.run` or `agent.stop`, while retaining read-after-write observation through `agent.snapshot`.
+- Added served-asset assertions in `crates/ferros-node/src/lib.rs` so `cargo test -p ferros-node shell_route_` locks the embedded lifecycle control and harness gate proof.
+- Focused validation passed with `cargo test -p ferros-node shell_route_`, `cargo test -p ferros-node agent_write_rpc_`, `cargo test -p ferros-node shell_listener_posts_json_rpc_`, and a Node syntax check of the two inline shell/harness scripts. Live browser harness validation remains the next session-level proof when the localhost shell is running.
+- Kept the slice narrow: no grant/revoke actions, profile mutation, remote transport, new JSON/RPC methods, D1/G4 evidence claims, or broader S4 restart/reload semantics.
+
 ## 2026-04-27 - Selected-agent lifecycle intent copy landed in the live shell
 
 - Extended `site/agent-center-shell.html` so the live localhost shell now stages selected-agent lifecycle intent copy and read-only slot affordances against the landed local-only `agent.run` / `agent.stop` backend slice without issuing browser writes.
