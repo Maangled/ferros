@@ -798,11 +798,13 @@
         busy: false,
         action: null,
         ok: null,
+        status: null,
         profilePath: '',
         bundlePath: '',
         lines: [],
         profile: null,
         error: '',
+        errorDetail: null,
       },
     };
 
@@ -866,7 +868,11 @@
     }
 
     async function fetchRunwaySummary() {
-      const response = await fetch('/runway-summary.json');
+      const profilePath = selectedProfilePath();
+      const runwayUrl = profilePath
+        ? `/runway-summary.json?profilePath=${encodeURIComponent(profilePath)}`
+        : '/runway-summary.json';
+      const response = await fetch(runwayUrl);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -1208,11 +1214,25 @@
         return emptyNote('Profile adapter ready', 'Choose init, show, export, or import from the tools panel.');
       }
 
-      const statusTitle = surface.ok ? `Profile ${surface.action} complete` : `Profile ${surface.action} blocked`;
+      const status = surface.status || {
+        kind: surface.ok ? 'complete' : 'blocked',
+        summary: surface.ok
+          ? `Profile ${surface.action} completed through the local /profile adapter.`
+          : `Profile ${surface.action} was blocked on the local /profile adapter.`,
+      };
+      const statusTitle = status.kind === 'complete'
+        ? `Profile ${surface.action} complete`
+        : `Profile ${surface.action} blocked`;
       const pathCopy = `profile ${surface.profilePath || 'default'}${surface.bundlePath ? ` | bundle ${surface.bundlePath}` : ''}`;
+      const statusCopy = `<p class="shell-note-copy">${escapeHtml(status.summary || pathCopy)}</p>`;
+      const errorDetail = surface.errorDetail
+        ? `<p class="shell-note-copy">Reason ${escapeHtml(surface.errorDetail.code)} · ${escapeHtml(surface.errorDetail.message)}</p>`
+        : (surface.error && !surface.lines.length
+            ? `<p class="shell-note-copy">${escapeHtml(surface.error)}</p>`
+            : '');
       const lines = surface.lines.length > 0
         ? `<pre class="profile-output">${escapeHtml(surface.lines.join('\n'))}</pre>`
-        : `<p class="shell-note-copy">${escapeHtml(surface.error || pathCopy)}</p>`;
+        : '';
       const profile = surface.profile
         ? `<pre class="profile-output">${escapeHtml(JSON.stringify(surface.profile, null, 2))}</pre>`
         : '';
@@ -1221,6 +1241,8 @@
         <article class="note-card">
           <div class="shell-note-title">${escapeHtml(statusTitle)}</div>
           <p class="shell-note-copy">${escapeHtml(pathCopy)}</p>
+          ${statusCopy}
+          ${errorDetail}
           ${lines}
           ${profile}
         </article>`;
@@ -1235,6 +1257,7 @@
       const latestDeny = summary.latestDeny
         ? `${summary.latestDeny.agentName || 'runtime'} · ${summary.latestDeny.message}`
         : 'no deny observed';
+      const checkpointProgress = `${summary.checkpointPosition}/${summary.checkpointTotal}`;
       const checklist = (summary.checklist || []).map((item, index) => `
         <article class="table-row ${index === state.selectedRunwayIndex ? 'is-selected' : ''}" data-runway-index="${index}">
           <strong>${escapeHtml(item.item)}</strong>
@@ -1246,6 +1269,7 @@
         <article class="note-card">
           <div class="shell-note-title">Local runway summary</div>
           <p class="shell-note-copy">${escapeHtml(summary.profileName || 'No local profile observed')} · ${summary.agentCount} agents · ${summary.activeGrantCount}/${summary.grantCount} active grants · ${summary.denyCount} deny entries.</p>
+          <p class="shell-note-copy">Profile ${escapeHtml(summary.profilePath || 'default')} · checkpoint ${escapeHtml(summary.checkpointState)} (${escapeHtml(checkpointProgress)}) · ${escapeHtml(summary.checkpointDetail)}.</p>
           <p class="shell-note-copy">Scope ${escapeHtml(summary.scope)} · evidence ${escapeHtml(summary.evidence)} · latest deny ${escapeHtml(latestDeny)}.</p>
         </article>
         ${checklist || emptyNote('No runway checklist', 'The runway route loaded, but no checklist items were returned.')}`;
@@ -1277,11 +1301,21 @@
 
       if (state.route === 'profile') {
         const surface = state.profileSurface;
+        const status = surface.status || {
+          kind: surface.ok === null ? 'waiting' : surface.ok ? 'complete' : 'blocked',
+          summary: surface.ok === null
+            ? 'Choose a local profile adapter action to load a structured result.'
+            : (surface.error || 'Structured profile adapter status not available.'),
+        };
+        const errorDetail = surface.errorDetail;
         inspector.innerHTML = `
           <div class="detail-pair"><div class="detail-key">Adapter</div><div class="detail-value">/profile</div></div>
           <div class="detail-pair"><div class="detail-key">Last action</div><div class="detail-value">${escapeHtml(surface.action || 'none')}</div></div>
           <div class="detail-pair"><div class="detail-key">Profile path</div><div class="detail-value">${escapeHtml(surface.profilePath || 'default')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Result</div><div class="detail-value">${surface.ok === null ? 'waiting' : surface.ok ? 'ok' : 'blocked'}</div></div>`;
+          <div class="detail-pair"><div class="detail-key">Bundle path</div><div class="detail-value">${escapeHtml(surface.bundlePath || 'none')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Result</div><div class="detail-value">${escapeHtml(status.kind)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Status summary</div><div class="detail-value">${escapeHtml(status.summary)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Error code</div><div class="detail-value">${escapeHtml(errorDetail ? errorDetail.code : 'none')}</div></div>`;
         return;
       }
 
@@ -1295,6 +1329,9 @@
           <div class="detail-pair"><div class="detail-key">Scope</div><div class="detail-value">${escapeHtml(summary.scope)}</div></div>
           <div class="detail-pair"><div class="detail-key">Evidence</div><div class="detail-value">${escapeHtml(summary.evidence)}</div></div>
           <div class="detail-pair"><div class="detail-key">Profile path</div><div class="detail-value">${escapeHtml(summary.profilePath || 'default')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Checkpoint</div><div class="detail-value">${escapeHtml(summary.checkpointState)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Checkpoint progress</div><div class="detail-value">${escapeHtml(`${summary.checkpointPosition}/${summary.checkpointTotal}`)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Checkpoint detail</div><div class="detail-value">${escapeHtml(summary.checkpointDetail)}</div></div>
           <div class="detail-pair"><div class="detail-key">Checklist item</div><div class="detail-value">${escapeHtml(item ? item.item : 'none')}</div></div>
           <div class="detail-pair"><div class="detail-key">Checklist status</div><div class="detail-value">${escapeHtml(item ? item.status : 'none')}</div></div>
           <div class="detail-pair"><div class="detail-key">Checklist detail</div><div class="detail-value">${escapeHtml(item ? item.detail : 'no checklist detail loaded')}</div></div>`;
@@ -1330,7 +1367,7 @@
         agents: 'Agents route shows live registry rows and promotes a selected agent into the inspector slot.',
         grants: 'Grants route reads the local profile state through the current S3/S2 boundary with no mock grant rows.',
         profile: 'Profile route uses the local /profile adapter for init, show, export, and import without sending JSON-RPC grant writes.',
-        runway: 'Runway route reads the local-only /runway-summary.json surface for checklist, deny, and stand-in readiness observation.',
+        runway: 'Runway route reads the local-only /runway-summary.json surface for the selected profile path, checkpoint progress, deny visibility, and stand-in readiness observation.',
         denyLog: 'Deny log route uses persisted deny evidence only; route filtering stays in-slot and does not open overlays.',
       };
       document.getElementById('tools-copy').textContent = copy[state.route];
@@ -1352,7 +1389,7 @@
         intentCopy.textContent = 'Profile init, show, export, and import use the same-origin /profile adapter. Profile grant and revoke stay closed here.';
       } else if (state.route === 'runway') {
         intentTitle.textContent = 'Runway observation only';
-        intentCopy.textContent = 'Runway checklist rows come from the local-only /runway-summary.json surface. Power-cycle and bridge proof remain pending and non-evidentiary here.';
+        intentCopy.textContent = 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Checkpoint progress is read-only here; power-cycle and bridge proof remain pending and non-evidentiary.';
       } else {
         intentTitle.textContent = 'Deny observation only';
         intentCopy.textContent = 'Deny entries remain read-only evidence. If a transmitted lifecycle RPC is denied by the backend, the shell refreshes through agent.snapshot so persisted deny evidence can read back here.';
@@ -1417,11 +1454,13 @@
         busy: true,
         action,
         ok: null,
+        status: null,
         profilePath: selectedProfilePath() || 'default',
         bundlePath: selectedProfileBundlePath(),
         lines: [],
         profile: null,
         error: '',
+        errorDetail: null,
       };
       render();
 
@@ -1431,11 +1470,13 @@
           busy: false,
           action: payload.action || action,
           ok: Boolean(payload.ok),
+          status: payload.status || null,
           profilePath: payload.profilePath || 'default',
           bundlePath: payload.bundlePath || '',
           lines: payload.lines || [],
           profile: payload.profile || null,
           error: payload.error || '',
+          errorDetail: payload.errorDetail || null,
         };
 
         if (payload.ok && (action === 'init' || action === 'import')) {
@@ -1446,11 +1487,19 @@
           busy: false,
           action,
           ok: false,
+          status: {
+            kind: 'blocked',
+            summary: `Profile ${action} failed before the shell received a structured /profile response.`,
+          },
           profilePath: selectedProfilePath() || 'default',
           bundlePath: selectedProfileBundlePath(),
           lines: [],
           profile: null,
           error: error instanceof Error ? error.message : String(error),
+          errorDetail: {
+            code: 'request_failed',
+            message: error instanceof Error ? error.message : String(error),
+          },
         };
       } finally {
         render();
@@ -1488,7 +1537,12 @@
       renderLifecycleControl();
 
       try {
-        await rpc(intent.method, { agentName: intent.agentName });
+        const lifecycleParams = { agentName: intent.agentName };
+        const lifecycleProfilePath = selectedProfilePath();
+        if (lifecycleProfilePath) {
+          lifecycleParams.profilePath = lifecycleProfilePath;
+        }
+        await rpc(intent.method, lifecycleParams);
         state.lifecycleControl.armed = false;
         await refreshShell();
         setLifecycleControlStatus(`${intent.method} completed for ${intent.agentName}; refreshed through agent.snapshot.`, 'ready');

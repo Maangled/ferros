@@ -4,6 +4,126 @@ Newest entry first. Each entry records one local driver invocation.
 
 ---
 
+## 2026-04-28 — WAVE-2026-04-28-33
+
+- Selected item: `WAVE-2026-04-28-33`
+- Result: Complete. Final serial truth-sync updated the minimal shared-truth surfaces to match the landed owner waves: runtime runway helpers, S2 local consent readiness, the live localhost lifecycle/profile proof loop, and the local-push harness and burst execution path are now described honestly without moving D1 or G4.
+- Files: `STATUS.md`, `streams/S4-runtime/PROGRESS.md`, `streams/S5-ux/PROGRESS.md`, `streams/S6-harvest/PROGRESS.md`
+- Validation: `get_errors` is clean on all 4 touched truth surfaces. Diff review confirmed no gate promotion, no hardware claim, and no HA bridge claim.
+- Next follow-up: No Ready owner waves remain on the code-track queue after this truth-sync; the next drain can start from a new queued slice or another track.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-32
+
+- Selected item: `WAVE-2026-04-28-32`
+- Result: Complete. `ferros-data` now serializes and writes the typed local-push audit envelope as a real local JSON artifact, and `cargo xtask burst` emits `.tmp/push/burst-local-push-envelope.json` as local-only helper output while preserving local-only authority and explicit-operator-consent semantics.
+- Files: `crates/ferros-data/Cargo.toml`, `crates/ferros-data/src/lib.rs`, `xtask/Cargo.toml`, `xtask/src/main.rs`, `.tmp/push/burst-local-push-envelope.json`
+- Validation: `cargo test -p ferros-data` passed. `cargo check -p xtask` passed. `cargo xtask burst` passed and emitted `.tmp/push/burst-local-push-envelope.json`.
+- Next follow-up: Finish WAVE-2026-04-28-33 so the shared truth mentions the new local-push harness and burst-execution path without overstating any gate.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-25
+
+- Selected item: `WAVE-2026-04-28-25`
+- Result: Complete. S5 and S2 owner docs now treat the first localhost `/profile` slice as landed and narrow closeout only: the slice stays on the frozen S2 boundary, `show` stays off JSON-RPC, profile `grant` and `revoke` controls stay absent, and the remaining work is focused `ferros-node` route-test and Rust-validation closeout of that existing adapter path.
+- Files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S2-profile/README.md`
+- Validation: `get_errors` is clean on all 3 anchor files.
+- Next follow-up: Keep the remaining `/profile` work scoped to focused `ferros-node` route-test and Rust-validation closeout only; no S2 schema or browser-privilege widening is required.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-21
+
+- Selected item: `WAVE-2026-04-28-21`
+- Result: Complete. The local-push audit envelope schema is now embedded in the harness constant inventory and exercised by an inline executable consumer in the contract validator, so the seam has a real harness-level consumer before broader queue-clear use. No JSON Schema vocabulary was widened.
+- Files: `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
+- Validation: `get_errors` is clean on `tools/generate-harness-constants.ps1`, `harnesses/_constants.js`, and `harnesses/ferros-contract-validator.html`. `tools/generate-harness-constants.ps1` regenerated harness constants. A direct file-based run of `harnesses/ferros-contract-validator.html` stayed green with `49 passed`, `0 failed`, `0 skipped`.
+- Next follow-up: Build WAVE-2026-04-28-32 on this executable consumer path instead of relying on markdown-only local-push digests.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-19
+
+- Selected item: `WAVE-2026-04-28-19`
+- Result: Complete. `LocalConsentSnapshot` now carries additive grant-ready and consent-ready fields so downstream local consumers can render readiness directly without inferring it from counts or reopening frozen S2 schemas.
+- Files: `crates/ferros-profile/src/lib.rs`
+- Validation: `cargo test -p ferros-profile local_consent_snapshot_` passed. `cargo test -p ferros-profile reload_boundary_load_local_profile_` passed.
+- Next follow-up: Keep downstream consumers on the additive Rust-local snapshot boundary; no frozen-schema movement is required.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-31
+
+- Selected item: `WAVE-2026-04-28-31`
+- Result: Complete. The same-origin localhost acceptance harness now closes the full local shell proof loop on one embedded path: structured `/profile` adapter outcomes render through the live shell, the allowed lifecycle write still sends one write plus one snapshot refresh, and the deny path now reuses the same shell surfaces to show refreshed persisted deny evidence after a revoked-grant backend rejection.
+- Files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `get_errors` is clean on `harnesses/localhost-shell-acceptance-harness.html`. `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness` passed. Same-origin run of `/harnesses/localhost-shell-acceptance.html` on a rebuilt `ferros-node shell` instance passed the added lifecycle, deny, and profile checks with `55 passed`, `0 failed`, `0 skipped`.
+- Next follow-up: Continue draining the remaining Ready owner waves outside the now-closed localhost shell acceptance surface; keep the final shared-truth reconciliation serial in WAVE-2026-04-28-33.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-24
+
+- Selected item: `WAVE-2026-04-28-24`
+- Result: Complete. The localhost acceptance harness now proves the positive local-only lifecycle path on the live shell: one armed allowed lifecycle write, one post-write `agent.snapshot` refresh, and no duplicate lifecycle RPC for a single click. Closing that proof also forced the shell and node write path to align on the selected local profile state so the lifecycle gate and backend authorization no longer drift.
+- Files: `harnesses/localhost-shell-acceptance-harness.html`, `site/agent-center-shell.html`, `crates/ferros-node/src/lib.rs`
+- Validation: `get_errors` is clean on `harnesses/localhost-shell-acceptance-harness.html`. `cargo test -p ferros-node agent_write_rpc_denies_run_without_selected_profile_grant` passed. `cargo test -p ferros-node agent_write_rpc_runs_and_stops_agent_over_local_state_path` passed. `cargo test -p ferros-node shell_listener_posts_json_rpc_agent_run_over_tcp` passed. `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness` passed. Same-origin run of `/harnesses/localhost-shell-acceptance.html` on a fresh `ferros-node shell` instance passed the added allowed lifecycle checks with `40 passed`, `0 failed`, `2 skipped`.
+- Next follow-up: Extend the same harness in WAVE-2026-04-28-31 so the live proof loop also covers structured profile adapter outcomes, refreshed deny visibility, and the revoked-grant lifecycle path without forking a second acceptance route.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-30
+
+- Selected item: `WAVE-2026-04-28-30`
+- Result: Complete. The shell profile surface and inspector now consume the structured local `/profile` adapter outcome directly: operator-visible status summaries lead each result, structured rejection details stay legible, and the raw profile document and line output remain local-only for `init`, `show`, `export`, and `import` without adding grant or revoke controls.
+- Files: `site/agent-center-shell.html`
+- Validation: `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter` passed. `cargo test -p ferros-node shell_route_posts_profile_export_and_import_through_local_adapter` passed. `cargo test -p ferros-node shell_route_serves_local_shell_html` passed. `get_errors` is clean on `site/agent-center-shell.html`.
+- Next follow-up: Extend `harnesses/localhost-shell-acceptance-harness.html` in WAVE-2026-04-28-31 so the same-origin proof loop reads back structured profile adapter outcomes alongside lifecycle and deny behavior.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-29
+
+- Selected item: `WAVE-2026-04-28-29`
+- Result: Complete. The local `/profile` adapter now returns additive structured status and rejection details for success and blocked outcomes while preserving the existing local payload fields. `init`, `show`, `export`, and `import` remain on the current local-only path; grant and revoke mutation stay closed.
+- Files: `crates/ferros-node/src/lib.rs`
+- Validation: `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter` passed. `cargo test -p ferros-node shell_route_posts_profile_export_and_import_through_local_adapter` passed. `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions` passed.
+- Next follow-up: Consume the structured adapter result in `site/agent-center-shell.html` during WAVE-2026-04-28-30 so operator-selected profile actions render machine-readable local status and rejection detail.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-28
+
+- Selected item: `WAVE-2026-04-28-28`
+- Result: Complete. The same-origin runway harness now proves that the live runway route carries the selected profile path, renders checkpoint progress and detail, and keeps the route local-only and non-evidentiary. The proof also closed a real shell bug by preserving HTTP query strings through request parsing so the selected profile path reaches the runway route under live browser traffic.
+- Files: `crates/ferros-node/src/lib.rs`, `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `cargo test -p ferros-node parse_http_request_preserves_query_string_for_shell_routes` passed. `cargo test -p ferros-node shell_route_gets_local_runway_summary_json` passed. `get_errors` is clean on `harnesses/localhost-shell-acceptance-harness.html`. Same-origin run of `/harnesses/localhost-shell-acceptance.html` on a fresh `ferros-node shell` instance passed the added runway checks.
+- Next follow-up: Reuse the same harness in WAVE-2026-04-28-31 to close the remaining lifecycle, deny, and profile-adapter proof loop without forking a second acceptance path.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-27
+
+- Selected item: `WAVE-2026-04-28-27`
+- Result: Complete. The local shell runway route now requests `/runway-summary.json` for the operator-selected profile path instead of always reading the default profile, and it renders checkpoint state, checkpoint progress, and checkpoint detail from the enriched runway summary without adding any write-side profile control.
+- Files: `site/agent-center-shell.html`, `crates/ferros-node/src/lib.rs`
+- Validation: `cargo test -p ferros-node shell_route_gets_local_runway_summary_json` passed. `cargo test -p ferros-node shell_route_serves_local_shell_html` passed. `get_errors` is clean on `site/agent-center-shell.html` and `crates/ferros-node/src/lib.rs`.
+- Next follow-up: Extend `harnesses/localhost-shell-acceptance-harness.html` in WAVE-2026-04-28-28 so the runway route proves selected profile-path and checkpoint-progress rendering under same-origin acceptance.
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-26
+
+- Selected item: `WAVE-2026-04-28-26`
+- Result: Complete. `ferros-node` runway summary now derives typed checkpoint state, detail, and progress from `LocalRunwayState` instead of relying only on node-local checklist copy. The JSON runway summary now carries checkpoint fields that downstream shell and harness waves can consume directly.
+- Files: `crates/ferros-node/src/lib.rs`
+- Validation: `cargo test -p ferros-node local_agent_api_runway_summary_serializes_and_tracks_profile_and_deny_observation` passed. `cargo test -p ferros-node shell_route_gets_local_runway_summary_json` passed. `get_errors` is clean on `crates/ferros-node/src/lib.rs`.
+- Next follow-up: Consume the new checkpoint fields in the live shell and acceptance harness, then close the runway proof loop in WAVE-2026-04-28-27 and WAVE-2026-04-28-28.
+
+---
+
 ## 2026-04-28 — WAVE-2026-04-28-22
 
 - Selected item: `WAVE-2026-04-28-22`

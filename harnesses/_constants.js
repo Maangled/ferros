@@ -508,6 +508,173 @@ var SCHEMA_IDENTITY = {
   }
 };
 
+// Source: schemas/local-push-audit-envelope.schema.json
+var SCHEMA_LOCAL_PUSH_AUDIT_ENVELOPE = {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/local-push-audit-envelope.schema.json",
+  "title": "FERROS Local Push Audit Envelope",
+  "description": "Canonical additive local-only envelope for bounded push digests and runway observation records. This surface keeps local sovereignty, explicit operator consent, and auditable handoff metadata explicit without widening frozen profile or capability-grant contracts.",
+  "type": "object",
+  "required": [
+    "envelopeVersion",
+    "envelopeType",
+    "createdAt",
+    "authority",
+    "scope",
+    "artifacts"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "envelopeVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "envelopeType": {
+      "type": "string",
+      "enum": ["local-push", "local-audit"],
+      "description": "Classifies whether the envelope summarizes a local push digest or a local audit handoff."
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "authority": {
+      "$ref": "#/$defs/authority"
+    },
+    "scope": {
+      "$ref": "#/$defs/scope"
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "digests": {
+      "type": "array",
+      "description": "Optional future digest attachments for per-batch or per-artifact integrity summaries.",
+      "items": {
+        "$ref": "#/$defs/digest"
+      }
+    },
+    "observations": {
+      "type": "array",
+      "description": "Optional future runway-observation records tied to the local envelope scope.",
+      "items": {
+        "$ref": "#/$defs/observation"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "authority": {
+      "type": "object",
+      "required": ["mode", "consent"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "const": "local-only",
+          "description": "Hosted or remote authority is not implied by this envelope."
+        },
+        "consent": {
+          "const": "explicit-operator-consent",
+          "description": "Privileged publication or capture must stay operator-armed."
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "required": ["stream", "surface", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "batchId": {
+          "type": "string"
+        },
+        "waveId": {
+          "type": "string"
+        },
+        "laneId": {
+          "type": "string"
+        },
+        "stream": {
+          "type": "string",
+          "pattern": "^S[1-8]$"
+        },
+        "surface": {
+          "type": "string",
+          "enum": ["push-digest", "runway-observation", "audit-trace"]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["path", "role"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?!/)(?![A-Za-z]:).+"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["anchor", "input", "output", "evidence"]
+        },
+        "digestRef": {
+          "type": ["string", "null"],
+          "description": "Optional label matching a digest entry when one is present."
+        }
+      }
+    },
+    "digest": {
+      "type": "object",
+      "required": ["label", "algorithm", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "algorithm": {
+          "type": "string",
+          "enum": ["sha256", "blake3", "other"]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "required": ["target", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "observed", "deferred"]
+        },
+        "summary": {
+          "type": "string"
+        }
+      }
+    }
+  }
+};
+
 // Source: schemas/profile.schema.json
 var SCHEMA_PROFILE = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2994,6 +3161,7 @@ var FERROS_SCHEMAS = [
   {name: "card", file: "card.schema.json", schema: SCHEMA_CARD},
   {name: "deck", file: "deck.schema.json", schema: SCHEMA_DECK},
   {name: "identity", file: "identity.schema.json", schema: SCHEMA_IDENTITY},
+  {name: "local-push-audit-envelope", file: "local-push-audit-envelope.schema.json", schema: SCHEMA_LOCAL_PUSH_AUDIT_ENVELOPE},
   {name: "profile", file: "profile.schema.json", schema: SCHEMA_PROFILE},
   {name: "profile.v0", file: "profile.v0.json", schema: SCHEMA_PROFILE_V0},
   {name: "schedule-event", file: "schedule-event.schema.json", schema: SCHEMA_SCHEDULE_EVENT},
@@ -3036,5 +3204,5 @@ var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-template-to-events-missing-source-type", file: "invalid-template-to-events-missing-source-type.json", fixture: FIXTURE_INVALID_TEMPLATE_TO_EVENTS_MISSING_SOURCE_TYPE}
 ];
 
-// Total files embedded: 41
-// Schemas: 9 | Golden fixtures: 19 | Negative fixtures: 13
+// Total files embedded: 42
+// Schemas: 10 | Golden fixtures: 19 | Negative fixtures: 13

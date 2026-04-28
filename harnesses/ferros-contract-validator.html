@@ -397,6 +397,34 @@ runTest(g2, 'profile-valid validates against SCHEMA_PROFILE_V0', function() {
   return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
 });
 
+runTest(g2, 'inline local-push envelope validates against SCHEMA_LOCAL_PUSH_AUDIT_ENVELOPE', function() {
+  var data = {
+    envelopeVersion: '1.0',
+    envelopeType: 'local-push',
+    createdAt: '2026-04-28T00:00:00Z',
+    authority: {
+      mode: 'local-only',
+      consent: 'explicit-operator-consent'
+    },
+    scope: {
+      stream: 'S6',
+      surface: 'push-digest',
+      reason: 'validator smoke'
+    },
+    artifacts: [
+      {
+        path: '.tmp/push/local-envelope.json',
+        role: 'output'
+      }
+    ]
+  };
+  var r = validate(data, SCHEMA_LOCAL_PUSH_AUDIT_ENVELOPE);
+  if (r.valid) {
+    return { pass: true, detail: 'minimal local-only envelope matches the additive local push audit contract' };
+  }
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
 runTest(g2, 'SCHEMA_CAPABILITY_GRANT_V0 publishes the stripped-payload signing contract', function() {
   var signing = SCHEMA_CAPABILITY_GRANT_V0['x-ferros-signature'];
   if (!signing || typeof signing !== 'object' || Array.isArray(signing)) {

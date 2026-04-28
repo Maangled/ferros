@@ -1,5 +1,9 @@
 #![forbid(unsafe_code)]
 
+use serde::Serialize;
+use std::fs;
+use std::path::Path;
+
 pub const ADR_REFERENCE: &str = "ADR-020";
 pub const MIGRATION_AUTHORITY: &str = "sql-migrations";
 pub const BASELINE_MIGRATION_PATH: &str = "migrations/0001_revision_base.sql";
@@ -16,6 +20,7 @@ pub const LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID: &str =
     "https://ferros.local/schemas/local-push-audit-envelope.schema.json";
 pub const LOCAL_PUSH_AUDIT_ENVELOPE_VERSION: &str = "1.0";
 pub const LOCAL_PUSH_DIGEST_ROOT: &str = ".tmp/push/";
+pub const BURST_LOCAL_PUSH_ENVELOPE_PATH: &str = ".tmp/push/burst-local-push-envelope.json";
 
 #[cfg(test)]
 const ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_SQL: &str =
@@ -29,17 +34,20 @@ pub enum AuthoritySource {
     SqlMigrations,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum LocalEnvelopeAuthority {
     LocalOnly,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum ConsentBoundary {
     ExplicitOperatorConsent,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum LocalEnvelopeKind {
     LocalPush,
     LocalAudit,
@@ -55,7 +63,8 @@ impl LocalEnvelopeKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum LocalPushSurface {
     PushDigest,
     RunwayObservation,
@@ -73,7 +82,8 @@ impl LocalPushSurface {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum LocalArtifactRole {
     Anchor,
     Input,
@@ -93,7 +103,8 @@ impl LocalArtifactRole {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum LocalDigestAlgorithm {
     Sha256,
     Blake3,
@@ -111,7 +122,8 @@ impl LocalDigestAlgorithm {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalPushScope {
     pub batch_id: Option<String>,
     pub wave_id: Option<String>,
@@ -121,36 +133,61 @@ pub struct LocalPushScope {
     pub reason: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalPushArtifact {
     pub path: String,
     pub role: LocalArtifactRole,
     pub digest_ref: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalPushDigest {
     pub label: String,
     pub algorithm: LocalDigestAlgorithm,
     pub value: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalPushObservation {
     pub target: String,
     pub status: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct LocalPushAuditAuthority {
+    pub mode: LocalEnvelopeAuthority,
+    pub consent: ConsentBoundary,
+}
+
+impl LocalPushAuditAuthority {
+    #[must_use]
+    pub const fn doctrine_safe() -> Self {
+        Self {
+            mode: LocalEnvelopeAuthority::LocalOnly,
+            consent: ConsentBoundary::ExplicitOperatorConsent,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalPushAuditEnvelope {
     pub envelope_version: &'static str,
     pub envelope_type: LocalEnvelopeKind,
     pub created_at: String,
+    pub authority: LocalPushAuditAuthority,
     pub scope: LocalPushScope,
     pub artifacts: Vec<LocalPushArtifact>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub digests: Vec<LocalPushDigest>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub observations: Vec<LocalPushObservation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub notes: Vec<String>,
 }
 
@@ -160,6 +197,13 @@ pub enum LocalPushAuditEnvelopeError {
     InvalidRelativePath(String),
     InvalidStream(String),
     EmptyReason,
+}
+
+#[derive(Debug)]
+pub enum LocalPushAuditEnvelopeWriteError {
+    InvalidEnvelope(LocalPushAuditEnvelopeError),
+    Serialize(serde_json::Error),
+    Io(std::io::Error),
 }
 
 impl LocalPushAuditEnvelope {
@@ -173,6 +217,7 @@ impl LocalPushAuditEnvelope {
             envelope_version: LOCAL_PUSH_AUDIT_ENVELOPE_VERSION,
             envelope_type,
             created_at: created_at.into(),
+            authority: LocalPushAuditAuthority::doctrine_safe(),
             scope,
             artifacts,
             digests: Vec::new(),
@@ -232,6 +277,24 @@ impl LocalPushAuditEnvelope {
     pub fn with_note(mut self, note: impl Into<String>) -> Self {
         self.notes.push(note.into());
         self
+    }
+
+    pub fn to_pretty_json(&self) -> Result<String, LocalPushAuditEnvelopeWriteError> {
+        self.validate()
+            .map_err(LocalPushAuditEnvelopeWriteError::InvalidEnvelope)?;
+
+        serde_json::to_string_pretty(self).map_err(LocalPushAuditEnvelopeWriteError::Serialize)
+    }
+
+    pub fn write_json(&self, path: impl AsRef<Path>) -> Result<(), LocalPushAuditEnvelopeWriteError> {
+        let path = path.as_ref();
+        let json = self.to_pretty_json()?;
+
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(LocalPushAuditEnvelopeWriteError::Io)?;
+        }
+
+        fs::write(path, format!("{json}\n")).map_err(LocalPushAuditEnvelopeWriteError::Io)
     }
 }
 
@@ -308,14 +371,15 @@ pub const fn local_push_audit_boundary() -> LocalPushAuditEnvelopeBoundary {
 #[cfg(test)]
 mod tests {
     use super::{
-        ferros_data_boundary, local_push_audit_boundary, LocalArtifactRole,
-        LocalDigestAlgorithm, LocalEnvelopeKind, LocalPushArtifact,
-        LocalPushAuditEnvelope, LocalPushAuditEnvelopeError, LocalPushDigest,
-        LocalPushObservation, LocalPushScope, LocalPushSurface, ADR_REFERENCE,
-        BASELINE_MIGRATION_PATH, BASELINE_MIGRATION_SQL, LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA,
-        LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID, LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_PATH,
-        LOCAL_PUSH_AUDIT_ENVELOPE_VERSION, LOCAL_PUSH_DIGEST_ROOT, MIGRATION_AUTHORITY,
-        MIGRATION_PATHS, ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_PATH,
+        ferros_data_boundary, local_push_audit_boundary, BURST_LOCAL_PUSH_ENVELOPE_PATH,
+        LocalArtifactRole, LocalDigestAlgorithm, LocalEnvelopeAuthority, LocalEnvelopeKind,
+        LocalPushArtifact, LocalPushAuditEnvelope, LocalPushAuditEnvelopeError,
+        LocalPushDigest, LocalPushObservation, LocalPushScope, LocalPushSurface,
+        ADR_REFERENCE, BASELINE_MIGRATION_PATH, BASELINE_MIGRATION_SQL,
+        LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA, LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID,
+        LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_PATH, LOCAL_PUSH_AUDIT_ENVELOPE_VERSION,
+        LOCAL_PUSH_DIGEST_ROOT, MIGRATION_AUTHORITY, MIGRATION_PATHS,
+        ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_PATH,
         ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_SQL,
     };
 
@@ -407,6 +471,7 @@ mod tests {
         );
         assert_eq!(LOCAL_PUSH_AUDIT_ENVELOPE_VERSION, "1.0");
         assert_eq!(LOCAL_PUSH_DIGEST_ROOT, ".tmp/push/");
+        assert_eq!(BURST_LOCAL_PUSH_ENVELOPE_PATH, ".tmp/push/burst-local-push-envelope.json");
         assert!(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA.contains(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID));
         assert!(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA.contains("local-only"));
         assert!(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA.contains("explicit-operator-consent"));
@@ -446,9 +511,84 @@ mod tests {
 
         assert_eq!(envelope.envelope_version, "1.0");
         assert_eq!(envelope.envelope_type.as_str(), "local-push");
+        assert_eq!(envelope.authority.mode, LocalEnvelopeAuthority::LocalOnly);
         assert_eq!(envelope.scope.surface.as_str(), "push-digest");
         assert_eq!(envelope.artifacts[0].role.as_str(), "output");
         assert_eq!(envelope.digests[0].algorithm.as_str(), "sha256");
+    }
+
+    #[test]
+    fn local_push_audit_envelope_serializes_with_schema_field_names() {
+        let envelope = LocalPushAuditEnvelope::new(
+            LocalEnvelopeKind::LocalPush,
+            "2026-04-28T12:00:00Z",
+            LocalPushScope {
+                batch_id: Some("BATCH-2026-04-28-G".to_owned()),
+                wave_id: Some("WAVE-2026-04-28-32".to_owned()),
+                lane_id: Some("burst".to_owned()),
+                stream: "S6".to_owned(),
+                surface: LocalPushSurface::PushDigest,
+                reason: "typed local envelope emission".to_owned(),
+            },
+            vec![LocalPushArtifact {
+                path: BURST_LOCAL_PUSH_ENVELOPE_PATH.to_owned(),
+                role: LocalArtifactRole::Output,
+                digest_ref: None,
+            }],
+        )
+        .expect("local envelope should validate")
+        .with_observation(LocalPushObservation {
+            target: "burst-helper".to_owned(),
+            status: "observed",
+            summary: Some("typed local envelope emitted".to_owned()),
+        });
+
+        let payload = serde_json::to_value(&envelope).expect("envelope should serialize");
+
+        assert_eq!(payload["envelopeVersion"], "1.0");
+        assert_eq!(payload["envelopeType"], "local-push");
+        assert_eq!(payload["authority"]["mode"], "local-only");
+        assert_eq!(payload["authority"]["consent"], "explicit-operator-consent");
+        assert_eq!(payload["scope"]["waveId"], "WAVE-2026-04-28-32");
+        assert_eq!(payload["artifacts"][0]["path"], BURST_LOCAL_PUSH_ENVELOPE_PATH);
+        assert_eq!(payload["observations"][0]["status"], "observed");
+    }
+
+    #[test]
+    fn local_push_audit_envelope_write_json_creates_output_file() {
+        let output_path = std::env::temp_dir().join(format!(
+            "ferros-local-push-envelope-{}.json",
+            std::process::id()
+        ));
+        let envelope = LocalPushAuditEnvelope::new(
+            LocalEnvelopeKind::LocalPush,
+            "2026-04-28T12:00:00Z",
+            LocalPushScope {
+                batch_id: None,
+                wave_id: Some("WAVE-2026-04-28-32".to_owned()),
+                lane_id: Some("test".to_owned()),
+                stream: "S6".to_owned(),
+                surface: LocalPushSurface::PushDigest,
+                reason: "write local test artifact".to_owned(),
+            },
+            vec![LocalPushArtifact {
+                path: ".tmp/push/test-envelope.json".to_owned(),
+                role: LocalArtifactRole::Output,
+                digest_ref: None,
+            }],
+        )
+        .expect("local envelope should validate");
+
+        envelope
+            .write_json(&output_path)
+            .expect("json output should write");
+
+        let written = std::fs::read_to_string(&output_path).expect("output file should read");
+        assert!(written.contains("\"authority\""));
+        assert!(written.contains("\"mode\": \"local-only\""));
+        assert!(written.contains("\"consent\": \"explicit-operator-consent\""));
+
+        let _ = std::fs::remove_file(output_path);
     }
 
     #[test]

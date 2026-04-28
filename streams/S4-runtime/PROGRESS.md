@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-28 - LocalRunwayState helpers landed for downstream runway summary consumers
+
+- Extended `crates/ferros-runtime/src/local_runway.rs` so `LocalRunwayState` now exposes stable checkpoint helpers, shell-facing labels, terminal-state detection, and checkpoint detail text for downstream runway-summary consumption.
+- Focused validation passed with `cargo test -p ferros-runtime`.
+- Kept the slice local-only and non-evidentiary: no hardware session, no D1/G4 promotion, and no broader restart/reload or transport publication.
+
 ## 2026-04-28 - Narrow S4 support held for S5 lifecycle control
 
 - Kept S4's runtime surface unchanged while S5 landed the browser lifecycle control bar above the existing local-only `agent.run` / `agent.stop` RPC path.

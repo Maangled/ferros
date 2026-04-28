@@ -28,7 +28,9 @@ use ferros_profile::{
     grant_profile_capability, init_local_profile, revoke_profile_capability, CapabilityGrant,
     FileSystemProfileStore, LocalProfileStore, ProfileId, ProfileIdError, ProfileStoreError,
 };
-use ferros_runtime::{Executor, InMemoryExecutor, InMemoryMessageBus, MessageBus};
+use ferros_runtime::{
+    Executor, InMemoryExecutor, InMemoryMessageBus, LocalRunwayState, MessageBus,
+};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 const DEFAULT_PROFILE_ID: &str = "profile-alpha";
@@ -234,6 +236,10 @@ pub struct LocalRunwaySummary {
     pub surface: String,
     pub scope: String,
     pub evidence: String,
+    pub checkpoint_state: String,
+    pub checkpoint_detail: String,
+    pub checkpoint_position: usize,
+    pub checkpoint_total: usize,
     pub profile_path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_name: Option<String>,
@@ -384,9 +390,24 @@ struct ProfileShellRequest {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct ProfileShellStatus {
+    kind: String,
+    summary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProfileShellErrorDetail {
+    code: String,
+    message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ProfileShellResponse {
     ok: bool,
     action: String,
+    status: ProfileShellStatus,
     profile_path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     bundle_path: Option<String>,
@@ -395,6 +416,8 @@ struct ProfileShellResponse {
     profile: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error_detail: Option<ProfileShellErrorDetail>,
 }
 
 #[derive(Debug)]
@@ -558,11 +581,19 @@ impl DemoRuntime {
             CapabilityGrant::new(profile_id.clone(), "agent.timer"),
         ];
 
-        Self::reference_host_with_grants(grants)
+        Self::reference_host_with_profile_id_and_grants(profile_id, grants)
     }
 
     fn reference_host_with_grants(grants: Vec<CapabilityGrant>) -> Result<Self, DemoError> {
         let profile_id = ProfileId::new(DEFAULT_PROFILE_ID)?;
+
+        Self::reference_host_with_profile_id_and_grants(profile_id, grants)
+    }
+
+    fn reference_host_with_profile_id_and_grants(
+        profile_id: ProfileId,
+        grants: Vec<CapabilityGrant>,
+    ) -> Result<Self, DemoError> {
         let mut runtime = Self::new(grants);
 
         let echo = EchoAgent::new(profile_id.clone());
@@ -1009,7 +1040,9 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
     default_profile_path: &Path,
     store: &S,
 ) -> HttpResponse {
-    match (request.method.as_str(), request.path.as_str()) {
+    let (request_path, request_query) = split_request_path(&request.path);
+
+    match (request.method.as_str(), request_path) {
         ("GET", "/") | ("GET", "/index.html") => HttpResponse {
             status_code: 200,
             status_text: "OK",
@@ -1023,7 +1056,9 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
             body: LOCAL_SHELL_ACCEPTANCE_HARNESS_HTML.as_bytes().to_vec(),
         },
         ("GET", "/runway-summary") | ("GET", "/runway-summary.json") => {
-            route_shell_runway_summary_request(state_path, default_profile_path, store)
+            let requested_profile_path =
+                requested_profile_path_from_query(request_query, default_profile_path);
+            route_shell_runway_summary_request(state_path, &requested_profile_path, store)
         }
         ("POST", "/rpc") => {
             route_shell_rpc_request(request.body, state_path, default_profile_path, store)
@@ -1032,6 +1067,72 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
             route_shell_profile_request(request.body, default_profile_path, store)
         }
         _ => text_response(404, "Not Found", "FERROS local shell route not found"),
+    }
+}
+
+fn split_request_path(path: &str) -> (&str, Option<&str>) {
+    match path.split_once('?') {
+        Some((request_path, request_query)) => (request_path, Some(request_query)),
+        None => (path, None),
+    }
+}
+
+fn requested_profile_path_from_query(
+    request_query: Option<&str>,
+    default_profile_path: &Path,
+) -> PathBuf {
+    request_query
+        .and_then(|query| query.split('&').find_map(query_param_profile_path))
+        .map(PathBuf::from)
+        .unwrap_or_else(|| default_profile_path.to_path_buf())
+}
+
+fn query_param_profile_path(segment: &str) -> Option<String> {
+    let (key, value) = segment.split_once('=')?;
+    if key != "profilePath" {
+        return None;
+    }
+
+    decode_query_component(value).ok()
+}
+
+fn decode_query_component(value: &str) -> Result<String, ()> {
+    let mut bytes = Vec::with_capacity(value.len());
+    let raw = value.as_bytes();
+    let mut index = 0;
+
+    while index < raw.len() {
+        match raw[index] {
+            b'%' => {
+                if index + 2 >= raw.len() {
+                    return Err(());
+                }
+
+                let high = decode_query_hex(raw[index + 1])?;
+                let low = decode_query_hex(raw[index + 2])?;
+                bytes.push((high << 4) | low);
+                index += 3;
+            }
+            b'+' => {
+                bytes.push(b' ');
+                index += 1;
+            }
+            byte => {
+                bytes.push(byte);
+                index += 1;
+            }
+        }
+    }
+
+    String::from_utf8(bytes).map_err(|_| ())
+}
+
+fn decode_query_hex(value: u8) -> Result<u8, ()> {
+    match value {
+        b'0'..=b'9' => Ok(value - b'0'),
+        b'a'..=b'f' => Ok(value - b'a' + 10),
+        b'A'..=b'F' => Ok(value - b'A' + 10),
+        _ => Err(()),
     }
 }
 
@@ -1226,7 +1327,7 @@ fn parse_http_request(bytes: &[u8]) -> io::Result<HttpRequest> {
 
     Ok(HttpRequest {
         method: method.to_owned(),
-        path: path.split('?').next().unwrap_or(path).to_owned(),
+        path: path.to_owned(),
         body: bytes[header_end + 4..].to_vec(),
     })
 }
@@ -1331,33 +1432,129 @@ fn execute_profile_shell_request_with_store<S: LocalProfileStore>(
 
                 ProfileShellResponse {
                     ok: true,
+                    status: profile_shell_success_status(action.as_str()),
                     action,
                     profile_path: profile_path.display().to_string(),
                     bundle_path: bundle_path.map(|path| path.display().to_string()),
                     profile,
                     lines,
                     error: None,
+                    error_detail: None,
                 }
             }
-            Err(error) => ProfileShellResponse {
+            Err(error) => {
+                let error_message = error.to_string();
+                let error_detail = profile_shell_error_detail(&error);
+
+                ProfileShellResponse {
+                    ok: false,
+                    status: profile_shell_blocked_status(action.as_str()),
+                    action,
+                    profile_path: profile_path.display().to_string(),
+                    bundle_path: bundle_path.map(|path| path.display().to_string()),
+                    lines: Vec::new(),
+                    profile: None,
+                    error: Some(error_message),
+                    error_detail: Some(error_detail),
+                }
+            }
+        },
+        Err(error) => {
+            let error_detail = profile_shell_request_error_detail(action.as_str(), &error);
+
+            ProfileShellResponse {
                 ok: false,
+                status: profile_shell_blocked_status(action.as_str()),
                 action,
                 profile_path: profile_path.display().to_string(),
                 bundle_path: bundle_path.map(|path| path.display().to_string()),
                 lines: Vec::new(),
                 profile: None,
-                error: Some(error.to_string()),
-            },
-        },
-        Err(error) => ProfileShellResponse {
-            ok: false,
-            action,
-            profile_path: profile_path.display().to_string(),
-            bundle_path: bundle_path.map(|path| path.display().to_string()),
-            lines: Vec::new(),
-            profile: None,
-            error: Some(error),
-        },
+                error: Some(error),
+                error_detail: Some(error_detail),
+            }
+        }
+    }
+}
+
+fn profile_shell_success_status(action: &str) -> ProfileShellStatus {
+    let summary = match action {
+        "init" => "Local profile initialized through /profile.",
+        "show" => "Local profile document loaded through /profile.",
+        "export" => "Local profile bundle exported through /profile.",
+        "import" => "Local profile bundle imported through /profile.",
+        _ => "Local profile action completed through /profile.",
+    };
+
+    ProfileShellStatus {
+        kind: "complete".to_owned(),
+        summary: summary.to_owned(),
+    }
+}
+
+fn profile_shell_blocked_status(action: &str) -> ProfileShellStatus {
+    let summary = match action {
+        "init" => "Local profile initialization was blocked on /profile.",
+        "show" => "Local profile read was blocked on /profile.",
+        "export" => "Local profile export was blocked on /profile.",
+        "import" => "Local profile import was blocked on /profile.",
+        _ => "Local profile action was blocked on /profile.",
+    };
+
+    ProfileShellStatus {
+        kind: "blocked".to_owned(),
+        summary: summary.to_owned(),
+    }
+}
+
+fn profile_shell_request_error_detail(action: &str, error: &str) -> ProfileShellErrorDetail {
+    let code = match action {
+        "export" | "import" if error.contains("bundlePath is required") => {
+            "bundle_path_required"
+        }
+        "grant" | "revoke" => "mutation_not_exposed",
+        _ if error.starts_with("unsupported profile action:") => "unsupported_action",
+        _ => "invalid_request",
+    };
+
+    ProfileShellErrorDetail {
+        code: code.to_owned(),
+        message: error.to_owned(),
+    }
+}
+
+fn profile_shell_error_detail(error: &CliError) -> ProfileShellErrorDetail {
+    let code = match error {
+        CliError::Usage(_) => "usage",
+        CliError::InvalidState(_) => "invalid_state",
+        CliError::Io(io_error) if io_error.kind() == io::ErrorKind::NotFound => "not_found",
+        CliError::Io(_) => "io",
+        CliError::Profile(ProfileStoreError::AlreadyExists(_)) => "already_exists",
+        CliError::Profile(ProfileStoreError::CapabilityGrantAlreadyExists(_)) => {
+            "capability_grant_exists"
+        }
+        CliError::Profile(ProfileStoreError::CapabilityGrantNotFound(_)) => {
+            "capability_grant_not_found"
+        }
+        CliError::Profile(ProfileStoreError::CapabilityGrantSignature(_)) => {
+            "capability_grant_signature"
+        }
+        CliError::Profile(ProfileStoreError::InvalidProfile(_)) => "invalid_profile",
+        CliError::Profile(ProfileStoreError::InvalidLocalState(_)) => "invalid_local_state",
+        CliError::Profile(ProfileStoreError::Io(io_error))
+            if io_error.kind() == io::ErrorKind::NotFound =>
+        {
+            "not_found"
+        }
+        CliError::Profile(ProfileStoreError::Io(_)) => "io",
+        CliError::Profile(ProfileStoreError::KeyPair(_)) => "key_pair_error",
+        CliError::Profile(ProfileStoreError::Serde(_)) => "invalid_json",
+        CliError::Runtime(_) => "runtime_error",
+    };
+
+    ProfileShellErrorDetail {
+        code: code.to_owned(),
+        message: error.to_string(),
     }
 }
 
@@ -1403,11 +1600,7 @@ fn build_local_runway_summary_with_store<S: LocalProfileStore>(
 ) -> Result<LocalRunwaySummary, CliError> {
     let state = CliState::load(state_path)?;
     let runtime = runtime_with_state_from_loaded_state(&state)?;
-    let agents = runtime
-        .agent_records()
-        .into_iter()
-        .map(LocalRunwayAgentSummary::from)
-        .collect::<Vec<_>>();
+    let agent_records = runtime.agent_records();
     let deny_entries = deny_log_entries(&state, None);
     let deny_count = deny_entries.len();
     let latest_deny = deny_entries.into_iter().last().map(LocalRunwayDenySummary::from);
@@ -1428,6 +1621,19 @@ fn build_local_runway_summary_with_store<S: LocalProfileStore>(
             detail: "echo stand-in agent missing from local reference host".to_owned(),
         },
     };
+
+    let checkpoint_state = derive_local_runway_state(
+        &profile_observation,
+        &stand_in_agent,
+        latest_deny.as_ref(),
+        &agent_records,
+        &state.log_entries,
+    );
+
+    let agents = agent_records
+        .into_iter()
+        .map(LocalRunwayAgentSummary::from)
+        .collect::<Vec<_>>();
 
     let consent_flow = match latest_deny.as_ref() {
         Some(deny) => LocalRunwayChecklistItem {
@@ -1477,6 +1683,10 @@ fn build_local_runway_summary_with_store<S: LocalProfileStore>(
         surface: "local-runway-summary".to_owned(),
         scope: "local-only".to_owned(),
         evidence: "non-evidentiary".to_owned(),
+        checkpoint_state: checkpoint_state.as_str().to_owned(),
+        checkpoint_detail: checkpoint_state.shell_detail().to_owned(),
+        checkpoint_position: checkpoint_state.ordinal() + 1,
+        checkpoint_total: LocalRunwayState::ALL.len(),
         profile_path: profile_path.display().to_string(),
         profile_name: profile_observation.profile_name,
         agent_count: agents.len(),
@@ -1492,6 +1702,72 @@ fn build_local_runway_summary_with_store<S: LocalProfileStore>(
             consent_flow,
             power_cycle,
         ],
+    })
+}
+
+fn derive_local_runway_state(
+    profile_observation: &LocalRunwayProfileObservation,
+    stand_in_agent: &LocalRunwayChecklistItem,
+    latest_deny: Option<&LocalRunwayDenySummary>,
+    agent_records: &[AgentRecord],
+    log_entries: &[String],
+) -> LocalRunwayState {
+    let mut checkpoint = LocalRunwayState::Pending;
+    let has_profile = matches!(
+        profile_observation.checklist_item.status,
+        LocalRunwayChecklistStatus::Observed
+    );
+    let has_consent_observation = latest_deny.is_some() || profile_observation.grant_count > 0;
+    let has_runtime_observation = matches!(
+        stand_in_agent.status,
+        LocalRunwayChecklistStatus::Observed
+    );
+    let running_agent_count = agent_records
+        .iter()
+        .filter(|record| matches!(record.status, AgentStatus::Running))
+        .count();
+
+    if has_profile {
+        checkpoint = checkpoint
+            .advance(ferros_runtime::LocalRunwayIntent::Start)
+            .expect("pending -> profile-ready should be valid");
+    }
+
+    if has_consent_observation {
+        checkpoint = checkpoint
+            .advance(ferros_runtime::LocalRunwayIntent::Start)
+            .expect("profile-ready -> consent-ready should be valid");
+    }
+
+    if has_runtime_observation && checkpoint.ordinal() >= LocalRunwayState::ConsentReady.ordinal() {
+        checkpoint = checkpoint
+            .advance(ferros_runtime::LocalRunwayIntent::Start)
+            .expect("consent-ready -> runtime-ready should be valid");
+    }
+
+    if running_agent_count > 0 && checkpoint.ordinal() >= LocalRunwayState::RuntimeReady.ordinal()
+    {
+        checkpoint = checkpoint
+            .advance(ferros_runtime::LocalRunwayIntent::Start)
+            .expect("runtime-ready -> active should be valid");
+    } else if checkpoint == LocalRunwayState::RuntimeReady
+        && latest_lifecycle_marker(log_entries) == Some("stopped")
+    {
+        checkpoint = LocalRunwayState::Halted;
+    }
+
+    checkpoint
+}
+
+fn latest_lifecycle_marker(log_entries: &[String]) -> Option<&'static str> {
+    log_entries.iter().rev().find_map(|entry| {
+        if entry.starts_with("started:") {
+            Some("started")
+        } else if entry.starts_with("stopped:") {
+            Some("stopped")
+        } else {
+            None
+        }
     })
 }
 
@@ -1574,17 +1850,23 @@ fn execute_agent_read_rpc_with_store_and_paths<S: LocalProfileStore>(
         state_path,
         default_profile_path,
         store,
-        runtime_with_state_from_loaded_state,
+        |state, profile_path, store| {
+            runtime_with_state_and_profile_path_from_loaded_state(state, profile_path, store)
+        },
     )
 }
 
-fn execute_agent_rpc_with_store_and_paths_and_runtime_loader<S: LocalProfileStore>(
+fn execute_agent_rpc_with_store_and_paths_and_runtime_loader<S, RuntimeLoader>(
     request: AgentJsonRpcRequest,
     state_path: &Path,
     default_profile_path: &Path,
     store: &S,
-    runtime_loader: fn(&CliState) -> Result<DemoRuntime, CliError>,
-) -> Result<AgentJsonRpcResponse, CliError> {
+    runtime_loader: RuntimeLoader,
+) -> Result<AgentJsonRpcResponse, CliError>
+where
+    S: LocalProfileStore,
+    RuntimeLoader: Fn(&CliState, &Path, &S) -> Result<DemoRuntime, CliError> + Copy,
+{
     let AgentJsonRpcRequest {
         jsonrpc,
         id,
@@ -1603,7 +1885,8 @@ fn execute_agent_rpc_with_store_and_paths_and_runtime_loader<S: LocalProfileStor
     match method.as_str() {
         METHOD_AGENT_LIST => {
             let state = CliState::load(state_path)?;
-            let runtime = runtime_loader(&state)?;
+            let profile_path = requested_profile_path(params.profile_path.as_deref(), default_profile_path);
+            let runtime = runtime_loader(&state, &profile_path, store)?;
             let agents = runtime
                 .agent_records()
                 .into_iter()
@@ -1625,7 +1908,8 @@ fn execute_agent_rpc_with_store_and_paths_and_runtime_loader<S: LocalProfileStor
             };
 
             let state = CliState::load(state_path)?;
-            let runtime = runtime_loader(&state)?;
+            let profile_path = requested_profile_path(params.profile_path.as_deref(), default_profile_path);
+            let runtime = runtime_loader(&state, &profile_path, store)?;
             let Some(agent) = runtime.describe_agent(agent_name) else {
                 return Ok(AgentJsonRpcResponse::error(
                     id,
@@ -1659,8 +1943,15 @@ fn execute_agent_rpc_with_store_and_paths_and_runtime_loader<S: LocalProfileStor
                     name: agent_name.to_owned(),
                 }
             };
+            let profile_path = requested_profile_path(params.profile_path.as_deref(), default_profile_path);
 
-            match execute_local_agent_api_with_runtime_loader(command, state_path, runtime_loader) {
+            match execute_local_agent_lifecycle_with_profile_path(
+                command,
+                state_path,
+                &profile_path,
+                store,
+                runtime_loader,
+            ) {
                 Ok(LocalAgentApiResponse::AgentLifecycle { agent }) => {
                     Ok(AgentJsonRpcResponse::success(
                         id,
@@ -1691,7 +1982,8 @@ fn execute_agent_rpc_with_store_and_paths_and_runtime_loader<S: LocalProfileStor
         }
         METHOD_AGENT_SNAPSHOT => {
             let state = CliState::load(state_path)?;
-            let runtime = runtime_loader(&state)?;
+            let profile_path = requested_profile_path(params.profile_path.as_deref(), default_profile_path);
+            let runtime = runtime_loader(&state, &profile_path, store)?;
             let agent_name = params.agent_name.as_deref();
             let agents = if let Some(agent_name) = agent_name {
                 let Some(agent) = runtime.describe_agent(agent_name) else {
@@ -1710,11 +2002,6 @@ fn execute_agent_rpc_with_store_and_paths_and_runtime_loader<S: LocalProfileStor
                     .map(agent_record_to_rpc_detail)
                     .collect()
             };
-            let profile_path = params
-                .profile_path
-                .as_deref()
-                .map(PathBuf::from)
-                .unwrap_or_else(|| default_profile_path.to_path_buf());
             let grants = load_grant_state_records(store, &profile_path)?;
             let deny_log = deny_log_entries(&state, agent_name);
 
@@ -1730,11 +2017,7 @@ fn execute_agent_rpc_with_store_and_paths_and_runtime_loader<S: LocalProfileStor
             ))
         }
         METHOD_GRANT_LIST => {
-            let profile_path = params
-                .profile_path
-                .as_deref()
-                .map(PathBuf::from)
-                .unwrap_or_else(|| default_profile_path.to_path_buf());
+            let profile_path = requested_profile_path(params.profile_path.as_deref(), default_profile_path);
             let grants = load_grant_state_records(store, &profile_path)?;
 
             Ok(AgentJsonRpcResponse::success(
@@ -1769,6 +2052,35 @@ fn runtime_with_state_from_loaded_state(state: &CliState) -> Result<DemoRuntime,
     let mut runtime = DemoRuntime::reference_host().map_err(CliError::from)?;
     runtime.replay_cli_state(state)?;
     Ok(runtime)
+}
+
+fn runtime_with_state_and_profile_path_from_loaded_state<S: LocalProfileStore>(
+    state: &CliState,
+    profile_path: &Path,
+    store: &S,
+) -> Result<DemoRuntime, CliError> {
+    match store.load_local_profile(profile_path) {
+        Ok(local_profile) => {
+            let profile_id = local_profile.key_pair.profile_id();
+            let grants = local_profile
+                .signed_grants
+                .into_iter()
+                .map(|signed_grant| signed_grant.grant)
+                .collect();
+            let mut runtime =
+                DemoRuntime::reference_host_with_profile_id_and_grants(profile_id, grants)
+                    .map_err(CliError::from)?;
+            runtime.replay_cli_state(state)?;
+            Ok(runtime)
+        }
+        Err(ProfileStoreError::Io(error)) if error.kind() == io::ErrorKind::NotFound => {
+            let mut runtime =
+                DemoRuntime::reference_host_with_grants(Vec::new()).map_err(CliError::from)?;
+            runtime.replay_cli_state(state)?;
+            Ok(runtime)
+        }
+        Err(error) => Err(CliError::from(error)),
+    }
 }
 
 fn cli_state_path() -> PathBuf {
@@ -1941,6 +2253,87 @@ fn execute_local_agent_api_with_runtime_loader(
     runtime_loader: fn(&CliState) -> Result<DemoRuntime, CliError>,
 ) -> Result<LocalAgentApiResponse, CliError> {
     LocalAgentController::new(state_path, runtime_loader).execute(command)
+}
+
+fn execute_local_agent_lifecycle_with_profile_path<S, RuntimeLoader>(
+    command: LocalAgentApiCommand,
+    state_path: &Path,
+    profile_path: &Path,
+    store: &S,
+    runtime_loader: RuntimeLoader,
+) -> Result<LocalAgentApiResponse, CliError>
+where
+    S: LocalProfileStore,
+    RuntimeLoader: Fn(&CliState, &Path, &S) -> Result<DemoRuntime, CliError> + Copy,
+{
+    match command {
+        LocalAgentApiCommand::Run { name } => {
+            let mut state = CliState::load(state_path)?;
+            let mut runtime = runtime_loader(&state, profile_path, store)?;
+            let record = runtime
+                .describe_agent(&name)
+                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
+
+            if record.status != AgentStatus::Running {
+                let start_result = runtime.start_agent(&name);
+
+                if !runtime.log_entries().is_empty() {
+                    state
+                        .log_entries
+                        .extend(runtime.log_entries().iter().cloned());
+                }
+
+                match start_result {
+                    Ok(()) => {
+                        state.set_status(&name, AgentStatus::Running);
+                        state.save(state_path)?;
+                    }
+                    Err(error) => {
+                        if !runtime.log_entries().is_empty() {
+                            state.save(state_path)?;
+                        }
+                        return Err(error.into());
+                    }
+                }
+            }
+
+            let agent = runtime
+                .describe_agent(&name)
+                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
+
+            Ok(LocalAgentApiResponse::AgentLifecycle { agent })
+        }
+        LocalAgentApiCommand::Stop { name } => {
+            let mut state = CliState::load(state_path)?;
+            let mut runtime = runtime_loader(&state, profile_path, store)?;
+            runtime
+                .describe_agent(&name)
+                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
+
+            if runtime
+                .describe_agent(&name)
+                .map(|record| record.status)
+                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?
+                != AgentStatus::Stopped
+            {
+                runtime.stop_agent(&name)?;
+                state.set_status(&name, AgentStatus::Stopped);
+                state
+                    .log_entries
+                    .extend(runtime.log_entries().iter().cloned());
+                state.save(state_path)?;
+            }
+
+            let agent = runtime
+                .describe_agent(&name)
+                .ok_or_else(|| DemoError::UnknownAgent(name.clone()))?;
+
+            Ok(LocalAgentApiResponse::AgentLifecycle { agent })
+        }
+        other => Err(CliError::InvalidState(format!(
+            "unexpected profile-scoped lifecycle command: {other:?}"
+        ))),
+    }
 }
 
 fn execute_agent_cli_with_state_path(
@@ -2239,6 +2632,7 @@ mod tests {
         execute_agent_read_rpc_with_store_and_paths,
         execute_agent_rpc_with_store_and_paths_and_runtime_loader,
         execute_local_agent_api_with_runtime_loader, execute_profile_cli_with_store,
+        parse_http_request,
         route_shell_request_with_store_and_paths, run_demo, runtime_with_state,
         serve_local_shell_with_listener, serve_local_shell_with_store_and_paths, AgentCliCommand,
         AuthorizationDenyDetail, CliError, CliState, DemoError, DemoRuntime, HttpRequest,
@@ -2542,6 +2936,13 @@ mod tests {
         assert_eq!(missing_summary.surface, "local-runway-summary");
         assert_eq!(missing_summary.scope, "local-only");
         assert_eq!(missing_summary.evidence, "non-evidentiary");
+        assert_eq!(missing_summary.checkpoint_state, "pending");
+        assert_eq!(
+            missing_summary.checkpoint_detail,
+            "Local shell runway not initialized yet."
+        );
+        assert_eq!(missing_summary.checkpoint_position, 1);
+        assert_eq!(missing_summary.checkpoint_total, 7);
         assert_eq!(missing_summary.profile_path, profile_path.display().to_string());
         assert_eq!(missing_summary.agent_count, 2);
         assert_eq!(missing_summary.deny_count, 0);
@@ -2589,6 +2990,13 @@ mod tests {
         assert_eq!(observed_summary.profile_name.as_deref(), Some(DEFAULT_PROFILE_NAME));
         assert_eq!(observed_summary.grant_count, 0);
         assert_eq!(observed_summary.deny_count, 1);
+        assert_eq!(observed_summary.checkpoint_state, "runtime-ready");
+        assert_eq!(
+            observed_summary.checkpoint_detail,
+            "Consent checkpoint observed; runtime activation pending."
+        );
+        assert_eq!(observed_summary.checkpoint_position, 4);
+        assert_eq!(observed_summary.checkpoint_total, 7);
         assert_eq!(observed_profile.status, LocalRunwayChecklistStatus::Observed);
         assert_eq!(observed_consent.status, LocalRunwayChecklistStatus::Observed);
         assert_eq!(
@@ -3331,12 +3739,32 @@ mod tests {
     fn agent_write_rpc_runs_and_stops_agent_over_local_state_path() {
         let state_path = unique_state_path("rpc-write-lifecycle");
         let profile_path = unique_profile_path("rpc-write-lifecycle");
+        let profile_path_string = profile_path.display().to_string();
+
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &FileSystemProfileStore,
+        )
+        .expect("profile init should succeed");
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Grant {
+                path: profile_path.clone(),
+                capability: "agent.echo".to_owned(),
+            },
+            &FileSystemProfileStore,
+        )
+        .expect("profile grant should succeed");
 
         let run_response = execute_agent_read_rpc_with_store_and_paths(
             AgentJsonRpcRequest::new(
                 "req-write-run",
                 METHOD_AGENT_RUN,
-                AgentJsonRpcParams::for_agent("echo"),
+                AgentJsonRpcParams {
+                    agent_name: Some("echo".to_owned()),
+                    profile_path: Some(profile_path_string.clone()),
+                },
             ),
             &state_path,
             &profile_path,
@@ -3356,7 +3784,10 @@ mod tests {
             AgentJsonRpcRequest::new(
                 "req-write-run-snapshot",
                 METHOD_AGENT_SNAPSHOT,
-                AgentJsonRpcParams::for_agent("echo"),
+                AgentJsonRpcParams {
+                    agent_name: Some("echo".to_owned()),
+                    profile_path: Some(profile_path_string.clone()),
+                },
             ),
             &state_path,
             &profile_path,
@@ -3377,7 +3808,10 @@ mod tests {
             AgentJsonRpcRequest::new(
                 "req-write-stop",
                 METHOD_AGENT_STOP,
-                AgentJsonRpcParams::for_agent("echo"),
+                AgentJsonRpcParams {
+                    agent_name: Some("echo".to_owned()),
+                    profile_path: Some(profile_path_string.clone()),
+                },
             ),
             &state_path,
             &profile_path,
@@ -3397,7 +3831,10 @@ mod tests {
             AgentJsonRpcRequest::new(
                 "req-write-stop-snapshot",
                 METHOD_AGENT_SNAPSHOT,
-                AgentJsonRpcParams::for_agent("echo"),
+                AgentJsonRpcParams {
+                    agent_name: Some("echo".to_owned()),
+                    profile_path: Some(profile_path_string.clone()),
+                },
             ),
             &state_path,
             &profile_path,
@@ -3416,6 +3853,46 @@ mod tests {
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
+    fn agent_write_rpc_denies_run_without_selected_profile_grant() {
+        let state_path = unique_state_path("rpc-write-profile-denied");
+        let profile_path = unique_profile_path("rpc-write-profile-denied");
+
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &FileSystemProfileStore,
+        )
+        .expect("profile init should succeed");
+
+        let response = execute_agent_read_rpc_with_store_and_paths(
+            AgentJsonRpcRequest::new(
+                "req-write-profile-denied",
+                METHOD_AGENT_RUN,
+                AgentJsonRpcParams {
+                    agent_name: Some("echo".to_owned()),
+                    profile_path: Some(profile_path.display().to_string()),
+                },
+            ),
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        )
+        .expect("run RPC should return a JSON-RPC error envelope");
+
+        assert_rpc_error(
+            &response,
+            JSON_RPC_AUTHORIZATION_DENIED,
+            "authorization denied: echo missing agent.echo",
+        );
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
     }
 
     #[test]
@@ -3459,7 +3936,7 @@ mod tests {
             &state_path,
             &profile_path,
             &FileSystemProfileStore,
-            denied_reference_runtime_from_loaded_state,
+            |state, _, _| denied_reference_runtime_from_loaded_state(state),
         )
         .expect("denied run should return a JSON-RPC error envelope");
 
@@ -3609,7 +4086,10 @@ mod tests {
         let response = route_shell_request_with_store_and_paths(
             HttpRequest {
                 method: "GET".to_owned(),
-                path: "/runway-summary.json".to_owned(),
+                path: format!(
+                    "/runway-summary.json?profilePath={}",
+                    profile_path.display()
+                ),
                 body: Vec::new(),
             },
             &state_path,
@@ -3623,6 +4103,9 @@ mod tests {
         assert_eq!(response.content_type, "application/json; charset=utf-8");
         assert_eq!(payload.surface, "local-runway-summary");
         assert_eq!(payload.scope, "local-only");
+        assert_eq!(payload.checkpoint_state, "runtime-ready");
+        assert_eq!(payload.checkpoint_position, 4);
+        assert_eq!(payload.checkpoint_total, 7);
         assert_eq!(payload.profile_path, profile_path.display().to_string());
         assert_eq!(payload.deny_count, 1);
         assert!(payload.agent_count >= 2);
@@ -3663,6 +4146,12 @@ mod tests {
         assert_eq!(init_response.status_code, 200);
         assert!(init_payload.ok);
         assert_eq!(init_payload.action, "init");
+        assert_eq!(init_payload.status.kind, "complete");
+        assert_eq!(
+            init_payload.status.summary,
+            "Local profile initialized through /profile."
+        );
+        assert!(init_payload.error_detail.is_none());
         assert_eq!(
             init_payload.profile.as_ref().expect("profile should return")["identity"]["name"]
                 .as_str(),
@@ -3690,6 +4179,12 @@ mod tests {
         assert_eq!(show_response.status_code, 200);
         assert!(show_payload.ok);
         assert_eq!(show_payload.action, "show");
+        assert_eq!(show_payload.status.kind, "complete");
+        assert_eq!(
+            show_payload.status.summary,
+            "Local profile document loaded through /profile."
+        );
+        assert!(show_payload.error_detail.is_none());
         assert!(show_payload
             .lines
             .iter()
@@ -3738,6 +4233,12 @@ mod tests {
         assert_eq!(export_response.status_code, 200);
         assert!(export_payload.ok);
         assert_eq!(export_payload.action, "export");
+        assert_eq!(export_payload.status.kind, "complete");
+        assert_eq!(
+            export_payload.status.summary,
+            "Local profile bundle exported through /profile."
+        );
+        assert!(export_payload.error_detail.is_none());
         assert!(bundle_path.exists());
 
         let import_body = serde_json::to_vec(&serde_json::json!({
@@ -3762,6 +4263,12 @@ mod tests {
         assert_eq!(import_response.status_code, 200);
         assert!(import_payload.ok);
         assert_eq!(import_payload.action, "import");
+        assert_eq!(import_payload.status.kind, "complete");
+        assert_eq!(
+            import_payload.status.summary,
+            "Local profile bundle imported through /profile."
+        );
+        assert!(import_payload.error_detail.is_none());
         assert_eq!(
             import_payload.profile.as_ref().expect("profile should return")["identity"]["name"]
                 .as_str(),
@@ -3802,6 +4309,19 @@ mod tests {
         assert_eq!(response.status_code, 200);
         assert!(!payload.ok);
         assert_eq!(payload.action, "grant");
+        assert_eq!(payload.status.kind, "blocked");
+        assert_eq!(
+            payload.status.summary,
+            "Local profile action was blocked on /profile."
+        );
+        assert_eq!(
+            payload
+                .error_detail
+                .as_ref()
+                .expect("error detail should be present")
+                .code,
+            "mutation_not_exposed"
+        );
         assert!(payload
             .error
             .expect("error should be present")
@@ -4017,10 +4537,28 @@ mod tests {
             .expect("listener should report local addr");
         let state_path = unique_state_path("shell-rpc-run");
         let profile_path = unique_profile_path("shell-rpc-run");
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &FileSystemProfileStore,
+        )
+        .expect("profile init should succeed");
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Grant {
+                path: profile_path.clone(),
+                capability: "agent.echo".to_owned(),
+            },
+            &FileSystemProfileStore,
+        )
+        .expect("profile grant should succeed");
         let request = serde_json::to_string(&AgentJsonRpcRequest::new(
             "req-run-socket",
             METHOD_AGENT_RUN,
-            AgentJsonRpcParams::for_agent("echo"),
+            AgentJsonRpcParams {
+                agent_name: Some("echo".to_owned()),
+                profile_path: Some(profile_path.display().to_string()),
+            },
         ))
         .expect("request should serialize");
 
@@ -4065,6 +4603,7 @@ mod tests {
         server.join().expect("listener thread should exit cleanly");
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
     }
 
     #[test]
@@ -4087,6 +4626,20 @@ mod tests {
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn parse_http_request_preserves_query_string_for_shell_routes() {
+        let request = parse_http_request(
+            b"GET /runway-summary.json?profilePath=%2Ftmp%2Fprofile.json HTTP/1.1\r\nHost: localhost\r\n\r\n",
+        )
+        .expect("request should parse");
+
+        assert_eq!(request.method, "GET");
+        assert_eq!(
+            request.path,
+            "/runway-summary.json?profilePath=%2Ftmp%2Fprofile.json"
+        );
     }
 
     #[test]

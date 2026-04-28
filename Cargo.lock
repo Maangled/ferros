@@ -160,6 +160,10 @@ dependencies = [
 [[package]]
 name = "ferros-data"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "ferros-node"
@@ -532,6 +536,10 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 [[package]]
 name = "xtask"
 version = "0.1.0"
+dependencies = [
+ "ferros-data",
+ "time",
+]
 
 [[package]]
 name = "zerocopy"

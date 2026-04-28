@@ -117,6 +117,7 @@ function installRpcMonitor() {
   var originalFetch = frameWindow.fetch.bind(frameWindow);
   frameWindow.__h9ObservedRpcMethods = [];
   frameWindow.__h9ObservedProfileActions = [];
+  frameWindow.__h9ObservedRunwayUrls = [];
   frameWindow.fetch = function(input, init) {
     var url = typeof input === 'string' ? input : input && input.url ? input.url : '';
     var options = init || {};
@@ -141,6 +142,9 @@ function installRpcMonitor() {
         frameWindow.__h9ObservedProfileActions.push('parse-error');
       }
     }
+    if (String(method).toUpperCase() === 'GET' && String(url).indexOf('/runway-summary') !== -1) {
+      frameWindow.__h9ObservedRunwayUrls.push(String(url));
+    }
     return originalFetch(input, init);
   };
   frameWindow.__h9RpcMonitorInstalled = true;
@@ -161,6 +165,13 @@ function resetProfileMonitor() {
   }
 }
 
+function resetRunwayMonitor() {
+  var frameWindow = getFrameWindow();
+  if (frameWindow && frameWindow.__h9ObservedRunwayUrls) {
+    frameWindow.__h9ObservedRunwayUrls.length = 0;
+  }
+}
+
 function observedRpcMethods() {
   var frameWindow = getFrameWindow();
   if (!frameWindow || !frameWindow.__h9ObservedRpcMethods) return [];
@@ -171,6 +182,12 @@ function observedProfileActions() {
   var frameWindow = getFrameWindow();
   if (!frameWindow || !frameWindow.__h9ObservedProfileActions) return [];
   return frameWindow.__h9ObservedProfileActions.slice();
+}
+
+function observedRunwayUrls() {
+  var frameWindow = getFrameWindow();
+  if (!frameWindow || !frameWindow.__h9ObservedRunwayUrls) return [];
+  return frameWindow.__h9ObservedRunwayUrls.slice();
 }
 
 function agentRowStatus(doc, agentName) {
@@ -344,6 +361,7 @@ async function runJourney() {
       doc.getElementById('profile-path-input').value = '/definitely/missing/profile.json';
       var FrameEvent = getFrameWindow().Event;
       doc.getElementById('profile-path-input').dispatchEvent(new FrameEvent('input', { bubbles: true }));
+      resetRunwayMonitor();
       await click(doc, '#refresh-button', 'refresh button');
       var stillReady = await waitFor(function() {
         doc = getDoc();
@@ -359,6 +377,7 @@ async function runJourney() {
   }
 
   try {
+    doc.getElementById('profile-path-input').value = '/definitely/missing/profile.json';
     await click(doc, '[data-route="runway"]', 'runway route button');
     var runwayRoute = await waitFor(function() {
       doc = getDoc();
@@ -368,13 +387,23 @@ async function runJourney() {
     addResult('C: Runway', 'Runway route activates', runwayRoute, runwayRoute ? 'route=runway' : '', runwayRoute ? '' : 'runway route did not activate');
 
     if (runwayRoute) {
+      var runwayUrls = observedRunwayUrls();
       var runwayText = doc.getElementById('runway-surface').textContent.toLowerCase();
+      var selectedProfilePathVisible = runwayText.indexOf('/definitely/missing/profile.json') !== -1;
+      var checkpointVisible = runwayText.indexOf('checkpoint') !== -1 && runwayText.indexOf('1/7') !== -1 && runwayText.indexOf('pending') !== -1;
+      var selectedProfilePathRequested = runwayUrls.some(function(url) {
+        return url.indexOf('profilePath=%2Fdefinitely%2Fmissing%2Fprofile.json') !== -1;
+      });
+      addResult('C: Runway', 'Runway request carries the selected profile path', selectedProfilePathRequested, 'urls=' + (runwayUrls.join(', ') || 'none'), selectedProfilePathRequested ? '' : 'runway fetch did not include the selected profilePath query');
+      addResult('C: Runway', 'Runway surface renders selected profile path and checkpoint progress', selectedProfilePathVisible && checkpointVisible, 'surface=' + (runwayText || 'missing'), selectedProfilePathVisible && checkpointVisible ? '' : 'runway surface did not render the selected profile path and pending checkpoint progress');
       var checklistVisible = runwayText.indexOf('power cycle') !== -1 || runwayText.indexOf('powercyclestatus') !== -1;
       addResult('C: Runway', 'Runway surface renders checklist state', checklistVisible, checklistVisible ? 'runway checklist visible' : '', checklistVisible ? '' : 'runway checklist copy did not render');
 
       var inspectorText = doc.getElementById('inspector-content').textContent.toLowerCase();
       var inspectorShowsRunway = inspectorText.indexOf('local-only') !== -1 && inspectorText.indexOf('non-evidentiary') !== -1;
       addResult('C: Runway', 'Inspector renders local-only runway detail', inspectorShowsRunway, inspectorShowsRunway ? 'inspector shows runway scope and evidence' : '', inspectorShowsRunway ? '' : 'runway inspector detail did not render');
+      var inspectorShowsCheckpoint = inspectorText.indexOf('/definitely/missing/profile.json') !== -1 && inspectorText.indexOf('1/7') !== -1 && inspectorText.indexOf('pending') !== -1;
+      addResult('C: Runway', 'Inspector renders selected profile path and checkpoint detail', inspectorShowsCheckpoint, inspectorShowsCheckpoint ? 'inspector shows selected profile path and checkpoint progress' : '', inspectorShowsCheckpoint ? '' : 'runway inspector did not render selected profile path and checkpoint progress');
     }
   } catch (error) {
     addResult('C: Runway', 'Runway route journey completes', false, '', error.message);
@@ -405,6 +434,34 @@ async function runJourney() {
       var profileOnly = profileSettled && profileActions.length === 1 && profileActions[0] === 'show' && rpcMethods.length === 0;
       addResult('C: Profile Adapter', 'Profile show uses /profile without sending JSON-RPC', profileOnly, 'profile=' + (profileActions.join(', ') || 'none') + '; rpc=' + (rpcMethods.join(', ') || 'none'), profileOnly ? '' : 'expected profile show to avoid /rpc');
 
+      var profileSurfaceText = doc.getElementById('profile-surface').textContent.toLowerCase();
+      var structuredBlockedProfile = profileSurfaceText.indexOf('local profile read was blocked on /profile') !== -1 && profileSurfaceText.indexOf('reason not_found') !== -1;
+      addResult('C: Profile Adapter', 'Profile surface renders structured blocked status and error detail', structuredBlockedProfile, structuredBlockedProfile ? 'surface=' + profileSurfaceText : '', structuredBlockedProfile ? '' : 'profile surface did not render the structured blocked summary and reason code');
+
+      var profileInspectorText = doc.getElementById('inspector-content').textContent.toLowerCase();
+      var structuredBlockedInspector = profileInspectorText.indexOf('status summary') !== -1 && profileInspectorText.indexOf('not_found') !== -1;
+      addResult('C: Profile Adapter', 'Inspector renders structured blocked profile detail', structuredBlockedInspector, structuredBlockedInspector ? 'inspector=' + profileInspectorText : '', structuredBlockedInspector ? '' : 'profile inspector did not render the structured blocked summary and error code');
+
+      var structuredProfilePath = '.tmp/h9-profile-' + Date.now() + '.json';
+      doc.getElementById('profile-path-input').value = structuredProfilePath;
+      doc.getElementById('profile-path-input').dispatchEvent(new FrameEvent('input', { bubbles: true }));
+      resetRpcMonitor();
+      resetProfileMonitor();
+      await click(doc, '[data-profile-action="init"]', 'profile init button');
+      var initSettled = await waitFor(function() {
+        doc = getDoc();
+        return doc.getElementById('profile-surface').textContent.toLowerCase().indexOf('local profile initialized through /profile') !== -1;
+      }, 5000);
+      addResult('C: Profile Adapter', 'Profile init settles through the local adapter', initSettled, initSettled ? 'profile=' + (observedProfileActions().join(', ') || 'none') + '; rpc=' + (observedRpcMethods().join(', ') || 'none') : '', initSettled ? '' : 'profile init did not settle on the structured success surface');
+
+      var initSurfaceText = doc.getElementById('profile-surface').textContent.toLowerCase();
+      var structuredInitProfile = initSurfaceText.indexOf('local profile initialized through /profile') !== -1 && initSurfaceText.indexOf(structuredProfilePath.toLowerCase()) !== -1;
+      addResult('C: Profile Adapter', 'Profile surface renders structured init success copy', structuredInitProfile, structuredInitProfile ? 'surface=' + initSurfaceText : '', structuredInitProfile ? '' : 'profile surface did not render the structured init success summary');
+
+      var initInspectorText = doc.getElementById('inspector-content').textContent.toLowerCase();
+      var structuredInitInspector = initInspectorText.indexOf('complete') !== -1 && initInspectorText.indexOf('local profile initialized through /profile') !== -1;
+      addResult('C: Profile Adapter', 'Inspector renders structured profile init status', structuredInitInspector, structuredInitInspector ? 'inspector=' + initInspectorText : '', structuredInitInspector ? '' : 'profile inspector did not render the structured init status summary');
+
       var grantRevokeAbsent = doc.querySelector('[data-profile-action="grant"]') === null && doc.querySelector('[data-profile-action="revoke"]') === null;
       addResult('C: Profile Adapter', 'Profile grant and revoke controls stay absent', grantRevokeAbsent, grantRevokeAbsent ? 'grant/revoke action buttons not present' : '', grantRevokeAbsent ? '' : 'profile grant/revoke controls must remain closed');
     }
@@ -429,104 +486,205 @@ async function runJourney() {
   }
 
   try {
+    var lifecycleProfilePath = '.tmp/h9-lifecycle-' + Date.now() + '.json';
+    var FrameEvent = getFrameWindow().Event;
+    doc.getElementById('profile-path-input').value = lifecycleProfilePath;
+    doc.getElementById('profile-path-input').dispatchEvent(new FrameEvent('input', { bubbles: true }));
+
     await click(doc, '[data-route="agents"]', 'agents route button');
-    await waitFor(function() {
+    var agentsRoute = await waitFor(function() {
       doc = getDoc();
       return doc.getElementById('active-route-pill').textContent.trim() === 'agents' && doc.querySelector('[data-focus-agent="echo"]');
     }, 3000);
-    await click(doc, '[data-focus-agent="echo"]', 'echo focus row');
-    await waitFor(function() {
-      doc = getDoc();
-      return doc.getElementById('status-selected').textContent.trim() === 'echo';
-    }, 3000);
+    addResult('E: Allowed Lifecycle', 'Agents route activates for the allowed lifecycle proof', agentsRoute, agentsRoute ? 'route=agents' : '', agentsRoute ? '' : 'agents route did not activate for the allowed lifecycle proof');
 
-    var runConfirmed = operatorConfirm('Manual lifecycle step: run echo', [
-      'In another terminal from the repo root, run:',
-      'cargo run -p ferros-node --bin ferros -- agent run echo',
-      '',
-      'Return here and click OK after the command succeeds.',
-      'Click Cancel to skip this assisted proof.'
-    ]);
+    if (agentsRoute) {
+      await click(doc, '[data-focus-agent="echo"]', 'echo focus row');
+      var echoSelected = await waitFor(function() {
+        doc = getDoc();
+        return doc.getElementById('status-selected').textContent.trim() === 'echo';
+      }, 3000);
+      addResult('E: Allowed Lifecycle', 'Echo is selected for the allowed lifecycle proof', echoSelected, echoSelected ? 'status-selected=echo' : '', echoSelected ? '' : 'echo selection did not settle before the allowed lifecycle proof');
 
-    if (runConfirmed) {
-      var runRefresh = await refreshThroughSnapshot(doc);
-      doc = getDoc();
-      var runSnapshotOnly = runRefresh.settled && runRefresh.methods.length === 1 && runRefresh.methods[0] === 'agent.snapshot';
-      addResult('E: Lifecycle Observation', 'Manual echo run refresh still uses only the aggregated agent.snapshot seam', runSnapshotOnly, 'methods=' + (runRefresh.methods.join(', ') || 'none'), runSnapshotOnly ? '' : 'expected exactly one agent.snapshot call after local CLI run');
+      if (echoSelected) {
+        var grantConfirmed = operatorConfirm('Manual lifecycle grant step', [
+          'In another terminal from the repo root, run:',
+          'cargo run -p ferros-node --bin ferros -- profile init ' + lifecycleProfilePath,
+          'cargo run -p ferros-node --bin ferros -- profile grant agent.echo ' + lifecycleProfilePath,
+          '',
+          'Return here and click OK after both commands succeed.',
+          'Click Cancel to stop this allowed-write proof.'
+        ]);
 
-      var runningListStatus = agentRowStatus(doc, 'echo');
-      var runningInspectorStatus = inspectorDetailValue(doc, 'Status');
-      var runningObserved = runningListStatus === 'running' && runningInspectorStatus === 'running';
-      addResult('E: Lifecycle Observation', 'Shell observes echo as running after local CLI run', runningObserved, 'list=' + (runningListStatus || 'missing') + ', inspector=' + (runningInspectorStatus || 'missing'), runningObserved ? '' : 'echo did not read back as running after the assisted local CLI run');
+        if (!grantConfirmed) {
+          addResult('E: Allowed Lifecycle', 'Local echo grant is seeded for the allowed lifecycle proof', false, '', 'operator cancelled the assisted grant-seeding step');
+        } else {
+          var grantRefresh = await refreshThroughSnapshot(doc);
+          doc = getDoc();
+          var grantRefreshHealthy = grantRefresh.settled && grantRefresh.methods.length === 1 && grantRefresh.methods[0] === 'agent.snapshot';
+          addResult('E: Allowed Lifecycle', 'Grant seeding refresh still uses only the aggregated agent.snapshot seam', grantRefreshHealthy, 'methods=' + (grantRefresh.methods.join(', ') || 'none'), grantRefreshHealthy ? '' : 'expected exactly one agent.snapshot call after assisted grant seeding');
 
-      var runningIntentCopy = textById(doc, 'intent-note-copy');
-      var runningIntentVisible = runningIntentCopy.indexOf('echo') !== -1 && runningIntentCopy.indexOf('agent.stop') !== -1;
-      addResult('E: Lifecycle Observation', 'Lifecycle intent copy flips to agent.stop after local CLI run', runningIntentVisible, 'intent=' + (runningIntentCopy || 'missing'), runningIntentVisible ? '' : 'selected-agent lifecycle intent did not flip to agent.stop after the assisted local CLI run');
-    } else {
-      addResult('E: Lifecycle Observation', 'Manual echo run refresh still uses only the aggregated agent.snapshot seam', 'skip', 'operator skipped assisted local CLI run');
-      addResult('E: Lifecycle Observation', 'Shell observes echo as running after local CLI run', 'skip', 'operator skipped assisted local CLI run');
-      addResult('E: Lifecycle Observation', 'Lifecycle intent copy flips to agent.stop after local CLI run', 'skip', 'operator skipped assisted local CLI run');
-    }
+          var gateCopy = textById(doc, 'lifecycle-gate-copy');
+          var gateReady = gateCopy.indexOf('active grant state is loaded') !== -1 && gateCopy.indexOf('agent.echo') !== -1;
+          addResult('E: Allowed Lifecycle', 'Lifecycle gate opens after the active echo grant is loaded', gateReady, 'gate=' + (gateCopy || 'missing'), gateReady ? '' : 'lifecycle gate did not open after the assisted echo grant load');
 
-    var stopConfirmed = operatorConfirm('Manual lifecycle step: stop echo', [
-      'In another terminal from the repo root, run:',
-      'cargo run -p ferros-node --bin ferros -- agent stop echo',
-      '',
-      'Return here and click OK after the command succeeds.',
-      'Click Cancel to skip this assisted proof.'
-    ]);
+          if (gateReady) {
+            var lifecycleButton = doc.getElementById('lifecycle-submit-button');
+            var initialMethod = lifecycleButton.dataset.method;
+            var initialMethodValid = initialMethod === 'agent.run' || initialMethod === 'agent.stop';
+            addResult('E: Allowed Lifecycle', 'Lifecycle control stages one real allowed write method', initialMethodValid, initialMethodValid ? 'method=' + initialMethod : '', initialMethodValid ? '' : 'expected agent.run or agent.stop once the gate opened');
 
-    if (stopConfirmed) {
-      var stopRefresh = await refreshThroughSnapshot(doc);
-      doc = getDoc();
-      var stopSnapshotOnly = stopRefresh.settled && stopRefresh.methods.length === 1 && stopRefresh.methods[0] === 'agent.snapshot';
-      addResult('E: Lifecycle Observation', 'Manual echo stop refresh still uses only the aggregated agent.snapshot seam', stopSnapshotOnly, 'methods=' + (stopRefresh.methods.join(', ') || 'none'), stopSnapshotOnly ? '' : 'expected exactly one agent.snapshot call after local CLI stop');
+            if (initialMethodValid) {
+              var expectedStatus = initialMethod === 'agent.run' ? 'running' : 'stopped';
+              var expectedNextMethod = initialMethod === 'agent.run' ? 'agent.stop' : 'agent.run';
+              var armCheckbox = doc.getElementById('lifecycle-arm-checkbox');
+              if (!armCheckbox.checked) {
+                armCheckbox.click();
+              }
 
-      var stoppedListStatus = agentRowStatus(doc, 'echo');
-      var stoppedInspectorStatus = inspectorDetailValue(doc, 'Status');
-      var stoppedObserved = stoppedListStatus === 'stopped' && stoppedInspectorStatus === 'stopped';
-      addResult('E: Lifecycle Observation', 'Shell observes echo as stopped after local CLI stop', stoppedObserved, 'list=' + (stoppedListStatus || 'missing') + ', inspector=' + (stoppedInspectorStatus || 'missing'), stoppedObserved ? '' : 'echo did not read back as stopped after the assisted local CLI stop');
+              resetRpcMonitor();
+              await click(doc, '#lifecycle-submit-button', 'lifecycle submit button');
+              var allowedSettled = await waitFor(function() {
+                doc = getDoc();
+                var methods = observedRpcMethods();
+                var stateCopy = textById(doc, 'lifecycle-control-state');
+                return methods.length >= 2 && stateCopy.indexOf('completed for echo') !== -1 && doc.getElementById('connection-state').dataset.state === 'ready';
+              }, 6000);
 
-      var stoppedIntentCopy = textById(doc, 'intent-note-copy');
-      var stoppedIntentVisible = stoppedIntentCopy.indexOf('echo') !== -1 && stoppedIntentCopy.indexOf('agent.run') !== -1;
-      addResult('E: Lifecycle Observation', 'Lifecycle intent copy flips back to agent.run after local CLI stop', stoppedIntentVisible, 'intent=' + (stoppedIntentCopy || 'missing'), stoppedIntentVisible ? '' : 'selected-agent lifecycle intent did not flip back to agent.run after the assisted local CLI stop');
-    } else {
-      addResult('E: Lifecycle Observation', 'Manual echo stop refresh still uses only the aggregated agent.snapshot seam', 'skip', 'operator skipped assisted local CLI stop');
-      addResult('E: Lifecycle Observation', 'Shell observes echo as stopped after local CLI stop', 'skip', 'operator skipped assisted local CLI stop');
-      addResult('E: Lifecycle Observation', 'Lifecycle intent copy flips back to agent.run after local CLI stop', 'skip', 'operator skipped assisted local CLI stop');
+              var allowedMethods = observedRpcMethods();
+              var singleWrite = allowedSettled && allowedMethods.length === 2 && allowedMethods[0] === initialMethod && allowedMethods[1] === 'agent.snapshot';
+              addResult('E: Allowed Lifecycle', 'Armed lifecycle click sends one allowed write and one snapshot refresh', singleWrite, 'methods=' + (allowedMethods.join(', ') || 'none'), singleWrite ? '' : 'expected exactly one lifecycle write followed by one agent.snapshot refresh');
+
+              var listStatus = agentRowStatus(doc, 'echo');
+              var inspectorStatus = inspectorDetailValue(doc, 'Status');
+              var lifecycleObserved = listStatus === expectedStatus && inspectorStatus === expectedStatus;
+              addResult('E: Allowed Lifecycle', 'Shell observes the new echo lifecycle state after the allowed write', lifecycleObserved, 'list=' + (listStatus || 'missing') + ', inspector=' + (inspectorStatus || 'missing'), lifecycleObserved ? '' : 'echo did not read back in the expected state after the allowed write');
+
+              var nextButtonMethod = doc.getElementById('lifecycle-submit-button').dataset.method;
+              var intentCopy = textById(doc, 'intent-note-copy');
+              var nextIntentVisible = nextButtonMethod === expectedNextMethod && intentCopy.indexOf('echo') !== -1 && intentCopy.indexOf(expectedNextMethod) !== -1;
+              addResult('E: Allowed Lifecycle', 'Lifecycle intent flips after the allowed write without duplicate RPCs', nextIntentVisible, 'button=' + (nextButtonMethod || 'missing') + '; intent=' + (intentCopy || 'missing'), nextIntentVisible ? '' : 'selected-agent lifecycle intent did not flip after the allowed write');
+
+              var outcomeCopy = textById(doc, 'lifecycle-outcome-copy');
+              var outcomeVisible = outcomeCopy.indexOf(initialMethod) !== -1 && outcomeCopy.indexOf('agent.snapshot') !== -1;
+              addResult('E: Allowed Lifecycle', 'Lifecycle outcome copy records the completed write and refresh', outcomeVisible, 'outcome=' + (outcomeCopy || 'missing'), outcomeVisible ? '' : 'lifecycle outcome copy did not record the completed write and snapshot refresh');
+            }
+          }
+        }
+      }
     }
   } catch (error) {
-    addResult('E: Lifecycle Observation', 'Operator-assisted local lifecycle observation flow completes', false, '', error.message);
+    addResult('E: Allowed Lifecycle', 'Allowed lifecycle proof completes', false, '', error.message);
   }
 
   try {
-    await click(doc, '[data-route="denyLog"]', 'deny log route button');
-    await waitFor(function() {
-      doc = getDoc();
-      return doc.getElementById('active-route-pill').textContent === 'denyLog';
-    }, 3000);
-
-    var denyConfirmed = operatorConfirm('Optional deny observation step', [
-      'If you have already pre-seeded a deny entry through the dedicated local lifecycle/log seam, or a lifecycle RPC was denied by the backend, click OK to refresh and verify that the shell observes it.',
-      '',
-      'If not, click Cancel. This optional step only checks the read-back surface for persisted deny evidence.'
-    ]);
-
-    if (denyConfirmed) {
-      var denyRefresh = await refreshThroughSnapshot(doc);
-      doc = getDoc();
-      var denySnapshotOnly = denyRefresh.settled && denyRefresh.methods.length === 1 && denyRefresh.methods[0] === 'agent.snapshot';
-      addResult('F: Deny Observation', 'Manual deny refresh still uses only the aggregated agent.snapshot seam', denySnapshotOnly, 'methods=' + (denyRefresh.methods.join(', ') || 'none'), denySnapshotOnly ? '' : 'expected exactly one agent.snapshot call after external deny-state injection');
-
-      var denyRows = doc.querySelectorAll('[data-deny-index]').length;
-      var denyObserved = denyRows > 0 || doc.getElementById('deny-surface').textContent.indexOf('No deny entries') === -1;
-      addResult('F: Deny Observation', 'Shell observes deny evidence after external local-state injection', denyObserved, denyObserved ? 'deny rows=' + denyRows : 'deny surface still shows the empty state', denyObserved ? '' : 'no deny entry became visible after the assisted refresh');
+    if (!lifecycleProfilePath) {
+      addResult('F: Deny Observation', 'Deny proof reuses the allowed lifecycle profile path', false, '', 'allowed lifecycle profile path was not initialized');
     } else {
-      addResult('F: Deny Observation', 'Manual deny refresh still uses only the aggregated agent.snapshot seam', 'skip', 'optional because persisted deny state may not be pre-seeded');
-      addResult('F: Deny Observation', 'Shell observes deny evidence after external local-state injection', 'skip', 'optional because persisted deny state may not be pre-seeded');
+      await click(doc, '[data-route="agents"]', 'agents route button');
+      var denyAgentsRoute = await waitFor(function() {
+        doc = getDoc();
+        return doc.getElementById('active-route-pill').textContent.trim() === 'agents' && doc.querySelector('[data-focus-agent="echo"]');
+      }, 3000);
+      addResult('F: Deny Observation', 'Agents route activates for the deny proof', denyAgentsRoute, denyAgentsRoute ? 'route=agents' : '', denyAgentsRoute ? '' : 'agents route did not activate for the deny proof');
+
+      if (denyAgentsRoute) {
+        await click(doc, '[data-focus-agent="echo"]', 'echo focus row');
+        var denyEchoSelected = await waitFor(function() {
+          doc = getDoc();
+          return doc.getElementById('status-selected').textContent.trim() === 'echo';
+        }, 3000);
+        addResult('F: Deny Observation', 'Echo stays selected for the deny proof', denyEchoSelected, denyEchoSelected ? 'status-selected=echo' : '', denyEchoSelected ? '' : 'echo selection did not settle before the deny proof');
+
+        if (denyEchoSelected) {
+          var baselineDenyMethod = doc.getElementById('lifecycle-submit-button').dataset.method;
+          if (baselineDenyMethod === 'agent.stop') {
+            var baselineStopArm = doc.getElementById('lifecycle-arm-checkbox');
+            if (!baselineStopArm.checked) {
+              baselineStopArm.click();
+            }
+
+            resetRpcMonitor();
+            await click(doc, '#lifecycle-submit-button', 'lifecycle submit button');
+            var baselineStopSettled = await waitFor(function() {
+              doc = getDoc();
+              return observedRpcMethods().length >= 2 && doc.getElementById('lifecycle-submit-button').dataset.method === 'agent.run' && doc.getElementById('connection-state').dataset.state === 'ready';
+            }, 6000);
+            addResult('F: Deny Observation', 'Deny proof restores a stopped echo baseline before the revoke step', baselineStopSettled, baselineStopSettled ? 'methods=' + (observedRpcMethods().join(', ') || 'none') : '', baselineStopSettled ? '' : 'failed to restore the stopped echo baseline before the revoke step');
+          }
+
+          var revokeConfirmed = operatorConfirm('Manual deny observation step', [
+            'In another terminal from the repo root, run:',
+            'cargo run -p ferros-node --bin ferros -- profile revoke agent.echo ' + lifecycleProfilePath,
+            '',
+            'Do not refresh the shell before returning here.',
+            'Return here and click OK after the command succeeds.',
+            'Click Cancel to stop this deny proof.'
+          ]);
+
+          if (!revokeConfirmed) {
+            addResult('F: Deny Observation', 'Lifecycle deny path revokes the active echo grant without a pre-refresh shell reload', false, '', 'operator cancelled the assisted revoke step');
+          } else {
+            var staleGateCopy = textById(doc, 'lifecycle-gate-copy');
+            var staleGateReady = staleGateCopy.indexOf('active grant state is loaded') !== -1 && staleGateCopy.indexOf('agent.echo') !== -1;
+            addResult('F: Deny Observation', 'Lifecycle gate still reflects the pre-refresh active grant before the denied write', staleGateReady, 'gate=' + (staleGateCopy || 'missing'), staleGateReady ? '' : 'expected the stale active grant to remain visible before the denied write refresh');
+
+            if (staleGateReady) {
+              var deniedMethod = doc.getElementById('lifecycle-submit-button').dataset.method;
+              var deniedMethodValid = deniedMethod === 'agent.run' || deniedMethod === 'agent.stop';
+              addResult('F: Deny Observation', 'Lifecycle control remains staged for one real denied write method', deniedMethodValid, deniedMethodValid ? 'method=' + deniedMethod : '', deniedMethodValid ? '' : 'expected agent.run or agent.stop before the denied write');
+
+              if (deniedMethodValid) {
+                var denyArmCheckbox = doc.getElementById('lifecycle-arm-checkbox');
+                if (!denyArmCheckbox.checked) {
+                  denyArmCheckbox.click();
+                }
+
+                resetRpcMonitor();
+                await click(doc, '#lifecycle-submit-button', 'lifecycle submit button');
+                var deniedSettled = await waitFor(function() {
+                  doc = getDoc();
+                  var methods = observedRpcMethods();
+                  var outcome = textById(doc, 'lifecycle-outcome-copy');
+                  var stateCopy = textById(doc, 'lifecycle-control-state');
+                  return methods.length >= 2 && (outcome.indexOf('denied by the backend') !== -1 || stateCopy.indexOf('authorization denied') !== -1) && doc.getElementById('connection-state').dataset.state === 'ready';
+                }, 6000);
+
+                var denyMethods = observedRpcMethods();
+                var deniedOutcomeCopy = textById(doc, 'lifecycle-outcome-copy');
+                var deniedRpc = denyMethods.length === 2 && denyMethods[0] === deniedMethod && denyMethods[1] === 'agent.snapshot' && (deniedOutcomeCopy.indexOf('denied by the backend') !== -1 || deniedSettled);
+                addResult('F: Deny Observation', 'Denied lifecycle write still uses one write RPC and one snapshot refresh', deniedRpc, 'methods=' + (denyMethods.join(', ') || 'none'), deniedRpc ? '' : 'expected exactly one denied lifecycle write followed by one agent.snapshot refresh');
+
+                var deniedOutcomeVisible = deniedOutcomeCopy.indexOf('denied by the backend') !== -1 && deniedOutcomeCopy.indexOf('echo') !== -1;
+                addResult('F: Deny Observation', 'Lifecycle outcome copy records the denied backend write', deniedOutcomeVisible, 'outcome=' + (deniedOutcomeCopy || 'missing'), deniedOutcomeVisible ? '' : 'lifecycle outcome copy did not record the denied backend write');
+
+                await click(doc, '[data-route="denyLog"]', 'deny log route button');
+                var denyRoute = await waitFor(function() {
+                  doc = getDoc();
+                  return doc.getElementById('active-route-pill').textContent === 'denyLog';
+                }, 3000);
+                addResult('F: Deny Observation', 'Deny log route activates after the denied write refresh', denyRoute, denyRoute ? 'route=denyLog' : '', denyRoute ? '' : 'deny log route did not activate after the denied write');
+
+                if (denyRoute) {
+                  var denyRows = doc.querySelectorAll('[data-deny-index]').length;
+                  var denyObserved = denyRows > 0 && doc.getElementById('deny-surface').textContent.toLowerCase().indexOf('echo') !== -1;
+                  addResult('F: Deny Observation', 'Shell observes deny evidence after the denied lifecycle refresh', denyObserved, denyObserved ? 'deny rows=' + denyRows : 'deny surface did not show the refreshed deny entry', denyObserved ? '' : 'no deny entry became visible after the denied lifecycle refresh');
+
+                  if (denyRows > 0) {
+                    await click(doc, '[data-deny-index="0"]', 'first deny row');
+                    var denyInspectorText = doc.getElementById('inspector-content').textContent.toLowerCase();
+                    var denyInspectorVisible = denyInspectorText.indexOf('echo') !== -1 && denyInspectorText.indexOf('agent.echo') !== -1;
+                    addResult('F: Deny Observation', 'Inspector renders refreshed deny detail for the denied lifecycle write', denyInspectorVisible, denyInspectorVisible ? 'inspector=' + denyInspectorText : '', denyInspectorVisible ? '' : 'deny inspector detail did not render the refreshed deny entry');
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   } catch (error) {
-    addResult('F: Deny Observation', 'Optional deny observation flow completes', false, '', error.message);
+    addResult('F: Deny Observation', 'Deny observation flow completes', false, '', error.message);
   }
 
   var privilegedLimitsVisible = doc.getElementById('audit-panel').textContent.indexOf('Privileged limits remain closed') !== -1;

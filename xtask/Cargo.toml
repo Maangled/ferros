@@ -5,3 +5,5 @@ edition = "2021"
 publish = false
 
 [dependencies]
+ferros-data = { path = "../crates/ferros-data" }
+time = { version = "0.3", features = ["formatting"] }

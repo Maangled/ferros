@@ -17,186 +17,22 @@ Optional fields (additive, layered on top of the existing field order without br
 
 ## Ready
 
-### WAVE-2026-04-28-19
+None.
 
-- Title: Local consent snapshot enrichment for browser-facing consumers
-- Status: ready
-- Priority: P1
-- Gate: G4 / D1 local consent runway
-- Owning streams: S2 primary
-- Goal: Extend the landed local consent snapshot so downstream local consumers can render grant and consent readiness without reopening frozen S2 contracts or inventing browser-local identity rules.
-- Anchor files: `crates/ferros-profile/src/lib.rs`
-- Validation: `cargo test -p ferros-profile local_consent_snapshot_`; `cargo test -p ferros-profile reload_boundary_load_local_profile_`
-- Constraints: Do not edit `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`. No browser grant or revoke mutation. Keep the surface local-only.
-- Last update: 2026-04-28
-- size: S
-- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-24, WAVE-2026-04-28-25]
-- track: code
+## In Progress
 
-### WAVE-2026-04-28-21
+None.
 
-- Title: Admit local-push envelope into harness constants and contract validation
-- Status: ready
-- Priority: P1
-- Gate: G4 local push audit substrate
-- Owning streams: S6 primary, S1 support
-- Goal: Add the local-push audit envelope schema to the existing harness constant generation and contract validator so the new schema has an executable consumer before broader queue-clear use.
-- Anchor files: `tools/generate-harness-constants.ps1`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
-- Validation: `get_errors` clean on touched tool and harness files; file:// run of `harnesses/ferros-contract-validator.html` stays green after regeneration
-- Constraints: Additive harness admission only. Do not widen JSON Schema vocabulary unless required by the schema. No CI or shared-truth edits.
-- Last update: 2026-04-28
-- size: L
-- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-24, WAVE-2026-04-28-25]
-- track: code
+## Blocked
 
-### WAVE-2026-04-28-24
+None.
 
-- Title: Acceptance harness proves allowed-write lifecycle path on the live shell
-- Status: ready
-- Priority: P1
-- Gate: post-G3 local shell acceptance proof
-- Owning streams: S5 primary
-- Goal: Extend the localhost shell acceptance harness so it proves the positive local-only lifecycle path: one armed allowed write, one post-write snapshot refresh, and no duplicate lifecycle RPC for a single click.
-- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
-- Validation: `get_errors` clean on `harnesses/localhost-shell-acceptance-harness.html`; same-origin run of `/harnesses/localhost-shell-acceptance.html` passes the added lifecycle checks
-- Constraints: Prove the existing local-only path only. No hardware, no remote host, and no gate-closing claims.
-- Last update: 2026-04-28
-- size: S
-- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-25]
-- track: code
-
-### WAVE-2026-04-28-25
-
-- Title: Codify the first local profile-surface code slice in owner docs
-- Status: ready
-- Priority: P2
-- Gate: post-G3 local profile surface prep
-- Owning streams: S5 primary, S2 consumer awareness
-- Goal: Convert the profile-surface handoff into an owner-backed next-code slice so the queue can open a real adapter wave without reopening the frozen S2 contract or widening browser privileges.
-- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S2-profile/README.md`
-- Validation: `get_errors` clean on all 3 anchor files
-- Constraints: Docs-only. Do not edit frozen S2 schemas. No browser grant or revoke actions and no remote profile access.
-- Last update: 2026-04-28
-- size: S
-- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-24]
-- track: code
-
-### WAVE-2026-04-28-26
-
-- Title: ferros-node runway summary consumes LocalRunwayState
-- Status: ready
-- Priority: P1
-- Gate: G4 / D1 local runway observation
-- Owning streams: S4 primary, S5 consumer awareness
-- Goal: Consume the landed runtime runway state inside the `ferros-node` runway summary so checkpoint progress comes from one typed local state model instead of duplicated node-local checklist logic.
-- Anchor files: `crates/ferros-node/src/lib.rs`
-- Validation: `cargo test -p ferros-node local_agent_api_runway_summary_serializes_and_tracks_profile_and_deny_observation`; `cargo test -p ferros-node shell_route_gets_local_runway_summary_json`
-- Constraints: Read-only local shell surface only. No remote transport, no hardware, and no gate-truth edits.
-- Last update: 2026-04-28
-- size: S
-- serial-after: WAVE-2026-04-28-18
-- track: code
-
-### WAVE-2026-04-28-27
-
-- Title: Shell runway route honors explicit profile-path selection and checkpoint progress
-- Status: ready
-- Priority: P1
-- Gate: G4 / D1 runway shell observation
-- Owning streams: S5 primary, S4 support
-- Goal: Make the live shell runway route read the operator-selected local profile path and render checkpoint progress from the enriched runway summary without widening into write-side profile control.
-- Anchor files: `site/agent-center-shell.html`
-- Validation: `cargo test -p ferros-node shell_route_gets_local_runway_summary_json`; `cargo test -p ferros-node shell_route_serves_local_shell_html`; `get_errors` clean on `site/agent-center-shell.html`
-- Constraints: Reuse the current local profile-path selection only. No browser grant writes, no remote profile access, and no gate claims.
-- Last update: 2026-04-28
-- size: S
-- serial-after: WAVE-2026-04-28-26
-- track: code
-
-### WAVE-2026-04-28-28
-
-- Title: Acceptance harness proves runway profile-path and checkpoint rendering
-- Status: ready
-- Priority: P1
-- Gate: G4 / D1 runway acceptance proof
-- Owning streams: S5 primary
-- Goal: Extend the localhost acceptance harness so it proves the runway route reflects the selected profile path, renders checkpoint progress, and keeps the route non-evidentiary and local-only.
-- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
-- Validation: `get_errors` clean on `harnesses/localhost-shell-acceptance-harness.html`; same-origin run of `/harnesses/localhost-shell-acceptance.html` passes the added runway checks
-- Constraints: Same-origin acceptance only. No D1 or G4 evidence claim. No hardware session assumptions.
-- Last update: 2026-04-28
-- size: S
-- serial-after: WAVE-2026-04-28-27
-- track: code
-
-### WAVE-2026-04-28-29
-
-- Title: Profile adapter returns structured local status and error payloads for the shell
-- Status: ready
-- Priority: P1
-- Gate: post-G3 local profile adapter
-- Owning streams: S5 primary, S2 consumer awareness, S4 support awareness
-- Goal: Refine the existing local `/profile` adapter so `init`, `show`, `export`, and `import` return structured success and rejection payloads the shell can render without inventing a new browser schema or mutating grant state.
-- Anchor files: `crates/ferros-node/src/lib.rs`
-- Validation: `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter`; `cargo test -p ferros-node shell_route_posts_profile_export_and_import_through_local_adapter`; `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions`
-- Constraints: Preserve S2 overwrite, parse, verify, and rollback behavior. No new shared write-side JSON-RPC contract. No grant or revoke mutation.
-- Last update: 2026-04-28
-- size: S
-- serial-after: WAVE-2026-04-28-26
-- track: code
-
-### WAVE-2026-04-28-30
-
-- Title: Shell profile surface consumes structured local adapter results
-- Status: ready
-- Priority: P1
-- Gate: post-G3 local profile surface
-- Owning streams: S5 primary, S2 consumer awareness
-- Goal: Render the structured local profile adapter results in the shell so operator-selected `init`, `show`, `export`, and `import` outcomes are legible without exposing frozen-contract internals or widening privileges.
-- Anchor files: `site/agent-center-shell.html`
-- Validation: `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter`; `cargo test -p ferros-node shell_route_posts_profile_export_and_import_through_local_adapter`; `cargo test -p ferros-node shell_route_serves_local_shell_html`; `get_errors` clean on `site/agent-center-shell.html`
-- Constraints: Keep the surface local-only and same-origin. No grant or revoke controls, no remote profile access, and no schema edits.
-- Last update: 2026-04-28
-- size: S
-- serial-after: WAVE-2026-04-28-29
-- track: code
-
-### WAVE-2026-04-28-31
-
-- Title: Acceptance harness closes the local lifecycle, deny, and profile adapter proof loop
-- Status: ready
-- Priority: P1
-- Gate: post-G3 local shell proof hardening
-- Owning streams: S5 primary, S3 awareness
-- Goal: Finish the local shell proof loop in the same-origin acceptance harness: lifecycle allow and deny behavior, refreshed deny visibility, and local profile adapter outcomes must all read back through existing local surfaces only.
-- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
-- Validation: `get_errors` clean on `harnesses/localhost-shell-acceptance-harness.html`; same-origin run of `/harnesses/localhost-shell-acceptance.html` passes the added lifecycle, deny, and profile checks
-- Constraints: No new browser-side state cache, no remote sync claim, no hardware evidence, and no gate-close wording. If WAVE-2026-04-28-28 already landed, extend the same harness instead of forking a second acceptance path.
-- Last update: 2026-04-28
-- size: S
-- serial-after: WAVE-2026-04-28-30
-- track: code
-
-### WAVE-2026-04-28-32
-
-- Title: Typed local-push envelope emission lands in burst-driven .tmp/push output
-- Status: ready
-- Priority: P1
-- Gate: G4 local push audit execution
-- Owning streams: S6 primary, S1 support
-- Goal: Use the typed local-push envelope boundary to emit real local envelope artifacts into `.tmp/push` and expose a focused burst helper path so queue-clear runs stop relying on markdown-only digests for that seam.
-- Anchor files: `crates/ferros-data/src/lib.rs`, `xtask/src/main.rs`, `.tmp/push/`
-- Validation: `cargo test -p ferros-data`; `cargo check -p xtask`; `cargo xtask burst`
-- Constraints: Keep output local-only and non-partner-facing. No remote upload, no hardware session, and no frozen S2 schema touch.
-- Last update: 2026-04-28
-- size: L
-- serial-after: WAVE-2026-04-28-20
-- track: code
+## Done
 
 ### WAVE-2026-04-28-33
 
 - Title: Final serial truth-sync after runway, profile, and local-push owner waves
-- Status: ready
+- Status: done
 - Priority: P2
 - Gate: rolling truth-sync after owner lanes
 - Owning streams: S8 primary
@@ -209,15 +45,181 @@ Optional fields (additive, layered on top of the existing field order without br
 - serial-after: WAVE-2026-04-28-32
 - track: code
 
-## In Progress
+### WAVE-2026-04-28-32
 
-None.
+- Title: Typed local-push envelope emission lands in burst-driven .tmp/push output
+- Status: done
+- Priority: P1
+- Gate: G4 local push audit execution
+- Owning streams: S6 primary, S1 support
+- Goal: Use the typed local-push envelope boundary to emit real local envelope artifacts into `.tmp/push` and expose a focused burst helper path so queue-clear runs stop relying on markdown-only digests for that seam.
+- Anchor files: `crates/ferros-data/src/lib.rs`, `xtask/src/main.rs`, `.tmp/push/`
+- Validation: `cargo test -p ferros-data`; `cargo check -p xtask`; `cargo xtask burst`
+- Constraints: Keep output local-only and non-partner-facing. No remote upload, no hardware session, and no frozen S2 schema touch.
+- Last update: 2026-04-28
+- size: L
+- serial-after: WAVE-2026-04-28-20
+- track: code
 
-## Blocked
+### WAVE-2026-04-28-25
 
-None.
+- Title: Codify the first local profile-surface code slice in owner docs
+- Status: done
+- Priority: P2
+- Gate: post-G3 local profile surface prep
+- Owning streams: S5 primary, S2 consumer awareness
+- Goal: Convert the profile-surface handoff into an owner-backed next-code slice so the queue can open a real adapter wave without reopening the frozen S2 contract or widening browser privileges.
+- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S2-profile/README.md`
+- Validation: `get_errors` clean on all 3 anchor files
+- Constraints: Docs-only. Do not edit frozen S2 schemas. No browser grant or revoke actions and no remote profile access.
+- Last update: 2026-04-28
+- size: S
+- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-24]
+- track: code
 
-## Done
+### WAVE-2026-04-28-21
+
+- Title: Admit local-push envelope into harness constants and contract validation
+- Status: done
+- Priority: P1
+- Gate: G4 local push audit substrate
+- Owning streams: S6 primary, S1 support
+- Goal: Add the local-push audit envelope schema to the existing harness constant generation and contract validator so the new schema has an executable consumer before broader queue-clear use.
+- Anchor files: `tools/generate-harness-constants.ps1`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
+- Validation: `get_errors` clean on touched tool and harness files; file:// run of `harnesses/ferros-contract-validator.html` stays green after regeneration
+- Constraints: Additive harness admission only. Do not widen JSON Schema vocabulary unless required by the schema. No CI or shared-truth edits.
+- Last update: 2026-04-28
+- size: L
+- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-24, WAVE-2026-04-28-25]
+- track: code
+
+### WAVE-2026-04-28-19
+
+- Title: Local consent snapshot enrichment for browser-facing consumers
+- Status: done
+- Priority: P1
+- Gate: G4 / D1 local consent runway
+- Owning streams: S2 primary
+- Goal: Extend the landed local consent snapshot so downstream local consumers can render grant and consent readiness without reopening frozen S2 contracts or inventing browser-local identity rules.
+- Anchor files: `crates/ferros-profile/src/lib.rs`
+- Validation: `cargo test -p ferros-profile local_consent_snapshot_`; `cargo test -p ferros-profile reload_boundary_load_local_profile_`
+- Constraints: Do not edit `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`. No browser grant or revoke mutation. Keep the surface local-only.
+- Last update: 2026-04-28
+- size: S
+- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-24, WAVE-2026-04-28-25]
+- track: code
+
+### WAVE-2026-04-28-31
+
+- Title: Acceptance harness closes the local lifecycle, deny, and profile adapter proof loop
+- Status: done
+- Priority: P1
+- Gate: post-G3 local shell proof hardening
+- Owning streams: S5 primary, S3 awareness
+- Goal: Finish the local shell proof loop in the same-origin acceptance harness: lifecycle allow and deny behavior, refreshed deny visibility, and local profile adapter outcomes must all read back through existing local surfaces only.
+- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `get_errors` clean on `harnesses/localhost-shell-acceptance-harness.html`; same-origin run of `/harnesses/localhost-shell-acceptance.html` passes the added lifecycle, deny, and profile checks
+- Constraints: No new browser-side state cache, no remote sync claim, no hardware evidence, and no gate-close wording. If WAVE-2026-04-28-28 already landed, extend the same harness instead of forking a second acceptance path.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-30
+- track: code
+
+### WAVE-2026-04-28-24
+
+- Title: Acceptance harness proves allowed-write lifecycle path on the live shell
+- Status: done
+- Priority: P1
+- Gate: post-G3 local shell acceptance proof
+- Owning streams: S5 primary
+- Goal: Extend the localhost shell acceptance harness so it proves the positive local-only lifecycle path: one armed allowed write, one post-write snapshot refresh, and no duplicate lifecycle RPC for a single click.
+- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `get_errors` clean on `harnesses/localhost-shell-acceptance-harness.html`; same-origin run of `/harnesses/localhost-shell-acceptance.html` passes the added lifecycle checks
+- Constraints: Prove the existing local-only path only. No hardware, no remote host, and no gate-closing claims.
+- Last update: 2026-04-28
+- size: S
+- parallel-safe-with: [WAVE-2026-04-28-18, WAVE-2026-04-28-19, WAVE-2026-04-28-20, WAVE-2026-04-28-21, WAVE-2026-04-28-22, WAVE-2026-04-28-23, WAVE-2026-04-28-25]
+- track: code
+
+### WAVE-2026-04-28-30
+
+- Title: Shell profile surface consumes structured local adapter results
+- Status: done
+- Priority: P1
+- Gate: post-G3 local profile surface
+- Owning streams: S5 primary, S2 consumer awareness
+- Goal: Render the structured local profile adapter results in the shell so operator-selected `init`, `show`, `export`, and `import` outcomes are legible without exposing frozen-contract internals or widening privileges.
+- Anchor files: `site/agent-center-shell.html`
+- Validation: `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter`; `cargo test -p ferros-node shell_route_posts_profile_export_and_import_through_local_adapter`; `cargo test -p ferros-node shell_route_serves_local_shell_html`; `get_errors` clean on `site/agent-center-shell.html`
+- Constraints: Keep the surface local-only and same-origin. No grant or revoke controls, no remote profile access, and no schema edits.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-29
+- track: code
+
+### WAVE-2026-04-28-29
+
+- Title: Profile adapter returns structured local status and error payloads for the shell
+- Status: done
+- Priority: P1
+- Gate: post-G3 local profile adapter
+- Owning streams: S5 primary, S2 consumer awareness, S4 support awareness
+- Goal: Refine the existing local `/profile` adapter so `init`, `show`, `export`, and `import` return structured success and rejection payloads the shell can render without inventing a new browser schema or mutating grant state.
+- Anchor files: `crates/ferros-node/src/lib.rs`
+- Validation: `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter`; `cargo test -p ferros-node shell_route_posts_profile_export_and_import_through_local_adapter`; `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions`
+- Constraints: Preserve S2 overwrite, parse, verify, and rollback behavior. No new shared write-side JSON-RPC contract. No grant or revoke mutation.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-26
+- track: code
+
+### WAVE-2026-04-28-28
+
+- Title: Acceptance harness proves runway profile-path and checkpoint rendering
+- Status: done
+- Priority: P1
+- Gate: G4 / D1 runway acceptance proof
+- Owning streams: S5 primary
+- Goal: Extend the localhost acceptance harness so it proves the runway route reflects the selected profile path, renders checkpoint progress, and keeps the route non-evidentiary and local-only.
+- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `get_errors` clean on `harnesses/localhost-shell-acceptance-harness.html`; same-origin run of `/harnesses/localhost-shell-acceptance.html` passes the added runway checks
+- Constraints: Same-origin acceptance only. No D1 or G4 evidence claim. No hardware session assumptions.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-27
+- track: code
+
+### WAVE-2026-04-28-27
+
+- Title: Shell runway route honors explicit profile-path selection and checkpoint progress
+- Status: done
+- Priority: P1
+- Gate: G4 / D1 runway shell observation
+- Owning streams: S5 primary, S4 support
+- Goal: Make the live shell runway route read the operator-selected local profile path and render checkpoint progress from the enriched runway summary without widening into write-side profile control.
+- Anchor files: `site/agent-center-shell.html`
+- Validation: `cargo test -p ferros-node shell_route_gets_local_runway_summary_json`; `cargo test -p ferros-node shell_route_serves_local_shell_html`; `get_errors` clean on `site/agent-center-shell.html`
+- Constraints: Reuse the current local profile-path selection only. No browser grant writes, no remote profile access, and no gate claims.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-26
+- track: code
+
+### WAVE-2026-04-28-26
+
+- Title: ferros-node runway summary consumes LocalRunwayState
+- Status: done
+- Priority: P1
+- Gate: G4 / D1 local runway observation
+- Owning streams: S4 primary, S5 consumer awareness
+- Goal: Consume the landed runtime runway state inside the `ferros-node` runway summary so checkpoint progress comes from one typed local state model instead of duplicated node-local checklist logic.
+- Anchor files: `crates/ferros-node/src/lib.rs`
+- Validation: `cargo test -p ferros-node local_agent_api_runway_summary_serializes_and_tracks_profile_and_deny_observation`; `cargo test -p ferros-node shell_route_gets_local_runway_summary_json`
+- Constraints: Read-only local shell surface only. No remote transport, no hardware, and no gate-truth edits.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-18
+- track: code
 
 ### WAVE-2026-04-28-22
 

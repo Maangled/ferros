@@ -1,0 +1,44 @@
+{
+  "envelopeVersion": "1.0",
+  "envelopeType": "local-push",
+  "createdAt": "2026-04-28T18:56:31.7197957Z",
+  "authority": {
+    "mode": "local-only",
+    "consent": "explicit-operator-consent"
+  },
+  "scope": {
+    "batchId": "BATCH-2026-04-28-OWNER",
+    "waveId": "WAVE-2026-04-28-32",
+    "laneId": "xtask-burst",
+    "stream": "S6",
+    "surface": "push-digest",
+    "reason": "burst helper emitted typed local-push envelope output"
+  },
+  "artifacts": [
+    {
+      "path": "xtask/src/main.rs",
+      "role": "anchor",
+      "digestRef": null
+    },
+    {
+      "path": ".tmp/push/PUSH-MANIFEST.md",
+      "role": "input",
+      "digestRef": null
+    },
+    {
+      "path": ".tmp/push/burst-local-push-envelope.json",
+      "role": "output",
+      "digestRef": null
+    }
+  ],
+  "observations": [
+    {
+      "target": "burst-helper",
+      "status": "observed",
+      "summary": "typed local-push envelope emitted under .tmp/push"
+    }
+  ],
+  "notes": [
+    "local-only non-partner-facing burst helper output"
+  ]
+}

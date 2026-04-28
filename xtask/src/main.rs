@@ -2,6 +2,13 @@ use std::env;
 use std::ffi::OsString;
 use std::process::{Command, ExitCode};
 
+use ferros_data::{
+    LocalArtifactRole, LocalEnvelopeKind, LocalPushArtifact, LocalPushAuditEnvelope,
+    LocalPushObservation, LocalPushScope, LocalPushSurface, BURST_LOCAL_PUSH_ENVELOPE_PATH,
+};
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
+
 fn main() -> ExitCode {
     match parse_command(env::args_os().skip(1)) {
         CommandKind::Ci => match run_ci() {
@@ -12,8 +19,16 @@ fn main() -> ExitCode {
             }
         },
         CommandKind::Burst => {
-            print!("{BURST_TEXT}");
-            ExitCode::SUCCESS
+            match run_burst() {
+                Ok(output) => {
+                    print!("{output}");
+                    ExitCode::SUCCESS
+                }
+                Err(message) => {
+                    eprintln!("xtask burst failed: {message}");
+                    ExitCode::FAILURE
+                }
+            }
         }
         CommandKind::Help => {
             print!("{HELP_TEXT}");
@@ -62,6 +77,60 @@ fn run_ci() -> Result<(), String> {
     Ok(())
 }
 
+fn run_burst() -> Result<String, String> {
+    let created_at = OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .map_err(|error| format!("could not format burst timestamp: {error}"))?;
+    let envelope = LocalPushAuditEnvelope::new(
+        LocalEnvelopeKind::LocalPush,
+        created_at,
+        LocalPushScope {
+            batch_id: Some("BATCH-2026-04-28-OWNER".to_owned()),
+            wave_id: Some("WAVE-2026-04-28-32".to_owned()),
+            lane_id: Some("xtask-burst".to_owned()),
+            stream: "S6".to_owned(),
+            surface: LocalPushSurface::PushDigest,
+            reason: "burst helper emitted typed local-push envelope output".to_owned(),
+        },
+        vec![
+            LocalPushArtifact {
+                path: "xtask/src/main.rs".to_owned(),
+                role: LocalArtifactRole::Anchor,
+                digest_ref: None,
+            },
+            LocalPushArtifact {
+                path: ".tmp/push/PUSH-MANIFEST.md".to_owned(),
+                role: LocalArtifactRole::Input,
+                digest_ref: None,
+            },
+            LocalPushArtifact {
+                path: BURST_LOCAL_PUSH_ENVELOPE_PATH.to_owned(),
+                role: LocalArtifactRole::Output,
+                digest_ref: None,
+            },
+        ],
+    )
+    .map_err(|error| format!("could not build local-push envelope: {error:?}"))?
+    .with_observation(LocalPushObservation {
+        target: "burst-helper".to_owned(),
+        status: "observed",
+        summary: Some("typed local-push envelope emitted under .tmp/push".to_owned()),
+    })
+    .with_note("local-only non-partner-facing burst helper output");
+
+    let output_path = env::current_dir()
+        .map_err(|error| format!("could not resolve workspace root: {error}"))?
+        .join(BURST_LOCAL_PUSH_ENVELOPE_PATH);
+
+    envelope
+        .write_json(&output_path)
+        .map_err(|error| format!("could not write local-push envelope: {error:?}"))?;
+
+    Ok(format!(
+        "{BURST_TEXT}\nTyped local-push helper output:\n    - {BURST_LOCAL_PUSH_ENVELOPE_PATH}\n"
+    ))
+}
+
 fn run_step(program: &str, args: &[&str]) -> Result<(), String> {
     let status = Command::new(program)
         .args(args)
@@ -106,6 +175,7 @@ Queued serial follow-ons:
     - WAVE-2026-04-28-26 ferros-node runway summary consumes LocalRunwayState
     - WAVE-2026-04-28-27 shell runway route honors checkpoint progress
     - WAVE-2026-04-28-29 profile adapter returns structured local status payloads
+    - WAVE-2026-04-28-32 typed local-push envelope emission now lands at .tmp/push/burst-local-push-envelope.json
 ";
 
 #[cfg(test)]
@@ -146,5 +216,6 @@ mod tests {
     fn burst_text_mentions_queue_clear_opener_and_shell_validation() {
         assert!(super::BURST_TEXT.contains("WAVE-2026-04-28-22"));
         assert!(super::BURST_TEXT.contains("shell_route_serves_local_shell_html"));
+        assert!(super::BURST_TEXT.contains("burst-local-push-envelope.json"));
     }
 }

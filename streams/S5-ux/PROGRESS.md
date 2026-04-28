@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-28 - Same-origin local lifecycle and profile proof loop closed on the live shell
+
+- Extended `site/agent-center-shell.html` so the live localhost shell now renders structured `/profile` adapter outcomes for local `init`, `show`, `export`, and `import` only, with `show` staying off JSON-RPC and profile `grant` / `revoke` controls still absent.
+- Extended `harnesses/localhost-shell-acceptance-harness.html` so one embedded same-origin path now proves the narrow local lifecycle allow/deny loop and the `/profile` adapter outcomes together, including refreshed deny visibility after a revoked-grant backend rejection.
+- Focused validation passed with `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness` and a rebuilt live harness run that finished `55 passed`, `0 failed`, `0 skipped`.
+- Kept the slice local-only and narrow: no profile grant/revoke, no remote transport, no broader browser privilege, and no D1/G4 or hardware claim.
+
 ## 2026-04-28 - Localhost profile surface checkpoint wired, Rust validation blocked
 
 - Added a Profile route and profile action controls to `site/agent-center-shell.html` for local `init`, `show`, `export`, and `import` only.

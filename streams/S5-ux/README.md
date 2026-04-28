@@ -1,10 +1,10 @@
 # S5 — UX
 
 **Stream:** S5  
-**Status:** 🟨 Phase A active on the real landing page; Phase B localhost observation slice landed  
+**Status:** 🟨 Phase A active on the real landing page; Phase B localhost shell slice landed with narrow lifecycle/profile controls
 **Gate:** Contributes to launch-readiness; no blocking gate owned solely by S5
 
-> Current checkpoint: the localhost profile surface is wired for `init`, `show`, `export`, and `import` through a local `/profile` adapter, but it is not cleanly closed until Rust validation can run under WAVE-2026-04-28-18.
+> Current checkpoint: the first localhost browser profile surface is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter, and the remaining S5 follow-up is focused closeout of that existing `ferros-node` path in route tests and Rust validation without reopening the frozen S2 contract or widening browser privileges.
 
 ---
 
@@ -47,7 +47,8 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 ## Dependencies
 
 - **S1 (G1):** Site structure landed; remaining Phase A work continues on the real `/site/index.html`.
-- **S3 + S4 (post-G3):** the current localhost shell host exposes a local-only `agent.run` / `agent.stop` JSON/RPC slice above `LocalAgentApi`, and the Phase B shell now wires a selected-agent lifecycle control bar against that backend slice. The browser gate checks loaded active grant rows before transmitting either write. A local `/profile` adapter checkpoint now backs `init`, `show`, `export`, and `import` only, but Rust validation is still blocked. Grant/revoke actions, remote transport, and broader privileged flows remain later follow-up work.
+- **S2:** the first localhost browser profile surface consumes the frozen `ferros profile init | show | export | import` boundary through the local `/profile` adapter, and the remaining S5 work is limited to closing out that existing adapter path without reopening G2, schema shape, or browser privilege scope.
+- **S3 + S4 (post-G3):** the current localhost shell host exposes a local-only `agent.run` / `agent.stop` JSON/RPC slice above `LocalAgentApi`, and the Phase B shell now wires a selected-agent lifecycle control bar against that backend slice. The browser gate checks loaded active grant rows before transmitting either write. Grant/revoke actions, remote transport, and broader privileged flows remain later follow-up work.
 
 ---
 
@@ -72,7 +73,7 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 - [x] Operator-assisted localhost acceptance can prove local `ferros agent run | stop` changes read back through the same `agent.snapshot` refresh seam.
 - [x] Browser-issued local lifecycle control bar is wired for selected-agent `agent.run` / `agent.stop` only. The shell checks loaded active grant rows before write RPC transmission, requires an explicit arm checkbox, refreshes through `agent.snapshot` after success or backend denial, and the same-origin harness now proves an unarmed or missing-grant click does not transmit `agent.run` / `agent.stop`.
 
-The current Phase B slice is still read-first for observation, with one narrow localhost-only lifecycle write bar. A localhost-only profile surface checkpoint exists for `init`, `show`, `export`, and `import`, but it is not cleanly closed until the focused Rust validation in WAVE-2026-04-28-18 can run. Privileged grant/revoke actions, remote transport, and broader browser acceptance coverage remain follow-up work.
+The current Phase B slice is still read-first for observation, with one narrow localhost-only lifecycle write bar and one narrow localhost-only profile surface. That profile slice is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter only. The remaining S5 follow-up is focused closeout of that existing path in `ferros-node` route tests and Rust validation while keeping `show` off JSON-RPC and leaving profile `grant` / `revoke`, remote transport, and broader browser privileges out of scope.
 
 The shell now stages selected-agent lifecycle intent copy and can submit selected-agent `agent.run` / `agent.stop` only through the grant-aware local lifecycle bar.
 
@@ -121,16 +122,16 @@ Grant/revoke actions, consent resolution for non-lifecycle operations, broader b
 
 ## Phase B: minimum profile surface entry bar
 
-The minimum honest first browser profile surface entry bar above the frozen S2 contract is now wired as a checkpoint in `site/agent-center-shell.html` and `crates/ferros-node/src/lib.rs`, but it remains pending Rust validation/closeout under WAVE-2026-04-28-18.
+The minimum honest first browser profile surface entry bar above the frozen S2 contract is now landed as the first localhost browser profile slice in `site/agent-center-shell.html` and `crates/ferros-node/src/lib.rs`, with `init`, `show`, `export`, and `import` running through the thin local `/profile` adapter. The remaining S5 follow-up is focused closeout of that existing `ferros-node` adapter path without reopening the surface definition, the frozen S2 contract, or browser privileges.
 
 | Constraint | Definition |
 |------------|------------|
-| Scope | `init`, `show`, `export`, `import` only. Localhost-only. No grant mutation. No `revoke`. No re-negotiation of the S2 contract. |
-| Backend | Each slot calls the already-frozen CLI path (`ferros profile init`, `show`, `export`, `import`) through the thin local `/profile` adapter. Does not reopen `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`, and does not widen the read-first JSON/RPC contract. |
+| Scope | `init`, `show`, `export`, `import` only. Localhost-only. No grant mutation. No `revoke`. No re-negotiation of the S2 contract. No browser privilege widening. |
+| Backend | Each slot calls the already-frozen CLI path (`ferros profile init`, `show`, `export`, `import`) through the thin local `/profile` adapter. `show` stays on `/profile` and does not route through JSON-RPC. Does not reopen `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`, and does not widen the read-first JSON/RPC contract. |
 | Prior art | `docs/legacy/personal-profile.html` is the shape reference only. Does not constitute G2 re-evidence. |
-| Publication gate | The implementation checkpoint is present and Node syntax checks pass, but the surface lands cleanly only after `cargo fmt --check` and focused `ferros-node` profile route tests can run. The harness now checks `/profile` separately from `/rpc` and proves profile `grant` / `revoke` controls are absent. |
+| Publication gate | The first slice is landed. Remaining closeout is focused Rust validation plus `ferros-node` route-test lock-in for the existing `/profile` path when the environment can execute it. The harness checks `/profile` separately from `/rpc`, proves `show` avoids JSON-RPC, and proves profile `grant` / `revoke` controls remain absent. |
 
-Grant mutation, `revoke`, remote profile access, and any S2 contract reopening remain explicitly out of scope for this surface.
+Grant mutation, `revoke`, remote profile access, any S2 contract reopening, and any browser privilege widening remain explicitly out of scope for this surface.
 
 ---
 
@@ -169,4 +170,4 @@ Calendar, social-graph, and marketplace onramp variants follow the same pattern.
 
 1. Verify the remaining site links and archive candidates against current inbound references.
 2. Execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once link hygiene is confirmed.
-3. Land the browser-issued lifecycle control bar (consent/audit gating wired, deny-by-default demonstrable, harness confirms gate fires before write RPC is sent) as a code-backed follow-up.
+3. Close out the landed `/profile` adapter path with focused `ferros-node` route tests and Rust validation when the environment can execute them, without widening browser privileges or reopening the frozen S2 boundary.

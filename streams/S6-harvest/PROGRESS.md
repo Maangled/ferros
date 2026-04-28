@@ -4,6 +4,14 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-28 — local-push envelope admitted to harness consumers and emitted by burst helper
+
+- Extended `crates/ferros-data/src/lib.rs` so the typed local-push audit envelope now serializes and writes local JSON artifacts while keeping authority, consent, and scope inside the existing schema boundary.
+- Regenerated `harnesses/_constants.js` and extended `harnesses/ferros-contract-validator.html` so the local-push schema is admitted into harness constants and exercised by an inline validation case.
+- Extended `xtask/src/main.rs` so `cargo xtask burst` now emits `.tmp/push/burst-local-push-envelope.json` as local-only non-partner-facing output under `.tmp/push/`.
+- Validation passed with `cargo test -p ferros-data`, `cargo check -p xtask`, `cargo xtask burst`, and a direct harness contract-validator run after regeneration.
+- Kept the schema unchanged and the output local-only: no gate movement, no hardware or HA claim, and no downstream stream advancement beyond harness and burst-helper consumers.
+
 ## 2026-04-26 — ferros-data migration-first boundary hardened with ordered manifest coverage
 
 - Extended `crates/ferros-data/src/lib.rs` to publish the ordered migration path manifest for the baseline and ordered-child tightening SQL files instead of leaving that sequence implicit in tests only.

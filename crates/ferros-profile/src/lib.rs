@@ -705,6 +705,10 @@ pub struct LocalConsentGrantSnapshot {
 pub struct LocalConsentSnapshot {
     pub profile_id: ProfileId,
     pub device_label: String,
+    #[serde(default)]
+    pub is_grant_ready: bool,
+    #[serde(default)]
+    pub is_consent_ready: bool,
     pub total_grants: usize,
     pub active_grant_count: usize,
     pub revoked_grant_count: usize,
@@ -730,6 +734,8 @@ impl LocalConsentSnapshot {
         Self {
             profile_id: state.key_pair.profile_id(),
             device_label: state.key_pair.device_label().to_owned(),
+            is_grant_ready: !grants.is_empty(),
+            is_consent_ready: active_grant_count > 0,
             total_grants: grants.len(),
             active_grant_count,
             revoked_grant_count,
@@ -2262,6 +2268,8 @@ mod tests {
         let snapshot = state.consent_snapshot();
 
         assert_eq!(snapshot.device_label, "local-test-device");
+    assert!(snapshot.is_grant_ready);
+    assert!(snapshot.is_consent_ready);
         assert_eq!(snapshot.total_grants, 2);
         assert_eq!(snapshot.active_grant_count, 1);
         assert_eq!(snapshot.revoked_grant_count, 1);
@@ -2283,6 +2291,8 @@ mod tests {
             .expect("snapshot should serialize");
 
         assert!(payload.get("profileId").is_some());
+        assert_eq!(payload["isGrantReady"], true);
+        assert_eq!(payload["isConsentReady"], true);
         assert_eq!(payload["activeGrantCount"], 1);
         assert_eq!(payload["revokedGrantCount"], 0);
         assert!(payload["grants"].is_array());
@@ -2627,6 +2637,11 @@ mod tests {
         assert_eq!(loaded.key_pair.secret_key_hex(), key_pair.secret_key_hex());
         assert_eq!(loaded.signed_grants, vec![signed_grant]);
 
+        let snapshot = loaded.consent_snapshot();
+        assert!(snapshot.is_grant_ready);
+        assert!(snapshot.is_consent_ready);
+        assert_eq!(snapshot.active_capabilities(), vec!["consent.read"]);
+
         cleanup_local_profile_artifacts(&path);
     }
 
@@ -2649,6 +2664,12 @@ mod tests {
         assert_eq!(loaded.profile, profile);
         assert_eq!(loaded.key_pair.public_key_hex(), key_pair.public_key_hex());
         assert!(loaded.signed_grants.is_empty());
+
+        let snapshot = loaded.consent_snapshot();
+        assert!(!snapshot.is_grant_ready);
+        assert!(!snapshot.is_consent_ready);
+        assert!(snapshot.active_capabilities().is_empty());
+        assert!(snapshot.revoked_capabilities().is_empty());
 
         cleanup_local_profile_artifacts(&path);
     }
