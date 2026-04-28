@@ -31,8 +31,22 @@ The default execution posture is not single-lane unless the work truly demands i
 - Prefer to reserve **1 or 2 lanes** for the active critical path or gate-owner work when such work exists.
 - Use the remaining safe lanes for non-overlapping support work such as runway docs, backlog reduction, ADR or research-note capture, HTML resurfacing or archive hygiene, and targeted review or truth-sync slices.
 - Do not force 8 lanes when fewer safe non-overlapping lanes actually exist.
+- Treat planned lanes as belonging to one of four classes:
+	- **Implementation lane** — code or crate work on a stream-owned seam.
+	- **Harness lane** — validators, acceptance harnesses, or targeted proof surfaces.
+	- **Docs-owner lane** — stream-owned README, BACKLOG, CONTRACTS, or runway-doc updates.
+	- **Truth-sync lane** — shared-truth surfaces such as `STATUS.md`, gate docs, queue files, and cross-stream progress reconciliation.
+- Prefer to parallelize implementation lanes and non-overlapping harness lanes first, allow docs-owner lanes only when their anchors stay stream-local, and serialize truth-sync lanes after implementation lands.
 - Shared truth surfaces such as `STATUS.md`, gate docs, contracts overview, queue files, CI files, and root workspace manifests should usually be reconciled **after** the implementation lanes land, not edited concurrently by multiple lanes.
 - When a gate closes or an achievement is verified, the next foundational push should repack the full lane budget against the next highest-leverage safe slice.
+
+## Two-speed execution posture
+
+Execution tempo is separate from Interactive vs Batch Mode.
+
+- **Fast posture** is for reversible local work: implementation slices, harness repair, local artifact generation, queue-safe docs-owner updates, and narrow truth sync.
+- **Slow posture** is for credibility-sensitive work: gate movement, hardware or Home Assistant proof claims, privilege-boundary expansion, remote transport, security posture changes, branch-protection verification, and release-tag assertions.
+- Slow-posture work should either run as Interactive-only by queue metadata (`gate-close` or `solo: true`) or stay outside an active batch segment until a human deliberately names it.
 
 ## Recursive lane policy
 
@@ -51,6 +65,19 @@ Recursive lane planning is allowed, but only as a bounded refinement step.
 - If a lane fails validation or implementation, route the earliest concrete failure through **FERROS Log Triage Agent** before widening the fix.
 - Escalate to **FERROS Trace Analyst Agent** only when the failure boundary remains ambiguous after triage.
 - If a lane discovers a new owning stream or contract seam mid-flight, escalate back to the parent orchestrator rather than freelancing a sibling lane.
+
+## Standard batch rhythm
+
+When Batch Mode or Queue-Clear Mode is active, reuse the same batch shape instead of improvising a new flow each time:
+
+1. Read the scoped queue.
+2. Select the next non-overlapping lanes.
+3. Execute the lanes.
+4. Run the targeted validations for the landed waves.
+5. Run one broader safety harness when the touched surface has one.
+6. Append the run log.
+7. Perform serial truth sync only after the owner lanes land.
+8. Emit the claim ledger described in `docs/orchestration/BATCH-MODE.md`.
 
 ## Gatekeeper model intent
 

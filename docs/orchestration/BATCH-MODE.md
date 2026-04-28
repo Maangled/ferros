@@ -69,6 +69,15 @@ Any one of the following fires. Conditions 1, 2, 3, 4, and 6 are **hard stops**.
 5. **Run-length cap:** 8 waves have landed in the current batch segment. Emit the doc-batch summary and either continue automatically in Queue-Clear Mode or halt cleanly in bounded Batch Mode.
 6. **Escalation chain exhausted:** the validator escalated to Log Triage, and Log Triage escalated to Trace Analyst without resolving the failure.
 
+### Mechanical stop mapping
+
+The following reviewer-sensitive cases already map to the stop rules above and should be treated mechanically rather than argued case-by-case during execution:
+
+- **Gate movement, hardware-proof wording, Home Assistant proof wording, privilege-boundary expansion, or remote-transport introduction** must be queued as `gate-close` or `solo: true`, so they stay Interactive-only and fire stop condition 2 if they appear in or adjacent to a batch.
+- **Two lanes needing the same file** are not parallel-safe. The lane validator should collapse or serialize them before launch. If overlap is discovered only after landing, treat it as diff overrun under stop condition 3 unless it falls under the bookkeeping exemption.
+- **A required harness or targeted validation failing twice inside the same wave** is not a cue for open-ended retries. Route it through the normal validator -> Log Triage -> Trace Analyst chain; if unresolved, stop condition 6 fires.
+- **`STATUS.md` edits that require interpretation instead of factual sync** belong to a solo truth-sync wave, not a continuing batch segment.
+
 ---
 
 ## Gatekeeper Agent Contract
@@ -136,6 +145,18 @@ The file summarises:
 - What is queued next and why
 
 The human reviews the doc-batch file and decides whether to redirect the queue, switch modes, or intervene. In Queue-Clear Mode, doc-batch emission is not by itself a blocking checkpoint: the driver keeps draining the scoped queue until it empties or a hard stop fires.
+
+### Batch closeout claim ledger
+
+Every completed batch segment also emits a short claim ledger alongside the doc-batch summary. The ledger keeps the run honest about what changed, what did not change, and what evidence was actually produced.
+
+Required fields:
+- `Claims added` — `None` or an exact list of newly supported claims.
+- `Claims explicitly not added` — list the important non-claims, especially gate closure, hardware proof, Home Assistant proof, remote transport, or privilege expansion when relevant.
+- `Evidence produced` — tests, harness runs, artifacts, logs, or other concrete outputs.
+- `Truth surfaces touched` — shared-truth files updated in the segment.
+
+The claim ledger is intentionally short. Its job is to prevent the batch narrative from getting ahead of the evidence.
 
 ### 2. Hardware demo ready
 

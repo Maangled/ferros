@@ -159,6 +159,17 @@ This seam brief stays docs-only. It names the exact current S3 and S4 surfaces S
 
 ---
 
+## G4 proof ladder
+
+Advance G4 in four proof steps. Only the fourth step supports launch-facing evidence language.
+
+1. **Local binary exists** — a real `ferros-hub` binary builds and runs locally on the Pack B `x86_64`-first lane without claiming hardware evidence.
+2. **Local bridge seam exists** — one local-only bridge agent and one simulated local bridge artifact exist behind the current FERROS-only seams without claiming Home Assistant proof.
+3. **Local proof loop exists** — targeted local tests or harnesses prove allow, deny, and error/reporting behavior for that bridge seam without implying D1 or G4 closure.
+4. **Device evidence exists** — physical-device sessions capture profile init, bridge presence, deny visibility, and power-cycle recovery on real hardware. Only this step can support D1 or G4 evidence wording.
+
+---
+
 ## What this stream blocks
 
 - **Launch (G4).** S7 owns the launch gate, and the remaining blocker is real hardware and hub evidence.
@@ -197,4 +208,5 @@ This seam brief stays docs-only. It names the exact current S3 and S4 surfaces S
 2. Select the exact first `x86_64` Pack B device and one fallback `aarch64` Pack A device for bring-up.
 3. Keep the returned S3 and S4 seam classifications as upstream dependency locks and keep S7 docs aligned as upstream wrapper and restart contracts change.
 4. Keep the G4 evidence map tied to the exact S2 consumer dependencies plus the S3/S4 seams named in that brief and any upstream answers that follow.
-5. Keep that follow-up docs-only and non-implementation: no `crates/ferros-hub/` scaffold and no Home Assistant bridge internals.
+5. Run the next non-gate-closing code-track packets through the proof ladder in order: local binary skeleton, local-only bridge seam plus simulated artifact, then the focused local proof loop.
+6. Keep physical-device evidence as a separate hardware-track checkpoint that requires a named human session window.

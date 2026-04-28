@@ -17,7 +17,69 @@ Optional fields (additive, layered on top of the existing field order without br
 
 ## Ready
 
-None.
+### WAVE-2026-04-28-34
+
+- Title: Scaffold `ferros-hub` binary skeleton for G4 proof-ladder step 1
+- Status: ready
+- Priority: P1
+- Gate: G4 local executable runway
+- Owning streams: S7 primary, S4 support awareness
+- Goal: Create the first local-only `ferros-hub` crate and binary skeleton so G4 can advance from runway-only docs to an executable hub entry point without claiming hardware evidence, Home Assistant integration, or gate closure.
+- Anchor files: `Cargo.toml`, `crates/ferros-hub/Cargo.toml`, `crates/ferros-hub/src/main.rs`
+- Validation: `cargo check -p ferros-hub`
+- Constraints: Local-only scaffold only. No Home Assistant fork changes, no physical-device claim, no remote transport, no privileged-write expansion, and no G4 closure wording.
+- Last update: 2026-04-28
+- size: L
+- track: code
+
+### WAVE-2026-04-28-35
+
+- Title: Add first local-only HA bridge seam and simulated bridge artifact
+- Status: ready
+- Priority: P1
+- Gate: G4 local bridge executable runway
+- Owning streams: S7 primary
+- Goal: Add one bridge-agent seam inside `ferros-hub` plus a simulated local bridge artifact so S7 can prove bridge behavior through local executable surfaces before any hardware or Home Assistant claim.
+- Anchor files: `crates/ferros-hub/src/main.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub bridge_agent_registers_locally`; `cargo test -p ferros-hub simulated_bridge_artifact_stays_local_only`
+- Constraints: One bridge agent, one simulated entity/artifact, local-only evidence, no Home Assistant fork change, no remote transport, and no privileged-write widening.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-34
+- track: code
+
+### WAVE-2026-04-28-36
+
+- Title: Focused local bridge harness proves allow deny and error paths
+- Status: ready
+- Priority: P1
+- Gate: G4 local bridge proof hardening
+- Owning streams: S7 primary
+- Goal: Add a focused local proof loop for the bridge seam so one simulated allow path, one denied capability path, and one error/reporting path are executable without widening into hardware or Home Assistant evidence.
+- Anchor files: `crates/ferros-hub/tests/local_bridge.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `.tmp/hub/`
+- Validation: `cargo test -p ferros-hub bridge_`; simulated local artifact emitted under `.tmp/hub/`
+- Constraints: Local-only proof only. No physical-device session, no Home Assistant dashboard claim, no gate-close wording, and no new remote-control surface.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-35
+- track: code
+
+### WAVE-2026-04-28-37
+
+- Title: Serial truth-sync after non-gate-closing G4 executable runway slices
+- Status: ready
+- Priority: P2
+- Gate: rolling truth-sync after S7 owner waves
+- Owning streams: S8 primary, S7 awareness
+- Goal: Reconcile only the minimal S7 truth surfaces after the executable runway slices land: reflect local binary, bridge, and harness progress without promoting G4, hardware evidence, or Home Assistant proof beyond what the artifacts actually show.
+- Anchor files: `STATUS.md`, `streams/S7-hub/PROGRESS.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: `get_errors` clean on touched truth surfaces; diff review confirms no G4 closure, no hardware proof claim, and no Home Assistant integration claim
+- Constraints: Final serial wave only. Do not run before WAVE-2026-04-28-36 lands. Shared truth only; no crate edits.
+- Last update: 2026-04-28
+- size: L
+- serial-after: WAVE-2026-04-28-36
+- solo: true
+- track: code
 
 ## In Progress
 
