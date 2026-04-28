@@ -74,3 +74,15 @@ This constraint also applies to the S6 harvest work. Prior-art data from sheetge
 - If the `schemas/profile.v0.json` schema is extended to include HA-native or social-graph-native fields, this ADR must be reviewed to ensure the import boundary remains intact.
 - If S7 implements a bridge that pushes data from FERROS back to HA without an explicit export step, that is a compliance violation against this ADR.
 - Cross-check against ADR-021 whenever a new integration adds a new code or data dependency.
+
+---
+
+## S5 surface consumer-awareness
+
+S5 (UX stream) is the onramp staging surface implementor under this ADR. The minimum honest onramp consent surface entry bar is defined in `streams/S5-ux/README.md` (Phase B: onramp consent surface entry bar section). That surface is the UX materialisation of this ADR's quarantine-until-accepted invariant. S5 does not modify this ADR's decision or rationale; it is a consumer that must satisfy the invariant, not an owner of it.
+
+---
+
+## S7 bridge consumer-awareness
+
+S7 (Smart-Home Hub stream) is an onramp source under this ADR. HA entities discovered by the FERROS bridge arrive as proposed FERROS material and must route through the S5 onramp consent surface before becoming canonical FERROS profile or capability-grant state. The S7 onramp mapping is documented in `streams/S7-hub/README.md` (HA bridge onramp mapping section) and `docs/hub/pack-b-bring-up-worksheet.md` (ADR-023 onramp mapping note). S7 does not modify this ADR's decision or rationale; the bridge is a source of proposed material, not an authority over consent outcomes.

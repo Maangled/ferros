@@ -27,7 +27,7 @@ The driver may continue processing Ready waves sequentially — without waiting 
 
 Batch Mode processes only `size: S` waves by default. `size: L` waves require explicit human approval before entering a batch run.
 
-The **target planning width** for Batch Mode runs is 8 waves per batch, matching the queue backfill depth this document is designed to support. The editing-lane ceiling remains 5 per wave until at least one clean Batch Mode proof run is recorded in `WAVE-RUN-LOG.md`; raising the ceiling to support true 8-lane execution is a follow-up wave gated on that evidence.
+The **target planning width** for Batch Mode runs is 8 waves per batch, matching the queue backfill depth this document is designed to support. The editing-lane ceiling is now 8, matching this planning target, after two consecutive conditional-pass Batch Mode runs were recorded (BATCH-2026-04-27 + BATCH-2026-04-27-B). See `LOCAL-DRIVER.md` for the revert clause.
 
 ---
 

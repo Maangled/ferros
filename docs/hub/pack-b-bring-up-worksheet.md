@@ -74,3 +74,14 @@ Leave these rows blank until a real session produces artifacts. These placeholde
 | Consent deny is visible | One denied request captured in logs and surfaced to the operator | Deny log ref: ___ ; HA or UI ref if any: ___ ; notes: ___ |
 | Full power-cycle survival | DUT-only cold boot restores profile, bridge agent, and HA-visible state | Power-cut method: ___ ; recovery note: ___ ; artifact or log: ___ |
 | Independent install | Same bring-up contract repeated on a second non-primary home setup | Second-site note: ___ ; operator and date: ___ ; artifact path: ___ |
+
+## ADR-023 onramp mapping note
+
+The HA entity registration steps in this worksheet — discovering an entity, registering a bridge agent, and confirming HA-visible state — are **onramp events** under ADR-023 (Onramp Policy, Accepted). This means:
+
+- Each registered HA entity begins as **proposed FERROS material**. It does not automatically populate the operator's FERROS profile, capability grants, or sealed progress evidence.
+- The entity becomes canonical FERROS state only after the operator accepts it through the S5 onramp consent surface.
+- Capturing "HA entity registered (or named stand-in)" in the operator evidence surface (see `streams/S7-hub/README.md`) records that a proposed item is staged, not that it has been accepted and made canonical.
+- The G4 evidence item "Real HA entity is visible" in the G4 capture placeholders above records that the proposed entity reached the staging area and is visible; it is separate from the consent-accept evidence.
+
+Bridge protocol details, pairing handshake order, and HA entity schema remain S7-owned decisions and are not constrained by this note. This note documents the consent invariant only.

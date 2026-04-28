@@ -34,6 +34,10 @@
 - [ ] Land browser-issued local lifecycle control bar (consent/audit gating wired before write RPC is sent, deny-by-default demonstrable through S3 deny-log slot, harness confirms gate fires before `agent.run` / `agent.stop` JSON/RPC call is transmitted)
 - [x] Define the minimum honest first browser profile surface entry bar above the frozen S2 contract: `init`, `show`, `export`, `import` only, localhost-only, no grant mutation, no S2 reopening, prior art from `docs/legacy/personal-profile.html` as shape reference only
 - [ ] Land minimum profile surface on the localhost shell (`init`, `show`, `export`, `import` slots backed by frozen S2 CLI paths, harness proves surface stays within the frozen S2 boundary)
+- [x] Define the minimum onramp consent surface entry bar: one slot per proposed onramp item (source system name, proposed item description, consent prompt, accept/reject affordance), governed by ADR-023 invariants (quarantine until accepted; consent explicit and auditable; external system does not define identity; localhost-only; no wired onramp calls until code-backed follow-up)
+- [ ] Land onramp consent surface on the localhost shell (proposed-item slot wired, audit-log seam captures explicit accept event, harness proves item cannot reach canonical state without explicit user action)
+- [x] Define the consent-flow copy spec for the S5 consent gate, derived from `docs/legal/CONSENT-LANGUAGE.md` DRAFT sections (capability grant language, onramp accept language, deny-visibility disclosure), marked as draft pending counsel red-line
+- [ ] Clear draft status on consent-flow copy spec once CONSENT-LANGUAGE.md has been reviewed by counsel and draft status cleared (coordinated update with legal scaffold)
 
 ## Later (Phase C — post-G3)
 

@@ -131,6 +131,37 @@ Grant mutation, `revoke`, remote profile access, and any S2 contract reopening r
 
 ---
 
+## Phase B: consent-flow copy spec (draft)
+
+> **Draft — pending counsel red-line.** This spec is derived from `docs/legal/CONSENT-LANGUAGE.md` DRAFT. It carries the same DRAFT status and must not be used as final consent language until `CONSENT-LANGUAGE.md` has been reviewed by counsel and the draft status has been cleared.
+
+The following spec defines the user-visible copy for the S5 consent gate. It is derived directly from the draft sections in `docs/legal/CONSENT-LANGUAGE.md` and mirrors their structure. S5 is the first consumer of these draft language sections.
+
+| Copy slot | Source section in CONSENT-LANGUAGE.md | Draft copy | Notes |
+|-----------|---------------------------------------|------------|-------|
+| Capability grant consent | "Capability Grant Language" | "You are granting [agent name] the ability to [capability description]. This grant is stored locally and can be revoked at any time from the consent log. Granting this capability does not share your data with any third party unless you explicitly configure an external integration." | Use counsel-approved variant when available. |
+| Onramp accept consent | "Onramp Accept Language" | "You are accepting [data description] from [external system name] into your FERROS profile. This data will become part of your local FERROS state. You can review or remove it from your profile at any time. Accepting this data does not affect [external system name] — it remains in your local FERROS installation only." | Use counsel-approved variant when available. |
+| Deny-visibility disclosure | "Denial and Deny-by-Default" | "FERROS denies capability requests by default. If an agent you expect to work is not functioning, check the deny log. A denial is not permanent — you can issue a capability grant at any time." | Use counsel-approved variant when available. |
+
+Once `CONSENT-LANGUAGE.md` is cleared by counsel, the draft tags on this spec and those sections must be removed together in a coordinated update.
+
+---
+
+## Phase B: onramp consent surface entry bar
+
+The minimum honest onramp consent surface is defined as follows. This is the stated next onramp-facing surface; it does not yet exist as wired browser code. ADR-023 is the governing policy.
+
+| Constraint | Definition |
+|------------|------------|
+| Scope | One slot per proposed onramp item. Shows: source system name, proposed item description (e.g., HA entity name and type, calendar event title, contact display name), consent prompt, accept/reject affordance. Localhost-only. |
+| Governing invariant | Inbound data is quarantined until accepted (ADR-023). Passively having an integration enabled is not consent. The accept action must be auditable — loggable as a consent event through the existing S3/S4 audit-log surface. |
+| What the slot does NOT do | The slot does not automatically populate profile, capability grants, or any sealed progression record. It does not call the external system. It does not invent HA bridge protocol details, pairing handshake order, or consent UI internals beyond what is stated here. |
+| Publication gate | This surface lands only after the S3/S4 audit-log seam can capture an explicit accept event for a staged onramp item, and a harness proves the item does not reach canonical state without an explicit user action. |
+
+Calendar, social-graph, and marketplace onramp variants follow the same pattern. The entry bar definition is channel-agnostic; channel-specific consent copy is derived from `docs/legal/CONSENT-LANGUAGE.md` (draft).
+
+---
+
 ## Immediate next steps
 
 1. Verify the remaining site links and archive candidates against current inbound references.

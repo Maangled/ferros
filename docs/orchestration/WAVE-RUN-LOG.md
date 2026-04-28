@@ -4,6 +4,104 @@ Newest entry first. Each entry records one local driver invocation.
 
 ---
 
+## BATCH-2026-04-27-C — Code-Track Batch Mode Run (Third Batch)
+
+- **Batch open:** 2026-04-27
+- **Track:** code
+- **Waves in batch (declared order):** WAVE-2026-04-27-06, WAVE-2026-04-27-07, WAVE-2026-04-27-08
+- **Gatekeeper model:** Claude Sonnet 4.6 inline self-review.
+- **Overrun exemption list (ratified):** `WAVE-QUEUE.md`, `WAVE-RUN-LOG.md`, `SYSTEM-QUEUE.md`, `HARDWARE-QUEUE.md`, `doc-batches/*.md`, and owner-stream `PROGRESS.md` only. See `BATCH-MODE.md` §Stop Conditions.
+- **Editing-lane ceiling:** 8 (raised from 5 after BATCH-2026-04-27 + BATCH-2026-04-27-B; see LOCAL-DRIVER.md revert clause).
+- **No-substrate-edits constraint:** Do not touch `BATCH-MODE.md` or `LOCAL-DRIVER.md` inside this batch.
+- **Informing policy:** ADR-023 (Accepted) is the governing contract for all onramp-surface work in this batch. ADR-024 (Proposed) provides directional context only; no code or docs are blocked by its Proposed status.
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-08
+
+- Selected item: `WAVE-2026-04-27-08`
+- Result: Complete. `streams/S5-ux/README.md` now carries a "Phase B: consent-flow copy spec (draft)" section with a 3-row table mapping copy slots (capability grant consent, onramp accept consent, deny-visibility disclosure) to source sections in `docs/legal/CONSENT-LANGUAGE.md`, draft copy text from those sections, and a note to use counsel-approved variants once available. The spec explicitly marks itself as DRAFT pending counsel red-line and notes that clearing draft status requires a coordinated update with the legal scaffold. `streams/S5-ux/BACKLOG.md` now has the copy spec definition item checked and a new unchecked item to clear draft status once counsel review is complete. `docs/legal/CONSENT-LANGUAGE.md` now carries an "S5 surface consumer-awareness" section at the end naming the three source sections S5 consumes and documenting the coordinated-clearing requirement. Consent language sections in CONSENT-LANGUAGE.md were not modified.
+- Files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `docs/legal/CONSENT-LANGUAGE.md`
+- Validation: `get_errors` clean on all 3 anchor files. No crate, schema, harness, or workflow file touched. No frozen schema mutated. No gate moved. CONSENT-LANGUAGE.md language sections unchanged.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-08",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on all 3 anchor files",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt; only declared anchor files touched",
+    "4_track_boundary": "no further Ready waves — queue exhausted",
+    "5_run_length_cap": "3 of 8 — within cap; all declared waves complete",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "stop-clean",
+  "rationale": "All three declared waves for BATCH-2026-04-27-C have landed cleanly. Wave -06 defined the S5 onramp surface entry bar under ADR-023. Wave -07 mapped the S7 HA bridge to the ADR-023 onramp framing. Wave -08 derived the S5 consent-flow copy spec from CONSENT-LANGUAGE.md draft with coordinated draft-clearing language. Queue is exhausted. No frozen surfaces touched. No new substrate ambiguities introduced. No gates moved. The batch closes at 3 waves with a clean-pass verdict — no named ambiguities; all declared gatekeeper decisions were non-trivial (continue/continue/stop-clean); no overrun."
+}
+```
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-07
+
+- Selected item: `WAVE-2026-04-27-07`
+- Result: Complete. `streams/S7-hub/README.md` now carries an "HA bridge onramp mapping (ADR-023)" section that maps HA entity discovery to proposed-FERROS-material status, names the S5 onramp consent surface as the required route to canonical state, confirms that bridge protocol details remain S7-owned, and cites the ADR-023 consumer-awareness note. `streams/S7-hub/BACKLOG.md` now has the ADR-023 mapping item checked. `docs/hub/pack-b-bring-up-worksheet.md` now carries an "ADR-023 onramp mapping note" section clarifying that HA entity registration steps in the worksheet are onramp events, not canonical state changes. `docs/adr/ADR-023-onramp-policy.md` now carries an "S7 bridge consumer-awareness" section (appended after the S5 consumer-awareness section); ADR-023's decision and rationale are unchanged.
+- Files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `docs/hub/pack-b-bring-up-worksheet.md`, `docs/adr/ADR-023-onramp-policy.md`
+- Validation: `get_errors` clean on all 4 anchor files. No crate, schema, harness, or workflow file touched. No frozen schema mutated. No gate moved. ADR-023 decision/rationale unchanged.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-07",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on all 4 anchor files",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt; only declared anchor files touched",
+    "4_track_boundary": "next Ready wave (WAVE-2026-04-27-08) is code track — no boundary crossed",
+    "5_run_length_cap": "2 of 8 — continue",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "S7 HA bridge consent-mapping note landed cleanly. ADR-023's S7 consumer-awareness note and worksheet onramp note are consistent with the ADR's existing invariants and do not reopen S7 bridge protocol decisions. Waves -06 and -07 together have seeded the S5 onramp surface and the S7 onramp mapping; the final wave (-08) derives the consent copy spec from CONSENT-LANGUAGE.md draft — same track, size S, declared anchor set does not overlap -07. Batch continues."
+}
+```
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-06
+
+- Selected item: `WAVE-2026-04-27-06`
+- Result: Complete. `streams/S5-ux/README.md` now carries a "Phase B: onramp consent surface entry bar" section with a 4-row constraint table (scope, governing invariant, what the slot does NOT do, publication gate). The slot definition is channel-agnostic; it covers HA entities, calendar items, and contact imports under the same quarantine-until-accepted invariant from ADR-023. `streams/S5-ux/BACKLOG.md` now has the entry-bar definition item checked and a new unchecked item for landing the wired surface. `docs/adr/ADR-023-onramp-policy.md` now carries an "S5 surface consumer-awareness" section at the end identifying S5 as the onramp staging surface implementor and linking to the README section; the ADR's decision and rationale are unchanged.
+- Files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `docs/adr/ADR-023-onramp-policy.md`
+- Validation: `get_errors` clean on all 3 anchor files. No crate, schema, harness, or workflow file touched. No frozen schema mutated. No gate moved. ADR-023 decision/rationale unchanged.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-06",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on all 3 anchor files",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt; only declared anchor files touched",
+    "4_track_boundary": "next Ready wave (WAVE-2026-04-27-07) is code track — no boundary crossed",
+    "5_run_length_cap": "1 of 8 — continue",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "S5 onramp consent surface entry bar landed cleanly as a docs-only scope definition. ADR-023's S5 consumer-awareness note confirms the invariant handoff without reopening the ADR. Next wave is WAVE-2026-04-27-07 (S7 HA bridge consent-mapping note), same track, size S — batch continues."
+}
+```
+
+---
+
+## 2026-04-27 — Ceiling-lift wave (Interactive, S8)
+
+- Selected item: ceiling-lift (non-queued, Interactive Mode)
+- Result: Complete. `docs/orchestration/LOCAL-DRIVER.md` default lane policy section updated: safe editing-lane ceiling raised from 5 to 8, citing BATCH-2026-04-27 and BATCH-2026-04-27-B as evidence (two consecutive conditional-pass batches with named-and-resolvable ambiguities and non-trivial gatekeeper decisions). Total-lane-count cap at 12 unchanged. Revert clause added: if any subsequent batch fails (Triage/Trace escalation, frozen-surface touch, or halt before final wave), ceiling reverts to 5 in the next substrate-refinement wave. `docs/orchestration/BATCH-MODE.md` planning-target sentence updated to reflect that the 8-wave planning target and the 8-lane editing ceiling now match.
+- Files: `docs/orchestration/LOCAL-DRIVER.md`, `docs/orchestration/BATCH-MODE.md`
+- Validation: `get_errors` clean on both files. No crate, schema, harness, or workflow file touched. No frozen surface mutated. No gate moved.
+- Note: This is a substrate-editing wave; not subject to gatekeeper review.
+
+---
+
 ## BATCH-2026-04-27-B — System-Track Batch Mode Run
 
 - **Batch open:** 2026-04-27

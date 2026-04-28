@@ -80,3 +80,15 @@ The following questions are explicitly unresolved and require counsel input befo
 ---
 
 _This document is a structured placeholder. It proposes consent language for FERROS surfaces so that counsel has a starting surface for red-line. It does not constitute a legal document, legal advice, or binding consent terms._
+
+---
+
+## S5 surface consumer-awareness
+
+S5 (UX stream) is the first consumer of the draft consent language sections in this document. The consent-flow copy spec is defined in `streams/S5-ux/README.md` (Phase B: consent-flow copy spec section) and derives copy from the following sections of this document:
+
+- **Capability Grant Language** — used as the capability grant consent slot copy.
+- **Onramp Accept Language** — used as the onramp accept consent slot copy.
+- **Denial and Deny-by-Default** — used as the deny-visibility disclosure copy.
+
+The S5 copy spec carries the same DRAFT status as this document. When counsel clears the draft status on this document, the copy spec in `streams/S5-ux/README.md` must be updated in the same coordinated pass. S5 does not modify the consent language in this document; it is a consumer that must use counsel-approved variants once they are available.

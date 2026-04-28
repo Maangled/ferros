@@ -65,6 +65,25 @@ The operator-facing evidence surface for hub bring-up and status is read-only. I
 
 ---
 
+## HA bridge onramp mapping (ADR-023)
+
+HA entity discovery through the FERROS bridge is an onramp event under ADR-023 (Onramp Policy). This note documents how HA entity registration maps to the ADR-023 framing.
+
+**Mapping:**
+- HA entities discovered by the bridge arrive as **proposed FERROS material**, not as canonical FERROS profile or capability-grant state.
+- A discovered entity must route through the S5 onramp consent surface before it becomes canonical FERROS state (profile attribute, persisted capability grant, or sealed progress evidence).
+- Passively running the HA bridge does not constitute consent. Consent requires an explicit user accept action through the S5 onramp surface.
+- The accept event must be auditable through the S3/S4 audit-log surface.
+
+**What this note does NOT constrain:**
+- Bridge protocol details (pairing handshake order, HA entity schema, HA wire format) remain S7-owned decisions. ADR-023 establishes the consent invariant; it does not specify how the bridge works internally.
+- The onramp consent surface implementation is S5-owned; S7 produces the proposed-material item and hands it to the staging area; S7 does not own the accept/reject UX.
+- No new S7 protocol constraints are introduced by this mapping note.
+
+**ADR reference:** `docs/adr/ADR-023-onramp-policy.md` (Accepted). The consumer-awareness note for S7 is appended to that ADR.
+
+---
+
 ## Out of scope
 
 - The Home Assistant core itself (the fork is a separate repo).

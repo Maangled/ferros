@@ -26,11 +26,11 @@ This is **Interactive Mode** — the default. For Batch Mode (multiple Ready wav
 The default execution posture is not single-lane unless the work truly demands it.
 
 - Every substantial orchestration pass should start with lane planning.
-- The default safe ceiling is up to **5 parallel repo-editing lanes**.
-- The total lane count across one wave should stay at or below **12**, including any approved recursive sub-lanes.
+- The default safe ceiling is up to **8 parallel repo-editing lanes**. This ceiling was raised from 5 to 8 after two consecutive conditional-pass Batch Mode runs were recorded in `WAVE-RUN-LOG.md` (BATCH-2026-04-27 code-track proof run and BATCH-2026-04-27-B system-track run), both with named-and-resolvable ambiguities and non-trivial gatekeeper decisions. **Revert clause:** if any subsequent batch fails — defined as a Triage/Trace escalation, a frozen-surface touch, or a halt before the final declared wave — the ceiling reverts to 5 in the next substrate-refinement wave, without requiring partner-facing renegotiation.
+- The total lane count across one wave should stay at or below **12**, including any approved recursive sub-lanes. This cap is unchanged.
 - Prefer to reserve **1 or 2 lanes** for the active critical path or gate-owner work when such work exists.
 - Use the remaining safe lanes for non-overlapping support work such as runway docs, backlog reduction, ADR or research-note capture, HTML resurfacing or archive hygiene, and targeted review or truth-sync slices.
-- Do not force 5 lanes when fewer safe non-overlapping lanes actually exist.
+- Do not force 8 lanes when fewer safe non-overlapping lanes actually exist.
 - Shared truth surfaces such as `STATUS.md`, gate docs, contracts overview, queue files, CI files, and root workspace manifests should usually be reconciled **after** the implementation lanes land, not edited concurrently by multiple lanes.
 - When a gate closes or an achievement is verified, the next foundational push should repack the full lane budget against the next highest-leverage safe slice.
 

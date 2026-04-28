@@ -1,6 +1,6 @@
 # ADR-024 — Ledger/Chain Substrate Comparison and Recommendation
 
-**Status:** Proposed  
+**Status:** Proposed — pending (a) counsel review of `docs/legal/` scaffold and (b) explicit ratification turn.  
 **Date:** 2026-04-27  
 **Stream:** S8 primary; S6 consumer awareness  
 **Deciders:** FERROS stream coordination / S8 docs / S6 harvest  

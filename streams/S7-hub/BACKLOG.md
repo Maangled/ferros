@@ -13,6 +13,7 @@
 - [x] Consume the published S2 consumer-boundary answers into an S7-owned handoff/assumptions slice without freezing handshake order, storage layout, or re-registration choreography
 - [x] Land the docs-only S7 seam brief keyed to the current S3 registration and inspection surfaces plus the current S4 policy and restart seams
 - [x] Define the operator-facing evidence surface (read-only) for hub bring-up and status, sourced from `docs/hub/pack-b-bring-up-worksheet.md`, with explicit field definitions, read-only constraint, D1 non-evidence note, and no new JSON/RPC routes
+- [x] Map HA entity registration to ADR-023 onramp framing: HA entities arrive as proposed FERROS material and must route through the S5 onramp consent surface before becoming canonical state; add consumer-awareness note to ADR-023 for S7; update bring-up worksheet with onramp-event note
 
 ## Next runway
 

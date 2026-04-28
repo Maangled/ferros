@@ -100,7 +100,9 @@ No contracts moved in this batch. The following frozen surfaces were referenced 
 
 **Gatekeeper non-trivial decision noted:** ADR-024 carries Status: Proposed (not Accepted), which is the correct choice for a recommendation-only ADR pending human review. The gatekeeper explicitly evaluated whether this constituted a stop condition (it does not — the ADR constraints say "Recommendation only, not a binding commitment"), and correctly returned `continue`. This is the first non-trivial gatekeeper decision in the system-track batch.
 
-**Verdict: Conditional pass.** One open item pending human review: ADR-024 is Proposed, not Accepted. The recommendation (non-chain signed ledger) requires human ratification before any ledger-touching implementation begins.
+**Verdict: Conditional pass.**
+
+**Named ambiguity (for audit trail):** ADR-024 (`docs/adr/ADR-024-ledger-substrate.md`) is held at Proposed pending (a) counsel review of the `docs/legal/` scaffold and (b) an explicit ratification turn. The recommendation (non-chain signed ledger for v0.1.0–v0.2.0) is directionally accepted but is not a vetted commitment until those two conditions are met. This is the sole named ambiguity for this batch. Future readers auditing whether substrate ambiguities are being resolved over time should check whether ADR-024's Proposed status has been cleared before the v0.2.0 milestone.
 
 ---
 

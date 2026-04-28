@@ -17,21 +17,7 @@ Optional fields (additive, layered on top of the existing field order without br
 
 ## Ready
 
-### WAVE-2026-04-27-05
-
-- Title: Define an operator-facing evidence surface above the Pack B bring-up worksheet and HA bridge runway contract
-- Status: ready
-- Priority: P1
-- Gate: post-G3 G4 runway
-- Owning streams: S7 primary
-- Goal: Use the existing Pack B bring-up worksheet (`docs/hub/pack-b-bring-up-worksheet.md`) and the first HA bridge runway contract as fixed inputs to define an operator-facing evidence surface (read-only) for hub bring-up and status. This is not a consumer hub UI. It is the operator surface implied by the existing runway docs. Anchor the definition against the S7 README and BACKLOG so the bring-up evidence surface has a named place in the S7 plan.
-- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `docs/hub/pack-b-bring-up-worksheet.md`
-- Validation: `get_errors` clean on touched owner docs.
-- Constraints: Docs-only. Do not invent bridge protocol details, pairing handshake order, or HA fork internals. Do not claim G4 evidence. Do not wire new JSON/RPC routes.
-- Last update: 2026-04-27
-- size: S
-- track: code
-- parallel-safe-with: [WAVE-2026-04-27-02, WAVE-2026-04-27-04]
+_(empty — BATCH-2026-04-27-C queue exhausted; next waves TBD)_
 
 ## In Progress
 
@@ -42,6 +28,48 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-27-08
+
+- Title: S5 consent-flow copy spec derived from legal scaffold CONSENT-LANGUAGE.md
+- Status: done
+- Priority: P1
+- Gate: post-G3 D1 runway
+- Owning streams: S5 primary
+- Goal: Derive user-visible language for the S5 consent gate from CONSENT-LANGUAGE.md DRAFT; marked as draft pending counsel red-line.
+- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `docs/legal/CONSENT-LANGUAGE.md`
+- Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-07
+
+- Title: S7 HA bridge consent-mapping note above ADR-023 onramp framing
+- Status: done
+- Priority: P1
+- Gate: post-G3 G4 runway
+- Owning streams: S7 primary
+- Goal: Add a docs-only mapping note to the S7 owner docs describing how HA entity registration intersects ADR-023's onramp framing.
+- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `docs/hub/pack-b-bring-up-worksheet.md`, `docs/adr/ADR-023-onramp-policy.md`
+- Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-06
+
+- Title: Define S5 onramp consent surface entry bar
+- Status: done
+- Priority: P1
+- Gate: post-G3 D1 runway
+- Owning streams: S5 primary
+- Goal: Define the minimum honest UX surface where an external onramp item (HA entity, calendar item, contact import) becomes a proposed FERROS material item awaiting user consent, never canonical state. The surface definition covers: what the slot shows (source system name, proposed item description, consent prompt, accept/reject affordance); the governing invariant from ADR-023 (inbound data quarantined until accepted; consent explicit and auditable; external system does not define identity). Add a consumer-awareness note to ADR-023 indicating S5 is the onramp staging surface implementor. The consent mechanism and onramp calls are not wired yet; the entry bar is docs-only scope definition.
+- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `docs/adr/ADR-023-onramp-policy.md`
+- Validation: `get_errors` clean on all 3 anchor files.
+- Constraints: Docs-only. No HA bridge protocol details. No wired onramp calls. No consent mechanism implementation. Touch to ADR-023 is consumer-awareness note only — do not reopen the ADR's decision or rationale. Do not reopen G1–G3.
+- Last update: 2026-04-27
+- size: S
+- parallel-safe-with: [WAVE-2026-04-27-07, WAVE-2026-04-27-08]
+- track: code
 
 ### WAVE-2026-04-27-05
 
