@@ -17,7 +17,7 @@ Optional fields (additive, layered on top of the existing field order without br
 
 ## Ready
 
-_(empty — BATCH-2026-04-27-C queue exhausted; next waves TBD)_
+None.
 
 ## In Progress
 
@@ -28,6 +28,110 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-27-16
+
+- Title: ADR backlog triage and _ROADMAP.md preamble update
+- Status: done
+- Priority: P2
+- Gate: rolling
+- Owning streams: S8 primary
+- Goal: Catalog the topics in `docs/adr/_ROADMAP.md` and confirm which are addressed (ADR-018 through ADR-024), which remain open, and which are blocked on other waves. Additive preamble note added; ADR-024 remains Proposed.
+- Anchor files: `docs/adr/_ROADMAP.md`
+- Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-15
+
+- Title: Gate narrative explainer (feeds external-facing comms readiness)
+- Status: done
+- Priority: P2
+- Gate: pre-D1 comms readiness
+- Owning streams: S8 primary
+- Goal: Plain-English explainer of G1–G4 gate progression plus D1 for a non-technical audience. D1 ≠ G4 distinction explicit. No gate docs modified.
+- Anchor files: `docs/explainers/gate-narrative.md`
+- Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-14
+
+- Title: Agent manifest catalog research note (feeds D1 firmware spike)
+- Status: done
+- Priority: P1
+- Gate: pre-D1 firmware prep
+- Owning streams: S3 primary; S7 consumer awareness
+- Goal: Cataloged echo and timer reference agent manifests; documented HA bridge shim placeholder fields. No bridge implemented; no crate or schema modified.
+- Anchor files: `docs/research/S3-agent-manifest-catalog.md`
+- Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-13
+
+- Title: Policy engine invariant catalog (feeds D1 demo operator readiness)
+- Status: done
+- Priority: P1
+- Gate: pre-D1 operator readiness
+- Owning streams: S4 primary
+- Goal: Cataloged all grant/deny test invariants from capability_policy.rs and boundaries.rs in plain English. No crate or schema modified.
+- Anchor files: `docs/research/S4-policy-engine-invariants.md`
+- Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-12
+
+- Title: Profile import/export round-trip spec (feeds D1 evidence scripting)
+- Status: done
+- Priority: P1
+- Gate: pre-D1 device selection runway
+- Owning streams: S2 primary
+- Goal: Documented exact CLI commands and expected output for profile round-trip scripting. profile.v0.json not modified; G2 not reopened.
+- Anchor files: `docs/research/S2-profile-import-export-round-trip.md`
+- Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-11
+
+- Title: Consent flow UX research note (feeds D1 demo script)
+- Status: done
+- Priority: P1
+- Gate: pre-D1 UX planning
+- Owning streams: S5 primary
+- Goal: Documented deny-log slot, grant/deny display, and D1 consent-flow demonstration requirements from existing localhost shell behavior. No site/, harnesses/, or crate file modified.
+- Anchor files: `docs/research/S5-consent-flow-ux.md`
+- Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-10
+
+- Title: no_std target matrix research note (feeds S7 firmware spikes)
+- Status: done
+- Priority: P1
+- Gate: pre-D1 firmware prep
+- Owning streams: S4 primary; S7 consumer awareness
+- Goal: Cataloged ferros-core and ferros-runtime cross-compilation targets, feature flags, and D1 device target requirements. No crate or CI file modified.
+- Anchor files: `docs/research/S4-no-std-target-matrix.md`
+- Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-09
+
+- Title: D1 bring-up checklist research note (feeds HARDWARE-QUEUE)
+- Status: done
+- Priority: P1
+- Gate: pre-D1 device selection runway
+- Owning streams: S7 primary
+- Goal: Synthesized D1 evidence requirements into operator checklist with binary commands, passing/failing results, and firmware spike milestone mapping. No D1 evidence claimed; docs/gates/D1.md not modified.
+- Anchor files: `docs/research/S7-d1-bring-up-checklist.md`
+- Last update: 2026-04-27
+- size: S
+- track: code
 
 ### WAVE-2026-04-27-08
 

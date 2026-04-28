@@ -6,6 +6,30 @@ Numbering is assigned only when a real ADR or research note is added. This file 
 
 ---
 
+## State Note — Post-BATCH-2026-04-27-C (as of 2026-04-27)
+
+This note records the ADR backlog state after the BATCH-2026-04-27-C reconciliation pass. It is additive — no ADR bodies are modified here.
+
+### Landed since last roadmap update
+
+- **ADR-018, ADR-019, ADR-020** — Harvest trilogy (S6): `sheetgen-rust`, `botgen-rust`, and `workspace-rust` disposition decisions. All three Accepted.
+- **ADR-021** — Dependency admission policy. Accepted.
+- **ADR-022** — Decision program governance. Accepted. Establishes ADR evidence tiers and the research-note lane.
+- **ADR-023** — Onramp policy. Accepted. Defines how discovered HA entities route through the S5 consent surface before becoming canonical FERROS state.
+- **ADR-024** — Ledger / value-transfer posture. **Proposed only.** Pending counsel red-line and ratification. Do not promote.
+
+### Open backlog items (not yet an ADR)
+
+- Post-ratification ledger follow-up — scope and implementation path for ADR-024, after counsel review is complete.
+- Card/deck game ADRs — ADR-015 and ADR-016 are referenced in the near-term FILLER lane; their exact scope is pending research-note completion.
+- Multi-device coordination ADRs — pairing-flow contract, reboot-safe persistence guarantees, and target-platform cross-compilation posture (all awaiting `ferros-hub` scaffold work in S7).
+
+### Blocked
+
+- **ADR-024** — blocked on counsel red-line. Do not advance to Accepted without ratification.
+
+---
+
 ## Immediate Structural Priorities
 
 - ADR program governance and evidence tiers — landed in [ADR-022-decision-program-governance.md](./ADR-022-decision-program-governance.md)

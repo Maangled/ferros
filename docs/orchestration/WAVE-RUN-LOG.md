@@ -4,6 +4,219 @@ Newest entry first. Each entry records one local driver invocation.
 
 ---
 
+## BATCH-2026-04-27-D — Code-Track Batch Mode Run (Fourth Batch)
+
+- **Batch open:** 2026-04-27
+- **Track:** code
+- **Waves in batch (declared order):** WAVE-2026-04-27-09 through WAVE-2026-04-27-16 (8 waves)
+- **NOTE: First batch to plan ≥6 parallel-safe-with waves** — documents the width-8 editing-lane ceiling's first real use; all 8 waves declared parallel-safe with each other
+- **Gatekeeper model:** Claude Sonnet 4.6 inline self-review
+- **Overrun exemption list (ratified):** `WAVE-QUEUE.md`, `WAVE-RUN-LOG.md`, `SYSTEM-QUEUE.md`, `HARDWARE-QUEUE.md`, `doc-batches/*.md`, and owner-stream `PROGRESS.md` only. See `BATCH-MODE.md` §Stop Conditions.
+- **Editing-lane ceiling:** 8 (revert clause armed)
+- **No-substrate-edits constraint:** Do not touch `BATCH-MODE.md` or `LOCAL-DRIVER.md` inside this batch
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-16
+
+- Selected item: `WAVE-2026-04-27-16`
+- Result: Complete. `docs/adr/_ROADMAP.md` now carries an additive preamble note recording the post-BATCH-C ADR state: ADR-018/019/020 (harvest trilogy, Accepted), ADR-021 (dependency admission, Accepted), ADR-022 (decision governance, Accepted), ADR-023 (onramp policy, Accepted), ADR-024 (ledger, Proposed — not promoted). Open backlog items and blocked items listed. No ADR body modified. No ADR-024 promotion.
+- Files: `docs/adr/_ROADMAP.md`
+- Validation: get_errors clean on `docs/adr/_ROADMAP.md`. Additive-only; no existing ADR entry body modified. ADR-024 remains Proposed.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-16",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on docs/adr/_ROADMAP.md",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — only declared anchor file touched; WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt",
+    "4_track_boundary": "no further Ready waves — queue exhausted",
+    "5_run_length_cap": "8 of 8 — run length cap reached; all declared waves complete",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "stop-clean",
+  "rationale": "All 8 declared waves for BATCH-2026-04-27-D have landed cleanly. Wave -16 added an additive preamble note to _ROADMAP.md recording ADR-018 through ADR-024 state without promoting ADR-024. Run length cap of 8 reached. Queue exhausted. No frozen surfaces touched. No gates moved. No substrate ambiguities introduced. This is the first FERROS batch to plan all 8 editing lanes with ≥6 parallel-safe-with declarations per wave. Batch closes at 8 waves with a clean-pass verdict."
+}
+```
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-15
+
+- Selected item: `WAVE-2026-04-27-15`
+- Result: Complete. `docs/explainers/gate-narrative.md` created (new directory `docs/explainers/` also created). Plain-English explainer covers G1 (CI green on 3 platforms), G2 (profile identity and CLI lifecycle), G3 (agent center and runtime convergence), D1 (operator-attended single-device demo — NOT launch), and G4 (launch: real Pi, real HA, consent enforced, reboot-safe, independent install). D1 ≠ G4 distinction explicit in a dedicated section and glossary. No gate docs modified. No evidence claimed.
+- Files: `docs/explainers/gate-narrative.md`
+- Validation: get_errors clean on new file. No gate doc modified. D1 ≠ G4 distinction present.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-15",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on docs/explainers/gate-narrative.md",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — only declared anchor file touched; WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt",
+    "4_track_boundary": "next wave (WAVE-2026-04-27-16) is code-track — clear",
+    "5_run_length_cap": "7 of 8 — continue",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -15 produced the gate-narrative explainer with correct D1 ≠ G4 framing. No gate doc was modified; no evidence was claimed. Wave -16 (ADR backlog triage) is the final wave in the batch. Proceeding."
+}
+```
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-14
+
+- Selected item: `WAVE-2026-04-27-14`
+- Result: Complete. `docs/research/S3-agent-manifest-catalog.md` created. Catalogs echo agent (name="echo", requires "agent.echo") and timer agent (name="timer", requires "agent.timer") with full AgentManifest field documentation. Documents HA bridge shim placeholder (name="ha-bridge", requires "agent.ha-bridge" — provisional). Documents AgentRegistry trait, RegistryError::AlreadyRegistered, and the consent-gate lifecycle (registration does not trigger policy check; only agent.run does). No crate or schema modified. No bridge implemented.
+- Files: `docs/research/S3-agent-manifest-catalog.md`
+- Validation: get_errors clean on new file. No crate, schema, or harness file touched.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-14",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on docs/research/S3-agent-manifest-catalog.md",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — only declared anchor file touched; WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt",
+    "4_track_boundary": "next wave (WAVE-2026-04-27-15) is code-track — clear",
+    "5_run_length_cap": "6 of 8 — continue",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -14 cataloged echo and timer agent manifests and documented the HA bridge shim placeholder without implementing any bridge logic. No new HA entity schema invented. No crate or schema modified. Proceeding to wave -15."
+}
+```
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-13
+
+- Selected item: `WAVE-2026-04-27-13`
+- Result: Complete. `docs/research/S4-policy-engine-invariants.md` created. Catalogs 14 invariants (I-1 through I-14) from `crates/ferros-core/tests/capability_policy.rs` and 4 boundary invariants (B-1 through B-4) from `crates/ferros-runtime/tests/boundaries.rs`. Each expressed in plain English with test function name, line reference, and operator-facing meaning. Includes deny-observability table mapping D1 demo scenarios to specific invariants and CLI trigger steps. No crate or schema modified.
+- Files: `docs/research/S4-policy-engine-invariants.md`
+- Validation: get_errors clean on new file. No crate, schema, or harness file touched.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-13",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on docs/research/S4-policy-engine-invariants.md",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — only declared anchor file touched; WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt",
+    "4_track_boundary": "next wave (WAVE-2026-04-27-14) is code-track — clear",
+    "5_run_length_cap": "5 of 8 — continue",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -13 cataloged all policy engine invariants by test function name with plain-English descriptions and D1 demo applicability. No tests added; no crate modified. Proceeding to wave -14."
+}
+```
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-12
+
+- Selected item: `WAVE-2026-04-27-12`
+- Result: Complete. `docs/research/S2-profile-import-export-round-trip.md` created. Documents exact CLI commands, expected successful output, and expected error output for `ferros profile init`, `ferros profile show`, `ferros profile export <path>`, `ferros profile import <path>`, and `ferros profile grant/revoke`. Includes a full D1 evidence shell script and a "what NOT to do" table. `schemas/profile.v0.json` not modified; G2 not reopened.
+- Files: `docs/research/S2-profile-import-export-round-trip.md`
+- Validation: get_errors clean on new file. schemas/profile.v0.json not modified.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-12",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on docs/research/S2-profile-import-export-round-trip.md",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — only declared anchor file touched; WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt",
+    "4_track_boundary": "next wave (WAVE-2026-04-27-13) is code-track — clear",
+    "5_run_length_cap": "4 of 8 — continue",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -12 documented the profile CLI round-trip spec for D1 evidence scripting without reopening G2 or touching the frozen schema. Proceeding to wave -13."
+}
+```
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-11
+
+- Selected item: `WAVE-2026-04-27-11`
+- Result: Complete. `docs/research/S5-consent-flow-ux.md` created. Documents the localhost shell's deny-log slot, agent detail, capability grant state, and selected-agent intent copy slots. Explains deny-by-default enforcement mechanism, the three PolicyDenialReason values, how to pre-seed a denial for D1 demo, consent copy draft status, and the gap analysis table comparing current shell state to D1 requirements. No site/, harnesses/, or crate file modified. CONSENT-LANGUAGE.md not modified.
+- Files: `docs/research/S5-consent-flow-ux.md`
+- Validation: get_errors clean on new file. No site/, harnesses/, crate, or schema file touched.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-11",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on docs/research/S5-consent-flow-ux.md",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — only declared anchor file touched; WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt",
+    "4_track_boundary": "next wave (WAVE-2026-04-27-12) is code-track — clear",
+    "5_run_length_cap": "3 of 8 — continue",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -11 documented the consent flow UX from existing shell behavior only. No new shell features introduced; CONSENT-LANGUAGE.md draft sections not modified. Proceeding to wave -12."
+}
+```
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-10
+
+- Selected item: `WAVE-2026-04-27-10`
+- Result: Complete. `docs/research/S4-no-std-target-matrix.md` created. Tables cover ferros-core (7 targets including thumbv7em-none-eabi CI-enforced), ferros-runtime (std-only, 3 targets), ferros-agents (std-only), and ferros-node (host only). D1 device requirements section distinguishes Pack B x86_64 (fully CI-enforced, no cross-compilation needed) from Pi aarch64 (not CI-enforced, cross-compilation required). No crate or CI file modified.
+- Files: `docs/research/S4-no-std-target-matrix.md`
+- Validation: get_errors clean on new file. No Cargo.toml, crates/, or .github/workflows/ file touched.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-10",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on docs/research/S4-no-std-target-matrix.md",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — only declared anchor file touched; WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt",
+    "4_track_boundary": "next wave (WAVE-2026-04-27-11) is code-track — clear",
+    "5_run_length_cap": "2 of 8 — continue",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -10 cataloged all cross-compilation targets from existing CI evidence without modifying any build configuration. D1 device target requirements clearly distinguished from G4 requirements. Proceeding to wave -11."
+}
+```
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-09
+
+- Selected item: `WAVE-2026-04-27-09`
+- Result: Complete. `docs/research/S7-d1-bring-up-checklist.md` created (new directory `docs/research/` also created). Documents all 4 D1 evidence items with FERROS binary commands, passing/failing result descriptions, known unknowns, and a firmware spike milestone table mapping milestones (boot/identify/accept-grant/report-state) to D1 evidence items. Explicitly states D1 is not closed and no D1 evidence claimed. `docs/gates/D1.md` not modified.
+- Files: `docs/research/S7-d1-bring-up-checklist.md`
+- Validation: get_errors clean on new file. docs/gates/D1.md not modified. No D1 or G4 evidence claimed.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-09",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on docs/research/S7-d1-bring-up-checklist.md",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — only declared anchor file touched; WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt",
+    "4_track_boundary": "next wave (WAVE-2026-04-27-10) is code-track — clear",
+    "5_run_length_cap": "1 of 8 — continue",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "Wave -09 is the first wave of BATCH-2026-04-27-D. D1 bring-up checklist synthesized from existing gate evidence and S7 runway docs without claiming D1 evidence or modifying gate docs. Proceeding to wave -10."
+}
+```
+
+---
+
 ## BATCH-2026-04-27-C — Code-Track Batch Mode Run (Third Batch)
 
 - **Batch open:** 2026-04-27
