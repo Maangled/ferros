@@ -2,7 +2,7 @@
 
 > Dashboard, not a diary. Each section shows current state. Details live in stream PROGRESS.md files.
 >
-> Last updated: 2026-04-26
+> Last updated: 2026-04-27
 
 ---
 
@@ -11,6 +11,7 @@
 | Item | State |
 |------|-------|
 | Active gate | **G4** — Launch |
+| Demo gate | **D1** — active runway (see `docs/gates/D1.md`) |
 | Launch gate | G4 (open) |
 | MVP gate | G1 → G2 → G3 in sequence |
 | Open streams | S1 (closeout), S3 (post-G3 contract), S4 (post-G3 hardening), S5 (browser acceptance plus privileged shell writes), S6 (active), S7 (G4 runway), S8 (background) |
@@ -24,6 +25,7 @@
 | G1 | ✅ Closed | CI run #24812246339 proved fmt, clippy, build, and test green on ubuntu-latest, macos-latest, and windows-latest |
 | G2 | ✅ Closed | `profile.v0.json` remains the frozen unsigned published v0 consumer contract, `SignedProfileDocument` stays Rust-local at v0, and the real `ferros` binary now proves `profile init | grant | export | import | revoke | show` against temp-file-backed local state while `show` stays unsigned and revoked grant state stays within the frozen grant boundary |
 | G3 | ✅ Closed | CI #20 (`run 24902870499`, commit `8383b67` on `main`) completed successfully on 2026-04-24 after `.github/workflows/ci.yml` wired `cargo check -p ferros-core --no-default-features` plus `cargo run --bin ferros -- demo` into the hosted Ubuntu workflow |
+| D1 | 🟡 Active runway | Demo gate defined in `docs/gates/D1.md`; one device, operator-attended, profile+HA+consent+reboot-safe; not yet closed |
 | G4 | 🟡 Active | G3 is closed; S7 now owns the active launch gate for `ferros-hub` on real hardware with Home Assistant integration |
 
 ---
@@ -36,7 +38,7 @@
 | S2 Profile & Identity | ✅ G2 closed / handoff | the frozen unsigned `profile.v0.json` consumer contract, the Rust-local `SignedProfileDocument` v0 boundary, the real-binary `init | grant | export | import | revoke | show` lifecycle proof, and rollback-safe local bundle import on invalid grant state are landed; immediate work is to hold that boundary steady for downstream consumers | G2 |
 | S3 Agent Center | 🟡 Post-G3 localhost contract hardening | reference agents, local `ferros agent ...` CLI, the `cargo run --bin ferros -- demo` path, the read-first JSON/RPC contract for `agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, and `denyLog.list`, the first code-backed local-only lifecycle/read-after-write seam, the first broader local-only `LocalAgentApi` wrapper/API slice above that seam, and the first local-only `agent.run` / `agent.stop` JSON-RPC slice on the current localhost shell host are now in repo; denied local writes keep the same local summaries while broader transport and privileged writes remain open | post-G3 |
 | S4 Runtime / OS Core | 🟡 Post-G3 hardening | `ferros-runtime`, in-memory executor and bus, policy property tests, the `cargo run --bin ferros -- demo` path, the `ferros-core --no-default-features` compile slice, a local `thumbv7em-none-eabi --no-default-features` proof, and the narrow host/controller support for both the local-only `LocalAgentApi` seam and the first local-only lifecycle/write JSON-RPC slice are now in repo; CI is configured to enforce the same thumb-target check while broader `no_std` and host hardening remain | post-G3 |
-| S5 UX | 🟨 Phase A archive/link-hygiene landed; Phase B localhost observation slice landed | real landing page and honest status banner shipped; the Phase A archive/link-hygiene pass and docs-root reference repairs are landed, the fixed-slot localhost shell reads live agent, grant-state, and deny-log data through `ferros-node`, operator-assisted localhost acceptance proves local `ferros agent run | stop` changes read back through the same `agent.snapshot` refresh seam, and the upstream local-only `agent.run` / `agent.stop` JSON-RPC slice now exists on the localhost host while the shell UI itself still remains observation-only | post-G3 |
+| S5 UX | 🟨 Phase A archive/link-hygiene landed; Phase B localhost observation slice landed; selected-agent shell-intent copy staged | real landing page and honest status banner shipped; the Phase A archive/link-hygiene pass and docs-root reference repairs are landed, the fixed-slot localhost shell reads live agent, grant-state, and deny-log data through `ferros-node`, operator-assisted localhost acceptance proves local `ferros agent run | stop` changes read back through the same `agent.snapshot` refresh seam, the upstream local-only `agent.run` / `agent.stop` JSON-RPC slice now exists on the localhost host, and the 2026-04-27 WAVE-2026-04-27-01 landing staged selected-agent lifecycle intent copy and read-only slot affordances on the live shell while the shell UI itself still remains observation-only | post-G3 |
 | S6 Ecosystem Harvest | 🟡 Active | ADR-018/019/020 landed; `ferros-data` is now a root workspace member, and the migration-first boundary now publishes ordered manifest coverage plus tighter ordered-child invariant proof while downstream extraction stays stream-owned | rolling |
 | S7 Smart-Home Hub | 🟡 G4 runway active | the hardware runway, `x86_64`-first bring-up plan, first Home Assistant bridge runway contract, first Pack B bring-up worksheet, and operator rehearsal notes are now explicit; pairing semantics stay provisional while a real `ferros-hub` binary, HA bridge implementation, and physical-device evidence remain open | G4 |
 | S8 Docs / Governance | 🟡 Active (background) | status/gate/contracts truth-sync baseline is in repo; doctrine plus the ADR index/roadmap/research baseline are now landed; `SECURITY.md`, `THREAT-MODEL.md`, `GOVERNANCE.md`, `CODE_OF_CONDUCT.md`, and contributor intake templates now exist, while issue seeding remains open | rolling |
@@ -74,6 +76,8 @@ The **agent center + runtime convergence** path is now closed at G3. The active 
 
 | Date | Event |
 |------|-------|
+| 2026-04-27 | S8 landed WAVE-2026-04-27-03: upgraded the orchestration substrate with Batch Mode (`docs/orchestration/BATCH-MODE.md`), three-track queues (system + hardware queues added), D1 demo gate (`docs/gates/D1.md`), eight per-stream FILLER.md files, code-track queue backfilled to depth 3 (two new Ready waves added), and STATUS.md updated to reflect the 2026-04-27 staged-intent landing and the new D1 gate row. |
+| 2026-04-27 | S5 staged selected-agent lifecycle intent copy and read-only slot affordances on the live localhost shell (WAVE-2026-04-27-01): the focus, tools, and consent/audit slots now show the selected agent's state and the appropriate `agent.run` / `agent.stop` intent copy while the shell remains observation-only. |
 | 2026-04-26 | S3/S4 landed the first local-only lifecycle/write JSON-RPC slice on the current localhost shell host: `crates/ferros-node/src/lib.rs` now routes `agent.run` and `agent.stop` through the landed `LocalAgentApi` seam, keeps `agent.describe`, `agent.snapshot`, and `denyLog.list` as the read-after-write observation path, and leaves browser control plus broader remote/write claims unpublished. |
 | 2026-04-26 | An overnight filler batch landed around the hot S3/S4 seam: `crates/ferros-node/src/lib.rs` now preserves typed missing-capability detail on denied local `LocalAgentApi` runs while CLI/log summaries stay stable, S1 added a manual release-candidate bundle workflow plus workflow concurrency guards, S2 made local bundle import rollback-safe on invalid grant state, S6 published ordered ferros-data migration manifest coverage, and S7 added operator rehearsal prep to the current Pack B runway docs. |
 | 2026-04-26 | S3/S4 landed the first broader local-only wrapper/API slice above the current CLI/state path: `crates/ferros-node/src/lib.rs` now publishes `LocalAgentApi` as a typed local `list | describe | run | stop | logs` surface above CLI formatting while still reusing the same local state path, deny-by-default behavior, read-first JSON/RPC observation, and localhost shell host. |

@@ -1,6 +1,19 @@
-# FERROS Wave Queue
+# FERROS Wave Queue — Code Track
 
-This queue feeds the local driver pattern. Process one wave per invocation unless the user explicitly requests a batch.
+This is the **code track** queue (`track: code`). It feeds the local driver for all code, shell, and code-adjacent docs waves. For system-track (legal/ledger/asset/onramp) work, see `docs/orchestration/SYSTEM-QUEUE.md`. For hardware-track work, see `docs/orchestration/HARDWARE-QUEUE.md`.
+
+Process one wave per invocation (Interactive Mode) unless the user explicitly requests Batch Mode. See `docs/orchestration/BATCH-MODE.md` for Batch Mode rules.
+
+## Queue item schema
+
+Required fields: `Title`, `Status`, `Priority`, `Gate`, `Owning streams`, `Goal`, `Anchor files`, `Validation`, `Constraints`, `Last update`
+
+Optional fields (additive, layered on top of the existing field order without breaking it):
+- `size: S | L` — S means ≤3 anchor files, single stream, single-crate or docs-only. L means multi-crate, multi-stream, or schema-touching. Batch Mode default consumes only S.
+- `parallel-safe-with: [WAVE-IDs]` — explicit non-overlap declarations.
+- `serial-after: WAVE-ID` — must wait for a prior wave to complete.
+- `solo: true | false` — must run alone (truth-sync, gate close, schema freeze, shared truth surfaces).
+- `track: code | system | hardware` — which queue this belongs to.
 
 ## Ready
 
@@ -16,6 +29,40 @@ This queue feeds the local driver pattern. Process one wave per invocation unles
 - Validation: `get_errors` clean on touched owner docs.
 - Constraints: Keep the wave docs-only and S5-owned. Do not change shell code. Do not wire browser-issued writes, publish grant/revoke actions, broaden remote transport, introduce broader privileged UX, or publish broader S4 restart/reload semantics without a later code-backed follow-up.
 - Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-04
+
+- Title: Define the minimum honest first profile-surface entry bar above the frozen S2 contract
+- Status: ready
+- Priority: P1
+- Gate: post-G3 local/browser profile surface prep
+- Owning streams: S5 primary, S2 consumer awareness
+- Goal: Use the frozen S2 contract (`profile.v0.json`, the real `ferros profile init | show | export | import` CLI) and the prior-art `docs/legacy/personal-profile.html` as fixed inputs to define the smallest honest first browser profile surface entry bar on the localhost shell. Scope: `init`, `show`, `export`, `import` only, localhost-only, no grant mutation. Do not reopen S2. Do not wire browser-issued writes or grant/revoke actions.
+- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S2-profile/README.md`
+- Validation: `get_errors` clean on touched owner docs.
+- Constraints: Docs-only. Keep S2 consumer-awareness updates only — do not reopen the S2 profile contract. Do not wire browser-issued profile writes or grant mutation. Do not claim G2 re-evidence.
+- Last update: 2026-04-27
+- size: S
+- track: code
+- parallel-safe-with: [WAVE-2026-04-27-02]
+
+### WAVE-2026-04-27-05
+
+- Title: Define an operator-facing evidence surface above the Pack B bring-up worksheet and HA bridge runway contract
+- Status: ready
+- Priority: P1
+- Gate: post-G3 G4 runway
+- Owning streams: S7 primary
+- Goal: Use the existing Pack B bring-up worksheet (`docs/hub/pack-b-bring-up-worksheet.md`) and the first HA bridge runway contract as fixed inputs to define an operator-facing evidence surface (read-only) for hub bring-up and status. This is not a consumer hub UI. It is the operator surface implied by the existing runway docs. Anchor the definition against the S7 README and BACKLOG so the bring-up evidence surface has a named place in the S7 plan.
+- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `docs/hub/pack-b-bring-up-worksheet.md`
+- Validation: `get_errors` clean on touched owner docs.
+- Constraints: Docs-only. Do not invent bridge protocol details, pairing handshake order, or HA fork internals. Do not claim G4 evidence. Do not wire new JSON/RPC routes.
+- Last update: 2026-04-27
+- size: S
+- track: code
+- parallel-safe-with: [WAVE-2026-04-27-02, WAVE-2026-04-27-04]
 
 ## In Progress
 

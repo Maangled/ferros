@@ -2,6 +2,14 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+## 2026-04-27 — WAVE-2026-04-27-03
+
+- Selected item: `WAVE-2026-04-27-03`
+- Result: WAVE-2026-04-27-03 is complete. S8 landed the orchestration substrate upgrade: (1) `docs/orchestration/BATCH-MODE.md` defines Batch Mode as an explicit user-invoked mode with stop conditions, a gatekeeper contract, human re-entry triggers, and the target width-8 planning goal while keeping the editing-lane ceiling at 5 until a clean proof run is logged; (2) `docs/orchestration/SYSTEM-QUEUE.md` and `docs/orchestration/HARDWARE-QUEUE.md` scaffold the system and hardware track queues with ≥3 Ready items each; (3) `docs/orchestration/WAVE-QUEUE.md` preamble clarified as the code track, schema extended with five additive optional fields (`size`, `parallel-safe-with`, `serial-after`, `solo`, `track`), and two new Ready code-track waves added (profile-surface entry-bar S5/S2 and operator evidence surface S7), bringing Ready depth to 3; (4) `docs/gates/D1.md` defines the demo gate between G3 and G4 with explicit evidence requirements, D1 vs. G4 scope distinction, and no G4 reopening; (5) eight `streams/S*/FILLER.md` files (S1–S8) each carry Near/Close/Far sections with 3–6 candidate filler items; (6) `docs/orchestration/LOCAL-DRIVER.md` updated to reference Batch Mode and the multi-track queue structure; (7) `STATUS.md` updated with today's date, D1 gate row, S5 staged-intent line update, and recent activity entry.
+- Files: `docs/orchestration/BATCH-MODE.md`, `docs/orchestration/SYSTEM-QUEUE.md`, `docs/orchestration/HARDWARE-QUEUE.md`, `docs/gates/D1.md`, `streams/S1-foundation/FILLER.md`, `streams/S2-profile/FILLER.md`, `streams/S3-agent-center/FILLER.md`, `streams/S4-runtime/FILLER.md`, `streams/S5-ux/FILLER.md`, `streams/S6-harvest/FILLER.md`, `streams/S7-hub/FILLER.md`, `streams/S8-docs/FILLER.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/LOCAL-DRIVER.md`, `docs/orchestration/WAVE-RUN-LOG.md`, `STATUS.md`
+- Validation: `get_errors` clean on all touched markdown files. `WAVE-QUEUE.md`, `SYSTEM-QUEUE.md`, and `HARDWARE-QUEUE.md` each have ≥3 Ready items. `STATUS.md` `Last updated:` reflects 2026-04-27. `docs/gates/D1.md` exists and is referenced from `STATUS.md`. Eight `streams/S*/FILLER.md` files exist with Near/Close/Far sections. `BATCH-MODE.md` is referenced from `LOCAL-DRIVER.md`. No file under `crates/`, `schemas/`, `site/`, `harnesses/`, `.github/workflows/`, or `tools/` was modified.
+- Next follow-up: `WAVE-2026-04-27-02` (first Ready code-track wave; run in Interactive Mode or as the start of a code-track Batch Mode run)
+
 ## 2026-04-27 — WAVE-2026-04-27-01
 
 - Selected item: `WAVE-2026-04-27-01`

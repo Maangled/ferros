@@ -19,6 +19,8 @@ The runtime is still the local Copilot chat surface. The repo stores the queue, 
 3. The orchestrator lane-plans the wave, uses bounded recursion only when a lane earns one more planning pass, validates lane scope before launch, routes failed lanes through log triage, then returns the integration result.
 4. Reinvoke the driver for the next wave.
 
+This is **Interactive Mode** — the default. For Batch Mode (multiple Ready waves per invocation without per-wave human re-invocation), see `docs/orchestration/BATCH-MODE.md`. All lane policy rules below apply inside every wave regardless of mode.
+
 ## Default lane policy
 
 The default execution posture is not single-lane unless the work truly demands it.
@@ -54,15 +56,17 @@ Recursive lane planning is allowed, but only as a bounded refinement step.
 
 - No background autonomy after the chat turn ends.
 - No GitHub-hosted execution of the `.agent.md` stack.
-- No silent batching of multiple queue items unless the user explicitly asks for it.
+- No silent batching of multiple queue items unless the user explicitly invokes Batch Mode (see `docs/orchestration/BATCH-MODE.md`).
 
 ## Queue discipline
 
 - Keep wave items small enough that one orchestration pass can reasonably finish or sharpen them.
 - Use the queue to encode priority, gate impact, anchor files, and validation before launching work.
+- Optional queue metadata fields (`size`, `parallel-safe-with`, `serial-after`, `solo`, `track`) are additive. Use them to enable Batch Mode scheduling and to express ordering dependencies. See `docs/orchestration/BATCH-MODE.md` for how Batch Mode uses these fields.
 - If a wave is likely to need recursive planning, express that in the queued goal, constraints, or validation rather than adding new queue-only metadata.
 - If a wave is partially complete, move it back to `Ready` with a narrower next step instead of leaving vague notes in chat history.
 - A single queued wave may still fan out into multiple stream-owned lanes internally when the orchestrator can prove the lanes are non-overlapping.
+- The three track queues are: `docs/orchestration/WAVE-QUEUE.md` (`track: code`), `docs/orchestration/SYSTEM-QUEUE.md` (`track: system`), and `docs/orchestration/HARDWARE-QUEUE.md` (`track: hardware`). Each track queue is consumed independently.
 
 ## Suggested invocations
 
