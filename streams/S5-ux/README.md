@@ -100,8 +100,39 @@ The first shell-side follow-up above the landed localhost `agent.run` / `agent.s
 
 ---
 
+## Phase B: browser-issued lifecycle control bar
+
+The minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy is defined as follows. This is the stated next honest surface; it does not yet exist as wired browser code.
+
+| Constraint | Definition |
+|------------|------------|
+| Scope | `agent.run` and `agent.stop` only, for the currently selected agent on the current localhost shell. No other write actions, no grant mutation, no `revoke`, no broader browser control. |
+| Consent/audit gating | Gating begins **before** the write RPC is sent from the browser. The shell must confirm a capability grant exists for the requested action before transmitting the call. |
+| Deny visibility | A denied request must be observable in the shell's deny-log slot after the attempt without requiring navigation away from the current view. |
+| Deny-by-default demonstration | At least one denied request must be loggable and visible through the current S3 deny-log surface before the control bar is declared wired. |
+| Publication gate | This control bar lands only after the consent/audit gating path is observable in the shell, S4 deny-by-default enforcement is confirmed through the S3 read path after a lifecycle attempt, and a harness proves the consent gate fires before the write RPC is transmitted. |
+
+Grant/revoke actions, consent resolution for non-lifecycle operations, broader browser control, and S4 restart/reload semantics remain out of scope for this bar and require a separate follow-up.
+
+---
+
+## Phase B: minimum profile surface entry bar
+
+The minimum honest first browser profile surface entry bar above the frozen S2 contract is defined as follows. This is the stated next profile surface; it does not yet exist as wired browser code.
+
+| Constraint | Definition |
+|------------|------------|
+| Scope | `init`, `show`, `export`, `import` only. Localhost-only. No grant mutation. No `revoke`. No re-negotiation of the S2 contract. |
+| Backend | Each slot calls the already-frozen CLI path (`ferros profile init`, `show`, `export`, `import`) through the JSON/RPC surface or a thin local adapter. Does not reopen `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`. |
+| Prior art | `docs/legacy/personal-profile.html` is the shape reference only. Does not constitute G2 re-evidence. |
+| Publication gate | This profile surface lands only after the four CLI paths are confirmed reachable through the localhost shell host and a harness proves the surface stays within the frozen S2 boundary. |
+
+Grant mutation, `revoke`, remote profile access, and any S2 contract reopening remain explicitly out of scope for this surface.
+
+---
+
 ## Immediate next steps
 
 1. Verify the remaining site links and archive candidates against current inbound references.
 2. Execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once link hygiene is confirmed.
-3. Decide whether any browser-issued local lifecycle action should exist above the staged shell-intent copy, and if so, keep consent/audit gating explicit without bypassing S2/S3/S4 boundaries.
+3. Land the browser-issued lifecycle control bar (consent/audit gating wired, deny-by-default demonstrable, harness confirms gate fires before write RPC is sent) as a code-backed follow-up.

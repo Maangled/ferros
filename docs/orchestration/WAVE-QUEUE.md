@@ -17,37 +17,6 @@ Optional fields (additive, layered on top of the existing field order without br
 
 ## Ready
 
-### WAVE-2026-04-27-02
-
-- Title: Define the minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy
-- Status: ready
-- Priority: P1
-- Gate: post-G3 local/browser control prep
-- Owning streams: S5 primary, S3 contract awareness, S4 support awareness, S8 truth-sync if docs move
-- Goal: Use the landed local-only `agent.run` / `agent.stop` backend slice and the newly landed selected-agent shell intent copy as fixed input to define the smallest honest browser-issued local lifecycle control bar, including where consent/audit gating begins, before the shell is allowed to send write RPC.
-- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`
-- Validation: `get_errors` clean on touched owner docs.
-- Constraints: Keep the wave docs-only and S5-owned. Do not change shell code. Do not wire browser-issued writes, publish grant/revoke actions, broaden remote transport, introduce broader privileged UX, or publish broader S4 restart/reload semantics without a later code-backed follow-up.
-- Last update: 2026-04-27
-- size: S
-- track: code
-
-### WAVE-2026-04-27-04
-
-- Title: Define the minimum honest first profile-surface entry bar above the frozen S2 contract
-- Status: ready
-- Priority: P1
-- Gate: post-G3 local/browser profile surface prep
-- Owning streams: S5 primary, S2 consumer awareness
-- Goal: Use the frozen S2 contract (`profile.v0.json`, the real `ferros profile init | show | export | import` CLI) and the prior-art `docs/legacy/personal-profile.html` as fixed inputs to define the smallest honest first browser profile surface entry bar on the localhost shell. Scope: `init`, `show`, `export`, `import` only, localhost-only, no grant mutation. Do not reopen S2. Do not wire browser-issued writes or grant/revoke actions.
-- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S2-profile/README.md`
-- Validation: `get_errors` clean on touched owner docs.
-- Constraints: Docs-only. Keep S2 consumer-awareness updates only — do not reopen the S2 profile contract. Do not wire browser-issued profile writes or grant mutation. Do not claim G2 re-evidence.
-- Last update: 2026-04-27
-- size: S
-- track: code
-- parallel-safe-with: [WAVE-2026-04-27-02]
-
 ### WAVE-2026-04-27-05
 
 - Title: Define an operator-facing evidence surface above the Pack B bring-up worksheet and HA bridge runway contract
@@ -73,6 +42,51 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-27-05
+
+- Title: Define an operator-facing evidence surface above the Pack B bring-up worksheet and HA bridge runway contract
+- Status: done
+- Priority: P1
+- Gate: post-G3 G4 runway
+- Owning streams: S7 primary
+- Goal: Use the existing Pack B bring-up worksheet and the first HA bridge runway contract as fixed inputs to define an operator-facing evidence surface (read-only) for hub bring-up and status. Anchor the definition against the S7 README and BACKLOG so the bring-up evidence surface has a named place in the S7 plan.
+- Anchor files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `docs/hub/pack-b-bring-up-worksheet.md`
+- Validation: `get_errors` clean on all 3 anchor files.
+- Constraints: Docs-only. No bridge protocol details, no pairing handshake order, no HA fork internals. No G4 evidence. No new JSON/RPC routes.
+- Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-04
+
+- Title: Define the minimum honest first profile-surface entry bar above the frozen S2 contract
+- Status: done
+- Priority: P1
+- Gate: post-G3 local/browser profile surface prep
+- Owning streams: S5 primary, S2 consumer awareness
+- Goal: Use the frozen S2 contract (`profile.v0.json`, the real `ferros profile init | show | export | import` CLI) and the prior-art `docs/legacy/personal-profile.html` as fixed inputs to define the smallest honest first browser profile surface entry bar on the localhost shell. Scope: `init`, `show`, `export`, `import` only, localhost-only, no grant mutation. Do not reopen S2. Do not wire browser-issued writes or grant/revoke actions.
+- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S2-profile/README.md`
+- Validation: `get_errors` clean on all 3 anchor files.
+- Constraints: Docs-only. S2 consumer-awareness only — S2 contract not reopened. No browser-issued profile writes or grant mutation. No G2 re-evidence.
+- Last update: 2026-04-27
+- size: S
+- track: code
+
+### WAVE-2026-04-27-02
+
+- Title: Define the minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy
+- Status: done
+- Priority: P1
+- Gate: post-G3 local/browser control prep
+- Owning streams: S5 primary, S3 contract awareness, S4 support awareness
+- Goal: Use the landed local-only `agent.run` / `agent.stop` backend slice and the newly landed selected-agent shell intent copy as fixed input to define the smallest honest browser-issued local lifecycle control bar, including where consent/audit gating begins, before the shell is allowed to send write RPC.
+- Anchor files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`
+- Validation: `get_errors` clean on all 4 anchor files.
+- Constraints: Docs-only. No shell code. No browser-issued writes, no grant/revoke, no remote transport, no broader S4 restart/reload semantics.
+- Last update: 2026-04-27
+- size: S
+- track: code
 
 ### WAVE-2026-04-27-01
 

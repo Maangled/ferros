@@ -30,7 +30,10 @@
 - [x] Operator-assisted localhost acceptance proves local `ferros agent run | stop` state changes are observable through the same `agent.snapshot` refresh seam without adding shell write controls; deny generation remains outside the current shell/CLI surface
 - [x] Define the minimum first shell-intent entry bar above the landed local-only `agent.run` / `agent.stop` JSON/RPC slice: selected-agent shell copy and slot ownership are the next honest surface, while browser-issued writes, grant/revoke, consent resolution, and broader browser control remain out of scope until a later code-backed follow-up exists
 - [x] Land selected-agent shell intent copy and read-only slot affordances against the landed local-only `agent.run` / `agent.stop` JSON/RPC slice above `LocalAgentApi`; keep grant/revoke and other privileged controls out of the shell until S2/S3/S4 publish broader code-backed write surfaces
-- [ ] Define the minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy before wiring shell calls to `agent.run` / `agent.stop`
+- [x] Define the minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy before wiring shell calls to `agent.run` / `agent.stop`
+- [ ] Land browser-issued local lifecycle control bar (consent/audit gating wired before write RPC is sent, deny-by-default demonstrable through S3 deny-log slot, harness confirms gate fires before `agent.run` / `agent.stop` JSON/RPC call is transmitted)
+- [x] Define the minimum honest first browser profile surface entry bar above the frozen S2 contract: `init`, `show`, `export`, `import` only, localhost-only, no grant mutation, no S2 reopening, prior art from `docs/legacy/personal-profile.html` as shape reference only
+- [ ] Land minimum profile surface on the localhost shell (`init`, `show`, `export`, `import` slots backed by frozen S2 CLI paths, harness proves surface stays within the frozen S2 boundary)
 
 ## Later (Phase C — post-G3)
 

@@ -40,6 +40,31 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 
 ---
 
+## Operator evidence surface
+
+The operator-facing evidence surface for hub bring-up and status is read-only. It is the operator observation surface for D1 demo preparation and G4 evidence collection, not a consumer hub UI.
+
+**Source of truth:** `docs/hub/pack-b-bring-up-worksheet.md` (derived from `docs/hub/reference-hardware.md`, which remains authoritative).
+
+### Surface definition
+
+| Field | Source | Notes |
+|-------|--------|-------|
+| Device target | `docs/hub/d1-target-inventory.md` (planned) | Primary D1 target name and form factor |
+| Firmware-spike milestone reached | HARDWARE-QUEUE wave results | Which of the four milestones (boot / identify / accept-grant / report-state) has been reached |
+| Profile init status | `ferros profile init` on target device | Whether `ferros profile init` and `ferros profile show` have run successfully on the target |
+| HA entity registered (or named stand-in) | S7 bridge runway notes | Which entity or stand-in is registered; must be named if a stand-in is used |
+| Consent flow visible | localhost shell deny-log | Whether deny-by-default enforcement is demonstrable to the operator |
+| Power-cycle status | D1 evidence capture | Whether reboot-safe FERROS-side state has been demonstrated |
+
+**Constraints:**
+- Read-only. The operator views bring-up state; this surface does not mutate it.
+- Does not constitute D1 evidence. Evidence is documented in `docs/gates/D1.md` when all D1 criteria are met simultaneously.
+- Does not introduce new JSON/RPC routes. All reads come from the existing S3 read-first contract (`agent.snapshot`, `agent.list`, `denyLog.list`) and local CLI output.
+- HA bridge protocol details, pairing handshake order, and HA fork internals are not invented here.
+
+---
+
 ## Out of scope
 
 - The Home Assistant core itself (the fork is a separate repo).

@@ -88,6 +88,12 @@ The table below defines the local-only lifecycle/write JSON/RPC surface that is 
 
 ---
 
+## S5 Phase B lifecycle control bar — S3 consumer-awareness
+
+S5 has defined the minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy. When that bar lands as code, S5 will consume `agent.run` and `agent.stop` from the current landed local-only lifecycle/write JSON/RPC slice. No new S3 RPC methods are implied by S5's stated bar definition. The read-after-write observation path (`agent.describe`, `agent.snapshot`, `denyLog.list`) is unchanged. Grant/revoke actions and broader browser control are out of scope for this bar.
+
+---
+
 ## Downstream consumers
 
 | Stream | What it consumes |

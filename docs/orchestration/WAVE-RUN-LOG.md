@@ -2,6 +2,102 @@
 
 Newest entry first. Each entry records one local driver invocation.
 
+---
+
+## BATCH-2026-04-27 — First Batch Mode Proof Run (Code Track)
+
+- **Batch open:** 2026-04-27
+- **Track:** code
+- **Waves in batch:** WAVE-2026-04-27-02, WAVE-2026-04-27-04, WAVE-2026-04-27-05
+- **Gatekeeper model:** Claude Sonnet 4.6 inline self-review. A dedicated second-model step is not mechanically available in the current VS Code Copilot Chat environment. The gatekeeper role is performed as a structured self-review using the six BATCH-MODE.md stop conditions. The intent is that when a small-tier model becomes mechanically available in this environment (or on a CLI that supports a two-model pipeline), this role migrates without redesign — the structured block format below is written to be stable across that swap.
+- **Gatekeeper block schema (fixed for forwards-compat):** `wave_id`, `stop_conditions_evaluated`, `decision`, `rationale`
+- **Overrun narrowing ratified:** `WAVE-QUEUE.md`, `WAVE-RUN-LOG.md`, `SYSTEM-QUEUE.md`, `HARDWARE-QUEUE.md`, and `doc-batches/*.md` are operational bookkeeping surfaces exempt from stop-condition-3 (diff overrun). Overrun fires on undeclared touches to `crates/**`, `schemas/**`, `.github/workflows/**`, `tools/**`, undeclared shared-truth surfaces (`STATUS.md`, gate docs, `CONTRACTS-OVERVIEW.md`), or cross-stream anchor encroachment. This narrowing is a practice ratification, not a `BATCH-MODE.md` edit; the doc edit is queued for the post-proof-run substrate-refinement wave.
+- **Batch-level verdict criteria:**
+  - **Pass:** all 3 waves landed clean, gatekeeper returned `continue` after waves 1 and 2 and `stop-clean` after wave 3, no overrun fires under the narrowed rule, validator never escalated.
+  - **Conditional pass:** all 3 landed clean but ≥1 substrate ambiguity flagged for follow-up.
+  - **Fail:** any wave required Triage/Trace, any frozen surface was touched, or batch halted before wave 3.
+- **No substrate edits during this run.** `BATCH-MODE.md` and `LOCAL-DRIVER.md` edits are held for the first post-proof-run wave.
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-05
+
+- Selected item: `WAVE-2026-04-27-05`
+- Result: WAVE-2026-04-27-05 is complete. The S7 owner docs now define the operator-facing evidence surface for hub bring-up and status. The surface is read-only and is sourced from `docs/hub/pack-b-bring-up-worksheet.md` (which derives from `docs/hub/reference-hardware.md`). The six surface fields (device target, firmware-spike milestone reached, profile init status, HA entity registered or named stand-in, consent flow visible, power-cycle status) are defined in a table in `streams/S7-hub/README.md` alongside explicit constraints: read-only, does not constitute D1 evidence, no new JSON/RPC routes, and no HA bridge protocol or pairing handshake details invented. The S7 backlog now marks the operator evidence surface definition as complete. `docs/hub/pack-b-bring-up-worksheet.md` carries a back-reference confirming the worksheet is the source-of-truth for the operator surface definition.
+- Files: `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, `docs/hub/pack-b-bring-up-worksheet.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` clean on `streams/S7-hub/README.md`, `streams/S7-hub/BACKLOG.md`, and `docs/hub/pack-b-bring-up-worksheet.md`. No crate, schema, harness, or workflow file was modified. No G4 evidence was claimed. No bridge protocol details were introduced.
+- Next follow-up: batch complete — gatekeeper emits stop-clean; human re-entry at doc-batch review
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-05",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on all 3 anchor files",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt; no crates/, schemas/, .github/workflows/, tools/, or undeclared shared-truth file was touched",
+    "4_track_boundary": "no next Ready wave in code-track queue — not applicable; batch run-length cap fires first",
+    "5_run_length_cap": "3 of 8 — batch target reached; stop-clean",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "stop-clean",
+  "rationale": "All three planned waves landed clean with no validation failures, no overrun fires under the narrowed rule, and no escalation. Wave 3 exhausts the declared batch scope (WAVE-2026-04-27-02, -04, -05). The run-length cap fires at 3 of 8, which is the planned proof-run target. The batch halts cleanly. Human re-entry is at the doc-batch summary review. The code-track Ready queue is now empty."
+}
+```
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-04
+
+- Selected item: `WAVE-2026-04-27-04`
+- Result: WAVE-2026-04-27-04 is complete. The S5 owner docs now define the minimum honest first browser profile surface entry bar above the frozen S2 contract: scope is `init`, `show`, `export`, and `import` only; localhost-only; no grant mutation; no `revoke`; each slot calls the already-frozen CLI path through the JSON/RPC surface without reopening `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`; `docs/legacy/personal-profile.html` is shape reference only and does not constitute G2 re-evidence; and the profile surface lands only after the four CLI paths are confirmed reachable through the localhost shell host and a harness proves the surface stays within the frozen S2 boundary. The backlog now carries the definition as checked and a new unchecked item for the code-backed landing. S2 carries a consumer-awareness note confirming S5 is a read/init consumer of the frozen profile contract and does not reopen G2 or mutate the S2 contract.
+- Files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S2-profile/README.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` clean on `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, and `streams/S2-profile/README.md`. `schemas/profile.v0.json` and `schemas/capability-grant.v0.json` not touched. No crate, schema, harness, or workflow file was modified.
+- Next follow-up: `WAVE-2026-04-27-05` (final code-track wave in this batch; batch continues)
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-04",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on all 3 anchor files",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear; frozen schemas were referenced but not touched",
+    "3_diff_overrun": "none — WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt; no crates/, schemas/, .github/workflows/, tools/, or undeclared shared-truth file was touched",
+    "4_track_boundary": "next wave WAVE-2026-04-27-05 is code-track — clear",
+    "5_run_length_cap": "2 of 8 — clear",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "All six stop conditions are clear. The wave landed docs-only consumer-awareness and bar-definition content across three anchor files. Frozen schemas were explicitly referenced in constraint language but not modified. get_errors is clean on all anchor files. No crate, schema, or workflow file was touched. The next queued wave (WAVE-2026-04-27-05) is a code-track S-size docs-only S7 wave with no P0, gate-close, solo, or frozen-schema flags. Batch continues to wave 3."
+}
+```
+
+---
+
+## 2026-04-27 — WAVE-2026-04-27-02
+
+- Selected item: `WAVE-2026-04-27-02`
+- Result: WAVE-2026-04-27-02 is complete. The S5 owner docs now define the minimum consent-gated browser-issued lifecycle control bar above the staged shell-intent copy: scope is `agent.run` and `agent.stop` only for the currently selected agent; consent/audit gating begins **before** the write RPC is sent; deny-by-default enforcement must be demonstrable through the S3 deny-log slot; and the control bar is not published until gating is observable, S4 enforcement is confirmed through the S3 read path, and a harness proves the gate fires before the write RPC is transmitted. The backlog item is now checked and a new unchecked item tracks the code-backed landing. S3 now carries a consumer-awareness note that S5's bar consumes only the already-landed `agent.run` / `agent.stop` local-only slice and implies no new S3 RPC methods. S4 carries a support-awareness note that S5's stated bar is downstream of S4's already-landed deny-by-default enforcement and implies no new S4 work. Grant/revoke, consent resolution for non-lifecycle operations, broader browser control, and S4 restart/reload semantics remain explicitly out of scope for this bar.
+- Files: `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, `streams/S4-runtime/BACKLOG.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` clean on `streams/S5-ux/README.md`, `streams/S5-ux/BACKLOG.md`, `streams/S3-agent-center/CONTRACTS.md`, and `streams/S4-runtime/BACKLOG.md`. No file under `crates/`, `schemas/`, `site/`, `harnesses/`, `.github/workflows/`, or `tools/` was modified. No frozen schema was touched. No gate doc was moved.
+- Next follow-up: `WAVE-2026-04-27-04` (next code-track wave; batch continues)
+
+```json
+{
+  "wave_id": "WAVE-2026-04-27-02",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on all 4 anchor files",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — WAVE-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt under the ratified narrowing; no crates/, schemas/, .github/workflows/, tools/, or undeclared shared-truth file was touched",
+    "4_track_boundary": "next wave WAVE-2026-04-27-04 is code-track — clear",
+    "5_run_length_cap": "1 of 8 — clear",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "All six stop conditions are clear. The wave landed docs-only changes to four anchor files, all of which pass get_errors. No frozen surface was touched, no crate or schema file was modified, and the next queued wave (WAVE-2026-04-27-04) is a code-track S-size docs-only wave with no P0, gate-close, solo, or frozen-schema flags. Batch continues to wave 2."
+}
+```
+
+---
+
 ## 2026-04-27 — WAVE-2026-04-27-03
 
 - Selected item: `WAVE-2026-04-27-03`

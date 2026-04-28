@@ -1,6 +1,8 @@
 # FERROS Hub - Pack B Bring-Up Worksheet
 
 > Derived from `docs/hub/reference-hardware.md`. That file remains authoritative. This worksheet is prep and evidence-capture only for the Pack B x86_64 device under test plus a separate Pack C Home Assistant host. It does not create a second authority map and does not imply that any G4 item is complete.
+>
+> **Operator evidence surface source:** This worksheet is the source of truth for the S7 operator-facing evidence surface defined in `streams/S7-hub/README.md`. The surface fields (device target, firmware-spike milestone, profile init status, HA entity registered, consent flow visible, power-cycle status) map directly to the capture rows below. That surface is read-only; it does not mutate this worksheet.
 
 ## Scope
 
