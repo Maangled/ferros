@@ -31,6 +31,8 @@ For program rules, see [ADR-022-decision-program-governance.md](./ADR-022-decisi
 | [ADR-012](./ADR-012-schema-evolution-cascade.md) | Schema evolution cascade | Controls how contracts and fixtures evolve over time |
 | [ADR-021](./ADR-021-dependency-admission-policy.md) | Dependency admission policy | Defines the current browser and Rust dependency posture |
 | [ADR-022](./ADR-022-decision-program-governance.md) | Decision-program governance | Defines the ADR taxonomy, evidence bases, and research lane |
+| [ADR-023](./ADR-023-onramp-policy.md) | Onramp policy — external systems are onramps, not identity truth | Establishes the data-direction invariant: all inbound data from HA, calendar, social-graph, and bundle pipelines is staged and requires explicit user consent before becoming canonical FERROS state |
+| [ADR-024](./ADR-024-ledger-substrate.md) | Ledger/chain substrate comparison and recommendation | Evaluates Solana, EVM L2, Cosmos app-chain, and non-chain signed-ledger options; recommends non-chain signed ledger for v0.1.0–v0.2.0; holds public-chain as a future escalation path |
 
 ---
 

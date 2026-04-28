@@ -52,6 +52,14 @@ Recursive lane planning is allowed, but only as a bounded refinement step.
 - Escalate to **FERROS Trace Analyst Agent** only when the failure boundary remains ambiguous after triage.
 - If a lane discovers a new owning stream or contract seam mid-flight, escalate back to the parent orchestrator rather than freelancing a sibling lane.
 
+## Gatekeeper model intent
+
+The gatekeeper role (used inside Batch Mode between waves) is currently performed by the primary orchestrator model as an inline self-review step. This is a known limitation: the same model that authors the wave is also reviewing it.
+
+The intent is to migrate the gatekeeper role to a dedicated small-tier / fast model (e.g., a mini-tier model in the same tooling surface) when that becomes mechanically available. The structured gatekeeper block format documented in `docs/orchestration/BATCH-MODE.md` is the stable handoff contract for that migration — no redesign of the block schema or decision enum is required when the model swap occurs.
+
+Until that migration, the inline self-review posture is acceptable for `size: S`, docs-only, non-gate-close waves. Gate-close waves, P0 waves, and frozen-schema-touching waves remain Interactive-only and are not subject to gatekeeper review.
+
 ## Non-goals
 
 - No background autonomy after the chat turn ends.

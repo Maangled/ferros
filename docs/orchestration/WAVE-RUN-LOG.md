@@ -4,6 +4,105 @@ Newest entry first. Each entry records one local driver invocation.
 
 ---
 
+## BATCH-2026-04-27-B — System-Track Batch Mode Run
+
+- **Batch open:** 2026-04-27
+- **Track:** system
+- **Waves in batch (declared order):** SYSTEM-2026-04-27-01, SYSTEM-2026-04-27-03, SYSTEM-2026-04-27-02
+- **Gatekeeper model:** Claude Sonnet 4.6 inline self-review (same posture as code-track batch; see LOCAL-DRIVER.md gatekeeper model intent section for migration plan).
+- **Overrun exemption list (ratified):** `WAVE-QUEUE.md`, `WAVE-RUN-LOG.md`, `SYSTEM-QUEUE.md`, `HARDWARE-QUEUE.md`, `doc-batches/*.md`, and owner-stream `PROGRESS.md` only. Non-owner stream PROGRESS.md remains overrun. Overrun fires on undeclared `crates/**`, `schemas/**`, `.github/workflows/**`, `tools/**`, shared-truth, or cross-stream anchor touches.
+- **Substrate-refinement wave status:** Landed before this batch opened. `BATCH-MODE.md` now carries: operational bookkeeping exemption sub-section (stop condition 3), structured gatekeeper block schema, and batch-level verdict criteria section. `LOCAL-DRIVER.md` now carries the gatekeeper model-swap intent note.
+- **No-substrate-edits constraint:** Do not touch `BATCH-MODE.md` or `LOCAL-DRIVER.md` inside this batch.
+- **Ceiling:** Editing-lane ceiling remains 5 (ceiling-lift deferred to after two clean/conditional batches; code-track proof run = 1 of 2).
+
+---
+
+## 2026-04-27 — SYSTEM-2026-04-27-02
+
+- Selected item: `SYSTEM-2026-04-27-02`
+- Result: Complete. `docs/adr/ADR-024-ledger-substrate.md` (Status: Proposed) is now in repo. The ADR evaluates four options — non-chain signed ledger, Solana, EVM L2 (Optimism/Arbitrum/Base), and Cosmos app-chain — against three FERROS invariants: locally sovereign, flashdrive-portable, and signed grants exist without on-chain anchoring. **Recommendation: non-chain signed ledger as default for v0.1.0–v0.2.0; public-chain as a future escalation path contingent on confirmed marketplace or cross-device requirements.** Key rationale: FERROS's current threat model focuses on local consent-gate integrity, not public verifiability; introducing a public-chain dependency before those requirements are confirmed adds operational complexity and network dependency not yet warranted. The `SignedProfileDocument` v0 boundary already provides tamper-evidence sufficient for the current gate path. S6 harvest work is directed to evaluate ledger-adjacent prior-art patterns against the signed-ledger model first. `docs/adr/_INDEX.md` now includes ADR-024.
+- Files: `docs/adr/ADR-024-ledger-substrate.md`, `docs/adr/_INDEX.md`
+- Validation: `get_errors` clean on both anchor files. No crate, schema, harness, or workflow file touched. No frozen schema mutated. No gate moved.
+
+```json
+{
+  "wave_id": "SYSTEM-2026-04-27-02",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on ADR-024 and _INDEX.md",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear; ADR status is Proposed (not Accepted) which is correct for a recommendation-only ADR",
+    "3_diff_overrun": "none — SYSTEM-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt; only declared anchor files and exempt bookkeeping surfaces touched",
+    "4_track_boundary": "no next Ready wave in system queue — queue exhausted",
+    "5_run_length_cap": "3 of 8 — all 3 declared batch waves landed; stopping cleanly",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "stop-clean",
+  "rationale": "All three declared system-track waves landed cleanly with no validation failures, no overrun fires, and no escalation. ADR-024 correctly carries Proposed (not Accepted) status since it is a recommendation pending human review; this is appropriate and does not constitute a stop condition. The system-track Ready queue is now empty. Run-length cap fires at 3 of 8 which equals the declared batch scope. Stopping cleanly; human re-entry is at the doc-batch summary."
+}
+```
+
+---
+
+## 2026-04-27 — SYSTEM-2026-04-27-03
+
+- Selected item: `SYSTEM-2026-04-27-03`
+- Result: Complete. `docs/legal/` is now scaffolded with three counsel-ready placeholder files. `TERMS-OF-USE.md` covers the nature of the software, the no-warranty disclaimer, the consent model design commitments, user responsibilities, no-personal-data-processing statement, IP coverage, and open red-line targets including warranty scope, trademark posture, and hosted-component carve-outs. `LICENSING-POSTURE.md` maps current repo artifact classes to license files, surfaces the dual-licensing intent question, the CLA question, the trademark registration question, and the schema-file licensing question. `CONSENT-LANGUAGE.md` proposes plain-English consent language for capability grants, onramp accept steps, the audit log disclosure, and deny-by-default notices; lists five open consent questions for counsel resolution. All three files carry a prominent draft-status blockquote. No legal advice is given or implied in any file.
+- Files: `docs/legal/TERMS-OF-USE.md`, `docs/legal/LICENSING-POSTURE.md`, `docs/legal/CONSENT-LANGUAGE.md`
+- Validation: `get_errors` clean on all three anchor files. No crate, schema, harness, or workflow file touched. No frozen schema mutated. No gate moved.
+
+```json
+{
+  "wave_id": "SYSTEM-2026-04-27-03",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on all 3 anchor files",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — SYSTEM-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt; only declared anchor files and exempt bookkeeping surfaces touched",
+    "4_track_boundary": "next Ready wave (SYSTEM-2026-04-27-02) is system track — no boundary crossed",
+    "5_run_length_cap": "2 of 8 — continue",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "Three legal scaffold files landed cleanly as draft-marked docs-only placeholders. No stop conditions fired. The files surface open questions for counsel without claiming legal advice or final terms. Next wave is SYSTEM-2026-04-27-02 (ledger ADR), same track, size S — batch continues."
+}
+```
+
+---
+
+## 2026-04-27 — SYSTEM-2026-04-27-01
+
+- Selected item: `SYSTEM-2026-04-27-01`
+- Result: Complete. `docs/adr/ADR-023-onramp-policy.md` (Status: Accepted) is now in repo. The ADR establishes the data-direction invariant: all data entering FERROS from external systems — including Home Assistant, calendar providers, social-graph exports, and bundle/migration pipelines — is treated as proposed material requiring explicit user consent before becoming canonical FERROS state. Key rules: inbound data is quarantined until accepted; consent is explicit and auditable (not implicit from having an integration enabled); the external system does not define identity; import pipelines must declare a direction; HA bridge implementation details are explicitly not constrained by this ADR. `docs/adr/_INDEX.md` now includes ADR-023 in the Foundational and Governance Records table.
+- Files: `docs/adr/ADR-023-onramp-policy.md`, `docs/adr/_INDEX.md`
+- Validation: `get_errors` clean on both anchor files. No crate, schema, harness, or workflow file touched. No frozen schema mutated. No gate moved. Consistent with ADR-021 (dependency posture) and ADR-013 (legacy integration boundary).
+
+```json
+{
+  "wave_id": "SYSTEM-2026-04-27-01",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "pass — get_errors clean on ADR-023 and _INDEX.md",
+    "2_wave_tag": "no P0/gate-close/solo/frozen-schema flags — clear",
+    "3_diff_overrun": "none — SYSTEM-QUEUE.md and WAVE-RUN-LOG.md are bookkeeping-exempt; only declared anchor files and exempt bookkeeping surfaces touched",
+    "4_track_boundary": "next Ready wave (SYSTEM-2026-04-27-03) is system track — no boundary crossed",
+    "5_run_length_cap": "1 of 8 — continue",
+    "6_escalation_chain": "no escalation — clear"
+  },
+  "decision": "continue",
+  "rationale": "ADR-023 landed cleanly as a docs-only Accepted ADR. No stop conditions fired. The ADR frames the consent invariant without constraining S7 bridge implementation details, consistent with the wave constraints. Next wave is SYSTEM-2026-04-27-03 (legal scaffold), same track, size S — batch continues."
+}
+```
+
+---
+
+## 2026-04-27 — Substrate-refinement wave (Interactive, S8)
+
+- Selected item: substrate-refinement (non-queued, Interactive Mode)
+- Result: Complete. `docs/orchestration/BATCH-MODE.md` now carries (1) an "Operational bookkeeping exemption" sub-section under stop condition 3 with the ratified six-surface exempt list (WAVE-QUEUE.md, WAVE-RUN-LOG.md, SYSTEM-QUEUE.md, HARDWARE-QUEUE.md, doc-batches/, and owner-stream PROGRESS.md only), (2) the structured gatekeeper block format as a stable schema block under the Gatekeeper Agent Contract section including the model-swap migration note, and (3) a "Batch-Level Verdict Criteria" section documenting the clean-pass, conditional-pass, and fail definitions with the non-trivial-decision requirement for a clean pass. `docs/orchestration/LOCAL-DRIVER.md` now carries a "Gatekeeper model intent" section documenting the inline-self-review posture as a known limitation and the migration intent when a small-tier model becomes available.
+- Files: `docs/orchestration/BATCH-MODE.md`, `docs/orchestration/LOCAL-DRIVER.md`
+- Validation: `get_errors` clean on both files. No crate, schema, harness, or workflow file touched. No frozen surface mutated. No gate moved.
+- Next follow-up: system-track Batch Mode batch opens immediately.
+- Note: This wave is a substrate-editing wave; by definition it is not subject to gatekeeper review. The gatekeeper role does not evaluate a wave that edits its own contract.
+
+---
+
 ## BATCH-2026-04-27 — First Batch Mode Proof Run (Code Track)
 
 - **Batch open:** 2026-04-27

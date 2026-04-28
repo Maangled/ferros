@@ -37,7 +37,20 @@ Any one of the following fires → stop the batch and wait for human re-entry:
 
 1. **Validation failed** on the just-landed wave.
 2. **Wave tag:** the just-finished wave or the next Ready wave is tagged `priority: P0`, `gate-close`, `solo: true`, or touches a frozen schema.
-3. **Diff overrun:** the landing diff touched files outside the wave's declared `anchor files` set (default threshold: any non-anchor file touched counts as overrun; configurable per batch invocation).
+3. **Diff overrun:** the landing diff touched files outside the wave's declared `anchor files` set, subject to the operational bookkeeping exemption below.
+
+   #### Operational bookkeeping exemption
+
+   The following surfaces are exempt from stop condition 3. Every wave touches them as part of the wave-completion contract, not as uncontrolled scope expansion. Overrun does not fire for changes to:
+
+   - `docs/orchestration/WAVE-QUEUE.md`
+   - `docs/orchestration/WAVE-RUN-LOG.md`
+   - `docs/orchestration/SYSTEM-QUEUE.md`
+   - `docs/orchestration/HARDWARE-QUEUE.md`
+   - `docs/orchestration/doc-batches/DOC-BATCH-*.md`
+   - The **owner stream's** `streams/S*/PROGRESS.md` only. If a wave's declared owning stream is S5, then `streams/S5-ux/PROGRESS.md` is exempt; touching a different stream's PROGRESS.md is still an overrun.
+
+   Overrun fires on undeclared touches to: `crates/**`, `schemas/**`, `.github/workflows/**`, `tools/**`, undeclared shared-truth surfaces (`STATUS.md`, gate docs, `CONTRACTS-OVERVIEW.md`), another stream's anchor files, or a non-owner stream's `PROGRESS.md`.
 4. **Track boundary:** the next Ready wave's `track` value differs from the current batch's track.
 5. **Run-length cap:** 8 waves have landed in the current batch.
 6. **Escalation chain exhausted:** the validator escalated to Log Triage, and Log Triage escalated to Trace Analyst without resolving the failure.
@@ -65,6 +78,28 @@ Each wave landing in Batch Mode is reviewed by a lightweight **Gatekeeper** step
 **Policy scope only.** The Gatekeeper makes **policy decisions** (should the batch continue given what just happened?), not code or architecture review. Code and architecture review happens at doc-batch boundaries by the human.
 
 **Recommended model class:** small / fast (e.g., a mini-tier model). The orchestrator stays on the larger model.
+
+#### Structured block format
+
+Each gatekeeper decision is recorded as a JSON block in the wave's run-log entry using this schema:
+
+```json
+{
+  "wave_id": "WAVE-YYYY-MM-DD-NN",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "...",
+    "2_wave_tag": "...",
+    "3_diff_overrun": "...",
+    "4_track_boundary": "...",
+    "5_run_length_cap": "...",
+    "6_escalation_chain": "..."
+  },
+  "decision": "continue | stop-clean | stop-escalate",
+  "rationale": "..."
+}
+```
+
+The block format is stable. When a dedicated small-tier gatekeeper model becomes mechanically available in the tooling, the gatekeeper role will swap to that model without redesigning the block schema. The structured block is the handoff contract for that migration.
 
 ---
 
@@ -112,6 +147,18 @@ Batch Mode scopes each run to one track. The three track queues are:
 | `docs/orchestration/HARDWARE-QUEUE.md` | `hardware` | Firmware, bring-up, UX sessions |
 
 A Batch Mode run that reaches a track-boundary stop condition (condition 4 above) simply halts at that boundary. The human re-invokes with the target track explicitly named if they want to continue in a different track.
+
+---
+
+## Batch-Level Verdict Criteria
+
+The human reviewer applies one of three verdicts to each completed batch during doc-batch review:
+
+- **Clean pass** — all waves landed clean, gatekeeper returned `continue` throughout and `stop-clean` on the last wave, no overrun fires under the narrowed rule, no escalation, and the run log shows at least one non-trivial gatekeeper decision (e.g., a near-miss on a stop condition that was correctly held back from firing). A run where the gatekeeper never encountered a candidate stop condition is not sufficient for a clean pass — it suggests the batch was not probing hard enough.
+- **Conditional pass** — all waves landed clean and the gatekeeper behaved correctly, but ≥1 substrate ambiguity was surfaced and flagged. This is the normal, healthy outcome of a first proof run and triggers a substrate-refinement wave as the next queued item. A conditional pass does not downgrade to fail unless the named ambiguity is a blocking condition.
+- **Fail** — triage or trace analysis is required; a frozen surface was touched; the batch halted before its declared scope completed; or the gatekeeper escalated to `stop-escalate`.
+
+The verdict is set by the human during doc-batch review. The gatekeeper's `decision` field informs but does not automatically determine the verdict.
 
 ---
 
