@@ -76,7 +76,10 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 |--------|-------|------|-----------|--------|
 | Profile | S2 | `schemas/profile.v0.json` | S3, S7 | ✅ Frozen unsigned published v0 consumer contract; cargo test + H1 harness-covered |
 | CapabilityGrant | S2 | `schemas/capability-grant.v0.json` | S3, S4, S7 | ✅ Frozen signed envelope; cargo test + H1 harness-covered |
+| Hub Local State Snapshot | S7 | `schemas/hub-local-state-snapshot.schema.json` | S1 support (H1 validator), S8 (contracts truth) | 🟡 Local-only persisted restart-snapshot schema under `.tmp/hub/`; H1-covered and intentionally not a public restart API or gate-closing contract |
 | AgentManifest | S3 | `schemas/agent-manifest.v0.json` | S4, S5, S7 | ⬜ Not yet created |
+
+The S7 hub schema row above is a local-only runway contract shared with harness/docs surfaces. It does not imply Home Assistant integration, hardware evidence, remote transport, or G4 closure.
 
 ### CLI APIs
 
@@ -90,6 +93,7 @@ Freeze executes when Wave 2 consumer-surface threshold is met:
 | Protocol | Owner | Consumers | Status |
 |----------|-------|-----------|--------|
 | In-process bus (`MessageBus` trait + `MessageEnvelope` payload contract) | S4 | S3 (agent routing) | ✅ Created and backing the current local demo path; the shared payload boundary now has explicit message-envelope tests plus `--no-default-features` and `thumbv7em-none-eabi` compile proof in the current repo workflow |
+| Localhost runway summary surface (`GET /runway-summary(.json)`) | S4 | S5 (shell), S7 (runway planning) | 🟡 Local-only read-only route served from `crates/ferros-node/src/lib.rs`; it now additively carries optional `hubRestart` context sourced from the hub summary seam for bounded restart observation on the current localhost path, without publishing a durable hub restart API, remote transport, or gate-closing evidence |
 | Localhost JSON/RPC contract (agent center) | S3 | S5 Phase B (web shell) | 🟡 Defined in `crates/ferros-agents/src/rpc.rs` and hosted locally via `crates/ferros-node/src/lib.rs`; the current read methods remain `agent.list`, `agent.describe`, `agent.snapshot`, `grant.list`, and `denyLog.list`, and the first local-only lifecycle/write methods `agent.run` and `agent.stop` now route through `LocalAgentApi` on the same localhost host and state path; the shell currently uses the read seam only, while broader browser control, remote transport, grant writes, and richer remote observation/control remain open |
 
 ---

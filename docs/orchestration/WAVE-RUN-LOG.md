@@ -3,6 +3,32 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-04-29 — WAVE-2026-04-29-54
+
+- Selected item: `WAVE-2026-04-29-54`
+- Result: Complete. `docs/contracts/CONTRACTS-OVERVIEW.md` now records only the two owner-backed cross-stream additions needed after the restart-aware local hub runway packet: the S7 local hub state snapshot schema and the S4-owned additive optional `hubRestart` child on the existing read-only `/runway-summary(.json)` seam. During validation, an initial overview draft that enumerated additional S7 schema rows was narrowed in-wave because it got ahead of the authoritative S7 contract doc; the closed result now matches the owner surfaces cleanly. No G4 closure, physical-device evidence, Home Assistant integration proof, remote transport, daemon/server mode, or durable published hub restart API claim moved.
+- Files: `docs/contracts/CONTRACTS-OVERVIEW.md`
+- Validation: `get_errors` is clean on `docs/contracts/CONTRACTS-OVERVIEW.md`. Parent readback confirmed the final overview rows stay limited to the owner-backed S7 snapshot schema and the S4 runway-summary `hubRestart` seam. FERROS Contract Auditor Agent first flagged the two overview schema rows that were ahead of `streams/S7-hub/CONTRACTS.md`; the same-wave repair removed that drift, and the re-audit returned no findings and cleared W54 for closeout as-is.
+- Next follow-up: None required for this overview sync. If S7 later publishes additional local hub schema contracts in its owner `CONTRACTS.md`, queue a separate truth-sync to widen the overview then.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-54",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: get_errors is clean on docs/contracts/CONTRACTS-OVERVIEW.md, the initial owner-surface drift was repaired in-wave, and the Contract Auditor re-audit returned no findings.",
+    "2_wave_tag": "Triggered: WAVE-2026-04-29-54 was queued as a solo truth-sync follow-up, so the invocation closes after this wave instead of continuing automatically.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside docs/contracts/CONTRACTS-OVERVIEW.md plus the operational bookkeeping surfaces docs/orchestration/WAVE-QUEUE.md and docs/orchestration/WAVE-RUN-LOG.md.",
+    "4_track_boundary": "Not triggered: no additional track transition was needed to finish the requested follow-up.",
+    "5_run_length_cap": "Not triggered: this was a single follow-up wave, not a continuing batch segment.",
+    "6_escalation_chain": "Not triggered: the validator found one local truth-drift issue, it was repaired in the same wave, and no triage escalation was required."
+  },
+  "decision": "stop",
+  "rationale": "W54 completed the requested contracts-overview follow-up, corrected the only owner-surface drift inside the same wave, and now leaves the shared index aligned with the authoritative S7 and S4 contract docs."
+}
+```
+
+---
+
 ## 2026-04-29 — WAVE-2026-04-29-53
 
 - Selected item: `WAVE-2026-04-29-53`

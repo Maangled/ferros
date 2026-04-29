@@ -29,6 +29,23 @@ None.
 
 ## Done
 
+### WAVE-2026-04-29-54
+
+- Title: Sync the cross-stream contracts overview after the restart-aware local hub runway packet
+- Status: done
+- Priority: P2
+- Gate: rolling contracts truth-sync after W53
+- Owning streams: S8 primary, S7 awareness, S4 awareness
+- Goal: Reconcile `docs/contracts/CONTRACTS-OVERVIEW.md` with the already-authoritative S7 and S4 contract docs so the cross-stream index names the owner-backed S7 local hub restart snapshot contract and the additive S4-owned `hubRestart` child on the existing read-only `/runway-summary(.json)` seam without widening the claim boundary.
+- Anchor files: `docs/contracts/CONTRACTS-OVERVIEW.md`
+- Validation: `get_errors` clean on touched file; diff review confirms no G4 closure, no hardware evidence claim, no Home Assistant integration claim, no remote transport claim, no daemon or server mode claim, and no durable published hub restart API claim
+- Constraints: Overview only. Do not reopen `STATUS.md`, stream `CONTRACTS.md` files, schemas, harnesses, or crate files. Keep the S7 packet local-only, non-evidentiary, and non-gate-closing.
+- Last update: 2026-04-29
+- size: S
+- serial-after: WAVE-2026-04-29-53
+- solo: true
+- track: code
+
 ### WAVE-2026-04-29-53
 
 - Title: Final serial truth-sync after the restart-aware local hub runway packet
