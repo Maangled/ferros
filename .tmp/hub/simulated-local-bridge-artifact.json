@@ -1,0 +1,10 @@
+{
+  "bridgeAgentName": "ha-local-bridge",
+  "standInName": "simulated-bridge-entity",
+  "relativeOutputPath": ".tmp/hub/simulated-local-bridge-artifact.json",
+  "requestedCapability": "bridge.observe",
+  "requestedAction": "report-state",
+  "status": "allowed",
+  "scope": "local-only",
+  "evidence": "non-evidentiary"
+}

@@ -16,10 +16,13 @@ The runtime is still the local Copilot chat surface. The repo stores the queue, 
 
 1. Invoke **FERROS Local Driver Agent** and ask it to run the next wave, or give it a specific wave ID.
 2. The driver reads `WAVE-QUEUE.md`, selects the next ready item, marks it in progress, and delegates to **FERROS Orchestrator Agent**.
-3. The orchestrator lane-plans the wave, uses bounded recursion only when a lane earns one more planning pass, validates lane scope before launch, routes failed lanes through log triage, then returns the integration result.
-4. Reinvoke the driver for the next wave.
+3. The orchestrator runs the default authorization chain: Lane Architect review, builder lane execution, validator review, risk or claim rationalization, Gatekeeper decision, then top-level orchestrator authorization.
+4. The orchestrator uses bounded recursion only when a lane earns one more planning pass, validates lane scope before launch, routes failed lanes through log triage, and returns the integration result.
+5. Reinvoke the driver for the next wave unless Batch Mode or Queue-Clear Mode is active.
 
 Interactive Mode is the single-wave posture. For Batch Mode (multiple Ready waves per invocation without per-wave human re-invocation), see `docs/orchestration/BATCH-MODE.md`. When the explicit objective is `clear the queue`, Batch Mode runs in **Queue-Clear** posture: it keeps draining the selected queue, emits doc-batch summaries as non-blocking review artifacts, and stops only when a hard Batch Mode stop condition fires or the scoped queue is empty. All lane policy rules below apply inside every wave regardless of mode.
+
+Human re-entry is not the default safety mechanism. Subagent review is. Human re-entry is reserved for user-directed work, repeated failure or missing-input loops, physical-world actions, and true user-authority or product-direction questions.
 
 ## Default lane policy
 
@@ -65,6 +68,17 @@ Recursive lane planning is allowed, but only as a bounded refinement step.
 - If a lane fails validation or implementation, route the earliest concrete failure through **FERROS Log Triage Agent** before widening the fix.
 - Escalate to **FERROS Trace Analyst Agent** only when the failure boundary remains ambiguous after triage.
 - If a lane discovers a new owning stream or contract seam mid-flight, escalate back to the parent orchestrator rather than freelancing a sibling lane.
+
+## Review roles inside a wave
+
+The orchestrator remains the authorizing authority, but it should delegate the safety checks to better-scoped subagents instead of treating human re-entry as the normal brake.
+
+- **Lane Architect** confirms anchors, decomposition, and whether a wave can be safely split.
+- **Builder lane(s)** implement only the declared slice.
+- **Validator** runs the targeted executable checks.
+- **Risk or claim rationalizer** verifies that scope, gate language, hardware claims, transport claims, and privilege posture stayed inside the wave constraints.
+- **Gatekeeper** converts the reviews into `continue`, `stop-clean`, or `stop-escalate`.
+- **Top-level orchestrator** makes the final go/no-go call for the next segment.
 
 ## Standard batch rhythm
 

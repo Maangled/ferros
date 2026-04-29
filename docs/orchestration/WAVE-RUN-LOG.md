@@ -3,6 +3,109 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-04-28 — WAVE-2026-04-28-37
+
+- Selected item: `WAVE-2026-04-28-37`
+- Result: Complete. The final solo truth-sync now records the landed `ferros-hub` scaffold, crate-local bridge seam, simulated allow/deny/error proof loop, and emitted local artifact across the minimum S7 truth surfaces without moving G4, D1, hardware, Home Assistant, remote-transport, or privileged-write truth.
+- Files: `STATUS.md`, `streams/S7-hub/README.md`, `streams/S7-hub/PROGRESS.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: `get_errors` is clean on all 4 touched truth surfaces. Diff review kept the wave on shared-truth updates only and preserved the non-gate-closing claim boundary.
+- Next follow-up: The code-track queue is drained. Any further automation should begin as a fresh invocation on a new code-track intake or a different track.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-37",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: get_errors is clean on STATUS.md, streams/S7-hub/README.md, streams/S7-hub/PROGRESS.md, and streams/S7-hub/BACKLOG.md.",
+    "2_wave_tag": "Triggered: WAVE-2026-04-28-37 itself is tagged solo: true, so this just-finished serial truth-sync wave must close the batch segment rather than continue.",
+    "3_diff_overrun": "Not triggered: on the supplied WAVE-37 landing scope, changes stayed inside the four declared truth surfaces; no crate, schema, or gate-doc edits were added by this wave, and normal queue/run-log bookkeeping is exempt.",
+    "4_track_boundary": "Not triggered: after WAVE-37 bookkeeping there is no next Ready code-track wave, so the scoped code queue is drained rather than crossing into another track.",
+    "5_run_length_cap": "Not triggered: WAVE-36 already ended the prior segment with stop-clean, so WAVE-37 is a new one-wave serial segment and remains well below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: validation did not escalate through Validator to Log Triage to Trace Analyst."
+  },
+  "decision": "stop-clean",
+  "rationale": "WAVE-37 landed as the planned solo truth-sync boundary: validation is clean, the diff stayed inside the declared S7 truth surfaces, the wording remains local-only and non-gate-closing, and closing this wave drains the last Ready code-track item."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-36
+
+- Selected item: `WAVE-2026-04-28-36`
+- Result: Complete. The local bridge seam now proves one simulated allow path, one denied capability path, and one invalid-path error/reporting path under focused bridge tests, and the allow path emits `.tmp/hub/simulated-local-bridge-artifact.json` with local-only, non-evidentiary request/report fields. No Home Assistant proof, hardware evidence, remote transport, or privileged-write expansion was added.
+- Files: `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`, `.tmp/hub/simulated-local-bridge-artifact.json`
+- Validation: `cargo test -p ferros-hub bridge_` passed. The emitted `.tmp/hub/simulated-local-bridge-artifact.json` exists and contains only local-only, non-evidentiary fields. Non-test binary builds still emit non-blocking dead-code warnings for the new proof-only helpers.
+- Next follow-up: Start WAVE-2026-04-28-37 as a solo truth-sync invocation and update only the minimal S7 truth surfaces needed to reflect the new local binary, bridge seam, proof loop, and emitted local artifact without moving G4, D1, hardware, or Home Assistant truth.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-36",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-hub bridge_ passed, the allow path emitted the expected local artifact, and the remaining dead-code warnings are explicitly non-blocking in non-test binary builds.",
+    "2_wave_tag": "Triggered: the next Ready wave, WAVE-2026-04-28-37, is tagged solo: true, so Batch Mode must stop at this planned serial truth-sync boundary.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed within the declared local bridge anchors, with queue/run-log bookkeeping covered by the operational bookkeeping exemption.",
+    "4_track_boundary": "Not triggered: the next Ready wave remains on the code track.",
+    "5_run_length_cap": "Not triggered on the supplied evidence: nothing indicates the current batch segment has reached the 8-wave cap before the solo boundary arrives.",
+    "6_escalation_chain": "Not triggered: validation passed and there was no validator -> Log Triage -> Trace Analyst exhaustion."
+  },
+  "decision": "stop-clean",
+  "rationale": "WAVE-36 landed cleanly as a local-only simulated bridge slice: targeted validation passed, one local artifact was emitted, scope stayed within the declared anchors, and no Home Assistant, hardware, remote-transport, privileged-write, or gate-closing claim moved. The batch should stop cleanly now because stop condition 2 fires on the next Ready solo truth-sync wave; this is a planned boundary, not an unresolved failure."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-35
+
+- Selected item: `WAVE-2026-04-28-35`
+- Result: Complete. `ferros-hub` now carries the first crate-local bridge seam for the G4 proof ladder: one default local bridge agent can register in a local registry, and one non-evidentiary simulated bridge artifact summary stays local-only. No Home Assistant proof, hardware evidence, remote transport, on-disk artifact-emission claim, or privileged-write expansion was added.
+- Files: `crates/ferros-hub/src/main.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub bridge_agent_registers_locally` passed. `cargo test -p ferros-hub simulated_bridge_artifact_stays_local_only` passed. One non-blocking dead-code warning remains on `render_json` in non-test builds.
+- Next follow-up: WAVE-2026-04-28-36 is authorized next; keep the next slice local-only and simulated while proving allow, deny, and error/reporting behavior and only claim `.tmp/hub` emission if the wave writes and validates a real artifact.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-35",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: `cargo test -p ferros-hub bridge_agent_registers_locally` passed and `cargo test -p ferros-hub simulated_bridge_artifact_stays_local_only` passed; the remaining `render_json` dead-code warning is non-blocking.",
+    "2_wave_tag": "Not triggered: WAVE-35 and next Ready WAVE-36 are both P1 code-track waves, and neither is tagged `gate-close`, `solo: true`, or frozen-schema-touching.",
+    "3_diff_overrun": "Not triggered: the reported landing stayed within the declared ferros-hub anchors; no manifest widening, remote transport, Home Assistant fork change, privileged-write expansion, or undeclared on-disk `.tmp/hub` artifact emission was introduced. Queue/run-log bookkeeping remains exempt operational bookkeeping.",
+    "4_track_boundary": "Not triggered: the next Ready wave remains on `track: code`.",
+    "5_run_length_cap": "Not triggered: there is no evidence the current batch segment has reached the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: validation passed and no validator -> Log Triage -> Trace Analyst exhaustion occurred."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-35 landed as the claimed first local-only bridge seam plus simulated non-evidentiary artifact summary, stayed inside its declared ferros-hub anchors, and did not move G4, D1, Home Assistant, hardware, remote-transport, privilege, or real on-disk artifact-emission truth. The remaining `render_json` warning does not block continuation. After queue/run-log bookkeeping is written, the serial-after dependency is satisfied and WAVE-36 can proceed so long as it stays simulated and local-only and does not invent capability semantics or overclaim `.tmp/hub` emission before validation proves it."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-34
+
+- Selected item: `WAVE-2026-04-28-34`
+- Result: Complete. The orchestration substrate now treats subagent review as the default safety mechanism for this size-L execution, and the repo now contains the first local-only `ferros-hub` workspace member and binary scaffold. No G4, D1, hardware, Home Assistant, remote-transport, or privileged-write claim moved.
+- Files: `docs/orchestration/BATCH-MODE.md`, `docs/orchestration/LOCAL-DRIVER.md`, `Cargo.toml`, `Cargo.lock`, `crates/ferros-hub/Cargo.toml`, `crates/ferros-hub/src/main.rs`
+- Validation: `cargo check -p ferros-hub` passed.
+- Next follow-up: WAVE-2026-04-28-35 is authorized next; keep the slice on one local-only bridge seam plus one simulated local artifact without widening into hardware, Home Assistant proof, remote transport, or privileged writes.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-34",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo check -p ferros-hub passed.",
+    "2_wave_tag": "Not triggered: WAVE-34 and next Ready WAVE-35 are P1 code-track waves and neither is gate-close, solo, or frozen-schema-touching.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed within the declared anchors, and upcoming queue/run-log bookkeeping is exempt operational bookkeeping.",
+    "4_track_boundary": "Not triggered: the next Ready wave stays on track code.",
+    "5_run_length_cap": "Not triggered: there is no evidence the current batch segment has reached the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: no validator to Log Triage to Trace Analyst exhaustion occurred."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-34 passed its targeted validation and stayed inside its declared anchors while codifying subagent review as the default safety posture for this size-L execution and adding only the first local-only ferros-hub workspace member and binary scaffold. No G4, D1, hardware, Home Assistant, remote-transport, or privileged-write claim moved, no hard stop condition fired, and once queue/run-log bookkeeping is written the serial-after dependency for same-track WAVE-35 is satisfied."
+}
+```
+
+---
 
 ## 2026-04-28 — WAVE-2026-04-28-33
 

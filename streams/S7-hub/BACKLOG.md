@@ -17,11 +17,11 @@
 
 ## Next runway
 
-- [ ] Packet A: scaffold a local-only `ferros-hub` binary skeleton and get `cargo check -p ferros-hub` green without claiming hardware evidence
-- [ ] Packet B: add one local-only bridge seam plus one simulated local bridge artifact without touching the Home Assistant fork
-- [ ] Packet C: prove the bridge seam through targeted local allow, deny, and error/reporting checks without implying D1 or G4 closure
+- [x] Packet A: scaffolded a local-only `ferros-hub` binary skeleton and got `cargo check -p ferros-hub` green without claiming hardware evidence
+- [x] Packet B: landed one local-only bridge seam plus one simulated local bridge artifact summary without touching the Home Assistant fork
+- [x] Packet C: proved the bridge seam through targeted local allow, deny, and error/reporting checks under `cargo test -p ferros-hub bridge_` and emitted `.tmp/hub/simulated-local-bridge-artifact.json` as local-only, non-evidentiary output
 - [ ] Packet D: run the physical-device evidence checkpoint only after a human names the session window; keep it on the hardware track
-- [ ] Keep packets A, B, and C explicitly non-gate-closing: no G4 closure, no hardware proof, no Home Assistant dashboard proof, and no remote transport claim
+- [x] Packets A, B, and C stayed explicitly non-gate-closing: no G4 closure, no hardware proof, no Home Assistant dashboard proof, and no remote transport claim
 - [ ] Turn the bridge runway contract into a DUT-side evidence checklist once a real hub/bridge path exists; keep the first proof at one registered bridge agent and one real entity
 - [x] Route the landed seam brief to S3 and S4 and record which registration, inspection, policy, and restart surfaces are already sufficient versus still unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest
 - [ ] Keep the returned seam classifications as upstream dependency locks: S3 now publishes only `AgentRegistry` plus local/read-first inspection surfaces, including the aggregated read-only `agent.snapshot` wrapper, as the honest runway boundary, while hub-facing lifecycle-wrapper and richer remote observation/control remain unpublished; S4 now publishes only validated local profile/grant reload plus fixed reference-runtime state replay while durable hub restart/re-registration semantics remain unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest
@@ -38,6 +38,6 @@
 ## Blocked / deferred in current G4 runway
 
 - Physical-device and launch-facing proof remain out of scope in the active local-only G4 runway: no G4 evidence claims, no Home Assistant dashboard proof, and no hardware-track execution without a named human session window.
-- The first honest device-side G4 evidence is still blocked on a real `ferros-hub` binary and HA bridge existing on physical hardware.
+- The first honest device-side G4 evidence is still blocked on moving the landed local-only `ferros-hub` scaffold and simulated bridge proof onto physical hardware and proving real Home Assistant behavior there.
 - HA custom component work depends on the `Maangled/home-assistant` fork being available.
 

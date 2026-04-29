@@ -35,8 +35,8 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 - Treat `docs/hub/reference-hardware.md` as the hardware recipe authority for this wave and keep it aligned to the evidence G4 will eventually require.
 - Use the Pack B `x86_64` lane as the first bring-up target unless real hardware availability forces a Pi-first pass, because it improves shell access, log capture, rollback, and restart debugging while staying launch-valid.
 - Keep the first Home Assistant lab topology separate from the device under test so later restart and deny-observability evidence can be attributed cleanly.
-- Keep pairing notes at the level of consumed S2 consumer-boundary assumptions plus the S3/S4 seams still missing before any authoritative pairing flow, `ferros-hub` scaffold, or HA bridge plan is honest.
-- Map each unchecked G4 evidence item to one upstream seam and one S7-owned proof point before any `ferros-hub` crate or HA bridge work is proposed.
+- Keep pairing notes at the level of consumed S2 consumer-boundary assumptions plus the S3/S4 seams still missing before any authoritative pairing flow, durable hub runtime path, or Home Assistant proof is honest.
+- Map each unchecked G4 evidence item to one upstream seam and one S7-owned proof point before any device-side G4 evidence or Home Assistant proof is proposed.
 
 ---
 
@@ -128,9 +128,9 @@ This map is runway-only. It binds provisional pairing checkpoints to the current
 
 ## S7 handoff assumptions from published S2 consumer boundaries
 
-This handoff is provisional and consumer-boundary only. It records what S7 may assume now from S2 and what still remains open before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest.
+This handoff is provisional and consumer-boundary only. It records what S7 may assume now from S2 and what still remains open before any authoritative pairing flow, durable hub runtime path, or Home Assistant proof is honest.
 
-| Checkpoint | What S7 may assume now from S2 | What stays open before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest |
+| Checkpoint | What S7 may assume now from S2 | What stays open before any authoritative pairing flow, durable hub runtime path, or Home Assistant proof is honest |
 |------------|--------------------------------|----------------------------------------------------------------------------------------------------------|
 | bootstrap | Durable identity bootstrap is honest only when S2 can reload a locally persisted `KeyPair`; `ProfileId` is derived from that Ed25519 verifying key, and bootstrap identity alone does not imply any `CapabilityGrant` exists yet. | Who creates the first-start state, what operator approval path exists, and the exact bootstrap order remain open. |
 | grant check | Treat a capability as present only when a persisted signed grant envelope verifies, binds to the local `ProfileId`, matches the local signer public key, and is not revoked. | Where that verified grant state first composes with the S3 registry/list path and the S4 runtime policy seam remains open until real APIs exist. |
@@ -145,7 +145,7 @@ Outcome: S7 now has a provisional consumer-boundary handoff from S2, not an auth
 
 ## S7 seam brief before hub planning is honest
 
-This seam brief stays docs-only. It names the exact current S3 and S4 surfaces S7 can point at today, what S7 may honestly assume from them, and what still remains unpublished before any authoritative pairing flow, `ferros-hub` scaffold, or Home Assistant bridge plan is honest.
+This seam brief stays docs-only. It names the exact current S3 and S4 surfaces S7 can point at today, what S7 may honestly assume from them, and what still remains unpublished before any authoritative pairing flow, durable hub runtime path, or Home Assistant proof is honest.
 
 | Upstream seam | Exact current surface S7 can name | What S7 may assume now | What still remains unpublished or open |
 |---------------|-----------------------------------|------------------------|----------------------------------------|
@@ -163,7 +163,7 @@ This seam brief stays docs-only. It names the exact current S3 and S4 surfaces S
 
 Advance G4 in four proof steps. Only the fourth step supports launch-facing evidence language.
 
-1. **Local binary exists** — a real `ferros-hub` binary builds and runs locally on the Pack B `x86_64`-first lane without claiming hardware evidence.
+1. **Local binary exists** — a real `ferros-hub` binary crate exists in the workspace and passes focused local validation on the Pack B `x86_64`-first lane without claiming hardware evidence.
 2. **Local bridge seam exists** — one local-only bridge agent and one simulated local bridge artifact exist behind the current FERROS-only seams without claiming Home Assistant proof.
 3. **Local proof loop exists** — targeted local tests or harnesses prove allow, deny, and error/reporting behavior for that bridge seam without implying D1 or G4 closure.
 4. **Device evidence exists** — physical-device sessions capture profile init, bridge presence, deny visibility, and power-cycle recovery on real hardware. Only this step can support D1 or G4 evidence wording.
@@ -194,9 +194,9 @@ Advance G4 in four proof steps. Only the fourth step supports launch-facing evid
 
 | Path | Role | Status |
 |------|------|--------|
-| `crates/ferros-hub/` | Hub binary crate | ⬜ Not created yet |
+| `crates/ferros-hub/` | Hub binary crate | 🟨 Local-only scaffold and binary landed |
 | `crates/ferros-hub/src/pairing.rs` | Pairing implementation surface | ⬜ Deferred until implementation |
-| `crates/ferros-hub/src/ha_bridge.rs` | Home Assistant bridge agent | ⬜ Deferred until implementation |
+| `crates/ferros-hub/src/ha_bridge.rs` | Home Assistant bridge agent | 🟨 Local-only simulated bridge seam and proof loop landed; real HA integration remains deferred |
 | `docs/hub/reference-hardware.md` | Hardware runway and evidence prep | 🟨 Active |
 | `docs/hub/install.md` | Install script and instructions | ⬜ Future |
 
@@ -208,5 +208,5 @@ Advance G4 in four proof steps. Only the fourth step supports launch-facing evid
 2. Select the exact first `x86_64` Pack B device and one fallback `aarch64` Pack A device for bring-up.
 3. Keep the returned S3 and S4 seam classifications as upstream dependency locks and keep S7 docs aligned as upstream wrapper and restart contracts change.
 4. Keep the G4 evidence map tied to the exact S2 consumer dependencies plus the S3/S4 seams named in that brief and any upstream answers that follow.
-5. Run the next non-gate-closing code-track packets through the proof ladder in order: local binary skeleton, local-only bridge seam plus simulated artifact, then the focused local proof loop.
+5. Keep proof-ladder steps 1 through 3 recorded as landed local-only, non-gate-closing runway proof, and move the next checkpoint to device evidence on a named hardware session.
 6. Keep physical-device evidence as a separate hardware-track checkpoint that requires a named human session window.

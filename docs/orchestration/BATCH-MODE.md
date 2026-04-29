@@ -15,6 +15,9 @@ Interactive Mode is **required** when any of the following is true:
 - Wave is tagged `gate-close`.
 - Wave touches a frozen schema (`schemas/profile.v0.json`, `schemas/capability-grant.v0.json`).
 - Wave is tagged `solo: true`.
+- The current invocation is user-directed work rather than queue execution, such as a requested product direction, message, or specific choice that only the user can authorise.
+- The agent is looping, stuck, or needs external or user-grounded input that the repo and tool surface cannot supply.
+- The wave requires a physical-world action the agent cannot perform directly.
 - The user has not explicitly requested Batch Mode.
 
 Interactive Mode is the safe default. It is not deprecated by Batch Mode.
@@ -25,7 +28,9 @@ The driver may continue processing Ready waves sequentially — without waiting 
 
 **To invoke Batch Mode:** include explicit instruction in the driver invocation, e.g. "Run the next batch of code-track waves." or "Run Batch Mode on the system queue."
 
-Batch Mode processes only `size: S` waves by default. `size: L` waves require explicit human approval before entering a batch run.
+Batch Mode processes `size: S` waves by default. `size: L` waves are eligible when the orchestrator runs the full review stack for that wave: Lane Architect, builder lane(s), validator, scope or claim rationalization, Gatekeeper, then top-level orchestrator authorization.
+
+`size: L` does **not** by itself require human approval. Human re-entry is reserved for Interactive-only conditions: frozen-schema or gate-close work, user-directed authority questions, repeated failure loops or missing external input, and physical-world actions.
 
 The **target planning width** for Batch Mode runs is 8 waves per batch, matching the queue backfill depth this document is designed to support. The editing-lane ceiling is now 8, matching this planning target, after two consecutive conditional-pass Batch Mode runs were recorded (BATCH-2026-04-27 + BATCH-2026-04-27-B). See `LOCAL-DRIVER.md` for the revert clause.
 
@@ -42,6 +47,22 @@ Queue-Clear Mode keeps the same lane ceilings, validation rules, and gatekeeper 
 - `stop-clean` closes the current batch segment, not the overall queue-clear run.
 - The run-length cap emits a doc-batch artifact and opens the next segment automatically when no hard stop fired.
 - Human doc-batch review remains the re-entry surface, but it is asynchronous and non-blocking while queue clear is active.
+
+### Default authorization chain
+
+Human re-entry is not the default safety mechanism in Batch Mode. Subagent review is.
+
+The normal authorization chain is:
+
+1. Top-level orchestrator
+2. Lane Architect review
+3. Builder lane execution
+4. Validator review
+5. Risk or claim rationalization review
+6. Gatekeeper decision
+7. Top-level orchestrator authorization for the next segment
+
+The human becomes the next authority only when an Interactive-only condition is present.
 
 ---
 
@@ -128,7 +149,7 @@ The block format is stable. When a dedicated small-tier gatekeeper model becomes
 
 ## Human Re-entry Triggers
 
-Batch Mode replaces the per-wave "proceed?" prompt with three well-defined re-entry surfaces. None of these require the human to be watching in real time:
+Batch Mode replaces the per-wave "proceed?" prompt with three defined re-entry surfaces. None of these require the human to be watching in real time, and none of them are the default authorization path for ordinary waves:
 
 ### 1. Doc-batch ready
 
@@ -144,7 +165,7 @@ The file summarises:
 - Which stream PROGRESS.md phases advanced
 - What is queued next and why
 
-The human reviews the doc-batch file and decides whether to redirect the queue, switch modes, or intervene. In Queue-Clear Mode, doc-batch emission is not by itself a blocking checkpoint: the driver keeps draining the scoped queue until it empties or a hard stop fires.
+The human reviews the doc-batch file when a real redirect, product choice, or queue intervention is needed. In Queue-Clear Mode, doc-batch emission is not by itself a blocking checkpoint: the driver keeps draining the scoped queue until it empties or a hard stop fires.
 
 ### Batch closeout claim ledger
 

@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-28 — Local-only ferros-hub scaffold, bridge seam, and proof loop landed
+
+- WAVE-2026-04-28-34 added the first local-only `ferros-hub` workspace member and binary scaffold and codified subagent review as the default safety posture for this size-L execution.
+- WAVE-2026-04-28-35 added the first crate-local bridge seam with one default local bridge agent and one simulated local artifact summary without adding Home Assistant, hardware, remote-transport, or privileged-write claims.
+- WAVE-2026-04-28-36 extended that seam with simulated allow, deny, and invalid-path error/reporting behavior under `cargo test -p ferros-hub bridge_` and emitted `.tmp/hub/simulated-local-bridge-artifact.json` with local-only, non-evidentiary fields.
+- Kept the slice non-gate-closing: no D1 or G4 movement, no Home Assistant proof, and no physical-device evidence.
+
 ## 2026-04-26 — Pack B operator rehearsal notes added to the runway docs
 
 - Extended `docs/hub/reference-hardware.md` and `docs/hub/pack-b-bring-up-worksheet.md` with prep-only operator rehearsal prompts for clean reboot, DUT-only cold boot, consent-deny observation, and artifact capture discipline.
