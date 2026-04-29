@@ -10,6 +10,8 @@ S7 owns deployment-facing hub surfaces. It does not get to redefine S2 profile o
 |----------|------|----------|--------|
 | `HubConfig` type (device profile, port, HA endpoint) | Rust type | `crates/ferros-hub/` | ⬜ Not yet created |
 | HA bridge agent manifest | `AgentManifest` JSON | `crates/ferros-hub/src/ha_bridge.rs` | ⬜ Not yet created |
+| `LocalHubRuntimeSummary` + restart observation | Rust types + local proof output | `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/src/lib.rs` | 🟨 Landed as a local-only runway seam; `summary` and `prove-bridge` stay non-evidentiary |
+| Local hub state snapshot contract | Local-only persisted snapshot + JSON schema | `.tmp/hub/local-hub-state-snapshot.json`, `schemas/hub-local-state-snapshot.schema.json` | 🟨 Landed with bounded guardrails and H1 validator coverage |
 | Pairing constraints and open questions | Stream-local planning notes | `streams/S7-hub/*.md` | 🟨 Runway only; authoritative protocol intentionally deferred |
 | Reference hardware runway and evidence template | Doc | `docs/hub/reference-hardware.md` | 🟨 In progress |
 
@@ -23,6 +25,21 @@ S7 owns deployment-facing hub surfaces. It does not get to redefine S2 profile o
 | `Agent` trait, `AgentRegistry` | S3 | Hub registers HA-bridge agents through S3 |
 | `ferros-runtime` executor + bus | S4 | Hub wraps the runtime as its execution environment |
 | `ferros-data` primitives | S6 | Optional: data generation for hub agents |
+
+---
+
+## Landed local restart-aware runway seam
+
+This section is local-only and non-gate-closing. It records the landed restart-aware runway packet without promoting it to a broader published hub contract.
+
+| Surface | What is now landed | What stays open |
+|---------|--------------------|-----------------|
+| persisted restart state | `LocalHubStateSnapshot` writes under `.tmp/hub/`, and the bounded schema-backed snapshot contract now has H1 validator coverage, including parity checks against hardware/proof/launch wording and remote-looking summary text. | Not a partner-facing schema, not a public restart API, and not device or power-cycle evidence. |
+| local hub proof outputs | `LocalHubRuntimeSummary` plus `summary` and `prove-bridge` now report bounded `fresh-start | reloaded | unavailable` restart context on the existing local hub seam. | Not durable runtime evidence and not a G4 or D1 claim. |
+| downstream runway observation | The existing read-only `/runway-summary(.json)` seam now additively carries optional `hubRestart` runway context, and the current localhost shell plus same-origin acceptance harness observe it on the existing shell route as display-only context. | Not a new route, not browser-issued hub control, not remote transport, and not Home Assistant integration proof. |
+| local helper alignment | `cargo xtask hub-runway` now proves snapshot write/reload through the hub-owned summary seam and prints the exact `ferros-hub summary` output. | Not a second contract surface and not evidence that the cross-stream contracts overview is fully synchronized. |
+
+- `docs/contracts/CONTRACTS-OVERVIEW.md` is intentionally out of scope for W53, so any cross-stream overview drift must remain explicit; this stream-local contract record is the authoritative truth surface for the restart-aware local hub runway packet until a later overview sync lands.
 
 ---
 

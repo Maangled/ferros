@@ -463,6 +463,22 @@ runTest(g2, 'inline local hub runway report (denied) validates against SCHEMA_HU
   return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
 });
 
+runTest(g2, 'inline local hub restart snapshot validates against SCHEMA_HUB_LOCAL_STATE_SNAPSHOT', function() {
+  var data = {
+    bridgeManifestIdentity: 'ha-local-bridge@0.1.0',
+    policyDecisionLabel: 'allowed',
+    artifactRelativeOutputPath: '.tmp/hub/simulated-local-bridge-artifact.json',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    lastLocalSummary: 'local-only bridge allowed report-state for simulated-bridge-entity'
+  };
+  var r = validate(data, SCHEMA_HUB_LOCAL_STATE_SNAPSHOT);
+  if (r.valid) {
+    return { pass: true, detail: 'persisted local hub restart snapshot matches the bounded local-only snapshot contract' };
+  }
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
 runTest(g2, 'inline local hub bridge artifact validates against SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT', function() {
   var data = {
     bridgeAgentName: 'ha-local-bridge',
@@ -757,9 +773,9 @@ runTest(g2, 'arena-export-envelope-seam deck.cardId references resolve to cards[
 });
 
 /* ==========================================================================
-   GROUP 3 — Negative fixture schema rejection (expect PASS — schema correctly rejects)
-   ========================================================================== */
-var g3 = addGroup('Group 3 — Negative fixture schema rejection (4 expected PASS)');
+  GROUP 3 — Negative fixture schema rejection (expect PASS — schema correctly rejects)
+  ========================================================================== */
+var g3 = addGroup('Group 3 — Negative fixture schema rejection (7 expected PASS)');
 
 // 3a: invalid-dual-session-mode → must FAIL SCHEMA_IDENTITY (oneOf constraint)
 runTest(g3, 'SCHEMA_IDENTITY rejects invalid-dual-session-mode (oneOf violation)', function() {
@@ -817,6 +833,63 @@ runTest(g3, 'SCHEMA_AUDIT_RECORD rejects invalid-missing-session-id-alias-log (s
     };
   }
   return { pass: false, error: 'SCHEMA_AUDIT_RECORD should reject portable logs missing sessionId — investigate audit-record.schema.json required fields' };
+});
+
+runTest(g3, 'SCHEMA_HUB_LOCAL_STATE_SNAPSHOT rejects inline restart snapshot with non-local artifact path', function() {
+  var data = {
+    bridgeManifestIdentity: 'ha-local-bridge@0.1.0',
+    policyDecisionLabel: 'allowed',
+    artifactRelativeOutputPath: 'https://example.com/not-local.json',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    lastLocalSummary: 'local-only bridge allowed report-state for simulated-bridge-entity'
+  };
+  var r = validate(data, SCHEMA_HUB_LOCAL_STATE_SNAPSHOT);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. artifactRelativeOutputPath stayed outside the bounded .tmp/hub/ local-only contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_HUB_LOCAL_STATE_SNAPSHOT should reject restart snapshots with non-local artifact paths' };
+});
+
+runTest(g3, 'SCHEMA_HUB_LOCAL_STATE_SNAPSHOT rejects inline restart snapshot with hardware/proof/launch summary wording', function() {
+  var data = {
+    bridgeManifestIdentity: 'ha-local-bridge@0.1.0',
+    policyDecisionLabel: 'allowed',
+    artifactRelativeOutputPath: '.tmp/hub/simulated-local-bridge-artifact.json',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    lastLocalSummary: 'local-only hardware launch proof summary'
+  };
+  var r = validate(data, SCHEMA_HUB_LOCAL_STATE_SNAPSHOT);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. lastLocalSummary stayed outside the bounded local-only wording contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_HUB_LOCAL_STATE_SNAPSHOT should reject hardware/proof/launch summary wording' };
+});
+
+runTest(g3, 'SCHEMA_HUB_LOCAL_STATE_SNAPSHOT rejects inline restart snapshot with remote-looking summary text', function() {
+  var data = {
+    bridgeManifestIdentity: 'ha-local-bridge@0.1.0',
+    policyDecisionLabel: 'allowed',
+    artifactRelativeOutputPath: '.tmp/hub/simulated-local-bridge-artifact.json',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    lastLocalSummary: 'local-only bridge allowed report-state for https://example.com/device'
+  };
+  var r = validate(data, SCHEMA_HUB_LOCAL_STATE_SNAPSHOT);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. lastLocalSummary stayed outside the local-only no-remote-text contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_HUB_LOCAL_STATE_SNAPSHOT should reject remote-looking summary text' };
 });
 
 /* ==========================================================================

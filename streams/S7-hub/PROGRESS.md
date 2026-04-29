@@ -4,6 +4,16 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-29 — Restart-aware local hub runway packet landed
+
+- WAVE-2026-04-29-46 added a bounded typed `LocalHubStateSnapshot` seam under `.tmp/hub/` and kept its guardrails local-only and non-evidentiary.
+- WAVE-2026-04-29-47 threaded that seam into the typed hub runtime summary plus the existing `summary | prove-bridge` outputs, reporting bounded `fresh-start | reloaded | unavailable` restart context without widening into a public restart API.
+- WAVE-2026-04-29-48 extended the existing read-only `/runway-summary(.json)` seam additively with optional `hubRestart` runway context sourced from the hub summary seam.
+- WAVE-2026-04-29-49 and WAVE-2026-04-29-50 kept that context display-only on the existing localhost shell route and proved the same route through the same-origin acceptance harness.
+- WAVE-2026-04-29-51 added the bounded local restart snapshot schema plus H1 validator parity coverage for banned summary wording and remote-looking text.
+- WAVE-2026-04-29-52 aligned `cargo xtask hub-runway` to prove snapshot write/reload through the hub-owned summary seam and print the exact `ferros-hub summary` output.
+- Kept the whole packet local-only and non-gate-closing: no G4 closure, no physical-device evidence, no Home Assistant integration proof, no remote transport, and no daemon/server claim.
+
 ## 2026-04-28 — Local hub library, policy, CLI, schema, and xtask runway landed
 
 - WAVE-2026-04-28-38 promoted `ferros-hub` from a binary-first scaffold to a library-backed local runway crate and kept the binary thin.

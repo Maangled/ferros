@@ -3,6 +3,214 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-04-29 — WAVE-2026-04-29-53
+
+- Selected item: `WAVE-2026-04-29-53`
+- Result: Complete. The final serial truth-sync now records the full restart-aware local hub runway packet across the shared S7 and S4 truth surfaces without widening the claim boundary: the scoped docs now name the bounded `.tmp/hub` restart snapshot seam, restart-aware `summary | prove-bridge` outputs, the additive optional `hubRestart` child on the existing read-only `/runway-summary(.json)` seam, display-only localhost shell observation on the existing route, same-origin acceptance-harness proof, bounded restart-snapshot schema plus H1 parity coverage, and `cargo xtask hub-runway` snapshot write/reload proof. G4 remains open, and the docs continue to avoid physical-device evidence, Home Assistant integration proof, remote transport, daemon/server mode, and durable published hub-restart claims. Residual drift remains explicit: `docs/contracts/CONTRACTS-OVERVIEW.md` was intentionally left out of scope for this wave.
+- Files: `STATUS.md`, `streams/S7-hub/README.md`, `streams/S7-hub/PROGRESS.md`, `streams/S7-hub/BACKLOG.md`, `streams/S7-hub/CONTRACTS.md`, `streams/S4-runtime/CONTRACTS.md`
+- Validation: `get_errors` is clean on all six touched truth surfaces. Parent readback confirmed the landed W46-W52 facts and kept the wording local-only, non-evidentiary, and non-gate-closing. FERROS Status Auditor Agent reported no findings and cleared W53 for closeout as-is.
+- Next follow-up: Requested packet complete. If desired later, queue a separate S8 follow-up to sync `docs/contracts/CONTRACTS-OVERVIEW.md` with the already-authoritative S7 and S4 contract surfaces.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-53",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: get_errors is clean on the six touched truth surfaces, parent readback confirmed the landed W46-W52 facts and explicit G4-open wording, and FERROS Status Auditor Agent reported no findings.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-53 was the planned final solo truth-sync and completed without needing escalation or replanning.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the declared shared-truth anchors plus append-only queue/run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: no cross-track follow-up was required to close the requested packet.",
+    "5_run_length_cap": "Triggered: this was the eighth and final requested wave in the user-directed WAVE-2026-04-29-46 through WAVE-2026-04-29-53 packet, so control returns after closeout.",
+    "6_escalation_chain": "Not triggered: parent validation and status audit found no truth drift requiring another owner or gate-audit lane."
+  },
+  "decision": "stop",
+  "rationale": "W53 truth-synced the landed restart-aware local hub runway packet, queue/run-log closeout is complete, and the requested 8-wave expansion packet is finished. Residual drift remains explicitly limited to docs/contracts/CONTRACTS-OVERVIEW.md as separate follow-up work."
+}
+```
+
+---
+
+## 2026-04-29 — WAVE-2026-04-29-52
+
+- Selected item: `WAVE-2026-04-29-52`
+- Result: Complete. `cargo xtask hub-runway` now stays on the published restart-aware hub summary seam instead of formatting a competing helper output: it drives `ferros_hub::default_local_runtime_summary()` twice to prove local snapshot write and reload in one helper flow, validates the existing allowed/local-only/non-evidentiary artifact boundary, and then prints the exact `ferros_hub::summary_command_output()` text owned by the hub crate. No hub source, node, shell, schema, harness, remote transport, daemon/server, hardware, Home Assistant, or gate-closing surface moved, and no manifest or lockfile expansion was needed.
+- Files: `xtask/src/main.rs`
+- Validation: `cargo check -p xtask` passed. `cargo xtask hub-runway` passed and printed the restart-aware hub summary with `restartReload: reloaded`. `cargo run -p ferros-hub -- summary` passed. `get_errors` is clean on `xtask/src/main.rs`. The helper refreshed `.tmp/hub/local-hub-state-snapshot.json` during validation, and that generated local state file was removed before truth-sync closeout so the remaining diff stays source-only.
+- Next follow-up: Close the parallel batch with W50 and W51 bookkeeping, then start `WAVE-2026-04-29-53` as the final serial truth-sync over the landed S5, S7, and S4 owner surfaces.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-52",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo check -p xtask, cargo xtask hub-runway, and cargo run -p ferros-hub -- summary all passed, and get_errors is clean on xtask/src/main.rs.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-52 is a standard code-track helper wave, and the next remaining queued work is the planned serial truth-sync WAVE-2026-04-29-53.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside xtask/src/main.rs and reused the published ferros-hub summary seam without introducing a competing helper contract or manifest churn.",
+    "4_track_boundary": "Not triggered: the next queued work remains on track code.",
+    "5_run_length_cap": "Not triggered: the active packet remains within the requested 8-wave packet.",
+    "6_escalation_chain": "Not triggered: the helper lane validated cleanly without reopening hub, node, shell, schema, or harness slices."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-52 landed as the planned xtask-only helper alignment: the helper now proves restart-aware snapshot write and reload by consuming the hub-owned seam directly, validation is green, and the packet can move into the final serial truth-sync once the parallel batch bookkeeping is closed."
+}
+```
+
+---
+
+## 2026-04-29 — WAVE-2026-04-29-51
+
+- Selected item: `WAVE-2026-04-29-51`
+- Result: Complete. The persisted restart snapshot seam is now schema-backed and H1-backed without widening production hub code: `schemas/hub-local-state-snapshot.schema.json` defines the bounded local-only persisted snapshot contract, `harnesses/_constants.js` embeds it, `harnesses/ferros-contract-validator.html` now carries explicit positive and negative restart-snapshot cases, and `crates/ferros-hub/tests/local_bridge.rs` pins the exact rendered snapshot JSON contract. During review, the schema/harness pair was tightened to reject the same non-local summary wording the runtime seam already refuses, so the published contract now matches the owner seam on remote-looking summary text and hardware/proof/launch wording. No frozen S2 schema, partner-facing contract, remote transport, Home Assistant, physical-device, or gate-closing surface moved.
+- Files: `crates/ferros-hub/tests/local_bridge.rs`, `schemas/hub-local-state-snapshot.schema.json`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
+- Validation: `cargo test -p ferros-hub --test local_bridge hub_state_` passed. `powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate-harness-constants.ps1` passed. Direct file-based run of `harnesses/ferros-contract-validator.html` passed with `59 passed, 0 failed, 0 skipped`, including the positive restart snapshot case and explicit negative cases for non-local artifact path, hardware/proof/launch summary wording, and remote-looking summary text. `get_errors` is clean on all touched W51 files.
+- Next follow-up: Close the W50/W52 batch bookkeeping and start `WAVE-2026-04-29-53` as the final serial truth-sync over the landed owner surfaces only.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-51",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-hub --test local_bridge hub_state_, the harness-constants generation script, and the file-based H1 validator run all passed, and get_errors is clean on the touched W51 files.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-51 is a standard code-track schema/validator wave, and the next remaining queued work is the planned serial truth-sync WAVE-2026-04-29-53.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the declared test, schema, constants, and validator anchors, and the review-driven parity repair remained inside the same W51 contract surface.",
+    "4_track_boundary": "Not triggered: the next queued work remains on track code.",
+    "5_run_length_cap": "Not triggered: the active packet remains within the requested 8-wave packet.",
+    "6_escalation_chain": "Not triggered: the only review finding was schema parity drift, and it was repaired in-slice by tightening the schema and H1 negatives to match the owner runtime seam before closeout."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-51 landed as the planned bounded schema-and-validator lane: the local restart snapshot seam is now H1-backed with parity to the owner runtime seam, validation is green, and the packet can move into final truth-sync once the parallel batch bookkeeping is complete."
+}
+```
+
+---
+
+## 2026-04-29 — WAVE-2026-04-29-50
+
+- Selected item: `WAVE-2026-04-29-50`
+- Result: Complete. The same-origin localhost shell acceptance harness now proves the restart-aware runway observation on the existing shell path without introducing a new route: it asserts the runway button copy, route-stable shell pathname, selected profile-path fetch on `/runway-summary.json`, restart-aware runway panel copy, inspector copy, and route-scoped tools/audit guidance. The live H9 journey also handles the optional branch honestly: on the current summary it proves the present `hubRestart` path and records the optional-missing assertions as skipped rather than overclaiming a live missing-child run. No production shell, node, hub, remote transport, privileged browser control, Home Assistant, physical-device, or gate-closing surface moved.
+- Files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness` passed. Direct same-origin run of `/harnesses/localhost-shell-acceptance.html` against `ferros-node shell` at `http://127.0.0.1:4319/` passed with `60 passed, 0 failed, 2 skipped`, including the restart-aware runway route, panel, inspector, and copy assertions. `get_errors` is clean on `harnesses/localhost-shell-acceptance-harness.html`. The live harness created temporary `.tmp/h9-*` profile, grant, and key artifacts during validation, and those generated files were removed before truth-sync closeout.
+- Next follow-up: Close the W51/W52 batch bookkeeping and start `WAVE-2026-04-29-53` as the final serial truth-sync over the landed owner surfaces only.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-50",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness passed, the direct same-origin H9 run passed with 60 passed / 0 failed / 2 skipped, and get_errors is clean on the touched harness file.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-50 is a standard code-track harness wave, and the next remaining queued work is the planned serial truth-sync WAVE-2026-04-29-53.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside harnesses/localhost-shell-acceptance-harness.html and exercised the existing /runway-summary.json seam and shell path without widening production routes or controls.",
+    "4_track_boundary": "Not triggered: the next queued work remains on track code.",
+    "5_run_length_cap": "Not triggered: the active packet remains within the requested 8-wave packet.",
+    "6_escalation_chain": "Not triggered: the only live-run interrupts were the expected operator-assisted profile grant and revoke checkpoints inside the existing H9 flow, and the harness completed green after those local steps without widening scope."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-50 landed as the planned same-origin acceptance proof: the live localhost shell harness now observes the restart-aware runway slice on the existing shell path, validation is green, and the packet can move into the final serial truth-sync once the parallel batch bookkeeping is closed."
+}
+```
+
+---
+
+## 2026-04-29 — WAVE-2026-04-29-49
+
+- Selected item: `WAVE-2026-04-29-49`
+- Result: Complete. The localhost shell now renders the additive `hubRestart` child from the existing `/runway-summary.json` surface inside the current runway panel, inspector, and route-scoped copy without adding a new route, fetch seam, browser-issued write, or second shell-side view model. The positive path shows bounded restart fields such as `reloadStatus`, `snapshotPath`, `scope`, `evidence`, and prior observation values when present, and the absence path degrades cleanly to optional read-only runway context without implying durability, power-cycle, hardware, Home Assistant, remote transport, or gate-closing evidence.
+- Files: `site/agent-center-shell.html`
+- Validation: `cargo test -p ferros-node shell_route_gets_local_runway_summary_json` passed. `get_errors` is clean on `site/agent-center-shell.html`. Live local load of `cargo run --target-dir target/copilot-shell -p ferros-node --bin ferros-node -- shell 4318` served `http://127.0.0.1:4318/`, and the runway panel plus inspector showed the restart observation on the existing shell route. A client-side rerender with `hubRestart` omitted also confirmed the runway panel and inspector degrade cleanly without breaking checklist rendering or read-only copy.
+- Next follow-up: Launch the maximum safe post-W49 batch: start `WAVE-2026-04-29-50`, `WAVE-2026-04-29-51`, and `WAVE-2026-04-29-52` together, then hold `WAVE-2026-04-29-53` as the final solo truth-sync after those implementation lanes land.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-49",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-node shell_route_gets_local_runway_summary_json passed, get_errors is clean on the touched shell file, the live local shell on http://127.0.0.1:4318/ rendered the restart-aware runway path correctly, and an omitted-child rerender confirmed the optional fallback path stays stable.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-49 is a standard code-track shell wave, and the next eligible queue items WAVE-2026-04-29-50, WAVE-2026-04-29-51, and WAVE-2026-04-29-52 are not tagged solo or gate-close.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside site/agent-center-shell.html, reused the existing runway route and fetch path, and added only optional read-only rendering plus copy for the published hubRestart child.",
+    "4_track_boundary": "Not triggered: the next queued work remains on track code.",
+    "5_run_length_cap": "Not triggered: the active packet remains below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: the only live-validation blockers were a duplicate-binary target and a busy default port, both resolved locally by selecting the correct binary and launching the validation shell on an alternate localhost port without widening scope."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-49 landed as the planned shell-only consumer slice: the existing runway route now surfaces bounded restart observation in the panel and inspector, the absence path remains stable and read-only, and the next maximum-safe batch is W50 plus W51 plus W52 before the final solo truth-sync."
+}
+```
+
+---
+
+## 2026-04-29 — WAVE-2026-04-29-48
+
+- Selected item: `WAVE-2026-04-29-48`
+- Result: Complete. `ferros-node` now extends the existing `/runway-summary(.json)` payload additively with an optional `hubRestart` child sourced from `ferros_hub::default_local_runtime_summary()`. The node route stayed on the existing read-only runway path, added a node-local serializable restart block with bounded reload status plus stable local path/scope/evidence fields, and omits that child entirely when the upstream hub summary is unavailable. No parallel hub route, snapshot-file read, shell, schema, harness, `xtask`, remote transport, daemon/server, hardware, Home Assistant, or gate-closing surface moved.
+- Files: `Cargo.lock`, `crates/ferros-node/Cargo.toml`, `crates/ferros-node/src/lib.rs`
+- Validation: `cargo test -p ferros-node local_agent_api_runway_summary_serializes_and_tracks_profile_and_deny_observation` passed. `cargo test -p ferros-node shell_route_gets_local_runway_summary_json` passed. `cargo test -p ferros-node local_agent_api_runway_summary_omits_hub_restart_when_hub_summary_loader_fails` passed for the omitted-child fallback. `cargo check -p ferros-node` passed. `get_errors` is clean on `Cargo.lock`, `crates/ferros-node/Cargo.toml`, and `crates/ferros-node/src/lib.rs`. FERROS Lane Validator, Contract Auditor, and Gate Auditor all confirmed the slice stayed inside the planned node-local additive route contract.
+- Next follow-up: Start `WAVE-2026-04-29-49` as a fresh queued wave and render `hubRestart` as optional, read-only runway context only. Treat `reloadStatus` as display-only local context; do not translate it into durability, power-cycle, hardware, or gate-evidence claims.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-48",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-node local_agent_api_runway_summary_serializes_and_tracks_profile_and_deny_observation, cargo test -p ferros-node shell_route_gets_local_runway_summary_json, cargo test -p ferros-node local_agent_api_runway_summary_omits_hub_restart_when_hub_summary_loader_fails, and cargo check -p ferros-node all passed, and get_errors is clean on the touched node files.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-48 is a standard code-track implementation wave, and the next queued wave WAVE-2026-04-29-49 is not tagged solo or gate-close.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the declared node manifest, lockfile, and lib anchors, and the route remained additive on the existing /runway-summary(.json) surface with no parallel hub path.",
+    "4_track_boundary": "Not triggered: the next queued wave remains on track code.",
+    "5_run_length_cap": "Not triggered: the active packet remains below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: the only review caveat was a fallback-path proof gap, and that was closed by adding the omitted-child test inside the same W48 slice."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-48 landed as the planned additive node aggregator slice: the existing runway-summary route now carries bounded hub restart observation without a new route or direct snapshot-file coupling, executable validation is green on both success and fallback paths, and W49 can render the optional child through the existing shell runway panel."
+}
+```
+
+---
+
+## 2026-04-29 — WAVE-2026-04-29-47
+
+- Selected item: `WAVE-2026-04-29-47`
+- Result: Complete. `ferros-hub` now carries additive restart observation on `LocalHubRuntimeSummary` without widening into a new public restart API: the default summary flow loads any prior local snapshot, reports bounded `fresh-start | reloaded | unavailable` restart state, rewrites a fresh local snapshot under `.tmp/hub/`, and surfaces the restart observation through the existing `summary` and `prove-bridge` local proof outputs. The new logic stayed inside the hub crate and did not touch `ferros-node`, shell, schemas, harnesses, `xtask`, remote transport, daemon/server mode, hardware evidence, Home Assistant integration, or gate-closing claims.
+- Files: `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub --test local_bridge hub_reload_` passed with 3 focused reload tests green across `fresh-start`, `reloaded`, and `unavailable`. `cargo run -p ferros-hub -- summary` passed and printed the bounded restart observation on the existing local summary output. `cargo run -p ferros-hub -- prove-bridge` passed and reported the bounded restart status on the existing local bridge-proof output. `cargo check -p ferros-hub` passed. `cargo test -p ferros-hub --test local_bridge hub_summary_` passed as the narrow typed-summary regression after the additive restart fields landed. `get_errors` is clean on the touched hub files. FERROS Lane Validator, Contract Auditor, and Gate Auditor all confirmed the slice stayed inside the queued hub seam and did not widen shared contracts or G4 claims.
+- Next follow-up: Start `WAVE-2026-04-29-48` as a fresh queued wave and consume `restart_observation` additively from the default hub summary seam only. Do not read the snapshot file directly or depend on the snapshot-path override helper in node, shell, schema, or helper waves.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-47",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-hub --test local_bridge hub_reload_, cargo run -p ferros-hub -- summary, cargo run -p ferros-hub -- prove-bridge, cargo check -p ferros-hub, and cargo test -p ferros-hub --test local_bridge hub_summary_ all passed, and get_errors is clean on the touched hub files.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-47 is a standard code-track owner wave, and the next queued wave WAVE-2026-04-29-48 is not tagged solo or gate-close.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the three declared ferros-hub anchors, and the W48 handoff now records the explicit guardrail against consuming the snapshot file or override helper directly.",
+    "4_track_boundary": "Not triggered: the next queued wave remains on track code.",
+    "5_run_length_cap": "Not triggered: the active packet remains below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: the only post-review validation gap was closed by adding focused unavailable-branch coverage inside the same W47 test slice."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-47 landed as the planned restart-aware summary integration: the hub summary now exposes bounded restart observation, the existing local proof outputs remain local-only and non-evidentiary, executable validation is green, and W48 can now consume the additive restart observation through the existing node runway-summary seam."
+}
+```
+
+---
+
+## 2026-04-29 — WAVE-2026-04-29-46
+
+- Selected item: `WAVE-2026-04-29-46`
+- Result: Complete. `ferros-hub` now exposes `LocalHubStateSnapshot`, `LocalHubStateSnapshotError`, and `LOCAL_HUB_STATE_SNAPSHOT_PATH` as an unpublished S7-local snapshot seam over the existing typed local runtime summary. The snapshot persists only under `.tmp/hub/`, captures bridge manifest identity, policy decision label, optional artifact path, `local-only` scope, `non-evidentiary` evidence, and the last local summary, and rejects absolute or parent-traversal paths, remote-looking URLs, hardware/proof/launch wording, malformed local state, and trailing commas. No `ferros-node`, shell, schema, harness, `xtask`, remote transport, daemon/server, hardware, Home Assistant, or gate-closing surface moved.
+- Files: `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub --test local_bridge hub_state_` passed with 6 focused snapshot tests green. `cargo check -p ferros-hub` passed. `cargo test -p ferros-hub --test local_bridge bridge_` passed with 10 existing bridge-path regressions green after the shared local-path helper tightened. `get_errors` is clean on the touched hub files. FERROS Lane Validator, Contract Auditor, Gate Auditor, and FERROS Orchestrator authorization all agreed the slice stayed local-only and non-gate-closing once queue/run-log bookkeeping was restored.
+- Next follow-up: Start `WAVE-2026-04-29-47` as a fresh queued wave and consume `LocalHubStateSnapshot` only as an unpublished S7-local seam. Do not widen it into node, shell, schema, harness, `xtask`, shared contracts, or gate-moving claims without the queued follow-on waves.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-46",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-hub --test local_bridge hub_state_, cargo check -p ferros-hub, and cargo test -p ferros-hub --test local_bridge bridge_ all passed, and get_errors is clean on the touched hub files.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-46 is a standard code-track owner wave, and the next queued wave WAVE-2026-04-29-47 is not tagged solo or gate-close.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the three declared ferros-hub anchors, and queue/run-log bookkeeping now records the lane honestly.",
+    "4_track_boundary": "Not triggered: the next queued wave remains on track code.",
+    "5_run_length_cap": "Not triggered: the active packet remains below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: the only post-review parser defect was repaired in-slice and the follow-up bridge regression run closed the shared helper boundary without triage escalation."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-46 landed as the planned local snapshot and guardrail seam, executable validation including the bridge-path regression suite is green, no downstream consumer or gate claim moved, and the next serial S7 wave can now consume this unpublished local seam."
+}
+```
+
+---
+
 ## 2026-04-28 — WAVE-2026-04-28-45
 
 - Selected item: `WAVE-2026-04-28-45`

@@ -387,23 +387,72 @@ async function runJourney() {
     addResult('C: Runway', 'Runway route activates', runwayRoute, runwayRoute ? 'route=runway' : '', runwayRoute ? '' : 'runway route did not activate');
 
     if (runwayRoute) {
+      var frameWindow = getFrameWindow();
+      var runwayButtonCopyNode = doc.querySelector('[data-route="runway"] small');
+      var runwayButtonCopy = runwayButtonCopyNode ? runwayButtonCopyNode.textContent.trim().toLowerCase() : '';
+      var toolsCopy = textById(doc, 'tools-copy');
+      var auditCopy = textById(doc, 'intent-note-copy');
+      var shellPath = frameWindow && frameWindow.location ? frameWindow.location.pathname : '';
       var runwayUrls = observedRunwayUrls();
       var runwayText = doc.getElementById('runway-surface').textContent.toLowerCase();
+      var runwayButtonAdvertisesRestart = runwayButtonCopy.indexOf('optional hub restart context') !== -1
+        && runwayButtonCopy.indexOf('/runway-summary.json') !== -1;
+      var runwayToolsCopyVisible = toolsCopy.indexOf('/runway-summary.json') !== -1
+        && toolsCopy.indexOf('optional hub restart context') !== -1
+        && toolsCopy.indexOf('reloadstatus') !== -1
+        && toolsCopy.indexOf('non-evidentiary') !== -1;
+      var runwayAuditCopyVisible = auditCopy.indexOf('/runway-summary.json') !== -1
+        && auditCopy.indexOf('optional hub restart context') !== -1
+        && auditCopy.indexOf('reloadstatus') !== -1
+        && auditCopy.indexOf('read-only') !== -1;
+      var hubRestartPriorLabels = [
+        'prior bridge manifest identity',
+        'prior policy decision label',
+        'prior artifact output path'
+      ];
       var selectedProfilePathVisible = runwayText.indexOf('/definitely/missing/profile.json') !== -1;
-      var checkpointVisible = runwayText.indexOf('checkpoint') !== -1 && runwayText.indexOf('1/7') !== -1 && runwayText.indexOf('pending') !== -1;
+      var checkpointVisible = runwayText.indexOf('checkpoint') !== -1
+        && runwayText.indexOf('/7') !== -1
+        && (runwayText.indexOf('local profile checkpoint') !== -1 || runwayText.indexOf('pending') !== -1);
       var selectedProfilePathRequested = runwayUrls.some(function(url) {
         return url.indexOf('profilePath=%2Fdefinitely%2Fmissing%2Fprofile.json') !== -1;
       });
+      addResult('C: Runway', 'Runway route button copy advertises optional hub restart context from /runway-summary.json', runwayButtonAdvertisesRestart, 'button=' + (runwayButtonCopy || 'missing'), runwayButtonAdvertisesRestart ? '' : 'runway route button copy lost the optional hub restart /runway-summary.json description');
+      addResult('C: Runway', 'Runway observation stays on the existing shell path', shellPath === '/', 'pathname=' + (shellPath || 'missing'), shellPath === '/' ? '' : 'runway route changed the shell document path instead of reusing the current shell path');
       addResult('C: Runway', 'Runway request carries the selected profile path', selectedProfilePathRequested, 'urls=' + (runwayUrls.join(', ') || 'none'), selectedProfilePathRequested ? '' : 'runway fetch did not include the selected profilePath query');
       addResult('C: Runway', 'Runway surface renders selected profile path and checkpoint progress', selectedProfilePathVisible && checkpointVisible, 'surface=' + (runwayText || 'missing'), selectedProfilePathVisible && checkpointVisible ? '' : 'runway surface did not render the selected profile path and pending checkpoint progress');
       var checklistVisible = runwayText.indexOf('power cycle') !== -1 || runwayText.indexOf('powercyclestatus') !== -1;
       addResult('C: Runway', 'Runway surface renders checklist state', checklistVisible, checklistVisible ? 'runway checklist visible' : '', checklistVisible ? '' : 'runway checklist copy did not render');
+      addResult('C: Runway', 'Runway tools and audit copy keep hub restart context and reloadStatus on the read-only /runway-summary.json route', runwayToolsCopyVisible && runwayAuditCopyVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayToolsCopyVisible && runwayAuditCopyVisible ? '' : 'runway tools/audit copy lost the restart-aware /runway-summary.json guidance');
+
+      var runwayHubRestartPresent = ['reloadstatus', 'snapshotpath', 'scope', 'evidence'].every(function(marker) {
+        return runwayText.indexOf(marker) !== -1;
+      });
+      var runwayHubRestartPriorVisible = hubRestartPriorLabels.some(function(label) {
+        return runwayText.indexOf(label) !== -1;
+      }) || runwayText.indexOf('no prior hub restart observation fields were returned on this summary yet') !== -1;
+      var runwayHubRestartMissing = runwayText.indexOf('this runway summary does not include optional hub restart context yet') !== -1;
+      addResult('C: Runway', 'Runway surface renders restart-aware hub observation fields when present', runwayHubRestartPresent ? runwayHubRestartPriorVisible : 'skip', 'surface=' + (runwayText || 'missing'), runwayHubRestartPresent ? (runwayHubRestartPriorVisible ? '' : 'runway surface showed hub restart fields without any prior-field label or empty prior-field note') : 'restart context not present on this summary');
+      addResult('C: Runway', 'Runway surface renders the optional hub restart fallback when restart context is absent', runwayHubRestartPresent ? 'skip' : runwayHubRestartMissing, runwayHubRestartPresent ? 'surface includes hub restart fields' : 'surface=' + (runwayText || 'missing'), runwayHubRestartPresent ? 'restart context present on this summary' : runwayHubRestartMissing ? '' : 'runway surface did not render the optional hub restart fallback note');
 
       var inspectorText = doc.getElementById('inspector-content').textContent.toLowerCase();
       var inspectorShowsRunway = inspectorText.indexOf('local-only') !== -1 && inspectorText.indexOf('non-evidentiary') !== -1;
       addResult('C: Runway', 'Inspector renders local-only runway detail', inspectorShowsRunway, inspectorShowsRunway ? 'inspector shows runway scope and evidence' : '', inspectorShowsRunway ? '' : 'runway inspector detail did not render');
-      var inspectorShowsCheckpoint = inspectorText.indexOf('/definitely/missing/profile.json') !== -1 && inspectorText.indexOf('1/7') !== -1 && inspectorText.indexOf('pending') !== -1;
-      addResult('C: Runway', 'Inspector renders selected profile path and checkpoint detail', inspectorShowsCheckpoint, inspectorShowsCheckpoint ? 'inspector shows selected profile path and checkpoint progress' : '', inspectorShowsCheckpoint ? '' : 'runway inspector did not render selected profile path and checkpoint progress');
+      var inspectorShowsCheckpoint = inspectorText.indexOf('/definitely/missing/profile.json') !== -1
+        && inspectorText.indexOf('/7') !== -1
+        && inspectorText.indexOf('checkpoint detail') !== -1
+        && (inspectorText.indexOf('local profile checkpoint') !== -1 || inspectorText.indexOf('pending') !== -1);
+      addResult('C: Runway', 'Inspector renders selected profile path and checkpoint detail', inspectorShowsCheckpoint, inspectorShowsCheckpoint ? 'inspector shows selected profile path and checkpoint detail' : '', inspectorShowsCheckpoint ? '' : 'runway inspector did not render selected profile path and checkpoint detail');
+
+      var runwayInspectorHubRestartPresent = ['hub restart', 'reload status', 'snapshot path', 'restart scope', 'restart evidence'].every(function(marker) {
+        return inspectorText.indexOf(marker) !== -1;
+      });
+      var runwayInspectorPriorVisible = hubRestartPriorLabels.some(function(label) {
+        return inspectorText.indexOf(label) !== -1;
+      }) || (inspectorText.indexOf('prior observation') !== -1 && inspectorText.indexOf('none reported on this summary yet') !== -1);
+      var runwayInspectorHubRestartMissing = inspectorText.indexOf('hub restart') !== -1 && inspectorText.indexOf('optional context not available yet') !== -1;
+      addResult('C: Runway', 'Inspector renders restart-aware hub observation fields when present', runwayInspectorHubRestartPresent ? runwayInspectorPriorVisible : 'skip', 'inspector=' + (inspectorText || 'missing'), runwayInspectorHubRestartPresent ? (runwayInspectorPriorVisible ? '' : 'runway inspector showed hub restart detail without any prior-field label or empty prior observation detail') : 'restart context not present on this summary');
+      addResult('C: Runway', 'Inspector renders the optional hub restart fallback when restart context is absent', runwayInspectorHubRestartPresent ? 'skip' : runwayInspectorHubRestartMissing, runwayInspectorHubRestartPresent ? 'inspector includes hub restart fields' : 'inspector=' + (inspectorText || 'missing'), runwayInspectorHubRestartPresent ? 'restart context present on this summary' : runwayInspectorHubRestartMissing ? '' : 'runway inspector did not render the optional hub restart fallback detail');
     }
   } catch (error) {
     addResult('C: Runway', 'Runway route journey completes', false, '', error.message);

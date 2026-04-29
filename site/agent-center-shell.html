@@ -599,7 +599,7 @@
           </button>
           <button class="route-button" data-route="runway" type="button">
             <strong>Runway</strong>
-            <small>Local-only launch checklist from <code>/runway-summary.json</code>.</small>
+            <small>Local-only launch checklist plus optional hub restart context from <code>/runway-summary.json</code>.</small>
           </button>
           <button class="route-button" data-route="denyLog" type="button">
             <strong>Deny log</strong>
@@ -1248,6 +1248,62 @@
         </article>`;
     }
 
+    function runwayHubRestartPriorFields(hubRestart) {
+      if (!hubRestart) {
+        return [];
+      }
+
+      return [
+        ['Prior bridge manifest identity', hubRestart.priorBridgeManifestIdentity],
+        ['Prior policy decision label', hubRestart.priorPolicyDecisionLabel],
+        ['Prior artifact output path', hubRestart.priorArtifactRelativeOutputPath],
+      ].filter((entry) => Boolean(entry[1]));
+    }
+
+    function runwayHubRestartNoteHtml(hubRestart) {
+      if (!hubRestart) {
+        return emptyNote('Optional hub restart context', 'This runway summary does not include optional hub restart context yet. The runway checklist remains usable without it.');
+      }
+
+      const priorFields = runwayHubRestartPriorFields(hubRestart);
+      const priorCopy = priorFields.length > 0
+        ? priorFields
+          .map(([label, value]) => `<p class="shell-note-copy">${escapeHtml(label)} · ${escapeHtml(value)}</p>`)
+          .join('')
+        : '<p class="shell-note-copy">No prior hub restart observation fields were returned on this summary yet.</p>';
+
+      return `
+        <article class="note-card">
+          <div class="shell-note-title">Optional hub restart context</div>
+          <p class="shell-note-copy">reloadStatus ${escapeHtml(hubRestart.reloadStatus || 'not reported')} is display-only runway context.</p>
+          <p class="shell-note-copy">snapshotPath ${escapeHtml(hubRestart.snapshotPath || 'not reported')} · scope ${escapeHtml(hubRestart.scope || 'local-only')} · evidence ${escapeHtml(hubRestart.evidence || 'non-evidentiary')}.</p>
+          ${priorCopy}
+        </article>`;
+    }
+
+    function runwayHubRestartInspectorDetails(hubRestart) {
+      if (!hubRestart) {
+        return `
+          <div class="detail-pair"><div class="detail-key">Hub restart</div><div class="detail-value">optional context not available yet</div></div>`;
+      }
+
+      const priorFields = runwayHubRestartPriorFields(hubRestart);
+      const priorDetails = priorFields.length > 0
+        ? priorFields
+          .map(([label, value]) => `
+          <div class="detail-pair"><div class="detail-key">${escapeHtml(label)}</div><div class="detail-value">${escapeHtml(value)}</div></div>`)
+          .join('')
+        : `
+          <div class="detail-pair"><div class="detail-key">Prior observation</div><div class="detail-value">none reported on this summary yet</div></div>`;
+
+      return `
+          <div class="detail-pair"><div class="detail-key">Hub restart</div><div class="detail-value">optional read-only context</div></div>
+          <div class="detail-pair"><div class="detail-key">Reload status</div><div class="detail-value">${escapeHtml(hubRestart.reloadStatus || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Snapshot path</div><div class="detail-value">${escapeHtml(hubRestart.snapshotPath || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Restart scope</div><div class="detail-value">${escapeHtml(hubRestart.scope || 'local-only')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Restart evidence</div><div class="detail-value">${escapeHtml(hubRestart.evidence || 'non-evidentiary')}</div></div>${priorDetails}`;
+    }
+
     function runwaySurfaceHtml() {
       const summary = state.runway;
       if (!summary) {
@@ -1272,6 +1328,7 @@
           <p class="shell-note-copy">Profile ${escapeHtml(summary.profilePath || 'default')} · checkpoint ${escapeHtml(summary.checkpointState)} (${escapeHtml(checkpointProgress)}) · ${escapeHtml(summary.checkpointDetail)}.</p>
           <p class="shell-note-copy">Scope ${escapeHtml(summary.scope)} · evidence ${escapeHtml(summary.evidence)} · latest deny ${escapeHtml(latestDeny)}.</p>
         </article>
+        ${runwayHubRestartNoteHtml(summary.hubRestart)}
         ${checklist || emptyNote('No runway checklist', 'The runway route loaded, but no checklist items were returned.')}`;
     }
 
@@ -1324,6 +1381,7 @@
         const item = summary.checklist && summary.checklist.length > 0
           ? summary.checklist[state.selectedRunwayIndex ?? 0]
           : null;
+        const hubRestartDetails = runwayHubRestartInspectorDetails(summary.hubRestart || null);
         inspector.innerHTML = `
           <div class="detail-pair"><div class="detail-key">Surface</div><div class="detail-value">${escapeHtml(summary.surface)}</div></div>
           <div class="detail-pair"><div class="detail-key">Scope</div><div class="detail-value">${escapeHtml(summary.scope)}</div></div>
@@ -1332,6 +1390,7 @@
           <div class="detail-pair"><div class="detail-key">Checkpoint</div><div class="detail-value">${escapeHtml(summary.checkpointState)}</div></div>
           <div class="detail-pair"><div class="detail-key">Checkpoint progress</div><div class="detail-value">${escapeHtml(`${summary.checkpointPosition}/${summary.checkpointTotal}`)}</div></div>
           <div class="detail-pair"><div class="detail-key">Checkpoint detail</div><div class="detail-value">${escapeHtml(summary.checkpointDetail)}</div></div>
+          ${hubRestartDetails}
           <div class="detail-pair"><div class="detail-key">Checklist item</div><div class="detail-value">${escapeHtml(item ? item.item : 'none')}</div></div>
           <div class="detail-pair"><div class="detail-key">Checklist status</div><div class="detail-value">${escapeHtml(item ? item.status : 'none')}</div></div>
           <div class="detail-pair"><div class="detail-key">Checklist detail</div><div class="detail-value">${escapeHtml(item ? item.detail : 'no checklist detail loaded')}</div></div>`;
@@ -1367,7 +1426,7 @@
         agents: 'Agents route shows live registry rows and promotes a selected agent into the inspector slot.',
         grants: 'Grants route reads the local profile state through the current S3/S2 boundary with no mock grant rows.',
         profile: 'Profile route uses the local /profile adapter for init, show, export, and import without sending JSON-RPC grant writes.',
-        runway: 'Runway route reads the local-only /runway-summary.json surface for the selected profile path, checkpoint progress, deny visibility, and stand-in readiness observation.',
+        runway: 'Runway route reads the local-only /runway-summary.json surface for the selected profile path, checkpoint progress, deny visibility, stand-in readiness observation, and optional hub restart context. reloadStatus stays display-only and non-evidentiary here.',
         denyLog: 'Deny log route uses persisted deny evidence only; route filtering stays in-slot and does not open overlays.',
       };
       document.getElementById('tools-copy').textContent = copy[state.route];
@@ -1389,7 +1448,7 @@
         intentCopy.textContent = 'Profile init, show, export, and import use the same-origin /profile adapter. Profile grant and revoke stay closed here.';
       } else if (state.route === 'runway') {
         intentTitle.textContent = 'Runway observation only';
-        intentCopy.textContent = 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Checkpoint progress is read-only here; power-cycle and bridge proof remain pending and non-evidentiary.';
+        intentCopy.textContent = 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Optional hub restart context may appear on the same read-only route. reloadStatus stays display-only runway context here; checkpoint progress remains read-only, and no durability, power-cycle, hardware, or gate evidence is implied.';
       } else {
         intentTitle.textContent = 'Deny observation only';
         intentCopy.textContent = 'Deny entries remain read-only evidence. If a transmitted lifecycle RPC is denied by the backend, the shell refreshes through agent.snapshot so persisted deny evidence can read back here.';
@@ -1571,7 +1630,7 @@
         case 'profile':
           return 'Profile actions use the local /profile adapter for init, show, export, and import only.';
         case 'runway':
-          return 'Runway rows come from the local-only /runway-summary.json surface and remain non-evidentiary.';
+          return 'Runway rows come from the local-only /runway-summary.json surface; any optional hub restart reloadStatus stays display-only and non-evidentiary.';
         case 'denyLog':
           return 'Deny-log rows stay inside the current persisted shell state loaded through agent.snapshot.';
         default:

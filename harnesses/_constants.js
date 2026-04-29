@@ -497,6 +497,55 @@ var SCHEMA_HUB_LOCAL_RUNWAY_REPORT = {
   }
 };
 
+// Source: schemas/hub-local-state-snapshot.schema.json
+var SCHEMA_HUB_LOCAL_STATE_SNAPSHOT = {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/hub-local-state-snapshot.schema.json",
+  "title": "FERROS Local Hub State Snapshot",
+  "description": "Bounded local-only persisted restart snapshot for ferros-hub. This snapshot is non-evidentiary, stays under .tmp/hub/, and does not imply remote transport, Home Assistant integration, or physical-device behavior.",
+  "type": "object",
+  "required": [
+    "bridgeManifestIdentity",
+    "policyDecisionLabel",
+    "artifactRelativeOutputPath",
+    "scope",
+    "evidence",
+    "lastLocalSummary"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "bridgeManifestIdentity": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^[^@]+@[^@]+$"
+    },
+    "policyDecisionLabel": {
+      "type": "string",
+      "enum": [
+        "allowed",
+        "denied:no-grants",
+        "denied:profile",
+        "denied:capability"
+      ]
+    },
+    "artifactRelativeOutputPath": {
+      "type": ["string", "null"],
+      "pattern": "^(?!.*://)(?!.*:)(?!.*(?:^|/)\\.\\.(?:/|$))\\.tmp/hub/.+$"
+    },
+    "scope": {
+      "const": "local-only"
+    },
+    "evidence": {
+      "const": "non-evidentiary"
+    },
+    "lastLocalSummary": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!.*://)(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]))local-only .+$"
+    }
+  }
+};
+
 // Source: schemas/identity.schema.json
 var SCHEMA_IDENTITY = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3271,6 +3320,7 @@ var FERROS_SCHEMAS = [
   {name: "deck", file: "deck.schema.json", schema: SCHEMA_DECK},
   {name: "hub-local-bridge-artifact", file: "hub-local-bridge-artifact.schema.json", schema: SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT},
   {name: "hub-local-runway-report", file: "hub-local-runway-report.schema.json", schema: SCHEMA_HUB_LOCAL_RUNWAY_REPORT},
+  {name: "hub-local-state-snapshot", file: "hub-local-state-snapshot.schema.json", schema: SCHEMA_HUB_LOCAL_STATE_SNAPSHOT},
   {name: "identity", file: "identity.schema.json", schema: SCHEMA_IDENTITY},
   {name: "local-push-audit-envelope", file: "local-push-audit-envelope.schema.json", schema: SCHEMA_LOCAL_PUSH_AUDIT_ENVELOPE},
   {name: "profile", file: "profile.schema.json", schema: SCHEMA_PROFILE},
@@ -3315,5 +3365,5 @@ var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-template-to-events-missing-source-type", file: "invalid-template-to-events-missing-source-type.json", fixture: FIXTURE_INVALID_TEMPLATE_TO_EVENTS_MISSING_SOURCE_TYPE}
 ];
 
-// Total files embedded: 44
-// Schemas: 12 | Golden fixtures: 19 | Negative fixtures: 13
+// Total files embedded: 45
+// Schemas: 13 | Golden fixtures: 19 | Negative fixtures: 13

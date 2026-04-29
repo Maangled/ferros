@@ -29,6 +29,140 @@ None.
 
 ## Done
 
+### WAVE-2026-04-29-53
+
+- Title: Final serial truth-sync after the restart-aware local hub runway packet
+- Status: done
+- Priority: P2
+- Gate: rolling truth-sync after S7 owner waves
+- Owning streams: S8 primary, S7 awareness, S4 awareness
+- Goal: Reconcile the minimum truthful shared surfaces after the restart-aware local hub snapshot, node runway observation, shell visibility, schema validation, acceptance harness, and xtask helper slices land, while stating exactly what still remains open.
+- Anchor files: `STATUS.md`, `streams/S7-hub/README.md`, `streams/S7-hub/PROGRESS.md`, `streams/S7-hub/BACKLOG.md`, `streams/S7-hub/CONTRACTS.md`, `streams/S4-runtime/CONTRACTS.md`
+- Validation: `get_errors` clean on touched truth surfaces; diff review confirms no G4 closure, no hardware evidence claim, no Home Assistant integration claim, no remote transport claim, and no daemon or server mode claim
+- Constraints: Final serial wave only. Shared truth only; no crate, schema, harness, or site edits. Do not close G4, do not claim physical-device evidence, do not claim Home Assistant integration, and keep queue and run-log updates append-only.
+- Last update: 2026-04-29
+- size: L
+- serial-after: WAVE-2026-04-29-52
+- solo: true
+- track: code
+
+### WAVE-2026-04-29-52
+
+- Title: Extend xtask hub-runway helper to prove snapshot write and reload
+- Status: done
+- Priority: P1
+- Gate: G4 local tooling proof helper
+- Owning streams: S7 primary, S1 support
+- Goal: Keep `cargo xtask hub-runway` aligned to the restart-aware hub seam so it proves the same local snapshot write and reload path and prints the same local-only, non-evidentiary hub observation without duplicating hub logic.
+- Anchor files: `xtask/src/main.rs`
+- Validation: `cargo check -p xtask`; `cargo xtask hub-runway`; `cargo run -p ferros-hub -- summary`
+- Constraints: Helper only. Reuse the published hub seam from WAVE-2026-04-29-47. Do not reopen hub source files or add node, shell, schema, or harness routes here. Keep all output local-only and non-evidentiary under `.tmp/hub/`. No remote transport, no daemon or server mode, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- parallel-safe-with: [WAVE-2026-04-29-48, WAVE-2026-04-29-49, WAVE-2026-04-29-50, WAVE-2026-04-29-51]
+- serial-after: WAVE-2026-04-29-47
+- track: code
+
+### WAVE-2026-04-29-51
+
+- Title: Add schema-backed validation for the local hub restart snapshot contract
+- Status: done
+- Priority: P1
+- Gate: G4 local restart contract validation
+- Owning streams: S7 primary, S1 support
+- Goal: Add one bounded local-only schema for the persisted hub restart snapshot and wire H1 validator coverage so the restart-aware local hub state stays schema-backed and drift-resistant without widening into a partner-facing or hardware-facing contract.
+- Anchor files: `crates/ferros-hub/tests/local_bridge.rs`, `schemas/hub-local-state-snapshot.schema.json`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
+- Validation: `cargo test -p ferros-hub --test local_bridge hub_state_`; `powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate-harness-constants.ps1`; direct file-based run of `harnesses/ferros-contract-validator.html` stays green with explicit restart snapshot positive and negative cases
+- Constraints: Schema and validator only. Do not touch frozen S2 schemas. Use only the current validator subset. Do not widen `hub-local-runway-report` or `hub-local-bridge-artifact` unless a validator-proven blocker forces replanning. No partner-facing claim, no remote transport, no Home Assistant integration claim, no physical-device evidence, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: L
+- parallel-safe-with: [WAVE-2026-04-29-48, WAVE-2026-04-29-49, WAVE-2026-04-29-50, WAVE-2026-04-29-52]
+- serial-after: WAVE-2026-04-29-47
+- track: code
+
+### WAVE-2026-04-29-50
+
+- Title: Extend localhost shell acceptance harness for restart-aware hub runway observation
+- Status: done
+- Priority: P1
+- Gate: G4 local shell acceptance proof
+- Owning streams: S5 primary
+- Goal: Extend the same-origin localhost shell acceptance harness so it proves the restart-aware hub observation is read through the existing `/runway-summary.json` seam and rendered without opening a new shell route.
+- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness`; direct same-origin run of `/harnesses/localhost-shell-acceptance.html` against `ferros-node shell` stays green with restart-aware runway checks
+- Constraints: Harness only. Keep observation same-origin and read-only. No new route, no privileged browser controls, no remote transport, no Home Assistant integration claim, no physical-device evidence, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- parallel-safe-with: [WAVE-2026-04-29-51, WAVE-2026-04-29-52]
+- serial-after: WAVE-2026-04-29-49
+- track: code
+
+### WAVE-2026-04-29-49
+
+- Title: Render local hub restart observation in the localhost shell runway panel
+- Status: done
+- Priority: P1
+- Gate: G4 local shell runway observation
+- Owning streams: S5 primary, S4 support
+- Goal: Render the additive hub restart-aware fields already exposed through `/runway-summary.json` inside the existing runway panel and inspector so the operator sees restart-state observation on the same read-only shell path without new routes or privileged controls.
+- Anchor files: `site/agent-center-shell.html`
+- Validation: `cargo test -p ferros-node shell_route_gets_local_runway_summary_json`; `get_errors` clean on `site/agent-center-shell.html`; live local load of `ferros-node shell` shows hub restart observation through the existing runway panel and inspector
+- Constraints: UI and read-only copy only. Treat `hubRestart` as optional and `reloadStatus` as display-only runway context; do not translate it into durability, power-cycle, hardware, or gate evidence. No new route, no browser-issued hub writes, no privileged browser controls, no remote transport, no Home Assistant integration claim, no physical-device evidence, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- parallel-safe-with: [WAVE-2026-04-29-51, WAVE-2026-04-29-52]
+- serial-after: WAVE-2026-04-29-48
+- track: code
+
+### WAVE-2026-04-29-48
+
+- Title: Extend ferros-node runway-summary payload with optional hub restart observation
+- Status: done
+- Priority: P1
+- Gate: G4 local runway observation seam
+- Owning streams: S4 primary, S7 support
+- Goal: Consume the published restart-aware hub summary from `ferros-hub` inside the existing `/runway-summary(.json)` seam so the local node surface exposes additive hub restart observation through the current profile-scoped, read-only runway payload rather than a new route.
+- Anchor files: `Cargo.lock`, `crates/ferros-node/Cargo.toml`, `crates/ferros-node/src/lib.rs`
+- Validation: `cargo test -p ferros-node local_agent_api_runway_summary_serializes_and_tracks_profile_and_deny_observation`; `cargo test -p ferros-node shell_route_gets_local_runway_summary_json`; `cargo test -p ferros-node local_agent_api_runway_summary_omits_hub_restart_when_hub_summary_loader_fails`; `cargo check -p ferros-node`
+- Constraints: Extend the existing `/runway-summary.json` payload additively only. Consume `restart_observation` from the default hub summary seam only; do not read the snapshot file directly or depend on the snapshot-path override helper. No daemon or server mode beyond the current localhost shell host, no remote transport, no privileged browser controls, no Home Assistant integration claim, no physical-device evidence, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: L
+- parallel-safe-with: [WAVE-2026-04-29-51, WAVE-2026-04-29-52]
+- serial-after: WAVE-2026-04-29-47
+- track: code
+
+### WAVE-2026-04-29-47
+
+- Title: Integrate restart-aware local hub snapshot reload into the typed runtime summary
+- Status: done
+- Priority: P1
+- Gate: G4 local restart-aware runway
+- Owning streams: S7 primary
+- Goal: Wire the local hub snapshot seam into the existing typed hub runtime summary so summary and prove flows can record and reload restart-aware local runway state, default safely when no snapshot exists, and report bounded local reload status without widening into a public restart API.
+- Anchor files: `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub --test local_bridge hub_reload_`; `cargo run -p ferros-hub -- summary`; `cargo run -p ferros-hub -- prove-bridge`; `cargo check -p ferros-hub`; `cargo test -p ferros-hub --test local_bridge hub_summary_`
+- Constraints: Consume only the WAVE-2026-04-29-46 snapshot seam. Keep persistence under `.tmp/hub/` and keep wording local-only, non-evidentiary, and non-gate-closing. No `ferros-node`, shell, schema, harness, or `xtask` edits.
+- Last update: 2026-04-29
+- size: S
+- serial-after: WAVE-2026-04-29-46
+- track: code
+
+### WAVE-2026-04-29-46
+
+- Title: Add typed local hub state snapshot model and bounded path guardrails
+- Status: done
+- Priority: P1
+- Gate: G4 local restart-aware runway
+- Owning streams: S7 primary
+- Goal: Add a typed local hub state snapshot model under `crates/ferros-hub` that persists only local, non-evidentiary runway state under `.tmp/hub/`, capturing bridge manifest identity, policy decision label, artifact path, scope, evidence status, and last local summary while rejecting absolute paths, parent traversal, remote-looking URLs, hardware or proof or launch wording, and malformed local state.
+- Anchor files: `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub --test local_bridge hub_state_`; `cargo check -p ferros-hub`; `cargo test -p ferros-hub --test local_bridge bridge_`
+- Constraints: Core owner wave only. Keep persisted output under `.tmp/hub/` and keep all wording local-only and non-evidentiary. No `ferros-node`, shell, schema, harness, or `xtask` edits. No remote transport, no daemon or server mode, no privileged browser controls, no Home Assistant integration claim, no physical-device evidence, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- serial-after: WAVE-2026-04-28-45
+- track: code
+
 ### WAVE-2026-04-28-38
 
 - Title: Promote ferros-hub from binary-backed scaffold to library-backed local runway crate

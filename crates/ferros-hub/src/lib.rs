@@ -4,6 +4,7 @@ use ferros_core::{PolicyDecision, PolicyDenialReason};
 
 pub use ha_bridge::{
     default_local_runtime_summary,
+    default_local_runtime_summary_with_snapshot_path,
     execute_local_bridge_request,
     execute_local_bridge_request_with_output_path,
     evaluate_local_bridge_policy,
@@ -18,10 +19,15 @@ pub use ha_bridge::{
     LocalBridgeRequest,
     LocalBridgeStatus,
     LocalCapabilitySnapshot,
+    LocalHubReloadStatus,
+    LocalHubRestartObservation,
     LocalHubRuntimeSummary,
+    LocalHubStateSnapshot,
+    LocalHubStateSnapshotError,
     SimulatedBridgeArtifact,
     summarize_local_bridge_runway,
     LOCAL_HUB_ARTIFACT_ROOT,
+    LOCAL_HUB_STATE_SNAPSHOT_PATH,
     SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
 };
 
@@ -42,7 +48,7 @@ pub fn prove_bridge_command_output() -> Result<String, LocalBridgeRegistrationEr
     let summary = default_local_runtime_summary()?;
 
     Ok(format!(
-        "ferros-hub bridge-proof: {} for {} with artifact {} [{}; {}]",
+        "ferros-hub bridge-proof: {} for {} with artifact {} [{}; {}; restart {}]",
         policy_decision_label(summary.policy_decision),
         summary.stand_in_name,
         summary
@@ -50,7 +56,8 @@ pub fn prove_bridge_command_output() -> Result<String, LocalBridgeRegistrationEr
             .as_deref()
             .unwrap_or("none"),
         summary.scope,
-        summary.evidence
+        summary.evidence,
+        summary.restart_observation.reload_status.as_str()
     ))
 }
 
@@ -91,6 +98,10 @@ fn format_local_runtime_summary(summary: &LocalHubRuntimeSummary) -> String {
             "artifact: {}\n",
             "scope: {}\n",
             "evidence: {}\n",
+            "restartReload: {}\n",
+            "restartPriorBridgeManifest: {}\n",
+            "restartPriorPolicyDecision: {}\n",
+            "restartPriorArtifact: {}\n",
             "summary: {}"
         ),
         summary.registered_bridge_agents,
@@ -108,6 +119,22 @@ fn format_local_runtime_summary(summary: &LocalHubRuntimeSummary) -> String {
             .unwrap_or("none"),
         summary.scope,
         summary.evidence,
+        summary.restart_observation.reload_status.as_str(),
+        summary
+            .restart_observation
+            .prior_bridge_manifest_identity
+            .as_deref()
+            .unwrap_or("none"),
+        summary
+            .restart_observation
+            .prior_policy_decision_label
+            .as_deref()
+            .unwrap_or("none"),
+        summary
+            .restart_observation
+            .prior_artifact_relative_output_path
+            .as_deref()
+            .unwrap_or("none"),
         summary.summary
     )
 }

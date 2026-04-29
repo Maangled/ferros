@@ -24,6 +24,10 @@ use ferros_core::{
     Capability, CapabilityError, CapabilityGrantView, CapabilityRequest, DenyByDefaultPolicy,
     MessageEnvelope, MessageEnvelopeError, PolicyDecision, PolicyEngine, RequesterProfileIdError,
 };
+use ferros_hub::{
+    default_local_runtime_summary, LocalBridgeRegistrationError, LocalHubRuntimeSummary,
+    LOCAL_HUB_STATE_SNAPSHOT_PATH,
+};
 use ferros_profile::{
     grant_profile_capability, init_local_profile, revoke_profile_capability, CapabilityGrant,
     FileSystemProfileStore, LocalProfileStore, ProfileId, ProfileIdError, ProfileStoreError,
@@ -252,6 +256,8 @@ pub struct LocalRunwaySummary {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latest_deny: Option<LocalRunwayDenySummary>,
     pub checklist: Vec<LocalRunwayChecklistItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hub_restart: Option<LocalRunwayHubRestartSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -301,6 +307,21 @@ impl From<DenyLogEntry> for LocalRunwayDenySummary {
             capability: value.capability,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalRunwayHubRestartSummary {
+    pub reload_status: String,
+    pub snapshot_path: String,
+    pub scope: String,
+    pub evidence: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prior_bridge_manifest_identity: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prior_policy_decision_label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prior_artifact_relative_output_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1570,6 +1591,34 @@ fn non_empty_trimmed(value: &str) -> Option<&str> {
     (!trimmed.is_empty()).then_some(trimmed)
 }
 
+fn map_local_runway_hub_restart_summary(
+    summary: LocalHubRuntimeSummary,
+) -> LocalRunwayHubRestartSummary {
+    let restart_observation = summary.restart_observation;
+
+    LocalRunwayHubRestartSummary {
+        reload_status: restart_observation.reload_status.as_str().to_owned(),
+        snapshot_path: LOCAL_HUB_STATE_SNAPSHOT_PATH.to_owned(),
+        scope: summary.scope,
+        evidence: summary.evidence,
+        prior_bridge_manifest_identity: restart_observation.prior_bridge_manifest_identity,
+        prior_policy_decision_label: restart_observation.prior_policy_decision_label,
+        prior_artifact_relative_output_path: restart_observation
+            .prior_artifact_relative_output_path,
+    }
+}
+
+fn observe_local_runway_hub_restart_with<HubSummaryLoader>(
+    hub_summary_loader: HubSummaryLoader,
+) -> Option<LocalRunwayHubRestartSummary>
+where
+    HubSummaryLoader: FnOnce() -> Result<LocalHubRuntimeSummary, LocalBridgeRegistrationError>,
+{
+    hub_summary_loader()
+        .ok()
+        .map(map_local_runway_hub_restart_summary)
+}
+
 fn profile_value_for_action<S: LocalProfileStore>(
     action: &str,
     store: &S,
@@ -1598,6 +1647,24 @@ fn build_local_runway_summary_with_store<S: LocalProfileStore>(
     profile_path: &Path,
     store: &S,
 ) -> Result<LocalRunwaySummary, CliError> {
+    build_local_runway_summary_with_store_and_hub_summary_loader(
+        state_path,
+        profile_path,
+        store,
+        default_local_runtime_summary,
+    )
+}
+
+fn build_local_runway_summary_with_store_and_hub_summary_loader<S, HubSummaryLoader>(
+    state_path: &Path,
+    profile_path: &Path,
+    store: &S,
+    hub_summary_loader: HubSummaryLoader,
+) -> Result<LocalRunwaySummary, CliError>
+where
+    S: LocalProfileStore,
+    HubSummaryLoader: FnOnce() -> Result<LocalHubRuntimeSummary, LocalBridgeRegistrationError>,
+{
     let state = CliState::load(state_path)?;
     let runtime = runtime_with_state_from_loaded_state(&state)?;
     let agent_records = runtime.agent_records();
@@ -1605,6 +1672,7 @@ fn build_local_runway_summary_with_store<S: LocalProfileStore>(
     let deny_count = deny_entries.len();
     let latest_deny = deny_entries.into_iter().last().map(LocalRunwayDenySummary::from);
     let profile_observation = observe_local_runway_profile(store, profile_path);
+    let hub_restart = observe_local_runway_hub_restart_with(hub_summary_loader);
 
     let stand_in_agent = match runtime.describe_agent("echo") {
         Some(agent) => LocalRunwayChecklistItem {
@@ -1702,6 +1770,7 @@ fn build_local_runway_summary_with_store<S: LocalProfileStore>(
             consent_flow,
             power_cycle,
         ],
+        hub_restart,
     })
 }
 
@@ -2627,6 +2696,7 @@ pub fn run_demo() -> Result<DemoSummary, DemoError> {
 #[cfg(test)]
 mod tests {
     use super::{
+        build_local_runway_summary_with_store_and_hub_summary_loader,
         default_profile_path, execute_agent_cli_with_runtime_loader,
         execute_agent_cli_with_state_path, execute_agent_read_rpc_json,
         execute_agent_read_rpc_with_store_and_paths,
@@ -2647,6 +2717,9 @@ mod tests {
         JSON_RPC_INVALID_PARAMS, JSON_RPC_INVALID_REQUEST, JSON_RPC_METHOD_NOT_FOUND,
         METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_AGENT_RUN, METHOD_AGENT_SNAPSHOT,
         METHOD_AGENT_STOP, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
+    };
+    use ferros_hub::{
+        LocalBridgeRegistrationError, LocalHubRuntimeSummary, LOCAL_HUB_STATE_SNAPSHOT_PATH,
     };
     use ferros_profile::{CapabilityGrant, FileSystemProfileStore, ProfileDocument, ProfileId};
     use std::fs;
@@ -2932,6 +3005,10 @@ mod tests {
             .iter()
             .find(|item| item.item == "consentFlowVisibility")
             .expect("consent checklist item should be present");
+        let missing_hub_restart = missing_summary
+            .hub_restart
+            .as_ref()
+            .expect("hub restart observation should be present");
 
         assert_eq!(missing_summary.surface, "local-runway-summary");
         assert_eq!(missing_summary.scope, "local-only");
@@ -2947,6 +3024,13 @@ mod tests {
         assert_eq!(missing_summary.agent_count, 2);
         assert_eq!(missing_summary.deny_count, 0);
         assert!(missing_summary.latest_deny.is_none());
+        assert_eq!(missing_hub_restart.snapshot_path, LOCAL_HUB_STATE_SNAPSHOT_PATH);
+        assert_eq!(missing_hub_restart.scope, "local-only");
+        assert_eq!(missing_hub_restart.evidence, "non-evidentiary");
+        assert!(matches!(
+            missing_hub_restart.reload_status.as_str(),
+            "fresh-start" | "reloaded" | "unavailable"
+        ));
         assert_eq!(missing_profile.status, LocalRunwayChecklistStatus::Pending);
         assert_eq!(missing_consent.status, LocalRunwayChecklistStatus::Pending);
 
@@ -3008,7 +3092,48 @@ mod tests {
         );
         assert_eq!(payload["surface"].as_str(), Some("local-runway-summary"));
         assert_eq!(payload["latestDeny"]["kind"].as_str(), Some("deniedStart"));
+        assert_eq!(
+            payload["hubRestart"]["snapshotPath"].as_str(),
+            Some(LOCAL_HUB_STATE_SNAPSHOT_PATH)
+        );
+        assert_eq!(payload["hubRestart"]["scope"].as_str(), Some("local-only"));
+        assert_eq!(
+            payload["hubRestart"]["evidence"].as_str(),
+            Some("non-evidentiary")
+        );
+        assert!(matches!(
+            payload["hubRestart"]["reloadStatus"].as_str(),
+            Some("fresh-start" | "reloaded" | "unavailable")
+        ));
         assert!(payload["checklist"].is_array());
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
+    fn local_agent_api_runway_summary_omits_hub_restart_when_hub_summary_loader_fails() {
+        let state_path = unique_state_path("local-api-runway-summary-hub-restart-fallback");
+        let profile_path = unique_profile_path("local-api-runway-summary-hub-restart-fallback");
+        let store = FileSystemProfileStore;
+
+        let summary = build_local_runway_summary_with_store_and_hub_summary_loader(
+            &state_path,
+            &profile_path,
+            &store,
+            || -> Result<LocalHubRuntimeSummary, LocalBridgeRegistrationError> {
+                Err(LocalBridgeRegistrationError::AlreadyRegistered(
+                    "ha-local-bridge".to_owned(),
+                ))
+            },
+        )
+        .expect("runway summary should load when the hub summary is unavailable");
+        let payload = serde_json::to_value(&summary)
+            .expect("runway summary should serialize without the hub restart child");
+
+        assert!(summary.hub_restart.is_none());
+        assert!(payload.get("hubRestart").is_none());
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);
@@ -4109,6 +4234,17 @@ mod tests {
         assert_eq!(payload.profile_path, profile_path.display().to_string());
         assert_eq!(payload.deny_count, 1);
         assert!(payload.agent_count >= 2);
+        let hub_restart = payload
+            .hub_restart
+            .as_ref()
+            .expect("shell runway summary should include hub restart observation");
+        assert_eq!(hub_restart.snapshot_path, LOCAL_HUB_STATE_SNAPSHOT_PATH);
+        assert_eq!(hub_restart.scope, "local-only");
+        assert_eq!(hub_restart.evidence, "non-evidentiary");
+        assert!(matches!(
+            hub_restart.reload_status.as_str(),
+            "fresh-start" | "reloaded" | "unavailable"
+        ));
         assert!(payload
             .checklist
             .iter()

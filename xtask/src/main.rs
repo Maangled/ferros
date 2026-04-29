@@ -6,7 +6,10 @@ use ferros_data::{
     LocalArtifactRole, LocalEnvelopeKind, LocalPushArtifact, LocalPushAuditEnvelope,
     LocalPushObservation, LocalPushScope, LocalPushSurface, BURST_LOCAL_PUSH_ENVELOPE_PATH,
 };
-use ferros_hub::{LocalBridgeStatus, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH};
+use ferros_hub::{
+    LocalBridgeStatus, LocalHubReloadStatus, LocalHubRuntimeSummary,
+    SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
@@ -33,7 +36,7 @@ fn main() -> ExitCode {
         }
         CommandKind::HubRunway => match run_hub_runway() {
             Ok(output) => {
-                print!("{output}");
+                    println!("{output}");
                 ExitCode::SUCCESS
             }
             Err(message) => {
@@ -145,12 +148,42 @@ fn run_burst() -> Result<String, String> {
 }
 
 fn run_hub_runway() -> Result<String, String> {
-    let summary = ferros_hub::default_local_runtime_summary()
+    let first_summary = ferros_hub::default_local_runtime_summary()
         .map_err(|error| format!("could not build local hub runtime summary: {error}"))?;
+    validate_hub_runway_summary("first", &first_summary)?;
 
+    if !matches!(
+        first_summary.restart_observation.reload_status,
+        LocalHubReloadStatus::FreshStart | LocalHubReloadStatus::Reloaded
+    ) {
+        return Err(format!(
+            "expected first summary restart reload status to be fresh-start or reloaded, got {}",
+            first_summary.restart_observation.reload_status.as_str()
+        ));
+    }
+
+    let second_summary = ferros_hub::default_local_runtime_summary()
+        .map_err(|error| format!("could not build local hub runtime summary: {error}"))?;
+    validate_hub_runway_summary("second", &second_summary)?;
+
+    if second_summary.restart_observation.reload_status != LocalHubReloadStatus::Reloaded {
+        return Err(format!(
+            "expected second summary restart reload status to be reloaded, got {}",
+            second_summary.restart_observation.reload_status.as_str()
+        ));
+    }
+
+    ferros_hub::summary_command_output()
+        .map_err(|error| format!("could not build local hub runtime summary: {error}"))
+}
+
+fn validate_hub_runway_summary(
+    summary_label: &str,
+    summary: &LocalHubRuntimeSummary,
+) -> Result<(), String> {
     if summary.status != LocalBridgeStatus::Allowed {
         return Err(format!(
-            "expected allowed local hub status, got {}",
+            "expected allowed local hub status in {summary_label} summary, got {}",
             summary.status.as_str()
         ));
     }
@@ -159,33 +192,27 @@ fn run_hub_runway() -> Result<String, String> {
         != Some(SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH)
     {
         return Err(format!(
-            "expected artifact path {}, got {:?}",
+            "expected artifact path {} in {summary_label} summary, got {:?}",
             SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
             summary.artifact_relative_output_path
         ));
     }
 
     if summary.scope != "local-only" {
-        return Err(format!("expected local-only scope, got {}", summary.scope));
+        return Err(format!(
+            "expected local-only scope in {summary_label} summary, got {}",
+            summary.scope
+        ));
     }
 
     if summary.evidence != "non-evidentiary" {
         return Err(format!(
-            "expected non-evidentiary evidence, got {}",
+            "expected non-evidentiary evidence in {summary_label} summary, got {}",
             summary.evidence
         ));
     }
 
-    Ok(format!(
-        "{HUB_RUNWAY_TEXT}\nLocal hub proof output:\n    - {}\n    - status: {}\n    - scope: {}\n    - evidence: {}\n",
-        summary
-            .artifact_relative_output_path
-            .as_deref()
-            .unwrap_or("none"),
-        summary.status.as_str(),
-        summary.scope,
-        summary.evidence
-    ))
+    Ok(())
 }
 
 fn run_step(program: &str, args: &[&str]) -> Result<(), String> {
@@ -210,16 +237,7 @@ FERROS xtask
 Usage:
     cargo xtask ci      Run fmt, clippy, build, and test for the current workspace
     cargo xtask burst   Print the current queue-clear opener surfaces and focused validation commands
-    cargo xtask hub-runway   Run the local ferros-hub proof helper and confirm the emitted artifact
-";
-
-const HUB_RUNWAY_TEXT: &str = "\
-FERROS local hub runway helper
-
-Focused validation:
-    - cargo check -p xtask
-    - cargo xtask hub-runway
-    - cargo run -p ferros-hub -- prove-bridge
+    cargo xtask hub-runway   Validate the restart-aware local ferros-hub summary seam and print the summary output
 ";
 
 const BURST_TEXT: &str = "\

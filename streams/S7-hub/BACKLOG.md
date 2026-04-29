@@ -23,7 +23,12 @@
 - [x] Extended the local runway into a library-backed `ferros-hub` crate with `ferros-agents` registry composition, `ferros-core` policy composition over real `CapabilityGrant` input, and a typed local runtime summary without reopening G4 truth
 - [x] Landed thin `ferros-hub summary | prove-bridge | deny-demo` proof commands over the reusable library seam while keeping the binary wrapper-only
 - [x] Admitted bounded local artifact/report schemas into `harnesses/_constants.js` and the H1 contract validator without widening into partner-facing or frozen S2 contract work
-- [x] Added `cargo xtask hub-runway` as a helper over the existing local hub proof seam without reopening `ferros-hub` source files
+- [x] Added a bounded typed local hub state snapshot seam under `.tmp/hub/` and kept the guardrails local-only and non-evidentiary
+- [x] Threaded that snapshot seam through the typed hub runtime summary plus the existing `summary | prove-bridge` outputs so restart observation stays on the hub-owned local seam
+- [x] Extended the existing read-only `/runway-summary(.json)` seam additively with optional `hubRestart` runway context and kept the localhost shell runway panel and inspector display-only on the same route
+- [x] Proved the same restart-aware runway path through the same-origin localhost shell acceptance harness without opening a new route
+- [x] Added the bounded local restart snapshot schema plus H1 validator parity coverage for banned summary wording and remote-looking text
+- [x] Added `cargo xtask hub-runway` as a helper over the existing local hub proof seam; it now proves snapshot write/reload through the published hub summary seam and prints the exact `ferros-hub summary` output without reopening `ferros-hub` source files
 - [ ] Packet D: run the physical-device evidence checkpoint only after a human names the session window; keep it on the hardware track
 - [x] All landed local executable runway packets to date stayed explicitly non-gate-closing: no G4 closure, no hardware proof, no Home Assistant dashboard proof, and no remote transport claim
 - [ ] Turn the bridge runway contract into a DUT-side evidence checklist once a real hub/bridge path exists; keep the first proof at one registered bridge agent and one real entity
@@ -41,7 +46,7 @@
 
 ## Blocked / deferred in current G4 runway
 
-- Physical-device and launch-facing proof remain out of scope in the active local-only G4 runway: no G4 evidence claims, no Home Assistant dashboard proof, and no hardware-track execution without a named human session window.
+- Physical-device and launch-facing proof remain out of scope in the active local-only G4 runway: the restart-aware `.tmp/hub` snapshot, `summary | prove-bridge`, `/runway-summary(.json)` `hubRestart` context, shell/harness coverage, schema validation, and `cargo xtask hub-runway` remain non-evidentiary local proof only; no G4 evidence claims, no Home Assistant dashboard proof, and no hardware-track execution without a named human session window.
 - The first honest device-side G4 evidence is still blocked on moving the landed local-only `ferros-hub` scaffold and simulated bridge proof onto physical hardware and proving real Home Assistant behavior there.
 - HA custom component work depends on the `Maangled/home-assistant` fork being available.
 
