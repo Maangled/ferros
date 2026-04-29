@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-29 - Display-only onramp observation landed on the existing runway route
+
+- Extended `site/agent-center-shell.html` so the existing runway route now renders pending-consent proposed material from the read-only `/runway-summary.json` surface in both the runway panel and the inspector without adding a new route, accept/reject controls, or browser-issued grant/revoke controls.
+- Extended `harnesses/localhost-shell-acceptance-harness.html` so the same-origin H9 path now proves the runway route button copy, proposal read-only claim ceiling, pending-consent proposal field set on the runway surface, no in-surface controls, and matching inspector detail on the same route.
+- Focused validation passed with `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness`, clean harness diagnostics, and a rebuilt live same-origin H9 runway/onramp run on port 4319.
+- Kept the slice local-only and narrow: no accept/reject flow, no canonical mutation, no remote transport, no broader browser privilege, and no D1/G4 or hardware claim.
+
 ## 2026-04-28 - Same-origin local lifecycle and profile proof loop closed on the live shell
 
 - Extended `site/agent-center-shell.html` so the live localhost shell now renders structured `/profile` adapter outcomes for local `init`, `show`, `export`, and `import` only, with `show` staying off JSON-RPC and profile `grant` / `revoke` controls still absent.

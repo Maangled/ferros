@@ -171,6 +171,7 @@ version = "0.1.0"
 dependencies = [
  "ferros-agents",
  "ferros-core",
+ "ferros-data",
  "ferros-profile",
 ]
 

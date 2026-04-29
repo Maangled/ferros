@@ -17,7 +17,7 @@
 | `InMemoryExecutor` type | Rust type | `crates/ferros-runtime/src/executor.rs` | 🟡 Convergence implementation created |
 | `InMemoryMessageBus` type | Rust type | `crates/ferros-runtime/src/bus.rs` | 🟡 Convergence implementation created |
 | `ferros-node demo` host path | Rust binary + library | `crates/ferros-node/src/lib.rs` | 🟡 Convergence implementation created |
-| `/runway-summary(.json)` local runway surface | Localhost read-only route + serializable summary payload | `crates/ferros-node/src/lib.rs` | 🟡 Existing local-only runway surface; now additively carries optional `hubRestart` context from the hub summary seam |
+| `/runway-summary(.json)` local runway surface | Localhost read-only route + serializable summary payload | `crates/ferros-node/src/lib.rs` | 🟡 Existing local-only runway surface; now additively carries optional `hubRestart` and `hubOnrampProposal` context from the hub summary seam |
 
 ---
 
@@ -49,7 +49,7 @@ This is an S4-owned classification of the landed S7 seam brief. It does not turn
 | `CapabilityRequest`, `CapabilityGrantView`, `PolicyEngine::evaluate`, `DenyByDefaultPolicy`, `PolicyDecision`, `PolicyDenialReason` | Sufficient now for S7 runway planning as the authoritative policy and deny-reason boundary. S7 should consume these S4 types and reasons instead of inventing any hub-local grant or deny model. |
 | current `ferros-runtime` executor plus in-process bus boundary | Sufficient now only to name the current runtime container S7 expects a future hub to wrap. It is not, by itself, a published restart or re-registration contract. |
 | nearest reload helpers `runtime_with_state(state_path)`, `CliState::load(path)`, and `LocalProfileStore::load_local_profile(path)` | A narrow docs-only reload boundary is now published for S7 runway planning: validated local profile/grant reload plus fixed reference-runtime state replay are described here, while a broader hub-facing restart API and durable re-registration contract remain unpublished. |
-| existing `/runway-summary(.json)` seam with optional `hubRestart` child | Published now as local-only, read-only runway context for downstream shell/operator observation. It is sufficient for bounded restart-state display on the current localhost path, but it is not a durable hub restart API, power-cycle evidence, remote transport, or a gate-closing surface. |
+| existing `/runway-summary(.json)` seam with optional `hubRestart` and `hubOnrampProposal` children | Published now as local-only, read-only runway context and proposed-material observation for downstream shell/operator observation. It is sufficient for bounded restart-state display and pending-consent proposed-material display on the current localhost path, but it is not a durable hub restart API, an accept/reject flow, canonical mutation, power-cycle evidence, remote transport, or a gate-closing surface. |
 
 - The S4 policy seam is already strong enough for S7 runway planning.
 - The published reload boundary and the additive `hubRestart` runway-summary child are intentionally narrow: validated local profile/grant reload, fixed reference-runtime state replay, and read-only bounded restart observation are in bounds today, while broader durable hub-facing restart and re-registration semantics remain unpublished.

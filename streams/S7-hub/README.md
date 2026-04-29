@@ -36,7 +36,7 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 - Use the Pack B `x86_64` lane as the first bring-up target unless real hardware availability forces a Pi-first pass, because it improves shell access, log capture, rollback, and restart debugging while staying launch-valid.
 - Keep the first Home Assistant lab topology separate from the device under test so later restart and deny-observability evidence can be attributed cleanly.
 - Keep pairing notes at the level of consumed S2 consumer-boundary assumptions plus the S3/S4 seams still missing before any authoritative pairing flow, durable hub runtime path, or Home Assistant proof is honest.
-- Keep the restart-aware local runway packet bounded and honest: the `.tmp/hub` snapshot seam, restart-aware `summary | prove-bridge` outputs, additive optional `hubRestart` child on the existing read-only `/runway-summary(.json)` seam, display-only localhost shell render, same-origin acceptance proof, H1 validator coverage, and `cargo xtask hub-runway` are local runway context only, not hardware, Home Assistant, or G4 evidence.
+- Keep the restart-aware and local onramp rehearsal packets bounded and honest: the `.tmp/hub` snapshot seam, the `.tmp/hub/local-onramp-proposal.json` proposal artifact, restart-aware `summary | prove-bridge` outputs, additive optional `hubRestart` and `hubOnrampProposal` children on the existing read-only `/runway-summary(.json)` seam, display-only localhost shell render, same-origin acceptance proof, H1 validator coverage, and `cargo xtask hub-runway` are local runway context only, not consent-flow, hardware, Home Assistant, or G4 evidence.
 - Map each unchecked G4 evidence item to one upstream seam and one S7-owned proof point before any device-side G4 evidence or Home Assistant proof is proposed.
 
 ---
@@ -166,7 +166,7 @@ Advance G4 in four proof steps. Only the fourth step supports launch-facing evid
 
 1. **Local binary exists** — a real `ferros-hub` binary crate exists in the workspace and passes focused local validation on the Pack B `x86_64`-first lane without claiming hardware evidence.
 2. **Local bridge seam exists** — one local-only bridge agent now registers through `ferros-agents` manifest/registry primitives, composes allow/deny through `ferros-core` policy over real `CapabilityGrant` input, and emits one simulated local bridge artifact without claiming Home Assistant proof.
-3. **Local proof loop exists** — targeted local tests, a bounded `LocalHubStateSnapshot` seam under `.tmp/hub/`, a restart-aware `LocalHubRuntimeSummary`, thin `summary | prove-bridge | deny-demo` CLI proofs, the additive optional `hubRestart` child on the existing read-only `/runway-summary(.json)` seam, display-only localhost shell and inspector rendering plus same-origin acceptance-harness proof on that same route, bounded local artifact/report/restart-snapshot schemas in the H1 validator, and `cargo xtask hub-runway` proving snapshot write/reload while printing the hub-owned summary output. This remains local-only runway proof and does not imply D1 or G4 closure.
+3. **Local proof loop exists** — targeted local tests, a bounded `LocalHubStateSnapshot` seam under `.tmp/hub/`, a bounded `.tmp/hub/local-onramp-proposal.json` artifact, a restart-aware `LocalHubRuntimeSummary`, thin `summary | prove-bridge | deny-demo` CLI proofs, additive optional `hubRestart` and `hubOnrampProposal` children on the existing read-only `/runway-summary(.json)` seam, display-only localhost shell and inspector rendering plus same-origin acceptance-harness proof on that same route, bounded local artifact/report/restart-snapshot/onramp-proposal schemas in the H1 validator, and `cargo xtask hub-runway` proving snapshot write/reload while validating and reporting the proposal artifact. This remains local-only runway proof and does not imply D1 or G4 closure.
 4. **Device evidence exists** — physical-device sessions capture profile init, bridge presence, deny visibility, and power-cycle recovery on real hardware. Only this step can support D1 or G4 evidence wording.
 
 ---
@@ -195,7 +195,7 @@ Advance G4 in four proof steps. Only the fourth step supports launch-facing evid
 
 | Path | Role | Status |
 |------|------|--------|
-| `crates/ferros-hub/` | Hub binary crate | 🟨 Library-backed local-only runway, restart snapshot seam, CLI proofs, and runtime summary/helper surfaces landed |
+| `crates/ferros-hub/` | Hub binary crate | 🟨 Library-backed local-only runway, restart snapshot seam, local onramp proposal artifact, CLI proofs, and runtime summary/helper surfaces landed |
 | `crates/ferros-hub/src/pairing.rs` | Pairing implementation surface | ⬜ Deferred until implementation |
 | `crates/ferros-hub/src/ha_bridge.rs` | Home Assistant bridge agent | 🟨 Local-only simulated bridge seam with manifest-backed registration, policy-backed proof, and local artifact/report contracts landed; real HA integration remains deferred |
 | `docs/hub/reference-hardware.md` | Hardware runway and evidence prep | 🟨 Active |

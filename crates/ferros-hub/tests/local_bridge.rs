@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
+use ferros_data::{LocalOnrampQuarantineStatus, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH};
 use ferros_core::{PolicyDecision, PolicyDenialReason};
 use ferros_profile::{CapabilityGrant, ProfileId};
 use ferros_hub::{
@@ -14,6 +16,8 @@ use ferros_hub::{
     LocalBridgeRegistry, LocalBridgeStatus, LocalCapabilitySnapshot,
     LOCAL_HUB_STATE_SNAPSHOT_PATH, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
 };
+
+static ONRAMP_ARTIFACT_LOCK: Mutex<()> = Mutex::new(());
 
 fn local_snapshot(capabilities: &[&str]) -> LocalCapabilitySnapshot {
     let requester_profile_id = local_bridge_profile_id();
@@ -56,6 +60,10 @@ fn repo_root() -> PathBuf {
 
 fn emitted_artifact_path() -> PathBuf {
     repo_root().join(SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH)
+}
+
+fn emitted_onramp_proposal_path() -> PathBuf {
+    repo_root().join(LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH)
 }
 
 fn denied_local_runtime_summary() -> ferros_hub::LocalHubRuntimeSummary {
@@ -770,4 +778,127 @@ fn hub_contract_denied_report_fields_stay_schema_ready() {
     assert_eq!(execution.report.scope, "local-only");
     assert_eq!(execution.report.evidence, "non-evidentiary");
     assert!(execution.report.summary.contains("not granted"));
+}
+
+#[test]
+fn onramp_proposal_allowed_runway_emits_local_quarantined_artifact() {
+    let _lock = ONRAMP_ARTIFACT_LOCK
+        .lock()
+        .expect("onramp artifact tests should serialize file access");
+    let artifact_path = emitted_onramp_proposal_path();
+    let _cleanup = LocalStateFixtureGuard::new(artifact_path.clone());
+    if artifact_path.exists() {
+        fs::remove_file(&artifact_path).expect("stale onramp proposal artifact should be removable");
+    }
+
+    let summary = allowed_local_runtime_summary();
+    let proposal = summary
+        .local_onramp_proposal
+        .as_ref()
+        .expect("allowed summary should expose an onramp proposal");
+
+    assert_eq!(proposal.source, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH);
+    assert_eq!(proposal.bridge_agent_name, "ha-local-bridge");
+    assert_eq!(proposal.stand_in_entity_name, "simulated-bridge-entity");
+    assert_eq!(proposal.requested_capability, "bridge.observe");
+    assert_eq!(proposal.requested_action, "report-state");
+    assert_eq!(proposal.quarantine_status, LocalOnrampQuarantineStatus::QuarantinedPendingConsent);
+    assert_eq!(proposal.local_artifact_path, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH);
+    assert!(artifact_path.exists());
+
+    let written = fs::read_to_string(&artifact_path).expect("onramp proposal artifact should be readable");
+    assert!(written.contains("\"source\":"));
+    assert!(written.contains(SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH));
+    assert!(written.contains("\"quarantineStatus\": \"quarantined-pending-consent\""));
+    assert!(written.contains("\"localArtifactPath\": \".tmp/hub/local-onramp-proposal.json\""));
+    assert!(!written.contains("hardware"));
+    assert!(!written.contains("canonical"));
+    assert!(!written.contains("granted"));
+}
+
+#[test]
+fn onramp_proposal_renders_exact_local_json_contract() {
+    let _lock = ONRAMP_ARTIFACT_LOCK
+        .lock()
+        .expect("onramp artifact tests should serialize file access");
+    let artifact_path = emitted_onramp_proposal_path();
+    let _cleanup = LocalStateFixtureGuard::new(artifact_path.clone());
+    if artifact_path.exists() {
+        fs::remove_file(&artifact_path).expect("stale onramp proposal artifact should be removable");
+    }
+
+    let summary = allowed_local_runtime_summary();
+    let proposal = summary
+        .local_onramp_proposal
+        .as_ref()
+        .expect("allowed summary should expose an onramp proposal");
+
+    assert_eq!(
+        proposal
+            .to_pretty_json()
+            .expect("onramp proposal should render deterministically"),
+        concat!(
+            "{\n",
+            "  \"source\": \".tmp/hub/simulated-local-bridge-artifact.json\",\n",
+            "  \"proposalId\": \"proposal-ha-local-bridge-simulated-bridge-entity-report-state\",\n",
+            "  \"bridgeAgentName\": \"ha-local-bridge\",\n",
+            "  \"standInEntityName\": \"simulated-bridge-entity\",\n",
+            "  \"requestedCapability\": \"bridge.observe\",\n",
+            "  \"requestedAction\": \"report-state\",\n",
+            "  \"quarantineStatus\": \"quarantined-pending-consent\",\n",
+            "  \"scope\": \"local-only\",\n",
+            "  \"evidence\": \"non-evidentiary\",\n",
+            "  \"localArtifactPath\": \".tmp/hub/local-onramp-proposal.json\"\n",
+            "}"
+        )
+    );
+}
+
+#[test]
+fn onramp_proposal_denied_runway_keeps_summary_child_empty() {
+    let _lock = ONRAMP_ARTIFACT_LOCK
+        .lock()
+        .expect("onramp artifact tests should serialize file access");
+    let artifact_path = emitted_onramp_proposal_path();
+    let _cleanup = LocalStateFixtureGuard::new(artifact_path.clone());
+    if artifact_path.exists() {
+        fs::remove_file(&artifact_path).expect("stale onramp proposal artifact should be removable");
+    }
+
+    let summary = denied_local_runtime_summary();
+
+    assert!(summary.local_onramp_proposal.is_none());
+    assert!(!artifact_path.exists());
+}
+
+#[test]
+fn onramp_proposal_rejects_banned_request_wording_before_emit() {
+    let _lock = ONRAMP_ARTIFACT_LOCK
+        .lock()
+        .expect("onramp artifact tests should serialize file access");
+    let artifact_path = emitted_onramp_proposal_path();
+    let _cleanup = LocalStateFixtureGuard::new(artifact_path.clone());
+    if artifact_path.exists() {
+        fs::remove_file(&artifact_path).expect("stale onramp proposal artifact should be removable");
+    }
+
+    let bridge_agent = LocalBridgeAgent::new_default();
+    let request = LocalBridgeRequest::new(
+        "accepted-bridge-entity",
+        "bridge.observe",
+        "report-state",
+    );
+    let execution = execute_local_bridge_request(
+        &bridge_agent,
+        &local_snapshot(&["bridge.observe"]),
+        &request,
+    );
+
+    assert_eq!(execution.report.status, LocalBridgeStatus::Error);
+    assert!(execution.local_onramp_proposal.is_none());
+    assert_eq!(
+        execution.report.summary,
+        "local-only bridge rejected before write because the onramp proposal was invalid"
+    );
+    assert!(!artifact_path.exists());
 }

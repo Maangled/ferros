@@ -833,6 +833,76 @@ var SCHEMA_LOCAL_PUSH_AUDIT_ENVELOPE = {
   }
 };
 
+// Source: schemas/onramp-proposal.schema.json
+var SCHEMA_ONRAMP_PROPOSAL = {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/onramp-proposal.schema.json",
+  "title": "FERROS Local Onramp Proposal",
+  "description": "Bounded local-only, non-evidentiary proposed-material artifact emitted by ferros-hub during the local onramp rehearsal path. This proposal remains quarantined pending consent and is not canonical FERROS state, a grant, or a partner-facing contract.",
+  "type": "object",
+  "required": [
+    "source",
+    "proposalId",
+    "bridgeAgentName",
+    "standInEntityName",
+    "requestedCapability",
+    "requestedAction",
+    "quarantineStatus",
+    "scope",
+    "evidence",
+    "localArtifactPath"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "$ref": "#/$defs/safeHubPath"
+    },
+    "proposalId": {
+      "$ref": "#/$defs/safeSlug"
+    },
+    "bridgeAgentName": {
+      "$ref": "#/$defs/safeSlug"
+    },
+    "standInEntityName": {
+      "$ref": "#/$defs/safeSlug"
+    },
+    "requestedCapability": {
+      "$ref": "#/$defs/safeCapability"
+    },
+    "requestedAction": {
+      "$ref": "#/$defs/safeSlug"
+    },
+    "quarantineStatus": {
+      "const": "quarantined-pending-consent"
+    },
+    "scope": {
+      "const": "local-only"
+    },
+    "evidence": {
+      "const": "non-evidentiary"
+    },
+    "localArtifactPath": {
+      "$ref": "#/$defs/safeHubPath"
+    }
+  },
+  "$defs": {
+    "safeSlug": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]|[Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Cc][Aa][Nn][Oo][Nn][Ii][Cc][Aa][Ll]|[Gg][Rr][Aa][Nn][Tt][Ee][Dd]))[a-z0-9-]+$"
+    },
+    "safeCapability": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!.*://)(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]|[Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Cc][Aa][Nn][Oo][Nn][Ii][Cc][Aa][Ll]|[Gg][Rr][Aa][Nn][Tt][Ee][Dd]))[a-z0-9.-]+$"
+    },
+    "safeHubPath": {
+      "type": "string",
+      "pattern": "^(?!.*://)(?!.*:)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]|[Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Cc][Aa][Nn][Oo][Nn][Ii][Cc][Aa][Ll]|[Gg][Rr][Aa][Nn][Tt][Ee][Dd]))\\.tmp/hub/.+\\.json$"
+    }
+  }
+};
+
 // Source: schemas/profile.schema.json
 var SCHEMA_PROFILE = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3323,6 +3393,7 @@ var FERROS_SCHEMAS = [
   {name: "hub-local-state-snapshot", file: "hub-local-state-snapshot.schema.json", schema: SCHEMA_HUB_LOCAL_STATE_SNAPSHOT},
   {name: "identity", file: "identity.schema.json", schema: SCHEMA_IDENTITY},
   {name: "local-push-audit-envelope", file: "local-push-audit-envelope.schema.json", schema: SCHEMA_LOCAL_PUSH_AUDIT_ENVELOPE},
+  {name: "onramp-proposal", file: "onramp-proposal.schema.json", schema: SCHEMA_ONRAMP_PROPOSAL},
   {name: "profile", file: "profile.schema.json", schema: SCHEMA_PROFILE},
   {name: "profile.v0", file: "profile.v0.json", schema: SCHEMA_PROFILE_V0},
   {name: "schedule-event", file: "schedule-event.schema.json", schema: SCHEMA_SCHEDULE_EVENT},
@@ -3365,5 +3436,5 @@ var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-template-to-events-missing-source-type", file: "invalid-template-to-events-missing-source-type.json", fixture: FIXTURE_INVALID_TEMPLATE_TO_EVENTS_MISSING_SOURCE_TYPE}
 ];
 
-// Total files embedded: 45
-// Schemas: 13 | Golden fixtures: 19 | Negative fixtures: 13
+// Total files embedded: 46
+// Schemas: 14 | Golden fixtures: 19 | Negative fixtures: 13

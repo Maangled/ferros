@@ -10,8 +10,9 @@ S7 owns deployment-facing hub surfaces. It does not get to redefine S2 profile o
 |----------|------|----------|--------|
 | `HubConfig` type (device profile, port, HA endpoint) | Rust type | `crates/ferros-hub/` | ⬜ Not yet created |
 | HA bridge agent manifest | `AgentManifest` JSON | `crates/ferros-hub/src/ha_bridge.rs` | ⬜ Not yet created |
-| `LocalHubRuntimeSummary` + restart observation | Rust types + local proof output | `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/src/lib.rs` | 🟨 Landed as a local-only runway seam; `summary` and `prove-bridge` stay non-evidentiary |
+| `LocalHubRuntimeSummary` + runway observation | Rust types + local proof output | `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/src/lib.rs`, `crates/ferros-node/src/lib.rs` | 🟨 Landed as a local-only runway seam; `summary`, `prove-bridge`, and `/runway-summary(.json)` stay non-evidentiary |
 | Local hub state snapshot contract | Local-only persisted snapshot + JSON schema | `.tmp/hub/local-hub-state-snapshot.json`, `schemas/hub-local-state-snapshot.schema.json` | 🟨 Landed with bounded guardrails and H1 validator coverage |
+| Local onramp proposal contract | Rust types + local JSON artifact + local-only schema | `crates/ferros-data/src/lib.rs`, `.tmp/hub/local-onramp-proposal.json`, `schemas/onramp-proposal.schema.json` | 🟨 Landed as local-only proposed material; quarantined pending consent |
 | Pairing constraints and open questions | Stream-local planning notes | `streams/S7-hub/*.md` | 🟨 Runway only; authoritative protocol intentionally deferred |
 | Reference hardware runway and evidence template | Doc | `docs/hub/reference-hardware.md` | 🟨 In progress |
 
@@ -28,18 +29,19 @@ S7 owns deployment-facing hub surfaces. It does not get to redefine S2 profile o
 
 ---
 
-## Landed local restart-aware runway seam
+## Landed local restart-aware and onramp runway seams
 
-This section is local-only and non-gate-closing. It records the landed restart-aware runway packet without promoting it to a broader published hub contract.
+This section is local-only and non-gate-closing. It records the landed restart-aware and local onramp rehearsal packets without promoting them to broader published hub contracts.
 
 | Surface | What is now landed | What stays open |
 |---------|--------------------|-----------------|
 | persisted restart state | `LocalHubStateSnapshot` writes under `.tmp/hub/`, and the bounded schema-backed snapshot contract now has H1 validator coverage, including parity checks against hardware/proof/launch wording and remote-looking summary text. | Not a partner-facing schema, not a public restart API, and not device or power-cycle evidence. |
+| local proposed-material emission | `LocalOnrampProposal` now writes one bounded `.tmp/hub/local-onramp-proposal.json` artifact from the allowed bridge proof path, and the schema-backed proposal contract now has H1 validator coverage against remote-looking text, hardware/proof/launch wording, and canonical/grant wording. | Not a public ingress contract, not an accept/reject flow, not canonical profile or grant mutation, and not Home Assistant proof. |
 | local hub proof outputs | `LocalHubRuntimeSummary` plus `summary` and `prove-bridge` now report bounded `fresh-start | reloaded | unavailable` restart context on the existing local hub seam. | Not durable runtime evidence and not a G4 or D1 claim. |
-| downstream runway observation | The existing read-only `/runway-summary(.json)` seam now additively carries optional `hubRestart` runway context, and the current localhost shell plus same-origin acceptance harness observe it on the existing shell route as display-only context. | Not a new route, not browser-issued hub control, not remote transport, and not Home Assistant integration proof. |
-| local helper alignment | `cargo xtask hub-runway` now proves snapshot write/reload through the hub-owned summary seam and prints the exact `ferros-hub summary` output. | Not a second contract surface and not evidence that the cross-stream contracts overview is fully synchronized. |
+| downstream runway observation | The existing read-only `/runway-summary(.json)` seam now additively carries optional `hubRestart` and `hubOnrampProposal` runway context, and the current localhost shell plus same-origin acceptance harness observe both on the existing shell route as display-only context. | Not a new route, not browser-issued hub control, not accept/reject transport, not remote transport, and not Home Assistant integration proof. |
+| local helper alignment | `cargo xtask hub-runway` now proves snapshot write/reload through the hub-owned summary seam, validates the emitted proposal artifact, and prints compact proposal report lines after the exact `ferros-hub summary` output. | Not a second contract surface and not evidence that the cross-stream contracts overview is fully synchronized. |
 
-- `docs/contracts/CONTRACTS-OVERVIEW.md` is intentionally out of scope for W53, so any cross-stream overview drift must remain explicit; this stream-local contract record is the authoritative truth surface for the restart-aware local hub runway packet until a later overview sync lands.
+- `docs/contracts/CONTRACTS-OVERVIEW.md` is intentionally still outside this stream-local truth surface, so any cross-stream overview drift must remain explicit; this stream-local contract record is the authoritative truth surface for the restart-aware and local onramp runway packets until a later overview sync lands.
 
 ---
 

@@ -29,6 +29,9 @@
 - [x] Proved the same restart-aware runway path through the same-origin localhost shell acceptance harness without opening a new route
 - [x] Added the bounded local restart snapshot schema plus H1 validator parity coverage for banned summary wording and remote-looking text
 - [x] Added `cargo xtask hub-runway` as a helper over the existing local hub proof seam; it now proves snapshot write/reload through the published hub summary seam and prints the exact `ferros-hub summary` output without reopening `ferros-hub` source files
+- [x] Published the bounded local onramp proposal primitive in `ferros-data`, emitted `.tmp/hub/local-onramp-proposal.json` from the allowed bridge proof path, and kept it quarantined pending consent, local-only, and non-evidentiary
+- [x] Extended the existing read-only `/runway-summary(.json)` seam additively with optional `hubOnrampProposal` context and kept the current localhost shell plus same-origin acceptance harness display-only on the same route
+- [x] Admitted the bounded local onramp proposal schema into H1 validator coverage and extended `cargo xtask hub-runway` to validate/report the emitted proposal artifact on the same local rehearsal seam
 - [ ] Packet D: run the physical-device evidence checkpoint only after a human names the session window; keep it on the hardware track
 - [x] All landed local executable runway packets to date stayed explicitly non-gate-closing: no G4 closure, no hardware proof, no Home Assistant dashboard proof, and no remote transport claim
 - [ ] Turn the bridge runway contract into a DUT-side evidence checklist once a real hub/bridge path exists; keep the first proof at one registered bridge agent and one real entity
@@ -46,7 +49,7 @@
 
 ## Blocked / deferred in current G4 runway
 
-- Physical-device and launch-facing proof remain out of scope in the active local-only G4 runway: the restart-aware `.tmp/hub` snapshot, `summary | prove-bridge`, `/runway-summary(.json)` `hubRestart` context, shell/harness coverage, schema validation, and `cargo xtask hub-runway` remain non-evidentiary local proof only; no G4 evidence claims, no Home Assistant dashboard proof, and no hardware-track execution without a named human session window.
+- Physical-device and launch-facing proof remain out of scope in the active local-only G4 runway: the restart-aware `.tmp/hub` snapshot, the `.tmp/hub/local-onramp-proposal.json` proposal artifact, `summary | prove-bridge`, `/runway-summary(.json)` `hubRestart` plus `hubOnrampProposal` context, shell/harness coverage, schema validation, and `cargo xtask hub-runway` remain non-evidentiary local proof only; no accept/reject consent flow, no canonical mutation, no G4 evidence claims, no Home Assistant dashboard proof, and no hardware-track execution without a named human session window.
 - The first honest device-side G4 evidence is still blocked on moving the landed local-only `ferros-hub` scaffold and simulated bridge proof onto physical hardware and proving real Home Assistant behavior there.
 - HA custom component work depends on the `Maangled/home-assistant` fork being available.
 

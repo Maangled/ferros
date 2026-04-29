@@ -1,10 +1,12 @@
 use std::env;
 use std::ffi::OsString;
+use std::fs;
 use std::process::{Command, ExitCode};
 
 use ferros_data::{
     LocalArtifactRole, LocalEnvelopeKind, LocalPushArtifact, LocalPushAuditEnvelope,
-    LocalPushObservation, LocalPushScope, LocalPushSurface, BURST_LOCAL_PUSH_ENVELOPE_PATH,
+    LocalPushObservation, LocalPushScope, LocalPushSurface,
+    LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH, BURST_LOCAL_PUSH_ENVELOPE_PATH,
 };
 use ferros_hub::{
     LocalBridgeStatus, LocalHubReloadStatus, LocalHubRuntimeSummary,
@@ -173,8 +175,20 @@ fn run_hub_runway() -> Result<String, String> {
         ));
     }
 
-    ferros_hub::summary_command_output()
-        .map_err(|error| format!("could not build local hub runtime summary: {error}"))
+    let proposal = second_summary
+        .local_onramp_proposal
+        .as_ref()
+        .ok_or_else(|| "expected second summary to include a local onramp proposal".to_owned())?;
+    let summary_output = ferros_hub::summary_command_output()
+        .map_err(|error| format!("could not build local hub runtime summary: {error}"))?;
+
+    Ok(format!(
+        "{}\nhubOnrampProposalStatus: {}\nhubOnrampProposalArtifact: {}\nhubOnrampProposalSource: {}",
+        summary_output,
+        proposal.quarantine_status.as_str(),
+        proposal.local_artifact_path,
+        proposal.source,
+    ))
 }
 
 fn validate_hub_runway_summary(
@@ -212,6 +226,89 @@ fn validate_hub_runway_summary(
         ));
     }
 
+    let proposal = summary.local_onramp_proposal.as_ref().ok_or_else(|| {
+        format!(
+            "expected local onramp proposal in {summary_label} summary, got none"
+        )
+    })?;
+
+    if proposal.source != SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH {
+        return Err(format!(
+            "expected proposal source {} in {summary_label} summary, got {}",
+            SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+            proposal.source
+        ));
+    }
+
+    if proposal.quarantine_status.as_str() != "quarantined-pending-consent" {
+        return Err(format!(
+            "expected quarantined-pending-consent proposal status in {summary_label} summary, got {}",
+            proposal.quarantine_status.as_str()
+        ));
+    }
+
+    if proposal.scope != "local-only" {
+        return Err(format!(
+            "expected local-only proposal scope in {summary_label} summary, got {}",
+            proposal.scope
+        ));
+    }
+
+    if proposal.evidence != "non-evidentiary" {
+        return Err(format!(
+            "expected non-evidentiary proposal evidence in {summary_label} summary, got {}",
+            proposal.evidence
+        ));
+    }
+
+    if proposal.local_artifact_path != LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH {
+        return Err(format!(
+            "expected proposal artifact path {} in {summary_label} summary, got {}",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+            proposal.local_artifact_path
+        ));
+    }
+
+    let proposal_output_path = env::current_dir()
+        .map_err(|error| format!("could not resolve workspace root: {error}"))?
+        .join(&proposal.local_artifact_path);
+    let proposal_content = fs::read_to_string(&proposal_output_path)
+        .map_err(|error| format!("could not read local onramp proposal artifact: {error}"))?;
+
+    if !proposal_content.contains("\"quarantineStatus\": \"quarantined-pending-consent\"") {
+        return Err(format!(
+            "expected quarantined proposal status in {summary_label} artifact, got {}",
+            proposal_content
+        ));
+    }
+
+    if !proposal_content.contains(&format!(
+        "\"localArtifactPath\": \"{}\"",
+        LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH
+    )) {
+        return Err(format!(
+            "expected proposal artifact path {} in {summary_label} artifact payload",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH
+        ));
+    }
+
+    for banned_wording in [
+        "hardware",
+        "proof",
+        "launch",
+        "accepted",
+        "canonical",
+        "granted",
+        "://",
+    ] {
+        if proposal_content.contains(banned_wording) {
+            return Err(format!(
+                "proposal artifact in {summary_label} summary contained banned wording {}",
+                banned_wording
+            ));
+        }
+    }
+
     Ok(())
 }
 
@@ -237,7 +334,7 @@ FERROS xtask
 Usage:
     cargo xtask ci      Run fmt, clippy, build, and test for the current workspace
     cargo xtask burst   Print the current queue-clear opener surfaces and focused validation commands
-    cargo xtask hub-runway   Validate the restart-aware local ferros-hub summary seam and print the summary output
+    cargo xtask hub-runway   Validate the restart-aware hub seam plus local onramp rehearsal artifact and print the summary output
 ";
 
 const BURST_TEXT: &str = "\

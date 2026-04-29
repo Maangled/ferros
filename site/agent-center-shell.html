@@ -599,7 +599,7 @@
           </button>
           <button class="route-button" data-route="runway" type="button">
             <strong>Runway</strong>
-            <small>Local-only launch checklist plus optional hub restart context from <code>/runway-summary.json</code>.</small>
+            <small>Local-only launch checklist plus optional hub restart and pending-consent proposed material from <code>/runway-summary.json</code>.</small>
           </button>
           <button class="route-button" data-route="denyLog" type="button">
             <strong>Deny log</strong>
@@ -1304,6 +1304,41 @@
           <div class="detail-pair"><div class="detail-key">Restart evidence</div><div class="detail-value">${escapeHtml(hubRestart.evidence || 'non-evidentiary')}</div></div>${priorDetails}`;
     }
 
+    function runwayOnrampProposalNoteHtml(proposal) {
+      if (!proposal) {
+        return emptyNote('Optional proposed material', 'This runway summary does not include pending-consent proposed material yet. The runway checklist remains usable without it.');
+      }
+
+      return `
+        <article class="note-card">
+          <div class="shell-note-title">Pending consent proposed material</div>
+          <p class="shell-note-copy">quarantineStatus ${escapeHtml(proposal.quarantineStatus || 'not reported')} · scope ${escapeHtml(proposal.scope || 'local-only')} · evidence ${escapeHtml(proposal.evidence || 'non-evidentiary')} · artifact ${escapeHtml(proposal.localArtifactPath || 'not reported')}.</p>
+          <p class="shell-note-copy">source ${escapeHtml(proposal.source || 'not reported')} · proposalId ${escapeHtml(proposal.proposalId || 'not reported')}.</p>
+          <p class="shell-note-copy">bridge ${escapeHtml(proposal.bridgeAgentName || 'not reported')} · stand-in ${escapeHtml(proposal.standInEntityName || 'not reported')} · requested ${escapeHtml(proposal.requestedCapability || 'not reported')} / ${escapeHtml(proposal.requestedAction || 'not reported')}.</p>
+          <p class="shell-note-copy">Display only. This is proposed material only: not accepted, not canonical, not a grant, and not Home Assistant proof.</p>
+        </article>`;
+    }
+
+    function runwayOnrampProposalInspectorDetails(proposal) {
+      if (!proposal) {
+        return `
+          <div class="detail-pair"><div class="detail-key">Hub onramp proposal</div><div class="detail-value">optional proposed material not available yet</div></div>`;
+      }
+
+      return `
+          <div class="detail-pair"><div class="detail-key">Hub onramp proposal</div><div class="detail-value">pending consent proposed material only</div></div>
+          <div class="detail-pair"><div class="detail-key">Source</div><div class="detail-value">${escapeHtml(proposal.source || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Proposal ID</div><div class="detail-value">${escapeHtml(proposal.proposalId || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Bridge agent</div><div class="detail-value">${escapeHtml(proposal.bridgeAgentName || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Stand-in entity</div><div class="detail-value">${escapeHtml(proposal.standInEntityName || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Requested capability</div><div class="detail-value">${escapeHtml(proposal.requestedCapability || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Requested action</div><div class="detail-value">${escapeHtml(proposal.requestedAction || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Quarantine status</div><div class="detail-value">${escapeHtml(proposal.quarantineStatus || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Proposal scope</div><div class="detail-value">${escapeHtml(proposal.scope || 'local-only')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Proposal evidence</div><div class="detail-value">${escapeHtml(proposal.evidence || 'non-evidentiary')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Artifact path</div><div class="detail-value">${escapeHtml(proposal.localArtifactPath || 'not reported')}</div></div>`;
+    }
+
     function runwaySurfaceHtml() {
       const summary = state.runway;
       if (!summary) {
@@ -1328,6 +1363,7 @@
           <p class="shell-note-copy">Profile ${escapeHtml(summary.profilePath || 'default')} · checkpoint ${escapeHtml(summary.checkpointState)} (${escapeHtml(checkpointProgress)}) · ${escapeHtml(summary.checkpointDetail)}.</p>
           <p class="shell-note-copy">Scope ${escapeHtml(summary.scope)} · evidence ${escapeHtml(summary.evidence)} · latest deny ${escapeHtml(latestDeny)}.</p>
         </article>
+        ${runwayOnrampProposalNoteHtml(summary.hubOnrampProposal)}
         ${runwayHubRestartNoteHtml(summary.hubRestart)}
         ${checklist || emptyNote('No runway checklist', 'The runway route loaded, but no checklist items were returned.')}`;
     }
@@ -1381,6 +1417,7 @@
         const item = summary.checklist && summary.checklist.length > 0
           ? summary.checklist[state.selectedRunwayIndex ?? 0]
           : null;
+        const hubOnrampProposalDetails = runwayOnrampProposalInspectorDetails(summary.hubOnrampProposal || null);
         const hubRestartDetails = runwayHubRestartInspectorDetails(summary.hubRestart || null);
         inspector.innerHTML = `
           <div class="detail-pair"><div class="detail-key">Surface</div><div class="detail-value">${escapeHtml(summary.surface)}</div></div>
@@ -1390,6 +1427,7 @@
           <div class="detail-pair"><div class="detail-key">Checkpoint</div><div class="detail-value">${escapeHtml(summary.checkpointState)}</div></div>
           <div class="detail-pair"><div class="detail-key">Checkpoint progress</div><div class="detail-value">${escapeHtml(`${summary.checkpointPosition}/${summary.checkpointTotal}`)}</div></div>
           <div class="detail-pair"><div class="detail-key">Checkpoint detail</div><div class="detail-value">${escapeHtml(summary.checkpointDetail)}</div></div>
+          ${hubOnrampProposalDetails}
           ${hubRestartDetails}
           <div class="detail-pair"><div class="detail-key">Checklist item</div><div class="detail-value">${escapeHtml(item ? item.item : 'none')}</div></div>
           <div class="detail-pair"><div class="detail-key">Checklist status</div><div class="detail-value">${escapeHtml(item ? item.status : 'none')}</div></div>
@@ -1426,7 +1464,7 @@
         agents: 'Agents route shows live registry rows and promotes a selected agent into the inspector slot.',
         grants: 'Grants route reads the local profile state through the current S3/S2 boundary with no mock grant rows.',
         profile: 'Profile route uses the local /profile adapter for init, show, export, and import without sending JSON-RPC grant writes.',
-        runway: 'Runway route reads the local-only /runway-summary.json surface for the selected profile path, checkpoint progress, deny visibility, stand-in readiness observation, and optional hub restart context. reloadStatus stays display-only and non-evidentiary here.',
+        runway: 'Runway route reads the local-only /runway-summary.json surface for the selected profile path, checkpoint progress, deny visibility, stand-in readiness observation, optional hub restart context, and pending-consent proposed material. All of it stays display-only and non-evidentiary here.',
         denyLog: 'Deny log route uses persisted deny evidence only; route filtering stays in-slot and does not open overlays.',
       };
       document.getElementById('tools-copy').textContent = copy[state.route];
@@ -1448,7 +1486,7 @@
         intentCopy.textContent = 'Profile init, show, export, and import use the same-origin /profile adapter. Profile grant and revoke stay closed here.';
       } else if (state.route === 'runway') {
         intentTitle.textContent = 'Runway observation only';
-        intentCopy.textContent = 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Optional hub restart context may appear on the same read-only route. reloadStatus stays display-only runway context here; checkpoint progress remains read-only, and no durability, power-cycle, hardware, or gate evidence is implied.';
+        intentCopy.textContent = 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Optional hub restart context and pending-consent proposed material may appear on the same read-only route. Both remain display-only: no acceptance flow, no canonical state, no grant, no Home Assistant proof, and no durability, power-cycle, hardware, or gate evidence is implied.';
       } else {
         intentTitle.textContent = 'Deny observation only';
         intentCopy.textContent = 'Deny entries remain read-only evidence. If a transmitted lifecycle RPC is denied by the backend, the shell refreshes through agent.snapshot so persisted deny evidence can read back here.';

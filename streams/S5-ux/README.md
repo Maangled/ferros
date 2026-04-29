@@ -1,10 +1,10 @@
 # S5 — UX
 
 **Stream:** S5  
-**Status:** 🟨 Phase A active on the real landing page; Phase B localhost shell slice landed with narrow lifecycle/profile controls
+**Status:** 🟨 Phase A active on the real landing page; Phase B localhost shell slice landed with narrow lifecycle/profile controls and display-only onramp observation
 **Gate:** Contributes to launch-readiness; no blocking gate owned solely by S5
 
-> Current checkpoint: the first localhost browser profile surface is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter, and the remaining S5 follow-up is focused closeout of that existing `ferros-node` path in route tests and Rust validation without reopening the frozen S2 contract or widening browser privileges.
+> Current checkpoint: the first localhost browser profile surface is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter, and the existing runway route now renders pending-consent proposed material from `/runway-summary.json` as display-only, local-only, non-evidentiary observation with same-origin H9 proof. Remaining S5 follow-up is focused `/profile` closeout plus onramp accept/reject wiring without reopening the frozen S2 contract or widening browser privileges.
 
 ---
 
@@ -72,8 +72,9 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 - [x] Deny log visible in the UI.
 - [x] Operator-assisted localhost acceptance can prove local `ferros agent run | stop` changes read back through the same `agent.snapshot` refresh seam.
 - [x] Browser-issued local lifecycle control bar is wired for selected-agent `agent.run` / `agent.stop` only. The shell checks loaded active grant rows before write RPC transmission, requires an explicit arm checkbox, refreshes through `agent.snapshot` after success or backend denial, and the same-origin harness now proves an unarmed or missing-grant click does not transmit `agent.run` / `agent.stop`.
+- [x] Existing runway route renders pending-consent proposed material from the read-only `/runway-summary.json` surface, and the same-origin H9 harness proves that observation stays local-only, non-evidentiary, and display-only with no in-surface controls.
 
-The current Phase B slice is still read-first for observation, with one narrow localhost-only lifecycle write bar and one narrow localhost-only profile surface. That profile slice is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter only. The remaining S5 follow-up is focused closeout of that existing path in `ferros-node` route tests and Rust validation while keeping `show` off JSON-RPC and leaving profile `grant` / `revoke`, remote transport, and broader browser privileges out of scope.
+The current Phase B slice is still read-first for observation, with one narrow localhost-only lifecycle write bar, one narrow localhost-only profile surface, and one display-only onramp observation path on the existing runway route. That profile slice is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter only. The remaining S5 follow-up is focused closeout of that existing path in `ferros-node` route tests and Rust validation while keeping `show` off JSON-RPC and leaving profile `grant` / `revoke`, onramp accept/reject wiring, remote transport, and broader browser privileges out of scope.
 
 The shell now stages selected-agent lifecycle intent copy and can submit selected-agent `agent.run` / `agent.stop` only through the grant-aware local lifecycle bar.
 
@@ -153,14 +154,14 @@ Once `CONSENT-LANGUAGE.md` is cleared by counsel, the draft tags on this spec an
 
 ## Phase B: onramp consent surface entry bar
 
-The minimum honest onramp consent surface is defined as follows. This is the stated next onramp-facing surface; it does not yet exist as wired browser code. ADR-023 is the governing policy.
+The read-only observation half of this onramp path is now landed on the existing runway route: the shell displays pending-consent proposed material from the read-only `/runway-summary.json` surface, and the same-origin H9 harness proves that observation stays local-only, non-evidentiary, and display-only with no in-surface controls. The accept/reject consent surface defined below is the stated next onramp-facing surface; it does not yet exist as wired browser code. ADR-023 is the governing policy.
 
 | Constraint | Definition |
 |------------|------------|
 | Scope | One slot per proposed onramp item. Shows: source system name, proposed item description (e.g., HA entity name and type, calendar event title, contact display name), consent prompt, accept/reject affordance. Localhost-only. |
 | Governing invariant | Inbound data is quarantined until accepted (ADR-023). Passively having an integration enabled is not consent. The accept action must be auditable — loggable as a consent event through the existing S3/S4 audit-log surface. |
 | What the slot does NOT do | The slot does not automatically populate profile, capability grants, or any sealed progression record. It does not call the external system. It does not invent HA bridge protocol details, pairing handshake order, or consent UI internals beyond what is stated here. |
-| Publication gate | This surface lands only after the S3/S4 audit-log seam can capture an explicit accept event for a staged onramp item, and a harness proves the item does not reach canonical state without an explicit user action. |
+| Publication gate | The display-only observation half is already landed on the runway route. The accept/reject slot lands only after the S3/S4 audit-log seam can capture an explicit accept event for a staged onramp item, and a harness proves the item does not reach canonical state without an explicit user action. |
 
 Calendar, social-graph, and marketplace onramp variants follow the same pattern. The entry bar definition is channel-agnostic; channel-specific consent copy is derived from `docs/legal/CONSENT-LANGUAGE.md` (draft).
 

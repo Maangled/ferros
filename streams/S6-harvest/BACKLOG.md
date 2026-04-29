@@ -16,6 +16,8 @@
 - [x] Scaffold `crates/ferros-data/` with a standalone ADR-020-aligned migration-first crate shell
 - [x] Admit `crates/ferros-data/` to the root workspace
 - [x] Verify `ferros-data` compiles under the FERROS workspace
+- [x] Publish the typed local onramp proposal boundary in `ferros-data` with bounded local-only validation/write helpers for downstream hub consumers
+- [x] Hand off the local onramp proposal boundary to the current S7/S4/S5 rehearsal packet without reopening ADR-020 or inventing a second proposed-material model
 
 ## Later
 

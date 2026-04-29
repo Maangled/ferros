@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 ferros-agents = { path = "../ferros-agents" }
 ferros-core = { path = "../ferros-core" }
+ferros-data = { path = "../ferros-data" }
 ferros-profile = { path = "../ferros-profile" }
 
 [[bin]]

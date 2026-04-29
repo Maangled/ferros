@@ -4,6 +4,12 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-29 — Local onramp proposal boundary published for the hub rehearsal packet
+
+- Extended `crates/ferros-data/src/lib.rs` so `ferros-data` now owns the typed `LocalOnrampProposal` model, bounded validation, and local JSON artifact writer for quarantined pending-consent proposed material.
+- The current local hub rehearsal packet now consumes that boundary end-to-end: hub emission, schema/H1 admission, additive runway-summary observation, display-only shell/harness proof, and `cargo xtask hub-runway` validation all reuse the same local-only primitive rather than inventing a second proposed-material model.
+- Kept ADR-020 posture intact: local-only primitive ownership is stronger, but no partner-facing schema, no canonical mutation, no remote transport, and no gate advancement is claimed from this boundary.
+
 ## 2026-04-28 — local-push envelope admitted to harness consumers and emitted by burst helper
 
 - Extended `crates/ferros-data/src/lib.rs` so the typed local-push audit envelope now serializes and writes local JSON artifacts while keeping authority, consent, and scope inside the existing schema boundary.

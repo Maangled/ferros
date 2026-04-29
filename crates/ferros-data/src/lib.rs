@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 use std::fs;
-use std::path::Path;
+use std::path::{Component, Path};
 
 pub const ADR_REFERENCE: &str = "ADR-020";
 pub const MIGRATION_AUTHORITY: &str = "sql-migrations";
@@ -21,6 +21,10 @@ pub const LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID: &str =
 pub const LOCAL_PUSH_AUDIT_ENVELOPE_VERSION: &str = "1.0";
 pub const LOCAL_PUSH_DIGEST_ROOT: &str = ".tmp/push/";
 pub const BURST_LOCAL_PUSH_ENVELOPE_PATH: &str = ".tmp/push/burst-local-push-envelope.json";
+pub const LOCAL_ONRAMP_PROPOSAL_ARTIFACT_ROOT: &str = ".tmp/hub/";
+pub const LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH: &str = ".tmp/hub/local-onramp-proposal.json";
+pub const LOCAL_ONRAMP_PROPOSAL_SCOPE: &str = "local-only";
+pub const LOCAL_ONRAMP_PROPOSAL_EVIDENCE: &str = "non-evidentiary";
 
 #[cfg(test)]
 const ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_SQL: &str =
@@ -206,6 +210,56 @@ pub enum LocalPushAuditEnvelopeWriteError {
     Io(std::io::Error),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LocalOnrampQuarantineStatus {
+    QuarantinedPendingConsent,
+}
+
+impl LocalOnrampQuarantineStatus {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::QuarantinedPendingConsent => "quarantined-pending-consent",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalOnrampProposal {
+    pub source: String,
+    pub proposal_id: String,
+    pub bridge_agent_name: String,
+    pub stand_in_entity_name: String,
+    pub requested_capability: String,
+    pub requested_action: String,
+    pub quarantine_status: LocalOnrampQuarantineStatus,
+    pub scope: String,
+    pub evidence: String,
+    pub local_artifact_path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LocalOnrampProposalError {
+    EmptyField(&'static str),
+    InvalidRelativePath(String),
+    InvalidScope(String),
+    InvalidEvidence(String),
+    InvalidTextField {
+        field: &'static str,
+        value: String,
+        reason: &'static str,
+    },
+}
+
+#[derive(Debug)]
+pub enum LocalOnrampProposalWriteError {
+    InvalidProposal(LocalOnrampProposalError),
+    Serialize(serde_json::Error),
+    Io(std::io::Error),
+}
+
 impl LocalPushAuditEnvelope {
     pub fn new(
         envelope_type: LocalEnvelopeKind,
@@ -298,6 +352,152 @@ impl LocalPushAuditEnvelope {
     }
 }
 
+impl LocalOnrampProposal {
+    pub fn new(
+        source: impl Into<String>,
+        proposal_id: impl Into<String>,
+        bridge_agent_name: impl Into<String>,
+        stand_in_entity_name: impl Into<String>,
+        requested_capability: impl Into<String>,
+        requested_action: impl Into<String>,
+        local_artifact_path: impl Into<String>,
+    ) -> Result<Self, LocalOnrampProposalError> {
+        let proposal = Self {
+            source: source.into(),
+            proposal_id: proposal_id.into(),
+            bridge_agent_name: bridge_agent_name.into(),
+            stand_in_entity_name: stand_in_entity_name.into(),
+            requested_capability: requested_capability.into(),
+            requested_action: requested_action.into(),
+            quarantine_status: LocalOnrampQuarantineStatus::QuarantinedPendingConsent,
+            scope: LOCAL_ONRAMP_PROPOSAL_SCOPE.to_owned(),
+            evidence: LOCAL_ONRAMP_PROPOSAL_EVIDENCE.to_owned(),
+            local_artifact_path: local_artifact_path.into(),
+        };
+
+        proposal.validate()?;
+        Ok(proposal)
+    }
+
+    pub fn validate(&self) -> Result<(), LocalOnrampProposalError> {
+        validate_onramp_text_field("source", &self.source)?;
+        validate_onramp_text_field("proposalId", &self.proposal_id)?;
+        validate_onramp_text_field("bridgeAgentName", &self.bridge_agent_name)?;
+        validate_onramp_text_field("standInEntityName", &self.stand_in_entity_name)?;
+        validate_onramp_text_field("requestedCapability", &self.requested_capability)?;
+        validate_onramp_text_field("requestedAction", &self.requested_action)?;
+
+        if self.scope != LOCAL_ONRAMP_PROPOSAL_SCOPE {
+            return Err(LocalOnrampProposalError::InvalidScope(self.scope.clone()));
+        }
+
+        if self.evidence != LOCAL_ONRAMP_PROPOSAL_EVIDENCE {
+            return Err(LocalOnrampProposalError::InvalidEvidence(self.evidence.clone()));
+        }
+
+        validate_local_onramp_artifact_path(&self.local_artifact_path)?;
+
+        Ok(())
+    }
+
+    pub fn to_pretty_json(&self) -> Result<String, LocalOnrampProposalWriteError> {
+        self.validate()
+            .map_err(LocalOnrampProposalWriteError::InvalidProposal)?;
+
+        serde_json::to_string_pretty(self).map_err(LocalOnrampProposalWriteError::Serialize)
+    }
+
+    pub fn write_json(&self, path: impl AsRef<Path>) -> Result<(), LocalOnrampProposalWriteError> {
+        let path = path.as_ref();
+        let json = self.to_pretty_json()?;
+
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(LocalOnrampProposalWriteError::Io)?;
+        }
+
+        fs::write(path, format!("{json}\n")).map_err(LocalOnrampProposalWriteError::Io)
+    }
+}
+
+fn validate_onramp_text_field(
+    field: &'static str,
+    value: &str,
+) -> Result<(), LocalOnrampProposalError> {
+    if value.trim().is_empty() {
+        return Err(LocalOnrampProposalError::EmptyField(field));
+    }
+
+    let lowered = value.to_ascii_lowercase();
+    if looks_remote_like_url(&lowered) {
+        return Err(LocalOnrampProposalError::InvalidTextField {
+            field,
+            value: value.to_owned(),
+            reason: "must not contain remote-looking URLs",
+        });
+    }
+
+    if let Some(wording) = banned_onramp_wording(&lowered) {
+        return Err(LocalOnrampProposalError::InvalidTextField {
+            field,
+            value: value.to_owned(),
+            reason: wording,
+        });
+    }
+
+    Ok(())
+}
+
+fn validate_local_onramp_artifact_path(path: &str) -> Result<(), LocalOnrampProposalError> {
+    if !path.starts_with(LOCAL_ONRAMP_PROPOSAL_ARTIFACT_ROOT)
+        || !path.ends_with(".json")
+        || Path::new(path).is_absolute()
+        || path.contains(':')
+        || path.trim().is_empty()
+    {
+        return Err(LocalOnrampProposalError::InvalidRelativePath(path.to_owned()));
+    }
+
+    for component in Path::new(path).components() {
+        match component {
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(LocalOnrampProposalError::InvalidRelativePath(path.to_owned()));
+            }
+            Component::CurDir | Component::Normal(_) => {}
+        }
+    }
+
+    let lowered = path.to_ascii_lowercase();
+    if looks_remote_like_url(&lowered) || banned_onramp_wording(&lowered).is_some() {
+        return Err(LocalOnrampProposalError::InvalidRelativePath(path.to_owned()));
+    }
+
+    Ok(())
+}
+
+fn looks_remote_like_url(value: &str) -> bool {
+    value.contains("://")
+        || value.starts_with("//")
+        || value.contains("http://")
+        || value.contains("https://")
+        || value.contains("ws://")
+        || value.contains("wss://")
+        || value.contains("ftp://")
+        || value.contains("file://")
+}
+
+fn banned_onramp_wording(value: &str) -> Option<&'static str> {
+    [
+        "hardware",
+        "proof",
+        "launch",
+        "accepted",
+        "canonical",
+        "granted",
+    ]
+    .into_iter()
+    .find(|wording| value.contains(wording))
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RevisionBaseFields {
     pub lineage: &'static str,
@@ -373,9 +573,12 @@ mod tests {
     use super::{
         ferros_data_boundary, local_push_audit_boundary, BURST_LOCAL_PUSH_ENVELOPE_PATH,
         LocalArtifactRole, LocalDigestAlgorithm, LocalEnvelopeAuthority, LocalEnvelopeKind,
+        LocalOnrampProposal, LocalOnrampProposalError, LocalOnrampQuarantineStatus,
         LocalPushArtifact, LocalPushAuditEnvelope, LocalPushAuditEnvelopeError,
         LocalPushDigest, LocalPushObservation, LocalPushScope, LocalPushSurface,
         ADR_REFERENCE, BASELINE_MIGRATION_PATH, BASELINE_MIGRATION_SQL,
+        LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH, LOCAL_ONRAMP_PROPOSAL_EVIDENCE,
+        LOCAL_ONRAMP_PROPOSAL_SCOPE,
         LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA, LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID,
         LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_PATH, LOCAL_PUSH_AUDIT_ENVELOPE_VERSION,
         LOCAL_PUSH_DIGEST_ROOT, MIGRATION_AUTHORITY, MIGRATION_PATHS,
@@ -637,6 +840,143 @@ mod tests {
         assert_eq!(
             invalid_stream,
             Err(LocalPushAuditEnvelopeError::InvalidStream("SX".to_owned()))
+        );
+    }
+
+    #[test]
+    fn onramp_proposal_accepts_quarantined_local_bridge_material() {
+        let proposal = LocalOnrampProposal::new(
+            "ha-local-bridge",
+            "proposal-simulated-bridge-entity",
+            "ha-local-bridge",
+            "simulated-bridge-entity",
+            "bridge.observe",
+            "report-state",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+        )
+        .expect("proposal should validate");
+
+        let payload = serde_json::to_value(&proposal).expect("proposal should serialize");
+
+        assert_eq!(proposal.quarantine_status, LocalOnrampQuarantineStatus::QuarantinedPendingConsent);
+        assert_eq!(proposal.scope, LOCAL_ONRAMP_PROPOSAL_SCOPE);
+        assert_eq!(proposal.evidence, LOCAL_ONRAMP_PROPOSAL_EVIDENCE);
+        assert_eq!(payload["quarantineStatus"], "quarantined-pending-consent");
+        assert_eq!(payload["localArtifactPath"], LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH);
+    }
+
+    #[test]
+    fn onramp_proposal_write_json_creates_output_file() {
+        let output_path = std::env::temp_dir().join(format!(
+            "ferros-local-onramp-proposal-{}.json",
+            std::process::id()
+        ));
+        let proposal = LocalOnrampProposal::new(
+            "ha-local-bridge",
+            "proposal-simulated-bridge-entity",
+            "ha-local-bridge",
+            "simulated-bridge-entity",
+            "bridge.observe",
+            "report-state",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+        )
+        .expect("proposal should validate");
+
+        proposal
+            .write_json(&output_path)
+            .expect("proposal json should write");
+
+        let written = std::fs::read_to_string(&output_path).expect("output file should read");
+        assert!(written.contains("\"proposalId\""));
+        assert!(written.contains("\"quarantineStatus\": \"quarantined-pending-consent\""));
+        assert!(written.contains("\"scope\": \"local-only\""));
+
+        let _ = std::fs::remove_file(output_path);
+    }
+
+    #[test]
+    fn onramp_proposal_rejects_remote_looking_text() {
+        let proposal = LocalOnrampProposal::new(
+            "https://ha.local/entity/bridge",
+            "proposal-simulated-bridge-entity",
+            "ha-local-bridge",
+            "simulated-bridge-entity",
+            "bridge.observe",
+            "report-state",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+        );
+
+        assert_eq!(
+            proposal,
+            Err(LocalOnrampProposalError::InvalidTextField {
+                field: "source",
+                value: "https://ha.local/entity/bridge".to_owned(),
+                reason: "must not contain remote-looking URLs",
+            })
+        );
+    }
+
+    #[test]
+    fn onramp_proposal_rejects_hardware_proof_launch_wording() {
+        let proposal = LocalOnrampProposal::new(
+            "ha-local-bridge",
+            "proposal-hardware-launch-proof",
+            "ha-local-bridge",
+            "simulated-bridge-entity",
+            "bridge.observe",
+            "report-state",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+        );
+
+        assert_eq!(
+            proposal,
+            Err(LocalOnrampProposalError::InvalidTextField {
+                field: "proposalId",
+                value: "proposal-hardware-launch-proof".to_owned(),
+                reason: "hardware",
+            })
+        );
+    }
+
+    #[test]
+    fn onramp_proposal_rejects_accepted_canonical_granted_wording() {
+        let proposal = LocalOnrampProposal::new(
+            "ha-local-bridge",
+            "proposal-simulated-bridge-entity",
+            "ha-local-bridge",
+            "accepted-bridge-entity",
+            "bridge.observe",
+            "report-state",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+        );
+
+        assert_eq!(
+            proposal,
+            Err(LocalOnrampProposalError::InvalidTextField {
+                field: "standInEntityName",
+                value: "accepted-bridge-entity".to_owned(),
+                reason: "accepted",
+            })
+        );
+    }
+
+    #[test]
+    fn onramp_proposal_rejects_non_local_artifact_paths() {
+        let proposal = LocalOnrampProposal::new(
+            "ha-local-bridge",
+            "proposal-simulated-bridge-entity",
+            "ha-local-bridge",
+            "simulated-bridge-entity",
+            "bridge.observe",
+            "report-state",
+            ".tmp/hub/../accepted-canonical.json",
+        );
+
+        assert_eq!(
+            proposal,
+            Err(LocalOnrampProposalError::InvalidRelativePath(
+                ".tmp/hub/../accepted-canonical.json".to_owned()
+            ))
         );
     }
 }

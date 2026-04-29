@@ -17,7 +17,22 @@ Optional fields (additive, layered on top of the existing field order without br
 
 ## Ready
 
-None.
+### WAVE-2026-04-29-63
+
+- Title: Sync contracts overview after local onramp rehearsal packet
+- Status: ready
+- Priority: P2
+- Gate: rolling shared-contract truth-sync after local onramp rehearsal packet
+- Owning streams: S8 primary, S7 awareness, S4 awareness, S6 awareness
+- Goal: Reconcile `docs/contracts/CONTRACTS-OVERVIEW.md` with the landed local onramp rehearsal packet so the shared contract index records the `onramp-proposal.schema.json` contract and the additive `hubOnrampProposal` runway-summary seam without blurring owner boundaries or overstating the consent, transport, or gate posture.
+- Anchor files: `docs/contracts/CONTRACTS-OVERVIEW.md`
+- Validation: `get_errors` clean on `docs/contracts/CONTRACTS-OVERVIEW.md`; claim rationalizer confirms no overclaim
+- Constraints: Shared truth only. `docs/contracts/CONTRACTS-OVERVIEW.md` only. Preserve owner split between the S6 proposal model, the S7 emitted local artifact, and the S4/S5 read-only observation seams. No crate, schema, harness, or site edits. No G4 closure, no accept/reject flow, no canonical mutation, no remote transport, no Home Assistant proof, and no physical-device evidence.
+- Last update: 2026-04-29
+- size: S
+- serial-after: WAVE-2026-04-29-62
+- solo: true
+- track: code
 
 ## In Progress
 
@@ -28,6 +43,138 @@ None.
 None.
 
 ## Done
+
+### WAVE-2026-04-29-62
+
+- Title: Serial truth-sync after local onramp rehearsal packet
+- Status: done
+- Priority: P2
+- Gate: rolling truth-sync after local onramp rehearsal owner waves
+- Owning streams: S8 primary, S7 awareness, S5 awareness, S4 awareness, S6 awareness
+- Goal: Reconcile only the minimal truthful shared surfaces after the local onramp rehearsal packet lands so the repo records exactly what is now true about proposed-material generation, read-only observation, schema/harness coverage, and xtask rehearsal without overstating the consent, transport, or gate posture.
+- Anchor files: `STATUS.md`, `streams/S7-hub/README.md`, `streams/S7-hub/PROGRESS.md`, `streams/S7-hub/BACKLOG.md`, `streams/S7-hub/CONTRACTS.md`, `streams/S5-ux/README.md`, `streams/S5-ux/PROGRESS.md`, `streams/S5-ux/BACKLOG.md`, `streams/S4-runtime/CONTRACTS.md`, `streams/S6-harvest/README.md`, `streams/S6-harvest/PROGRESS.md`, `streams/S6-harvest/BACKLOG.md`
+- Validation: `get_errors` clean on touched truth surfaces; claim rationalizer confirms no overclaim
+- Constraints: Final serial wave only. Shared truth only; no crate, schema, harness, or site edits. Record exactly what is now true and exactly what remains not true: no G4 closure, no physical-device evidence, no real Home Assistant integration, no HA dashboard proof, no canonical profile/grant mutation, no remote transport, no durable target-hardware runtime proof, and no independent install evidence.
+- Last update: 2026-04-29
+- size: L
+- serial-after: WAVE-2026-04-29-60
+- solo: true
+- track: code
+
+### WAVE-2026-04-29-60
+
+- Title: Extend localhost acceptance harness for proposed-material observation
+- Status: done
+- Priority: P1
+- Gate: G4 local onramp observation proof
+- Owning streams: S5 primary, S7 awareness
+- Goal: Extend the same-origin localhost shell acceptance harness so it proves the local onramp proposal renders as quarantined proposed material on the existing route, stays local-only and non-evidentiary, and does not expose canonicalization, grant, revoke, remote transport, Home Assistant proof, hardware evidence, or G4 closure claims.
+- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `get_errors` clean on `harnesses/localhost-shell-acceptance-harness.html`; `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness`; direct same-origin acceptance harness run stays green with onramp proposal checks
+- Constraints: Harness only. Same-origin and read-only. No new route, no privileged browser controls, no accept/reject transport, no grant/revoke controls, no remote transport, no Home Assistant integration claim, no physical-device evidence, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- serial-after: WAVE-2026-04-29-59
+- track: code
+
+### WAVE-2026-04-29-59
+
+- Title: Render proposed bridge material in the localhost shell
+- Status: done
+- Priority: P1
+- Gate: G4 local onramp observation surface
+- Owning streams: S5 primary, S4 support, S7 awareness
+- Goal: Add a narrow local onramp proposal display area to the existing shell runway panel or inspector so the operator can read source, proposal id, bridge agent, stand-in entity, requested capability/action, quarantine status, scope, evidence, and artifact path as pending consent on the current read-only route.
+- Anchor files: `site/agent-center-shell.html`
+- Validation: `get_errors` clean on `site/agent-center-shell.html`; relevant `cargo test -p ferros-node shell_route_` tests pass; live local shell load shows pending-consent proposed material on the existing runway route
+- Constraints: Render only. The UI must make clear this is proposed material only, not accepted, not canonical, not a grant, and not Home Assistant proof. No accept/reject controls, no privileged browser controls, no grant/revoke controls, no new route, no remote transport, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- serial-after: WAVE-2026-04-29-58
+- track: code
+
+### WAVE-2026-04-29-61
+
+- Title: Extend xtask hub-runway into a local onramp rehearsal chain
+- Status: done
+- Priority: P1
+- Gate: G4 local onramp rehearsal helper
+- Owning streams: S7 primary, S1 support, S6 awareness
+- Goal: Extend `cargo xtask hub-runway` so it reuses the landed hub-owned seams to write and reload the hub snapshot, emit the local onramp proposal artifact, validate its bounded local rehearsal shape if feasible, and print a compact local-only rehearsal report without duplicating hub logic.
+- Anchor files: `xtask/src/main.rs`
+- Validation: `cargo check -p xtask`; `cargo xtask hub-runway`; `cargo test -p ferros-hub onramp_proposal_`; targeted `cargo test -p ferros-node onramp_`
+- Constraints: Helper only. Reuse published hub-owned seams only. Keep all emitted proposal and snapshot artifacts under `.tmp/hub/`. No new node, shell, schema, or harness routes here. No remote transport, no daemon or server mode, no canonical profile or grant mutation, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- parallel-safe-with: [WAVE-2026-04-29-57, WAVE-2026-04-29-58]
+- serial-after: WAVE-2026-04-29-56
+- track: code
+
+### WAVE-2026-04-29-58
+
+- Title: Extend node runway summary with optional local onramp proposal observation
+- Status: done
+- Priority: P1
+- Gate: G4 local onramp observation seam
+- Owning streams: S4 primary, S7 support, S6 awareness
+- Goal: Extend the existing read-only `/runway-summary(.json)` seam additively with an optional local onramp proposal child sourced from the hub-owned summary seam so the current same-origin runway payload can surface proposed material without reading random files directly.
+- Anchor files: `crates/ferros-node/src/lib.rs`
+- Validation: targeted `cargo test -p ferros-node onramp_`; existing runway summary and hub restart tests still pass; `cargo check -p ferros-node`
+- Constraints: Additive child only on the existing read-only route. Consume the hub-owned seam only; do not read `.tmp/hub/` files directly from node or shell. Keep it optional, read-only, same-origin, and display-only. No remote transport, no daemon or server mode, no canonical profile or grant mutation, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- parallel-safe-with: [WAVE-2026-04-29-57, WAVE-2026-04-29-61]
+- serial-after: WAVE-2026-04-29-56
+- track: code
+
+### WAVE-2026-04-29-57
+
+- Title: Add schema and contract-validator coverage for the local onramp proposal
+- Status: done
+- Priority: P1
+- Gate: G4 local onramp contract validation
+- Owning streams: S7 primary, S1 support, S6 awareness
+- Goal: Add one bounded local-only schema for the onramp proposal artifact, regenerate harness constants, and add positive and negative H1 validator coverage for quarantined proposed material without widening frozen S2 or canonical FERROS state contracts.
+- Anchor files: `crates/ferros-hub/tests/local_bridge.rs`, `schemas/onramp-proposal.schema.json`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
+- Validation: schema checks; `powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate-harness-constants.ps1`; direct file-based run of `harnesses/ferros-contract-validator.html` remains green; targeted `cargo test -p ferros-hub onramp_proposal_`
+- Constraints: New local-only schema only. Do not touch frozen S2 schemas. Do not widen existing hub-local schemas unless a validator-proven blocker forces replanning. Cover banned wording, remote-looking text, invalid paths, and accidental canonical/grant claims. No partner-facing claim, no remote transport, no Home Assistant integration claim, no physical-device evidence, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: L
+- parallel-safe-with: [WAVE-2026-04-29-58, WAVE-2026-04-29-61]
+- serial-after: WAVE-2026-04-29-56
+- track: code
+
+### WAVE-2026-04-29-56
+
+- Title: Emit local onramp proposal artifact from ferros-hub
+- Status: done
+- Priority: P1
+- Gate: G4 local onramp rehearsal owner seam
+- Owning streams: S7 primary, S6 support
+- Goal: Extend the local hub proof path so the simulated bridge entity emits one bounded `.tmp/hub/local-onramp-proposal.json` artifact derived from the current bridge proof, keeping that artifact quarantined, pending consent, local-only, and non-evidentiary without mutating canonical profile, grants, or accepted state.
+- Anchor files: `crates/ferros-hub/Cargo.toml`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub onramp_proposal_`; `cargo run -p ferros-hub -- prove-bridge`; confirm artifact contents and banned wording checks; `cargo check -p ferros-hub`
+- Constraints: Hub owner wave only. Consume the published W55 proposal model. Keep all proposal artifacts under `.tmp/hub/`. Do not mutate profile, grants, S2 schemas, agent lifecycle, or canonical state. No node, shell, schema, harness, or xtask edits here. No remote transport, no daemon or server mode, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: L
+- serial-after: WAVE-2026-04-29-55
+- track: code
+
+### WAVE-2026-04-29-55
+
+- Title: Add local onramp proposal model for proposed bridge material
+- Status: done
+- Priority: P1
+- Gate: G4 local onramp rehearsal model
+- Owning streams: S6 primary, S7 support
+- Goal: Add a bounded local proposed-material model in the existing stream-owned data/onramp surface so one simulated bridge entity can be represented as quarantined, non-canonical proposed material rather than canonical profile state or a grant.
+- Anchor files: `crates/ferros-data/src/lib.rs`
+- Validation: targeted cargo tests for `onramp_proposal_`; `cargo check` on touched crates
+- Constraints: The model must include source, proposal id, bridge agent name, stand-in entity name, requested capability/action, quarantine status, scope, evidence, and local artifact path. Validation must reject remote-looking URLs, hardware/proof/launch wording, accepted/canonical/granted wording, and malformed local paths. No hub, node, shell, schema, harness, or xtask edits here. No remote transport, no daemon or server mode, and no canonical profile or grant mutation.
+- Last update: 2026-04-29
+- size: S
+- serial-after: WAVE-2026-04-29-54
+- track: code
 
 ### WAVE-2026-04-29-54
 

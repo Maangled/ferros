@@ -497,6 +497,26 @@ runTest(g2, 'inline local hub bridge artifact validates against SCHEMA_HUB_LOCAL
   return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
 });
 
+runTest(g2, 'inline local onramp proposal validates against SCHEMA_ONRAMP_PROPOSAL', function() {
+  var data = {
+    source: '.tmp/hub/simulated-local-bridge-artifact.json',
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    bridgeAgentName: 'ha-local-bridge',
+    standInEntityName: 'simulated-bridge-entity',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    quarantineStatus: 'quarantined-pending-consent',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-proposal.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_PROPOSAL);
+  if (r.valid) {
+    return { pass: true, detail: 'local onramp proposal matches the bounded quarantined proposed-material contract' };
+  }
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
 runTest(g2, 'SCHEMA_CAPABILITY_GRANT_V0 publishes the stripped-payload signing contract', function() {
   var signing = SCHEMA_CAPABILITY_GRANT_V0['x-ferros-signature'];
   if (!signing || typeof signing !== 'object' || Array.isArray(signing)) {
@@ -890,6 +910,98 @@ runTest(g3, 'SCHEMA_HUB_LOCAL_STATE_SNAPSHOT rejects inline restart snapshot wit
     };
   }
   return { pass: false, error: 'SCHEMA_HUB_LOCAL_STATE_SNAPSHOT should reject remote-looking summary text' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_PROPOSAL rejects inline proposal with remote-looking source path', function() {
+  var data = {
+    source: 'https://example.com/bridge-artifact.json',
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    bridgeAgentName: 'ha-local-bridge',
+    standInEntityName: 'simulated-bridge-entity',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    quarantineStatus: 'quarantined-pending-consent',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-proposal.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_PROPOSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. source stayed outside the bounded local-only no-remote-text contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_PROPOSAL should reject remote-looking source paths' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_PROPOSAL rejects inline proposal with hardware/proof/launch wording', function() {
+  var data = {
+    source: '.tmp/hub/simulated-local-bridge-artifact.json',
+    proposalId: 'proposal-hardware-launch-proof',
+    bridgeAgentName: 'ha-local-bridge',
+    standInEntityName: 'simulated-bridge-entity',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    quarantineStatus: 'quarantined-pending-consent',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-proposal.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_PROPOSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. proposalId stayed outside the bounded local-only wording contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_PROPOSAL should reject hardware/proof/launch wording' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_PROPOSAL rejects inline proposal with accepted/canonical/granted wording', function() {
+  var data = {
+    source: '.tmp/hub/simulated-local-bridge-artifact.json',
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    bridgeAgentName: 'ha-local-bridge',
+    standInEntityName: 'accepted-bridge-entity',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    quarantineStatus: 'quarantined-pending-consent',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-proposal.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_PROPOSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. standInEntityName stayed outside the non-canonical proposed-material wording contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_PROPOSAL should reject accepted/canonical/granted wording' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_PROPOSAL rejects inline proposal with non-local artifact path', function() {
+  var data = {
+    source: '.tmp/hub/simulated-local-bridge-artifact.json',
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    bridgeAgentName: 'ha-local-bridge',
+    standInEntityName: 'simulated-bridge-entity',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    quarantineStatus: 'quarantined-pending-consent',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/../canonical.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_PROPOSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. localArtifactPath stayed outside the bounded .tmp/hub/ proposal contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_PROPOSAL should reject non-local artifact paths' };
 });
 
 /* ==========================================================================

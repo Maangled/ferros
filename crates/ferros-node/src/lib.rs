@@ -258,6 +258,8 @@ pub struct LocalRunwaySummary {
     pub checklist: Vec<LocalRunwayChecklistItem>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hub_restart: Option<LocalRunwayHubRestartSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hub_onramp_proposal: Option<LocalRunwayHubOnrampProposalSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -322,6 +324,21 @@ pub struct LocalRunwayHubRestartSummary {
     pub prior_policy_decision_label: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prior_artifact_relative_output_path: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalRunwayHubOnrampProposalSummary {
+    pub source: String,
+    pub proposal_id: String,
+    pub bridge_agent_name: String,
+    pub stand_in_entity_name: String,
+    pub requested_capability: String,
+    pub requested_action: String,
+    pub quarantine_status: String,
+    pub scope: String,
+    pub evidence: String,
+    pub local_artifact_path: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1592,31 +1609,59 @@ fn non_empty_trimmed(value: &str) -> Option<&str> {
 }
 
 fn map_local_runway_hub_restart_summary(
-    summary: LocalHubRuntimeSummary,
+    summary: &LocalHubRuntimeSummary,
 ) -> LocalRunwayHubRestartSummary {
-    let restart_observation = summary.restart_observation;
+    let restart_observation = &summary.restart_observation;
 
     LocalRunwayHubRestartSummary {
         reload_status: restart_observation.reload_status.as_str().to_owned(),
         snapshot_path: LOCAL_HUB_STATE_SNAPSHOT_PATH.to_owned(),
-        scope: summary.scope,
-        evidence: summary.evidence,
-        prior_bridge_manifest_identity: restart_observation.prior_bridge_manifest_identity,
-        prior_policy_decision_label: restart_observation.prior_policy_decision_label,
+        scope: summary.scope.clone(),
+        evidence: summary.evidence.clone(),
+        prior_bridge_manifest_identity: restart_observation.prior_bridge_manifest_identity.clone(),
+        prior_policy_decision_label: restart_observation.prior_policy_decision_label.clone(),
         prior_artifact_relative_output_path: restart_observation
-            .prior_artifact_relative_output_path,
+            .prior_artifact_relative_output_path
+            .clone(),
     }
 }
 
-fn observe_local_runway_hub_restart_with<HubSummaryLoader>(
+fn map_local_runway_hub_onramp_proposal_summary(
+    summary: &LocalHubRuntimeSummary,
+) -> Option<LocalRunwayHubOnrampProposalSummary> {
+    summary
+        .local_onramp_proposal
+        .as_ref()
+        .map(|proposal| LocalRunwayHubOnrampProposalSummary {
+            source: proposal.source.clone(),
+            proposal_id: proposal.proposal_id.clone(),
+            bridge_agent_name: proposal.bridge_agent_name.clone(),
+            stand_in_entity_name: proposal.stand_in_entity_name.clone(),
+            requested_capability: proposal.requested_capability.clone(),
+            requested_action: proposal.requested_action.clone(),
+            quarantine_status: proposal.quarantine_status.as_str().to_owned(),
+            scope: proposal.scope.clone(),
+            evidence: proposal.evidence.clone(),
+            local_artifact_path: proposal.local_artifact_path.clone(),
+        })
+}
+
+fn observe_local_runway_hub_observations_with<HubSummaryLoader>(
     hub_summary_loader: HubSummaryLoader,
-) -> Option<LocalRunwayHubRestartSummary>
+) -> (
+    Option<LocalRunwayHubRestartSummary>,
+    Option<LocalRunwayHubOnrampProposalSummary>,
+)
 where
     HubSummaryLoader: FnOnce() -> Result<LocalHubRuntimeSummary, LocalBridgeRegistrationError>,
 {
-    hub_summary_loader()
-        .ok()
-        .map(map_local_runway_hub_restart_summary)
+    match hub_summary_loader() {
+        Ok(summary) => (
+            Some(map_local_runway_hub_restart_summary(&summary)),
+            map_local_runway_hub_onramp_proposal_summary(&summary),
+        ),
+        Err(_) => (None, None),
+    }
 }
 
 fn profile_value_for_action<S: LocalProfileStore>(
@@ -1672,7 +1717,8 @@ where
     let deny_count = deny_entries.len();
     let latest_deny = deny_entries.into_iter().last().map(LocalRunwayDenySummary::from);
     let profile_observation = observe_local_runway_profile(store, profile_path);
-    let hub_restart = observe_local_runway_hub_restart_with(hub_summary_loader);
+    let (hub_restart, hub_onramp_proposal) =
+        observe_local_runway_hub_observations_with(hub_summary_loader);
 
     let stand_in_agent = match runtime.describe_agent("echo") {
         Some(agent) => LocalRunwayChecklistItem {
@@ -1771,6 +1817,7 @@ where
             power_cycle,
         ],
         hub_restart,
+        hub_onramp_proposal,
     })
 }
 
@@ -2719,7 +2766,8 @@ mod tests {
         METHOD_AGENT_STOP, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
     };
     use ferros_hub::{
-        LocalBridgeRegistrationError, LocalHubRuntimeSummary, LOCAL_HUB_STATE_SNAPSHOT_PATH,
+        default_local_runtime_summary, LocalBridgeRegistrationError, LocalHubRuntimeSummary,
+        LOCAL_HUB_STATE_SNAPSHOT_PATH, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
     };
     use ferros_profile::{CapabilityGrant, FileSystemProfileStore, ProfileDocument, ProfileId};
     use std::fs;
@@ -3133,7 +3181,111 @@ mod tests {
             .expect("runway summary should serialize without the hub restart child");
 
         assert!(summary.hub_restart.is_none());
+        assert!(summary.hub_onramp_proposal.is_none());
         assert!(payload.get("hubRestart").is_none());
+        assert!(payload.get("hubOnrampProposal").is_none());
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
+    fn onramp_shell_route_gets_local_runway_summary_json() {
+        let state_path = unique_state_path("onramp-shell-runway-summary");
+        let profile_path = unique_profile_path("onramp-shell-runway-summary");
+        let store = FileSystemProfileStore;
+
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &store,
+        )
+        .expect("profile init should succeed");
+
+        execute_local_agent_api_with_runtime_loader(
+            LocalAgentApiCommand::Run {
+                name: "echo".to_string(),
+            },
+            &state_path,
+            denied_reference_runtime_from_loaded_state,
+        )
+        .expect_err("denied runtime should record a deny entry before summary read");
+
+        let response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "GET".to_owned(),
+                path: format!(
+                    "/runway-summary.json?profilePath={}",
+                    profile_path.display()
+                ),
+                body: Vec::new(),
+            },
+            &state_path,
+            &profile_path,
+            &store,
+        );
+        let payload: LocalRunwaySummary = serde_json::from_slice(&response.body)
+            .expect("runway summary response should parse");
+        let hub_onramp_proposal = payload
+            .hub_onramp_proposal
+            .as_ref()
+            .expect("shell runway summary should include a hub onramp proposal child");
+
+        assert_eq!(response.status_code, 200);
+        assert_eq!(hub_onramp_proposal.source, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH);
+        assert_eq!(
+            hub_onramp_proposal.proposal_id,
+            "proposal-ha-local-bridge-simulated-bridge-entity-report-state"
+        );
+        assert_eq!(hub_onramp_proposal.bridge_agent_name, "ha-local-bridge");
+        assert_eq!(
+            hub_onramp_proposal.stand_in_entity_name,
+            "simulated-bridge-entity"
+        );
+        assert_eq!(hub_onramp_proposal.requested_capability, "bridge.observe");
+        assert_eq!(hub_onramp_proposal.requested_action, "report-state");
+        assert_eq!(
+            hub_onramp_proposal.quarantine_status,
+            "quarantined-pending-consent"
+        );
+        assert_eq!(hub_onramp_proposal.scope, "local-only");
+        assert_eq!(hub_onramp_proposal.evidence, "non-evidentiary");
+        assert_eq!(
+            hub_onramp_proposal.local_artifact_path,
+            ".tmp/hub/local-onramp-proposal.json"
+        );
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
+    fn onramp_runway_summary_omits_hub_onramp_proposal_when_hub_summary_child_is_absent() {
+        let state_path = unique_state_path("onramp-runway-summary-no-child");
+        let profile_path = unique_profile_path("onramp-runway-summary-no-child");
+        let store = FileSystemProfileStore;
+
+        let summary = build_local_runway_summary_with_store_and_hub_summary_loader(
+            &state_path,
+            &profile_path,
+            &store,
+            || -> Result<LocalHubRuntimeSummary, LocalBridgeRegistrationError> {
+                let mut summary = default_local_runtime_summary()?;
+                summary.local_onramp_proposal = None;
+                Ok(summary)
+            },
+        )
+        .expect("runway summary should load when the hub onramp proposal child is absent");
+        let payload = serde_json::to_value(&summary)
+            .expect("runway summary should serialize without the hub onramp child");
+
+        assert!(summary.hub_restart.is_some());
+        assert!(summary.hub_onramp_proposal.is_none());
+        assert!(payload.get("hubRestart").is_some());
+        assert!(payload.get("hubOnrampProposal").is_none());
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);
