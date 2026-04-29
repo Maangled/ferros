@@ -168,6 +168,11 @@ dependencies = [
 [[package]]
 name = "ferros-hub"
 version = "0.1.0"
+dependencies = [
+ "ferros-agents",
+ "ferros-core",
+ "ferros-profile",
+]
 
 [[package]]
 name = "ferros-node"
@@ -542,6 +547,7 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "ferros-data",
+ "ferros-hub",
  "time",
 ]
 

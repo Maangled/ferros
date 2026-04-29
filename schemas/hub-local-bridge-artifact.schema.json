@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/hub-local-bridge-artifact.schema.json",
+  "title": "FERROS Local Hub Bridge Artifact",
+  "description": "Local-only, non-evidentiary bridge artifact emitted by ferros-hub during the bounded executable runway proof. This schema is not a partner-facing or hardware-facing contract.",
+  "type": "object",
+  "required": [
+    "bridgeAgentName",
+    "standInName",
+    "relativeOutputPath",
+    "requestedCapability",
+    "requestedAction",
+    "status",
+    "scope",
+    "evidence"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "bridgeAgentName": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "standInName": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "relativeOutputPath": {
+      "type": "string",
+      "pattern": "^\\.tmp/hub/.+\\.json$"
+    },
+    "requestedCapability": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestedAction": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["allowed", "denied", "error"]
+    },
+    "scope": {
+      "const": "local-only"
+    },
+    "evidence": {
+      "const": "non-evidentiary"
+    }
+  }
+}

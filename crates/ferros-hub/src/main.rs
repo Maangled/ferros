@@ -1,19 +1,38 @@
-mod ha_bridge;
-
-use ha_bridge::{simulated_local_bridge_artifact, LocalBridgeAgent, LocalBridgeRegistry};
+use ferros_hub::{
+    cli_help_text, deny_demo_command_output, prepare_default_local_runway,
+    prove_bridge_command_output, summary_command_output,
+};
 
 fn main() {
-    let mut registry = LocalBridgeRegistry::default();
-    let bridge_agent = LocalBridgeAgent::new_default();
-    registry
-        .register(bridge_agent.clone())
-        .expect("default local bridge agent should register");
+    match std::env::args().nth(1).as_deref() {
+        None => {
+            let (registered_agents, artifact) = prepare_default_local_runway()
+                .expect("default local runway should prepare successfully");
 
-    let artifact = simulated_local_bridge_artifact(&bridge_agent);
-
-    println!(
-        "ferros-hub runway: registered {} local bridge agent and staged simulated artifact at {}",
-        registry.list().len(),
-        artifact.relative_output_path
-    );
+            println!(
+                "ferros-hub runway: registered {} local bridge agent and staged simulated artifact at {}",
+                registered_agents,
+                artifact.relative_output_path
+            );
+        }
+        Some("summary") => println!(
+            "{}",
+            summary_command_output().expect("summary command should succeed")
+        ),
+        Some("prove-bridge") => println!(
+            "{}",
+            prove_bridge_command_output().expect("prove-bridge command should succeed")
+        ),
+        Some("deny-demo") => println!(
+            "{}",
+            deny_demo_command_output().expect("deny-demo command should succeed")
+        ),
+        Some("help") | Some("--help") | Some("-h") => {
+            println!("{}", cli_help_text());
+        }
+        Some(command) => {
+            eprintln!("unknown ferros-hub command: {command}\n\n{}", cli_help_text());
+            std::process::exit(2);
+        }
+    }
 }

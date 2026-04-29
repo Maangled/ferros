@@ -3,6 +3,214 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-04-28 — WAVE-2026-04-28-45
+
+- Selected item: `WAVE-2026-04-28-45`
+- Result: Complete. The final serial truth-sync now records the landed local `ferros-hub` library seam, manifest-backed bridge registration, `ferros-core` policy composition, typed local runtime summary, thin `summary | prove-bridge | deny-demo` CLI proofs, bounded local artifact/report schemas with H1 validator coverage, and the `cargo xtask hub-runway` helper across the minimum shared S7 truth surfaces. G4 remains open; no Home Assistant integration, hardware evidence, remote transport, or gate-closing claim was added.
+- Files: `STATUS.md`, `streams/S7-hub/README.md`, `streams/S7-hub/PROGRESS.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: `get_errors` is clean on all 4 touched truth surfaces. FERROS Status Auditor review passed after the live backlog dependency-lock wording was corrected, and the audited shared surfaces now match the landed WAVE-38 through WAVE-44 repo state without overclaim.
+- Next follow-up: The queued local hub runway packet is drained. Any further progress should be a new invocation: either a hardware-track / physical-device evidence packet for S7 or a new code-track packet with fresh queue entries.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-45",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: get_errors is clean on STATUS.md, streams/S7-hub/README.md, streams/S7-hub/PROGRESS.md, and streams/S7-hub/BACKLOG.md, and the status-audit pass found no remaining closeout blocker.",
+    "2_wave_tag": "Triggered: WAVE-2026-04-28-45 itself is tagged solo: true, so this final serial truth-sync wave closes the packet rather than continuing.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the four declared shared-truth surfaces; no crate, schema, harness, or gate-doc edits were added by this wave, and queue/run-log bookkeeping remains exempt operational bookkeeping.",
+    "4_track_boundary": "Not triggered: after WAVE-45 bookkeeping there is no next Ready code-track wave, so the packet is drained rather than crossing into another track.",
+    "5_run_length_cap": "Not triggered: WAVE-44 already ended the executable packet at the planned solo boundary, so WAVE-45 is a one-wave closeout segment and remains below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: validation did not escalate beyond the status-audit correction of one live backlog line."
+  },
+  "decision": "stop-clean",
+  "rationale": "WAVE-45 landed as the planned final truth-sync boundary: the four shared S7 surfaces now honestly describe the landed local-only runway packet, G4 remains open, no HA/device/remote overclaim was introduced, and closing this wave drains the last Ready code-track item."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-44
+
+- Selected item: `WAVE-2026-04-28-44`
+- Result: Complete. `xtask` now exposes `cargo xtask hub-runway` as a thin local helper over the existing `ferros-hub` library proof seam. The helper calls `ferros_hub::default_local_runtime_summary()` directly, fails unless the summary is allowed and points at `.tmp/hub/simulated-local-bridge-artifact.json`, and confirms the same local-only/non-evidentiary runway boundary already established by the direct `ferros-hub` proof command. No `ferros-hub` source files were edited in this wave. The only bounded side effect beyond the planned xtask anchors was `Cargo.lock` refreshing for the new dependency edge.
+- Files: `Cargo.lock`, `xtask/Cargo.toml`, `xtask/src/main.rs`
+- Validation: `cargo check -p xtask` passed after the import-form repair and `get_errors` is clean on `xtask/src/main.rs`, `xtask/Cargo.toml`, and `Cargo.lock`. `cargo xtask hub-runway` passed and confirmed `.tmp/hub/simulated-local-bridge-artifact.json` with allowed/local-only/non-evidentiary output. `cargo run -p ferros-hub -- prove-bridge` still passed unchanged. `cargo test -p xtask` passed with 8 tests green. FERROS Lane Validator revalidation passed with the `Cargo.lock` side effect recorded honestly.
+- Next follow-up: Run WAVE-2026-04-28-45 as the final serial truth-sync. Keep G4 open and update only the shared S7 truth surfaces needed to reflect the landed local library seam, registry/policy composition, summary model, CLI proofs, local schemas/harness validator coverage, and xtask helper without claiming hardware evidence, Home Assistant integration, remote transport, or gate closure.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-44",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo check -p xtask passed, cargo xtask hub-runway passed, cargo run -p ferros-hub -- prove-bridge passed, cargo test -p xtask passed, and get_errors is clean on the repaired xtask slice.",
+    "2_wave_tag": "Triggered: the next Ready wave, WAVE-2026-04-28-45, is tagged solo: true, so the batch must stop at the planned serial truth-sync boundary after WAVE-44 closeout.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the repaired xtask helper scope with the bounded Cargo.lock dependency-edge side effect now declared honestly, and queue/run-log bookkeeping remains exempt operational bookkeeping.",
+    "4_track_boundary": "Not triggered: the next Ready wave remains on track code.",
+    "5_run_length_cap": "Not triggered: the current batch segment remains below the 8-wave cap before the solo boundary arrives.",
+    "6_escalation_chain": "Not triggered: the initial diagnostics issue was repaired locally and the validator closed the lane without escalation beyond the same slice."
+  },
+  "decision": "stop-clean",
+  "rationale": "WAVE-44 landed as the planned helper-only xtask slice, the repaired xtask diagnostics are clean, executable validation is green, and the only additional scope movement was the now-declared Cargo.lock dependency edge. Batch execution should stop cleanly here because the next Ready wave is the planned solo truth-sync boundary."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-43
+
+- Selected item: `WAVE-2026-04-28-43`
+- Result: Complete. The local hub contract seam is now schema-backed and harness-backed without widening production hub code. Two bounded local-only schemas were added for the emitted bridge artifact and the local runway report, `harnesses/_constants.js` was regenerated through the canonical script, the H1 validator now carries three explicit positive local hub cases, and `local_bridge.rs` now locks the allowed and denied report field sets against those new local-only contracts. No frozen S2 schema, partner-facing contract, hardware, Home Assistant, or remote-transport surface moved.
+- Files: `crates/ferros-hub/tests/local_bridge.rs`, `schemas/hub-local-runway-report.schema.json`, `schemas/hub-local-bridge-artifact.schema.json`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
+- Validation: `cargo test -p ferros-hub --test local_bridge` passed with 16 tests green. `powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate-harness-constants.ps1` passed and refreshed `harnesses/_constants.js` to 12 embedded schemas. `file:///.../harnesses/ferros-contract-validator.html` passed with 54 passed, 0 failed, 0 skipped; both new schemas appeared in Group 1 and the three explicit local hub positives passed in Group 2. `get_errors` was clean on all declared anchors. FERROS Lane Validator review passed with no contract-surface drift.
+- Next follow-up: Before WAVE-2026-04-28-44 builder work starts, run the required recursive Lane Architect pass on the xtask/helper seam and treat the new local hub schemas, regenerated constants, and validator cases as frozen contract surfaces unless a replanning decision is made.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-43",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test passed, the harness constants generator passed, the file-based H1 contract validator passed with 54/54 tests green, and get_errors was clean on all anchors.",
+    "2_wave_tag": "Not triggered: WAVE-43 and next Ready WAVE-44 are both code-track waves and neither is tagged gate-close, solo, or frozen-schema-touching.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the declared test/schema/harness contract anchors, and queue/run-log bookkeeping remains exempt operational bookkeeping.",
+    "4_track_boundary": "Not triggered: the next Ready wave remains on track code.",
+    "5_run_length_cap": "Not triggered: the current batch segment remains below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: validation passed and the lane validator only required honest closeout bookkeeping."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-43 landed as the planned bounded contract slice: the local hub artifact and report now have explicit local-only schemas, the harness picked them up through the canonical generator, the validator page proves the new positive cases, and production hub code stayed untouched. The serial-after dependency for WAVE-44 is now satisfied, subject to the required recursive lane-architect review of the helper seam."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-42
+
+- Selected item: `WAVE-2026-04-28-42`
+- Result: Complete. `ferros-hub` now exposes thin local proof commands over the landed library surface: `summary` prints the typed local runtime summary, `prove-bridge` prints the allowed local artifact proof line, and `deny-demo` prints the denied local proof line without artifact. The binary remains a thin formatter/dispatcher over library helpers, the prior no-arg default runway message remains intact, and no daemon, server, remote-transport, hardware, or Home Assistant claim surface was added.
+- Files: `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/main.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo run -p ferros-hub -- summary` passed and printed the typed local summary. `cargo run -p ferros-hub -- prove-bridge` passed and printed the allowed local artifact proof line. `cargo run -p ferros-hub -- deny-demo` passed and printed the denied local proof line without artifact. `cargo test -p ferros-hub --test local_bridge` passed with 14 tests green. FERROS Lane Validator review passed on code scope after closeout bookkeeping was restored.
+- Next follow-up: Start WAVE-2026-04-28-43 under the recursive lane-architect correction that narrowed the contract seam to two local schemas plus explicit harness positive cases; keep production hub code out of scope unless the validator proves a blocker.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-42",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: all three cargo run CLI commands passed and cargo test -p ferros-hub --test local_bridge passed.",
+    "2_wave_tag": "Not triggered: WAVE-42 and next Ready WAVE-43 are both code-track waves and neither is tagged gate-close, solo, or frozen-schema-touching.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the declared CLI wrapper anchors, and queue/run-log bookkeeping remains exempt operational bookkeeping.",
+    "4_track_boundary": "Not triggered: the next Ready wave remains on track code.",
+    "5_run_length_cap": "Not triggered: the current batch segment remains below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: executable validation passed and the validator only required closeout bookkeeping rather than code escalation."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-42 landed as a narrow CLI wrapper over the already-landed library summary and proof helpers, all declared CLI commands executed successfully, and the bridge suite remained green. After restoring the required queue/run-log closeout, the serial-after dependency for WAVE-43 is satisfied and the contract wave can proceed under the newly narrowed two-schema plan."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-41
+
+- Selected item: `WAVE-2026-04-28-41`
+- Result: Complete. `ferros-hub` now exposes a typed `LocalHubRuntimeSummary` over the already-landed registry and policy seams. The summary captures bridge registration count, bridge identity, requester profile id, request details, `PolicyDecision`, bridge status, emitted artifact path, and the local-only/non-evidentiary report fields without adding CLI, schema, remote transport, hardware evidence, or Home Assistant proof changes.
+- Files: `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub --test local_bridge hub_summary_` passed with 2 focused summary tests green. `cargo check -p ferros-hub` passed. `cargo test -p ferros-hub --test local_bridge` passed with 11 tests green. FERROS Lane Validator review passed with no scope drift or missing validation.
+- Next follow-up: Start WAVE-2026-04-28-42 and keep `main.rs` as a thin proof wrapper over the new summary and existing bridge/report helpers; do not mutate the summary contract while adding CLI commands.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-41",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-hub --test local_bridge hub_summary_ passed, cargo check -p ferros-hub passed, and the full local_bridge suite passed.",
+    "2_wave_tag": "Not triggered: WAVE-41 and next Ready WAVE-42 are both code-track waves and neither is tagged gate-close, solo, or frozen-schema-touching.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the declared summary-model anchors, and queue/run-log bookkeeping remains exempt operational bookkeeping.",
+    "4_track_boundary": "Not triggered: the next Ready wave remains on track code.",
+    "5_run_length_cap": "Not triggered: the current batch segment remains below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: focused validation passed and the lane validator closed the slice without escalation."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-41 landed as a narrow typed-summary slice over the already-stable hub registry and policy seams, the focused summary tests prove both allowed and denied states, and no CLI, schema, or truth-surface widening occurred. The serial-after dependency for WAVE-42 is now satisfied."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-40
+
+- Selected item: `WAVE-2026-04-28-40`
+- Result: Complete. The local bridge authorization path now runs through `ferros-core` policy primitives over real `ferros_profile::CapabilityGrant` inputs: the hub snapshot carries a requester profile id and grants, `evaluate_local_bridge_policy` uses `CapabilityRequest` with `DenyByDefaultPolicy`, and revoked grants are ignored through the shared `CapabilityGrantView` semantics. The outward local bridge reporting stays local-only and non-evidentiary, and no upstream S4 or S2 code was edited.
+- Files: `crates/ferros-hub/Cargo.toml`, `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub --test local_bridge bridge_policy_` passed with 4 focused policy tests green. `cargo check -p ferros-hub` passed. `cargo test -p ferros-hub --test local_bridge` passed with 9 tests green. FERROS Lane Validator review passed with no blocking scope drift or validation gap.
+- Next follow-up: Start WAVE-2026-04-28-41 and build a typed local runtime summary on top of the already-landed registry and policy seams without reopening policy semantics, dependency edges, or any remote/evidentiary claim boundary.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-40",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-hub --test local_bridge bridge_policy_ passed, cargo check -p ferros-hub passed, and the full local_bridge suite passed.",
+    "2_wave_tag": "Not triggered: WAVE-40 and next Ready WAVE-41 are both code-track waves and neither is tagged gate-close, solo, or frozen-schema-touching.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the declared hub policy-composition anchors, and queue/run-log bookkeeping remains exempt operational bookkeeping.",
+    "4_track_boundary": "Not triggered: the next Ready wave remains on track code.",
+    "5_run_length_cap": "Not triggered: the current batch segment remains below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: focused validation passed and the lane validator closed the slice without escalation."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-40 landed as the planned S4 composition slice: the bridge now evaluates capability requests through ferros-core policy primitives using real ferros-profile grants, the new focused policy tests prove the intended branches, and the outer local bridge behavior remained green. The serial-after dependency for WAVE-41 is now satisfied."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-39
+
+- Selected item: `WAVE-2026-04-28-39`
+- Result: Complete. The local bridge registration seam now runs through `ferros-agents` primitives: `LocalBridgeRegistry` is an adapter over `InMemoryAgentRegistry`, the bridge registers as a real `AgentManifest`, and the existing hub-local scope/evidence row remains local-only through a narrow sidecar. A local `ProfileId` is consumed only to give the manifest a real required-capability row for `bridge.observe`; no S3 upstream code, lifecycle, RPC, remote transport, hardware evidence, or Home Assistant proof changed.
+- Files: `crates/ferros-hub/Cargo.toml`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub --test local_bridge bridge_agent_registers_locally` passed. `cargo test -p ferros-hub --test local_bridge` passed with 5 tests green. FERROS Lane Validator review passed with no anchor drift or missing validation.
+- Next follow-up: Start WAVE-2026-04-28-40 and replace the local capability snapshot logic with `ferros-core` policy primitives while preserving the new manifest-backed registration seam and the local-only, non-evidentiary boundary.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-39",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-hub --test local_bridge bridge_agent_registers_locally passed and cargo test -p ferros-hub --test local_bridge passed.",
+    "2_wave_tag": "Not triggered: WAVE-39 and next Ready WAVE-40 are both P1 code-track waves, and neither is tagged gate-close, solo, or frozen-schema-touching.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the declared ferros-hub manifest/registry anchors, and queue/run-log bookkeeping remains exempt operational bookkeeping.",
+    "4_track_boundary": "Not triggered: the next Ready wave remains on track code.",
+    "5_run_length_cap": "Not triggered: the current batch segment remains below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: focused validation passed and the lane validator closed the slice without escalation."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-39 landed as a narrow S3 composition wave: the bridge registry now relies on real ferros-agents manifest/registry primitives, duplicate-registration behavior stayed stable, and the local bridge test suite remained green. The manifest now carries a real required-capability row without changing any upstream S3 code, so the serial-after dependency for WAVE-40 is satisfied."
+}
+```
+
+---
+
+## 2026-04-28 — WAVE-2026-04-28-38
+
+- Selected item: `WAVE-2026-04-28-38`
+- Result: Complete. `ferros-hub` is now a library-backed local runway crate: the package exposes its bridge surface through `src/lib.rs`, the binary is reduced to a thin library consumer, and the integration test now exercises the crate API instead of path-including source. No bridge behavior, remote transport, hardware evidence, Home Assistant proof, or G4 claim moved.
+- Files: `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/main.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub --test local_bridge` passed with 5 tests green. `cargo check -p ferros-hub` passed. FERROS Lane Validator review passed with no anchor drift or missing validation.
+- Next follow-up: Start WAVE-2026-04-28-39 and swap the crate-local bridge registration seam onto `ferros-agents` registry primitives without widening into S3 lifecycle, RPC, remote transport, or Home Assistant proof changes.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-28-38",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-hub --test local_bridge passed and cargo check -p ferros-hub passed.",
+    "2_wave_tag": "Not triggered: WAVE-38 and next Ready WAVE-39 are both P1 code-track waves, and neither is tagged gate-close, solo, or frozen-schema-touching.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed within the declared ferros-hub library promotion anchors, and queue/run-log bookkeeping remains exempt operational bookkeeping.",
+    "4_track_boundary": "Not triggered: the next Ready wave remains on track code.",
+    "5_run_length_cap": "Not triggered: this fresh batch segment is below the 8-wave cap.",
+    "6_escalation_chain": "Not triggered: focused validation passed and the lane validator closed the slice without escalation."
+  },
+  "decision": "continue",
+  "rationale": "WAVE-38 landed as a narrow library promotion: the reusable hub surface now lives behind a crate library boundary, the binary stayed thin, the tests now consume the crate API, and no local-only claim boundary moved. The declared validations passed and the validator found no scope drift, so the serial-after dependency for WAVE-39 is now satisfied."
+}
+```
+
+---
+
 ## 2026-04-28 — WAVE-2026-04-28-37
 
 - Selected item: `WAVE-2026-04-28-37`

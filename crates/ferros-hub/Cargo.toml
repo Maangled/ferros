@@ -5,6 +5,11 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+[dependencies]
+ferros-agents = { path = "../ferros-agents" }
+ferros-core = { path = "../ferros-core" }
+ferros-profile = { path = "../ferros-profile" }
+
 [[bin]]
 name = "ferros-hub"
 path = "src/main.rs"

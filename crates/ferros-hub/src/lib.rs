@@ -1,0 +1,134 @@
+mod ha_bridge;
+
+use ferros_core::{PolicyDecision, PolicyDenialReason};
+
+pub use ha_bridge::{
+    default_local_runtime_summary,
+    execute_local_bridge_request,
+    execute_local_bridge_request_with_output_path,
+    evaluate_local_bridge_policy,
+    local_bridge_profile_id,
+    simulated_local_bridge_artifact,
+    LocalBridgeAgent,
+    LocalBridgeExecution,
+    LocalBridgeExecutionError,
+    LocalBridgeRegistrationError,
+    LocalBridgeRegistry,
+    LocalBridgeReport,
+    LocalBridgeRequest,
+    LocalBridgeStatus,
+    LocalCapabilitySnapshot,
+    LocalHubRuntimeSummary,
+    SimulatedBridgeArtifact,
+    summarize_local_bridge_runway,
+    LOCAL_HUB_ARTIFACT_ROOT,
+    SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+};
+
+pub fn cli_help_text() -> &'static str {
+    concat!(
+        "ferros-hub local proof commands:\n",
+        "  summary      Print the typed local runtime summary\n",
+        "  prove-bridge Run the allowed local bridge proof and emit the local artifact\n",
+        "  deny-demo    Run the denied local bridge proof without emitting an artifact"
+    )
+}
+
+pub fn summary_command_output() -> Result<String, LocalBridgeRegistrationError> {
+    Ok(format_local_runtime_summary(&default_local_runtime_summary()?))
+}
+
+pub fn prove_bridge_command_output() -> Result<String, LocalBridgeRegistrationError> {
+    let summary = default_local_runtime_summary()?;
+
+    Ok(format!(
+        "ferros-hub bridge-proof: {} for {} with artifact {} [{}; {}]",
+        policy_decision_label(summary.policy_decision),
+        summary.stand_in_name,
+        summary
+            .artifact_relative_output_path
+            .as_deref()
+            .unwrap_or("none"),
+        summary.scope,
+        summary.evidence
+    ))
+}
+
+pub fn deny_demo_command_output() -> Result<String, LocalBridgeRegistrationError> {
+    let bridge_agent = LocalBridgeAgent::new_default();
+    let request = LocalBridgeRequest::new(
+        "simulated-bridge-entity",
+        "bridge.observe",
+        "report-state",
+    );
+    let summary = summarize_local_bridge_runway(
+        &bridge_agent,
+        &LocalCapabilitySnapshot::new(local_bridge_profile_id(), Vec::new()),
+        &request,
+    )?;
+
+    Ok(format!(
+        "ferros-hub deny-demo: {} for {} without artifact [{}; {}]",
+        policy_decision_label(summary.policy_decision),
+        summary.stand_in_name,
+        summary.scope,
+        summary.evidence
+    ))
+}
+
+fn format_local_runtime_summary(summary: &LocalHubRuntimeSummary) -> String {
+    format!(
+        concat!(
+            "ferros-hub summary\n",
+            "registeredBridgeAgents: {}\n",
+            "bridgeAgent: {}@{}\n",
+            "requesterProfileId: {}\n",
+            "standInName: {}\n",
+            "requestedCapability: {}\n",
+            "requestedAction: {}\n",
+            "policyDecision: {}\n",
+            "bridgeStatus: {}\n",
+            "artifact: {}\n",
+            "scope: {}\n",
+            "evidence: {}\n",
+            "summary: {}"
+        ),
+        summary.registered_bridge_agents,
+        summary.bridge_agent_name,
+        summary.bridge_agent_version,
+        summary.requester_profile_id,
+        summary.stand_in_name,
+        summary.requested_capability,
+        summary.requested_action,
+        policy_decision_label(summary.policy_decision),
+        summary.status.as_str(),
+        summary
+            .artifact_relative_output_path
+            .as_deref()
+            .unwrap_or("none"),
+        summary.scope,
+        summary.evidence,
+        summary.summary
+    )
+}
+
+fn policy_decision_label(decision: PolicyDecision) -> &'static str {
+    match decision {
+        PolicyDecision::Allowed => "allowed",
+        PolicyDecision::Denied(PolicyDenialReason::NoGrantsPresented) => "denied:no-grants",
+        PolicyDecision::Denied(PolicyDenialReason::ProfileNotGranted) => "denied:profile",
+        PolicyDecision::Denied(PolicyDenialReason::CapabilityNotGranted) => {
+            "denied:capability"
+        }
+    }
+}
+
+pub fn prepare_default_local_runway(
+) -> Result<(usize, SimulatedBridgeArtifact), LocalBridgeRegistrationError> {
+    let mut registry = LocalBridgeRegistry::default();
+    let bridge_agent = LocalBridgeAgent::new_default();
+    registry.register(bridge_agent.clone())?;
+
+    let artifact = simulated_local_bridge_artifact(&bridge_agent);
+    Ok((registry.list().len(), artifact))
+}

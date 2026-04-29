@@ -164,8 +164,8 @@ This seam brief stays docs-only. It names the exact current S3 and S4 surfaces S
 Advance G4 in four proof steps. Only the fourth step supports launch-facing evidence language.
 
 1. **Local binary exists** — a real `ferros-hub` binary crate exists in the workspace and passes focused local validation on the Pack B `x86_64`-first lane without claiming hardware evidence.
-2. **Local bridge seam exists** — one local-only bridge agent and one simulated local bridge artifact exist behind the current FERROS-only seams without claiming Home Assistant proof.
-3. **Local proof loop exists** — targeted local tests or harnesses prove allow, deny, and error/reporting behavior for that bridge seam without implying D1 or G4 closure.
+2. **Local bridge seam exists** — one local-only bridge agent now registers through `ferros-agents` manifest/registry primitives, composes allow/deny through `ferros-core` policy over real `CapabilityGrant` input, and emits one simulated local bridge artifact without claiming Home Assistant proof.
+3. **Local proof loop exists** — targeted local tests, a typed `LocalHubRuntimeSummary`, thin `summary | prove-bridge | deny-demo` CLI proofs, bounded local artifact/report schemas in the H1 validator, and `cargo xtask hub-runway` prove allow, deny, error/reporting, and contract coverage for that local seam without implying D1 or G4 closure.
 4. **Device evidence exists** — physical-device sessions capture profile init, bridge presence, deny visibility, and power-cycle recovery on real hardware. Only this step can support D1 or G4 evidence wording.
 
 ---
@@ -194,9 +194,9 @@ Advance G4 in four proof steps. Only the fourth step supports launch-facing evid
 
 | Path | Role | Status |
 |------|------|--------|
-| `crates/ferros-hub/` | Hub binary crate | 🟨 Local-only scaffold and binary landed |
+| `crates/ferros-hub/` | Hub binary crate | 🟨 Library-backed local-only runway, CLI proofs, and runtime summary/helper surfaces landed |
 | `crates/ferros-hub/src/pairing.rs` | Pairing implementation surface | ⬜ Deferred until implementation |
-| `crates/ferros-hub/src/ha_bridge.rs` | Home Assistant bridge agent | 🟨 Local-only simulated bridge seam and proof loop landed; real HA integration remains deferred |
+| `crates/ferros-hub/src/ha_bridge.rs` | Home Assistant bridge agent | 🟨 Local-only simulated bridge seam with manifest-backed registration, policy-backed proof, and local artifact/report contracts landed; real HA integration remains deferred |
 | `docs/hub/reference-hardware.md` | Hardware runway and evidence prep | 🟨 Active |
 | `docs/hub/install.md` | Install script and instructions | ⬜ Future |
 

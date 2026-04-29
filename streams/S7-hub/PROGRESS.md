@@ -4,6 +4,17 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-28 — Local hub library, policy, CLI, schema, and xtask runway landed
+
+- WAVE-2026-04-28-38 promoted `ferros-hub` from a binary-first scaffold to a library-backed local runway crate and kept the binary thin.
+- WAVE-2026-04-28-39 moved local bridge registration onto `ferros-agents` manifest/registry primitives while preserving the local-only bridge row.
+- WAVE-2026-04-28-40 moved local allow/deny evaluation onto `ferros-core` policy primitives over real `ferros_profile::CapabilityGrant` input, including revoked-grant semantics.
+- WAVE-2026-04-28-41 added a typed `LocalHubRuntimeSummary` over the landed registry and policy seam.
+- WAVE-2026-04-28-42 added thin `ferros-hub summary | prove-bridge | deny-demo` proof commands over the landed library surface.
+- WAVE-2026-04-28-43 admitted bounded local artifact/report schemas into `harnesses/_constants.js` and the H1 contract validator without widening production hub code.
+- WAVE-2026-04-28-44 added `cargo xtask hub-runway` as a helper over the same local hub proof seam and confirmed the existing `.tmp/hub/simulated-local-bridge-artifact.json` path.
+- Kept the entire packet local-only and non-gate-closing: no D1 or G4 movement, no Home Assistant dashboard proof, no hardware evidence, and no remote-transport claim.
+
 ## 2026-04-28 — Local-only ferros-hub scaffold, bridge seam, and proof loop landed
 
 - WAVE-2026-04-28-34 added the first local-only `ferros-hub` workspace member and binary scaffold and codified subagent review as the default safety posture for this size-L execution.

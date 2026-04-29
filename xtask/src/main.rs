@@ -6,6 +6,7 @@ use ferros_data::{
     LocalArtifactRole, LocalEnvelopeKind, LocalPushArtifact, LocalPushAuditEnvelope,
     LocalPushObservation, LocalPushScope, LocalPushSurface, BURST_LOCAL_PUSH_ENVELOPE_PATH,
 };
+use ferros_hub::{LocalBridgeStatus, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
@@ -30,6 +31,16 @@ fn main() -> ExitCode {
                 }
             }
         }
+        CommandKind::HubRunway => match run_hub_runway() {
+            Ok(output) => {
+                print!("{output}");
+                ExitCode::SUCCESS
+            }
+            Err(message) => {
+                eprintln!("xtask hub-runway failed: {message}");
+                ExitCode::FAILURE
+            }
+        },
         CommandKind::Help => {
             print!("{HELP_TEXT}");
             ExitCode::SUCCESS
@@ -41,6 +52,7 @@ fn main() -> ExitCode {
 enum CommandKind {
     Ci,
     Burst,
+    HubRunway,
     Help,
 }
 
@@ -55,6 +67,7 @@ where
     {
         Some(command) if command == "ci" => CommandKind::Ci,
         Some(command) if command == "burst" => CommandKind::Burst,
+        Some(command) if command == "hub-runway" => CommandKind::HubRunway,
         _ => CommandKind::Help,
     }
 }
@@ -131,6 +144,50 @@ fn run_burst() -> Result<String, String> {
     ))
 }
 
+fn run_hub_runway() -> Result<String, String> {
+    let summary = ferros_hub::default_local_runtime_summary()
+        .map_err(|error| format!("could not build local hub runtime summary: {error}"))?;
+
+    if summary.status != LocalBridgeStatus::Allowed {
+        return Err(format!(
+            "expected allowed local hub status, got {}",
+            summary.status.as_str()
+        ));
+    }
+
+    if summary.artifact_relative_output_path.as_deref()
+        != Some(SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH)
+    {
+        return Err(format!(
+            "expected artifact path {}, got {:?}",
+            SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+            summary.artifact_relative_output_path
+        ));
+    }
+
+    if summary.scope != "local-only" {
+        return Err(format!("expected local-only scope, got {}", summary.scope));
+    }
+
+    if summary.evidence != "non-evidentiary" {
+        return Err(format!(
+            "expected non-evidentiary evidence, got {}",
+            summary.evidence
+        ));
+    }
+
+    Ok(format!(
+        "{HUB_RUNWAY_TEXT}\nLocal hub proof output:\n    - {}\n    - status: {}\n    - scope: {}\n    - evidence: {}\n",
+        summary
+            .artifact_relative_output_path
+            .as_deref()
+            .unwrap_or("none"),
+        summary.status.as_str(),
+        summary.scope,
+        summary.evidence
+    ))
+}
+
 fn run_step(program: &str, args: &[&str]) -> Result<(), String> {
     let status = Command::new(program)
         .args(args)
@@ -153,6 +210,16 @@ FERROS xtask
 Usage:
     cargo xtask ci      Run fmt, clippy, build, and test for the current workspace
     cargo xtask burst   Print the current queue-clear opener surfaces and focused validation commands
+    cargo xtask hub-runway   Run the local ferros-hub proof helper and confirm the emitted artifact
+";
+
+const HUB_RUNWAY_TEXT: &str = "\
+FERROS local hub runway helper
+
+Focused validation:
+    - cargo check -p xtask
+    - cargo xtask hub-runway
+    - cargo run -p ferros-hub -- prove-bridge
 ";
 
 const BURST_TEXT: &str = "\
@@ -196,6 +263,12 @@ mod tests {
     }
 
     #[test]
+    fn parses_hub_runway_command() {
+        let args = vec![OsString::from("hub-runway")];
+        assert_eq!(parse_command(args), CommandKind::HubRunway);
+    }
+
+    #[test]
     fn defaults_to_help_without_arguments() {
         let args: Vec<OsString> = Vec::new();
         assert_eq!(parse_command(args), CommandKind::Help);
@@ -210,6 +283,11 @@ mod tests {
     #[test]
     fn help_text_mentions_burst_command() {
         assert!(super::HELP_TEXT.contains("cargo xtask burst"));
+    }
+
+    #[test]
+    fn help_text_mentions_hub_runway_command() {
+        assert!(super::HELP_TEXT.contains("cargo xtask hub-runway"));
     }
 
     #[test]

@@ -1,15 +1,47 @@
-#[path = "../src/ha_bridge.rs"]
-mod ha_bridge;
-
 use std::fs;
 use std::path::PathBuf;
 
-use ha_bridge::{
+use ferros_core::{PolicyDecision, PolicyDenialReason};
+use ferros_profile::{CapabilityGrant, ProfileId};
+use ferros_hub::{
+    default_local_runtime_summary, deny_demo_command_output, evaluate_local_bridge_policy,
     execute_local_bridge_request, execute_local_bridge_request_with_output_path,
-    simulated_local_bridge_artifact, LocalBridgeAgent, LocalBridgeExecutionError,
-    LocalBridgeRequest, LocalBridgeRegistrationError, LocalBridgeRegistry,
-    LocalBridgeStatus, LocalCapabilitySnapshot, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+    local_bridge_profile_id, prove_bridge_command_output, simulated_local_bridge_artifact,
+    summarize_local_bridge_runway, summary_command_output, LocalBridgeAgent,
+    LocalBridgeExecutionError, LocalBridgeRequest, LocalBridgeRegistrationError,
+    LocalBridgeRegistry, LocalBridgeStatus, LocalCapabilitySnapshot,
+    SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
 };
+
+fn local_snapshot(capabilities: &[&str]) -> LocalCapabilitySnapshot {
+    let requester_profile_id = local_bridge_profile_id();
+    let grants = capabilities
+        .iter()
+        .map(|capability| CapabilityGrant::new(requester_profile_id.clone(), *capability))
+        .collect();
+
+    LocalCapabilitySnapshot::new(requester_profile_id, grants)
+}
+
+fn foreign_snapshot(capabilities: &[&str]) -> LocalCapabilitySnapshot {
+    let requester_profile_id = local_bridge_profile_id();
+    let foreign_profile_id =
+        ProfileId::new("hub-foreign-bridge").expect("foreign bridge profile id should be valid");
+    let grants = capabilities
+        .iter()
+        .map(|capability| CapabilityGrant::new(foreign_profile_id.clone(), *capability))
+        .collect();
+
+    LocalCapabilitySnapshot::new(requester_profile_id, grants)
+}
+
+fn revoked_snapshot(capability: &str) -> LocalCapabilitySnapshot {
+    let requester_profile_id = local_bridge_profile_id();
+    let mut grant = CapabilityGrant::new(requester_profile_id.clone(), capability);
+    assert!(grant.revoke("2026-04-28T00:00:00Z", "local test revoke"));
+
+    LocalCapabilitySnapshot::new(requester_profile_id, vec![grant])
+}
 
 fn repo_root() -> PathBuf {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -40,6 +72,14 @@ fn bridge_agent_registers_locally() {
     assert_eq!(registered[0].scope, "local-only");
     assert_eq!(registered[0].evidence, "non-evidentiary");
 
+    let manifest = registry
+        .manifest_for("ha-local-bridge")
+        .expect("registered local bridge should expose a FERROS agent manifest");
+    assert_eq!(manifest.name.as_str(), "ha-local-bridge");
+    assert_eq!(manifest.version, "0.1.0");
+    assert_eq!(manifest.required_capabilities.len(), 1);
+    assert_eq!(manifest.required_capabilities[0].capability, "bridge.observe");
+
     let error = registry
         .register(bridge_agent)
         .expect_err("duplicate register should fail");
@@ -57,7 +97,7 @@ fn bridge_allow_path_emits_local_artifact() {
     }
 
     let bridge_agent = LocalBridgeAgent::new_default();
-    let snapshot = LocalCapabilitySnapshot::new(vec!["bridge.observe".to_string()]);
+    let snapshot = local_snapshot(&["bridge.observe"]);
     let request = LocalBridgeRequest::new(
         "simulated-bridge-entity",
         "bridge.observe",
@@ -98,7 +138,7 @@ fn bridge_allow_path_emits_local_artifact() {
 #[test]
 fn bridge_denied_capability_reports_without_artifact() {
     let bridge_agent = LocalBridgeAgent::new_default();
-    let snapshot = LocalCapabilitySnapshot::new(Vec::new());
+    let snapshot = LocalCapabilitySnapshot::new(local_bridge_profile_id(), Vec::new());
     let request = LocalBridgeRequest::new(
         "simulated-bridge-entity",
         "bridge.observe",
@@ -117,7 +157,7 @@ fn bridge_denied_capability_reports_without_artifact() {
 #[test]
 fn bridge_error_path_reports_invalid_output_path() {
     let bridge_agent = LocalBridgeAgent::new_default();
-    let snapshot = LocalCapabilitySnapshot::new(vec!["bridge.observe".to_string()]);
+    let snapshot = local_snapshot(&["bridge.observe"]);
     let request = LocalBridgeRequest::new(
         "simulated-bridge-entity",
         "bridge.observe",
@@ -171,4 +211,193 @@ fn simulated_bridge_artifact_stays_local_only() {
     assert!(!lowered.contains("hardware"));
     assert!(!lowered.contains("launch"));
     assert!(!lowered.contains("proof"));
+}
+
+#[test]
+fn bridge_policy_allows_active_matching_grant() {
+    let request = LocalBridgeRequest::new(
+        "simulated-bridge-entity",
+        "bridge.observe",
+        "report-state",
+    );
+
+    assert_eq!(
+        evaluate_local_bridge_policy(&local_snapshot(&["bridge.observe"]), &request),
+        PolicyDecision::Allowed
+    );
+}
+
+#[test]
+fn bridge_policy_denies_without_active_grants() {
+    let request = LocalBridgeRequest::new(
+        "simulated-bridge-entity",
+        "bridge.observe",
+        "report-state",
+    );
+
+    assert_eq!(
+        evaluate_local_bridge_policy(
+            &LocalCapabilitySnapshot::new(local_bridge_profile_id(), Vec::new()),
+            &request,
+        ),
+        PolicyDecision::Denied(PolicyDenialReason::NoGrantsPresented)
+    );
+}
+
+#[test]
+fn bridge_policy_denies_when_grants_are_for_other_profiles() {
+    let request = LocalBridgeRequest::new(
+        "simulated-bridge-entity",
+        "bridge.observe",
+        "report-state",
+    );
+
+    assert_eq!(
+        evaluate_local_bridge_policy(&foreign_snapshot(&["bridge.observe"]), &request),
+        PolicyDecision::Denied(PolicyDenialReason::ProfileNotGranted)
+    );
+}
+
+#[test]
+fn bridge_policy_ignores_revoked_grants() {
+    let request = LocalBridgeRequest::new(
+        "simulated-bridge-entity",
+        "bridge.observe",
+        "report-state",
+    );
+
+    assert_eq!(
+        evaluate_local_bridge_policy(&revoked_snapshot("bridge.observe"), &request),
+        PolicyDecision::Denied(PolicyDenialReason::NoGrantsPresented)
+    );
+}
+
+#[test]
+fn hub_summary_records_default_allowed_runway() {
+    let summary = default_local_runtime_summary()
+        .expect("default local runtime summary should build successfully");
+
+    assert_eq!(summary.registered_bridge_agents, 1);
+    assert_eq!(summary.bridge_agent_name, "ha-local-bridge");
+    assert_eq!(summary.bridge_agent_version, "0.1.0");
+    assert_eq!(summary.requester_profile_id, local_bridge_profile_id().as_str());
+    assert_eq!(summary.stand_in_name, "simulated-bridge-entity");
+    assert_eq!(summary.requested_capability, "bridge.observe");
+    assert_eq!(summary.requested_action, "report-state");
+    assert_eq!(summary.policy_decision, PolicyDecision::Allowed);
+    assert_eq!(summary.status, LocalBridgeStatus::Allowed);
+    assert_eq!(
+        summary.artifact_relative_output_path,
+        Some(SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH.to_string())
+    );
+    assert_eq!(summary.scope, "local-only");
+    assert_eq!(summary.evidence, "non-evidentiary");
+    assert!(summary.summary.contains("local-only bridge allowed"));
+}
+
+#[test]
+fn hub_summary_records_denied_policy_state() {
+    let bridge_agent = LocalBridgeAgent::new_default();
+    let request = LocalBridgeRequest::new(
+        "simulated-bridge-entity",
+        "bridge.observe",
+        "report-state",
+    );
+    let summary = summarize_local_bridge_runway(
+        &bridge_agent,
+        &LocalCapabilitySnapshot::new(local_bridge_profile_id(), Vec::new()),
+        &request,
+    )
+    .expect("denied local runtime summary should still build successfully");
+
+    assert_eq!(summary.registered_bridge_agents, 1);
+    assert_eq!(
+        summary.policy_decision,
+        PolicyDecision::Denied(PolicyDenialReason::NoGrantsPresented)
+    );
+    assert_eq!(summary.status, LocalBridgeStatus::Denied);
+    assert_eq!(summary.artifact_relative_output_path, None);
+    assert_eq!(summary.scope, "local-only");
+    assert_eq!(summary.evidence, "non-evidentiary");
+    assert!(summary.summary.contains("not granted"));
+}
+
+#[test]
+fn hub_cli_summary_output_stays_local_only() {
+    let output = summary_command_output().expect("summary output should build successfully");
+
+    assert!(output.contains("ferros-hub summary"));
+    assert!(output.contains("policyDecision: allowed"));
+    assert!(output.contains("scope: local-only"));
+    assert!(output.contains("evidence: non-evidentiary"));
+}
+
+#[test]
+fn hub_cli_prove_bridge_output_mentions_artifact() {
+    let output =
+        prove_bridge_command_output().expect("prove-bridge output should build successfully");
+
+    assert!(output.contains("ferros-hub bridge-proof: allowed"));
+    assert!(output.contains(SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH));
+    assert!(output.contains("local-only"));
+    assert!(output.contains("non-evidentiary"));
+}
+
+#[test]
+fn hub_cli_deny_demo_output_reports_denied_without_artifact() {
+    let output = deny_demo_command_output().expect("deny-demo output should build successfully");
+
+    assert!(output.contains("ferros-hub deny-demo: denied:no-grants"));
+    assert!(output.contains("without artifact"));
+    assert!(output.contains("local-only"));
+    assert!(output.contains("non-evidentiary"));
+}
+
+#[test]
+fn hub_contract_allowed_report_fields_stay_schema_ready() {
+    let bridge_agent = LocalBridgeAgent::new_default();
+    let request = LocalBridgeRequest::new(
+        "simulated-bridge-entity",
+        "bridge.observe",
+        "report-state",
+    );
+    let execution = execute_local_bridge_request(&bridge_agent, &local_snapshot(&["bridge.observe"]), &request);
+
+    assert_eq!(execution.report.bridge_agent_name, "ha-local-bridge");
+    assert_eq!(execution.report.stand_in_name, "simulated-bridge-entity");
+    assert_eq!(execution.report.requested_capability, "bridge.observe");
+    assert_eq!(execution.report.requested_action, "report-state");
+    assert_eq!(execution.report.status, LocalBridgeStatus::Allowed);
+    assert_eq!(
+        execution.report.artifact_relative_output_path,
+        Some(SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH.to_string())
+    );
+    assert_eq!(execution.report.scope, "local-only");
+    assert_eq!(execution.report.evidence, "non-evidentiary");
+    assert!(execution.report.summary.contains("local-only bridge allowed"));
+}
+
+#[test]
+fn hub_contract_denied_report_fields_stay_schema_ready() {
+    let bridge_agent = LocalBridgeAgent::new_default();
+    let request = LocalBridgeRequest::new(
+        "simulated-bridge-entity",
+        "bridge.observe",
+        "report-state",
+    );
+    let execution = execute_local_bridge_request(
+        &bridge_agent,
+        &LocalCapabilitySnapshot::new(local_bridge_profile_id(), Vec::new()),
+        &request,
+    );
+
+    assert_eq!(execution.report.bridge_agent_name, "ha-local-bridge");
+    assert_eq!(execution.report.stand_in_name, "simulated-bridge-entity");
+    assert_eq!(execution.report.requested_capability, "bridge.observe");
+    assert_eq!(execution.report.requested_action, "report-state");
+    assert_eq!(execution.report.status, LocalBridgeStatus::Denied);
+    assert_eq!(execution.report.artifact_relative_output_path, None);
+    assert_eq!(execution.report.scope, "local-only");
+    assert_eq!(execution.report.evidence, "non-evidentiary");
+    assert!(execution.report.summary.contains("not granted"));
 }

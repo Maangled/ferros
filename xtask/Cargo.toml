@@ -6,4 +6,5 @@ publish = false
 
 [dependencies]
 ferros-data = { path = "../crates/ferros-data" }
+ferros-hub = { path = "../crates/ferros-hub" }
 time = { version = "0.3", features = ["formatting"] }

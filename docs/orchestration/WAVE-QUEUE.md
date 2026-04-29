@@ -29,6 +29,134 @@ None.
 
 ## Done
 
+### WAVE-2026-04-28-38
+
+- Title: Promote ferros-hub from binary-backed scaffold to library-backed local runway crate
+- Status: done
+- Priority: P1
+- Gate: G4 local executable runway
+- Owning streams: S7 primary
+- Goal: Add `crates/ferros-hub/src/lib.rs`, move reusable hub and bridge types into library-backed posture, and keep the binary thin without widening into hardware, Home Assistant, or remote transport claims.
+- Anchor files: `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/main.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo check -p ferros-hub`; `cargo test -p ferros-hub --test local_bridge`
+- Constraints: Library promotion only. Keep local-only and non-evidentiary wording. No remote transport, no hardware evidence, no Home Assistant proof, and no G4 closure wording.
+- Last update: 2026-04-28
+- size: L
+- track: code
+
+### WAVE-2026-04-28-39
+
+- Title: Replace crate-local bridge registration with ferros-agents registry primitives
+- Status: done
+- Priority: P1
+- Gate: G4 local bridge composition
+- Owning streams: S7 primary, S3 support
+- Goal: Consume `AgentManifest`, `AgentName`, `AgentRegistry`, and `InMemoryAgentRegistry` from `ferros-agents` so the local bridge is represented as a real FERROS local manifest instead of only a crate-local registration struct.
+- Anchor files: `Cargo.lock`, `crates/ferros-hub/Cargo.toml`, `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub --test local_bridge bridge_agent_registers_locally`; `cargo test -p ferros-hub --test local_bridge`
+- Constraints: Consume existing S3 primitives only. Do not edit `crates/ferros-agents/**`. Keep one bridge agent and one simulated stand-in entity. No lifecycle, RPC, remote transport, or Home Assistant proof widening.
+- Last update: 2026-04-28
+- size: L
+- serial-after: WAVE-2026-04-28-38
+- track: code
+
+### WAVE-2026-04-28-40
+
+- Title: Replace local hub capability checks with ferros-core policy primitives
+- Status: done
+- Priority: P1
+- Gate: G4 local policy composition
+- Owning streams: S7 primary, S4 support, S2 awareness
+- Goal: Consume `Capability`, `CapabilityRequest`, `DenyByDefaultPolicy`, `PolicyDecision`, and `PolicyDenialReason` from `ferros-core` and drive local hub authorization from real FERROS policy primitives using `ferros_profile::CapabilityGrant` inputs.
+- Anchor files: `Cargo.lock`, `crates/ferros-hub/Cargo.toml`, `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub --test local_bridge bridge_policy_`; `cargo check -p ferros-hub`
+- Constraints: Consume existing S4 and S2 primitives only. Do not edit `crates/ferros-core/**` or `crates/ferros-profile/**`. Keep proof local-only and non-evidentiary. No frozen schema touch, no remote transport, and no privilege widening.
+- Last update: 2026-04-28
+- size: L
+- serial-after: WAVE-2026-04-28-39
+- track: code
+
+### WAVE-2026-04-28-41
+
+- Title: Add typed local hub runtime summary model
+- Status: done
+- Priority: P1
+- Gate: G4 local runtime reporting
+- Owning streams: S7 primary, S4 awareness
+- Goal: Add a deterministic local runtime summary that composes bridge registration state, policy decision, emitted artifact path, local-only scope, non-evidentiary evidence status, and deny/error summary without widening into remote transport or hardware claims.
+- Anchor files: `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo check -p ferros-hub`; `cargo test -p ferros-hub --test local_bridge hub_summary_`
+- Constraints: Local report only. Keep the model deterministic, local-only, and non-evidentiary. No JSON-RPC, no node shell route, no Home Assistant dashboard proof, and no gate-close wording.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-40
+- track: code
+
+### WAVE-2026-04-28-42
+
+- Title: Add thin ferros-hub CLI proof commands for local runway summary and bridge proof
+- Status: done
+- Priority: P1
+- Gate: G4 local CLI proof surface
+- Owning streams: S7 primary
+- Goal: Extend the `ferros-hub` binary with a narrow proof CLI for local summary, bridge artifact emission, deny-path demonstration, and runtime summary print while keeping the binary a thin wrapper over reusable local hub logic.
+- Anchor files: `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/main.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo run -p ferros-hub -- summary`; `cargo run -p ferros-hub -- prove-bridge`; `cargo run -p ferros-hub -- deny-demo`; `cargo test -p ferros-hub --test local_bridge`
+- Constraints: Thin proof CLI only. No daemon or server mode. Keep outputs local-only and non-evidentiary under `.tmp/hub/`. No Home Assistant proof, no hardware evidence, no remote transport, and no stable remote-facing contract widening.
+- Last update: 2026-04-28
+- size: S
+- serial-after: WAVE-2026-04-28-41
+- track: code
+
+### WAVE-2026-04-28-43
+
+- Title: Add schema-backed local hub artifact and report validation
+- Status: done
+- Priority: P1
+- Gate: G4 local report contract validation
+- Owning streams: S7 primary, S1 support
+- Goal: Add a bounded local schema and harness-backed validator coverage for the hub runtime report and emitted local artifact so the local hub contract is executable and drift-resistant without widening into a partner-facing or hardware-facing surface.
+- Anchor files: `crates/ferros-hub/tests/local_bridge.rs`, `schemas/hub-local-runway-report.schema.json`, `schemas/hub-local-bridge-artifact.schema.json`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
+- Validation: `cargo test -p ferros-hub --test local_bridge`; `powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate-harness-constants.ps1`; direct file-based run of `harnesses/ferros-contract-validator.html` stays green with explicit local hub report and artifact positive cases
+- Constraints: Local-only and non-evidentiary contract only. Do not touch frozen S2 schemas. Keep production hub code unchanged unless a validator-proven blocker forces replanning. Use the validator's supported subset only. No Home Assistant proof, no hardware evidence, no remote transport, and no partner-facing schema claim.
+- Last update: 2026-04-28
+- size: L
+- serial-after: WAVE-2026-04-28-42
+- track: code
+
+### WAVE-2026-04-28-44
+
+- Title: Add xtask hub-runway helper for local proof execution
+- Status: done
+- Priority: P1
+- Gate: G4 local tooling proof helper
+- Owning streams: S7 primary, S1 support
+- Goal: Add a focused xtask helper such as `cargo xtask hub-runway` that calls the existing hub library proof seam directly and confirms the local `.tmp/hub` artifact without duplicating core proof logic.
+- Anchor files: `Cargo.lock`, `xtask/Cargo.toml`, `xtask/src/main.rs`
+- Validation: `cargo check -p xtask`; `cargo xtask hub-runway`; `cargo run -p ferros-hub -- prove-bridge`
+- Constraints: Helper only. Keep outputs local-only and non-evidentiary under `.tmp/hub/`. The recursive Lane Architect pass is complete; treat `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/src/main.rs`, and `crates/ferros-hub/src/ha_bridge.rs` as stop surfaces in this wave. No queue mutation, no remote transport, and no gate-close wording.
+- Last update: 2026-04-28
+- size: L
+- serial-after: WAVE-2026-04-28-43
+- track: code
+
+### WAVE-2026-04-28-45
+
+- Title: Final serial truth-sync after local hub runway expansion packet
+- Status: done
+- Priority: P2
+- Gate: rolling truth-sync after S7 owner waves
+- Owning streams: S8 primary, S7 awareness
+- Goal: Reconcile the minimum truthful shared surfaces after the local hub library, S3 registry composition, S4 policy composition, local report/artifact, CLI proof, schema validation, and xtask helper slices land, while stating exactly what still remains open.
+- Anchor files: `STATUS.md`, `streams/S7-hub/README.md`, `streams/S7-hub/PROGRESS.md`, `streams/S7-hub/BACKLOG.md`
+- Validation: `get_errors` clean on touched truth surfaces; diff review confirms no G4 closure, no hardware evidence claim, no Home Assistant dashboard proof claim, no remote transport claim, and no privilege-boundary widening
+- Constraints: Final serial wave only. Shared truth only; no crate edits. Do not close G4, do not claim physical-device evidence, do not claim real Home Assistant integration, and keep queue/log updates append-only.
+- Last update: 2026-04-28
+- size: L
+- serial-after: WAVE-2026-04-28-44
+- solo: true
+- track: code
+
 ### WAVE-2026-04-28-37
 
 - Title: Serial truth-sync after non-gate-closing G4 executable runway slices

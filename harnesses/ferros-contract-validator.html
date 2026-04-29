@@ -425,6 +425,62 @@ runTest(g2, 'inline local-push envelope validates against SCHEMA_LOCAL_PUSH_AUDI
   return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
 });
 
+runTest(g2, 'inline local hub runway report (allowed) validates against SCHEMA_HUB_LOCAL_RUNWAY_REPORT', function() {
+  var data = {
+    bridgeAgentName: 'ha-local-bridge',
+    standInName: 'simulated-bridge-entity',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    status: 'allowed',
+    artifactRelativeOutputPath: '.tmp/hub/simulated-local-bridge-artifact.json',
+    summary: 'local-only bridge allowed report-state for simulated-bridge-entity',
+    scope: 'local-only',
+    evidence: 'non-evidentiary'
+  };
+  var r = validate(data, SCHEMA_HUB_LOCAL_RUNWAY_REPORT);
+  if (r.valid) {
+    return { pass: true, detail: 'allowed local hub report matches the bounded local-only runway report contract' };
+  }
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+runTest(g2, 'inline local hub runway report (denied) validates against SCHEMA_HUB_LOCAL_RUNWAY_REPORT', function() {
+  var data = {
+    bridgeAgentName: 'ha-local-bridge',
+    standInName: 'simulated-bridge-entity',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    status: 'denied',
+    artifactRelativeOutputPath: null,
+    summary: 'local-only bridge denied because capability bridge.observe is not granted by any active local grant',
+    scope: 'local-only',
+    evidence: 'non-evidentiary'
+  };
+  var r = validate(data, SCHEMA_HUB_LOCAL_RUNWAY_REPORT);
+  if (r.valid) {
+    return { pass: true, detail: 'denied local hub report matches the bounded local-only runway report contract' };
+  }
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+runTest(g2, 'inline local hub bridge artifact validates against SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT', function() {
+  var data = {
+    bridgeAgentName: 'ha-local-bridge',
+    standInName: 'simulated-bridge-entity',
+    relativeOutputPath: '.tmp/hub/simulated-local-bridge-artifact.json',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    status: 'allowed',
+    scope: 'local-only',
+    evidence: 'non-evidentiary'
+  };
+  var r = validate(data, SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT);
+  if (r.valid) {
+    return { pass: true, detail: 'allowed local bridge artifact matches the bounded local-only artifact contract' };
+  }
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
 runTest(g2, 'SCHEMA_CAPABILITY_GRANT_V0 publishes the stripped-payload signing contract', function() {
   var signing = SCHEMA_CAPABILITY_GRANT_V0['x-ferros-signature'];
   if (!signing || typeof signing !== 'object' || Array.isArray(signing)) {

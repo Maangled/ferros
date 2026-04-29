@@ -388,6 +388,115 @@ var SCHEMA_DECK = {
   }
 };
 
+// Source: schemas/hub-local-bridge-artifact.schema.json
+var SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT = {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/hub-local-bridge-artifact.schema.json",
+  "title": "FERROS Local Hub Bridge Artifact",
+  "description": "Local-only, non-evidentiary bridge artifact emitted by ferros-hub during the bounded executable runway proof. This schema is not a partner-facing or hardware-facing contract.",
+  "type": "object",
+  "required": [
+    "bridgeAgentName",
+    "standInName",
+    "relativeOutputPath",
+    "requestedCapability",
+    "requestedAction",
+    "status",
+    "scope",
+    "evidence"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "bridgeAgentName": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "standInName": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "relativeOutputPath": {
+      "type": "string",
+      "pattern": "^\\.tmp/hub/.+\\.json$"
+    },
+    "requestedCapability": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestedAction": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["allowed", "denied", "error"]
+    },
+    "scope": {
+      "const": "local-only"
+    },
+    "evidence": {
+      "const": "non-evidentiary"
+    }
+  }
+};
+
+// Source: schemas/hub-local-runway-report.schema.json
+var SCHEMA_HUB_LOCAL_RUNWAY_REPORT = {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/hub-local-runway-report.schema.json",
+  "title": "FERROS Local Hub Runway Report",
+  "description": "Bounded local-only report contract for ferros-hub bridge request outcomes during the executable runway proof. This report shape is non-evidentiary and does not imply hardware, Home Assistant, or remote transport integration.",
+  "type": "object",
+  "required": [
+    "bridgeAgentName",
+    "standInName",
+    "requestedCapability",
+    "requestedAction",
+    "status",
+    "artifactRelativeOutputPath",
+    "summary",
+    "scope",
+    "evidence"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "bridgeAgentName": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "standInName": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "requestedCapability": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestedAction": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["allowed", "denied", "error"]
+    },
+    "artifactRelativeOutputPath": {
+      "type": ["string", "null"],
+      "pattern": "^\\.tmp/hub/.+\\.json$"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "const": "local-only"
+    },
+    "evidence": {
+      "const": "non-evidentiary"
+    }
+  }
+};
+
 // Source: schemas/identity.schema.json
 var SCHEMA_IDENTITY = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3160,6 +3269,8 @@ var FERROS_SCHEMAS = [
   {name: "capability-grant.v0", file: "capability-grant.v0.json", schema: SCHEMA_CAPABILITY_GRANT_V0},
   {name: "card", file: "card.schema.json", schema: SCHEMA_CARD},
   {name: "deck", file: "deck.schema.json", schema: SCHEMA_DECK},
+  {name: "hub-local-bridge-artifact", file: "hub-local-bridge-artifact.schema.json", schema: SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT},
+  {name: "hub-local-runway-report", file: "hub-local-runway-report.schema.json", schema: SCHEMA_HUB_LOCAL_RUNWAY_REPORT},
   {name: "identity", file: "identity.schema.json", schema: SCHEMA_IDENTITY},
   {name: "local-push-audit-envelope", file: "local-push-audit-envelope.schema.json", schema: SCHEMA_LOCAL_PUSH_AUDIT_ENVELOPE},
   {name: "profile", file: "profile.schema.json", schema: SCHEMA_PROFILE},
@@ -3204,5 +3315,5 @@ var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-template-to-events-missing-source-type", file: "invalid-template-to-events-missing-source-type.json", fixture: FIXTURE_INVALID_TEMPLATE_TO_EVENTS_MISSING_SOURCE_TYPE}
 ];
 
-// Total files embedded: 42
-// Schemas: 10 | Golden fixtures: 19 | Negative fixtures: 13
+// Total files embedded: 44
+// Schemas: 12 | Golden fixtures: 19 | Negative fixtures: 13
