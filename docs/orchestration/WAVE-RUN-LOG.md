@@ -3,6 +3,206 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-04-30 — WAVE-2026-04-30-78
+
+- Selected item: `WAVE-2026-04-30-78`
+- Result: Complete. WAVE-2026-04-30-78 closed as the final serial truth-sync only: `STATUS.md`, `streams/S5-ux/PROGRESS.md`, `streams/S6-harvest/PROGRESS.md`, and `streams/S7-hub/PROGRESS.md` now agree with the already-correct contract, hardware-queue, and orchestration surfaces that WAVE-2026-04-30-71 through WAVE-2026-04-30-77 closed only the local-only G4 code-runway packet and queued the next Pack B then Pack C hardware-track work. The repo now records a clear local code-runway closeout verdict without claiming physical-device evidence, real Home Assistant proof, consent acceptance, canonical mutation, remote transport, independent-install evidence, D1 closure, or G4 closure.
+- Files: `STATUS.md`, `streams/S5-ux/PROGRESS.md`, `streams/S6-harvest/PROGRESS.md`, `streams/S7-hub/PROGRESS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` is clean on `STATUS.md`, `streams/S5-ux/PROGRESS.md`, `streams/S6-harvest/PROGRESS.md`, and `streams/S7-hub/PROGRESS.md`. FERROS Lane Validator Agent confirmed W78 stayed inside its declared shared-truth slice and that leaving `docs/contracts/CONTRACTS-OVERVIEW.md`, `streams/S4-runtime/CONTRACTS.md`, and `docs/orchestration/HARDWARE-QUEUE.md` unchanged was correct because they already matched the current local-only runway and queued Pack B then Pack C handoff state. Gate audit clean: shared and owner surfaces agree that W71-W77 closed only the local-only G4 code-runway packet and queued future Pack B then Pack C hardware-track work; no current surface claims physical-device evidence, real Home Assistant proof, remote transport, independent-install evidence, consent acceptance, canonical mutation, D1 closure, or G4 movement or closure. FERROS Orchestrator Agent authorized W78 closeout on honest current-state evidence and confirmed the WAVE-2026-04-30-71 through WAVE-2026-04-30-78 packet is complete once this append-only bookkeeping lands.
+- Next follow-up: None for this packet. If needed later, queue a separate owner-doc reconciliation wave for out-of-scope contract drift in stream-local contract docs rather than reopening the closed local code-runway packet.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-78",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: diagnostics are clean on the touched shared-truth docs, the lane validator passed the slice, and the final gate audit found no overclaim or missing shared truth inside W78 scope.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-78 remained a code-track shared-truth and bookkeeping wave with no new implementation or cross-track execution.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the declared truth surfaces with normal append-only queue and run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: no hardware execution, Home Assistant execution, schema change, gate movement, or product behavior change was required to close the packet.",
+    "5_run_length_cap": "Satisfied: this is the final requested wave in the WAVE-2026-04-30-71 through WAVE-2026-04-30-78 packet, and the packet now ends cleanly.",
+    "6_escalation_chain": "Not triggered: truth drift was limited to shared status and owner progress summaries, contract and hardware-queue surfaces were correctly left unchanged, and orchestration review cleared final closeout."
+  },
+  "decision": "stop-clean",
+  "rationale": "The local-only G4 code-runway closeout packet is now fully recorded across status, owner progress, queue, and run-log surfaces, while the unchanged open gaps and next queued hardware-track work remain stated honestly."
+}
+```
+
+---
+## 2026-04-30 — WAVE-2026-04-30-77
+
+- Selected item: `WAVE-2026-04-30-77`
+- Result: Complete. WAVE-2026-04-30-77 closed as queue-only hardware-track backfill: `docs/orchestration/HARDWARE-QUEUE.md` now stages the next post-local-runway checkpoints as a named Pack B session-prep wave, a first physical Pack B profile-baseline wave, a Pack B DUT-side handoff-mirror wave, and a later separate-host Pack C Home Assistant proof wave, while keeping all four items explicitly future-facing and below any current physical-device, Home Assistant, D1-close, or G4-movement claim.
+- Files: `docs/orchestration/HARDWARE-QUEUE.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` is clean on `docs/orchestration/HARDWARE-QUEUE.md`. FERROS Lane Validator Agent passed W77 as a single-file queue slice that preserved section order, field order, and the stability of `HARDWARE-2026-04-27-01` through `HARDWARE-2026-04-27-03`. FERROS Gate Auditor Agent confirmed the new Pack B and Pack C checkpoints accurately backfill the next hardware-track work without any queue-time claim of physical-device evidence, Home Assistant proof, D1 closure, or G4 movement. FERROS Orchestrator Agent authorized W77 closeout on honest current-state evidence and confirmed `WAVE-2026-04-30-78` as the sole next in-progress wave.
+- Next follow-up: Continue `WAVE-2026-04-30-78` as the final serial truth-sync wave so the shared status, contract, and stream surfaces reflect the completed local code-runway handoff chain and the newly queued hardware-track work.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-77",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the hardware queue file is error-free and both validator and gate-audit passes cleared the new queue entries.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-77 stayed a code-track queue-bookkeeping wave and only staged future hardware-track work inside the hardware queue.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside docs/orchestration/HARDWARE-QUEUE.md with normal code-track queue and run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: no hardware execution, Home Assistant execution, or gate-movement claim was made; the new hardware items remain Ready-only future work.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-30-71 through WAVE-2026-04-30-78 packet remains active with only the final truth-sync wave left.",
+    "6_escalation_chain": "Not triggered: the new Pack B and Pack C checkpoints stayed honestly separated, existing hardware queue items remained stable, and orchestration review advanced the packet into W78."
+  },
+  "decision": "continue",
+  "rationale": "The next hardware-track checkpoints are now queued without overclaim, the code-track queue and run log agree on W77 closeout, and only the final shared-truth reconciliation wave remains."
+}
+```
+
+---
+## 2026-04-30 — WAVE-2026-04-30-76
+
+- Selected item: `WAVE-2026-04-30-76`
+- Result: Complete. WAVE-2026-04-30-76 closed as future-facing DUT handoff packaging only: the S7 hardware runway, Pack B worksheet, and D1 bring-up checklist now translate the already-landed local code-runway proof chain into future DUT-side checks, expected local artifacts, runway shell and `/runway-summary.json` field targets, deny and restart observation targets, and evidence placeholders without claiming any physical-device run, Home Assistant proof, consent acceptance, D1 closure, or G4 movement.
+- Files: `docs/hub/reference-hardware.md`, `docs/hub/pack-b-bring-up-worksheet.md`, `docs/research/S7-d1-bring-up-checklist.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` is clean on `docs/hub/reference-hardware.md`, `docs/hub/pack-b-bring-up-worksheet.md`, and `docs/research/S7-d1-bring-up-checklist.md`. FERROS Lane Validator Agent cleared W76 as anchor-conforming and validation-conforming after the D1 note was repaired to reflect all five D1 evidence items and the current local `ferros-hub` bridge-rehearsal truth. FERROS Gate Auditor Agent found no remaining overclaim in the three W76 anchors and confirmed the delivered slice is accurately described as future-facing DUT handoff packaging only. FERROS Orchestrator Agent authorized W76 closeout on honest current-state evidence and confirmed `WAVE-2026-04-30-77` as the sole next in-progress wave while `WAVE-2026-04-30-78` remains the final ready/solo truth-sync wave.
+- Next follow-up: Continue `WAVE-2026-04-30-77` as the sole active wave so the hardware queue is backfilled from the now-packaged local code-runway handoff before the final shared-truth reconciliation.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-76",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: diagnostics are clean on all three W76 handoff docs, and the validator, gate auditor, and orchestrator all cleared the repaired doc set.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-76 remained a code-track handoff-packaging lane and the next active work WAVE-2026-04-30-77 stays on track code.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the three declared S7 handoff docs with normal queue and run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: no hardware execution, Home Assistant execution, or shared-truth reconciliation was required to package this future-facing handoff material.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-30-71 through WAVE-2026-04-30-78 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: the D1 note truth drift was repaired, the anchor docs remained explicitly future-facing and non-evidentiary, and orchestration review advanced the packet to the hardware-queue backfill lane."
+  },
+  "decision": "continue",
+  "rationale": "The local code-runway handoff is now packaged into future DUT-side checks without changing any gate truth, the queue and log agree on W76 closeout, and W77 is the sole remaining pre-truth-sync bookkeeping lane before the final reconciliation wave."
+}
+```
+
+---
+## 2026-04-30 — WAVE-2026-04-30-75
+
+- Selected item: `WAVE-2026-04-30-75`
+- Result: Complete. WAVE-2026-04-30-75 closed as same-origin localhost runway-route hardening only: the existing shell now states on the runway route that the read-only `/runway-summary.json` surface remains display-only, non-evidentiary, and free of remote-transport or G4-closure claims, and the served H9 harness now asserts that explicit ceiling without widening the shell into new capabilities, new routes, new grant or revoke controls, or new gate movement. The closeout wording was narrowed to the actual landed slice so the queue no longer overstates shell-wide absence of lifecycle or local profile-adapter surfaces that already exist elsewhere on the localhost shell.
+- Files: `site/agent-center-shell.html`, `harnesses/localhost-shell-acceptance-harness.html`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness` passed with `1 passed, 0 failed`. `get_errors` is clean on `site/agent-center-shell.html` and `harnesses/localhost-shell-acceptance-harness.html`. A live same-origin H9 run against a freshly rebuilt `ferros-node shell` at `http://127.0.0.1:4320/harnesses/localhost-shell-acceptance.html` passed with `71 passed, 0 failed, 2 skipped, 73 total`, including the new runway-route no-remote-transport and no-G4-closure assertion. The temporary `.tmp/h9-*1777520*` artifacts created by this session's live validation were removed afterward. FERROS Lane Validator Agent cleared W75 for honest closeout once the queue wording was narrowed to the actual runway-surface and route-copy slice. FERROS Gate Auditor Agent found no overclaim and confirmed W75 is accurately described as same-origin localhost route-copy hardening only with no new capability or gate movement. FERROS Orchestrator Agent confirmed W74 and W75 as the prerequisite closeouts for W76 once these validations were recorded in the append-only run log.
+- Next follow-up: Continue `WAVE-2026-04-30-76` as the sole active wave so the local code-runway proof chain is translated into future DUT-side checks and evidence placeholders without claiming that any hardware or Home Assistant execution has already occurred.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-75",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness passed, the live same-origin H9 run passed with 71 passed / 0 failed / 2 skipped, and diagnostics are clean on the touched shell and harness files.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-75 remained a code-track same-origin acceptance hardening lane and the next active work WAVE-2026-04-30-76 stays on track code.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside site/agent-center-shell.html and harnesses/localhost-shell-acceptance-harness.html with normal queue and run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: the lane exercised the existing localhost shell only and did not require any hardware execution, remote transport, or cross-track work.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-30-71 through WAVE-2026-04-30-78 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: queue wording was repaired to match the actual route-copy hardening slice, the validator and gate auditor cleared the result, and orchestration review advanced the packet to W76 once append-only bookkeeping was recorded."
+  },
+  "decision": "continue",
+  "rationale": "The same-origin runway-route copy ceiling is now explicit and executable, the queue and log agree on W75 closeout, and W76 is the sole remaining active hardware-handoff packaging lane before the final queue and truth-sync waves."
+}
+```
+
+---
+## 2026-04-30 — WAVE-2026-04-30-74
+
+- Selected item: `WAVE-2026-04-30-74`
+- Result: Complete. WAVE-2026-04-30-74 closed as local H1 schema-harness hardening only: it filled the remaining contract-validator gaps for the local runway report and bridge artifact, then repaired proposal-schema parity so the published `onramp-proposal` schema now mirrors the stricter local banned-word ceiling already enforced by the shared W73 runtime guardrails for published proposal fields. The generated H1 constants were refreshed from that schema source, and the H1 validator now rejects proposal partner or Home Assistant path wording plus gate, G4, or closure proposal wording alongside the previously landed no-remote, no-canonical, and no-evidence-overclaim cases.
+- Files: `schemas/onramp-proposal.schema.json`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate-harness-constants.ps1` succeeded and regenerated `harnesses/_constants.js`. A direct file-based H1 run of `harnesses/ferros-contract-validator.html` passed with `84 passed, 0 failed, 0 skipped`. `get_errors` is clean on `schemas/onramp-proposal.schema.json`, `harnesses/_constants.js`, and `harnesses/ferros-contract-validator.html`. FERROS Lane Validator Agent cleared W74 once the queue anchor set and validation wording were updated to reflect the schema-source parity fix and the concrete H1 checks. FERROS Gate Auditor Agent found no material overclaim and recommended closing W74 as proposal-schema parity plus local schema-harness hardening only, with no new runtime capability, transport, canonical mutation, or gate movement.
+- Next follow-up: Complete `WAVE-2026-04-30-75` closeout bookkeeping and then continue `WAVE-2026-04-30-76` as the sole next active wave.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-74",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the generator rerun succeeded, the direct file-based H1 validator passed with 84 passed / 0 failed / 0 skipped, and diagnostics are clean on the touched schema, generated constants, and harness files.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-74 remained a code-track H1 contract-validator lane and the next required closeout WAVE-2026-04-30-75 also remained on track code.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed within the proposal schema source, regenerated H1 constants, and the contract-validator harness, with normal queue and run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: no shell, hardware, remote transport, or shared-truth execution was required to close this schema-harness hardening lane.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-30-71 through WAVE-2026-04-30-78 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: the proposal-schema parity gap was repaired at the schema source, the validator cleared the updated anchors, and gate review confirmed the result stayed inside the local-only H1 hardening ceiling."
+  },
+  "decision": "continue",
+  "rationale": "H1 now reflects the published proposal guardrail ceiling actually enforced by the local runway, W74 is truthfully recorded as complete, and the packet can continue through the W75 closeout and into W76 without widening the claim boundary."
+}
+```
+
+---
+## 2026-04-30 — WAVE-2026-04-30-73
+
+- Selected item: `WAVE-2026-04-30-73`
+- Result: Complete. WAVE-2026-04-30-73 landed a shared local hardening layer for the onramp runway without changing the published contract shape: `ferros-data` now owns reusable local-runway text, scope or evidence, and `.tmp/hub` path guardrails; `ferros-hub` consumes that shared base for snapshot text validation and hub test helpers; `ferros-hub` re-exports the same helpers for existing downstream consumers; and `ferros-node` now drops invalid proposal or decision children instead of projecting malformed local hub data onto the existing read-only `/runway-summary.json` seam.
+- Files: `crates/ferros-data/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/tests/local_bridge.rs`, `crates/ferros-node/src/lib.rs`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo test -p ferros-data onramp_` passed with `14 passed, 0 failed`. `cargo test -p ferros-hub onramp_` passed with `10 passed, 0 failed`. `cargo test -p ferros-hub hub_` passed with `17 passed, 0 failed`. `cargo test -p ferros-node onramp_` passed with `6 passed, 0 failed`, including the new invalid-child omission checks. `cargo check -p ferros-hub` passed. `get_errors` is clean on `crates/ferros-data/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/tests/local_bridge.rs`, and `crates/ferros-node/src/lib.rs`. FERROS Lane Validator Agent cleared W73 as anchor-conforming and validation-conforming once the queue validation line was repaired to include the already-green ferros-node check. FERROS Gate Auditor Agent found no overclaim and required only that closeout wording describe W73 as local hardening rather than full helper unification across every hub-owned text surface. FERROS Contract Auditor Agent found no contract-doc follow-up requirement and cleared the change as local hardening on top of the existing contract split. FERROS Orchestrator Agent authorized W73 closeout after the queue-validation wording repair and approved `WAVE-2026-04-30-74` plus `WAVE-2026-04-30-75` as the next active parallel-safe set.
+- Next follow-up: Continue `WAVE-2026-04-30-74` and `WAVE-2026-04-30-75` in parallel so H1 coverage and H9 same-origin acceptance absorb the hardened local guardrails before the future hardware-handoff docs and final truth-sync waves.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-73",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the focused ferros-data, ferros-hub onramp, ferros-hub hub, and ferros-node onramp tests all passed, cargo check for ferros-hub passed, and diagnostics are clean on the touched files.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-73 remained a code-track hardening lane and the next active work WAVE-2026-04-30-74 plus WAVE-2026-04-30-75 stays on track code.",
+    "3_diff_overrun": "Not triggered: the implementation stayed inside the declared ferros-data, ferros-hub, ferros-hub test, and ferros-node anchors with normal queue and run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: no shell, H1, hardware, or shared-truth execution was required to close this cross-crate hardening lane.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-30-71 through WAVE-2026-04-30-78 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: the validator, gate auditor, contract auditor, and orchestrator all cleared the landed slice once the queue validation wording was repaired to match the already-green node test."
+  },
+  "decision": "continue",
+  "rationale": "The shared local hardening layer is now landed without changing the published contract shape, the queue reflects the next authorized W74/W75 pair, and the packet can continue without widening the current claim ceiling."
+}
+```
+
+---
+## 2026-04-30 — WAVE-2026-04-30-72
+
+- Selected item: `WAVE-2026-04-30-72`
+- Result: Complete. WAVE-2026-04-30-72 hardened `cargo xtask hub-runway` into a deterministic local artifact-hygiene helper: it now snapshots the four known `.tmp/hub` rehearsal artifacts before validation, restores them by default after the run, offers an explicit `--keep-artifacts` escape hatch for manual inspection, fails if unexpected residue remains under `.tmp/hub`, and documents that exact four-file inventory and cleanup behavior in `tools/README.md` without widening the helper into a second contract surface or a hardware-facing claim.
+- Files: `xtask/src/main.rs`, `tools/README.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo xtask hub-runway` passed in default mode and printed the deterministic cleanup inventory ending in `hubUnexpectedArtifacts: none`. `cargo test -p xtask` passed with `14 passed, 0 failed`. `cargo check -p xtask` passed. `get_errors` is clean on `xtask/src/main.rs` and `tools/README.md`. FERROS Lane Validator Agent cleared W72 as anchor-conforming and validation-conforming after the unexpected-artifact guard was added. FERROS Gate Auditor Agent found no overclaim and confirmed the helper remains local-only, non-evidentiary, non-canonical, non-transport, non-hardware, and non-gate-closing. FERROS Orchestrator Agent authorized W72 closeout, confirmed `WAVE-2026-04-30-73` as the correct next active wave, and reiterated that `WAVE-2026-04-30-76` still waits for both `WAVE-2026-04-30-74` and `WAVE-2026-04-30-75` while `WAVE-2026-04-30-78` remains the final solo truth-sync wave.
+- Next follow-up: Continue `WAVE-2026-04-30-73` as the next active wave so the local-only `.tmp/hub` path and no-overclaim guardrails are consolidated across the owner model, hub seam, and read-only downstream projection without reopening xtask or queue surfaces.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-72",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: cargo xtask hub-runway, cargo test -p xtask, cargo check -p xtask, and anchor diagnostics all passed after the unexpected-artifact guard was added.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-72 remained a code-track helper-hygiene lane and the next active work WAVE-2026-04-30-73 stays on track code.",
+    "3_diff_overrun": "Not triggered: the implementation stayed inside xtask/src/main.rs and tools/README.md with normal queue and run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: no hardware execution or cross-track run was required to close this helper lane.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-30-71 through WAVE-2026-04-30-78 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: the validator and gate auditor both cleared the repaired helper, and orchestration review authorized the move to W73 with the prior W76 ordering correction still in force."
+  },
+  "decision": "continue",
+  "rationale": "The local artifact-hygiene helper is now deterministic and explicitly bounded, the queue reflects W73 as the next active wave, and the packet can continue without widening the current claim ceiling."
+}
+```
+
+---
+## 2026-04-30 — WAVE-2026-04-30-71
+
+- Selected item: `WAVE-2026-04-30-71`
+- Result: Complete. WAVE-2026-04-30-71 added `docs/hub/local-code-runway-inventory.md` as the single local handoff inventory for the already-landed code runway: it now records the local bridge proof, restart snapshot, proposal artifact, decision rehearsal receipt, hub-owned CLI output, additive read-only `/runway-summary.json` projection, localhost shell observation, H1 validator coverage, H9 same-origin acceptance coverage, the `cargo xtask hub-runway` helper, a minimum rerun order before any DUT session, and an explicit still-not-true ledger that keeps G4 open.
+- Files: `docs/hub/local-code-runway-inventory.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` is clean on `docs/hub/local-code-runway-inventory.md` and `docs/orchestration/WAVE-QUEUE.md`. FERROS Lane Validator Agent cleared W71 as anchor-conforming and scope-conforming on the delivered inventory surface, while noting that the earlier W71-W78 queue seeding should be treated as setup rather than W71 deliverable scope. FERROS Gate Auditor Agent found no overclaim and confirmed the page remains local-only, non-evidentiary, non-canonical, non-transport, non-hardware, and non-gate-closing. FERROS Orchestrator Agent authorized W71 closeout, confirmed `WAVE-2026-04-30-72` as the correct next active wave, kept `WAVE-2026-04-30-78` as the final solo truth-sync wave, and required `WAVE-2026-04-30-76` to wait for both `WAVE-2026-04-30-74` and `WAVE-2026-04-30-75`.
+- Next follow-up: Continue `WAVE-2026-04-30-72` as the next active wave so `cargo xtask hub-runway` can harden deterministic `.tmp/hub/` artifact hygiene and cleanup without widening the local seam surface.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-71",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the new inventory doc and queue surface are error-free, and the validator, gate-audit, and orchestration reviews all cleared W71 for closeout.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-71 remained a code-track inventory lane and the next active work WAVE-2026-04-30-72 stays on track code.",
+    "3_diff_overrun": "Not triggered: the substantive lane stayed inside docs/hub/local-code-runway-inventory.md with normal queue bookkeeping and one queue-ordering repair.",
+    "4_track_boundary": "Not triggered: queue seeding happened as setup before builder work, and no hardware execution or cross-track run was required to close W71.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-30-71 through WAVE-2026-04-30-78 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: the audit pair returned no claim or scope blocker, and orchestration review authorized the move to W72 with only the recorded W76 ordering correction."
+  },
+  "decision": "continue",
+  "rationale": "The local inventory handoff is now landed and bounded, the queue reflects W72 as the next active implementation wave, and the packet can continue without widening the current claim ceiling."
+}
+```
+
+---
 ## 2026-04-30 — WAVE-2026-04-29-70
 
 - Selected item: `WAVE-2026-04-29-70`

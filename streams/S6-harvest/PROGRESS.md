@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-30 - Shared local-runway guardrail layer and H1 proposal parity landed
+
+- Extended `crates/ferros-data/src/lib.rs` so `ferros-data` now owns reusable local-runway wording, scope, evidence, and `.tmp/hub` path guardrails for downstream local hub and node surfaces.
+- The current hub and runtime consumers now reuse that layer for local summary artifacts and for dropping invalid runway children from the existing read-only summary seam instead of projecting malformed local data.
+- WAVE-2026-04-30-74 brought the published `schemas/onramp-proposal.schema.json` plus regenerated H1 constants and validator coverage back into parity with that same local-only ceiling instead of leaving the stricter banned-word enforcement only in runtime helpers.
+- Kept ADR-020 posture intact: no new partner-facing schema, no canonical mutation, no real accept or reject transport, no remote transport, and no gate advancement is claimed from this guardrail layer.
+
 ## 2026-04-30 — Local onramp decision receipt boundary published for the hub rehearsal packet
 
 - Extended `crates/ferros-data/src/lib.rs` so `ferros-data` now owns the typed `LocalOnrampDecisionReceipt` model, bounded validation, and local JSON artifact writer for one recorded local operator decision linked to proposed material.

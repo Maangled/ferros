@@ -17,13 +17,146 @@ Optional fields (additive, layered on top of the existing field order without br
 
 ## Ready
 
+None.
+
 ## In Progress
+
+None.
 
 ## Blocked
 
 None.
 
 ## Done
+
+### WAVE-2026-04-30-78
+
+- Title: Serial local code-runway closeout truth-sync
+- Status: done
+- Priority: P1
+- Gate: G4 local code-runway closeout truth-sync
+- Owning streams: S8 primary, S7 awareness, S5 awareness, S6 awareness, S4 awareness
+- Goal: Reconcile only the minimum shared truth surfaces after W71-W77 land so the repo records a clear local code-runway closeout verdict, hardware-track handoff readiness, and the unchanged open gaps around G4, physical-device evidence, real Home Assistant proof, remote transport, independent install evidence, and canonical mutation.
+- Anchor files: `STATUS.md`, `docs/contracts/CONTRACTS-OVERVIEW.md`, `streams/S4-runtime/CONTRACTS.md`, `streams/S5-ux/PROGRESS.md`, `streams/S6-harvest/PROGRESS.md`, `streams/S7-hub/PROGRESS.md`, `docs/orchestration/HARDWARE-QUEUE.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` clean on touched truth surfaces; final Gate Auditor pass across `STATUS.md`, `docs/contracts/CONTRACTS-OVERVIEW.md`, S4 or S5 or S6 or S7 owner docs, `docs/orchestration/HARDWARE-QUEUE.md`, `docs/orchestration/WAVE-QUEUE.md`, and `docs/orchestration/WAVE-RUN-LOG.md`
+- Constraints: Final serial wave only. Shared truth and bookkeeping only. No new product behavior, no schema changes, no hardware execution, no gate movement, and no overclaim. Keep queue or run-log updates append-only and preserve existing W71-W77 wording except for status changes.
+- Last update: 2026-04-30
+- size: L
+- serial-after: WAVE-2026-04-30-77
+- solo: true
+- track: code
+
+### WAVE-2026-04-30-77
+
+- Title: Backfill hardware queue from local code-runway handoff
+- Status: done
+- Priority: P1
+- Gate: G4 hardware-track handoff preparation
+- Owning streams: S8 primary, S7 awareness
+- Goal: Backfill `docs/orchestration/HARDWARE-QUEUE.md` with the next hardware-track checkpoint items that should follow local code-runway closeout, covering named DUT session prep, first physical `ferros-hub` run, target-side profile init and show, target-side bridge artifact generation, target-context shell observation if applicable, and later HA lab proof as a separate future step, without executing any hardware work.
+- Anchor files: `docs/orchestration/HARDWARE-QUEUE.md`
+- Validation: `get_errors` clean on `docs/orchestration/HARDWARE-QUEUE.md`; claim rationalizer confirms this is queueing only, not hardware evidence
+- Constraints: Queueing only. Do not execute hardware work. Do not claim any physical-device evidence, Home Assistant proof, or G4 movement. Preserve hardware queue field order and section order exactly.
+- Last update: 2026-04-30
+- size: S
+- serial-after: WAVE-2026-04-30-76
+- track: code
+
+### WAVE-2026-04-30-76
+
+- Title: Package DUT handoff checklist without evidence claim
+- Status: done
+- Priority: P1
+- Gate: G4 local code-runway hardware handoff packaging
+- Owning streams: S7 primary, S8 awareness
+- Goal: Create or update a deterministic DUT-side handoff checklist that translates the local runway proof chain into future physical checks, expected local artifacts, expected shell fields, expected deny behavior, expected restart observation, and future evidence fields without claiming that any physical or Home Assistant execution has happened yet.
+- Anchor files: `docs/hub/reference-hardware.md`, `docs/hub/pack-b-bring-up-worksheet.md`, `docs/research/S7-d1-bring-up-checklist.md`
+- Validation: `get_errors` clean on touched handoff docs; claim rationalizer confirms no physical-device evidence, no Home Assistant dashboard proof, and no G4 closure claim
+- Constraints: Packaging and prep only. Start only after both `WAVE-2026-04-30-74` and `WAVE-2026-04-30-75` are complete. Do not claim findings, hardware evidence, HA dashboard proof, or independent install proof. No queue, status, or shared-truth edits in this wave. Keep all language explicitly future-facing and non-evidentiary.
+- Last update: 2026-04-30
+- size: S
+- serial-after: WAVE-2026-04-30-75
+- track: code
+
+### WAVE-2026-04-30-75
+
+- Title: Consolidated H9 localhost acceptance closeout
+- Status: done
+- Priority: P1
+- Gate: G4 local code-runway same-origin acceptance closeout
+- Owning streams: S5 primary, S4 awareness, S7 awareness
+- Goal: Tighten the same-origin localhost acceptance path so one closeout journey proves hub restart observation, onramp proposal observation, decision rehearsal observation, no in-surface write or grant controls on the runway surface, and explicit absence of canonical, remote, Home Assistant, hardware, or G4 claim language on the existing read-only `/runway-summary.json` route while preserving the existing grant-gated selected-agent lifecycle and local profile-adapter shell boundaries.
+- Anchor files: `site/agent-center-shell.html`, `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `get_errors` clean on harness and shell files; `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness`; direct same-origin harness run at `http://127.0.0.1:4320/harnesses/localhost-shell-acceptance.html` passes with `71 passed, 0 failed, 2 skipped`
+- Constraints: Keep the runway surface read-only and same-origin. Do not add new privileged browser controls; preserve the existing grant-gated selected-agent lifecycle and local profile-adapter shell boundaries. No real grant or revoke controls, no canonical mutation, no remote transport, and no Home Assistant or physical-device proof claim. If the lane expands beyond shell plus H9 anchors, replan instead of widening in place.
+- Last update: 2026-04-30
+- size: S
+- parallel-safe-with: [WAVE-2026-04-30-74]
+- serial-after: WAVE-2026-04-30-73
+- track: code
+
+### WAVE-2026-04-30-74
+
+- Title: Consolidated H1 contract-validator closeout
+- Status: done
+- Priority: P1
+- Gate: G4 local code-runway contract validation closeout
+- Owning streams: S1 primary, S7 support, S6 awareness
+- Goal: Audit the landed local hub and onramp schemas in H1, add any missing negative validator coverage around banned wording, remote-looking paths, canonical mutation, or evidence overclaim, and regenerate embedded constants if needed so H1 reflects the full local runway chain without touching frozen S2 schemas.
+- Anchor files: `schemas/onramp-proposal.schema.json`, `tools/generate-harness-constants.ps1`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
+- Validation: `powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate-harness-constants.ps1`; direct file-based `harnesses/ferros-contract-validator.html` passes with `84 passed, 0 failed, 0 skipped`; `get_errors` clean on `schemas/onramp-proposal.schema.json`, `harnesses/_constants.js`, and `harnesses/ferros-contract-validator.html`
+- Constraints: H1 and generator lane only. Do not touch frozen S2 schemas. No shell, xtask, queue, or shared-truth edits in this wave. Keep all contract wording local-only and non-evidentiary. No Home Assistant proof, no physical-device evidence, no canonical mutation, and no G4 closure wording.
+- Last update: 2026-04-30
+- size: L
+- serial-after: WAVE-2026-04-30-73
+- track: code
+
+### WAVE-2026-04-30-73
+
+- Title: Consolidated local hub artifact guardrail tests
+- Status: done
+- Priority: P1
+- Gate: G4 local code-runway guardrail hardening
+- Owning streams: S7 primary, S6 awareness, S4 awareness
+- Goal: Add a focused consolidated guardrail layer for local hub artifacts and hub-owned CLI or report outputs so the proposal, decision, snapshot, and local proof chain all assert the same local-only, non-evidentiary, no-overclaim, no-remote-url, and `.tmp/hub` path invariants through one maintained helper surface rather than drifting per-test wording.
+- Anchor files: `crates/ferros-data/src/lib.rs`, `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/tests/local_bridge.rs`, `crates/ferros-node/src/lib.rs`
+- Validation: `cargo test -p ferros-data onramp_`; `cargo test -p ferros-hub onramp_`; `cargo test -p ferros-hub hub_`; `cargo test -p ferros-node onramp_`; `cargo check -p ferros-hub`
+- Constraints: Guardrail and test hardening only. Prefer one shared assertion helper over repeated banned-word lists. No shell, H1 harness, queue, or truth-sync edits in this wave. No remote transport, no daemon/server mode, no Home Assistant dashboard proof claim, no physical-device evidence, no canonical profile or grant mutation, and no G4 closure wording.
+- Last update: 2026-04-30
+- size: L
+- serial-after: WAVE-2026-04-30-72
+- track: code
+
+### WAVE-2026-04-30-72
+
+- Title: Deterministic hub artifact hygiene and cleanup helper
+- Status: done
+- Priority: P1
+- Gate: G4 local code-runway artifact hygiene
+- Owning streams: S8 primary, S7 support, S1 awareness
+- Goal: Ensure `cargo xtask hub-runway` reports deterministic local `.tmp/hub/` artifacts, can clean or account for what it generated, and leaves no unexpected dirty local hub artifacts behind after closeout runs, without widening into transport, daemon/server mode, or gate claims.
+- Anchor files: `xtask/src/main.rs`, `tools/README.md`
+- Validation: `cargo check -p xtask`; `cargo test -p xtask`; `cargo xtask hub-runway`; helper output reports `hubUnexpectedArtifacts: none` after cleanup unless `--keep-artifacts` is explicitly requested
+- Constraints: Helper and artifact-hygiene lane only. Reuse existing `ferros-data` and `ferros-hub` primitives rather than introducing duplicate artifact contracts. Keep generated artifacts under `.tmp/hub/`. No `ferros-node`, shell, schema, or shared-truth edits in this wave. No remote transport, no daemon/server mode, no Home Assistant proof, no physical-device evidence, and no G4 closure wording.
+- Last update: 2026-04-30
+- size: L
+- serial-after: WAVE-2026-04-30-71
+- track: code
+
+### WAVE-2026-04-30-71
+
+- Title: Audit local code-runway inventory and non-claim ledger
+- Status: done
+- Priority: P1
+- Gate: G4 local code-runway inventory audit
+- Owning streams: S7 primary, S8 awareness
+- Goal: Add one concise local code-runway inventory surface that lists every landed local-only G4 runway surface now in repo, including owner, artifact path, validation command, and non-claim boundary, so future hardware-track work inherits one deterministic handoff inventory without implying G4 closure, hardware evidence, Home Assistant proof, transport, or canonical effects.
+- Anchor files: `docs/hub/local-code-runway-inventory.md`
+- Validation: `get_errors` clean on `docs/hub/local-code-runway-inventory.md`; claim rationalizer confirms no G4 or hardware or Home Assistant overclaim
+- Constraints: Inventory-doc only. Cover the landed local bridge proof, restart snapshot, proposal artifact, decision artifact, additive runway-summary children, localhost shell rendering, H1 coverage, H9 same-origin coverage, and `cargo xtask hub-runway`. Keep all wording local-only, non-evidentiary, and non-gate-closing. No queue, hardware execution, or shared-truth edits beyond normal status bookkeeping.
+- Last update: 2026-04-30
+- size: S
+- track: code
 
 ### WAVE-2026-04-29-70
 

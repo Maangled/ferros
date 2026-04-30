@@ -1495,7 +1495,7 @@
         agents: 'Agents route shows live registry rows and promotes a selected agent into the inspector slot.',
         grants: 'Grants route reads the local profile state through the current S3/S2 boundary with no mock grant rows.',
         profile: 'Profile route uses the local /profile adapter for init, show, export, and import without sending JSON-RPC grant writes.',
-        runway: 'Runway route reads the local-only /runway-summary.json surface for the selected profile path, checkpoint progress, deny visibility, stand-in readiness observation, optional hub restart context, pending-consent proposed material, and an optional local decision rehearsal receipt. All of it stays display-only and non-evidentiary here.',
+        runway: 'Runway route reads the local-only /runway-summary.json surface for the selected profile path, checkpoint progress, deny visibility, stand-in readiness observation, optional hub restart context, pending-consent proposed material, and an optional local decision rehearsal receipt. All of it stays display-only, non-evidentiary, and free of remote transport or G4 closure claims here.',
         denyLog: 'Deny log route uses persisted deny evidence only; route filtering stays in-slot and does not open overlays.',
       };
       document.getElementById('tools-copy').textContent = copy[state.route];
@@ -1517,7 +1517,7 @@
         intentCopy.textContent = 'Profile init, show, export, and import use the same-origin /profile adapter. Profile grant and revoke stay closed here.';
       } else if (state.route === 'runway') {
         intentTitle.textContent = 'Runway observation only';
-        intentCopy.textContent = 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Optional hub restart context, pending-consent proposed material, and a local decision rehearsal receipt may appear on the same read-only route. All remain display-only: no acceptance flow, no executed consent event, no canonical state, no grant, no Home Assistant proof, and no durability, power-cycle, hardware, or gate evidence is implied.';
+        intentCopy.textContent = 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Optional hub restart context, pending-consent proposed material, and a local decision rehearsal receipt may appear on the same read-only route. All remain display-only: no acceptance flow, no executed consent event, no canonical state, no grant, no remote transport, no Home Assistant proof, and no durability, power-cycle, hardware, or gate evidence is implied. No G4 closure is claimed.';
       } else {
         intentTitle.textContent = 'Deny observation only';
         intentCopy.textContent = 'Deny entries remain read-only evidence. If a transmitted lifecycle RPC is denied by the backend, the shell refreshes through agent.snapshot so persisted deny evidence can read back here.';

@@ -1,6 +1,7 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs;
+use std::path::Path;
 use std::process::{Command, ExitCode};
 
 use ferros_data::{
@@ -11,6 +12,7 @@ use ferros_data::{
 };
 use ferros_hub::{
     LocalBridgeStatus, LocalHubReloadStatus, LocalHubRuntimeSummary,
+    LOCAL_HUB_STATE_SNAPSHOT_PATH,
     SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
 };
 use time::format_description::well_known::Rfc3339;
@@ -37,9 +39,9 @@ fn main() -> ExitCode {
                 }
             }
         }
-        CommandKind::HubRunway => match run_hub_runway() {
+        CommandKind::HubRunway { keep_artifacts } => match run_hub_runway(keep_artifacts) {
             Ok(output) => {
-                    println!("{output}");
+                println!("{output}");
                 ExitCode::SUCCESS
             }
             Err(message) => {
@@ -58,23 +60,203 @@ fn main() -> ExitCode {
 enum CommandKind {
     Ci,
     Burst,
-    HubRunway,
+    HubRunway { keep_artifacts: bool },
     Help,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct HubRunwayArtifactSpec {
+    label: &'static str,
+    path: &'static str,
+}
+
+#[derive(Debug)]
+struct HubArtifactSnapshot {
+    spec: HubRunwayArtifactSpec,
+    original_contents: Option<Vec<u8>>,
+}
+
+#[derive(Debug)]
+struct HubArtifactCleanup {
+    snapshots: Vec<HubArtifactSnapshot>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum HubArtifactCleanupMode {
+    Restored,
+    Kept,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum HubArtifactCleanupAction {
+    RestoredPrevious,
+    RemovedGenerated,
+    KeptForInspection,
+}
+
+#[derive(Debug)]
+struct HubArtifactCleanupSummary {
+    mode: HubArtifactCleanupMode,
+    actions: Vec<(HubRunwayArtifactSpec, HubArtifactCleanupAction)>,
+}
+
+const HUB_RUNWAY_ARTIFACTS: [HubRunwayArtifactSpec; 4] = [
+    HubRunwayArtifactSpec {
+        label: "hubBridgeArtifact",
+        path: SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+    },
+    HubRunwayArtifactSpec {
+        label: "hubRestartSnapshotArtifact",
+        path: LOCAL_HUB_STATE_SNAPSHOT_PATH,
+    },
+    HubRunwayArtifactSpec {
+        label: "hubOnrampProposalArtifact",
+        path: LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+    },
+    HubRunwayArtifactSpec {
+        label: "hubOnrampDecisionArtifact",
+        path: LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+    },
+];
 
 fn parse_command<I>(args: I) -> CommandKind
 where
     I: IntoIterator<Item = OsString>,
 {
-    match args
-        .into_iter()
-        .next()
-        .and_then(|arg| arg.into_string().ok())
-    {
+    let mut args = args.into_iter();
+    match args.next().and_then(|arg| arg.into_string().ok()) {
         Some(command) if command == "ci" => CommandKind::Ci,
         Some(command) if command == "burst" => CommandKind::Burst,
-        Some(command) if command == "hub-runway" => CommandKind::HubRunway,
+        Some(command) if command == "hub-runway" => {
+            let mut keep_artifacts = false;
+
+            for arg in args {
+                match arg.to_string_lossy().as_ref() {
+                    "--keep-artifacts" => keep_artifacts = true,
+                    _ => return CommandKind::Help,
+                }
+            }
+
+            CommandKind::HubRunway { keep_artifacts }
+        }
         _ => CommandKind::Help,
+    }
+}
+
+impl HubArtifactCleanup {
+    fn capture(workspace_root: &Path) -> Result<Self, String> {
+        let mut snapshots = Vec::with_capacity(HUB_RUNWAY_ARTIFACTS.len());
+
+        for spec in HUB_RUNWAY_ARTIFACTS {
+            let artifact_path = workspace_root.join(spec.path);
+            let original_contents = match fs::read(&artifact_path) {
+                Ok(contents) => Some(contents),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+                Err(error) => {
+                    return Err(format!(
+                        "could not snapshot {} before hub-runway: {error}",
+                        spec.path
+                    ));
+                }
+            };
+
+            snapshots.push(HubArtifactSnapshot {
+                spec,
+                original_contents,
+            });
+        }
+
+        Ok(Self { snapshots })
+    }
+
+    fn keep(self) -> HubArtifactCleanupSummary {
+        HubArtifactCleanupSummary {
+            mode: HubArtifactCleanupMode::Kept,
+            actions: self
+                .snapshots
+                .into_iter()
+                .map(|snapshot| (snapshot.spec, HubArtifactCleanupAction::KeptForInspection))
+                .collect(),
+        }
+    }
+
+    fn restore(self, workspace_root: &Path) -> Result<HubArtifactCleanupSummary, String> {
+        let mut actions = Vec::with_capacity(self.snapshots.len());
+
+        for snapshot in self.snapshots {
+            let artifact_path = workspace_root.join(snapshot.spec.path);
+            let action = match snapshot.original_contents {
+                Some(contents) => {
+                    if let Some(parent) = artifact_path.parent() {
+                        fs::create_dir_all(parent).map_err(|error| {
+                            format!(
+                                "could not recreate artifact directory for {}: {error}",
+                                snapshot.spec.path
+                            )
+                        })?;
+                    }
+
+                    fs::write(&artifact_path, contents).map_err(|error| {
+                        format!(
+                            "could not restore {} after hub-runway: {error}",
+                            snapshot.spec.path
+                        )
+                    })?;
+                    HubArtifactCleanupAction::RestoredPrevious
+                }
+                None => {
+                    match fs::remove_file(&artifact_path) {
+                        Ok(()) => {}
+                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                        Err(error) => {
+                            return Err(format!(
+                                "could not remove generated {} after hub-runway: {error}",
+                                snapshot.spec.path
+                            ));
+                        }
+                    }
+                    HubArtifactCleanupAction::RemovedGenerated
+                }
+            };
+
+            actions.push((snapshot.spec, action));
+        }
+
+        Ok(HubArtifactCleanupSummary {
+            mode: HubArtifactCleanupMode::Restored,
+            actions,
+        })
+    }
+}
+
+impl HubArtifactCleanupMode {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Restored => "restored",
+            Self::Kept => "kept",
+        }
+    }
+}
+
+impl HubArtifactCleanupAction {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::RestoredPrevious => "restored-previous",
+            Self::RemovedGenerated => "removed-generated",
+            Self::KeptForInspection => "kept-for-inspection",
+        }
+    }
+}
+
+impl HubArtifactCleanupSummary {
+    fn render(&self) -> String {
+        let mut lines = vec![format!("hubArtifactCleanupMode: {}", self.mode.as_str())];
+
+        for (spec, action) in &self.actions {
+            lines.push(format!("{}Cleanup: {}", spec.label, action.as_str()));
+        }
+
+        lines.join("\n")
     }
 }
 
@@ -150,10 +332,106 @@ fn run_burst() -> Result<String, String> {
     ))
 }
 
-fn run_hub_runway() -> Result<String, String> {
+fn run_hub_runway(keep_artifacts: bool) -> Result<String, String> {
+    let workspace_root = env::current_dir()
+        .map_err(|error| format!("could not resolve workspace root: {error}"))?;
+    let cleanup = HubArtifactCleanup::capture(&workspace_root)?;
+
+    let run_result = run_hub_runway_inner(&workspace_root);
+    let cleanup_result = if keep_artifacts {
+        Ok(cleanup.keep())
+    } else {
+        cleanup.restore(&workspace_root)
+    };
+    let inventory_result = validate_no_unexpected_hub_artifacts(&workspace_root);
+
+    match (run_result, cleanup_result, inventory_result) {
+        (Ok(output), Ok(cleanup_summary), Ok(())) => Ok(format!(
+            "{output}\n{}\nhubUnexpectedArtifacts: none",
+            cleanup_summary.render()
+        )),
+        (Ok(_), Err(cleanup_error), Ok(())) => Err(cleanup_error),
+        (Ok(_), Ok(_), Err(inventory_error)) => Err(inventory_error),
+        (Ok(_), Err(cleanup_error), Err(inventory_error)) => Err(format!(
+            "{cleanup_error}; unexpected artifact inventory failed: {inventory_error}"
+        )),
+        (Err(run_error), Ok(_), Ok(())) => Err(run_error),
+        (Err(run_error), Err(cleanup_error), Ok(())) => {
+            Err(format!("{run_error}; cleanup failed: {cleanup_error}"))
+        }
+        (Err(run_error), Ok(_), Err(inventory_error)) => Err(format!(
+            "{run_error}; unexpected artifact inventory failed: {inventory_error}"
+        )),
+        (Err(run_error), Err(cleanup_error), Err(inventory_error)) => Err(format!(
+            "{run_error}; cleanup failed: {cleanup_error}; unexpected artifact inventory failed: {inventory_error}"
+        )),
+    }
+}
+
+fn validate_no_unexpected_hub_artifacts(workspace_root: &Path) -> Result<(), String> {
+    let hub_dir = workspace_root.join(".tmp/hub");
+    if !hub_dir.exists() {
+        return Ok(());
+    }
+
+    let mut discovered = Vec::new();
+    collect_relative_file_paths(&hub_dir, workspace_root, &mut discovered)?;
+    discovered.sort();
+
+    let expected_paths: Vec<&str> = HUB_RUNWAY_ARTIFACTS.iter().map(|spec| spec.path).collect();
+    let unexpected: Vec<String> = discovered
+        .into_iter()
+        .filter(|path| !expected_paths.iter().any(|expected| expected == &path.as_str()))
+        .collect();
+
+    if unexpected.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "unexpected .tmp/hub artifacts remained after hub-runway: {}",
+            unexpected.join(", ")
+        ))
+    }
+}
+
+fn collect_relative_file_paths(
+    current_dir: &Path,
+    workspace_root: &Path,
+    discovered: &mut Vec<String>,
+) -> Result<(), String> {
+    for entry in fs::read_dir(current_dir)
+        .map_err(|error| format!("could not read {}: {error}", current_dir.display()))?
+    {
+        let entry = entry.map_err(|error| {
+            format!("could not read directory entry in {}: {error}", current_dir.display())
+        })?;
+        let entry_path = entry.path();
+
+        if entry_path.is_dir() {
+            collect_relative_file_paths(&entry_path, workspace_root, discovered)?;
+            continue;
+        }
+
+        let relative_path = entry_path
+            .strip_prefix(workspace_root)
+            .map_err(|error| {
+                format!(
+                    "could not convert {} into a workspace-relative path: {error}",
+                    entry_path.display()
+                )
+            })?
+            .to_string_lossy()
+            .replace('\\', "/");
+        discovered.push(relative_path);
+    }
+
+    Ok(())
+}
+
+fn run_hub_runway_inner(workspace_root: &Path) -> Result<String, String> {
     let first_summary = ferros_hub::default_local_runtime_summary()
         .map_err(|error| format!("could not build local hub runtime summary: {error}"))?;
-    validate_hub_runway_summary("first", &first_summary)?;
+    validate_hub_runway_summary("first", &first_summary, workspace_root)?;
 
     if !matches!(
         first_summary.restart_observation.reload_status,
@@ -167,7 +445,7 @@ fn run_hub_runway() -> Result<String, String> {
 
     let second_summary = ferros_hub::default_local_runtime_summary()
         .map_err(|error| format!("could not build local hub runtime summary: {error}"))?;
-    validate_hub_runway_summary("second", &second_summary)?;
+    validate_hub_runway_summary("second", &second_summary, workspace_root)?;
 
     if second_summary.restart_observation.reload_status != LocalHubReloadStatus::Reloaded {
         return Err(format!(
@@ -190,8 +468,10 @@ fn run_hub_runway() -> Result<String, String> {
         .map_err(|error| format!("could not build local hub runtime summary: {error}"))?;
 
     Ok(format!(
-        "{}\nhubOnrampProposalStatus: {}\nhubOnrampProposalArtifact: {}\nhubOnrampProposalSource: {}\nhubOnrampDecisionLabel: {}\nhubOnrampDecisionArtifact: {}\nhubOnrampDecisionProposalId: {}",
+        "{}\nhubBridgeArtifact: {}\nhubRestartSnapshotArtifact: {}\nhubOnrampProposalStatus: {}\nhubOnrampProposalArtifact: {}\nhubOnrampProposalSource: {}\nhubOnrampDecisionLabel: {}\nhubOnrampDecisionArtifact: {}\nhubOnrampDecisionProposalId: {}",
         summary_output,
+        SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+        LOCAL_HUB_STATE_SNAPSHOT_PATH,
         proposal.quarantine_status.as_str(),
         proposal.local_artifact_path,
         proposal.source,
@@ -204,6 +484,7 @@ fn run_hub_runway() -> Result<String, String> {
 fn validate_hub_runway_summary(
     summary_label: &str,
     summary: &LocalHubRuntimeSummary,
+    workspace_root: &Path,
 ) -> Result<(), String> {
     if summary.status != LocalBridgeStatus::Allowed {
         return Err(format!(
@@ -343,9 +624,7 @@ fn validate_hub_runway_summary(
         ));
     }
 
-    let proposal_output_path = env::current_dir()
-        .map_err(|error| format!("could not resolve workspace root: {error}"))?
-        .join(&proposal.local_artifact_path);
+    let proposal_output_path = workspace_root.join(&proposal.local_artifact_path);
     let proposal_content = fs::read_to_string(&proposal_output_path)
         .map_err(|error| format!("could not read local onramp proposal artifact: {error}"))?;
 
@@ -383,9 +662,7 @@ fn validate_hub_runway_summary(
         }
     }
 
-    let decision_output_path = env::current_dir()
-        .map_err(|error| format!("could not resolve workspace root: {error}"))?
-        .join(&decision_receipt.local_artifact_path);
+    let decision_output_path = workspace_root.join(&decision_receipt.local_artifact_path);
     let decision_content = fs::read_to_string(&decision_output_path)
         .map_err(|error| format!("could not read local onramp decision artifact: {error}"))?;
 
@@ -475,7 +752,7 @@ FERROS xtask
 Usage:
     cargo xtask ci      Run fmt, clippy, build, and test for the current workspace
     cargo xtask burst   Print the current queue-clear opener surfaces and focused validation commands
-    cargo xtask hub-runway   Validate the restart-aware hub seam plus local onramp rehearsal proposal and decision artifacts and print the summary output
+    cargo xtask hub-runway [--keep-artifacts]   Validate the restart-aware hub seam plus local onramp rehearsal proposal and decision artifacts, print the summary output, and restore `.tmp/hub` artifacts unless keep mode is requested
 ";
 
 const BURST_TEXT: &str = "\
@@ -503,8 +780,18 @@ Queued serial follow-ons:
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_command, CommandKind};
+    use super::{
+        parse_command, CommandKind, HubArtifactCleanup, HubArtifactCleanupAction,
+        HubArtifactCleanupMode, HUB_RUNWAY_ARTIFACTS,
+    };
+    use ferros_data::{
+        LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+    };
+    use ferros_hub::{LOCAL_HUB_STATE_SNAPSHOT_PATH, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH};
     use std::ffi::OsString;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn parses_ci_command() {
@@ -521,7 +808,29 @@ mod tests {
     #[test]
     fn parses_hub_runway_command() {
         let args = vec![OsString::from("hub-runway")];
-        assert_eq!(parse_command(args), CommandKind::HubRunway);
+        assert_eq!(
+            parse_command(args),
+            CommandKind::HubRunway {
+                keep_artifacts: false,
+            }
+        );
+    }
+
+    #[test]
+    fn parses_hub_runway_keep_artifacts_flag() {
+        let args = vec![OsString::from("hub-runway"), OsString::from("--keep-artifacts")];
+        assert_eq!(
+            parse_command(args),
+            CommandKind::HubRunway {
+                keep_artifacts: true,
+            }
+        );
+    }
+
+    #[test]
+    fn defaults_to_help_for_unknown_hub_runway_flag() {
+        let args = vec![OsString::from("hub-runway"), OsString::from("--unknown")];
+        assert_eq!(parse_command(args), CommandKind::Help);
     }
 
     #[test]
@@ -547,9 +856,100 @@ mod tests {
     }
 
     #[test]
+    fn help_text_mentions_keep_artifacts_flag() {
+        assert!(super::HELP_TEXT.contains("--keep-artifacts"));
+    }
+
+    #[test]
     fn burst_text_mentions_queue_clear_opener_and_shell_validation() {
         assert!(super::BURST_TEXT.contains("WAVE-2026-04-28-22"));
         assert!(super::BURST_TEXT.contains("shell_route_serves_local_shell_html"));
         assert!(super::BURST_TEXT.contains("burst-local-push-envelope.json"));
+    }
+
+    #[test]
+    fn artifact_cleanup_restore_reinstates_previous_state() {
+        let temp_dir = create_temp_dir("restore");
+        let existing_bridge_path = temp_dir.join(SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH);
+        write_text(&existing_bridge_path, "bridge-before");
+
+        let cleanup = HubArtifactCleanup::capture(&temp_dir).expect("capture should succeed");
+
+        for spec in HUB_RUNWAY_ARTIFACTS {
+            write_text(&temp_dir.join(spec.path), spec.label);
+        }
+
+        let summary = cleanup.restore(&temp_dir).expect("restore should succeed");
+        assert_eq!(summary.mode, HubArtifactCleanupMode::Restored);
+        assert_eq!(
+            fs::read_to_string(&existing_bridge_path).expect("bridge artifact should exist"),
+            "bridge-before"
+        );
+        assert!(!temp_dir.join(LOCAL_HUB_STATE_SNAPSHOT_PATH).exists());
+        assert!(!temp_dir.join(LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH).exists());
+        assert!(!temp_dir
+            .join(LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH)
+            .exists());
+        assert!(summary.actions.contains(&(
+            HUB_RUNWAY_ARTIFACTS[0],
+            HubArtifactCleanupAction::RestoredPrevious,
+        )));
+        assert!(summary.actions.contains(&(
+            HUB_RUNWAY_ARTIFACTS[1],
+            HubArtifactCleanupAction::RemovedGenerated,
+        )));
+
+        fs::remove_dir_all(temp_dir).expect("temp dir cleanup should succeed");
+    }
+
+    #[test]
+    fn artifact_cleanup_keep_reports_keep_mode() {
+        let temp_dir = create_temp_dir("keep");
+        let cleanup = HubArtifactCleanup::capture(&temp_dir).expect("capture should succeed");
+        let summary = cleanup.keep();
+
+        assert_eq!(summary.mode, HubArtifactCleanupMode::Kept);
+        assert_eq!(summary.actions.len(), HUB_RUNWAY_ARTIFACTS.len());
+        assert!(summary.actions.iter().all(|(_, action)| {
+            *action == HubArtifactCleanupAction::KeptForInspection
+        }));
+
+        fs::remove_dir_all(temp_dir).expect("temp dir cleanup should succeed");
+    }
+
+    #[test]
+    fn unexpected_hub_artifacts_are_reported() {
+        let temp_dir = create_temp_dir("unexpected");
+        write_text(
+            &temp_dir.join(".tmp/hub/unexpected-extra.json"),
+            "unexpected artifact",
+        );
+
+        let error = super::validate_no_unexpected_hub_artifacts(&temp_dir)
+            .expect_err("unexpected artifacts should fail validation");
+        assert!(error.contains("unexpected-extra.json"));
+
+        fs::remove_dir_all(temp_dir).expect("temp dir cleanup should succeed");
+    }
+
+    fn create_temp_dir(label: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be after unix epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "ferros-xtask-hub-runway-{label}-{}-{unique}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&path).expect("temp dir should be created");
+        path
+    }
+
+    fn write_text(path: &PathBuf, content: &str) {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("parent dir should exist");
+        }
+
+        fs::write(path, content).expect("file write should succeed");
     }
 }

@@ -950,16 +950,16 @@ var SCHEMA_ONRAMP_PROPOSAL = {
     "safeSlug": {
       "type": "string",
       "minLength": 1,
-      "pattern": "^(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]|[Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Cc][Aa][Nn][Oo][Nn][Ii][Cc][Aa][Ll]|[Gg][Rr][Aa][Nn][Tt][Ee][Dd]))[a-z0-9-]+$"
+      "pattern": "^(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]|[Hh][Oo][Mm][Ee] [Aa][Ss][Ss][Ii][Ss][Tt][Aa][Nn][Tt]|[Pp][Aa][Rr][Tt][Nn][Ee][Rr]|[Gg][Aa][Tt][Ee]|[Gg]4|[Cc][Ll][Oo][Ss][Uu][Rr][Ee]|[Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Cc][Aa][Nn][Oo][Nn][Ii][Cc][Aa][Ll]|[Gg][Rr][Aa][Nn][Tt][Ee][Dd]))[a-z0-9-]+$"
     },
     "safeCapability": {
       "type": "string",
       "minLength": 1,
-      "pattern": "^(?!.*://)(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]|[Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Cc][Aa][Nn][Oo][Nn][Ii][Cc][Aa][Ll]|[Gg][Rr][Aa][Nn][Tt][Ee][Dd]))[a-z0-9.-]+$"
+      "pattern": "^(?!.*://)(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]|[Hh][Oo][Mm][Ee] [Aa][Ss][Ss][Ii][Ss][Tt][Aa][Nn][Tt]|[Pp][Aa][Rr][Tt][Nn][Ee][Rr]|[Gg][Aa][Tt][Ee]|[Gg]4|[Cc][Ll][Oo][Ss][Uu][Rr][Ee]|[Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Cc][Aa][Nn][Oo][Nn][Ii][Cc][Aa][Ll]|[Gg][Rr][Aa][Nn][Tt][Ee][Dd]))[a-z0-9.-]+$"
     },
     "safeHubPath": {
       "type": "string",
-      "pattern": "^(?!.*://)(?!.*:)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]|[Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Cc][Aa][Nn][Oo][Nn][Ii][Cc][Aa][Ll]|[Gg][Rr][Aa][Nn][Tt][Ee][Dd]))\\.tmp/hub/.+\\.json$"
+      "pattern": "^(?!.*://)(?!.*:)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]|[Hh][Oo][Mm][Ee] [Aa][Ss][Ss][Ii][Ss][Tt][Aa][Nn][Tt]|[Pp][Aa][Rr][Tt][Nn][Ee][Rr]|[Gg][Aa][Tt][Ee]|[Gg]4|[Cc][Ll][Oo][Ss][Uu][Rr][Ee]|[Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Cc][Aa][Nn][Oo][Nn][Ii][Cc][Aa][Ll]|[Gg][Rr][Aa][Nn][Tt][Ee][Dd]))\\.tmp/hub/.+\\.json$"
     }
   }
 };

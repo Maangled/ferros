@@ -2,6 +2,12 @@ mod ha_bridge;
 
 use ferros_core::{PolicyDecision, PolicyDenialReason};
 
+pub use ferros_data::{
+    local_hub_relative_json_path_is_valid, local_onramp_banned_wording,
+    local_runway_evidence_is_non_evidentiary, local_runway_launch_overclaim_wording,
+    local_runway_scope_is_local_only, local_runway_text_looks_remote_like_url,
+};
+
 pub use ha_bridge::{
     default_local_runtime_summary,
     default_local_runtime_summary_with_snapshot_path,

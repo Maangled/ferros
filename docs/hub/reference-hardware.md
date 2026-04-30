@@ -143,6 +143,21 @@ These checks are meant to reduce false starts in the first lab session. Completi
 
 ---
 
+## Local code-runway handoff map
+
+This map translates the already-landed local code runway into the first DUT-side evidence-prep checklist. It is still prep only: it records what later Pack B or Pack C sessions should try to mirror from the current local proof chain, not what hardware has already proven.
+
+| Local rehearsal surface | Current local artifact or read path | What the first DUT session should look for later | Future evidence field to capture | What stays unproven until hardware |
+|-------------------------|-----------------------------------|-----------------------------------------------|--------------------------------|------------------------------------|
+| Simulated local bridge proof | `.tmp/hub/simulated-local-bridge-artifact.json` | One DUT-side bridge artifact or named stand-in output carrying bridge agent name, stand-in name, requested capability or action, local-only scope, and non-evidentiary status | Artifact path or command ref; timestamp; operator note | No real HA entity registration, no device evidence, and no remote transport proof yet |
+| Restart snapshot contract | `.tmp/hub/local-hub-state-snapshot.json` | One DUT-side restart observation showing reload status, snapshot path, scope, evidence, and the prior restart fields after a clean reboot | Snapshot or log ref; pre-reboot note; post-reboot note | No full power-cycle or durability claim yet |
+| Local onramp proposal artifact | `.tmp/hub/local-onramp-proposal.json` | One DUT-side proposal artifact or stand-in output showing `proposalId`, requested capability or action, quarantine status, and local artifact path | Proposal artifact ref; `proposalId`; operator note | No acceptance, canonical state, or grant issuance yet |
+| Local decision rehearsal receipt | `.tmp/hub/local-onramp-decision-receipt.json` | One DUT-side local decision rehearsal receipt showing `proposalId`, `decisionLabel`, `decisionDetail`, and local artifact path | Receipt ref; decision label; timestamp | No executed consent event or accept or reject transport proof yet |
+| Read-only runway summary and shell fields | `/runway-summary.json` plus the runway route at `http://127.0.0.1:4319/` | DUT-side shell or log view should expose proposal, decision, optional restart, checkpoint, and selected profile-path fields without inventing a new route | Screenshot or log ref of the rendered field set | No HA dashboard proof, no remote transport claim, and no browser-issued write proof yet |
+| Deny visibility | Deny-log slot or `ferros agent logs` equivalent | One denied request visible to the operator while the separate HA host stays up | Deny log ref; shell screenshot; timestamp | Not yet proof of HA-side deny visibility until that integration exists |
+
+---
+
 ## Future validation targets to prepare for now
 
 These targets are intentionally forward-looking. They describe what later hardware validation should prove, not what is complete today.

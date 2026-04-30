@@ -17,7 +17,7 @@ D1 does not require unattended operation. An x86_64 home-server or laptop can st
 
 ## D1 Evidence Requirements (from `docs/gates/D1.md`)
 
-All four must be true simultaneously and documented in `docs/gates/D1.md` before D1 is declared closed.
+All five must be true simultaneously and documented in `docs/gates/D1.md` before D1 is declared closed.
 
 | # | Evidence item | Definition |
 |---|---|---|
@@ -25,8 +25,24 @@ All four must be true simultaneously and documented in `docs/gates/D1.md` before
 | 2 | HA entity registered (or named stand-in) | At least one Home Assistant entity registered through the planned bridge contract or a documented stand-in; the stand-in must be named; a pure mock without a defined bridge seam does not count |
 | 3 | Consent flow visible | The consent/capability grant flow is visible to the operator; deny-by-default enforcement demonstrable (one denied request logged and visible) |
 | 4 | Reboot-safe FERROS-side state | Device goes through one full power cycle; after reboot, the FERROS profile loads and at least one agent re-registers without manual intervention |
+| 5 | Operator attended throughout | The session remains operator-attended; unattended operation is not required for D1 |
 
 **HA re-registration after power cycle is NOT required for D1 (it is required for G4).**
+
+---
+
+## Local code-runway handoff inputs
+
+Before any D1 or later G4-prep session, carry forward the exact local-only runway surfaces that already exist in repo. These are not hardware evidence on their own; they are the rehearsal targets that later DUT notes should mirror.
+
+| Local code-runway input | Current local proof-chain reference | D1 or later DUT observation to mirror | What it still does not prove |
+|-------------------------|------------------------------------|--------------------------------------|------------------------------|
+| Simulated bridge artifact | `.tmp/hub/simulated-local-bridge-artifact.json` | Named stand-in or real bridge output with the same bridge agent, requested capability or action, and local-only field family | Not a real HA entity registration yet |
+| Restart snapshot fields | `.tmp/hub/local-hub-state-snapshot.json` | Clean-reboot note showing reload status, snapshot path, and prior restart context on the DUT | Not full power-cycle survival yet |
+| Proposal artifact fields | `.tmp/hub/local-onramp-proposal.json` | D1 or later notes should capture `proposalId`, quarantine status, and local artifact path when the stand-in or real bridge proposes material | Not canonical acceptance or grant issuance |
+| Decision rehearsal receipt fields | `.tmp/hub/local-onramp-decision-receipt.json` | Later DUT notes should capture the rehearsal decision label and detail if the local operator decision seam exists on device | Not an executed consent event |
+| Read-only runway shell fields | `/runway-summary.json` and the localhost runway route | Shell or log view should surface proposal, decision, optional restart, selected profile path, and checkpoint fields without inventing a new route | Not remote transport, not HA dashboard proof |
+| Deny observation | Deny-log slot or `ferros agent logs` equivalent | One denied request visible to the operator during the session | Not HA-side deny visibility until the HA path exists |
 
 ---
 
@@ -65,7 +81,7 @@ ferros profile show
 
 ### Context
 
-The `ferros-hub` binary and the HA bridge implementation are not yet built. For D1, a **named stand-in** is acceptable. The stand-in must be documented in the D1 evidence section of `docs/gates/D1.md`.
+The repo now includes a local `ferros-hub` binary and local bridge rehearsal surfaces, but the real physical-device and Home Assistant bridge path is still not built. For D1, a **named stand-in** is still acceptable. The stand-in must be documented in the D1 evidence section of `docs/gates/D1.md`.
 
 ### Acceptable stand-in for D1
 
@@ -169,14 +185,31 @@ The reload-boundary tests (`reload_boundary_runtime_with_state_`, `reload_bounda
 
 ## Firmware Spike Milestones (HARDWARE-2026-04-27-02 input)
 
-For planning the firmware spike on the chosen D1 device, the four milestones below map directly to the D1 evidence items:
+For planning the firmware spike on the chosen D1 device, the four technical milestones below map to the hardware-facing D1 evidence items. Operator attendance remains a separate session requirement and is not reduced to a firmware milestone.
 
 | Milestone | Maps to D1 evidence | Definition |
 |---|---|---|
 | Boot | Pre-condition | FERROS binary starts on the target device without crash |
 | Identify | Evidence item 1 | `ferros profile init` and `ferros profile show` succeed |
-| Accept-grant | Evidence item 3 | At least one capability grant issued; deny-by-default demonstrable |
+| Accept-grant | Evidence item 3 | The consent/capability grant flow is visible to the operator and deny-by-default is demonstrable |
 | Report-state | Evidence item 4 | State survives power cycle |
+
+---
+
+## Evidence Item 5 — Operator Attended Throughout
+
+### What the operator must demonstrate
+
+- The same operator-attended session covers profile creation or show, the named stand-in or HA entity proof, the consent-flow visibility check, and the reboot-safe state check.
+- Notes, timestamps, and capture references make it clear that a person remained present for the entire demonstration run.
+
+### What a passing result looks like
+
+- Session notes or the evidence table in `docs/gates/D1.md` show the operator name and confirm attendance for the full demo window.
+
+### What a failing result looks like
+
+- The run depends on unattended background recovery, unattended restart, or a handoff between operators without that change being recorded.
 
 ---
 

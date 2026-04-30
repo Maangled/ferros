@@ -49,6 +49,19 @@ Use this worksheet to capture the first Pack B bring-up session against the exis
 | Session notes | Tester, location class, and exact hardware identifiers are ready to capture | |
 | Pairing boundary | Notes stay at the level of constraints and open questions only | |
 
+## Local code-runway handoff checklist
+
+Use this table to carry the local-only code runway into the first Pack B session. The expected artifact or field column records what already exists in local rehearsal today; fill the DUT-side capture column only during a real session.
+
+| Handoff checkpoint | Expected current local artifact or field | DUT-side capture to record later | Session capture |
+|--------------------|-----------------------------------------|----------------------------------|-----------------|
+| Bridge artifact or named stand-in proof | `.tmp/hub/simulated-local-bridge-artifact.json` with bridge agent, stand-in, requested capability or action, `scope=local-only`, and `evidence=non-evidentiary` | DUT command, artifact path, or named stand-in note that mirrors the same field set | |
+| Restart snapshot fields | `.tmp/hub/local-hub-state-snapshot.json` with reload status, snapshot path, scope, evidence, and prior restart fields | DUT restart log or snapshot reference plus pre- and post-reboot notes | |
+| Proposal artifact fields | `.tmp/hub/local-onramp-proposal.json` with `proposalId`, quarantine status, requested capability or action, and local artifact path | DUT-side proposal artifact or stand-in output reference | |
+| Decision receipt fields | `.tmp/hub/local-onramp-decision-receipt.json` with `proposalId`, `decisionLabel`, `decisionDetail`, and local artifact path | DUT-side decision rehearsal receipt reference | |
+| Runway shell fields | Read-only runway route or `/runway-summary.json` showing selected profile path, checkpoint progress, proposal, decision, and optional restart context | Screenshot or shell log showing the same field family on the DUT side | |
+| Deny observation | One denied request visible through the deny slot or `ferros agent logs` equivalent | Deny log reference, screenshot, or timestamped operator note | |
+
 ## Operator rehearsal prep
 
 Fill these notes before the first real bring-up session. They are prep prompts only and do not claim that any G4 item is already satisfied.

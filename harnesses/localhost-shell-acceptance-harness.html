@@ -425,6 +425,10 @@ async function runJourney() {
         && auditCopy.indexOf('no grant') !== -1
         && auditCopy.indexOf('no home assistant proof') !== -1
         && auditCopy.indexOf('gate evidence') !== -1;
+      var runwayClaimCeilingVisible = toolsCopy.indexOf('remote transport') !== -1
+        && toolsCopy.indexOf('g4 closure') !== -1
+        && auditCopy.indexOf('no remote transport') !== -1
+        && auditCopy.indexOf('no g4 closure') !== -1;
       var hubRestartPriorLabels = [
         'prior bridge manifest identity',
         'prior policy decision label',
@@ -446,6 +450,7 @@ async function runJourney() {
       var checklistVisible = runwayText.indexOf('power cycle') !== -1 || runwayText.indexOf('powercyclestatus') !== -1;
       addResult('C: Runway', 'Runway surface renders checklist state', checklistVisible, checklistVisible ? 'runway checklist visible' : '', checklistVisible ? '' : 'runway checklist copy did not render');
       addResult('C: Runway', 'Runway tools and audit copy keep restart-aware context on the read-only /runway-summary.json route', runwayToolsCopyVisible && runwayAuditCopyVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayToolsCopyVisible && runwayAuditCopyVisible ? '' : 'runway tools/audit copy lost the restart-aware /runway-summary.json guidance');
+      addResult('C: Runway', 'Runway route copy keeps remote transport and G4 closure claims closed', runwayClaimCeilingVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayClaimCeilingVisible ? '' : 'runway route copy lost the explicit no-remote-transport or no-G4-closure ceiling');
       addResult('C: Runway', 'Runway tools and audit copy keep proposed material on the same read-only /runway-summary.json route', runwayProposalCopyVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayProposalCopyVisible ? '' : 'runway tools/audit copy lost the pending-consent proposed-material read-only ceiling');
       addResult('C: Runway', 'Runway tools and audit copy keep the decision rehearsal receipt on the same read-only /runway-summary.json route', runwayDecisionCopyVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayDecisionCopyVisible ? '' : 'runway tools/audit copy lost the local decision rehearsal read-only ceiling');
 

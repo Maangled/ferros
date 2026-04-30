@@ -268,6 +268,74 @@ impl LocalOnrampDecisionLabel {
     }
 }
 
+pub fn local_runway_scope_is_local_only(scope: &str) -> bool {
+    scope == LOCAL_ONRAMP_PROPOSAL_SCOPE
+}
+
+pub fn local_runway_evidence_is_non_evidentiary(evidence: &str) -> bool {
+    evidence == LOCAL_ONRAMP_PROPOSAL_EVIDENCE
+}
+
+pub fn local_runway_text_looks_remote_like_url(value: &str) -> bool {
+    let lowered = value.to_ascii_lowercase();
+
+    lowered.contains("://")
+        || lowered.starts_with("//")
+        || lowered.contains("http://")
+        || lowered.contains("https://")
+        || lowered.contains("ws://")
+        || lowered.contains("wss://")
+        || lowered.contains("ftp://")
+        || lowered.contains("file://")
+}
+
+pub fn local_runway_launch_overclaim_wording(value: &str) -> Option<&'static str> {
+    let lowered = value.to_ascii_lowercase();
+
+    ["hardware", "proof", "launch"]
+        .into_iter()
+        .find(|wording| lowered.contains(wording))
+}
+
+pub fn local_onramp_banned_wording(value: &str) -> Option<&'static str> {
+    let lowered = value.to_ascii_lowercase();
+
+    local_runway_launch_overclaim_wording(&lowered).or_else(|| {
+        [
+            "home assistant",
+            "partner",
+            "gate",
+            "g4",
+            "closure",
+            "accepted",
+            "canonical",
+            "granted",
+        ]
+        .into_iter()
+        .find(|wording| lowered.contains(wording))
+    })
+}
+
+pub fn local_hub_relative_json_path_is_valid(path: &str) -> bool {
+    if !path.starts_with(LOCAL_ONRAMP_PROPOSAL_ARTIFACT_ROOT)
+        || !path.ends_with(".json")
+        || Path::new(path).is_absolute()
+        || path.contains(':')
+        || path.trim().is_empty()
+    {
+        return false;
+    }
+
+    for component in Path::new(path).components() {
+        match component {
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return false,
+            Component::CurDir | Component::Normal(_) => {}
+        }
+    }
+
+    !local_runway_text_looks_remote_like_url(path) && local_onramp_banned_wording(path).is_none()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LocalOnrampDecisionReceipt {
@@ -448,11 +516,11 @@ impl LocalOnrampProposal {
         validate_onramp_text_field("requestedCapability", &self.requested_capability)?;
         validate_onramp_text_field("requestedAction", &self.requested_action)?;
 
-        if self.scope != LOCAL_ONRAMP_PROPOSAL_SCOPE {
+        if !local_runway_scope_is_local_only(&self.scope) {
             return Err(LocalOnrampProposalError::InvalidScope(self.scope.clone()));
         }
 
-        if self.evidence != LOCAL_ONRAMP_PROPOSAL_EVIDENCE {
+        if !local_runway_evidence_is_non_evidentiary(&self.evidence) {
             return Err(LocalOnrampProposalError::InvalidEvidence(self.evidence.clone()));
         }
 
@@ -510,13 +578,13 @@ impl LocalOnrampDecisionReceipt {
             validate_onramp_decision_text_field("decisionDetail", decision_detail)?;
         }
 
-        if self.scope != LOCAL_ONRAMP_DECISION_RECEIPT_SCOPE {
+        if !local_runway_scope_is_local_only(&self.scope) {
             return Err(LocalOnrampDecisionReceiptError::InvalidScope(
                 self.scope.clone(),
             ));
         }
 
-        if self.evidence != LOCAL_ONRAMP_DECISION_RECEIPT_EVIDENCE {
+        if !local_runway_evidence_is_non_evidentiary(&self.evidence) {
             return Err(LocalOnrampDecisionReceiptError::InvalidEvidence(
                 self.evidence.clone(),
             ));
@@ -557,8 +625,7 @@ fn validate_onramp_text_field(
         return Err(LocalOnrampProposalError::EmptyField(field));
     }
 
-    let lowered = value.to_ascii_lowercase();
-    if looks_remote_like_url(&lowered) {
+    if local_runway_text_looks_remote_like_url(value) {
         return Err(LocalOnrampProposalError::InvalidTextField {
             field,
             value: value.to_owned(),
@@ -566,7 +633,7 @@ fn validate_onramp_text_field(
         });
     }
 
-    if let Some(wording) = banned_onramp_wording(&lowered) {
+    if let Some(wording) = local_onramp_banned_wording(value) {
         return Err(LocalOnrampProposalError::InvalidTextField {
             field,
             value: value.to_owned(),
@@ -585,8 +652,7 @@ fn validate_onramp_decision_text_field(
         return Err(LocalOnrampDecisionReceiptError::EmptyField(field));
     }
 
-    let lowered = value.to_ascii_lowercase();
-    if looks_remote_like_url(&lowered) {
+    if local_runway_text_looks_remote_like_url(value) {
         return Err(LocalOnrampDecisionReceiptError::InvalidTextField {
             field,
             value: value.to_owned(),
@@ -594,7 +660,7 @@ fn validate_onramp_decision_text_field(
         });
     }
 
-    if let Some(wording) = banned_onramp_wording(&lowered) {
+    if let Some(wording) = local_onramp_banned_wording(value) {
         return Err(LocalOnrampDecisionReceiptError::InvalidTextField {
             field,
             value: value.to_owned(),
@@ -606,7 +672,7 @@ fn validate_onramp_decision_text_field(
 }
 
 fn validate_local_onramp_artifact_path(path: &str) -> Result<(), LocalOnrampProposalError> {
-    if !is_valid_local_onramp_relative_json_path(path) {
+    if !local_hub_relative_json_path_is_valid(path) {
         return Err(LocalOnrampProposalError::InvalidRelativePath(path.to_owned()));
     }
 
@@ -616,63 +682,13 @@ fn validate_local_onramp_artifact_path(path: &str) -> Result<(), LocalOnrampProp
 fn validate_local_onramp_decision_artifact_path(
     path: &str,
 ) -> Result<(), LocalOnrampDecisionReceiptError> {
-    if !is_valid_local_onramp_relative_json_path(path) {
+    if !local_hub_relative_json_path_is_valid(path) {
         return Err(LocalOnrampDecisionReceiptError::InvalidRelativePath(
             path.to_owned(),
         ));
     }
 
     Ok(())
-}
-
-fn is_valid_local_onramp_relative_json_path(path: &str) -> bool {
-    if !path.starts_with(LOCAL_ONRAMP_PROPOSAL_ARTIFACT_ROOT)
-        || !path.ends_with(".json")
-        || Path::new(path).is_absolute()
-        || path.contains(':')
-        || path.trim().is_empty()
-    {
-        return false;
-    }
-
-    for component in Path::new(path).components() {
-        match component {
-            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return false,
-            Component::CurDir | Component::Normal(_) => {}
-        }
-    }
-
-    let lowered = path.to_ascii_lowercase();
-    !looks_remote_like_url(&lowered) && banned_onramp_wording(&lowered).is_none()
-}
-
-fn looks_remote_like_url(value: &str) -> bool {
-    value.contains("://")
-        || value.starts_with("//")
-        || value.contains("http://")
-        || value.contains("https://")
-        || value.contains("ws://")
-        || value.contains("wss://")
-        || value.contains("ftp://")
-        || value.contains("file://")
-}
-
-fn banned_onramp_wording(value: &str) -> Option<&'static str> {
-    [
-        "hardware",
-        "proof",
-        "launch",
-        "home assistant",
-        "partner",
-        "gate",
-        "g4",
-        "closure",
-        "accepted",
-        "canonical",
-        "granted",
-    ]
-    .into_iter()
-    .find(|wording| value.contains(wording))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

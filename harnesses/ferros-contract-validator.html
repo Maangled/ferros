@@ -889,6 +889,92 @@ runTest(g3, 'SCHEMA_AUDIT_RECORD rejects invalid-missing-session-id-alias-log (s
   return { pass: false, error: 'SCHEMA_AUDIT_RECORD should reject portable logs missing sessionId — investigate audit-record.schema.json required fields' };
 });
 
+runTest(g3, 'SCHEMA_HUB_LOCAL_RUNWAY_REPORT rejects inline report with non-local artifact path', function() {
+  var data = {
+    bridgeAgentName: 'ha-local-bridge',
+    standInName: 'simulated-bridge-entity',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    status: 'allowed',
+    artifactRelativeOutputPath: 'https://example.com/simulated-local-bridge-artifact.json',
+    summary: 'local-only bridge allowed report-state for simulated-bridge-entity',
+    scope: 'local-only',
+    evidence: 'non-evidentiary'
+  };
+  var r = validate(data, SCHEMA_HUB_LOCAL_RUNWAY_REPORT);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. artifactRelativeOutputPath stayed outside the bounded .tmp/hub/ local-only report contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_HUB_LOCAL_RUNWAY_REPORT should reject non-local artifact paths' };
+});
+
+runTest(g3, 'SCHEMA_HUB_LOCAL_RUNWAY_REPORT rejects inline report with evidence overclaim', function() {
+  var data = {
+    bridgeAgentName: 'ha-local-bridge',
+    standInName: 'simulated-bridge-entity',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    status: 'allowed',
+    artifactRelativeOutputPath: '.tmp/hub/simulated-local-bridge-artifact.json',
+    summary: 'local-only bridge allowed report-state for simulated-bridge-entity',
+    scope: 'local-only',
+    evidence: 'hardware-proof'
+  };
+  var r = validate(data, SCHEMA_HUB_LOCAL_RUNWAY_REPORT);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. evidence stayed outside the bounded non-evidentiary runway-report contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_HUB_LOCAL_RUNWAY_REPORT should reject evidence overclaim wording' };
+});
+
+runTest(g3, 'SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT rejects inline artifact with non-local output path', function() {
+  var data = {
+    bridgeAgentName: 'ha-local-bridge',
+    standInName: 'simulated-bridge-entity',
+    relativeOutputPath: 'https://example.com/simulated-local-bridge-artifact.json',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    status: 'allowed',
+    scope: 'local-only',
+    evidence: 'non-evidentiary'
+  };
+  var r = validate(data, SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. relativeOutputPath stayed outside the bounded .tmp/hub/ local-only artifact contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT should reject non-local output paths' };
+});
+
+runTest(g3, 'SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT rejects inline artifact with evidence overclaim', function() {
+  var data = {
+    bridgeAgentName: 'ha-local-bridge',
+    standInName: 'simulated-bridge-entity',
+    relativeOutputPath: '.tmp/hub/simulated-local-bridge-artifact.json',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    status: 'allowed',
+    scope: 'local-only',
+    evidence: 'hardware-proof'
+  };
+  var r = validate(data, SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. evidence stayed outside the bounded non-evidentiary bridge-artifact contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_HUB_LOCAL_BRIDGE_ARTIFACT should reject evidence overclaim wording' };
+});
+
 runTest(g3, 'SCHEMA_HUB_LOCAL_STATE_SNAPSHOT rejects inline restart snapshot with non-local artifact path', function() {
   var data = {
     bridgeManifestIdentity: 'ha-local-bridge@0.1.0',
@@ -1013,6 +1099,52 @@ runTest(g3, 'SCHEMA_ONRAMP_PROPOSAL rejects inline proposal with accepted/canoni
     };
   }
   return { pass: false, error: 'SCHEMA_ONRAMP_PROPOSAL should reject accepted/canonical/granted wording' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_PROPOSAL rejects inline proposal with partner/home-assistant wording', function() {
+  var data = {
+    source: '.tmp/hub/home assistant-bridge-artifact.json',
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    bridgeAgentName: 'ha-local-bridge',
+    standInEntityName: 'simulated-bridge-entity',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    quarantineStatus: 'quarantined-pending-consent',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-proposal.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_PROPOSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. source stayed outside the local-only non-partner proposal contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_PROPOSAL should reject partner/home-assistant wording' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_PROPOSAL rejects inline proposal with gate/g4/closure wording', function() {
+  var data = {
+    source: '.tmp/hub/simulated-local-bridge-artifact.json',
+    proposalId: 'proposal-g4-closure-rehearsal',
+    bridgeAgentName: 'ha-local-bridge',
+    standInEntityName: 'simulated-bridge-entity',
+    requestedCapability: 'bridge.observe',
+    requestedAction: 'report-state',
+    quarantineStatus: 'quarantined-pending-consent',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-proposal.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_PROPOSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. proposalId stayed outside the non-gate-closing proposal contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_PROPOSAL should reject gate/g4/closure wording' };
 });
 
 runTest(g3, 'SCHEMA_ONRAMP_PROPOSAL rejects inline proposal with non-local artifact path', function() {

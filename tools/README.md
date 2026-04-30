@@ -103,3 +103,30 @@ git diff docs/assets/_core/ferros-core.js
 An empty diff confirms the committed output matches the current inputs. A non-empty diff means either:
 1. The generator was run after inputs changed (expected — commit the new output).
 2. The committed output was hand-edited (not allowed — regenerate and commit).
+
+---
+
+## Local Hub Runway Helper
+
+`cargo xtask hub-runway` is the local rehearsal helper for the published hub-owned restart, proposal, and decision seams.
+
+By default it now does three things in one pass:
+- validates the current restart-aware hub summary and the emitted local onramp proposal and decision artifacts
+- prints a deterministic `.tmp/hub` artifact inventory in its stdout
+- restores the four known `.tmp/hub` artifacts to their pre-run state after validation so the helper does not leave ambiguous generated local files behind
+
+The helper treats the following four files as the only expected closeout inventory under `.tmp/hub`. If any other file remains there after the helper run, `cargo xtask hub-runway` now fails so the residue is surfaced explicitly instead of being silently ignored.
+
+Usage:
+```
+cargo xtask hub-runway
+cargo xtask hub-runway --keep-artifacts
+```
+
+Use `--keep-artifacts` only when you intentionally want the generated `.tmp/hub` files left in place for manual inspection. Without that flag, the helper restores or removes the known hub artifact files after it finishes.
+
+The deterministic artifact set is:
+- `.tmp/hub/simulated-local-bridge-artifact.json`
+- `.tmp/hub/local-hub-state-snapshot.json`
+- `.tmp/hub/local-onramp-proposal.json`
+- `.tmp/hub/local-onramp-decision-receipt.json`

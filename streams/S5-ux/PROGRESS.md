@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-30 - Existing runway route claim ceiling made explicit
+
+- Extended `site/agent-center-shell.html` so the existing runway route now says the read-only `/runway-summary.json` surface remains display-only, non-evidentiary, and free of remote-transport or G4-closure claims while preserving the existing selected-agent lifecycle bar and local `/profile` slice elsewhere on the shell.
+- Extended `harnesses/localhost-shell-acceptance-harness.html` so the same-origin H9 path now proves that explicit runway-route claim ceiling on the served shell in addition to the existing restart, proposal, and decision observation checks.
+- Focused validation passed with `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness`, clean harness diagnostics, and a rebuilt live same-origin run at port 4320 that finished `71 passed`, `0 failed`, `2 skipped`.
+- Kept the slice local-only and narrow: no new route, no browser-issued grant or revoke, no onramp accept or reject flow, no remote transport, no physical-device evidence, and no D1 or G4 claim.
+
 ## 2026-04-30 - Proposal plus decision observation proved on the existing runway route
 
 - Extended `site/agent-center-shell.html` so the existing runway route now renders both pending-consent proposed material and the recorded local decision rehearsal receipt from the read-only `/runway-summary.json` surface in both the runway panel and the inspector without adding a new route, accept/reject controls, or browser-issued grant/revoke controls.

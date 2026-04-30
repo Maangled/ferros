@@ -4,6 +4,15 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-30 - Local code-runway closeout packet packaged for hardware handoff
+
+- WAVE-2026-04-30-71 added `docs/hub/local-code-runway-inventory.md` as the single inventory of the landed local-only hub proof chain, rerun order, and non-claim ledger that future Pack B or Pack C work must inherit.
+- WAVE-2026-04-30-72 made `cargo xtask hub-runway` deterministic about the four known `.tmp/hub` rehearsal artifacts, default restoration, and unexpected-residue failure.
+- WAVE-2026-04-30-73 and WAVE-2026-04-30-74 aligned the hub, node, schema, and H1 surfaces around one shared local-only guardrail ceiling, including proposal-schema parity with the stricter banned-word boundary.
+- WAVE-2026-04-30-75 hardened the existing runway route copy and same-origin H9 proof so the read-only surface explicitly rejects remote-transport and G4-closure claims.
+- WAVE-2026-04-30-76 mapped the local proof chain into future-facing DUT handoff tables and Pack B evidence-prep checklists, and WAVE-2026-04-30-77 queued the next hardware-track sequence as Pack B naming and prep, Pack B physical baseline, Pack B DUT-side handoff mirror, and later separate-host Pack C Home Assistant proof.
+- Kept the entire packet local-only and non-gate-closing: no physical-device evidence, no real Home Assistant proof, no consent acceptance, no remote transport, no canonical mutation, no D1 closure, and no G4 closure.
+
 ## 2026-04-30 — Local decision rehearsal packet landed on the existing runway route
 
 - WAVE-2026-04-29-64 published `LocalOnrampDecisionReceipt` in `ferros-data` with bounded validation and local JSON write helpers for one recorded local operator decision linked to proposed material.

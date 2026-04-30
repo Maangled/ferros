@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use ferros_data::{
+    local_hub_relative_json_path_is_valid, local_onramp_banned_wording,
+    local_runway_text_looks_remote_like_url,
     LocalOnrampDecisionLabel, LocalOnrampQuarantineStatus,
     LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
 };
@@ -71,6 +73,24 @@ fn emitted_onramp_proposal_path() -> PathBuf {
 
 fn emitted_onramp_decision_receipt_path() -> PathBuf {
     repo_root().join(LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH)
+}
+
+fn assert_local_onramp_artifact_guardrails(payload: &str, expected_path: &str) {
+    assert!(payload.contains(expected_path));
+    assert!(local_hub_relative_json_path_is_valid(expected_path));
+    assert!(!local_runway_text_looks_remote_like_url(payload));
+    assert!(local_onramp_banned_wording(payload).is_none());
+}
+
+fn assert_local_cli_output_guardrails(output: &str, expected_paths: &[&str]) {
+    assert!(output.contains("local-only"));
+    assert!(output.contains("non-evidentiary"));
+    assert!(!local_runway_text_looks_remote_like_url(output));
+
+    for expected_path in expected_paths {
+        assert!(output.contains(expected_path));
+        assert!(local_hub_relative_json_path_is_valid(expected_path));
+    }
 }
 
 fn denied_local_runtime_summary() -> ferros_hub::LocalHubRuntimeSummary {
@@ -711,9 +731,14 @@ fn hub_cli_summary_output_stays_local_only() {
 
     assert!(output.contains("ferros-hub summary"));
     assert!(output.contains("policyDecision: allowed"));
-    assert!(output.contains("scope: local-only"));
-    assert!(output.contains("evidence: non-evidentiary"));
     assert!(output.contains("restartReload:"));
+    assert_local_cli_output_guardrails(
+        &output,
+        &[
+            SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        ],
+    );
 }
 
 #[test]
@@ -722,10 +747,14 @@ fn hub_cli_prove_bridge_output_mentions_artifact() {
         prove_bridge_command_output().expect("prove-bridge output should build successfully");
 
     assert!(output.contains("ferros-hub bridge-proof: allowed"));
-    assert!(output.contains(SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH));
-    assert!(output.contains("local-only"));
-    assert!(output.contains("non-evidentiary"));
     assert!(output.contains("restart "));
+    assert_local_cli_output_guardrails(
+        &output,
+        &[
+            SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        ],
+    );
 }
 
 #[test]
@@ -734,8 +763,7 @@ fn hub_cli_deny_demo_output_reports_denied_without_artifact() {
 
     assert!(output.contains("ferros-hub deny-demo: denied:no-grants"));
     assert!(output.contains("without artifact"));
-    assert!(output.contains("local-only"));
-    assert!(output.contains("non-evidentiary"));
+    assert_local_cli_output_guardrails(&output, &[]);
 }
 
 #[test]
@@ -818,9 +846,7 @@ fn onramp_proposal_allowed_runway_emits_local_quarantined_artifact() {
     assert!(written.contains(SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH));
     assert!(written.contains("\"quarantineStatus\": \"quarantined-pending-consent\""));
     assert!(written.contains("\"localArtifactPath\": \".tmp/hub/local-onramp-proposal.json\""));
-    assert!(!written.contains("hardware"));
-    assert!(!written.contains("canonical"));
-    assert!(!written.contains("granted"));
+    assert_local_onramp_artifact_guardrails(&written, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH);
 }
 
 #[test]
@@ -954,9 +980,10 @@ fn onramp_decision_allowed_runway_emits_local_receipt() {
     assert!(written.contains("\"proposalId\":"));
     assert!(written.contains("\"decisionLabel\": \"allowed\""));
     assert!(written.contains(LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH));
-    assert!(!written.contains("home assistant"));
-    assert!(!written.contains("canonical"));
-    assert!(!written.contains("gate"));
+    assert_local_onramp_artifact_guardrails(
+        &written,
+        LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+    );
 }
 
 #[test]
@@ -1065,6 +1092,13 @@ fn onramp_decision_summary_output_mentions_receipt() {
 
     assert!(output.contains("onrampDecisionLabel: allowed"));
     assert!(output.contains("onrampDecisionArtifact: .tmp/hub/local-onramp-decision-receipt.json"));
+    assert_local_cli_output_guardrails(
+        &output,
+        &[
+            SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        ],
+    );
 }
 
 #[test]
@@ -1082,4 +1116,11 @@ fn onramp_decision_prove_bridge_output_mentions_receipt() {
 
     assert!(output.contains("decision allowed"));
     assert!(output.contains(LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH));
+    assert_local_cli_output_guardrails(
+        &output,
+        &[
+            SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        ],
+    );
 }

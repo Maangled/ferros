@@ -66,6 +66,73 @@ Optional fields (additive, do not break existing item order):
 - parallel-safe-with: [HARDWARE-2026-04-27-01]
 - track: hardware
 
+### HARDWARE-2026-04-30-04
+
+- Title: Name the first Pack B bring-up session from the local handoff
+- Status: ready
+- Priority: P1
+- Gate: pre-D1 named DUT session prep
+- Owning streams: S7 primary; S8 consumer awareness
+- Goal: Turn the local code-runway handoff into a named first hardware session by choosing the Pack B x86_64 device under test, the separate Pack C Home Assistant host, the operator station, and the storage, network, and DUT-only power-cut arrangement that will be used later. Capture the worksheet header, topology confirmation, pre-run checks, and operator rehearsal prep in one plan note without claiming any physical-device evidence, Home Assistant proof, D1 closure, or G4 movement.
+- Anchor files: `docs/hardware/pack-b-session-01-plan.md`
+- Validation: `get_errors` clean on `docs/hardware/pack-b-session-01-plan.md`; the plan names the DUT, HA host, operator station, storage path, network note, and DUT-only power-cut method; wording stays prep-only and future-facing.
+- Constraints: Plan only. Do not execute hardware work in this wave. Preserve Pack B as the first DUT lane and Pack C as the separate HA host. Do not claim any physical-device evidence, HA dashboard proof, D1 closure, or G4 movement.
+- Last update: 2026-04-30
+- size: S
+- serial-after: HARDWARE-2026-04-27-03
+- track: hardware
+
+### HARDWARE-2026-04-30-05
+
+- Title: First Pack B physical ferros-hub run with profile init/show
+- Status: ready
+- Priority: P1
+- Gate: D1 physical-device baseline
+- Owning streams: S7 primary; S2 and S4 consumer awareness
+- Goal: Run the first real Pack B x86_64 device-under-test session with the FERROS binary on physical hardware, capture the exact build or run command used for `ferros-hub` or the target-side host path, and record target-side `ferros profile init` plus `ferros profile show` on the named DUT. The output should establish the first honest physical-device baseline without claiming HA entity visibility, full power-cycle survival, independent install proof, D1 closure, or G4 movement.
+- Anchor files: `docs/hardware/findings/FINDINGS-pack-b-session-01-profile-baseline.md`
+- Validation: `get_errors` clean on `docs/hardware/findings/FINDINGS-pack-b-session-01-profile-baseline.md`; findings record the named DUT, physical session date, exact command refs, profile init and show result, and operator-attended note.
+- Constraints: Physical-device execution is expected in this future wave, but keep the claim ceiling at profile baseline only. Do not claim HA entity visibility, deny visibility, restart-safe state, full power-cycle survival, D1 closure, or G4 movement. Run this lane only after the named session plan exists.
+- Last update: 2026-04-30
+- size: L
+- serial-after: HARDWARE-2026-04-30-04
+- solo: true
+- track: hardware
+
+### HARDWARE-2026-04-30-06
+
+- Title: Mirror the local handoff artifact chain on the named DUT
+- Status: ready
+- Priority: P1
+- Gate: D1 on-device handoff mirror
+- Owning streams: S7 primary; S2, S3, and S4 consumer awareness
+- Goal: On the named Pack B device under test, mirror the already-landed local code-runway artifact chain by capturing a bridge artifact or named stand-in output, proposal and decision fields, runway shell or log observation, deny visibility, and a clean-reboot reload observation that matches the local handoff map. Record the operator-attended session honestly as DUT-side rehearsal output without claiming real HA entity visibility, full power-cycle survival, consent acceptance, D1 closure, or G4 movement.
+- Anchor files: `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`
+- Validation: `get_errors` clean on `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`; findings record the named stand-in or bridge artifact reference, proposal and decision field refs, shell or log evidence, deny-log evidence, reboot note, and operator-attended note.
+- Constraints: Keep all wording aligned with the current local-only handoff surfaces. Do not turn a named stand-in into real HA proof. Do not treat clean reboot as full power-cycle survival. Do not claim consent acceptance, D1 closure, or G4 movement. Run this lane only after the first physical baseline exists.
+- Last update: 2026-04-30
+- size: L
+- serial-after: HARDWARE-2026-04-30-05
+- solo: true
+- track: hardware
+
+### HARDWARE-2026-04-30-07
+
+- Title: Separate Pack C HA visibility and recovery proof after DUT rehearsal
+- Status: ready
+- Priority: P1
+- Gate: G4 separate-host HA lab proof prep
+- Owning streams: S7 primary; S3 and S4 consumer awareness
+- Goal: Run the first separate-host Pack C Home Assistant lab proof after the Pack B DUT rehearsal exists, capturing one real HA entity visibility result plus any later HA-side recovery observation while the DUT restart or cold-boot path is exercised. Record the separate-host topology, evidence references, and remaining gaps without claiming independent install proof, D1 closure, or G4 movement.
+- Anchor files: `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`
+- Validation: `get_errors` clean on `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`; findings record the named Pack B DUT, named Pack C HA host, HA entity or dashboard evidence reference, recovery observation if attempted, and claim ceiling.
+- Constraints: Keep this as the first real HA-proof step and do not pull it earlier into the D1-style DUT rehearsal lanes. Do not claim independent install proof, private-beta readiness, G4 closure, or any result not captured on real hardware with a separate HA host. Run this lane only after the DUT-side handoff mirror exists.
+- Last update: 2026-04-30
+- size: L
+- serial-after: HARDWARE-2026-04-30-06
+- solo: true
+- track: hardware
+
 ---
 
 ## In Progress

@@ -14,6 +14,8 @@ use ferros_core::{
     PolicyEngine,
 };
 use ferros_data::{
+    local_runway_launch_overclaim_wording,
+    local_runway_text_looks_remote_like_url,
     LocalOnrampDecisionLabel, LocalOnrampDecisionReceipt, LocalOnrampDecisionReceiptError,
     LocalOnrampDecisionReceiptWriteError,
     LocalOnrampProposal, LocalOnrampProposalError, LocalOnrampProposalWriteError,
@@ -1166,15 +1168,14 @@ fn validate_snapshot_text_field(
         )));
     }
 
-    let lowered = value.to_ascii_lowercase();
-    if looks_remote_like_url(&lowered) {
+    if local_runway_text_looks_remote_like_url(value) {
         return Err(invalid_local_hub_state(format!(
             "{} must not contain remote-looking URLs",
             field_name
         )));
     }
 
-    if let Some(wording) = banned_local_state_wording(&lowered) {
+    if let Some(wording) = local_runway_launch_overclaim_wording(value) {
         return Err(invalid_local_hub_state(format!(
             "{} must not contain {} wording",
             field_name, wording
@@ -1182,23 +1183,6 @@ fn validate_snapshot_text_field(
     }
 
     Ok(())
-}
-
-fn looks_remote_like_url(value: &str) -> bool {
-    value.contains("://")
-        || value.starts_with("//")
-        || value.contains("http://")
-        || value.contains("https://")
-        || value.contains("ws://")
-        || value.contains("wss://")
-        || value.contains("ftp://")
-        || value.contains("file://")
-}
-
-fn banned_local_state_wording(value: &str) -> Option<&'static str> {
-    ["hardware", "proof", "launch"]
-        .into_iter()
-        .find(|wording| value.contains(wording))
 }
 
 fn invalid_local_hub_state(reason: impl Into<String>) -> LocalHubStateSnapshotError {

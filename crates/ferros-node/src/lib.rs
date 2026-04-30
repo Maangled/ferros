@@ -25,8 +25,10 @@ use ferros_core::{
     MessageEnvelope, MessageEnvelopeError, PolicyDecision, PolicyEngine, RequesterProfileIdError,
 };
 use ferros_hub::{
-    default_local_runtime_summary, LocalBridgeRegistrationError, LocalHubRuntimeSummary,
-    LOCAL_HUB_STATE_SNAPSHOT_PATH,
+    default_local_runtime_summary, local_hub_relative_json_path_is_valid,
+    local_onramp_banned_wording, local_runway_evidence_is_non_evidentiary,
+    local_runway_scope_is_local_only, local_runway_text_looks_remote_like_url,
+    LocalBridgeRegistrationError, LocalHubRuntimeSummary, LOCAL_HUB_STATE_SNAPSHOT_PATH,
 };
 use ferros_profile::{
     grant_profile_capability, init_local_profile, revoke_profile_capability, CapabilityGrant,
@@ -1644,6 +1646,19 @@ fn map_local_runway_hub_onramp_proposal_summary(
     summary
         .local_onramp_proposal
         .as_ref()
+        .filter(|proposal| {
+            has_valid_local_onramp_proposal_projection(
+                &proposal.source,
+                &proposal.proposal_id,
+                &proposal.bridge_agent_name,
+                &proposal.stand_in_entity_name,
+                &proposal.requested_capability,
+                &proposal.requested_action,
+                &proposal.scope,
+                &proposal.evidence,
+                &proposal.local_artifact_path,
+            )
+        })
         .map(|proposal| LocalRunwayHubOnrampProposalSummary {
             source: proposal.source.clone(),
             proposal_id: proposal.proposal_id.clone(),
@@ -1664,6 +1679,16 @@ fn map_local_runway_hub_onramp_decision_receipt_summary(
     summary
         .local_onramp_decision_receipt
         .as_ref()
+        .filter(|receipt| {
+            has_valid_local_onramp_decision_projection(
+                &receipt.proposal_id,
+                &receipt.proposal_artifact_path,
+                receipt.decision_detail.as_deref(),
+                &receipt.scope,
+                &receipt.evidence,
+                &receipt.local_artifact_path,
+            )
+        })
         .map(|receipt| LocalRunwayHubOnrampDecisionReceiptSummary {
             proposal_id: receipt.proposal_id.clone(),
             decision_label: receipt.decision_label.as_str().to_owned(),
@@ -1690,6 +1715,52 @@ where
         ),
         Err(_) => (None, None, None),
     }
+}
+
+fn has_valid_local_onramp_proposal_projection(
+    source: &str,
+    proposal_id: &str,
+    bridge_agent_name: &str,
+    stand_in_entity_name: &str,
+    requested_capability: &str,
+    requested_action: &str,
+    scope: &str,
+    evidence: &str,
+    local_artifact_path: &str,
+) -> bool {
+    local_hub_relative_json_path_is_valid(source)
+        && local_hub_relative_json_path_is_valid(local_artifact_path)
+        && local_runway_scope_is_local_only(scope)
+        && local_runway_evidence_is_non_evidentiary(evidence)
+        && is_valid_local_onramp_text(proposal_id)
+        && is_valid_local_onramp_text(bridge_agent_name)
+        && is_valid_local_onramp_text(stand_in_entity_name)
+        && is_valid_local_onramp_text(requested_capability)
+        && is_valid_local_onramp_text(requested_action)
+}
+
+fn has_valid_local_onramp_decision_projection(
+    proposal_id: &str,
+    proposal_artifact_path: &str,
+    decision_detail: Option<&str>,
+    scope: &str,
+    evidence: &str,
+    local_artifact_path: &str,
+) -> bool {
+    local_hub_relative_json_path_is_valid(proposal_artifact_path)
+        && local_hub_relative_json_path_is_valid(local_artifact_path)
+        && local_runway_scope_is_local_only(scope)
+        && local_runway_evidence_is_non_evidentiary(evidence)
+        && is_valid_local_onramp_text(proposal_id)
+        && decision_detail
+            .map(is_valid_local_onramp_text)
+            .unwrap_or(true)
+}
+
+fn is_valid_local_onramp_text(value: &str) -> bool {
+    !value.trim().is_empty()
+        && !local_runway_text_looks_remote_like_url(value)
+        && local_onramp_banned_wording(value).is_none()
 }
 
 fn profile_value_for_action<S: LocalProfileStore>(
@@ -3322,6 +3393,42 @@ mod tests {
     }
 
     #[test]
+    fn onramp_runway_summary_omits_hub_onramp_proposal_when_hub_summary_child_is_invalid() {
+        let state_path = unique_state_path("onramp-runway-summary-invalid-child");
+        let profile_path = unique_profile_path("onramp-runway-summary-invalid-child");
+        let store = FileSystemProfileStore;
+
+        let summary = build_local_runway_summary_with_store_and_hub_summary_loader(
+            &state_path,
+            &profile_path,
+            &store,
+            || -> Result<LocalHubRuntimeSummary, LocalBridgeRegistrationError> {
+                let mut summary = default_local_runtime_summary()?;
+                summary
+                    .local_onramp_proposal
+                    .as_mut()
+                    .expect("default hub summary should include an onramp proposal")
+                    .local_artifact_path = "https://example.com/local-onramp-proposal.json".to_owned();
+                Ok(summary)
+            },
+        )
+        .expect("runway summary should load when the invalid hub onramp proposal child is filtered");
+        let payload = serde_json::to_value(&summary)
+            .expect("runway summary should serialize without the invalid hub onramp child");
+
+        assert!(summary.hub_restart.is_some());
+        assert!(summary.hub_onramp_proposal.is_none());
+        assert!(summary.hub_onramp_decision_receipt.is_some());
+        assert!(payload.get("hubRestart").is_some());
+        assert!(payload.get("hubOnrampProposal").is_none());
+        assert!(payload.get("hubOnrampDecisionReceipt").is_some());
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
     fn onramp_decision_shell_route_gets_local_runway_summary_json() {
         let state_path = unique_state_path("onramp-decision-shell-runway-summary");
         let profile_path = unique_profile_path("onramp-decision-shell-runway-summary");
@@ -3406,6 +3513,43 @@ mod tests {
         .expect("runway summary should load when the hub onramp decision child is absent");
         let payload = serde_json::to_value(&summary)
             .expect("runway summary should serialize without the hub onramp decision child");
+
+        assert!(summary.hub_restart.is_some());
+        assert!(summary.hub_onramp_proposal.is_some());
+        assert!(summary.hub_onramp_decision_receipt.is_none());
+        assert!(payload.get("hubRestart").is_some());
+        assert!(payload.get("hubOnrampProposal").is_some());
+        assert!(payload.get("hubOnrampDecisionReceipt").is_none());
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
+    fn onramp_decision_runway_summary_omits_hub_onramp_decision_receipt_when_hub_summary_child_is_invalid(
+    ) {
+        let state_path = unique_state_path("onramp-decision-runway-summary-invalid-child");
+        let profile_path = unique_profile_path("onramp-decision-runway-summary-invalid-child");
+        let store = FileSystemProfileStore;
+
+        let summary = build_local_runway_summary_with_store_and_hub_summary_loader(
+            &state_path,
+            &profile_path,
+            &store,
+            || -> Result<LocalHubRuntimeSummary, LocalBridgeRegistrationError> {
+                let mut summary = default_local_runtime_summary()?;
+                summary
+                    .local_onramp_decision_receipt
+                    .as_mut()
+                    .expect("default hub summary should include an onramp decision receipt")
+                    .decision_detail = Some("local-only gate closure rehearsal".to_owned());
+                Ok(summary)
+            },
+        )
+        .expect("runway summary should load when the invalid hub onramp decision child is filtered");
+        let payload = serde_json::to_value(&summary)
+            .expect("runway summary should serialize without the invalid hub onramp decision child");
 
         assert!(summary.hub_restart.is_some());
         assert!(summary.hub_onramp_proposal.is_some());
