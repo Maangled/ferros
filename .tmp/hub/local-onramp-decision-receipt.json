@@ -1,0 +1,9 @@
+{
+  "proposalId": "proposal-ha-local-bridge-simulated-bridge-entity-report-state",
+  "proposalArtifactPath": ".tmp/hub/local-onramp-proposal.json",
+  "decisionLabel": "allowed",
+  "decisionDetail": "local-only operator rehearsal allowed report-state for proposal proposal-ha-local-bridge-simulated-bridge-entity-report-state",
+  "scope": "local-only",
+  "evidence": "non-evidentiary",
+  "localArtifactPath": ".tmp/hub/local-onramp-decision-receipt.json"
+}

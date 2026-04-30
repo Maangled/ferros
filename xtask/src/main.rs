@@ -6,7 +6,8 @@ use std::process::{Command, ExitCode};
 use ferros_data::{
     LocalArtifactRole, LocalEnvelopeKind, LocalPushArtifact, LocalPushAuditEnvelope,
     LocalPushObservation, LocalPushScope, LocalPushSurface,
-    LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH, BURST_LOCAL_PUSH_ENVELOPE_PATH,
+    BURST_LOCAL_PUSH_ENVELOPE_PATH, LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+    LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
 };
 use ferros_hub::{
     LocalBridgeStatus, LocalHubReloadStatus, LocalHubRuntimeSummary,
@@ -179,15 +180,24 @@ fn run_hub_runway() -> Result<String, String> {
         .local_onramp_proposal
         .as_ref()
         .ok_or_else(|| "expected second summary to include a local onramp proposal".to_owned())?;
+    let decision_receipt = second_summary
+        .local_onramp_decision_receipt
+        .as_ref()
+        .ok_or_else(|| {
+            "expected second summary to include a local onramp decision receipt".to_owned()
+        })?;
     let summary_output = ferros_hub::summary_command_output()
         .map_err(|error| format!("could not build local hub runtime summary: {error}"))?;
 
     Ok(format!(
-        "{}\nhubOnrampProposalStatus: {}\nhubOnrampProposalArtifact: {}\nhubOnrampProposalSource: {}",
+        "{}\nhubOnrampProposalStatus: {}\nhubOnrampProposalArtifact: {}\nhubOnrampProposalSource: {}\nhubOnrampDecisionLabel: {}\nhubOnrampDecisionArtifact: {}\nhubOnrampDecisionProposalId: {}",
         summary_output,
         proposal.quarantine_status.as_str(),
         proposal.local_artifact_path,
         proposal.source,
+        decision_receipt.decision_label.as_str(),
+        decision_receipt.local_artifact_path,
+        decision_receipt.proposal_id,
     ))
 }
 
@@ -231,6 +241,11 @@ fn validate_hub_runway_summary(
             "expected local onramp proposal in {summary_label} summary, got none"
         )
     })?;
+    let decision_receipt = summary.local_onramp_decision_receipt.as_ref().ok_or_else(|| {
+        format!(
+            "expected local onramp decision receipt in {summary_label} summary, got none"
+        )
+    })?;
 
     if proposal.source != SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH {
         return Err(format!(
@@ -266,6 +281,65 @@ fn validate_hub_runway_summary(
             "expected proposal artifact path {} in {summary_label} summary, got {}",
             LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
             proposal.local_artifact_path
+        ));
+    }
+
+    if decision_receipt.proposal_id != proposal.proposal_id {
+        return Err(format!(
+            "expected decision receipt proposal id {} in {summary_label} summary, got {}",
+            proposal.proposal_id,
+            decision_receipt.proposal_id
+        ));
+    }
+
+    if decision_receipt.proposal_artifact_path != LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH {
+        return Err(format!(
+            "expected decision receipt proposal artifact path {} in {summary_label} summary, got {}",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+            decision_receipt.proposal_artifact_path
+        ));
+    }
+
+    if decision_receipt.decision_label.as_str() != "allowed" {
+        return Err(format!(
+            "expected allowed decision label in {summary_label} summary, got {}",
+            decision_receipt.decision_label.as_str()
+        ));
+    }
+
+    let decision_detail = decision_receipt.decision_detail.as_deref().ok_or_else(|| {
+        format!(
+            "expected decision detail in {summary_label} summary, got none"
+        )
+    })?;
+
+    if !decision_detail.contains(&proposal.proposal_id) {
+        return Err(format!(
+            "expected decision detail in {summary_label} summary to mention proposal id {}, got {}",
+            proposal.proposal_id,
+            decision_detail
+        ));
+    }
+
+    if decision_receipt.scope != "local-only" {
+        return Err(format!(
+            "expected local-only decision scope in {summary_label} summary, got {}",
+            decision_receipt.scope
+        ));
+    }
+
+    if decision_receipt.evidence != "non-evidentiary" {
+        return Err(format!(
+            "expected non-evidentiary decision evidence in {summary_label} summary, got {}",
+            decision_receipt.evidence
+        ));
+    }
+
+    if decision_receipt.local_artifact_path != LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH {
+        return Err(format!(
+            "expected decision artifact path {} in {summary_label} summary, got {}",
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+            decision_receipt.local_artifact_path
         ));
     }
 
@@ -309,6 +383,73 @@ fn validate_hub_runway_summary(
         }
     }
 
+    let decision_output_path = env::current_dir()
+        .map_err(|error| format!("could not resolve workspace root: {error}"))?
+        .join(&decision_receipt.local_artifact_path);
+    let decision_content = fs::read_to_string(&decision_output_path)
+        .map_err(|error| format!("could not read local onramp decision artifact: {error}"))?;
+
+    if !decision_content.contains("\"decisionLabel\": \"allowed\"") {
+        return Err(format!(
+            "expected allowed decision label in {summary_label} artifact, got {}",
+            decision_content
+        ));
+    }
+
+    if !decision_content.contains(&format!(
+        "\"proposalId\": \"{}\"",
+        proposal.proposal_id
+    )) {
+        return Err(format!(
+            "expected proposal id {} in {summary_label} decision artifact payload",
+            proposal.proposal_id
+        ));
+    }
+
+    if !decision_content.contains(&format!(
+        "\"proposalArtifactPath\": \"{}\"",
+        LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH
+    )) {
+        return Err(format!(
+            "expected proposal artifact path {} in {summary_label} decision artifact payload",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH
+        ));
+    }
+
+    if !decision_content.contains(&format!(
+        "\"localArtifactPath\": \"{}\"",
+        LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH
+    )) {
+        return Err(format!(
+            "expected decision artifact path {} in {summary_label} decision artifact payload",
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH
+        ));
+    }
+
+    if !decision_content.contains(decision_detail) {
+        return Err(format!(
+            "expected decision detail {} in {summary_label} artifact payload",
+            decision_detail
+        ));
+    }
+
+    for banned_wording in [
+        "hardware",
+        "proof",
+        "launch",
+        "accepted",
+        "canonical",
+        "granted",
+        "://",
+    ] {
+        if decision_content.contains(banned_wording) {
+            return Err(format!(
+                "decision artifact in {summary_label} summary contained banned wording {}",
+                banned_wording
+            ));
+        }
+    }
+
     Ok(())
 }
 
@@ -334,7 +475,7 @@ FERROS xtask
 Usage:
     cargo xtask ci      Run fmt, clippy, build, and test for the current workspace
     cargo xtask burst   Print the current queue-clear opener surfaces and focused validation commands
-    cargo xtask hub-runway   Validate the restart-aware hub seam plus local onramp rehearsal artifact and print the summary output
+    cargo xtask hub-runway   Validate the restart-aware hub seam plus local onramp rehearsal proposal and decision artifacts and print the summary output
 ";
 
 const BURST_TEXT: &str = "\

@@ -46,9 +46,19 @@ pub fn summary_command_output() -> Result<String, LocalBridgeRegistrationError> 
 
 pub fn prove_bridge_command_output() -> Result<String, LocalBridgeRegistrationError> {
     let summary = default_local_runtime_summary()?;
+    let decision_label = summary
+        .local_onramp_decision_receipt
+        .as_ref()
+        .map(|receipt| receipt.decision_label.as_str())
+        .unwrap_or("none");
+    let decision_artifact = summary
+        .local_onramp_decision_receipt
+        .as_ref()
+        .map(|receipt| receipt.local_artifact_path.as_str())
+        .unwrap_or("none");
 
     Ok(format!(
-        "ferros-hub bridge-proof: {} for {} with artifact {} [{}; {}; restart {}]",
+        "ferros-hub bridge-proof: {} for {} with artifact {} [{}; {}; restart {}; decision {}; receipt {}]",
         policy_decision_label(summary.policy_decision),
         summary.stand_in_name,
         summary
@@ -57,7 +67,9 @@ pub fn prove_bridge_command_output() -> Result<String, LocalBridgeRegistrationEr
             .unwrap_or("none"),
         summary.scope,
         summary.evidence,
-        summary.restart_observation.reload_status.as_str()
+        summary.restart_observation.reload_status.as_str(),
+        decision_label,
+        decision_artifact
     ))
 }
 
@@ -96,6 +108,8 @@ fn format_local_runtime_summary(summary: &LocalHubRuntimeSummary) -> String {
             "policyDecision: {}\n",
             "bridgeStatus: {}\n",
             "artifact: {}\n",
+            "onrampDecisionLabel: {}\n",
+            "onrampDecisionArtifact: {}\n",
             "scope: {}\n",
             "evidence: {}\n",
             "restartReload: {}\n",
@@ -116,6 +130,16 @@ fn format_local_runtime_summary(summary: &LocalHubRuntimeSummary) -> String {
         summary
             .artifact_relative_output_path
             .as_deref()
+            .unwrap_or("none"),
+        summary
+            .local_onramp_decision_receipt
+            .as_ref()
+            .map(|receipt| receipt.decision_label.as_str())
+            .unwrap_or("none"),
+        summary
+            .local_onramp_decision_receipt
+            .as_ref()
+            .map(|receipt| receipt.local_artifact_path.as_str())
             .unwrap_or("none"),
         summary.scope,
         summary.evidence,

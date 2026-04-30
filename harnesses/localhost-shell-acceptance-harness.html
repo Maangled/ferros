@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>H9 — FERROS Localhost Shell Acceptance Harness</h1>
-<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates the aggregated <code>agent.snapshot</code> seam, local inspector reuse, the local-only <code>/runway-summary.json</code> read surface, pending-consent proposed material on the existing runway route, consent-gated selected-agent lifecycle control, route switching, empty-state grant and deny handling, scoped audit visibility, and operator-assisted live observation after local CLI run/stop updates &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
+<div class="meta">H9 — live localhost shell black-box acceptance &nbsp;|&nbsp; same-origin iframe against <code>/</code> &nbsp;|&nbsp; validates the aggregated <code>agent.snapshot</code> seam, local inspector reuse, the local-only <code>/runway-summary.json</code> read surface, pending-consent proposed material plus the recorded decision rehearsal receipt on the existing runway route, consent-gated selected-agent lifecycle control, route switching, empty-state grant and deny handling, scoped audit visibility, and operator-assisted live observation after local CLI run/stop updates &nbsp;|&nbsp; served by <code>ferros-node shell</code></div>
 
 <button onclick="runJourney()">Run Journey</button>
 
@@ -395,18 +395,20 @@ async function runJourney() {
       var shellPath = frameWindow && frameWindow.location ? frameWindow.location.pathname : '';
       var runwayUrls = observedRunwayUrls();
       var runwayText = doc.getElementById('runway-surface').textContent.toLowerCase();
-      var runwayButtonAdvertisesRestart = runwayButtonCopy.indexOf('optional hub restart context') !== -1
+      var runwayButtonAdvertisesRestart = runwayButtonCopy.indexOf('optional hub restart') !== -1
         && runwayButtonCopy.indexOf('/runway-summary.json') !== -1;
       var runwayButtonAdvertisesProposal = runwayButtonCopy.indexOf('pending-consent proposed material') !== -1
         && runwayButtonCopy.indexOf('/runway-summary.json') !== -1;
+      var runwayButtonAdvertisesDecision = runwayButtonCopy.indexOf('decision rehearsal receipt') !== -1
+        && runwayButtonCopy.indexOf('/runway-summary.json') !== -1;
       var runwayToolsCopyVisible = toolsCopy.indexOf('/runway-summary.json') !== -1
         && toolsCopy.indexOf('optional hub restart context') !== -1
-        && toolsCopy.indexOf('reloadstatus') !== -1
+        && toolsCopy.indexOf('display-only') !== -1
         && toolsCopy.indexOf('non-evidentiary') !== -1;
       var runwayAuditCopyVisible = auditCopy.indexOf('/runway-summary.json') !== -1
         && auditCopy.indexOf('optional hub restart context') !== -1
-        && auditCopy.indexOf('reloadstatus') !== -1
-        && auditCopy.indexOf('read-only') !== -1;
+        && auditCopy.indexOf('read-only') !== -1
+        && auditCopy.indexOf('gate evidence') !== -1;
       var runwayProposalCopyVisible = toolsCopy.indexOf('pending-consent proposed material') !== -1
         && toolsCopy.indexOf('display-only') !== -1
         && auditCopy.indexOf('pending-consent proposed material') !== -1
@@ -414,6 +416,14 @@ async function runJourney() {
         && auditCopy.indexOf('no grant') !== -1
         && auditCopy.indexOf('no home assistant proof') !== -1
         && auditCopy.indexOf('hardware') !== -1
+        && auditCopy.indexOf('gate evidence') !== -1;
+      var runwayDecisionCopyVisible = toolsCopy.indexOf('decision rehearsal receipt') !== -1
+        && toolsCopy.indexOf('display-only') !== -1
+        && auditCopy.indexOf('decision rehearsal receipt') !== -1
+        && auditCopy.indexOf('no executed consent event') !== -1
+        && auditCopy.indexOf('no canonical state') !== -1
+        && auditCopy.indexOf('no grant') !== -1
+        && auditCopy.indexOf('no home assistant proof') !== -1
         && auditCopy.indexOf('gate evidence') !== -1;
       var hubRestartPriorLabels = [
         'prior bridge manifest identity',
@@ -427,15 +437,17 @@ async function runJourney() {
       var selectedProfilePathRequested = runwayUrls.some(function(url) {
         return url.indexOf('profilePath=%2Fdefinitely%2Fmissing%2Fprofile.json') !== -1;
       });
-      addResult('C: Runway', 'Runway route button copy advertises optional hub restart context from /runway-summary.json', runwayButtonAdvertisesRestart, 'button=' + (runwayButtonCopy || 'missing'), runwayButtonAdvertisesRestart ? '' : 'runway route button copy lost the optional hub restart /runway-summary.json description');
+      addResult('C: Runway', 'Runway route button copy advertises optional hub restart from /runway-summary.json', runwayButtonAdvertisesRestart, 'button=' + (runwayButtonCopy || 'missing'), runwayButtonAdvertisesRestart ? '' : 'runway route button copy lost the optional hub restart /runway-summary.json description');
       addResult('C: Runway', 'Runway route button copy advertises pending-consent proposed material from /runway-summary.json', runwayButtonAdvertisesProposal, 'button=' + (runwayButtonCopy || 'missing'), runwayButtonAdvertisesProposal ? '' : 'runway route button copy lost the pending-consent proposed material /runway-summary.json description');
+      addResult('C: Runway', 'Runway route button copy advertises the decision rehearsal receipt from /runway-summary.json', runwayButtonAdvertisesDecision, 'button=' + (runwayButtonCopy || 'missing'), runwayButtonAdvertisesDecision ? '' : 'runway route button copy lost the decision rehearsal receipt /runway-summary.json description');
       addResult('C: Runway', 'Runway observation stays on the existing shell path', shellPath === '/', 'pathname=' + (shellPath || 'missing'), shellPath === '/' ? '' : 'runway route changed the shell document path instead of reusing the current shell path');
       addResult('C: Runway', 'Runway request carries the selected profile path', selectedProfilePathRequested, 'urls=' + (runwayUrls.join(', ') || 'none'), selectedProfilePathRequested ? '' : 'runway fetch did not include the selected profilePath query');
       addResult('C: Runway', 'Runway surface renders selected profile path and checkpoint progress', selectedProfilePathVisible && checkpointVisible, 'surface=' + (runwayText || 'missing'), selectedProfilePathVisible && checkpointVisible ? '' : 'runway surface did not render the selected profile path and pending checkpoint progress');
       var checklistVisible = runwayText.indexOf('power cycle') !== -1 || runwayText.indexOf('powercyclestatus') !== -1;
       addResult('C: Runway', 'Runway surface renders checklist state', checklistVisible, checklistVisible ? 'runway checklist visible' : '', checklistVisible ? '' : 'runway checklist copy did not render');
-      addResult('C: Runway', 'Runway tools and audit copy keep hub restart context and reloadStatus on the read-only /runway-summary.json route', runwayToolsCopyVisible && runwayAuditCopyVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayToolsCopyVisible && runwayAuditCopyVisible ? '' : 'runway tools/audit copy lost the restart-aware /runway-summary.json guidance');
+      addResult('C: Runway', 'Runway tools and audit copy keep restart-aware context on the read-only /runway-summary.json route', runwayToolsCopyVisible && runwayAuditCopyVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayToolsCopyVisible && runwayAuditCopyVisible ? '' : 'runway tools/audit copy lost the restart-aware /runway-summary.json guidance');
       addResult('C: Runway', 'Runway tools and audit copy keep proposed material on the same read-only /runway-summary.json route', runwayProposalCopyVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayProposalCopyVisible ? '' : 'runway tools/audit copy lost the pending-consent proposed-material read-only ceiling');
+      addResult('C: Runway', 'Runway tools and audit copy keep the decision rehearsal receipt on the same read-only /runway-summary.json route', runwayDecisionCopyVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayDecisionCopyVisible ? '' : 'runway tools/audit copy lost the local decision rehearsal read-only ceiling');
 
       var runwayProposalVisible = ['pending consent proposed material', 'quarantinestatus', 'proposalid', 'stand-in', 'display only', 'not accepted', 'not canonical', 'not a grant', 'not home assistant proof'].every(function(marker) {
         return runwayText.indexOf(marker) !== -1;
@@ -444,6 +456,11 @@ async function runJourney() {
       var runwayProposalReadOnly = doc.getElementById('runway-surface').querySelectorAll('button, input, select, textarea, form').length === 0;
       addResult('C: Runway', 'Runway surface renders pending-consent proposed material as local-only non-evidentiary observation', runwayProposalVisible && runwayProposalLocalOnly, 'surface=' + (runwayText || 'missing'), runwayProposalVisible && runwayProposalLocalOnly ? '' : 'runway surface did not render the pending-consent proposed-material field set and local-only/non-evidentiary status');
       addResult('C: Runway', 'Runway surface keeps proposed material display-only with no in-surface controls', runwayProposalReadOnly, runwayProposalReadOnly ? 'runway surface contains no buttons or form controls' : '', runwayProposalReadOnly ? '' : 'runway surface exposed an unexpected control element during the proposed-material observation flow');
+
+      var runwayDecisionVisible = ['local decision rehearsal receipt', 'proposalid', 'decisionlabel', 'decisiondetail', 'display only', 'not an executed consent event', 'not canonical state', 'not a grant', 'not home assistant proof'].every(function(marker) {
+        return runwayText.indexOf(marker) !== -1;
+      });
+      addResult('C: Runway', 'Runway surface renders the local decision rehearsal receipt beside the proposal on the existing route', runwayDecisionVisible && runwayProposalReadOnly, 'surface=' + (runwayText || 'missing'), runwayDecisionVisible && runwayProposalReadOnly ? '' : 'runway surface did not render the recorded local decision rehearsal field set on the existing read-only route');
 
       var runwayHubRestartPresent = ['reloadstatus', 'snapshotpath', 'scope', 'evidence'].every(function(marker) {
         return runwayText.indexOf(marker) !== -1;
@@ -470,6 +487,11 @@ async function runJourney() {
       var runwayInspectorProposalLocalOnly = inspectorText.indexOf('local-only') !== -1 && inspectorText.indexOf('non-evidentiary') !== -1;
       addResult('C: Runway', 'Inspector renders the proposed-material field set on the existing runway route', runwayInspectorProposalVisible, 'inspector=' + (inspectorText || 'missing'), runwayInspectorProposalVisible ? '' : 'runway inspector did not render the pending-consent proposed-material field set');
       addResult('C: Runway', 'Inspector keeps proposal scope local-only and evidence non-evidentiary', runwayInspectorProposalLocalOnly, 'inspector=' + (inspectorText || 'missing'), runwayInspectorProposalLocalOnly ? '' : 'runway inspector did not keep the proposal scope/evidence inside the local-only non-evidentiary ceiling');
+
+      var runwayInspectorDecisionVisible = ['hub decision rehearsal', 'local decision rehearsal receipt only', 'proposal id', 'decision label', 'decision detail', 'artifact path'].every(function(marker) {
+        return inspectorText.indexOf(marker) !== -1;
+      });
+      addResult('C: Runway', 'Inspector renders the local decision rehearsal field set on the existing runway route', runwayInspectorDecisionVisible, 'inspector=' + (inspectorText || 'missing'), runwayInspectorDecisionVisible ? '' : 'runway inspector did not render the local decision rehearsal receipt field set');
 
       var runwayInspectorHubRestartPresent = ['hub restart', 'reload status', 'snapshot path', 'restart scope', 'restart evidence'].every(function(marker) {
         return inspectorText.indexOf(marker) !== -1;

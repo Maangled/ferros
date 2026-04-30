@@ -25,6 +25,10 @@ pub const LOCAL_ONRAMP_PROPOSAL_ARTIFACT_ROOT: &str = ".tmp/hub/";
 pub const LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH: &str = ".tmp/hub/local-onramp-proposal.json";
 pub const LOCAL_ONRAMP_PROPOSAL_SCOPE: &str = "local-only";
 pub const LOCAL_ONRAMP_PROPOSAL_EVIDENCE: &str = "non-evidentiary";
+pub const LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH: &str =
+    ".tmp/hub/local-onramp-decision-receipt.json";
+pub const LOCAL_ONRAMP_DECISION_RECEIPT_SCOPE: &str = "local-only";
+pub const LOCAL_ONRAMP_DECISION_RECEIPT_EVIDENCE: &str = "non-evidentiary";
 
 #[cfg(test)]
 const ORDERED_CHILD_SINGLE_PARENT_SCOPE_MIGRATION_SQL: &str =
@@ -240,8 +244,58 @@ pub struct LocalOnrampProposal {
     pub local_artifact_path: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum LocalOnrampDecisionLabel {
+    #[serde(rename = "allowed")]
+    Allowed,
+    #[serde(rename = "denied:no-grants")]
+    DeniedNoGrants,
+    #[serde(rename = "denied:profile")]
+    DeniedProfile,
+    #[serde(rename = "denied:capability")]
+    DeniedCapability,
+}
+
+impl LocalOnrampDecisionLabel {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Allowed => "allowed",
+            Self::DeniedNoGrants => "denied:no-grants",
+            Self::DeniedProfile => "denied:profile",
+            Self::DeniedCapability => "denied:capability",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalOnrampDecisionReceipt {
+    pub proposal_id: String,
+    pub proposal_artifact_path: String,
+    pub decision_label: LocalOnrampDecisionLabel,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub decision_detail: Option<String>,
+    pub scope: String,
+    pub evidence: String,
+    pub local_artifact_path: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LocalOnrampProposalError {
+    EmptyField(&'static str),
+    InvalidRelativePath(String),
+    InvalidScope(String),
+    InvalidEvidence(String),
+    InvalidTextField {
+        field: &'static str,
+        value: String,
+        reason: &'static str,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LocalOnrampDecisionReceiptError {
     EmptyField(&'static str),
     InvalidRelativePath(String),
     InvalidScope(String),
@@ -256,6 +310,13 @@ pub enum LocalOnrampProposalError {
 #[derive(Debug)]
 pub enum LocalOnrampProposalWriteError {
     InvalidProposal(LocalOnrampProposalError),
+    Serialize(serde_json::Error),
+    Io(std::io::Error),
+}
+
+#[derive(Debug)]
+pub enum LocalOnrampDecisionReceiptWriteError {
+    InvalidReceipt(LocalOnrampDecisionReceiptError),
     Serialize(serde_json::Error),
     Io(std::io::Error),
 }
@@ -419,6 +480,75 @@ impl LocalOnrampProposal {
     }
 }
 
+impl LocalOnrampDecisionReceipt {
+    pub fn new(
+        proposal_id: impl Into<String>,
+        proposal_artifact_path: impl Into<String>,
+        decision_label: LocalOnrampDecisionLabel,
+        decision_detail: Option<String>,
+        local_artifact_path: impl Into<String>,
+    ) -> Result<Self, LocalOnrampDecisionReceiptError> {
+        let receipt = Self {
+            proposal_id: proposal_id.into(),
+            proposal_artifact_path: proposal_artifact_path.into(),
+            decision_label,
+            decision_detail,
+            scope: LOCAL_ONRAMP_DECISION_RECEIPT_SCOPE.to_owned(),
+            evidence: LOCAL_ONRAMP_DECISION_RECEIPT_EVIDENCE.to_owned(),
+            local_artifact_path: local_artifact_path.into(),
+        };
+
+        receipt.validate()?;
+        Ok(receipt)
+    }
+
+    pub fn validate(&self) -> Result<(), LocalOnrampDecisionReceiptError> {
+        validate_onramp_decision_text_field("proposalId", &self.proposal_id)?;
+        validate_local_onramp_decision_artifact_path(&self.proposal_artifact_path)?;
+
+        if let Some(decision_detail) = self.decision_detail.as_deref() {
+            validate_onramp_decision_text_field("decisionDetail", decision_detail)?;
+        }
+
+        if self.scope != LOCAL_ONRAMP_DECISION_RECEIPT_SCOPE {
+            return Err(LocalOnrampDecisionReceiptError::InvalidScope(
+                self.scope.clone(),
+            ));
+        }
+
+        if self.evidence != LOCAL_ONRAMP_DECISION_RECEIPT_EVIDENCE {
+            return Err(LocalOnrampDecisionReceiptError::InvalidEvidence(
+                self.evidence.clone(),
+            ));
+        }
+
+        validate_local_onramp_decision_artifact_path(&self.local_artifact_path)?;
+
+        Ok(())
+    }
+
+    pub fn to_pretty_json(&self) -> Result<String, LocalOnrampDecisionReceiptWriteError> {
+        self.validate()
+            .map_err(LocalOnrampDecisionReceiptWriteError::InvalidReceipt)?;
+
+        serde_json::to_string_pretty(self).map_err(LocalOnrampDecisionReceiptWriteError::Serialize)
+    }
+
+    pub fn write_json(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<(), LocalOnrampDecisionReceiptWriteError> {
+        let path = path.as_ref();
+        let json = self.to_pretty_json()?;
+
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(LocalOnrampDecisionReceiptWriteError::Io)?;
+        }
+
+        fs::write(path, format!("{json}\n")).map_err(LocalOnrampDecisionReceiptWriteError::Io)
+    }
+}
+
 fn validate_onramp_text_field(
     field: &'static str,
     value: &str,
@@ -447,31 +577,73 @@ fn validate_onramp_text_field(
     Ok(())
 }
 
+fn validate_onramp_decision_text_field(
+    field: &'static str,
+    value: &str,
+) -> Result<(), LocalOnrampDecisionReceiptError> {
+    if value.trim().is_empty() {
+        return Err(LocalOnrampDecisionReceiptError::EmptyField(field));
+    }
+
+    let lowered = value.to_ascii_lowercase();
+    if looks_remote_like_url(&lowered) {
+        return Err(LocalOnrampDecisionReceiptError::InvalidTextField {
+            field,
+            value: value.to_owned(),
+            reason: "must not contain remote-looking URLs",
+        });
+    }
+
+    if let Some(wording) = banned_onramp_wording(&lowered) {
+        return Err(LocalOnrampDecisionReceiptError::InvalidTextField {
+            field,
+            value: value.to_owned(),
+            reason: wording,
+        });
+    }
+
+    Ok(())
+}
+
 fn validate_local_onramp_artifact_path(path: &str) -> Result<(), LocalOnrampProposalError> {
+    if !is_valid_local_onramp_relative_json_path(path) {
+        return Err(LocalOnrampProposalError::InvalidRelativePath(path.to_owned()));
+    }
+
+    Ok(())
+}
+
+fn validate_local_onramp_decision_artifact_path(
+    path: &str,
+) -> Result<(), LocalOnrampDecisionReceiptError> {
+    if !is_valid_local_onramp_relative_json_path(path) {
+        return Err(LocalOnrampDecisionReceiptError::InvalidRelativePath(
+            path.to_owned(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn is_valid_local_onramp_relative_json_path(path: &str) -> bool {
     if !path.starts_with(LOCAL_ONRAMP_PROPOSAL_ARTIFACT_ROOT)
         || !path.ends_with(".json")
         || Path::new(path).is_absolute()
         || path.contains(':')
         || path.trim().is_empty()
     {
-        return Err(LocalOnrampProposalError::InvalidRelativePath(path.to_owned()));
+        return false;
     }
 
     for component in Path::new(path).components() {
         match component {
-            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
-                return Err(LocalOnrampProposalError::InvalidRelativePath(path.to_owned()));
-            }
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return false,
             Component::CurDir | Component::Normal(_) => {}
         }
     }
 
     let lowered = path.to_ascii_lowercase();
-    if looks_remote_like_url(&lowered) || banned_onramp_wording(&lowered).is_some() {
-        return Err(LocalOnrampProposalError::InvalidRelativePath(path.to_owned()));
-    }
-
-    Ok(())
+    !looks_remote_like_url(&lowered) && banned_onramp_wording(&lowered).is_none()
 }
 
 fn looks_remote_like_url(value: &str) -> bool {
@@ -490,6 +662,11 @@ fn banned_onramp_wording(value: &str) -> Option<&'static str> {
         "hardware",
         "proof",
         "launch",
+        "home assistant",
+        "partner",
+        "gate",
+        "g4",
+        "closure",
         "accepted",
         "canonical",
         "granted",
@@ -573,10 +750,15 @@ mod tests {
     use super::{
         ferros_data_boundary, local_push_audit_boundary, BURST_LOCAL_PUSH_ENVELOPE_PATH,
         LocalArtifactRole, LocalDigestAlgorithm, LocalEnvelopeAuthority, LocalEnvelopeKind,
-        LocalOnrampProposal, LocalOnrampProposalError, LocalOnrampQuarantineStatus,
+        LocalOnrampDecisionLabel, LocalOnrampDecisionReceipt,
+        LocalOnrampDecisionReceiptError, LocalOnrampProposal, LocalOnrampProposalError,
+        LocalOnrampQuarantineStatus,
         LocalPushArtifact, LocalPushAuditEnvelope, LocalPushAuditEnvelopeError,
         LocalPushDigest, LocalPushObservation, LocalPushScope, LocalPushSurface,
         ADR_REFERENCE, BASELINE_MIGRATION_PATH, BASELINE_MIGRATION_SQL,
+        LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        LOCAL_ONRAMP_DECISION_RECEIPT_EVIDENCE,
+        LOCAL_ONRAMP_DECISION_RECEIPT_SCOPE,
         LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH, LOCAL_ONRAMP_PROPOSAL_EVIDENCE,
         LOCAL_ONRAMP_PROPOSAL_SCOPE,
         LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA, LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID,
@@ -975,6 +1157,176 @@ mod tests {
         assert_eq!(
             proposal,
             Err(LocalOnrampProposalError::InvalidRelativePath(
+                ".tmp/hub/../accepted-canonical.json".to_owned()
+            ))
+        );
+    }
+
+    #[test]
+    fn onramp_decision_receipt_accepts_local_proposal_linkage() {
+        let receipt = LocalOnrampDecisionReceipt::new(
+            "proposal-simulated-bridge-entity",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+            LocalOnrampDecisionLabel::Allowed,
+            Some(
+                "local-only operator rehearsal allowed report-state for proposal-simulated-bridge-entity"
+                    .to_owned(),
+            ),
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        )
+        .expect("decision receipt should validate");
+
+        let payload = serde_json::to_value(&receipt).expect("receipt should serialize");
+
+        assert_eq!(receipt.decision_label.as_str(), "allowed");
+        assert_eq!(receipt.scope, LOCAL_ONRAMP_DECISION_RECEIPT_SCOPE);
+        assert_eq!(receipt.evidence, LOCAL_ONRAMP_DECISION_RECEIPT_EVIDENCE);
+        assert_eq!(payload["decisionLabel"], "allowed");
+        assert_eq!(payload["proposalArtifactPath"], LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH);
+        assert_eq!(payload["localArtifactPath"], LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH);
+    }
+
+    #[test]
+    fn onramp_decision_receipt_write_json_creates_output_file() {
+        let output_path = std::env::temp_dir().join(format!(
+            "ferros-local-onramp-decision-receipt-{}.json",
+            std::process::id()
+        ));
+        let receipt = LocalOnrampDecisionReceipt::new(
+            "proposal-simulated-bridge-entity",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+            LocalOnrampDecisionLabel::DeniedNoGrants,
+            Some(
+                "local-only operator rehearsal denied bridge.observe because no local grant matched this proposal"
+                    .to_owned(),
+            ),
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        )
+        .expect("decision receipt should validate");
+
+        receipt
+            .write_json(&output_path)
+            .expect("decision receipt json should write");
+
+        let written = std::fs::read_to_string(&output_path).expect("output file should read");
+        assert!(written.contains("\"proposalId\""));
+        assert!(written.contains("\"decisionLabel\": \"denied:no-grants\""));
+        assert!(written.contains("\"scope\": \"local-only\""));
+
+        let _ = std::fs::remove_file(output_path);
+    }
+
+    #[test]
+    fn onramp_decision_receipt_rejects_remote_looking_proposal_link() {
+        let receipt = LocalOnrampDecisionReceipt::new(
+            "proposal-simulated-bridge-entity",
+            "https://ha.local/local-onramp-proposal.json",
+            LocalOnrampDecisionLabel::Allowed,
+            None,
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        );
+
+        assert_eq!(
+            receipt,
+            Err(LocalOnrampDecisionReceiptError::InvalidRelativePath(
+                "https://ha.local/local-onramp-proposal.json".to_owned()
+            ))
+        );
+    }
+
+    #[test]
+    fn onramp_decision_receipt_rejects_hardware_proof_launch_wording() {
+        let receipt = LocalOnrampDecisionReceipt::new(
+            "proposal-simulated-bridge-entity",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+            LocalOnrampDecisionLabel::Allowed,
+            Some("local-only hardware proof launch rehearsal".to_owned()),
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        );
+
+        assert_eq!(
+            receipt,
+            Err(LocalOnrampDecisionReceiptError::InvalidTextField {
+                field: "decisionDetail",
+                value: "local-only hardware proof launch rehearsal".to_owned(),
+                reason: "hardware",
+            })
+        );
+    }
+
+    #[test]
+    fn onramp_decision_receipt_rejects_canonical_or_granted_wording() {
+        let receipt = LocalOnrampDecisionReceipt::new(
+            "proposal-simulated-bridge-entity",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+            LocalOnrampDecisionLabel::DeniedCapability,
+            Some("local-only canonical granted rehearsal detail".to_owned()),
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        );
+
+        assert_eq!(
+            receipt,
+            Err(LocalOnrampDecisionReceiptError::InvalidTextField {
+                field: "decisionDetail",
+                value: "local-only canonical granted rehearsal detail".to_owned(),
+                reason: "canonical",
+            })
+        );
+    }
+
+    #[test]
+    fn onramp_decision_receipt_rejects_partner_or_home_assistant_wording() {
+        let receipt = LocalOnrampDecisionReceipt::new(
+            "proposal-simulated-bridge-entity",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+            LocalOnrampDecisionLabel::Allowed,
+            Some("local-only partner rehearsal for home assistant handoff".to_owned()),
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        );
+
+        assert_eq!(
+            receipt,
+            Err(LocalOnrampDecisionReceiptError::InvalidTextField {
+                field: "decisionDetail",
+                value: "local-only partner rehearsal for home assistant handoff".to_owned(),
+                reason: "home assistant",
+            })
+        );
+    }
+
+    #[test]
+    fn onramp_decision_receipt_rejects_gate_or_g4_closure_wording() {
+        let receipt = LocalOnrampDecisionReceipt::new(
+            "proposal-simulated-bridge-entity",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+            LocalOnrampDecisionLabel::Allowed,
+            Some("local-only gate-closing g4 closure rehearsal".to_owned()),
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+        );
+
+        assert_eq!(
+            receipt,
+            Err(LocalOnrampDecisionReceiptError::InvalidTextField {
+                field: "decisionDetail",
+                value: "local-only gate-closing g4 closure rehearsal".to_owned(),
+                reason: "gate",
+            })
+        );
+    }
+
+    #[test]
+    fn onramp_decision_receipt_rejects_non_local_artifact_paths() {
+        let receipt = LocalOnrampDecisionReceipt::new(
+            "proposal-simulated-bridge-entity",
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+            LocalOnrampDecisionLabel::Allowed,
+            None,
+            ".tmp/hub/../accepted-canonical.json",
+        );
+
+        assert_eq!(
+            receipt,
+            Err(LocalOnrampDecisionReceiptError::InvalidRelativePath(
                 ".tmp/hub/../accepted-canonical.json".to_owned()
             ))
         );

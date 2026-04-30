@@ -1,0 +1,8 @@
+{
+  "bridgeManifestIdentity": "ha-local-bridge@0.1.0",
+  "policyDecisionLabel": "allowed",
+  "artifactRelativeOutputPath": ".tmp/hub/simulated-local-bridge-artifact.json",
+  "scope": "local-only",
+  "evidence": "non-evidentiary",
+  "lastLocalSummary": "local-only bridge allowed report-state for simulated-bridge-entity"
+}

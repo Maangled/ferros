@@ -14,7 +14,10 @@ use ferros_core::{
     PolicyEngine,
 };
 use ferros_data::{
+    LocalOnrampDecisionLabel, LocalOnrampDecisionReceipt, LocalOnrampDecisionReceiptError,
+    LocalOnrampDecisionReceiptWriteError,
     LocalOnrampProposal, LocalOnrampProposalError, LocalOnrampProposalWriteError,
+    LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
     LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
 };
 use ferros_profile::{CapabilityGrant, ProfileId};
@@ -234,6 +237,7 @@ pub enum LocalBridgeExecutionError {
     WorkspaceRootUnavailable,
     InvalidRelativeOutputPath(String),
     InvalidOnrampProposal(String),
+    InvalidOnrampDecisionReceipt(String),
     Io(std::io::ErrorKind),
 }
 
@@ -248,6 +252,9 @@ impl fmt::Display for LocalBridgeExecutionError {
             }
             Self::InvalidOnrampProposal(reason) => {
                 write!(f, "invalid local onramp proposal: {}", reason)
+            }
+            Self::InvalidOnrampDecisionReceipt(reason) => {
+                write!(f, "invalid local onramp decision receipt: {}", reason)
             }
             Self::Io(kind) => write!(f, "local bridge artifact IO failed: {}", kind),
         }
@@ -294,6 +301,7 @@ pub struct LocalBridgeReport {
 pub struct LocalBridgeExecution {
     pub artifact: Option<SimulatedBridgeArtifact>,
     pub local_onramp_proposal: Option<LocalOnrampProposal>,
+    pub local_onramp_decision_receipt: Option<LocalOnrampDecisionReceipt>,
     pub report: LocalBridgeReport,
     pub error: Option<LocalBridgeExecutionError>,
 }
@@ -377,6 +385,7 @@ pub struct LocalHubRuntimeSummary {
     pub status: LocalBridgeStatus,
     pub artifact_relative_output_path: Option<String>,
     pub local_onramp_proposal: Option<LocalOnrampProposal>,
+    pub local_onramp_decision_receipt: Option<LocalOnrampDecisionReceipt>,
     pub summary: String,
     pub scope: String,
     pub evidence: String,
@@ -650,6 +659,7 @@ pub fn summarize_local_bridge_runway(
         status: execution.report.status,
         artifact_relative_output_path: execution.report.artifact_relative_output_path.clone(),
         local_onramp_proposal: execution.local_onramp_proposal.clone(),
+        local_onramp_decision_receipt: execution.local_onramp_decision_receipt.clone(),
         summary: execution.report.summary.clone(),
         scope: execution.report.scope.clone(),
         evidence: execution.report.evidence.clone(),
@@ -730,6 +740,7 @@ pub fn execute_local_bridge_request_with_output_path(
         return LocalBridgeExecution {
             artifact: None,
             local_onramp_proposal: None,
+            local_onramp_decision_receipt: None,
             report: LocalBridgeReport {
                 bridge_agent_name: agent.name.clone(),
                 stand_in_name: request.stand_in_name.clone(),
@@ -762,6 +773,33 @@ pub fn execute_local_bridge_request_with_output_path(
             return LocalBridgeExecution {
                 artifact: None,
                 local_onramp_proposal: None,
+                local_onramp_decision_receipt: None,
+                report: LocalBridgeReport {
+                    bridge_agent_name: agent.name.clone(),
+                    stand_in_name: request.stand_in_name.clone(),
+                    requested_capability: request.requested_capability.clone(),
+                    requested_action: request.requested_action.clone(),
+                    status: LocalBridgeStatus::Error,
+                    artifact_relative_output_path: None,
+                    summary: error_summary(&error),
+                    scope: "local-only".to_string(),
+                    evidence: "non-evidentiary".to_string(),
+                },
+                error: Some(error),
+            };
+        }
+    };
+    let local_onramp_decision_receipt = match local_onramp_decision_receipt_from_proposal(
+        &local_onramp_proposal,
+        policy_decision,
+        request,
+    ) {
+        Ok(receipt) => receipt,
+        Err(error) => {
+            return LocalBridgeExecution {
+                artifact: None,
+                local_onramp_proposal: None,
+                local_onramp_decision_receipt: None,
                 report: LocalBridgeReport {
                     bridge_agent_name: agent.name.clone(),
                     stand_in_name: request.stand_in_name.clone(),
@@ -780,28 +818,49 @@ pub fn execute_local_bridge_request_with_output_path(
 
     match artifact.write_under_repo_root() {
         Ok(_) => match write_local_onramp_proposal(&local_onramp_proposal) {
-            Ok(()) => LocalBridgeExecution {
-                report: LocalBridgeReport {
-                    bridge_agent_name: agent.name.clone(),
-                    stand_in_name: request.stand_in_name.clone(),
-                    requested_capability: request.requested_capability.clone(),
-                    requested_action: request.requested_action.clone(),
-                    status: LocalBridgeStatus::Allowed,
-                    artifact_relative_output_path: Some(relative_output_path),
-                    summary: format!(
-                        "local-only bridge allowed {} for {}",
-                        request.requested_action, request.stand_in_name
-                    ),
-                    scope: "local-only".to_string(),
-                    evidence: "non-evidentiary".to_string(),
+            Ok(()) => match write_local_onramp_decision_receipt(&local_onramp_decision_receipt) {
+                Ok(()) => LocalBridgeExecution {
+                    report: LocalBridgeReport {
+                        bridge_agent_name: agent.name.clone(),
+                        stand_in_name: request.stand_in_name.clone(),
+                        requested_capability: request.requested_capability.clone(),
+                        requested_action: request.requested_action.clone(),
+                        status: LocalBridgeStatus::Allowed,
+                        artifact_relative_output_path: Some(relative_output_path),
+                        summary: format!(
+                            "local-only bridge allowed {} for {}",
+                            request.requested_action, request.stand_in_name
+                        ),
+                        scope: "local-only".to_string(),
+                        evidence: "non-evidentiary".to_string(),
+                    },
+                    artifact: Some(artifact),
+                    local_onramp_proposal: Some(local_onramp_proposal),
+                    local_onramp_decision_receipt: Some(local_onramp_decision_receipt),
+                    error: None,
                 },
-                artifact: Some(artifact),
-                local_onramp_proposal: Some(local_onramp_proposal),
-                error: None,
+                Err(error) => LocalBridgeExecution {
+                    artifact: Some(artifact),
+                    local_onramp_proposal: None,
+                    local_onramp_decision_receipt: None,
+                    report: LocalBridgeReport {
+                        bridge_agent_name: agent.name.clone(),
+                        stand_in_name: request.stand_in_name.clone(),
+                        requested_capability: request.requested_capability.clone(),
+                        requested_action: request.requested_action.clone(),
+                        status: LocalBridgeStatus::Error,
+                        artifact_relative_output_path: None,
+                        summary: error_summary(&error),
+                        scope: "local-only".to_string(),
+                        evidence: "non-evidentiary".to_string(),
+                    },
+                    error: Some(error),
+                },
             },
             Err(error) => LocalBridgeExecution {
                 artifact: Some(artifact),
                 local_onramp_proposal: None,
+                local_onramp_decision_receipt: None,
                 report: LocalBridgeReport {
                     bridge_agent_name: agent.name.clone(),
                     stand_in_name: request.stand_in_name.clone(),
@@ -819,6 +878,7 @@ pub fn execute_local_bridge_request_with_output_path(
         Err(error) => LocalBridgeExecution {
             artifact: None,
             local_onramp_proposal: None,
+            local_onramp_decision_receipt: None,
             report: LocalBridgeReport {
                 bridge_agent_name: agent.name.clone(),
                 stand_in_name: request.stand_in_name.clone(),
@@ -863,6 +923,31 @@ fn write_local_onramp_proposal(
     proposal
         .write_json(repo_root.join(LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH))
         .map_err(map_onramp_proposal_write_error)
+}
+
+fn local_onramp_decision_receipt_from_proposal(
+    proposal: &LocalOnrampProposal,
+    policy_decision: PolicyDecision,
+    request: &LocalBridgeRequest,
+) -> Result<LocalOnrampDecisionReceipt, LocalBridgeExecutionError> {
+    LocalOnrampDecisionReceipt::new(
+        proposal.proposal_id.clone(),
+        proposal.local_artifact_path.clone(),
+        local_onramp_decision_label(policy_decision),
+        Some(local_onramp_decision_detail(policy_decision, request, &proposal.proposal_id)),
+        LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+    )
+    .map_err(map_onramp_decision_receipt_error)
+}
+
+fn write_local_onramp_decision_receipt(
+    receipt: &LocalOnrampDecisionReceipt,
+) -> Result<(), LocalBridgeExecutionError> {
+    let repo_root = ferros_repo_root()?;
+
+    receipt
+        .write_json(repo_root.join(LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH))
+        .map_err(map_onramp_decision_receipt_write_error)
 }
 
 fn simulated_local_bridge_artifact_with_request(
@@ -927,6 +1012,46 @@ fn denial_summary(
     }
 }
 
+fn local_onramp_decision_label(decision: PolicyDecision) -> LocalOnrampDecisionLabel {
+    match decision {
+        PolicyDecision::Allowed => LocalOnrampDecisionLabel::Allowed,
+        PolicyDecision::Denied(PolicyDenialReason::NoGrantsPresented) => {
+            LocalOnrampDecisionLabel::DeniedNoGrants
+        }
+        PolicyDecision::Denied(PolicyDenialReason::ProfileNotGranted) => {
+            LocalOnrampDecisionLabel::DeniedProfile
+        }
+        PolicyDecision::Denied(PolicyDenialReason::CapabilityNotGranted) => {
+            LocalOnrampDecisionLabel::DeniedCapability
+        }
+    }
+}
+
+fn local_onramp_decision_detail(
+    decision: PolicyDecision,
+    request: &LocalBridgeRequest,
+    proposal_id: &str,
+) -> String {
+    match decision.denial_reason() {
+        Some(PolicyDenialReason::NoGrantsPresented) => format!(
+            "local-only operator rehearsal denied {} because no local grant matched proposal {}",
+            request.requested_capability, proposal_id
+        ),
+        Some(PolicyDenialReason::ProfileNotGranted) => format!(
+            "local-only operator rehearsal denied {} for the local profile linked to proposal {}",
+            request.requested_capability, proposal_id
+        ),
+        Some(PolicyDenialReason::CapabilityNotGranted) => format!(
+            "local-only operator rehearsal denied {} for proposal {}",
+            request.requested_capability, proposal_id
+        ),
+        None => format!(
+            "local-only operator rehearsal allowed {} for proposal {}",
+            request.requested_action, proposal_id
+        ),
+    }
+}
+
 fn ferros_repo_root() -> Result<PathBuf, LocalBridgeExecutionError> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let crates_dir = manifest_dir
@@ -951,6 +1076,10 @@ fn error_summary(error: &LocalBridgeExecutionError) -> String {
         }
         LocalBridgeExecutionError::InvalidOnrampProposal(_) => {
             "local-only bridge rejected before write because the onramp proposal was invalid"
+                .to_string()
+        }
+        LocalBridgeExecutionError::InvalidOnrampDecisionReceipt(_) => {
+            "local-only bridge rejected before write because the onramp decision receipt was invalid"
                 .to_string()
         }
         LocalBridgeExecutionError::WorkspaceRootUnavailable => {
@@ -1089,6 +1218,9 @@ fn map_bridge_error_to_snapshot_error(
         LocalBridgeExecutionError::InvalidOnrampProposal(reason) => {
             invalid_local_hub_state(reason)
         }
+        LocalBridgeExecutionError::InvalidOnrampDecisionReceipt(reason) => {
+            invalid_local_hub_state(reason)
+        }
         LocalBridgeExecutionError::Io(kind) => LocalHubStateSnapshotError::Io(kind),
     }
 }
@@ -1125,6 +1257,50 @@ fn map_onramp_proposal_write_error(
             "local onramp proposal failed to serialize".to_string(),
         ),
         LocalOnrampProposalWriteError::Io(error) => LocalBridgeExecutionError::Io(error.kind()),
+    }
+}
+
+fn map_onramp_decision_receipt_error(
+    error: LocalOnrampDecisionReceiptError,
+) -> LocalBridgeExecutionError {
+    LocalBridgeExecutionError::InvalidOnrampDecisionReceipt(match error {
+        LocalOnrampDecisionReceiptError::EmptyField(field) => {
+            format!("{} must not be empty", field)
+        }
+        LocalOnrampDecisionReceiptError::InvalidRelativePath(path) => {
+            format!("local onramp decision receipt path must remain local: {}", path)
+        }
+        LocalOnrampDecisionReceiptError::InvalidScope(scope) => format!(
+            "local onramp decision receipt scope must remain local-only: {}",
+            scope
+        ),
+        LocalOnrampDecisionReceiptError::InvalidEvidence(evidence) => format!(
+            "local onramp decision receipt evidence must remain non-evidentiary: {}",
+            evidence
+        ),
+        LocalOnrampDecisionReceiptError::InvalidTextField {
+            field,
+            value,
+            reason,
+        } => format!("{} value '{}' violated {}", field, value, reason),
+    })
+}
+
+fn map_onramp_decision_receipt_write_error(
+    error: LocalOnrampDecisionReceiptWriteError,
+) -> LocalBridgeExecutionError {
+    match error {
+        LocalOnrampDecisionReceiptWriteError::InvalidReceipt(reason) => {
+            map_onramp_decision_receipt_error(reason)
+        }
+        LocalOnrampDecisionReceiptWriteError::Serialize(_) => {
+            LocalBridgeExecutionError::InvalidOnrampDecisionReceipt(
+                "local onramp decision receipt failed to serialize".to_string(),
+            )
+        }
+        LocalOnrampDecisionReceiptWriteError::Io(error) => {
+            LocalBridgeExecutionError::Io(error.kind())
+        }
     }
 }
 

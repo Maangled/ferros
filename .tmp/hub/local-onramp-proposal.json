@@ -1,0 +1,12 @@
+{
+  "source": ".tmp/hub/simulated-local-bridge-artifact.json",
+  "proposalId": "proposal-ha-local-bridge-simulated-bridge-entity-report-state",
+  "bridgeAgentName": "ha-local-bridge",
+  "standInEntityName": "simulated-bridge-entity",
+  "requestedCapability": "bridge.observe",
+  "requestedAction": "report-state",
+  "quarantineStatus": "quarantined-pending-consent",
+  "scope": "local-only",
+  "evidence": "non-evidentiary",
+  "localArtifactPath": ".tmp/hub/local-onramp-proposal.json"
+}

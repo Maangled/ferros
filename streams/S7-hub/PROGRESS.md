@@ -4,6 +4,15 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-04-30 — Local decision rehearsal packet landed on the existing runway route
+
+- WAVE-2026-04-29-64 published `LocalOnrampDecisionReceipt` in `ferros-data` with bounded validation and local JSON write helpers for one recorded local operator decision linked to proposed material.
+- WAVE-2026-04-29-65 emitted one `.tmp/hub/local-onramp-decision-receipt.json` artifact from the allowed simulated bridge proof path and threaded it into the hub-owned runtime summary plus `prove-bridge` output.
+- WAVE-2026-04-29-66 added bounded schema and H1 validator coverage around the decision receipt without reopening frozen S2 schemas.
+- WAVE-2026-04-29-67, WAVE-2026-04-29-68, and WAVE-2026-04-29-69 kept observation on the existing read-only `/runway-summary(.json)` route: optional `hubOnrampDecisionReceipt` payload in node, display-only shell/inspector rendering beside the proposal, and same-origin acceptance-harness proof on that same route.
+- WAVE-2026-04-29-70 extended `cargo xtask hub-runway` so it validates and reports both the proposal artifact and the recorded decision receipt while reusing the same hub-owned summary seam.
+- Kept the entire packet local-only and non-gate-closing: no accept/reject flow, no canonical profile/grant mutation, no remote transport, no Home Assistant proof, no physical-device evidence, and no G4 closure.
+
 ## 2026-04-29 — Local onramp rehearsal packet landed on the existing runway route
 
 - WAVE-2026-04-29-55 published `LocalOnrampProposal` in `ferros-data` with bounded validation and local JSON write helpers for quarantined pending-consent proposed material.

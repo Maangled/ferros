@@ -17,10 +17,133 @@ Optional fields (additive, layered on top of the existing field order without br
 
 ## Ready
 
+## In Progress
+
+## Blocked
+
+None.
+
+## Done
+
+### WAVE-2026-04-29-70
+
+- Title: Extend xtask proof chain and serial truth-sync
+- Status: done
+- Priority: P2
+- Gate: G4 local decision rehearsal proof-chain and truth-sync
+- Owning streams: S8 primary, S1 support, S7 awareness, S5 awareness, S4 awareness, S6 awareness
+- Goal: Extend `cargo xtask hub-runway` so it validates and reports both the proposal and the recorded decision rehearsal artifact over the already-published hub-owned seam, then reconcile only the minimal truthful shared surfaces after W64-W69 land so the repo records exactly what is now true about proposal plus decision recording, read-only observation, schema and harness coverage, shared contracts overview ownership, and helper proof-chain without overstating consent, transport, or gate posture.
+- Anchor files: `xtask/src/main.rs`, `STATUS.md`, `docs/contracts/CONTRACTS-OVERVIEW.md`, `streams/S7-hub/README.md`, `streams/S7-hub/PROGRESS.md`, `streams/S7-hub/BACKLOG.md`, `streams/S7-hub/CONTRACTS.md`, `streams/S5-ux/README.md`, `streams/S5-ux/PROGRESS.md`, `streams/S5-ux/BACKLOG.md`, `streams/S4-runtime/CONTRACTS.md`, `streams/S6-harvest/README.md`, `streams/S6-harvest/PROGRESS.md`, `streams/S6-harvest/BACKLOG.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo check -p xtask`; `cargo xtask hub-runway`; targeted `cargo test -p ferros-hub onramp_decision_`; targeted `cargo test -p ferros-node onramp_decision_`; `get_errors` clean on touched truth surfaces; claim rationalizer confirms no overclaim
+- Constraints: Final serial wave only. Reuse published seams only. Extend xtask first and then reconcile only the minimum shared surfaces. No `ferros-hub`, `ferros-node`, `site`, schema, or harness edits in this wave. Record exactly what is now true and exactly what remains not true: no G4 closure, no physical-device evidence, no real Home Assistant integration, no HA dashboard proof, no canonical profile/grant mutation, no real accept/reject transport, no remote transport, no durable target-hardware runtime proof, and no independent install evidence.
+- Last update: 2026-04-30
+- size: L
+- serial-after: WAVE-2026-04-29-69
+- solo: true
+- track: code
+
+### WAVE-2026-04-29-69
+
+- Title: Extend localhost acceptance harness for proposal plus decision rehearsal
+- Status: done
+- Priority: P1
+- Gate: G4 local proposal plus decision observation proof
+- Owning streams: S5 primary, S4 awareness, S7 awareness
+- Goal: Extend the same-origin localhost shell acceptance harness so it proves pending-consent proposal material and the recorded decision rehearsal render together on the existing runway route, stay local-only and non-evidentiary, and do not expose controls, transport, or canonical mutation claims.
+- Anchor files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `get_errors` clean on `harnesses/localhost-shell-acceptance-harness.html`; `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness`; direct same-origin acceptance harness run stays green with proposal plus decision checks
+- Constraints: Harness only. Same-origin and read-only. No new route, no privileged browser controls, no write RPC, no authoritative accept/reject transport, no remote transport, no Home Assistant integration claim, no physical-device evidence, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- serial-after: WAVE-2026-04-29-68
+- track: code
+
+### WAVE-2026-04-29-68
+
+- Title: Render local decision rehearsal in the localhost shell
+- Status: done
+- Priority: P1
+- Gate: G4 local decision rehearsal surface
+- Owning streams: S5 primary, S4 support, S7 awareness
+- Goal: Add a narrow local decision-rehearsal display area to the existing shell runway panel and inspector so the operator can read the recorded decision receipt beside the proposal on the current route without adding controls, transport, or a new path.
+- Anchor files: `site/agent-center-shell.html`
+- Validation: `get_errors` clean on `site/agent-center-shell.html`; relevant `cargo test -p ferros-node shell_route_` tests pass; live local shell load shows proposal plus decision display on the existing runway route
+- Constraints: Render only. The UI must make clear this is a local decision rehearsal receipt, not an executed consent event, not canonical state, not a grant, and not Home Assistant proof. No accept/reject controls, no browser-issued writes, no new route, no remote transport, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- serial-after: WAVE-2026-04-29-67
+- track: code
+
+### WAVE-2026-04-29-67
+
+- Title: Extend node runway summary with optional decision rehearsal observation
+- Status: done
+- Priority: P1
+- Gate: G4 local decision rehearsal observation seam
+- Owning streams: S4 primary, S7 support, S6 awareness
+- Goal: Extend the existing read-only `/runway-summary(.json)` seam additively with an optional local onramp decision child sourced from the hub-owned summary seam so the current same-origin runway payload can surface recorded operator decision rehearsal alongside proposed material without reading random files directly.
+- Anchor files: `crates/ferros-node/src/lib.rs`
+- Validation: targeted `cargo test -p ferros-node onramp_decision_`; existing runway summary, hub restart, and onramp proposal tests still pass; `cargo check -p ferros-node`
+- Constraints: Additive child only on the existing read-only route. Consume the hub-owned seam only; do not read `.tmp/hub/` files directly from node or shell. Keep it optional, read-only, local-only, and display-only. No new route, no write RPC, no authoritative accept/reject transport, no canonical mutation, no remote transport, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- parallel-safe-with: [WAVE-2026-04-29-66]
+- serial-after: WAVE-2026-04-29-65
+- track: code
+
+### WAVE-2026-04-29-66
+
+- Title: Add schema and validator coverage for local decision receipt
+- Status: done
+- Priority: P1
+- Gate: G4 local decision rehearsal contract validation
+- Owning streams: S7 primary, S1 support, S6 awareness
+- Goal: Add one bounded local-only schema for the decision rehearsal artifact, regenerate harness constants, and add positive and negative H1 validator coverage for recorded local operator decision receipts without widening frozen S2 or canonical FERROS state contracts.
+- Anchor files: `schemas/onramp-decision-rehearsal.schema.json`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
+- Validation: schema checks; `powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate-harness-constants.ps1`; direct file-based run of `harnesses/ferros-contract-validator.html` remains green; targeted `cargo test -p ferros-hub onramp_decision_`; targeted `cargo test -p ferros-data onramp_decision_`
+- Constraints: New local-only schema only. Do not touch frozen S2 schemas. Do not widen the onramp-proposal schema or the existing hub-local schemas unless a validator-proven blocker forces replanning. Cover proposal linkage, rehearsal decision labels, invalid local paths, remote-looking text, canonical or grant mutation claims, and hardware/proof/launch wording. No partner-facing claim, no remote transport, no Home Assistant integration claim, no physical-device evidence, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: L
+- parallel-safe-with: [WAVE-2026-04-29-67]
+- serial-after: WAVE-2026-04-29-65
+- track: code
+
+### WAVE-2026-04-29-65
+
+- Title: Emit local decision rehearsal artifact from ferros-hub
+- Status: done
+- Priority: P1
+- Gate: G4 local onramp decision rehearsal owner seam
+- Owning streams: S7 primary, S6 support
+- Goal: Extend the current local hub proof seam so an operator decision rehearsal emits one bounded local decision receipt artifact derived from the existing proposal seam and appears as an optional decision child on the same hub-owned summary and prove-bridge seam.
+- Anchor files: `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub onramp_decision_`; `cargo run -p ferros-hub -- prove-bridge`; `cargo check -p ferros-hub`
+- Constraints: Hub owner wave only. Consume the published W64 decision receipt model. Keep all decision rehearsal artifacts under `.tmp/hub/` and thread the receipt only through the existing hub-owned summary and prove-bridge seam. Do not mutate profile, grants, S2 schemas, agent lifecycle, or canonical state. No node, shell, schema, harness, or xtask edits here. This remains local-only and non-evidentiary: no authoritative accept/reject flow, no remote transport, no daemon or server mode, no Home Assistant proof, no physical-device evidence, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: L
+- serial-after: WAVE-2026-04-29-64
+- track: code
+
+### WAVE-2026-04-29-64
+
+- Title: Add local onramp decision receipt model
+- Status: done
+- Priority: P1
+- Gate: G4 local onramp decision rehearsal model
+- Owning streams: S6 primary, S7 support
+- Goal: Add a bounded local onramp decision receipt model in the existing `ferros-data` onramp surface so one local operator rehearsal decision can be recorded against proposed bridge material without mutating canonical profile state, grants, accepted state, or frozen S2 consent semantics.
+- Anchor files: `crates/ferros-data/src/lib.rs`
+- Validation: targeted `cargo test -p ferros-data onramp_decision_`; `cargo check -p ferros-data`
+- Constraints: Model only. Record rehearsal decision only, not an authoritative accept/reject flow, not a persisted consent event, not canonical profile or grant mutation, and not signed evidence. Reject remote-looking URLs, malformed local paths, partner-facing or hardware/proof/launch wording, and any receipt text that claims gate movement, Home Assistant proof, or canonical effects. No hub, node, shell, schema, harness, or xtask edits here. No remote transport, no daemon or server mode, and no G4 closure wording.
+- Last update: 2026-04-29
+- size: S
+- serial-after: WAVE-2026-04-29-63
+- track: code
+
 ### WAVE-2026-04-29-63
 
 - Title: Sync contracts overview after local onramp rehearsal packet
-- Status: ready
+- Status: done
 - Priority: P2
 - Gate: rolling shared-contract truth-sync after local onramp rehearsal packet
 - Owning streams: S8 primary, S7 awareness, S4 awareness, S6 awareness
@@ -33,16 +156,6 @@ Optional fields (additive, layered on top of the existing field order without br
 - serial-after: WAVE-2026-04-29-62
 - solo: true
 - track: code
-
-## In Progress
-
-None.
-
-## Blocked
-
-None.
-
-## Done
 
 ### WAVE-2026-04-29-62
 

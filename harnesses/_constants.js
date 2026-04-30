@@ -833,6 +833,67 @@ var SCHEMA_LOCAL_PUSH_AUDIT_ENVELOPE = {
   }
 };
 
+// Source: schemas/onramp-decision-rehearsal.schema.json
+var SCHEMA_ONRAMP_DECISION_REHEARSAL = {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferros.local/schemas/onramp-decision-rehearsal.schema.json",
+  "title": "FERROS Local Onramp Decision Rehearsal",
+  "description": "Bounded local-only, non-evidentiary decision-rehearsal receipt emitted by ferros-hub from the published local onramp proposal seam. This receipt records a local operator rehearsal decision only and is not canonical FERROS state, a grant, an accept/reject transport surface, or a partner-facing contract.",
+  "type": "object",
+  "required": [
+    "proposalId",
+    "proposalArtifactPath",
+    "decisionLabel",
+    "scope",
+    "evidence",
+    "localArtifactPath"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "proposalId": {
+      "$ref": "#/$defs/safeText"
+    },
+    "proposalArtifactPath": {
+      "$ref": "#/$defs/safeHubPath"
+    },
+    "decisionLabel": {
+      "type": "string",
+      "enum": [
+        "allowed",
+        "denied:no-grants",
+        "denied:profile",
+        "denied:capability"
+      ]
+    },
+    "decisionDetail": {
+      "$ref": "#/$defs/safeDetail"
+    },
+    "scope": {
+      "const": "local-only"
+    },
+    "evidence": {
+      "const": "non-evidentiary"
+    },
+    "localArtifactPath": {
+      "$ref": "#/$defs/safeHubPath"
+    }
+  },
+  "$defs": {
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!\\s*$)(?!//)(?!.*://)(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]|[Hh][Oo][Mm][Ee] [Aa][Ss][Ss][Ii][Ss][Tt][Aa][Nn][Tt]|[Pp][Aa][Rr][Tt][Nn][Ee][Rr]|[Gg][Aa][Tt][Ee]|[Gg]4|[Cc][Ll][Oo][Ss][Uu][Rr][Ee]|[Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Cc][Aa][Nn][Oo][Nn][Ii][Cc][Aa][Ll]|[Gg][Rr][Aa][Nn][Tt][Ee][Dd])).+$"
+    },
+    "safeDetail": {
+      "$ref": "#/$defs/safeText"
+    },
+    "safeHubPath": {
+      "type": "string",
+      "pattern": "^(?!.*://)(?!.*:)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*(?:[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]|[Pp][Rr][Oo][Oo][Ff]|[Ll][Aa][Uu][Nn][Cc][Hh]|[Hh][Oo][Mm][Ee] [Aa][Ss][Ss][Ii][Ss][Tt][Aa][Nn][Tt]|[Pp][Aa][Rr][Tt][Nn][Ee][Rr]|[Gg][Aa][Tt][Ee]|[Gg]4|[Cc][Ll][Oo][Ss][Uu][Rr][Ee]|[Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]|[Cc][Aa][Nn][Oo][Nn][Ii][Cc][Aa][Ll]|[Gg][Rr][Aa][Nn][Tt][Ee][Dd]))\\.tmp/hub/.+\\.json$"
+    }
+  }
+};
+
 // Source: schemas/onramp-proposal.schema.json
 var SCHEMA_ONRAMP_PROPOSAL = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3393,6 +3454,7 @@ var FERROS_SCHEMAS = [
   {name: "hub-local-state-snapshot", file: "hub-local-state-snapshot.schema.json", schema: SCHEMA_HUB_LOCAL_STATE_SNAPSHOT},
   {name: "identity", file: "identity.schema.json", schema: SCHEMA_IDENTITY},
   {name: "local-push-audit-envelope", file: "local-push-audit-envelope.schema.json", schema: SCHEMA_LOCAL_PUSH_AUDIT_ENVELOPE},
+  {name: "onramp-decision-rehearsal", file: "onramp-decision-rehearsal.schema.json", schema: SCHEMA_ONRAMP_DECISION_REHEARSAL},
   {name: "onramp-proposal", file: "onramp-proposal.schema.json", schema: SCHEMA_ONRAMP_PROPOSAL},
   {name: "profile", file: "profile.schema.json", schema: SCHEMA_PROFILE},
   {name: "profile.v0", file: "profile.v0.json", schema: SCHEMA_PROFILE_V0},
@@ -3436,5 +3498,5 @@ var FERROS_NEGATIVE_FIXTURES = [
   {name: "invalid-template-to-events-missing-source-type", file: "invalid-template-to-events-missing-source-type.json", fixture: FIXTURE_INVALID_TEMPLATE_TO_EVENTS_MISSING_SOURCE_TYPE}
 ];
 
-// Total files embedded: 46
-// Schemas: 14 | Golden fixtures: 19 | Negative fixtures: 13
+// Total files embedded: 47
+// Schemas: 15 | Golden fixtures: 19 | Negative fixtures: 13

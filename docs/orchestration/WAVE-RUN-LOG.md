@@ -3,6 +3,206 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-04-30 — WAVE-2026-04-29-70
+
+- Selected item: `WAVE-2026-04-29-70`
+- Result: Complete. WAVE-2026-04-29-70 complete: `cargo xtask hub-runway` now validates and reports both the local onramp proposal artifact and the recorded decision rehearsal receipt over the published hub-owned seam, and the minimal shared truth surfaces now describe proposal plus decision recording, read-only observation, schema/H1 coverage, shared contracts overview ownership, and helper proof without widening consent, canonical mutation, transport, Home Assistant, hardware, or gate claims.
+- Files: `xtask/src/main.rs`, `STATUS.md`, `docs/contracts/CONTRACTS-OVERVIEW.md`, `streams/S4-runtime/CONTRACTS.md`, `streams/S5-ux/README.md`, `streams/S5-ux/PROGRESS.md`, `streams/S5-ux/BACKLOG.md`, `streams/S6-harvest/README.md`, `streams/S6-harvest/PROGRESS.md`, `streams/S6-harvest/BACKLOG.md`, `streams/S7-hub/README.md`, `streams/S7-hub/PROGRESS.md`, `streams/S7-hub/BACKLOG.md`, `streams/S7-hub/CONTRACTS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo check -p xtask` passed. `cargo xtask hub-runway` passed and printed the exact `ferros-hub summary` output followed by compact proposal and decision report lines, including `hubOnrampDecisionLabel: allowed` and `hubOnrampDecisionArtifact: .tmp/hub/local-onramp-decision-receipt.json`. `cargo test -p ferros-hub onramp_decision_` passed with `6 passed, 0 failed`. `cargo test -p ferros-node onramp_decision_` passed with `2 passed, 0 failed`. `get_errors` is clean on the touched truth surfaces, including `docs/contracts/CONTRACTS-OVERVIEW.md`. FERROS Gate Auditor Agent review found no remaining technical overclaim once the orchestration bookkeeping was closed.
+- Next follow-up: Packet complete. The WAVE-2026-04-29-63 through WAVE-2026-04-29-70 code-track expansion is closed; the next invocation should select a new queued wave.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-70",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the xtask compile, focused helper command, focused ferros-hub and ferros-node decision tests, and diagnostics all passed on the touched surfaces.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-70 remained a code-track truth-sync lane and completed on track code.",
+    "3_diff_overrun": "Not triggered: the implementation stayed inside xtask/src/main.rs, the listed truth surfaces, and append-only orchestration bookkeeping.",
+    "4_track_boundary": "Not triggered: no cross-track queue movement was required to close the packet.",
+    "5_run_length_cap": "Triggered cleanly: WAVE-2026-04-29-70 was the final requested wave in the W63-W70 packet, so the packet stops here after successful validation and bookkeeping closeout.",
+    "6_escalation_chain": "Not triggered: the gate audit found only a bookkeeping mismatch before closeout; once queue and run-log were updated, no remaining overclaim blocked completion."
+  },
+  "decision": "stop",
+  "rationale": "The proof-chain and truth-sync wave is complete, the queue and run log now agree that W70 is done, and the requested W63-W70 packet is fully closed without widening the claim ceiling."
+}
+```
+
+---
+## 2026-04-30 — WAVE-2026-04-29-69
+
+- Selected item: `WAVE-2026-04-29-69`
+- Result: Complete. WAVE-2026-04-29-69 complete: the same-origin localhost acceptance harness now proves that the existing runway route renders pending-consent proposed material and the recorded local decision rehearsal receipt together on the read-only `/runway-summary.json` surface, while preserving the local-only, non-evidentiary, non-canonical, and non-authoritative ceiling through both surface and inspector checks.
+- Files: `harnesses/localhost-shell-acceptance-harness.html`
+- Validation: `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness` passed with `1 passed, 0 failed`. `get_errors` is clean on the W69 anchor. Direct same-origin H9 validation at `http://127.0.0.1:4319/harnesses/localhost-shell-acceptance.html` passed with `70 passed, 0 failed, 2 skipped, 72 total` after the required local operator-assist lifecycle grant and revoke CLI steps requested by the harness dialogs.
+- Next follow-up: Continue `WAVE-2026-04-29-70` as the final solo wave so `cargo xtask hub-runway` proves both proposal and decision receipt artifacts over the published seam and the minimal shared truth surfaces are reconciled honestly.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-69",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the focused harness-route test passed, the anchor file is error-free, and the direct same-origin H9 harness run finished green after the required local operator-assist CLI steps.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-69 remains a code-track harness lane and the next active wave WAVE-2026-04-29-70 is also on track code.",
+    "3_diff_overrun": "Not triggered: the implementation stayed inside harnesses/localhost-shell-acceptance-harness.html with append-only queue/run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: the next queued work remains on track code.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-29-63 through WAVE-2026-04-29-70 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: the one live harness failure was a local assertion mismatch in the harness itself, repaired in-slice and revalidated to green."
+  },
+  "decision": "continue",
+  "rationale": "The read-only route is now proven end to end, so the final proof-chain and shared-truth reconciliation wave can run against the published seams without reopening implementation slices."
+}
+```
+
+---
+## 2026-04-29 — WAVE-2026-04-29-68
+
+- Selected item: `WAVE-2026-04-29-68`
+- Result: Complete. WAVE-2026-04-29-68 complete: the existing localhost shell runway route and inspector now render the optional recorded decision rehearsal receipt beside the pending-consent proposal on the current `/runway-summary.json` surface while keeping the entire display read-only, local-only, non-evidentiary, non-canonical, and non-authoritative.
+- Files: `site/agent-center-shell.html`
+- Validation: `cargo test -p ferros-node shell_route_` passed with `10 passed, 0 failed`. `get_errors` is clean on the W68 anchor. Live localhost validation at `http://127.0.0.1:4319/` showed the served shell route after restart with the runway panel and inspector both rendering the proposal plus `hubOnrampDecisionReceipt` child on the existing route, with no added controls or transport surface.
+- Next follow-up: Continue `WAVE-2026-04-29-69` so the same-origin localhost acceptance harness proves that the runway route shows both pending-consent proposal material and the recorded decision rehearsal receipt together.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-68",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the focused shell-route tests passed, the anchor file is error-free, and the served localhost shell rendered the new decision receipt display on the existing runway route.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-68 remains a code-track shell render lane and the next active wave WAVE-2026-04-29-69 is also on track code.",
+    "3_diff_overrun": "Not triggered: the implementation stayed inside site/agent-center-shell.html with append-only queue/run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: the next queued work remains on track code.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-29-63 through WAVE-2026-04-29-70 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: repo-local checks and live localhost validation were sufficient for this size-S render lane."
+  },
+  "decision": "continue",
+  "rationale": "The shell now surfaces the decision receipt on the intended route, so the next dependent acceptance harness lane can prove the combined proposal-plus-decision observation end to end."
+}
+```
+
+---
+## 2026-04-29 — WAVE-2026-04-29-67
+
+- Selected item: `WAVE-2026-04-29-67`
+- Result: Complete. WAVE-2026-04-29-67 complete: `ferros-node` now surfaces an additive optional `hubOnrampDecisionReceipt` child on the existing local runway-summary seam by narrowing the hub-owned decision receipt into `proposalId`, `decisionLabel`, optional `decisionDetail`, and `localArtifactPath`, without adding routes, writes, direct hub file reads, canonical mutation semantics, or transport claims.
+- Files: `crates/ferros-node/src/lib.rs`
+- Validation: `cargo test -p ferros-node onramp_decision_` passed with `2 passed, 0 failed`. `cargo test -p ferros-node runway_summary` passed with `7 passed, 0 failed`. `cargo test -p ferros-node onramp_shell_route_gets_local_runway_summary_json` passed with `1 passed, 0 failed`. `cargo check -p ferros-node` passed. `get_errors` is clean on the W67 anchor. FERROS Lane Validator Agent, FERROS Gate Auditor Agent, and FERROS Contract Auditor Agent retries were unavailable due the current GitHub service disruption, which is recorded here as a non-blocking closeout caveat after the repo-local checks stayed green.
+- Next follow-up: Continue `WAVE-2026-04-29-68` so the existing localhost shell renders the recorded decision rehearsal beside the already-landed proposal on the current runway route without adding controls or transport.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-67",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the focused decision tests, adjacent runway-summary regressions, and cargo check all passed on the landed node seam.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-67 remains a code-track node observation lane and the next active wave WAVE-2026-04-29-68 is also on track code.",
+    "3_diff_overrun": "Not triggered: the implementation stayed inside crates/ferros-node/src/lib.rs with append-only queue/run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: the next queued work remains on track code.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-29-63 through WAVE-2026-04-29-70 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: repo-local checks are green; external subagent audit retries were unavailable due the GitHub service disruption but did not expose a repo-local blocker."
+  },
+  "decision": "continue",
+  "rationale": "The read-only node seam is now ready for the dependent shell render lane, which can proceed without reopening the hub or schema slices."
+}
+```
+
+---
+## 2026-04-29 — WAVE-2026-04-29-66
+
+- Selected item: `WAVE-2026-04-29-66`
+- Result: Complete. WAVE-2026-04-29-66 complete: the bounded local decision-rehearsal schema and regenerated H1 validator coverage now match the landed owner-model text rules for `proposalId` and `decisionDetail`, including whitespace-only and leading-`//` remote-text rejection, without widening S2, transport, canonical state, or gate posture.
+- Files: `schemas/onramp-decision-rehearsal.schema.json`, `harnesses/_constants.js`, `harnesses/ferros-contract-validator.html`
+- Validation: `powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate-harness-constants.ps1` passed. Direct file-based H1 validation at `file:///C:/Users/mosle/OneDrive/Desktop/GPTs/ferros/ferros/harnesses/ferros-contract-validator.html` passed with `78 passed, 0 failed, 0 skipped`. `cargo test -p ferros-data onramp_decision_` passed with `8 passed, 0 failed`. `cargo test -p ferros-hub onramp_decision_` passed with `6 passed, 0 failed`. `get_errors` is clean on the three W66 anchors. FERROS Lane Validator Agent cleared W66 as anchor-conforming and validation-conforming, and FERROS Gate Auditor Agent confirmed the lane remains local-only, non-evidentiary, non-canonical, and non-gate-closing. FERROS Orchestrator Agent retry was unavailable due to the current GitHub service disruption, which is recorded as a non-blocking closeout caveat.
+- Next follow-up: Continue `WAVE-2026-04-29-67` as the remaining active lane so the node runway summary gains the additive read-only decision child before the shell and harness follow-on waves begin.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-66",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the generator run, direct H1 file run, and both dependent onramp_decision_ Rust slices all passed after the schema parity repairs.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-66 is a code-track schema/H1 lane and the remaining active work WAVE-2026-04-29-67 stays on track code.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside schemas/onramp-decision-rehearsal.schema.json, harnesses/_constants.js, harnesses/ferros-contract-validator.html, and append-only queue/run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: the next queued work remains on track code.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-29-63 through WAVE-2026-04-29-70 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: the lane validator and gate auditor both cleared W66 after the schema parity repairs; the orchestrator retry was unavailable due to external service disruption but did not expose a repo-local blocker."
+  },
+  "decision": "continue",
+  "rationale": "W66 landed as the intended schema-and-H1 contract lane, so the packet can continue through the remaining active W67 node observation lane before the shell and harness follow-ons begin."
+}
+```
+
+---
+## 2026-04-29 — WAVE-2026-04-29-65
+
+- Selected item: `WAVE-2026-04-29-65`
+- Result: Complete. W65 complete: `ferros-hub` now emits `.tmp/hub/local-onramp-decision-receipt.json` only on the allowed local prove-bridge path and threads it through the existing hub-owned summary and prove-bridge seam as optional local decision label plus artifact-path observation, while denied and invalid paths keep the child absent and no canonical, transport, or gate semantics were widened.
+- Files: `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/src/lib.rs`, `crates/ferros-hub/tests/local_bridge.rs`
+- Validation: `cargo test -p ferros-hub onramp_decision_` passed with `6 passed, 0 failed`. `cargo run -p ferros-hub -- prove-bridge` passed and printed `decision allowed; receipt .tmp/hub/local-onramp-decision-receipt.json` on the local-only proof seam. `cargo check -p ferros-hub` passed. FERROS Lane Validator Agent cleared W65 as anchor-conforming and validation-conforming after the printed-seam repair. FERROS Gate Auditor Agent confirmed the receipt stays local-only, non-evidentiary, non-canonical, and non-gate-closing, with denied and invalid paths still empty. FERROS Contract Auditor Agent was unavailable on retry because of the current GitHub service disruption, which is recorded as a non-blocking closeout caveat. FERROS Orchestrator Agent authorized closeout and the W66/W67 parallel launch.
+- Next follow-up: Move `WAVE-2026-04-29-66` and `WAVE-2026-04-29-67` to In Progress in parallel so the new receipt gains bounded schema and H1 coverage plus additive read-only runway-summary observation, while keeping the surface local-only, non-evidentiary, and non-gate-closing.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-65",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the targeted ferros-hub onramp_decision_ tests, prove-bridge run, and cargo check all passed after the printed-seam repair.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-65 is a code-track hub owner wave and the next queued work WAVE-2026-04-29-66 plus WAVE-2026-04-29-67 remains on track code.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside crates/ferros-hub/src/ha_bridge.rs, crates/ferros-hub/src/lib.rs, crates/ferros-hub/tests/local_bridge.rs, and append-only queue/run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: the next queued work remains on track code.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-29-63 through WAVE-2026-04-29-70 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: the lane validator, gate auditor, and orchestrator all cleared W65 after the printed-seam repair; the contract-auditor retry was unavailable due to external service disruption but did not reveal a repo-local blocker."
+  },
+  "decision": "continue",
+  "rationale": "W65 landed as the intended S7 owner seam, so the packet can now split into the declared parallel-safe W66 schema/H1 lane and W67 node observation lane."
+}
+```
+
+---
+## 2026-04-29 — WAVE-2026-04-29-64
+
+- Selected item: `WAVE-2026-04-29-64`
+- Result: Complete. W64 landed a bounded local onramp decision receipt model in `ferros-data` with local-only, non-evidentiary validation and JSON write support, stayed inside the declared `ferros-data` anchor, and did not widen into canonical mutation, accept or reject flow, transport, Home Assistant proof, or gate movement.
+- Files: `crates/ferros-data/src/lib.rs`
+- Validation: `cargo test -p ferros-data onramp_decision_` passed with `8 passed, 0 failed`. `cargo check -p ferros-data` passed. FERROS Lane Validator Agent cleared W64 as anchor-conforming and validation-conforming after the local wording-filter repair. FERROS Gate Auditor Agent confirmed the model-only slice stays inside the current local-only, non-evidentiary, non-gate-closing ceiling and noted only the non-blocking caveat that the validator claims the explicit listed substring classes rather than every possible future synonym. FERROS Orchestrator Agent authorized closeout and the move to W65.
+- Next follow-up: Start `WAVE-2026-04-29-65` to have `ferros-hub` emit the local decision rehearsal receipt from the published W64 model and thread it through the existing hub-owned summary and prove-bridge seam without widening schemas, node, shell, transport, or gate claims.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-64",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the targeted ferros-data onramp_decision_ tests and cargo check both passed after the local validator repair.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-64 is a code-track owner-model wave and the next queued work WAVE-2026-04-29-65 remains on track code.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside crates/ferros-data/src/lib.rs plus append-only queue/run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: the next queued work remains on track code.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-29-63 through WAVE-2026-04-29-70 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: the lane validator, gate auditor, and orchestrator all cleared W64 after the local wording-filter repair."
+  },
+  "decision": "continue",
+  "rationale": "W64 landed as the intended serial S6 owner-model wave, publishing the bounded decision-receipt primitive that W65 now consumes on the hub-owned seam."
+}
+```
+
+---
+## 2026-04-29 — WAVE-2026-04-29-63
+
+- Selected item: `WAVE-2026-04-29-63`
+- Result: Complete. The contracts overview now truth-syncs the local onramp rehearsal packet by recording the S6-owned Local Onramp Proposal schema, the S7 emitted local artifact seam, and the S4 additive `hubOnrampProposal` runway-summary projection for S5 shell and harness observation, while keeping the surface local-only, pending-consent, non-canonical, non-evidentiary, and non-gate-closing.
+- Files: `docs/contracts/CONTRACTS-OVERVIEW.md`
+- Validation: `get_errors` is clean on `docs/contracts/CONTRACTS-OVERVIEW.md`. FERROS Contract Auditor Agent cleared W63 as contract-honest and anchor-conforming after verifying the S6 proposal-model, S7 emitted-artifact, S4 runway-summary, and S5 read-only observation split; one stream-local ownership drift note outside W63 scope was deferred. FERROS Gate Auditor Agent confirmed no G4 checklist movement and no widened consent-flow, canonical-mutation, transport, Home Assistant, or gate claims. FERROS Orchestrator Agent authorized closeout and the move to W64.
+- Next follow-up: Start `WAVE-2026-04-29-64` to add the bounded local onramp decision receipt model in `ferros-data`, preserving the same local-only rehearsal boundary with no canonical mutation, no accept/reject flow, and no gate movement.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-29-63",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: contracts-overview diagnostics were clean and both the contract audit and gate audit cleared the W63 wording.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-29-63 is a code-track shared-contract sync wave and the next queued work WAVE-2026-04-29-64 remains on track code.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside docs/contracts/CONTRACTS-OVERVIEW.md plus append-only queue/run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: the next queued work remains on track code.",
+    "5_run_length_cap": "Not triggered: the requested WAVE-2026-04-29-63 through WAVE-2026-04-29-70 packet remains in progress.",
+    "6_escalation_chain": "Not triggered: contract audit, gate audit, and orchestrator closeout all cleared W63 without replanning."
+  },
+  "decision": "continue",
+  "rationale": "W63 landed as the intended shared-contract overview sync for the already-landed onramp proposal packet, so the packet can move directly into the serial S6 owner wave W64."
+}
+```
+
+---
 ## 2026-04-29 — WAVE-2026-04-29-62
 
 - Selected item: `WAVE-2026-04-29-62`

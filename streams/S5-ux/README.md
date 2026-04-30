@@ -4,7 +4,7 @@
 **Status:** 🟨 Phase A active on the real landing page; Phase B localhost shell slice landed with narrow lifecycle/profile controls and display-only onramp observation
 **Gate:** Contributes to launch-readiness; no blocking gate owned solely by S5
 
-> Current checkpoint: the first localhost browser profile surface is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter, and the existing runway route now renders pending-consent proposed material from `/runway-summary.json` as display-only, local-only, non-evidentiary observation with same-origin H9 proof. Remaining S5 follow-up is focused `/profile` closeout plus onramp accept/reject wiring without reopening the frozen S2 contract or widening browser privileges.
+> Current checkpoint: the first localhost browser profile surface is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter with focused route-test coverage, and the existing runway route now renders pending-consent proposed material plus the recorded local decision rehearsal receipt from `/runway-summary.json` as display-only, local-only, non-evidentiary observation with same-origin H9 proof. Remaining S5 follow-up is onramp accept/reject wiring without reopening the frozen S2 contract or widening browser privileges.
 
 ---
 
@@ -47,7 +47,7 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 ## Dependencies
 
 - **S1 (G1):** Site structure landed; remaining Phase A work continues on the real `/site/index.html`.
-- **S2:** the first localhost browser profile surface consumes the frozen `ferros profile init | show | export | import` boundary through the local `/profile` adapter, and the remaining S5 work is limited to closing out that existing adapter path without reopening G2, schema shape, or browser privilege scope.
+- **S2:** the first localhost browser profile surface consumes the frozen `ferros profile init | show | export | import` boundary through the local `/profile` adapter with focused route-test coverage, and the remaining S5 work is limited to holding that narrow boundary steady while onramp accept/reject wiring proceeds separately without reopening G2, schema shape, or browser privilege scope.
 - **S3 + S4 (post-G3):** the current localhost shell host exposes a local-only `agent.run` / `agent.stop` JSON/RPC slice above `LocalAgentApi`, and the Phase B shell now wires a selected-agent lifecycle control bar against that backend slice. The browser gate checks loaded active grant rows before transmitting either write. Grant/revoke actions, remote transport, and broader privileged flows remain later follow-up work.
 
 ---
@@ -72,9 +72,9 @@ WASM in the browser is the *forcing function* for clean API boundaries, not the 
 - [x] Deny log visible in the UI.
 - [x] Operator-assisted localhost acceptance can prove local `ferros agent run | stop` changes read back through the same `agent.snapshot` refresh seam.
 - [x] Browser-issued local lifecycle control bar is wired for selected-agent `agent.run` / `agent.stop` only. The shell checks loaded active grant rows before write RPC transmission, requires an explicit arm checkbox, refreshes through `agent.snapshot` after success or backend denial, and the same-origin harness now proves an unarmed or missing-grant click does not transmit `agent.run` / `agent.stop`.
-- [x] Existing runway route renders pending-consent proposed material from the read-only `/runway-summary.json` surface, and the same-origin H9 harness proves that observation stays local-only, non-evidentiary, and display-only with no in-surface controls.
+- [x] Existing runway route renders pending-consent proposed material plus the recorded decision rehearsal receipt from the read-only `/runway-summary.json` surface, and the same-origin H9 harness proves that observation stays local-only, non-evidentiary, and display-only with no in-surface controls.
 
-The current Phase B slice is still read-first for observation, with one narrow localhost-only lifecycle write bar, one narrow localhost-only profile surface, and one display-only onramp observation path on the existing runway route. That profile slice is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter only. The remaining S5 follow-up is focused closeout of that existing path in `ferros-node` route tests and Rust validation while keeping `show` off JSON-RPC and leaving profile `grant` / `revoke`, onramp accept/reject wiring, remote transport, and broader browser privileges out of scope.
+The current Phase B slice is still read-first for observation, with one narrow localhost-only lifecycle write bar, one narrow localhost-only profile surface, and one display-only onramp observation path on the existing runway route. That profile slice is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter only, and it is already backed by focused `ferros-node` route tests and Rust validation. The remaining S5 follow-up keeps `show` off JSON-RPC and leaves profile `grant` / `revoke`, onramp accept/reject wiring, remote transport, and broader browser privileges out of scope.
 
 The shell now stages selected-agent lifecycle intent copy and can submit selected-agent `agent.run` / `agent.stop` only through the grant-aware local lifecycle bar.
 
@@ -123,14 +123,14 @@ Grant/revoke actions, consent resolution for non-lifecycle operations, broader b
 
 ## Phase B: minimum profile surface entry bar
 
-The minimum honest first browser profile surface entry bar above the frozen S2 contract is now landed as the first localhost browser profile slice in `site/agent-center-shell.html` and `crates/ferros-node/src/lib.rs`, with `init`, `show`, `export`, and `import` running through the thin local `/profile` adapter. The remaining S5 follow-up is focused closeout of that existing `ferros-node` adapter path without reopening the surface definition, the frozen S2 contract, or browser privileges.
+The minimum honest first browser profile surface entry bar above the frozen S2 contract is now landed as the first localhost browser profile slice in `site/agent-center-shell.html` and `crates/ferros-node/src/lib.rs`, with `init`, `show`, `export`, and `import` running through the thin local `/profile` adapter. That existing `ferros-node` adapter path is route-test-backed now; the remaining S5 follow-up is to keep the surface narrow without reopening the frozen S2 contract or browser privileges.
 
 | Constraint | Definition |
 |------------|------------|
 | Scope | `init`, `show`, `export`, `import` only. Localhost-only. No grant mutation. No `revoke`. No re-negotiation of the S2 contract. No browser privilege widening. |
 | Backend | Each slot calls the already-frozen CLI path (`ferros profile init`, `show`, `export`, `import`) through the thin local `/profile` adapter. `show` stays on `/profile` and does not route through JSON-RPC. Does not reopen `schemas/profile.v0.json` or `schemas/capability-grant.v0.json`, and does not widen the read-first JSON/RPC contract. |
 | Prior art | `docs/legacy/personal-profile.html` is the shape reference only. Does not constitute G2 re-evidence. |
-| Publication gate | The first slice is landed. Remaining closeout is focused Rust validation plus `ferros-node` route-test lock-in for the existing `/profile` path when the environment can execute it. The harness checks `/profile` separately from `/rpc`, proves `show` avoids JSON-RPC, and proves profile `grant` / `revoke` controls remain absent. |
+| Publication gate | The first slice is landed and route-test-backed. The harness checks `/profile` separately from `/rpc`, proves `show` avoids JSON-RPC, and proves profile `grant` / `revoke` controls remain absent. |
 
 Grant mutation, `revoke`, remote profile access, any S2 contract reopening, and any browser privilege widening remain explicitly out of scope for this surface.
 
@@ -154,7 +154,7 @@ Once `CONSENT-LANGUAGE.md` is cleared by counsel, the draft tags on this spec an
 
 ## Phase B: onramp consent surface entry bar
 
-The read-only observation half of this onramp path is now landed on the existing runway route: the shell displays pending-consent proposed material from the read-only `/runway-summary.json` surface, and the same-origin H9 harness proves that observation stays local-only, non-evidentiary, and display-only with no in-surface controls. The accept/reject consent surface defined below is the stated next onramp-facing surface; it does not yet exist as wired browser code. ADR-023 is the governing policy.
+The read-only observation half of this onramp path is now landed on the existing runway route: the shell displays pending-consent proposed material plus the recorded local decision rehearsal receipt from the read-only `/runway-summary.json` surface, and the same-origin H9 harness proves that observation stays local-only, non-evidentiary, and display-only with no in-surface controls. The accept/reject consent surface defined below is the stated next onramp-facing surface; it does not yet exist as wired browser code. ADR-023 is the governing policy.
 
 | Constraint | Definition |
 |------------|------------|
@@ -171,4 +171,4 @@ Calendar, social-graph, and marketplace onramp variants follow the same pattern.
 
 1. Verify the remaining site links and archive candidates against current inbound references.
 2. Execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once link hygiene is confirmed.
-3. Close out the landed `/profile` adapter path with focused `ferros-node` route tests and Rust validation when the environment can execute them, without widening browser privileges or reopening the frozen S2 boundary.
+3. Implement the localhost onramp consent surface only after the audit-log seam can record explicit accept events, without widening browser privileges or reopening the frozen S2 boundary.

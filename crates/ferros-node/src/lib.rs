@@ -260,6 +260,8 @@ pub struct LocalRunwaySummary {
     pub hub_restart: Option<LocalRunwayHubRestartSummary>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hub_onramp_proposal: Option<LocalRunwayHubOnrampProposalSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hub_onramp_decision_receipt: Option<LocalRunwayHubOnrampDecisionReceiptSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -338,6 +340,16 @@ pub struct LocalRunwayHubOnrampProposalSummary {
     pub quarantine_status: String,
     pub scope: String,
     pub evidence: String,
+    pub local_artifact_path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalRunwayHubOnrampDecisionReceiptSummary {
+    pub proposal_id: String,
+    pub decision_label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub decision_detail: Option<String>,
     pub local_artifact_path: String,
 }
 
@@ -1646,11 +1658,26 @@ fn map_local_runway_hub_onramp_proposal_summary(
         })
 }
 
+fn map_local_runway_hub_onramp_decision_receipt_summary(
+    summary: &LocalHubRuntimeSummary,
+) -> Option<LocalRunwayHubOnrampDecisionReceiptSummary> {
+    summary
+        .local_onramp_decision_receipt
+        .as_ref()
+        .map(|receipt| LocalRunwayHubOnrampDecisionReceiptSummary {
+            proposal_id: receipt.proposal_id.clone(),
+            decision_label: receipt.decision_label.as_str().to_owned(),
+            decision_detail: receipt.decision_detail.clone(),
+            local_artifact_path: receipt.local_artifact_path.clone(),
+        })
+}
+
 fn observe_local_runway_hub_observations_with<HubSummaryLoader>(
     hub_summary_loader: HubSummaryLoader,
 ) -> (
     Option<LocalRunwayHubRestartSummary>,
     Option<LocalRunwayHubOnrampProposalSummary>,
+    Option<LocalRunwayHubOnrampDecisionReceiptSummary>,
 )
 where
     HubSummaryLoader: FnOnce() -> Result<LocalHubRuntimeSummary, LocalBridgeRegistrationError>,
@@ -1659,8 +1686,9 @@ where
         Ok(summary) => (
             Some(map_local_runway_hub_restart_summary(&summary)),
             map_local_runway_hub_onramp_proposal_summary(&summary),
+            map_local_runway_hub_onramp_decision_receipt_summary(&summary),
         ),
-        Err(_) => (None, None),
+        Err(_) => (None, None, None),
     }
 }
 
@@ -1717,7 +1745,7 @@ where
     let deny_count = deny_entries.len();
     let latest_deny = deny_entries.into_iter().last().map(LocalRunwayDenySummary::from);
     let profile_observation = observe_local_runway_profile(store, profile_path);
-    let (hub_restart, hub_onramp_proposal) =
+    let (hub_restart, hub_onramp_proposal, hub_onramp_decision_receipt) =
         observe_local_runway_hub_observations_with(hub_summary_loader);
 
     let stand_in_agent = match runtime.describe_agent("echo") {
@@ -1818,6 +1846,7 @@ where
         ],
         hub_restart,
         hub_onramp_proposal,
+        hub_onramp_decision_receipt,
     })
 }
 
@@ -3286,6 +3315,104 @@ mod tests {
         assert!(summary.hub_onramp_proposal.is_none());
         assert!(payload.get("hubRestart").is_some());
         assert!(payload.get("hubOnrampProposal").is_none());
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
+    fn onramp_decision_shell_route_gets_local_runway_summary_json() {
+        let state_path = unique_state_path("onramp-decision-shell-runway-summary");
+        let profile_path = unique_profile_path("onramp-decision-shell-runway-summary");
+        let store = FileSystemProfileStore;
+
+        execute_profile_cli_with_store(
+            ProfileCliCommand::Init {
+                path: profile_path.clone(),
+            },
+            &store,
+        )
+        .expect("profile init should succeed");
+
+        execute_local_agent_api_with_runtime_loader(
+            LocalAgentApiCommand::Run {
+                name: "echo".to_string(),
+            },
+            &state_path,
+            denied_reference_runtime_from_loaded_state,
+        )
+        .expect_err("denied runtime should record a deny entry before summary read");
+
+        let response = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "GET".to_owned(),
+                path: format!(
+                    "/runway-summary.json?profilePath={}",
+                    profile_path.display()
+                ),
+                body: Vec::new(),
+            },
+            &state_path,
+            &profile_path,
+            &store,
+        );
+        let payload: LocalRunwaySummary = serde_json::from_slice(&response.body)
+            .expect("runway summary response should parse");
+        let hub_onramp_decision_receipt = payload
+            .hub_onramp_decision_receipt
+            .as_ref()
+            .expect("shell runway summary should include a hub onramp decision receipt child");
+
+        assert_eq!(response.status_code, 200);
+        assert_eq!(
+            hub_onramp_decision_receipt.proposal_id,
+            "proposal-ha-local-bridge-simulated-bridge-entity-report-state"
+        );
+        assert_eq!(hub_onramp_decision_receipt.decision_label, "allowed");
+        assert_eq!(
+            hub_onramp_decision_receipt.decision_detail.as_deref(),
+            Some(
+                "local-only operator rehearsal allowed report-state for proposal proposal-ha-local-bridge-simulated-bridge-entity-report-state"
+            )
+        );
+        assert_eq!(
+            hub_onramp_decision_receipt.local_artifact_path,
+            ".tmp/hub/local-onramp-decision-receipt.json"
+        );
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+        cleanup_parent_dir(&profile_path);
+    }
+
+    #[test]
+    fn onramp_decision_runway_summary_omits_hub_onramp_decision_receipt_when_hub_summary_child_is_absent(
+    ) {
+        let state_path = unique_state_path("onramp-decision-runway-summary-no-child");
+        let profile_path = unique_profile_path("onramp-decision-runway-summary-no-child");
+        let store = FileSystemProfileStore;
+
+        let summary = build_local_runway_summary_with_store_and_hub_summary_loader(
+            &state_path,
+            &profile_path,
+            &store,
+            || -> Result<LocalHubRuntimeSummary, LocalBridgeRegistrationError> {
+                let mut summary = default_local_runtime_summary()?;
+                summary.local_onramp_decision_receipt = None;
+                Ok(summary)
+            },
+        )
+        .expect("runway summary should load when the hub onramp decision child is absent");
+        let payload = serde_json::to_value(&summary)
+            .expect("runway summary should serialize without the hub onramp decision child");
+
+        assert!(summary.hub_restart.is_some());
+        assert!(summary.hub_onramp_proposal.is_some());
+        assert!(summary.hub_onramp_decision_receipt.is_none());
+        assert!(payload.get("hubRestart").is_some());
+        assert!(payload.get("hubOnrampProposal").is_some());
+        assert!(payload.get("hubOnrampDecisionReceipt").is_none());
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);

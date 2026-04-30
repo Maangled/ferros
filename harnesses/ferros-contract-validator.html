@@ -517,6 +517,40 @@ runTest(g2, 'inline local onramp proposal validates against SCHEMA_ONRAMP_PROPOS
   return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
 });
 
+runTest(g2, 'inline local onramp decision rehearsal validates against SCHEMA_ONRAMP_DECISION_REHEARSAL', function() {
+  var data = {
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    proposalArtifactPath: '.tmp/hub/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: 'local-only operator rehearsal allowed report-state for proposal proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (r.valid) {
+    return { pass: true, detail: 'local onramp decision rehearsal matches the bounded local-only receipt contract' };
+  }
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
+runTest(g2, 'SCHEMA_ONRAMP_DECISION_REHEARSAL accepts non-slug proposalId that still matches the S6 model', function() {
+  var data = {
+    proposalId: 'proposal local rehearsal alpha',
+    proposalArtifactPath: '.tmp/hub/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: 'local-only operator rehearsal allowed report-state for proposal local rehearsal alpha',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (r.valid) {
+    return { pass: true, detail: 'schema stays aligned with the S6 owner model for proposalId text that is safe but not slug-shaped' };
+  }
+  return { pass: false, error: r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ' (+ ' + (r.errors.length - 5) + ' more)' : '') };
+});
+
 runTest(g2, 'SCHEMA_CAPABILITY_GRANT_V0 publishes the stripped-payload signing contract', function() {
   var signing = SCHEMA_CAPABILITY_GRANT_V0['x-ferros-signature'];
   if (!signing || typeof signing !== 'object' || Array.isArray(signing)) {
@@ -1002,6 +1036,206 @@ runTest(g3, 'SCHEMA_ONRAMP_PROPOSAL rejects inline proposal with non-local artif
     };
   }
   return { pass: false, error: 'SCHEMA_ONRAMP_PROPOSAL should reject non-local artifact paths' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_DECISION_REHEARSAL rejects inline receipt with remote-looking proposal artifact path', function() {
+  var data = {
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    proposalArtifactPath: 'https://example.com/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: 'local-only operator rehearsal allowed report-state for proposal proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. proposalArtifactPath stayed outside the bounded local-only no-remote-text contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_DECISION_REHEARSAL should reject remote-looking proposal artifact paths' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_DECISION_REHEARSAL rejects inline receipt with hardware/proof/launch wording', function() {
+  var data = {
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    proposalArtifactPath: '.tmp/hub/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: 'local-only hardware proof launch rehearsal',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. decisionDetail stayed outside the bounded local-only wording contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_DECISION_REHEARSAL should reject hardware/proof/launch wording' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_DECISION_REHEARSAL rejects inline receipt with canonical/granted wording', function() {
+  var data = {
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    proposalArtifactPath: '.tmp/hub/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: 'local-only canonical granted rehearsal detail',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. decisionDetail stayed outside the non-canonical local-only wording contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_DECISION_REHEARSAL should reject canonical/granted wording' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_DECISION_REHEARSAL rejects inline receipt with partner/home-assistant wording', function() {
+  var data = {
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    proposalArtifactPath: '.tmp/hub/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: 'local-only partner rehearsal for home assistant handoff',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. decisionDetail stayed outside the local-only non-partner contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_DECISION_REHEARSAL should reject partner/home-assistant wording' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_DECISION_REHEARSAL rejects inline receipt with gate/g4/closure wording', function() {
+  var data = {
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    proposalArtifactPath: '.tmp/hub/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: 'local-only gate-closing g4 closure rehearsal',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. decisionDetail stayed outside the non-gate-closing local-only contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_DECISION_REHEARSAL should reject gate/g4/closure wording' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_DECISION_REHEARSAL rejects inline receipt with non-local artifact path', function() {
+  var data = {
+    proposalId: 'proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    proposalArtifactPath: '.tmp/hub/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: 'local-only operator rehearsal allowed report-state for proposal proposal-ha-local-bridge-simulated-bridge-entity-report-state',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/../local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. localArtifactPath stayed outside the bounded .tmp/hub/ decision-receipt contract. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_DECISION_REHEARSAL should reject non-local artifact paths' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_DECISION_REHEARSAL rejects inline receipt with whitespace-only proposalId', function() {
+  var data = {
+    proposalId: '   ',
+    proposalArtifactPath: '.tmp/hub/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: 'local-only operator rehearsal allowed report-state for proposal local rehearsal alpha',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. proposalId now matches the S6 trim-empty text rule. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_DECISION_REHEARSAL should reject whitespace-only proposalId values' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_DECISION_REHEARSAL rejects inline receipt with whitespace-only decisionDetail', function() {
+  var data = {
+    proposalId: 'proposal local rehearsal alpha',
+    proposalArtifactPath: '.tmp/hub/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: '   ',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. decisionDetail now matches the S6 trim-empty text rule. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_DECISION_REHEARSAL should reject whitespace-only decisionDetail values' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_DECISION_REHEARSAL rejects inline receipt with remote-looking proposalId text', function() {
+  var data = {
+    proposalId: '//remote-looking-proposal-id',
+    proposalArtifactPath: '.tmp/hub/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: 'local-only operator rehearsal allowed report-state for proposal local rehearsal alpha',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. proposalId now matches the S6 no-remote-text rule. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_DECISION_REHEARSAL should reject remote-looking proposalId text' };
+});
+
+runTest(g3, 'SCHEMA_ONRAMP_DECISION_REHEARSAL rejects inline receipt with remote-looking decisionDetail text', function() {
+  var data = {
+    proposalId: 'proposal local rehearsal alpha',
+    proposalArtifactPath: '.tmp/hub/local-onramp-proposal.json',
+    decisionLabel: 'allowed',
+    decisionDetail: '//remote-looking decision detail',
+    scope: 'local-only',
+    evidence: 'non-evidentiary',
+    localArtifactPath: '.tmp/hub/local-onramp-decision-receipt.json'
+  };
+  var r = validate(data, SCHEMA_ONRAMP_DECISION_REHEARSAL);
+  if (!r.valid) {
+    return {
+      pass: true,
+      detail: 'correctly rejected. decisionDetail now matches the S6 no-remote-text rule. Errors: ' + r.errors.slice(0,2).join(' | ')
+    };
+  }
+  return { pass: false, error: 'SCHEMA_ONRAMP_DECISION_REHEARSAL should reject remote-looking decisionDetail text' };
 });
 
 /* ==========================================================================

@@ -53,7 +53,7 @@ For each source repository, decide per module or subsystem: **adopt / adapt / re
 
 - **S3 / S4:** ADR-018 is now the handoff surface for registry, lifecycle, queue, and materialization decisions; downstream streams should consume it instead of mining `botgen-rust` directly.
 - **S5:** ADR-019 is now the handoff surface for workspace/session, typed IPC, and shell-delivery conclusions; any later extraction remains follow-on work rather than fresh ADR authoring.
-- **S7:** Home Assistant prior art remains reference-scoped; the local onramp rehearsal packet now consumes the `ferros-data` proposal boundary instead of inventing a second proposed-material model, and hub work should continue consuming S6 conclusions rather than the legacy fork directly.
+- **S7:** Home Assistant prior art remains reference-scoped; the local onramp rehearsal packet now consumes the `ferros-data` proposal and decision-receipt boundaries instead of inventing second local models, and hub work should continue consuming S6 conclusions rather than the legacy fork directly.
 
 ---
 
@@ -61,7 +61,7 @@ For each source repository, decide per module or subsystem: **adopt / adapt / re
 
 - [x] ADR-018, ADR-019, and ADR-020 are accepted and record the adopt/adapt/reference/discard verdicts for `botgen-rust`, `workpace-rust`, and `sheetgen-rust`.
 - [x] `crates/ferros-data/` is admitted to the root Cargo workspace as the ADR-020-aligned scaffold.
-- [x] `ferros-data` now owns the typed local onramp proposal boundary consumed by the current local hub/shell/harness rehearsal packet.
+- [x] `ferros-data` now owns the typed local onramp proposal and decision receipt boundaries consumed by the current local hub/shell/harness rehearsal packet.
 - [ ] Git provenance and attribution still need to be preserved where later code lift is warranted, especially for any deeper `sheetgen-rust` extraction.
 - [ ] Downstream implementation streams still need to consume these accepted decisions in their own lanes; that wiring remains outside S6.
 
@@ -71,7 +71,7 @@ For each source repository, decide per module or subsystem: **adopt / adapt / re
 
 | Path | Role |
 |------|------|
-| `crates/ferros-data/` | ADR-020-aligned `sheetgen-rust` scaffold admitted to the root workspace; now hosts local-push and local-onramp proposal primitives |
+| `crates/ferros-data/` | ADR-020-aligned `sheetgen-rust` scaffold admitted to the root workspace; now hosts local-push plus local onramp proposal and decision-rehearsal primitives |
 | `docs/adr/ADR-018-harvest-botgen.md` | Accepted harvest ADR for `botgen-rust` |
 | `docs/adr/ADR-019-harvest-workpace.md` | Accepted harvest ADR for `workpace-rust` |
 | `docs/adr/ADR-020-harvest-sheetgen.md` | Accepted harvest ADR for `sheetgen-rust` |

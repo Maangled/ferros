@@ -2,7 +2,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use ferros_data::{LocalOnrampQuarantineStatus, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH};
+use ferros_data::{
+    LocalOnrampDecisionLabel, LocalOnrampQuarantineStatus,
+    LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+};
 use ferros_core::{PolicyDecision, PolicyDenialReason};
 use ferros_profile::{CapabilityGrant, ProfileId};
 use ferros_hub::{
@@ -64,6 +67,10 @@ fn emitted_artifact_path() -> PathBuf {
 
 fn emitted_onramp_proposal_path() -> PathBuf {
     repo_root().join(LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH)
+}
+
+fn emitted_onramp_decision_receipt_path() -> PathBuf {
+    repo_root().join(LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH)
 }
 
 fn denied_local_runtime_summary() -> ferros_hub::LocalHubRuntimeSummary {
@@ -901,4 +908,178 @@ fn onramp_proposal_rejects_banned_request_wording_before_emit() {
         "local-only bridge rejected before write because the onramp proposal was invalid"
     );
     assert!(!artifact_path.exists());
+}
+
+#[test]
+fn onramp_decision_allowed_runway_emits_local_receipt() {
+    let _lock = ONRAMP_ARTIFACT_LOCK
+        .lock()
+        .expect("onramp artifact tests should serialize file access");
+    let proposal_path = emitted_onramp_proposal_path();
+    let decision_path = emitted_onramp_decision_receipt_path();
+    let _proposal_cleanup = LocalStateFixtureGuard::new(proposal_path.clone());
+    let _decision_cleanup = LocalStateFixtureGuard::new(decision_path.clone());
+    if proposal_path.exists() {
+        fs::remove_file(&proposal_path).expect("stale onramp proposal artifact should be removable");
+    }
+    if decision_path.exists() {
+        fs::remove_file(&decision_path)
+            .expect("stale onramp decision receipt artifact should be removable");
+    }
+
+    let summary = allowed_local_runtime_summary();
+    let proposal = summary
+        .local_onramp_proposal
+        .as_ref()
+        .expect("allowed summary should expose an onramp proposal");
+    let receipt = summary
+        .local_onramp_decision_receipt
+        .as_ref()
+        .expect("allowed summary should expose an onramp decision receipt");
+
+    assert_eq!(receipt.proposal_id, proposal.proposal_id);
+    assert_eq!(receipt.proposal_artifact_path, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH);
+    assert_eq!(receipt.decision_label, LocalOnrampDecisionLabel::Allowed);
+    assert_eq!(
+        receipt.decision_detail.as_deref(),
+        Some(
+            "local-only operator rehearsal allowed report-state for proposal proposal-ha-local-bridge-simulated-bridge-entity-report-state"
+        )
+    );
+    assert_eq!(receipt.local_artifact_path, LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH);
+    assert!(decision_path.exists());
+
+    let written =
+        fs::read_to_string(&decision_path).expect("onramp decision receipt artifact should be readable");
+    assert!(written.contains("\"proposalId\":"));
+    assert!(written.contains("\"decisionLabel\": \"allowed\""));
+    assert!(written.contains(LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH));
+    assert!(!written.contains("home assistant"));
+    assert!(!written.contains("canonical"));
+    assert!(!written.contains("gate"));
+}
+
+#[test]
+fn onramp_decision_renders_exact_local_json_contract() {
+    let _lock = ONRAMP_ARTIFACT_LOCK
+        .lock()
+        .expect("onramp artifact tests should serialize file access");
+    let proposal_path = emitted_onramp_proposal_path();
+    let decision_path = emitted_onramp_decision_receipt_path();
+    let _proposal_cleanup = LocalStateFixtureGuard::new(proposal_path.clone());
+    let _decision_cleanup = LocalStateFixtureGuard::new(decision_path.clone());
+    if proposal_path.exists() {
+        fs::remove_file(&proposal_path).expect("stale onramp proposal artifact should be removable");
+    }
+    if decision_path.exists() {
+        fs::remove_file(&decision_path)
+            .expect("stale onramp decision receipt artifact should be removable");
+    }
+
+    let summary = allowed_local_runtime_summary();
+    let receipt = summary
+        .local_onramp_decision_receipt
+        .as_ref()
+        .expect("allowed summary should expose an onramp decision receipt");
+
+    assert_eq!(
+        receipt
+            .to_pretty_json()
+            .expect("onramp decision receipt should render deterministically"),
+        concat!(
+            "{\n",
+            "  \"proposalId\": \"proposal-ha-local-bridge-simulated-bridge-entity-report-state\",\n",
+            "  \"proposalArtifactPath\": \".tmp/hub/local-onramp-proposal.json\",\n",
+            "  \"decisionLabel\": \"allowed\",\n",
+            "  \"decisionDetail\": \"local-only operator rehearsal allowed report-state for proposal proposal-ha-local-bridge-simulated-bridge-entity-report-state\",\n",
+            "  \"scope\": \"local-only\",\n",
+            "  \"evidence\": \"non-evidentiary\",\n",
+            "  \"localArtifactPath\": \".tmp/hub/local-onramp-decision-receipt.json\"\n",
+            "}"
+        )
+    );
+}
+
+#[test]
+fn onramp_decision_denied_runway_keeps_summary_child_empty() {
+    let _lock = ONRAMP_ARTIFACT_LOCK
+        .lock()
+        .expect("onramp artifact tests should serialize file access");
+    let decision_path = emitted_onramp_decision_receipt_path();
+    let _cleanup = LocalStateFixtureGuard::new(decision_path.clone());
+    if decision_path.exists() {
+        fs::remove_file(&decision_path)
+            .expect("stale onramp decision receipt artifact should be removable");
+    }
+
+    let summary = denied_local_runtime_summary();
+
+    assert!(summary.local_onramp_decision_receipt.is_none());
+    assert!(!decision_path.exists());
+}
+
+#[test]
+fn onramp_decision_rejects_banned_request_wording_before_emit() {
+    let _lock = ONRAMP_ARTIFACT_LOCK
+        .lock()
+        .expect("onramp artifact tests should serialize file access");
+    let decision_path = emitted_onramp_decision_receipt_path();
+    let _cleanup = LocalStateFixtureGuard::new(decision_path.clone());
+    if decision_path.exists() {
+        fs::remove_file(&decision_path)
+            .expect("stale onramp decision receipt artifact should be removable");
+    }
+
+    let bridge_agent = LocalBridgeAgent::new_default();
+    let request = LocalBridgeRequest::new(
+        "partner-bridge-entity",
+        "bridge.observe",
+        "report-state",
+    );
+    let execution = execute_local_bridge_request(
+        &bridge_agent,
+        &local_snapshot(&["bridge.observe"]),
+        &request,
+    );
+
+    assert_eq!(execution.report.status, LocalBridgeStatus::Error);
+    assert!(execution.local_onramp_decision_receipt.is_none());
+    assert_eq!(
+        execution.report.summary,
+        "local-only bridge rejected before write because the onramp proposal was invalid"
+    );
+    assert!(!decision_path.exists());
+}
+
+#[test]
+fn onramp_decision_summary_output_mentions_receipt() {
+    let _lock = ONRAMP_ARTIFACT_LOCK
+        .lock()
+        .expect("onramp artifact tests should serialize file access");
+    let proposal_path = emitted_onramp_proposal_path();
+    let decision_path = emitted_onramp_decision_receipt_path();
+    let _proposal_cleanup = LocalStateFixtureGuard::new(proposal_path.clone());
+    let _decision_cleanup = LocalStateFixtureGuard::new(decision_path.clone());
+
+    let output = summary_command_output().expect("summary output should build successfully");
+
+    assert!(output.contains("onrampDecisionLabel: allowed"));
+    assert!(output.contains("onrampDecisionArtifact: .tmp/hub/local-onramp-decision-receipt.json"));
+}
+
+#[test]
+fn onramp_decision_prove_bridge_output_mentions_receipt() {
+    let _lock = ONRAMP_ARTIFACT_LOCK
+        .lock()
+        .expect("onramp artifact tests should serialize file access");
+    let proposal_path = emitted_onramp_proposal_path();
+    let decision_path = emitted_onramp_decision_receipt_path();
+    let _proposal_cleanup = LocalStateFixtureGuard::new(proposal_path.clone());
+    let _decision_cleanup = LocalStateFixtureGuard::new(decision_path.clone());
+
+    let output =
+        prove_bridge_command_output().expect("prove-bridge output should build successfully");
+
+    assert!(output.contains("decision allowed"));
+    assert!(output.contains(LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH));
 }

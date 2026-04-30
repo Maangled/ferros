@@ -1,0 +1,103 @@
+{
+  "meta": {
+    "version": "1.0",
+    "created": "2026-04-30T00:07:48.0028878Z",
+    "lastModified": "2026-04-30T00:07:48.0028878Z",
+    "assistanceLevel": 1,
+    "genesisHash": "profile-genesis-fresh-start2026-04-30t00-07-480028878z",
+    "currentSeal": "profile-genesis-fresh-start2026-04-30t00-07-480028878z",
+    "sealCount": 1,
+    "stage": 0
+  },
+  "identity": {
+    "name": "Fresh Start",
+    "avatar": "star",
+    "class": null,
+    "streamAffinity": null,
+    "title": "Newcomer",
+    "joinedDate": "2026-04-30T00:07:48.0028878Z",
+    "streakDays": 0,
+    "longestStreak": 0
+  },
+  "attributes": {
+    "Community": {
+      "color": "pink",
+      "icon": "community",
+      "level": 1,
+      "xp": 0,
+      "xpToNext": 100
+    },
+    "Craft": {
+      "color": "cyan",
+      "icon": "craft",
+      "level": 1,
+      "xp": 0,
+      "xpToNext": 100
+    },
+    "Discipline": {
+      "color": "amber",
+      "icon": "discipline",
+      "level": 1,
+      "xp": 0,
+      "xpToNext": 100
+    },
+    "Governance": {
+      "color": "purple",
+      "icon": "governance",
+      "level": 1,
+      "xp": 0,
+      "xpToNext": 100
+    },
+    "Knowledge": {
+      "color": "blue",
+      "icon": "knowledge",
+      "level": 1,
+      "xp": 0,
+      "xpToNext": 100
+    },
+    "Wellness": {
+      "color": "green",
+      "icon": "wellness",
+      "level": 1,
+      "xp": 0,
+      "xpToNext": 100
+    }
+  },
+  "skills": {
+    "A": [],
+    "B": [],
+    "C": []
+  },
+  "achievements": [
+    {
+      "desc": "Created a FERROS profile",
+      "icon": "trophy",
+      "id": "genesis_pioneer",
+      "name": "Genesis Pioneer",
+      "unlocked": true,
+      "unlockedAt": "2026-04-30T00:07:48.0028878Z"
+    }
+  ],
+  "journal": [
+    {
+      "text": "Profile created for Fresh Start",
+      "ts": "2026-04-30T00:07:48.0028878Z",
+      "type": "system"
+    }
+  ],
+  "credentials": [],
+  "sealChain": [
+    {
+      "taskId": "genesis",
+      "seal": "profile-genesis-fresh-start2026-04-30t00-07-480028878z",
+      "previousSeal": "genesis",
+      "timestamp": "2026-04-30T00:07:48.0028878Z",
+      "data": {
+        "event": "profile_created",
+        "name": "Fresh Start"
+      },
+      "hashAlgorithm": "sha256",
+      "nonce": 0
+    }
+  ]
+}

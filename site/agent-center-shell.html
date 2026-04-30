@@ -599,7 +599,7 @@
           </button>
           <button class="route-button" data-route="runway" type="button">
             <strong>Runway</strong>
-            <small>Local-only launch checklist plus optional hub restart and pending-consent proposed material from <code>/runway-summary.json</code>.</small>
+            <small>Local-only launch checklist plus optional hub restart, pending-consent proposed material, and decision rehearsal receipt from <code>/runway-summary.json</code>.</small>
           </button>
           <button class="route-button" data-route="denyLog" type="button">
             <strong>Deny log</strong>
@@ -1339,6 +1339,34 @@
           <div class="detail-pair"><div class="detail-key">Artifact path</div><div class="detail-value">${escapeHtml(proposal.localArtifactPath || 'not reported')}</div></div>`;
     }
 
+    function runwayOnrampDecisionReceiptNoteHtml(receipt) {
+      if (!receipt) {
+        return emptyNote('Optional decision rehearsal receipt', 'This runway summary does not include a recorded local decision rehearsal receipt yet. Any proposal shown here remains display-only pending material.');
+      }
+
+      return `
+        <article class="note-card">
+          <div class="shell-note-title">Local decision rehearsal receipt</div>
+          <p class="shell-note-copy">proposalId ${escapeHtml(receipt.proposalId || 'not reported')} · decisionLabel ${escapeHtml(receipt.decisionLabel || 'not reported')} · artifact ${escapeHtml(receipt.localArtifactPath || 'not reported')}.</p>
+          <p class="shell-note-copy">decisionDetail ${escapeHtml(receipt.decisionDetail || 'not reported')}.</p>
+          <p class="shell-note-copy">Display only. This is a recorded local decision rehearsal receipt: not an executed consent event, not canonical state, not a grant, and not Home Assistant proof.</p>
+        </article>`;
+    }
+
+    function runwayOnrampDecisionReceiptInspectorDetails(receipt) {
+      if (!receipt) {
+        return `
+          <div class="detail-pair"><div class="detail-key">Hub decision rehearsal</div><div class="detail-value">optional local decision receipt not available yet</div></div>`;
+      }
+
+      return `
+          <div class="detail-pair"><div class="detail-key">Hub decision rehearsal</div><div class="detail-value">local decision rehearsal receipt only</div></div>
+          <div class="detail-pair"><div class="detail-key">Proposal ID</div><div class="detail-value">${escapeHtml(receipt.proposalId || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Decision label</div><div class="detail-value">${escapeHtml(receipt.decisionLabel || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Decision detail</div><div class="detail-value">${escapeHtml(receipt.decisionDetail || 'not reported')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Artifact path</div><div class="detail-value">${escapeHtml(receipt.localArtifactPath || 'not reported')}</div></div>`;
+    }
+
     function runwaySurfaceHtml() {
       const summary = state.runway;
       if (!summary) {
@@ -1364,6 +1392,7 @@
           <p class="shell-note-copy">Scope ${escapeHtml(summary.scope)} · evidence ${escapeHtml(summary.evidence)} · latest deny ${escapeHtml(latestDeny)}.</p>
         </article>
         ${runwayOnrampProposalNoteHtml(summary.hubOnrampProposal)}
+        ${runwayOnrampDecisionReceiptNoteHtml(summary.hubOnrampDecisionReceipt)}
         ${runwayHubRestartNoteHtml(summary.hubRestart)}
         ${checklist || emptyNote('No runway checklist', 'The runway route loaded, but no checklist items were returned.')}`;
     }
@@ -1418,6 +1447,7 @@
           ? summary.checklist[state.selectedRunwayIndex ?? 0]
           : null;
         const hubOnrampProposalDetails = runwayOnrampProposalInspectorDetails(summary.hubOnrampProposal || null);
+        const hubOnrampDecisionReceiptDetails = runwayOnrampDecisionReceiptInspectorDetails(summary.hubOnrampDecisionReceipt || null);
         const hubRestartDetails = runwayHubRestartInspectorDetails(summary.hubRestart || null);
         inspector.innerHTML = `
           <div class="detail-pair"><div class="detail-key">Surface</div><div class="detail-value">${escapeHtml(summary.surface)}</div></div>
@@ -1428,6 +1458,7 @@
           <div class="detail-pair"><div class="detail-key">Checkpoint progress</div><div class="detail-value">${escapeHtml(`${summary.checkpointPosition}/${summary.checkpointTotal}`)}</div></div>
           <div class="detail-pair"><div class="detail-key">Checkpoint detail</div><div class="detail-value">${escapeHtml(summary.checkpointDetail)}</div></div>
           ${hubOnrampProposalDetails}
+          ${hubOnrampDecisionReceiptDetails}
           ${hubRestartDetails}
           <div class="detail-pair"><div class="detail-key">Checklist item</div><div class="detail-value">${escapeHtml(item ? item.item : 'none')}</div></div>
           <div class="detail-pair"><div class="detail-key">Checklist status</div><div class="detail-value">${escapeHtml(item ? item.status : 'none')}</div></div>
@@ -1464,7 +1495,7 @@
         agents: 'Agents route shows live registry rows and promotes a selected agent into the inspector slot.',
         grants: 'Grants route reads the local profile state through the current S3/S2 boundary with no mock grant rows.',
         profile: 'Profile route uses the local /profile adapter for init, show, export, and import without sending JSON-RPC grant writes.',
-        runway: 'Runway route reads the local-only /runway-summary.json surface for the selected profile path, checkpoint progress, deny visibility, stand-in readiness observation, optional hub restart context, and pending-consent proposed material. All of it stays display-only and non-evidentiary here.',
+        runway: 'Runway route reads the local-only /runway-summary.json surface for the selected profile path, checkpoint progress, deny visibility, stand-in readiness observation, optional hub restart context, pending-consent proposed material, and an optional local decision rehearsal receipt. All of it stays display-only and non-evidentiary here.',
         denyLog: 'Deny log route uses persisted deny evidence only; route filtering stays in-slot and does not open overlays.',
       };
       document.getElementById('tools-copy').textContent = copy[state.route];
@@ -1486,7 +1517,7 @@
         intentCopy.textContent = 'Profile init, show, export, and import use the same-origin /profile adapter. Profile grant and revoke stay closed here.';
       } else if (state.route === 'runway') {
         intentTitle.textContent = 'Runway observation only';
-        intentCopy.textContent = 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Optional hub restart context and pending-consent proposed material may appear on the same read-only route. Both remain display-only: no acceptance flow, no canonical state, no grant, no Home Assistant proof, and no durability, power-cycle, hardware, or gate evidence is implied.';
+        intentCopy.textContent = 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Optional hub restart context, pending-consent proposed material, and a local decision rehearsal receipt may appear on the same read-only route. All remain display-only: no acceptance flow, no executed consent event, no canonical state, no grant, no Home Assistant proof, and no durability, power-cycle, hardware, or gate evidence is implied.';
       } else {
         intentTitle.textContent = 'Deny observation only';
         intentCopy.textContent = 'Deny entries remain read-only evidence. If a transmitted lifecycle RPC is denied by the backend, the shell refreshes through agent.snapshot so persisted deny evidence can read back here.';
@@ -1668,7 +1699,7 @@
         case 'profile':
           return 'Profile actions use the local /profile adapter for init, show, export, and import only.';
         case 'runway':
-          return 'Runway rows come from the local-only /runway-summary.json surface; any optional hub restart reloadStatus stays display-only and non-evidentiary.';
+          return 'Runway rows come from the local-only /runway-summary.json surface; any optional hub restart, proposal, or decision rehearsal receipt stays display-only and non-evidentiary.';
         case 'denyLog':
           return 'Deny-log rows stay inside the current persisted shell state loaded through agent.snapshot.';
         default:

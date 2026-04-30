@@ -1,0 +1,13 @@
+{
+  "format": "ferros.local.signed-grants.v0",
+  "grants": [
+    {
+      "profile_id": "029d6e2ceb51496949f300c64b7b444046cdbe39c7cc37d9ae64740df1e7b6f3",
+      "capability": "agent.echo",
+      "revoked_at": "2026-04-30T00:08:04.1216111Z",
+      "revocation_reason": "revoked via ferros profile revoke",
+      "signer_public_key": "029d6e2ceb51496949f300c64b7b444046cdbe39c7cc37d9ae64740df1e7b6f3",
+      "signature": "ba7c7aab079d89e9d2d7f7eebe19044797fdf3ad5cd4f29374a7b9ee2d97ca7fc7c537bec080563d71378ca4c0adf04c0d3f69b0879576ca40501414387e5008"
+    }
+  ]
+}
