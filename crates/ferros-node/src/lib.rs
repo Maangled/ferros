@@ -28,7 +28,8 @@ use ferros_hub::{
     default_local_runtime_summary, local_hub_relative_json_path_is_valid,
     local_onramp_banned_wording, local_runway_evidence_is_non_evidentiary,
     local_runway_scope_is_local_only, local_runway_text_looks_remote_like_url,
-    LocalBridgeRegistrationError, LocalHubRuntimeSummary, LOCAL_HUB_STATE_SNAPSHOT_PATH,
+    LocalBridgeRegistrationError, LocalHubRuntimeSummary, LocalOnrampProposal,
+    LOCAL_HUB_STATE_SNAPSHOT_PATH,
 };
 use ferros_profile::{
     grant_profile_capability, init_local_profile, revoke_profile_capability, CapabilityGrant,
@@ -636,6 +637,7 @@ impl DemoRuntime {
         Self::reference_host_with_profile_id_and_grants(profile_id, grants)
     }
 
+    #[cfg(test)]
     fn reference_host_with_grants(grants: Vec<CapabilityGrant>) -> Result<Self, DemoError> {
         let profile_id = ProfileId::new(DEFAULT_PROFILE_ID)?;
 
@@ -1442,7 +1444,8 @@ fn execute_profile_shell_request_with_store<S: LocalProfileStore>(
     store: &S,
 ) -> ProfileShellResponse {
     let action = request.action.trim().to_ascii_lowercase();
-    let profile_path = requested_profile_path(request.profile_path.as_deref(), default_profile_path);
+    let profile_path =
+        requested_profile_path(request.profile_path.as_deref(), default_profile_path);
     let bundle_path = request
         .bundle_path
         .as_deref()
@@ -1561,9 +1564,7 @@ fn profile_shell_blocked_status(action: &str) -> ProfileShellStatus {
 
 fn profile_shell_request_error_detail(action: &str, error: &str) -> ProfileShellErrorDetail {
     let code = match action {
-        "export" | "import" if error.contains("bundlePath is required") => {
-            "bundle_path_required"
-        }
+        "export" | "import" if error.contains("bundlePath is required") => "bundle_path_required",
         "grant" | "revoke" => "mutation_not_exposed",
         _ if error.starts_with("unsupported profile action:") => "unsupported_action",
         _ => "invalid_request",
@@ -1646,19 +1647,7 @@ fn map_local_runway_hub_onramp_proposal_summary(
     summary
         .local_onramp_proposal
         .as_ref()
-        .filter(|proposal| {
-            has_valid_local_onramp_proposal_projection(
-                &proposal.source,
-                &proposal.proposal_id,
-                &proposal.bridge_agent_name,
-                &proposal.stand_in_entity_name,
-                &proposal.requested_capability,
-                &proposal.requested_action,
-                &proposal.scope,
-                &proposal.evidence,
-                &proposal.local_artifact_path,
-            )
-        })
+        .filter(|proposal| has_valid_local_onramp_proposal_projection(proposal))
         .map(|proposal| LocalRunwayHubOnrampProposalSummary {
             source: proposal.source.clone(),
             proposal_id: proposal.proposal_id.clone(),
@@ -1717,26 +1706,16 @@ where
     }
 }
 
-fn has_valid_local_onramp_proposal_projection(
-    source: &str,
-    proposal_id: &str,
-    bridge_agent_name: &str,
-    stand_in_entity_name: &str,
-    requested_capability: &str,
-    requested_action: &str,
-    scope: &str,
-    evidence: &str,
-    local_artifact_path: &str,
-) -> bool {
-    local_hub_relative_json_path_is_valid(source)
-        && local_hub_relative_json_path_is_valid(local_artifact_path)
-        && local_runway_scope_is_local_only(scope)
-        && local_runway_evidence_is_non_evidentiary(evidence)
-        && is_valid_local_onramp_text(proposal_id)
-        && is_valid_local_onramp_text(bridge_agent_name)
-        && is_valid_local_onramp_text(stand_in_entity_name)
-        && is_valid_local_onramp_text(requested_capability)
-        && is_valid_local_onramp_text(requested_action)
+fn has_valid_local_onramp_proposal_projection(proposal: &LocalOnrampProposal) -> bool {
+    local_hub_relative_json_path_is_valid(&proposal.source)
+        && local_hub_relative_json_path_is_valid(&proposal.local_artifact_path)
+        && local_runway_scope_is_local_only(&proposal.scope)
+        && local_runway_evidence_is_non_evidentiary(&proposal.evidence)
+        && is_valid_local_onramp_text(&proposal.proposal_id)
+        && is_valid_local_onramp_text(&proposal.bridge_agent_name)
+        && is_valid_local_onramp_text(&proposal.stand_in_entity_name)
+        && is_valid_local_onramp_text(&proposal.requested_capability)
+        && is_valid_local_onramp_text(&proposal.requested_action)
 }
 
 fn has_valid_local_onramp_decision_projection(
@@ -1814,7 +1793,10 @@ where
     let agent_records = runtime.agent_records();
     let deny_entries = deny_log_entries(&state, None);
     let deny_count = deny_entries.len();
-    let latest_deny = deny_entries.into_iter().last().map(LocalRunwayDenySummary::from);
+    let latest_deny = deny_entries
+        .into_iter()
+        .last()
+        .map(LocalRunwayDenySummary::from);
     let profile_observation = observe_local_runway_profile(store, profile_path);
     let (hub_restart, hub_onramp_proposal, hub_onramp_decision_receipt) =
         observe_local_runway_hub_observations_with(hub_summary_loader);
@@ -1858,8 +1840,7 @@ where
             let (status, detail) = match profile_observation.checklist_item.status {
                 LocalRunwayChecklistStatus::Error => (
                     LocalRunwayChecklistStatus::Error,
-                    "profile observation failed before deny visibility could be checked"
-                        .to_owned(),
+                    "profile observation failed before deny visibility could be checked".to_owned(),
                 ),
                 LocalRunwayChecklistStatus::Observed => (
                     LocalRunwayChecklistStatus::Pending,
@@ -1888,8 +1869,7 @@ where
     let power_cycle = LocalRunwayChecklistItem {
         item: "powerCycleStatus".to_owned(),
         status: LocalRunwayChecklistStatus::Pending,
-        detail: "power-cycle observation remains pending on this local-only surface"
-            .to_owned(),
+        detail: "power-cycle observation remains pending on this local-only surface".to_owned(),
     };
 
     Ok(LocalRunwaySummary {
@@ -1934,10 +1914,8 @@ fn derive_local_runway_state(
         LocalRunwayChecklistStatus::Observed
     );
     let has_consent_observation = latest_deny.is_some() || profile_observation.grant_count > 0;
-    let has_runtime_observation = matches!(
-        stand_in_agent.status,
-        LocalRunwayChecklistStatus::Observed
-    );
+    let has_runtime_observation =
+        matches!(stand_in_agent.status, LocalRunwayChecklistStatus::Observed);
     let running_agent_count = agent_records
         .iter()
         .filter(|record| matches!(record.status, AgentStatus::Running))
@@ -1961,8 +1939,7 @@ fn derive_local_runway_state(
             .expect("consent-ready -> runtime-ready should be valid");
     }
 
-    if running_agent_count > 0 && checkpoint.ordinal() >= LocalRunwayState::RuntimeReady.ordinal()
-    {
+    if running_agent_count > 0 && checkpoint.ordinal() >= LocalRunwayState::RuntimeReady.ordinal() {
         checkpoint = checkpoint
             .advance(ferros_runtime::LocalRunwayIntent::Start)
             .expect("runtime-ready -> active should be valid");
@@ -2024,10 +2001,7 @@ fn observe_local_runway_profile<S: LocalProfileStore>(
                 checklist_item: LocalRunwayChecklistItem {
                     item: "profileInit".to_owned(),
                     status: LocalRunwayChecklistStatus::Pending,
-                    detail: format!(
-                        "no local profile observed at {}",
-                        profile_path.display()
-                    ),
+                    detail: format!("no local profile observed at {}", profile_path.display()),
                 },
             }
         }
@@ -2101,7 +2075,8 @@ where
     match method.as_str() {
         METHOD_AGENT_LIST => {
             let state = CliState::load(state_path)?;
-            let profile_path = requested_profile_path(params.profile_path.as_deref(), default_profile_path);
+            let profile_path =
+                requested_profile_path(params.profile_path.as_deref(), default_profile_path);
             let runtime = runtime_loader(&state, &profile_path, store)?;
             let agents = runtime
                 .agent_records()
@@ -2124,7 +2099,8 @@ where
             };
 
             let state = CliState::load(state_path)?;
-            let profile_path = requested_profile_path(params.profile_path.as_deref(), default_profile_path);
+            let profile_path =
+                requested_profile_path(params.profile_path.as_deref(), default_profile_path);
             let runtime = runtime_loader(&state, &profile_path, store)?;
             let Some(agent) = runtime.describe_agent(agent_name) else {
                 return Ok(AgentJsonRpcResponse::error(
@@ -2159,7 +2135,8 @@ where
                     name: agent_name.to_owned(),
                 }
             };
-            let profile_path = requested_profile_path(params.profile_path.as_deref(), default_profile_path);
+            let profile_path =
+                requested_profile_path(params.profile_path.as_deref(), default_profile_path);
 
             match execute_local_agent_lifecycle_with_profile_path(
                 command,
@@ -2198,7 +2175,8 @@ where
         }
         METHOD_AGENT_SNAPSHOT => {
             let state = CliState::load(state_path)?;
-            let profile_path = requested_profile_path(params.profile_path.as_deref(), default_profile_path);
+            let profile_path =
+                requested_profile_path(params.profile_path.as_deref(), default_profile_path);
             let runtime = runtime_loader(&state, &profile_path, store)?;
             let agent_name = params.agent_name.as_deref();
             let agents = if let Some(agent_name) = agent_name {
@@ -2233,7 +2211,8 @@ where
             ))
         }
         METHOD_GRANT_LIST => {
-            let profile_path = requested_profile_path(params.profile_path.as_deref(), default_profile_path);
+            let profile_path =
+                requested_profile_path(params.profile_path.as_deref(), default_profile_path);
             let grants = load_grant_state_records(store, &profile_path)?;
 
             Ok(AgentJsonRpcResponse::success(
@@ -2290,8 +2269,7 @@ fn runtime_with_state_and_profile_path_from_loaded_state<S: LocalProfileStore>(
             Ok(runtime)
         }
         Err(ProfileStoreError::Io(error)) if error.kind() == io::ErrorKind::NotFound => {
-            let mut runtime =
-                DemoRuntime::reference_host_with_grants(Vec::new()).map_err(CliError::from)?;
+            let mut runtime = DemoRuntime::reference_host().map_err(CliError::from)?;
             runtime.replay_cli_state(state)?;
             Ok(runtime)
         }
@@ -2843,20 +2821,16 @@ pub fn run_demo() -> Result<DemoSummary, DemoError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_local_runway_summary_with_store_and_hub_summary_loader,
-        default_profile_path, execute_agent_cli_with_runtime_loader,
-        execute_agent_cli_with_state_path, execute_agent_read_rpc_json,
-        execute_agent_read_rpc_with_store_and_paths,
+        build_local_runway_summary_with_store_and_hub_summary_loader, default_profile_path,
+        execute_agent_cli_with_runtime_loader, execute_agent_cli_with_state_path,
+        execute_agent_read_rpc_json, execute_agent_read_rpc_with_store_and_paths,
         execute_agent_rpc_with_store_and_paths_and_runtime_loader,
         execute_local_agent_api_with_runtime_loader, execute_profile_cli_with_store,
-        parse_http_request,
-        route_shell_request_with_store_and_paths, run_demo, runtime_with_state,
+        parse_http_request, route_shell_request_with_store_and_paths, run_demo, runtime_with_state,
         serve_local_shell_with_listener, serve_local_shell_with_store_and_paths, AgentCliCommand,
         AuthorizationDenyDetail, CliError, CliState, DemoError, DemoRuntime, HttpRequest,
-        LocalAgentApi, LocalAgentApiCommand, LocalAgentApiResponse,
-        LocalRunwayChecklistStatus, LocalRunwaySummary, ProfileCliCommand,
-        ProfileShellResponse,
-        DEFAULT_PROFILE_NAME,
+        LocalAgentApi, LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
+        LocalRunwaySummary, ProfileCliCommand, ProfileShellResponse, DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
@@ -3168,11 +3142,17 @@ mod tests {
         );
         assert_eq!(missing_summary.checkpoint_position, 1);
         assert_eq!(missing_summary.checkpoint_total, 7);
-        assert_eq!(missing_summary.profile_path, profile_path.display().to_string());
+        assert_eq!(
+            missing_summary.profile_path,
+            profile_path.display().to_string()
+        );
         assert_eq!(missing_summary.agent_count, 2);
         assert_eq!(missing_summary.deny_count, 0);
         assert!(missing_summary.latest_deny.is_none());
-        assert_eq!(missing_hub_restart.snapshot_path, LOCAL_HUB_STATE_SNAPSHOT_PATH);
+        assert_eq!(
+            missing_hub_restart.snapshot_path,
+            LOCAL_HUB_STATE_SNAPSHOT_PATH
+        );
         assert_eq!(missing_hub_restart.scope, "local-only");
         assert_eq!(missing_hub_restart.evidence, "non-evidentiary");
         assert!(matches!(
@@ -3219,7 +3199,10 @@ mod tests {
         let payload = serde_json::to_value(&observed_summary)
             .expect("runway summary should serialize to JSON");
 
-        assert_eq!(observed_summary.profile_name.as_deref(), Some(DEFAULT_PROFILE_NAME));
+        assert_eq!(
+            observed_summary.profile_name.as_deref(),
+            Some(DEFAULT_PROFILE_NAME)
+        );
         assert_eq!(observed_summary.grant_count, 0);
         assert_eq!(observed_summary.deny_count, 1);
         assert_eq!(observed_summary.checkpoint_state, "runtime-ready");
@@ -3229,8 +3212,14 @@ mod tests {
         );
         assert_eq!(observed_summary.checkpoint_position, 4);
         assert_eq!(observed_summary.checkpoint_total, 7);
-        assert_eq!(observed_profile.status, LocalRunwayChecklistStatus::Observed);
-        assert_eq!(observed_consent.status, LocalRunwayChecklistStatus::Observed);
+        assert_eq!(
+            observed_profile.status,
+            LocalRunwayChecklistStatus::Observed
+        );
+        assert_eq!(
+            observed_consent.status,
+            LocalRunwayChecklistStatus::Observed
+        );
         assert_eq!(
             observed_summary
                 .latest_deny
@@ -3326,15 +3315,18 @@ mod tests {
             &profile_path,
             &store,
         );
-        let payload: LocalRunwaySummary = serde_json::from_slice(&response.body)
-            .expect("runway summary response should parse");
+        let payload: LocalRunwaySummary =
+            serde_json::from_slice(&response.body).expect("runway summary response should parse");
         let hub_onramp_proposal = payload
             .hub_onramp_proposal
             .as_ref()
             .expect("shell runway summary should include a hub onramp proposal child");
 
         assert_eq!(response.status_code, 200);
-        assert_eq!(hub_onramp_proposal.source, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH);
+        assert_eq!(
+            hub_onramp_proposal.source,
+            SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH
+        );
         assert_eq!(
             hub_onramp_proposal.proposal_id,
             "proposal-ha-local-bridge-simulated-bridge-entity-report-state"
@@ -3408,11 +3400,14 @@ mod tests {
                     .local_onramp_proposal
                     .as_mut()
                     .expect("default hub summary should include an onramp proposal")
-                    .local_artifact_path = "https://example.com/local-onramp-proposal.json".to_owned();
+                    .local_artifact_path =
+                    "https://example.com/local-onramp-proposal.json".to_owned();
                 Ok(summary)
             },
         )
-        .expect("runway summary should load when the invalid hub onramp proposal child is filtered");
+        .expect(
+            "runway summary should load when the invalid hub onramp proposal child is filtered",
+        );
         let payload = serde_json::to_value(&summary)
             .expect("runway summary should serialize without the invalid hub onramp child");
 
@@ -3464,8 +3459,8 @@ mod tests {
             &profile_path,
             &store,
         );
-        let payload: LocalRunwaySummary = serde_json::from_slice(&response.body)
-            .expect("runway summary response should parse");
+        let payload: LocalRunwaySummary =
+            serde_json::from_slice(&response.body).expect("runway summary response should parse");
         let hub_onramp_decision_receipt = payload
             .hub_onramp_decision_receipt
             .as_ref()
@@ -3547,9 +3542,12 @@ mod tests {
                 Ok(summary)
             },
         )
-        .expect("runway summary should load when the invalid hub onramp decision child is filtered");
-        let payload = serde_json::to_value(&summary)
-            .expect("runway summary should serialize without the invalid hub onramp decision child");
+        .expect(
+            "runway summary should load when the invalid hub onramp decision child is filtered",
+        );
+        let payload = serde_json::to_value(&summary).expect(
+            "runway summary should serialize without the invalid hub onramp decision child",
+        );
 
         assert!(summary.hub_restart.is_some());
         assert!(summary.hub_onramp_proposal.is_some());
@@ -4644,8 +4642,8 @@ mod tests {
             &profile_path,
             &store,
         );
-        let payload: LocalRunwaySummary = serde_json::from_slice(&response.body)
-            .expect("runway summary response should parse");
+        let payload: LocalRunwaySummary =
+            serde_json::from_slice(&response.body).expect("runway summary response should parse");
 
         assert_eq!(response.status_code, 200);
         assert_eq!(response.content_type, "application/json; charset=utf-8");
@@ -4712,7 +4710,10 @@ mod tests {
         );
         assert!(init_payload.error_detail.is_none());
         assert_eq!(
-            init_payload.profile.as_ref().expect("profile should return")["identity"]["name"]
+            init_payload
+                .profile
+                .as_ref()
+                .expect("profile should return")["identity"]["name"]
                 .as_str(),
             Some(DEFAULT_PROFILE_NAME)
         );
@@ -4829,7 +4830,10 @@ mod tests {
         );
         assert!(import_payload.error_detail.is_none());
         assert_eq!(
-            import_payload.profile.as_ref().expect("profile should return")["identity"]["name"]
+            import_payload
+                .profile
+                .as_ref()
+                .expect("profile should return")["identity"]["name"]
                 .as_str(),
             Some(DEFAULT_PROFILE_NAME)
         );
@@ -5295,8 +5299,8 @@ mod tests {
             .as_nanos();
 
         std::env::temp_dir()
-            .join("ferros-node-profiles")
-            .join(format!("{test_name}-{nonce}.json"))
+            .join(format!("ferros-node-{test_name}-{nonce}"))
+            .join(format!("{test_name}.json"))
     }
 
     fn cleanup_state_path(path: &Path) {

@@ -423,11 +423,7 @@ impl LocalPushAuditEnvelope {
 
         match self.scope.stream.as_str() {
             "S1" | "S2" | "S3" | "S4" | "S5" | "S6" | "S7" | "S8" => {}
-            other => {
-                return Err(LocalPushAuditEnvelopeError::InvalidStream(
-                    other.to_owned(),
-                ))
-            }
+            other => return Err(LocalPushAuditEnvelopeError::InvalidStream(other.to_owned())),
         }
 
         for artifact in &self.artifacts {
@@ -469,7 +465,10 @@ impl LocalPushAuditEnvelope {
         serde_json::to_string_pretty(self).map_err(LocalPushAuditEnvelopeWriteError::Serialize)
     }
 
-    pub fn write_json(&self, path: impl AsRef<Path>) -> Result<(), LocalPushAuditEnvelopeWriteError> {
+    pub fn write_json(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<(), LocalPushAuditEnvelopeWriteError> {
         let path = path.as_ref();
         let json = self.to_pretty_json()?;
 
@@ -521,7 +520,9 @@ impl LocalOnrampProposal {
         }
 
         if !local_runway_evidence_is_non_evidentiary(&self.evidence) {
-            return Err(LocalOnrampProposalError::InvalidEvidence(self.evidence.clone()));
+            return Err(LocalOnrampProposalError::InvalidEvidence(
+                self.evidence.clone(),
+            ));
         }
 
         validate_local_onramp_artifact_path(&self.local_artifact_path)?;
@@ -673,7 +674,9 @@ fn validate_onramp_decision_text_field(
 
 fn validate_local_onramp_artifact_path(path: &str) -> Result<(), LocalOnrampProposalError> {
     if !local_hub_relative_json_path_is_valid(path) {
-        return Err(LocalOnrampProposalError::InvalidRelativePath(path.to_owned()));
+        return Err(LocalOnrampProposalError::InvalidRelativePath(
+            path.to_owned(),
+        ));
     }
 
     Ok(())
@@ -764,19 +767,16 @@ pub const fn local_push_audit_boundary() -> LocalPushAuditEnvelopeBoundary {
 #[cfg(test)]
 mod tests {
     use super::{
-        ferros_data_boundary, local_push_audit_boundary, BURST_LOCAL_PUSH_ENVELOPE_PATH,
-        LocalArtifactRole, LocalDigestAlgorithm, LocalEnvelopeAuthority, LocalEnvelopeKind,
-        LocalOnrampDecisionLabel, LocalOnrampDecisionReceipt,
-        LocalOnrampDecisionReceiptError, LocalOnrampProposal, LocalOnrampProposalError,
-        LocalOnrampQuarantineStatus,
-        LocalPushArtifact, LocalPushAuditEnvelope, LocalPushAuditEnvelopeError,
-        LocalPushDigest, LocalPushObservation, LocalPushScope, LocalPushSurface,
-        ADR_REFERENCE, BASELINE_MIGRATION_PATH, BASELINE_MIGRATION_SQL,
-        LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
-        LOCAL_ONRAMP_DECISION_RECEIPT_EVIDENCE,
-        LOCAL_ONRAMP_DECISION_RECEIPT_SCOPE,
-        LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH, LOCAL_ONRAMP_PROPOSAL_EVIDENCE,
-        LOCAL_ONRAMP_PROPOSAL_SCOPE,
+        ferros_data_boundary, local_push_audit_boundary, LocalArtifactRole, LocalDigestAlgorithm,
+        LocalEnvelopeAuthority, LocalEnvelopeKind, LocalOnrampDecisionLabel,
+        LocalOnrampDecisionReceipt, LocalOnrampDecisionReceiptError, LocalOnrampProposal,
+        LocalOnrampProposalError, LocalOnrampQuarantineStatus, LocalPushArtifact,
+        LocalPushAuditEnvelope, LocalPushAuditEnvelopeError, LocalPushDigest, LocalPushObservation,
+        LocalPushScope, LocalPushSurface, ADR_REFERENCE, BASELINE_MIGRATION_PATH,
+        BASELINE_MIGRATION_SQL, BURST_LOCAL_PUSH_ENVELOPE_PATH,
+        LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH, LOCAL_ONRAMP_DECISION_RECEIPT_EVIDENCE,
+        LOCAL_ONRAMP_DECISION_RECEIPT_SCOPE, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+        LOCAL_ONRAMP_PROPOSAL_EVIDENCE, LOCAL_ONRAMP_PROPOSAL_SCOPE,
         LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA, LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID,
         LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_PATH, LOCAL_PUSH_AUDIT_ENVELOPE_VERSION,
         LOCAL_PUSH_DIGEST_ROOT, MIGRATION_AUTHORITY, MIGRATION_PATHS,
@@ -872,7 +872,10 @@ mod tests {
         );
         assert_eq!(LOCAL_PUSH_AUDIT_ENVELOPE_VERSION, "1.0");
         assert_eq!(LOCAL_PUSH_DIGEST_ROOT, ".tmp/push/");
-        assert_eq!(BURST_LOCAL_PUSH_ENVELOPE_PATH, ".tmp/push/burst-local-push-envelope.json");
+        assert_eq!(
+            BURST_LOCAL_PUSH_ENVELOPE_PATH,
+            ".tmp/push/burst-local-push-envelope.json"
+        );
         assert!(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA.contains(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA_ID));
         assert!(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA.contains("local-only"));
         assert!(LOCAL_PUSH_AUDIT_ENVELOPE_SCHEMA.contains("explicit-operator-consent"));
@@ -951,7 +954,10 @@ mod tests {
         assert_eq!(payload["authority"]["mode"], "local-only");
         assert_eq!(payload["authority"]["consent"], "explicit-operator-consent");
         assert_eq!(payload["scope"]["waveId"], "WAVE-2026-04-28-32");
-        assert_eq!(payload["artifacts"][0]["path"], BURST_LOCAL_PUSH_ENVELOPE_PATH);
+        assert_eq!(
+            payload["artifacts"][0]["path"],
+            BURST_LOCAL_PUSH_ENVELOPE_PATH
+        );
         assert_eq!(payload["observations"][0]["status"], "observed");
     }
 
@@ -1056,11 +1062,17 @@ mod tests {
 
         let payload = serde_json::to_value(&proposal).expect("proposal should serialize");
 
-        assert_eq!(proposal.quarantine_status, LocalOnrampQuarantineStatus::QuarantinedPendingConsent);
+        assert_eq!(
+            proposal.quarantine_status,
+            LocalOnrampQuarantineStatus::QuarantinedPendingConsent
+        );
         assert_eq!(proposal.scope, LOCAL_ONRAMP_PROPOSAL_SCOPE);
         assert_eq!(proposal.evidence, LOCAL_ONRAMP_PROPOSAL_EVIDENCE);
         assert_eq!(payload["quarantineStatus"], "quarantined-pending-consent");
-        assert_eq!(payload["localArtifactPath"], LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH);
+        assert_eq!(
+            payload["localArtifactPath"],
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH
+        );
     }
 
     #[test]
@@ -1198,8 +1210,14 @@ mod tests {
         assert_eq!(receipt.scope, LOCAL_ONRAMP_DECISION_RECEIPT_SCOPE);
         assert_eq!(receipt.evidence, LOCAL_ONRAMP_DECISION_RECEIPT_EVIDENCE);
         assert_eq!(payload["decisionLabel"], "allowed");
-        assert_eq!(payload["proposalArtifactPath"], LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH);
-        assert_eq!(payload["localArtifactPath"], LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH);
+        assert_eq!(
+            payload["proposalArtifactPath"],
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH
+        );
+        assert_eq!(
+            payload["localArtifactPath"],
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH
+        );
     }
 
     #[test]

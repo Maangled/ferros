@@ -1681,10 +1681,9 @@ mod tests {
     use super::{
         encode_hex, foundation_contract_preview, init_profile, CapabilityGrant,
         CapabilityGrantSignatureError, ConsentManifest, ConsentManifestError,
-        FileSystemProfileStore, KeyPair, KeyPairError, LocalConsentSnapshot,
-        LocalProfileStore, ProfileDocument, ProfileDocumentError, ProfileId, ProfileIdError,
-        ProfileSignatureError, ProfileStore, ProfileStoreError, SignedCapabilityGrant,
-        SignedProfileDocument,
+        FileSystemProfileStore, KeyPair, KeyPairError, LocalConsentSnapshot, LocalProfileStore,
+        ProfileDocument, ProfileDocumentError, ProfileId, ProfileIdError, ProfileSignatureError,
+        ProfileStore, ProfileStoreError, SignedCapabilityGrant, SignedProfileDocument,
     };
     use serde_json::Value;
 
@@ -2268,8 +2267,8 @@ mod tests {
         let snapshot = state.consent_snapshot();
 
         assert_eq!(snapshot.device_label, "local-test-device");
-    assert!(snapshot.is_grant_ready);
-    assert!(snapshot.is_consent_ready);
+        assert!(snapshot.is_grant_ready);
+        assert!(snapshot.is_consent_ready);
         assert_eq!(snapshot.total_grants, 2);
         assert_eq!(snapshot.active_grant_count, 1);
         assert_eq!(snapshot.revoked_grant_count, 1);

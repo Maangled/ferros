@@ -5,35 +5,19 @@ use ferros_core::{PolicyDecision, PolicyDenialReason};
 pub use ferros_data::{
     local_hub_relative_json_path_is_valid, local_onramp_banned_wording,
     local_runway_evidence_is_non_evidentiary, local_runway_launch_overclaim_wording,
-    local_runway_scope_is_local_only, local_runway_text_looks_remote_like_url,
+    local_runway_scope_is_local_only, local_runway_text_looks_remote_like_url, LocalOnrampProposal,
 };
 
 pub use ha_bridge::{
-    default_local_runtime_summary,
-    default_local_runtime_summary_with_snapshot_path,
-    execute_local_bridge_request,
-    execute_local_bridge_request_with_output_path,
-    evaluate_local_bridge_policy,
-    local_bridge_profile_id,
-    simulated_local_bridge_artifact,
-    LocalBridgeAgent,
-    LocalBridgeExecution,
-    LocalBridgeExecutionError,
-    LocalBridgeRegistrationError,
-    LocalBridgeRegistry,
-    LocalBridgeReport,
-    LocalBridgeRequest,
-    LocalBridgeStatus,
-    LocalCapabilitySnapshot,
-    LocalHubReloadStatus,
-    LocalHubRestartObservation,
-    LocalHubRuntimeSummary,
-    LocalHubStateSnapshot,
-    LocalHubStateSnapshotError,
-    SimulatedBridgeArtifact,
-    summarize_local_bridge_runway,
-    LOCAL_HUB_ARTIFACT_ROOT,
-    LOCAL_HUB_STATE_SNAPSHOT_PATH,
+    default_local_runtime_summary, default_local_runtime_summary_with_snapshot_path,
+    evaluate_local_bridge_policy, execute_local_bridge_request,
+    execute_local_bridge_request_with_output_path, local_bridge_profile_id,
+    simulated_local_bridge_artifact, summarize_local_bridge_runway, LocalBridgeAgent,
+    LocalBridgeExecution, LocalBridgeExecutionError, LocalBridgeRegistrationError,
+    LocalBridgeRegistry, LocalBridgeReport, LocalBridgeRequest, LocalBridgeStatus,
+    LocalCapabilitySnapshot, LocalHubReloadStatus, LocalHubRestartObservation,
+    LocalHubRuntimeSummary, LocalHubStateSnapshot, LocalHubStateSnapshotError,
+    SimulatedBridgeArtifact, LOCAL_HUB_ARTIFACT_ROOT, LOCAL_HUB_STATE_SNAPSHOT_PATH,
     SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
 };
 
@@ -47,7 +31,9 @@ pub fn cli_help_text() -> &'static str {
 }
 
 pub fn summary_command_output() -> Result<String, LocalBridgeRegistrationError> {
-    Ok(format_local_runtime_summary(&default_local_runtime_summary()?))
+    Ok(format_local_runtime_summary(
+        &default_local_runtime_summary()?,
+    ))
 }
 
 pub fn prove_bridge_command_output() -> Result<String, LocalBridgeRegistrationError> {
@@ -81,11 +67,8 @@ pub fn prove_bridge_command_output() -> Result<String, LocalBridgeRegistrationEr
 
 pub fn deny_demo_command_output() -> Result<String, LocalBridgeRegistrationError> {
     let bridge_agent = LocalBridgeAgent::new_default();
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
     let summary = summarize_local_bridge_runway(
         &bridge_agent,
         &LocalCapabilitySnapshot::new(local_bridge_profile_id(), Vec::new()),
@@ -174,9 +157,7 @@ fn policy_decision_label(decision: PolicyDecision) -> &'static str {
         PolicyDecision::Allowed => "allowed",
         PolicyDecision::Denied(PolicyDenialReason::NoGrantsPresented) => "denied:no-grants",
         PolicyDecision::Denied(PolicyDenialReason::ProfileNotGranted) => "denied:profile",
-        PolicyDecision::Denied(PolicyDenialReason::CapabilityNotGranted) => {
-            "denied:capability"
-        }
+        PolicyDecision::Denied(PolicyDenialReason::CapabilityNotGranted) => "denied:capability",
     }
 }
 
