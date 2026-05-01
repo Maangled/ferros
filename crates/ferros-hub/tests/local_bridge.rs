@@ -2,25 +2,24 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use ferros_core::{PolicyDecision, PolicyDenialReason};
 use ferros_data::{
     local_hub_relative_json_path_is_valid, local_onramp_banned_wording,
-    local_runway_text_looks_remote_like_url,
-    LocalOnrampDecisionLabel, LocalOnrampQuarantineStatus,
+    local_runway_text_looks_remote_like_url, LocalOnrampDecisionLabel, LocalOnrampQuarantineStatus,
     LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
 };
-use ferros_core::{PolicyDecision, PolicyDenialReason};
-use ferros_profile::{CapabilityGrant, ProfileId};
 use ferros_hub::{
     default_local_runtime_summary, default_local_runtime_summary_with_snapshot_path,
     deny_demo_command_output, evaluate_local_bridge_policy, execute_local_bridge_request,
-    execute_local_bridge_request_with_output_path, LocalHubReloadStatus,
-    LocalHubStateSnapshot, LocalHubStateSnapshotError,
-    local_bridge_profile_id, prove_bridge_command_output, simulated_local_bridge_artifact,
-    summarize_local_bridge_runway, summary_command_output, LocalBridgeAgent,
-    LocalBridgeExecutionError, LocalBridgeRequest, LocalBridgeRegistrationError,
-    LocalBridgeRegistry, LocalBridgeStatus, LocalCapabilitySnapshot,
-    LOCAL_HUB_STATE_SNAPSHOT_PATH, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
+    execute_local_bridge_request_with_output_path, local_bridge_profile_id,
+    prove_bridge_command_output, simulated_local_bridge_artifact, summarize_local_bridge_runway,
+    summary_command_output, LocalBridgeAgent, LocalBridgeExecutionError,
+    LocalBridgeRegistrationError, LocalBridgeRegistry, LocalBridgeRequest, LocalBridgeStatus,
+    LocalCapabilitySnapshot, LocalHubReloadStatus, LocalHubStateSnapshot,
+    LocalHubStateSnapshotError, LOCAL_HUB_STATE_SNAPSHOT_PATH,
+    SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
 };
+use ferros_profile::{CapabilityGrant, ProfileId};
 
 static ONRAMP_ARTIFACT_LOCK: Mutex<()> = Mutex::new(());
 
@@ -95,11 +94,8 @@ fn assert_local_cli_output_guardrails(output: &str, expected_paths: &[&str]) {
 
 fn denied_local_runtime_summary() -> ferros_hub::LocalHubRuntimeSummary {
     let bridge_agent = LocalBridgeAgent::new_default();
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
 
     summarize_local_bridge_runway(
         &bridge_agent,
@@ -111,14 +107,15 @@ fn denied_local_runtime_summary() -> ferros_hub::LocalHubRuntimeSummary {
 
 fn allowed_local_runtime_summary() -> ferros_hub::LocalHubRuntimeSummary {
     let bridge_agent = LocalBridgeAgent::new_default();
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
 
-    summarize_local_bridge_runway(&bridge_agent, &local_snapshot(&["bridge.observe"]), &request)
-        .expect("allowed local runtime summary should build successfully")
+    summarize_local_bridge_runway(
+        &bridge_agent,
+        &local_snapshot(&["bridge.observe"]),
+        &request,
+    )
+    .expect("allowed local runtime summary should build successfully")
 }
 
 fn local_state_snapshot_path(name: &str) -> (String, PathBuf) {
@@ -160,7 +157,8 @@ fn hub_state_round_trip_persists_local_only_snapshot() {
     let (relative_path, absolute_path) = local_state_snapshot_path("hub_state_round_trip");
     let _cleanup = LocalStateFixtureGuard::new(absolute_path.clone());
     if absolute_path.exists() {
-        fs::remove_file(&absolute_path).expect("stale local hub state snapshot should be removable");
+        fs::remove_file(&absolute_path)
+            .expect("stale local hub state snapshot should be removable");
     }
 
     let summary = default_local_runtime_summary()
@@ -246,11 +244,7 @@ fn hub_state_rejects_absolute_and_parent_traversal_paths() {
 fn hub_state_rejects_malformed_local_state() {
     let (relative_path, absolute_path) = write_local_state_fixture(
         "hub_state_malformed",
-        concat!(
-            "{\n",
-            "  \"scope\": \"local-only\"\n",
-            "}\n"
-        ),
+        concat!("{\n", "  \"scope\": \"local-only\"\n", "}\n"),
     );
     let _cleanup = LocalStateFixtureGuard::new(absolute_path);
 
@@ -363,10 +357,24 @@ fn hub_reload_defaults_when_no_prior_snapshot_exists() {
     let summary = default_local_runtime_summary_with_snapshot_path(&relative_path)
         .expect("default local runtime summary should build successfully with a fresh snapshot");
 
-    assert_eq!(summary.restart_observation.reload_status, LocalHubReloadStatus::FreshStart);
-    assert_eq!(summary.restart_observation.prior_bridge_manifest_identity, None);
-    assert_eq!(summary.restart_observation.prior_policy_decision_label, None);
-    assert_eq!(summary.restart_observation.prior_artifact_relative_output_path, None);
+    assert_eq!(
+        summary.restart_observation.reload_status,
+        LocalHubReloadStatus::FreshStart
+    );
+    assert_eq!(
+        summary.restart_observation.prior_bridge_manifest_identity,
+        None
+    );
+    assert_eq!(
+        summary.restart_observation.prior_policy_decision_label,
+        None
+    );
+    assert_eq!(
+        summary
+            .restart_observation
+            .prior_artifact_relative_output_path,
+        None
+    );
     assert!(absolute_path.exists());
 
     let persisted = LocalHubStateSnapshot::load_under_repo_root(&relative_path)
@@ -386,8 +394,9 @@ fn hub_reload_reports_bounded_prior_snapshot_when_present() {
             .expect("stale local hub reload snapshot should be removable");
     }
 
-    let prior_snapshot = LocalHubStateSnapshot::from_runtime_summary(&allowed_local_runtime_summary())
-        .expect("allowed local runtime summary should produce a prior snapshot fixture");
+    let prior_snapshot =
+        LocalHubStateSnapshot::from_runtime_summary(&allowed_local_runtime_summary())
+            .expect("allowed local runtime summary should produce a prior snapshot fixture");
     prior_snapshot
         .write_under_repo_root(&relative_path)
         .expect("prior local hub reload snapshot should be writable");
@@ -395,7 +404,10 @@ fn hub_reload_reports_bounded_prior_snapshot_when_present() {
     let summary = default_local_runtime_summary_with_snapshot_path(&relative_path)
         .expect("default local runtime summary should reload a prior snapshot");
 
-    assert_eq!(summary.restart_observation.reload_status, LocalHubReloadStatus::Reloaded);
+    assert_eq!(
+        summary.restart_observation.reload_status,
+        LocalHubReloadStatus::Reloaded
+    );
     assert_eq!(
         summary.restart_observation.prior_bridge_manifest_identity,
         Some(prior_snapshot.bridge_manifest_identity.clone())
@@ -405,7 +417,9 @@ fn hub_reload_reports_bounded_prior_snapshot_when_present() {
         Some(prior_snapshot.policy_decision_label.clone())
     );
     assert_eq!(
-        summary.restart_observation.prior_artifact_relative_output_path,
+        summary
+            .restart_observation
+            .prior_artifact_relative_output_path,
         prior_snapshot.artifact_relative_output_path.clone()
     );
 
@@ -436,13 +450,28 @@ fn hub_reload_marks_unavailable_when_prior_snapshot_is_invalid() {
     );
     let _cleanup = LocalStateFixtureGuard::new(absolute_path.clone());
 
-    let summary = default_local_runtime_summary_with_snapshot_path(&relative_path)
-        .expect("default local runtime summary should degrade to unavailable for invalid prior state");
+    let summary = default_local_runtime_summary_with_snapshot_path(&relative_path).expect(
+        "default local runtime summary should degrade to unavailable for invalid prior state",
+    );
 
-    assert_eq!(summary.restart_observation.reload_status, LocalHubReloadStatus::Unavailable);
-    assert_eq!(summary.restart_observation.prior_bridge_manifest_identity, None);
-    assert_eq!(summary.restart_observation.prior_policy_decision_label, None);
-    assert_eq!(summary.restart_observation.prior_artifact_relative_output_path, None);
+    assert_eq!(
+        summary.restart_observation.reload_status,
+        LocalHubReloadStatus::Unavailable
+    );
+    assert_eq!(
+        summary.restart_observation.prior_bridge_manifest_identity,
+        None
+    );
+    assert_eq!(
+        summary.restart_observation.prior_policy_decision_label,
+        None
+    );
+    assert_eq!(
+        summary
+            .restart_observation
+            .prior_artifact_relative_output_path,
+        None
+    );
 
     let persisted = LocalHubStateSnapshot::load_under_repo_root(&relative_path)
         .expect("invalid prior state should be replaced with a fresh bounded snapshot");
@@ -467,7 +496,10 @@ fn bridge_agent_registers_locally() {
     let registered = registry.list();
     assert_eq!(registered.len(), 1);
     assert_eq!(registered[0].name, "ha-local-bridge");
-    assert_eq!(registered[0].required_local_capabilities, vec!["bridge.observe"]);
+    assert_eq!(
+        registered[0].required_local_capabilities,
+        vec!["bridge.observe"]
+    );
     assert_eq!(registered[0].scope, "local-only");
     assert_eq!(registered[0].evidence, "non-evidentiary");
 
@@ -477,7 +509,10 @@ fn bridge_agent_registers_locally() {
     assert_eq!(manifest.name.as_str(), "ha-local-bridge");
     assert_eq!(manifest.version, "0.1.0");
     assert_eq!(manifest.required_capabilities.len(), 1);
-    assert_eq!(manifest.required_capabilities[0].capability, "bridge.observe");
+    assert_eq!(
+        manifest.required_capabilities[0].capability,
+        "bridge.observe"
+    );
 
     let error = registry
         .register(bridge_agent)
@@ -497,11 +532,8 @@ fn bridge_allow_path_emits_local_artifact() {
 
     let bridge_agent = LocalBridgeAgent::new_default();
     let snapshot = local_snapshot(&["bridge.observe"]);
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
 
     let execution = execute_local_bridge_request(&bridge_agent, &snapshot, &request);
     let artifact = execution
@@ -538,11 +570,8 @@ fn bridge_allow_path_emits_local_artifact() {
 fn bridge_denied_capability_reports_without_artifact() {
     let bridge_agent = LocalBridgeAgent::new_default();
     let snapshot = LocalCapabilitySnapshot::new(local_bridge_profile_id(), Vec::new());
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
 
     let execution = execute_local_bridge_request(&bridge_agent, &snapshot, &request);
 
@@ -557,11 +586,8 @@ fn bridge_denied_capability_reports_without_artifact() {
 fn bridge_error_path_reports_invalid_output_path() {
     let bridge_agent = LocalBridgeAgent::new_default();
     let snapshot = local_snapshot(&["bridge.observe"]);
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
 
     let execution = execute_local_bridge_request_with_output_path(
         &bridge_agent,
@@ -589,7 +615,10 @@ fn simulated_bridge_artifact_stays_local_only() {
 
     assert_eq!(artifact.bridge_agent_name, bridge_agent.name);
     assert_eq!(artifact.stand_in_name, "simulated-bridge-entity");
-    assert_eq!(artifact.relative_output_path, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH);
+    assert_eq!(
+        artifact.relative_output_path,
+        SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH
+    );
     assert!(!artifact.relative_output_path.contains("://"));
     assert_eq!(artifact.requested_capability, "bridge.observe");
     assert_eq!(artifact.requested_action, "report-state");
@@ -614,11 +643,8 @@ fn simulated_bridge_artifact_stays_local_only() {
 
 #[test]
 fn bridge_policy_allows_active_matching_grant() {
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
 
     assert_eq!(
         evaluate_local_bridge_policy(&local_snapshot(&["bridge.observe"]), &request),
@@ -628,11 +654,8 @@ fn bridge_policy_allows_active_matching_grant() {
 
 #[test]
 fn bridge_policy_denies_without_active_grants() {
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
 
     assert_eq!(
         evaluate_local_bridge_policy(
@@ -645,11 +668,8 @@ fn bridge_policy_denies_without_active_grants() {
 
 #[test]
 fn bridge_policy_denies_when_grants_are_for_other_profiles() {
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
 
     assert_eq!(
         evaluate_local_bridge_policy(&foreign_snapshot(&["bridge.observe"]), &request),
@@ -659,11 +679,8 @@ fn bridge_policy_denies_when_grants_are_for_other_profiles() {
 
 #[test]
 fn bridge_policy_ignores_revoked_grants() {
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
 
     assert_eq!(
         evaluate_local_bridge_policy(&revoked_snapshot("bridge.observe"), &request),
@@ -679,7 +696,10 @@ fn hub_summary_records_default_allowed_runway() {
     assert_eq!(summary.registered_bridge_agents, 1);
     assert_eq!(summary.bridge_agent_name, "ha-local-bridge");
     assert_eq!(summary.bridge_agent_version, "0.1.0");
-    assert_eq!(summary.requester_profile_id, local_bridge_profile_id().as_str());
+    assert_eq!(
+        summary.requester_profile_id,
+        local_bridge_profile_id().as_str()
+    );
     assert_eq!(summary.stand_in_name, "simulated-bridge-entity");
     assert_eq!(summary.requested_capability, "bridge.observe");
     assert_eq!(summary.requested_action, "report-state");
@@ -697,11 +717,8 @@ fn hub_summary_records_default_allowed_runway() {
 #[test]
 fn hub_summary_records_denied_policy_state() {
     let bridge_agent = LocalBridgeAgent::new_default();
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
     let summary = summarize_local_bridge_runway(
         &bridge_agent,
         &LocalCapabilitySnapshot::new(local_bridge_profile_id(), Vec::new()),
@@ -769,12 +786,13 @@ fn hub_cli_deny_demo_output_reports_denied_without_artifact() {
 #[test]
 fn hub_contract_allowed_report_fields_stay_schema_ready() {
     let bridge_agent = LocalBridgeAgent::new_default();
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
+    let execution = execute_local_bridge_request(
+        &bridge_agent,
+        &local_snapshot(&["bridge.observe"]),
+        &request,
     );
-    let execution = execute_local_bridge_request(&bridge_agent, &local_snapshot(&["bridge.observe"]), &request);
 
     assert_eq!(execution.report.bridge_agent_name, "ha-local-bridge");
     assert_eq!(execution.report.stand_in_name, "simulated-bridge-entity");
@@ -787,17 +805,17 @@ fn hub_contract_allowed_report_fields_stay_schema_ready() {
     );
     assert_eq!(execution.report.scope, "local-only");
     assert_eq!(execution.report.evidence, "non-evidentiary");
-    assert!(execution.report.summary.contains("local-only bridge allowed"));
+    assert!(execution
+        .report
+        .summary
+        .contains("local-only bridge allowed"));
 }
 
 #[test]
 fn hub_contract_denied_report_fields_stay_schema_ready() {
     let bridge_agent = LocalBridgeAgent::new_default();
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
     let execution = execute_local_bridge_request(
         &bridge_agent,
         &LocalCapabilitySnapshot::new(local_bridge_profile_id(), Vec::new()),
@@ -823,7 +841,8 @@ fn onramp_proposal_allowed_runway_emits_local_quarantined_artifact() {
     let artifact_path = emitted_onramp_proposal_path();
     let _cleanup = LocalStateFixtureGuard::new(artifact_path.clone());
     if artifact_path.exists() {
-        fs::remove_file(&artifact_path).expect("stale onramp proposal artifact should be removable");
+        fs::remove_file(&artifact_path)
+            .expect("stale onramp proposal artifact should be removable");
     }
 
     let summary = allowed_local_runtime_summary();
@@ -837,11 +856,18 @@ fn onramp_proposal_allowed_runway_emits_local_quarantined_artifact() {
     assert_eq!(proposal.stand_in_entity_name, "simulated-bridge-entity");
     assert_eq!(proposal.requested_capability, "bridge.observe");
     assert_eq!(proposal.requested_action, "report-state");
-    assert_eq!(proposal.quarantine_status, LocalOnrampQuarantineStatus::QuarantinedPendingConsent);
-    assert_eq!(proposal.local_artifact_path, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH);
+    assert_eq!(
+        proposal.quarantine_status,
+        LocalOnrampQuarantineStatus::QuarantinedPendingConsent
+    );
+    assert_eq!(
+        proposal.local_artifact_path,
+        LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH
+    );
     assert!(artifact_path.exists());
 
-    let written = fs::read_to_string(&artifact_path).expect("onramp proposal artifact should be readable");
+    let written =
+        fs::read_to_string(&artifact_path).expect("onramp proposal artifact should be readable");
     assert!(written.contains("\"source\":"));
     assert!(written.contains(SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH));
     assert!(written.contains("\"quarantineStatus\": \"quarantined-pending-consent\""));
@@ -857,7 +883,8 @@ fn onramp_proposal_renders_exact_local_json_contract() {
     let artifact_path = emitted_onramp_proposal_path();
     let _cleanup = LocalStateFixtureGuard::new(artifact_path.clone());
     if artifact_path.exists() {
-        fs::remove_file(&artifact_path).expect("stale onramp proposal artifact should be removable");
+        fs::remove_file(&artifact_path)
+            .expect("stale onramp proposal artifact should be removable");
     }
 
     let summary = allowed_local_runtime_summary();
@@ -895,7 +922,8 @@ fn onramp_proposal_denied_runway_keeps_summary_child_empty() {
     let artifact_path = emitted_onramp_proposal_path();
     let _cleanup = LocalStateFixtureGuard::new(artifact_path.clone());
     if artifact_path.exists() {
-        fs::remove_file(&artifact_path).expect("stale onramp proposal artifact should be removable");
+        fs::remove_file(&artifact_path)
+            .expect("stale onramp proposal artifact should be removable");
     }
 
     let summary = denied_local_runtime_summary();
@@ -912,15 +940,13 @@ fn onramp_proposal_rejects_banned_request_wording_before_emit() {
     let artifact_path = emitted_onramp_proposal_path();
     let _cleanup = LocalStateFixtureGuard::new(artifact_path.clone());
     if artifact_path.exists() {
-        fs::remove_file(&artifact_path).expect("stale onramp proposal artifact should be removable");
+        fs::remove_file(&artifact_path)
+            .expect("stale onramp proposal artifact should be removable");
     }
 
     let bridge_agent = LocalBridgeAgent::new_default();
-    let request = LocalBridgeRequest::new(
-        "accepted-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("accepted-bridge-entity", "bridge.observe", "report-state");
     let execution = execute_local_bridge_request(
         &bridge_agent,
         &local_snapshot(&["bridge.observe"]),
@@ -946,7 +972,8 @@ fn onramp_decision_allowed_runway_emits_local_receipt() {
     let _proposal_cleanup = LocalStateFixtureGuard::new(proposal_path.clone());
     let _decision_cleanup = LocalStateFixtureGuard::new(decision_path.clone());
     if proposal_path.exists() {
-        fs::remove_file(&proposal_path).expect("stale onramp proposal artifact should be removable");
+        fs::remove_file(&proposal_path)
+            .expect("stale onramp proposal artifact should be removable");
     }
     if decision_path.exists() {
         fs::remove_file(&decision_path)
@@ -964,7 +991,10 @@ fn onramp_decision_allowed_runway_emits_local_receipt() {
         .expect("allowed summary should expose an onramp decision receipt");
 
     assert_eq!(receipt.proposal_id, proposal.proposal_id);
-    assert_eq!(receipt.proposal_artifact_path, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH);
+    assert_eq!(
+        receipt.proposal_artifact_path,
+        LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH
+    );
     assert_eq!(receipt.decision_label, LocalOnrampDecisionLabel::Allowed);
     assert_eq!(
         receipt.decision_detail.as_deref(),
@@ -972,18 +1002,18 @@ fn onramp_decision_allowed_runway_emits_local_receipt() {
             "local-only operator rehearsal allowed report-state for proposal proposal-ha-local-bridge-simulated-bridge-entity-report-state"
         )
     );
-    assert_eq!(receipt.local_artifact_path, LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH);
+    assert_eq!(
+        receipt.local_artifact_path,
+        LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH
+    );
     assert!(decision_path.exists());
 
-    let written =
-        fs::read_to_string(&decision_path).expect("onramp decision receipt artifact should be readable");
+    let written = fs::read_to_string(&decision_path)
+        .expect("onramp decision receipt artifact should be readable");
     assert!(written.contains("\"proposalId\":"));
     assert!(written.contains("\"decisionLabel\": \"allowed\""));
     assert!(written.contains(LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH));
-    assert_local_onramp_artifact_guardrails(
-        &written,
-        LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
-    );
+    assert_local_onramp_artifact_guardrails(&written, LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH);
 }
 
 #[test]
@@ -996,7 +1026,8 @@ fn onramp_decision_renders_exact_local_json_contract() {
     let _proposal_cleanup = LocalStateFixtureGuard::new(proposal_path.clone());
     let _decision_cleanup = LocalStateFixtureGuard::new(decision_path.clone());
     if proposal_path.exists() {
-        fs::remove_file(&proposal_path).expect("stale onramp proposal artifact should be removable");
+        fs::remove_file(&proposal_path)
+            .expect("stale onramp proposal artifact should be removable");
     }
     if decision_path.exists() {
         fs::remove_file(&decision_path)
@@ -1058,11 +1089,8 @@ fn onramp_decision_rejects_banned_request_wording_before_emit() {
     }
 
     let bridge_agent = LocalBridgeAgent::new_default();
-    let request = LocalBridgeRequest::new(
-        "partner-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("partner-bridge-entity", "bridge.observe", "report-state");
     let execution = execute_local_bridge_request(
         &bridge_agent,
         &local_snapshot(&["bridge.observe"]),

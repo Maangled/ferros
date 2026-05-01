@@ -6,13 +6,11 @@ use std::process::{Command, ExitCode};
 
 use ferros_data::{
     LocalArtifactRole, LocalEnvelopeKind, LocalPushArtifact, LocalPushAuditEnvelope,
-    LocalPushObservation, LocalPushScope, LocalPushSurface,
-    BURST_LOCAL_PUSH_ENVELOPE_PATH, LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
-    LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
+    LocalPushObservation, LocalPushScope, LocalPushSurface, BURST_LOCAL_PUSH_ENVELOPE_PATH,
+    LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH, LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
 };
 use ferros_hub::{
-    LocalBridgeStatus, LocalHubReloadStatus, LocalHubRuntimeSummary,
-    LOCAL_HUB_STATE_SNAPSHOT_PATH,
+    LocalBridgeStatus, LocalHubReloadStatus, LocalHubRuntimeSummary, LOCAL_HUB_STATE_SNAPSHOT_PATH,
     SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
 };
 use time::format_description::well_known::Rfc3339;
@@ -27,18 +25,16 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
-        CommandKind::Burst => {
-            match run_burst() {
-                Ok(output) => {
-                    print!("{output}");
-                    ExitCode::SUCCESS
-                }
-                Err(message) => {
-                    eprintln!("xtask burst failed: {message}");
-                    ExitCode::FAILURE
-                }
+        CommandKind::Burst => match run_burst() {
+            Ok(output) => {
+                print!("{output}");
+                ExitCode::SUCCESS
             }
-        }
+            Err(message) => {
+                eprintln!("xtask burst failed: {message}");
+                ExitCode::FAILURE
+            }
+        },
         CommandKind::HubRunway { keep_artifacts } => match run_hub_runway(keep_artifacts) {
             Ok(output) => {
                 println!("{output}");
@@ -333,8 +329,8 @@ fn run_burst() -> Result<String, String> {
 }
 
 fn run_hub_runway(keep_artifacts: bool) -> Result<String, String> {
-    let workspace_root = env::current_dir()
-        .map_err(|error| format!("could not resolve workspace root: {error}"))?;
+    let workspace_root =
+        env::current_dir().map_err(|error| format!("could not resolve workspace root: {error}"))?;
     let cleanup = HubArtifactCleanup::capture(&workspace_root)?;
 
     let run_result = run_hub_runway_inner(&workspace_root);
@@ -381,7 +377,11 @@ fn validate_no_unexpected_hub_artifacts(workspace_root: &Path) -> Result<(), Str
     let expected_paths: Vec<&str> = HUB_RUNWAY_ARTIFACTS.iter().map(|spec| spec.path).collect();
     let unexpected: Vec<String> = discovered
         .into_iter()
-        .filter(|path| !expected_paths.iter().any(|expected| expected == &path.as_str()))
+        .filter(|path| {
+            !expected_paths
+                .iter()
+                .any(|expected| expected == &path.as_str())
+        })
         .collect();
 
     if unexpected.is_empty() {
@@ -403,7 +403,10 @@ fn collect_relative_file_paths(
         .map_err(|error| format!("could not read {}: {error}", current_dir.display()))?
     {
         let entry = entry.map_err(|error| {
-            format!("could not read directory entry in {}: {error}", current_dir.display())
+            format!(
+                "could not read directory entry in {}: {error}",
+                current_dir.display()
+            )
         })?;
         let entry_path = entry.path();
 
@@ -498,8 +501,7 @@ fn validate_hub_runway_summary(
     {
         return Err(format!(
             "expected artifact path {} in {summary_label} summary, got {:?}",
-            SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
-            summary.artifact_relative_output_path
+            SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH, summary.artifact_relative_output_path
         ));
     }
 
@@ -518,21 +520,19 @@ fn validate_hub_runway_summary(
     }
 
     let proposal = summary.local_onramp_proposal.as_ref().ok_or_else(|| {
-        format!(
-            "expected local onramp proposal in {summary_label} summary, got none"
-        )
+        format!("expected local onramp proposal in {summary_label} summary, got none")
     })?;
-    let decision_receipt = summary.local_onramp_decision_receipt.as_ref().ok_or_else(|| {
-        format!(
-            "expected local onramp decision receipt in {summary_label} summary, got none"
-        )
-    })?;
+    let decision_receipt = summary
+        .local_onramp_decision_receipt
+        .as_ref()
+        .ok_or_else(|| {
+            format!("expected local onramp decision receipt in {summary_label} summary, got none")
+        })?;
 
     if proposal.source != SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH {
         return Err(format!(
             "expected proposal source {} in {summary_label} summary, got {}",
-            SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
-            proposal.source
+            SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH, proposal.source
         ));
     }
 
@@ -560,16 +560,14 @@ fn validate_hub_runway_summary(
     if proposal.local_artifact_path != LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH {
         return Err(format!(
             "expected proposal artifact path {} in {summary_label} summary, got {}",
-            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
-            proposal.local_artifact_path
+            LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH, proposal.local_artifact_path
         ));
     }
 
     if decision_receipt.proposal_id != proposal.proposal_id {
         return Err(format!(
             "expected decision receipt proposal id {} in {summary_label} summary, got {}",
-            proposal.proposal_id,
-            decision_receipt.proposal_id
+            proposal.proposal_id, decision_receipt.proposal_id
         ));
     }
 
@@ -588,17 +586,15 @@ fn validate_hub_runway_summary(
         ));
     }
 
-    let decision_detail = decision_receipt.decision_detail.as_deref().ok_or_else(|| {
-        format!(
-            "expected decision detail in {summary_label} summary, got none"
-        )
-    })?;
+    let decision_detail = decision_receipt
+        .decision_detail
+        .as_deref()
+        .ok_or_else(|| format!("expected decision detail in {summary_label} summary, got none"))?;
 
     if !decision_detail.contains(&proposal.proposal_id) {
         return Err(format!(
             "expected decision detail in {summary_label} summary to mention proposal id {}, got {}",
-            proposal.proposal_id,
-            decision_detail
+            proposal.proposal_id, decision_detail
         ));
     }
 
@@ -619,8 +615,7 @@ fn validate_hub_runway_summary(
     if decision_receipt.local_artifact_path != LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH {
         return Err(format!(
             "expected decision artifact path {} in {summary_label} summary, got {}",
-            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
-            decision_receipt.local_artifact_path
+            LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH, decision_receipt.local_artifact_path
         ));
     }
 
@@ -673,10 +668,7 @@ fn validate_hub_runway_summary(
         ));
     }
 
-    if !decision_content.contains(&format!(
-        "\"proposalId\": \"{}\"",
-        proposal.proposal_id
-    )) {
+    if !decision_content.contains(&format!("\"proposalId\": \"{}\"", proposal.proposal_id)) {
         return Err(format!(
             "expected proposal id {} in {summary_label} decision artifact payload",
             proposal.proposal_id
@@ -818,7 +810,10 @@ mod tests {
 
     #[test]
     fn parses_hub_runway_keep_artifacts_flag() {
-        let args = vec![OsString::from("hub-runway"), OsString::from("--keep-artifacts")];
+        let args = vec![
+            OsString::from("hub-runway"),
+            OsString::from("--keep-artifacts"),
+        ];
         assert_eq!(
             parse_command(args),
             CommandKind::HubRunway {
@@ -910,9 +905,10 @@ mod tests {
 
         assert_eq!(summary.mode, HubArtifactCleanupMode::Kept);
         assert_eq!(summary.actions.len(), HUB_RUNWAY_ARTIFACTS.len());
-        assert!(summary.actions.iter().all(|(_, action)| {
-            *action == HubArtifactCleanupAction::KeptForInspection
-        }));
+        assert!(summary
+            .actions
+            .iter()
+            .all(|(_, action)| { *action == HubArtifactCleanupAction::KeptForInspection }));
 
         fs::remove_dir_all(temp_dir).expect("temp dir cleanup should succeed");
     }

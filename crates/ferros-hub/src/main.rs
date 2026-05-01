@@ -31,7 +31,10 @@ fn main() {
             println!("{}", cli_help_text());
         }
         Some(command) => {
-            eprintln!("unknown ferros-hub command: {command}\n\n{}", cli_help_text());
+            eprintln!(
+                "unknown ferros-hub command: {command}\n\n{}",
+                cli_help_text()
+            );
             std::process::exit(2);
         }
     }

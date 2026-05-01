@@ -124,7 +124,9 @@ mod tests {
     #[test]
     fn start_path_advances_through_the_local_runway_checkpoints() {
         let state = LocalRunwayState::Pending;
-        let state = state.advance(LocalRunwayIntent::Start).expect("pending -> profile");
+        let state = state
+            .advance(LocalRunwayIntent::Start)
+            .expect("pending -> profile");
         let state = state
             .advance(LocalRunwayIntent::Start)
             .expect("profile -> consent");
@@ -168,15 +170,18 @@ mod tests {
             .map(|state| state.ordinal())
             .collect::<Vec<_>>();
 
-        assert_eq!(labels, vec![
-            "pending",
-            "profile-ready",
-            "consent-ready",
-            "runtime-ready",
-            "active",
-            "draining",
-            "halted",
-        ]);
+        assert_eq!(
+            labels,
+            vec![
+                "pending",
+                "profile-ready",
+                "consent-ready",
+                "runtime-ready",
+                "active",
+                "draining",
+                "halted",
+            ]
+        );
         assert_eq!(ordinals, vec![0, 1, 2, 3, 4, 5, 6]);
     }
 

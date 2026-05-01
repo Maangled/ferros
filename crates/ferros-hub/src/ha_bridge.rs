@@ -14,12 +14,10 @@ use ferros_core::{
     PolicyEngine,
 };
 use ferros_data::{
-    local_runway_launch_overclaim_wording,
-    local_runway_text_looks_remote_like_url,
+    local_runway_launch_overclaim_wording, local_runway_text_looks_remote_like_url,
     LocalOnrampDecisionLabel, LocalOnrampDecisionReceipt, LocalOnrampDecisionReceiptError,
-    LocalOnrampDecisionReceiptWriteError,
-    LocalOnrampProposal, LocalOnrampProposalError, LocalOnrampProposalWriteError,
-    LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
+    LocalOnrampDecisionReceiptWriteError, LocalOnrampProposal, LocalOnrampProposalError,
+    LocalOnrampProposalWriteError, LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
     LOCAL_ONRAMP_PROPOSAL_ARTIFACT_PATH,
 };
 use ferros_profile::{CapabilityGrant, ProfileId};
@@ -66,7 +64,11 @@ impl fmt::Display for LocalBridgeRegistrationError {
                 write!(f, "local bridge agent {} is already registered", name)
             }
             Self::InvalidAgentName(name) => {
-                write!(f, "local bridge agent {} is not a valid FERROS agent name", name)
+                write!(
+                    f,
+                    "local bridge agent {} is not a valid FERROS agent name",
+                    name
+                )
             }
         }
     }
@@ -194,8 +196,7 @@ impl LocalCapabilitySnapshot {
 
 #[must_use]
 pub fn local_bridge_profile_id() -> ProfileId {
-    ProfileId::new(LOCAL_BRIDGE_PROFILE_ID)
-        .expect("static local bridge profile id should be valid")
+    ProfileId::new(LOCAL_BRIDGE_PROFILE_ID).expect("static local bridge profile id should be valid")
 }
 
 #[must_use]
@@ -247,7 +248,10 @@ impl fmt::Display for LocalBridgeExecutionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::WorkspaceRootUnavailable => {
-                write!(f, "workspace root is unavailable for local bridge artifact output")
+                write!(
+                    f,
+                    "workspace root is unavailable for local bridge artifact output"
+                )
             }
             Self::InvalidRelativeOutputPath(path) => {
                 write!(f, "invalid local bridge output path: {}", path)
@@ -275,7 +279,10 @@ impl fmt::Display for LocalHubStateSnapshotError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::WorkspaceRootUnavailable => {
-                write!(f, "workspace root is unavailable for local hub state output")
+                write!(
+                    f,
+                    "workspace root is unavailable for local hub state output"
+                )
             }
             Self::InvalidRelativeOutputPath(path) => {
                 write!(f, "invalid local hub state path: {}", path)
@@ -499,10 +506,7 @@ impl LocalHubStateSnapshot {
                 .insert(key.clone(), value_raw.trim().to_string())
                 .is_some()
             {
-                return Err(invalid_local_hub_state(format!(
-                    "duplicate field {}",
-                    key
-                )));
+                return Err(invalid_local_hub_state(format!("duplicate field {}", key)));
             }
         }
 
@@ -511,10 +515,7 @@ impl LocalHubStateSnapshot {
                 &mut fields,
                 "bridgeManifestIdentity",
             )?,
-            policy_decision_label: parse_required_json_string(
-                &mut fields,
-                "policyDecisionLabel",
-            )?,
+            policy_decision_label: parse_required_json_string(&mut fields, "policyDecisionLabel")?,
             artifact_relative_output_path: parse_optional_json_string(
                 &mut fields,
                 "artifactRelativeOutputPath",
@@ -548,9 +549,8 @@ impl LocalHubStateSnapshot {
             ));
         }
 
-        match self.artifact_relative_output_path.as_deref() {
-            Some(path) => validate_local_snapshot_artifact_path(path)?,
-            None => {}
+        if let Some(path) = self.artifact_relative_output_path.as_deref() {
+            validate_local_snapshot_artifact_path(path)?;
         }
 
         if self.scope != "local-only" {
@@ -669,7 +669,8 @@ pub fn summarize_local_bridge_runway(
     })
 }
 
-pub fn default_local_runtime_summary() -> Result<LocalHubRuntimeSummary, LocalBridgeRegistrationError> {
+pub fn default_local_runtime_summary(
+) -> Result<LocalHubRuntimeSummary, LocalBridgeRegistrationError> {
     default_local_runtime_summary_with_snapshot_path(LOCAL_HUB_STATE_SNAPSHOT_PATH)
 }
 
@@ -680,20 +681,17 @@ pub fn default_local_runtime_summary_with_snapshot_path(
     let requester_profile_id = local_bridge_profile_id();
     let snapshot = LocalCapabilitySnapshot::new(
         requester_profile_id.clone(),
-        vec![CapabilityGrant::new(
-            requester_profile_id,
-            "bridge.observe",
-        )],
+        vec![CapabilityGrant::new(requester_profile_id, "bridge.observe")],
     );
-    let request = LocalBridgeRequest::new(
-        "simulated-bridge-entity",
-        "bridge.observe",
-        "report-state",
-    );
+    let request =
+        LocalBridgeRequest::new("simulated-bridge-entity", "bridge.observe", "report-state");
 
     let summary = summarize_local_bridge_runway(&bridge_agent, &snapshot, &request)?;
 
-    Ok(observe_local_hub_restart(summary, snapshot_relative_output_path))
+    Ok(observe_local_hub_restart(
+        summary,
+        snapshot_relative_output_path,
+    ))
 }
 
 fn observe_local_hub_restart(
@@ -765,32 +763,29 @@ pub fn execute_local_bridge_request_with_output_path(
         LocalBridgeStatus::Allowed,
         relative_output_path.clone(),
     );
-    let local_onramp_proposal = match local_onramp_proposal_from_request(
-        agent,
-        request,
-        &relative_output_path,
-    ) {
-        Ok(proposal) => proposal,
-        Err(error) => {
-            return LocalBridgeExecution {
-                artifact: None,
-                local_onramp_proposal: None,
-                local_onramp_decision_receipt: None,
-                report: LocalBridgeReport {
-                    bridge_agent_name: agent.name.clone(),
-                    stand_in_name: request.stand_in_name.clone(),
-                    requested_capability: request.requested_capability.clone(),
-                    requested_action: request.requested_action.clone(),
-                    status: LocalBridgeStatus::Error,
-                    artifact_relative_output_path: None,
-                    summary: error_summary(&error),
-                    scope: "local-only".to_string(),
-                    evidence: "non-evidentiary".to_string(),
-                },
-                error: Some(error),
-            };
-        }
-    };
+    let local_onramp_proposal =
+        match local_onramp_proposal_from_request(agent, request, &relative_output_path) {
+            Ok(proposal) => proposal,
+            Err(error) => {
+                return LocalBridgeExecution {
+                    artifact: None,
+                    local_onramp_proposal: None,
+                    local_onramp_decision_receipt: None,
+                    report: LocalBridgeReport {
+                        bridge_agent_name: agent.name.clone(),
+                        stand_in_name: request.stand_in_name.clone(),
+                        requested_capability: request.requested_capability.clone(),
+                        requested_action: request.requested_action.clone(),
+                        status: LocalBridgeStatus::Error,
+                        artifact_relative_output_path: None,
+                        summary: error_summary(&error),
+                        scope: "local-only".to_string(),
+                        evidence: "non-evidentiary".to_string(),
+                    },
+                    error: Some(error),
+                };
+            }
+        };
     let local_onramp_decision_receipt = match local_onramp_decision_receipt_from_proposal(
         &local_onramp_proposal,
         policy_decision,
@@ -936,7 +931,11 @@ fn local_onramp_decision_receipt_from_proposal(
         proposal.proposal_id.clone(),
         proposal.local_artifact_path.clone(),
         local_onramp_decision_label(policy_decision),
-        Some(local_onramp_decision_detail(policy_decision, request, &proposal.proposal_id)),
+        Some(local_onramp_decision_detail(
+            policy_decision,
+            request,
+            &proposal.proposal_id,
+        )),
         LOCAL_ONRAMP_DECISION_RECEIPT_ARTIFACT_PATH,
     )
     .map_err(map_onramp_decision_receipt_error)
@@ -1099,9 +1098,7 @@ fn local_policy_decision_label(decision: PolicyDecision) -> &'static str {
         PolicyDecision::Allowed => "allowed",
         PolicyDecision::Denied(PolicyDenialReason::NoGrantsPresented) => "denied:no-grants",
         PolicyDecision::Denied(PolicyDenialReason::ProfileNotGranted) => "denied:profile",
-        PolicyDecision::Denied(PolicyDenialReason::CapabilityNotGranted) => {
-            "denied:capability"
-        }
+        PolicyDecision::Denied(PolicyDenialReason::CapabilityNotGranted) => "denied:capability",
     }
 }
 
@@ -1199,9 +1196,7 @@ fn map_bridge_error_to_snapshot_error(
         LocalBridgeExecutionError::InvalidRelativeOutputPath(path) => {
             LocalHubStateSnapshotError::InvalidRelativeOutputPath(path)
         }
-        LocalBridgeExecutionError::InvalidOnrampProposal(reason) => {
-            invalid_local_hub_state(reason)
-        }
+        LocalBridgeExecutionError::InvalidOnrampProposal(reason) => invalid_local_hub_state(reason),
         LocalBridgeExecutionError::InvalidOnrampDecisionReceipt(reason) => {
             invalid_local_hub_state(reason)
         }
@@ -1218,7 +1213,10 @@ fn map_onramp_proposal_error(error: LocalOnrampProposalError) -> LocalBridgeExec
             format!("local onramp proposal path must remain local: {}", path)
         }
         LocalOnrampProposalError::InvalidScope(scope) => {
-            format!("local onramp proposal scope must remain local-only: {}", scope)
+            format!(
+                "local onramp proposal scope must remain local-only: {}",
+                scope
+            )
         }
         LocalOnrampProposalError::InvalidEvidence(evidence) => format!(
             "local onramp proposal evidence must remain non-evidentiary: {}",
@@ -1237,9 +1235,11 @@ fn map_onramp_proposal_write_error(
 ) -> LocalBridgeExecutionError {
     match error {
         LocalOnrampProposalWriteError::InvalidProposal(reason) => map_onramp_proposal_error(reason),
-        LocalOnrampProposalWriteError::Serialize(_) => LocalBridgeExecutionError::InvalidOnrampProposal(
-            "local onramp proposal failed to serialize".to_string(),
-        ),
+        LocalOnrampProposalWriteError::Serialize(_) => {
+            LocalBridgeExecutionError::InvalidOnrampProposal(
+                "local onramp proposal failed to serialize".to_string(),
+            )
+        }
         LocalOnrampProposalWriteError::Io(error) => LocalBridgeExecutionError::Io(error.kind()),
     }
 }
@@ -1252,7 +1252,10 @@ fn map_onramp_decision_receipt_error(
             format!("{} must not be empty", field)
         }
         LocalOnrampDecisionReceiptError::InvalidRelativePath(path) => {
-            format!("local onramp decision receipt path must remain local: {}", path)
+            format!(
+                "local onramp decision receipt path must remain local: {}",
+                path
+            )
         }
         LocalOnrampDecisionReceiptError::InvalidScope(scope) => format!(
             "local onramp decision receipt scope must remain local-only: {}",
@@ -1292,9 +1295,9 @@ fn parse_required_json_string(
     fields: &mut BTreeMap<String, String>,
     field_name: &str,
 ) -> Result<String, LocalHubStateSnapshotError> {
-    let raw_value = fields.remove(field_name).ok_or_else(|| {
-        invalid_local_hub_state(format!("missing field {}", field_name))
-    })?;
+    let raw_value = fields
+        .remove(field_name)
+        .ok_or_else(|| invalid_local_hub_state(format!("missing field {}", field_name)))?;
 
     parse_json_string_literal(field_name, &raw_value)
 }
@@ -1303,9 +1306,9 @@ fn parse_optional_json_string(
     fields: &mut BTreeMap<String, String>,
     field_name: &str,
 ) -> Result<Option<String>, LocalHubStateSnapshotError> {
-    let raw_value = fields.remove(field_name).ok_or_else(|| {
-        invalid_local_hub_state(format!("missing field {}", field_name))
-    })?;
+    let raw_value = fields
+        .remove(field_name)
+        .ok_or_else(|| invalid_local_hub_state(format!("missing field {}", field_name)))?;
 
     if raw_value.trim() == "null" {
         return Ok(None);
@@ -1314,7 +1317,7 @@ fn parse_optional_json_string(
     parse_json_string_literal(field_name, &raw_value).map(Some)
 }
 
-fn split_json_object_entries<'a>(content: &'a str) -> Result<Vec<&'a str>, LocalHubStateSnapshotError> {
+fn split_json_object_entries(content: &str) -> Result<Vec<&str>, LocalHubStateSnapshotError> {
     let mut entries = Vec::new();
     let mut start = 0;
     let mut in_string = false;
@@ -1373,7 +1376,7 @@ fn split_json_object_entries<'a>(content: &'a str) -> Result<Vec<&'a str>, Local
     Ok(entries)
 }
 
-fn split_json_entry<'a>(entry: &'a str) -> Result<(&'a str, &'a str), LocalHubStateSnapshotError> {
+fn split_json_entry(entry: &str) -> Result<(&str, &str), LocalHubStateSnapshotError> {
     let mut in_string = false;
     let mut escaped = false;
 
