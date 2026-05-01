@@ -4,16 +4,16 @@
 
 ## Contracts owned or staged by S7
 
-S7 owns deployment-facing hub surfaces. It does not get to redefine S2 profile or capability-grant semantics from stream-local planning docs.
+S7 owns emitted local `.tmp/hub` artifacts, local hub summary/proof outputs, and Pack B/G4 runway planning. S6 owns the local onramp proposal and decision models those artifacts serialize, S4 owns the read-only `/runway-summary(.json)` observation seam, S5 owns display-only shell and harness observation of that seam, and S8 owns shared truth/indexing. S7 does not get to redefine S2 profile or capability-grant semantics from stream-local planning docs.
 
 | Contract | Type | Location | Status |
 |----------|------|----------|--------|
 | `HubConfig` type (device profile, port, HA endpoint) | Rust type | `crates/ferros-hub/` | ⬜ Not yet created |
 | HA bridge agent manifest | `AgentManifest` JSON | `crates/ferros-hub/src/ha_bridge.rs` | 🟨 Landed as a manifest-backed local bridge registration seam for the simulated bridge path; real Home Assistant packaging remains deferred |
-| `LocalHubRuntimeSummary` + runway observation | Rust types + local proof output | `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/src/lib.rs`, `crates/ferros-node/src/lib.rs` | 🟨 Landed as a local-only runway seam; `summary`, `prove-bridge`, and `/runway-summary(.json)` stay non-evidentiary while carrying bounded restart, proposal, and decision rehearsal context |
+| `LocalHubRuntimeSummary` + S7 proof outputs over the S4-owned runway observation seam | Rust types + local proof output | `crates/ferros-hub/src/ha_bridge.rs`, `crates/ferros-hub/src/lib.rs`, `crates/ferros-node/src/lib.rs` | 🟨 Landed as local-only S7 proof output; `summary` and `prove-bridge` stay non-evidentiary while the S4-owned `/runway-summary(.json)` seam carries bounded restart, proposal, and decision rehearsal context |
 | Local hub state snapshot contract | Local-only persisted snapshot + JSON schema | `.tmp/hub/local-hub-state-snapshot.json`, `schemas/hub-local-state-snapshot.schema.json` | 🟨 Landed with bounded guardrails and H1 validator coverage |
-| Local onramp proposal contract | Rust types + local JSON artifact + local-only schema | `crates/ferros-data/src/lib.rs`, `.tmp/hub/local-onramp-proposal.json`, `schemas/onramp-proposal.schema.json` | 🟨 Landed as local-only proposed material; quarantined pending consent |
-| Local onramp decision receipt contract | Rust types + local JSON artifact + local-only schema | `crates/ferros-data/src/lib.rs`, `.tmp/hub/local-onramp-decision-receipt.json`, `schemas/onramp-decision-rehearsal.schema.json` | 🟨 Landed as a local-only recorded decision rehearsal linked to proposed material; non-authoritative and non-canonical |
+| S7-emitted local onramp proposal artifact over the S6-owned proposal model | S6-owned Rust model + S7-emitted local JSON artifact + local-only schema | `crates/ferros-data/src/lib.rs`, `.tmp/hub/local-onramp-proposal.json`, `schemas/onramp-proposal.schema.json` | 🟨 Landed as local-only proposed material; quarantined pending consent |
+| S7-emitted local onramp decision receipt artifact over the S6-owned decision model | S6-owned Rust model + S7-emitted local JSON artifact + local-only schema | `crates/ferros-data/src/lib.rs`, `.tmp/hub/local-onramp-decision-receipt.json`, `schemas/onramp-decision-rehearsal.schema.json` | 🟨 Landed as a local-only recorded decision rehearsal linked to proposed material; non-authoritative and non-canonical |
 | Pairing constraints and open questions | Stream-local planning notes | `streams/S7-hub/*.md` | 🟨 Runway only; authoritative protocol intentionally deferred |
 | Reference hardware runway and evidence template | Doc | `docs/hub/reference-hardware.md` | 🟨 In progress |
 
@@ -26,7 +26,10 @@ S7 owns deployment-facing hub surfaces. It does not get to redefine S2 profile o
 | `ProfileId`, `CapabilityGrant` | S2 | Pairing flow issues grants; profile binds to device |
 | `Agent` trait, `AgentRegistry` | S3 | Hub registers HA-bridge agents through S3 |
 | `ferros-runtime` executor + bus | S4 | Hub wraps the runtime as its execution environment |
-| `ferros-data` primitives | S6 | Optional: data generation for hub agents |
+| read-only `/runway-summary(.json)` observation seam | S4 | Carries S7-local `hubRestart`, `hubOnrampProposal`, and `hubOnrampDecisionReceipt` context without giving S7 route ownership |
+| `LocalOnrampProposal`, `LocalOnrampDecisionReceipt` models | S6 | S7 emits local `.tmp/hub` rehearsal artifacts over these S6-owned models rather than redefining them |
+| display-only localhost shell and same-origin harness observation | S5 | Observes the S4-owned summary seam without giving S7 shell or harness ownership |
+| shared truth/indexing surfaces such as `docs/contracts/CONTRACTS-OVERVIEW.md` | S8 | Records the cross-stream runway split without changing S7-local proof ownership |
 
 ---
 
@@ -37,13 +40,13 @@ This section is local-only and non-gate-closing. It records the landed restart-a
 | Surface | What is now landed | What stays open |
 |---------|--------------------|-----------------|
 | persisted restart state | `LocalHubStateSnapshot` writes under `.tmp/hub/`, and the bounded schema-backed snapshot contract now has H1 validator coverage, including parity checks against hardware/proof/launch wording and remote-looking summary text. | Not a partner-facing schema, not a public restart API, and not device or power-cycle evidence. |
-| local proposed-material emission | `LocalOnrampProposal` now writes one bounded `.tmp/hub/local-onramp-proposal.json` artifact from the allowed bridge proof path, and the schema-backed proposal contract now has H1 validator coverage against remote-looking text, hardware/proof/launch wording, and canonical/grant wording. | Not a public ingress contract, not an accept/reject flow, not canonical profile or grant mutation, and not Home Assistant proof. |
-| local decision rehearsal emission | `LocalOnrampDecisionReceipt` now writes one bounded `.tmp/hub/local-onramp-decision-receipt.json` artifact from the allowed bridge proof path, and the schema-backed decision contract now has H1 validator coverage against remote-looking text, whitespace-only and leading-`//` text, hardware/proof/launch wording, and canonical/grant wording. | Not an accept/reject transport, not an executed consent event, not canonical profile or grant mutation, and not Home Assistant proof. |
-| local hub proof outputs | `LocalHubRuntimeSummary` plus `summary` and `prove-bridge` now report bounded `fresh-start | reloaded | unavailable` restart context on the existing local hub seam. | Not durable runtime evidence and not a G4 or D1 claim. |
-| downstream runway observation | The existing read-only `/runway-summary(.json)` seam now additively carries optional `hubRestart`, `hubOnrampProposal`, and `hubOnrampDecisionReceipt` runway context, and the current localhost shell plus same-origin acceptance harness observe all three on the existing shell route as display-only context. | Not a new route, not browser-issued hub control, not accept/reject transport, not remote transport, and not Home Assistant integration proof. |
+| local proposed-material emission | `LocalOnrampProposal` now writes one bounded `.tmp/hub/local-onramp-proposal.json` artifact over the S6-owned proposal model from the allowed bridge proof path, and the schema-backed proposal contract now has H1 validator coverage against remote-looking text, hardware/proof/launch wording, and canonical/grant wording. | Not a public ingress contract, not an accept/reject flow, not canonical profile or grant mutation, and not Home Assistant proof. |
+| local decision rehearsal emission | `LocalOnrampDecisionReceipt` now writes one bounded `.tmp/hub/local-onramp-decision-receipt.json` artifact over the S6-owned decision model from the allowed bridge proof path, and the schema-backed decision contract now has H1 validator coverage against remote-looking text, whitespace-only and leading-`//` text, hardware/proof/launch wording, and canonical/grant wording. | Not an accept/reject transport, not an executed consent event, not canonical profile or grant mutation, and not Home Assistant proof. |
+| local hub proof outputs | S7-owned `LocalHubRuntimeSummary` plus `summary` and `prove-bridge` now report bounded `fresh-start | reloaded | unavailable` restart context on the existing local hub seam. | Not durable runtime evidence and not a G4 or D1 claim. |
+| downstream runway observation | The S4-owned read-only `/runway-summary(.json)` seam now additively carries optional `hubRestart`, `hubOnrampProposal`, and `hubOnrampDecisionReceipt` runway context from the S7 local proof path, and the S5-owned localhost shell plus same-origin acceptance harness observe that seam as display-only context. | Not a new route, not browser-issued hub control, not accept/reject transport, not remote transport, and not Home Assistant integration proof. |
 | local helper alignment | `cargo xtask hub-runway` now proves snapshot write/reload through the hub-owned summary seam, validates the emitted proposal and decision artifacts, and prints compact proposal plus decision report lines after the exact `ferros-hub summary` output. | Not a second contract surface and not evidence that the cross-stream contracts overview is fully synchronized. |
 
-- `docs/contracts/CONTRACTS-OVERVIEW.md` now reflects the shared proposal-plus-decision runway split at cross-stream level, while this stream-local contract record remains the authoritative S7 truth surface for the bounded restart, proposal, and decision rehearsal details that sit beneath that shared overview.
+- `docs/contracts/CONTRACTS-OVERVIEW.md` is the S8-owned shared-truth and indexing surface for the cross-stream proposal-plus-decision runway split, while this stream-local contract record remains the authoritative S7 truth surface for the bounded emitted `.tmp/hub` artifacts and local hub proof details that sit beneath that shared overview.
 
 ---
 

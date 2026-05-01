@@ -29,6 +29,71 @@ None.
 
 ## Done
 
+### WAVE-2026-04-30-81
+
+- Title: Serial truth-sync after contract cleanup and hardware prep
+- Status: done
+- Priority: P1
+- Gate: G4 post-cleanup and handoff truth reconciliation
+- Owning streams: S8 primary, S7 awareness, S6 awareness, S5 awareness, S4 awareness
+- Goal: Reconcile the minimum shared truth surfaces after the owner-contract cleanup and the plan-only Pack B or Pack C prep docs land so the repo records exactly what is now true about contract cleanliness and staged hardware prep, and exactly what remains unproven.
+- Anchor files: `STATUS.md`, `docs/contracts/CONTRACTS-OVERVIEW.md`, `docs/orchestration/HARDWARE-QUEUE.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` clean on touched truth surfaces; final FERROS Gate Auditor pass across `STATUS.md`, touched owner docs, `docs/contracts/CONTRACTS-OVERVIEW.md`, `docs/orchestration/HARDWARE-QUEUE.md`, `docs/orchestration/WAVE-QUEUE.md`, and `docs/orchestration/WAVE-RUN-LOG.md`
+- Constraints: Final serial wave only. Run only after `WAVE-2026-04-30-80` and the plan-only hardware-prep packet land. Shared truth and bookkeeping only. No hardware execution, no D1 or G4 closure, no Home Assistant proof, no physical-device evidence, no remote transport, no canonical mutation, and no overclaim.
+- Last update: 2026-04-30
+- size: L
+- serial-after: WAVE-2026-04-30-80
+- solo: true
+- track: code
+
+### WAVE-2026-04-30-80
+
+- Title: Contracts overview parity after owner cleanup
+- Status: done
+- Priority: P1
+- Gate: G4 local code-runway contract overview parity
+- Owning streams: S8 primary, S7 awareness, S6 awareness, S5 awareness, S4 awareness
+- Goal: Re-check `docs/contracts/CONTRACTS-OVERVIEW.md` against the reconciled owner contract docs after the owner-contract cleanup waves land and update it only if a real mismatch remains, without broadening any contract claim or ownership seam.
+- Anchor files: `docs/contracts/CONTRACTS-OVERVIEW.md`
+- Validation: `get_errors` clean on `docs/contracts/CONTRACTS-OVERVIEW.md`; owner and overview rows agree after the owner-contract cleanup waves
+- Constraints: Parity only. Run only after `WAVE-2026-04-30-82`. Do not broaden contract claims, reopen settled owner seams, or introduce any gate, hardware, Home Assistant, transport, or canonical-mutation claim.
+- Last update: 2026-04-30
+- size: S
+- serial-after: WAVE-2026-04-30-82
+- track: code
+
+### WAVE-2026-04-30-82
+
+- Title: S6 owner-contract parity for local onramp boundaries
+- Status: done
+- Priority: P1
+- Gate: G4 post-W70 owner-contract reconciliation
+- Owning streams: S6 primary, S8 awareness
+- Goal: Repair `streams/S6-harvest/CONTRACTS.md` so it names the already-landed S6-owned local onramp proposal and decision boundaries, plus any necessary explanatory owner note for the shared local-runway guardrail layer, instead of collapsing the post-W70 owner truth into a generic `ferros-data` crate public API claim.
+- Anchor files: `streams/S6-harvest/CONTRACTS.md`
+- Validation: `get_errors` clean on `streams/S6-harvest/CONTRACTS.md`; S6 contract wording matches the narrower owner truth already recorded in S6 README, BACKLOG, PROGRESS, and the contracts overview without reviving a generic crate-wide claim
+- Constraints: Single-file owner-contract repair only. No crate, schema, README, BACKLOG, PROGRESS, overview, hardware, gate, transport, or canonical-mutation edits. If the shared local-runway guardrail layer does not merit a top-level contract row, keep it as explanatory owner text instead of inventing a new contract surface.
+- Last update: 2026-04-30
+- size: S
+- serial-after: WAVE-2026-04-30-79
+- track: code
+
+### WAVE-2026-04-30-79
+
+- Title: Owner-contract reconciliation after W70
+- Status: done
+- Priority: P1
+- Gate: G4 post-W70 owner-contract cleanup
+- Owning streams: S7 primary, S8 awareness, S6 awareness, S4 awareness
+- Goal: Find and reconcile the remaining post-W70 owner-contract drift so the S7 owner docs accurately preserve the distinction between S6-owned proposal and decision models, S7-owned emitted local artifacts and hub proof chain, and S4-owned read-only `/runway-summary(.json)` observation without widening the claim boundary.
+- Anchor files: `streams/S7-hub/CONTRACTS.md`, `streams/S7-hub/README.md`
+- Validation: `get_errors` clean on touched owner contract files; final claim rationalizer confirms no overclaim and no owner-seam bleed
+- Constraints: Owner-contract docs only. Do not expand into S4, S5, or S6 owner files unless a new seam is discovered. No hardware execution, no D1 or G4 closure, no Home Assistant proof, no remote transport, no canonical mutation, no accept or reject transport, and no privileged browser controls.
+- Last update: 2026-04-30
+- size: S
+- serial-after: WAVE-2026-04-30-78
+- track: code
+
 ### WAVE-2026-04-30-78
 
 - Title: Serial local code-runway closeout truth-sync

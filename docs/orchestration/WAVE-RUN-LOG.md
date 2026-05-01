@@ -3,6 +3,106 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-04-30 — WAVE-2026-04-30-81
+
+- Selected item: `WAVE-2026-04-30-81`
+- Result: Complete. WAVE-2026-04-30-81 closed as the final serial truth-sync only: `STATUS.md`, `docs/orchestration/WAVE-QUEUE.md`, and `docs/orchestration/WAVE-RUN-LOG.md` now agree with the already-correct `docs/contracts/CONTRACTS-OVERVIEW.md` and `docs/orchestration/HARDWARE-QUEUE.md` that WAVE-2026-04-30-79, WAVE-2026-04-30-82, and WAVE-2026-04-30-80 completed the remaining owner-contract cleanup and that the plan-only hardware-prep packet is closed. The repo now records the Pack B `x86_64` lane as the selected first D1 target class while keeping exact DUT or HA host or operator or storage or network or power-cut identifiers as required-before-execution placeholders, without claiming physical-device evidence, real Home Assistant proof, consent acceptance, remote transport, canonical mutation, D1 closure, or G4 closure.
+- Files: `STATUS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` is clean on `STATUS.md`, `docs/orchestration/WAVE-QUEUE.md`, and `docs/orchestration/WAVE-RUN-LOG.md`. FERROS Lane Validator Agent confirmed the plan-only hardware-prep packet and W81 closeout are now coherent, that no queue-state or target-selection blocker remains, and that leaving `docs/contracts/CONTRACTS-OVERVIEW.md` and `docs/orchestration/HARDWARE-QUEUE.md` unchanged was correct because they already matched the closed packet. FERROS Gate Auditor Agent passed W81 with no overclaim and confirmed the repaired target-selection wording does not invent a concrete device. FERROS Contract Auditor Agent confirmed the packet is contract-clean enough to close and that the next remaining follow-up is a real human-owned hardware execution step rather than further truth repair.
+- Next follow-up: None for this packet. When a real session is ready, first replace the execution-time placeholders with the concrete Pack B DUT, Pack C HA host, operator station, storage path, network note, and DUT-only power-cut method before any physical hardware wave begins.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-81",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: diagnostics are clean on the touched truth surfaces, the lane validator found no remaining queue-state or target-selection blocker, and both gate and contract review passed the final closeout.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-81 remained a code-track shared-truth and bookkeeping wave with no new implementation or cross-track execution.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside STATUS.md plus code-track queue and run-log bookkeeping, while the already-correct contracts overview and hardware queue were correctly left unchanged.",
+    "4_track_boundary": "Not triggered: no hardware execution, Home Assistant execution, schema change, gate movement, or product behavior change was required to close the packet.",
+    "5_run_length_cap": "Satisfied: this is the final requested wave in the WAVE-2026-04-30-79 through WAVE-2026-04-30-82 plus hardware-prep packet, and the packet now ends cleanly.",
+    "6_escalation_chain": "Not triggered: the late hardware-prep drift was resolved through local inventory and queue truth repair, and final serial reconciliation required no further escalation."
+  },
+  "decision": "stop-clean",
+  "rationale": "The remaining owner-contract cleanup and the validated plan-only hardware-prep closeout are now recorded consistently across status, queue, and run-log surfaces while all open hardware-execution gaps remain explicit and non-evidentiary."
+}
+```
+
+---
+## 2026-04-30 — WAVE-2026-04-30-80
+
+- Selected item: `WAVE-2026-04-30-80`
+- Result: Complete. WAVE-2026-04-30-80 closed as a parity-only overview ratification: `docs/contracts/CONTRACTS-OVERVIEW.md` already reflected the reconciled owner split and the current S4 or S5 observation path for the Local Onramp Proposal and Local Onramp Decision Receipt seams, so after WAVE-2026-04-30-82 landed no further overview change was required. This wave closes overview parity only; it does not claim full repo-wide contract-doc completion, gate movement, physical-device evidence, Home Assistant proof, remote transport, canonical mutation, accept or reject transport, D1 closure, or G4 closure.
+- Files: `docs/contracts/CONTRACTS-OVERVIEW.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` is clean on `docs/contracts/CONTRACTS-OVERVIEW.md`. FERROS Lane Validator Agent passed W80 as a parity-only single-anchor slice with no broader contract or owner-seam change. FERROS Gate Auditor Agent passed W80 with no overclaim. FERROS Contract Auditor Agent confirmed the overview is now in parity with the reconciled owner docs and that no further overview change is needed. FERROS Integration Reviewer Agent cleared the W82-to-W80 closure path with no blocker, and FERROS Orchestrator Agent authorized W80 closeout as a clean parity-only wave on current repo state.
+- Next follow-up: Continue into the plan-only hardware-prep packet before `WAVE-2026-04-30-81`, keeping all Pack B or Pack C surfaces future-facing and non-evidentiary.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-80",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: diagnostics are clean on the overview anchor, scope validation passed, and both contract and gate review found the current overview row already correct after W82.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-80 remained a code-track overview-parity wave with no hardware or implementation work.",
+    "3_diff_overrun": "Not triggered: the wave stayed inside the single overview anchor with normal queue and run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: no hardware execution, schema change, gate movement, transport expansion, or product behavior change was required to ratify overview parity.",
+    "5_run_length_cap": "Not triggered: the requested packet remains in progress because the plan-only hardware-prep segment and W81 still remain.",
+    "6_escalation_chain": "Not triggered: the S6 owner surface was repaired in W82 first, after which overview parity was clean without requiring any broader rewrite."
+  },
+  "decision": "continue",
+  "rationale": "Owner and overview contract surfaces are now aligned for the local onramp packet, and the next remaining work is the plan-only hardware-prep handoff before final shared-truth sync."
+}
+```
+
+---
+## 2026-04-30 — WAVE-2026-04-30-82
+
+- Selected item: `WAVE-2026-04-30-82`
+- Result: Complete. WAVE-2026-04-30-82 closed as a narrow S6 owner-contract repair only: `streams/S6-harvest/CONTRACTS.md` now names the S6-owned Local Onramp Proposal and Local Onramp Decision Receipt boundaries explicitly and keeps the shared local-runway guardrail layer explanatory-only instead of reviving a generic crate-wide `ferros-data` API claim. This brings the S6 owner contract sheet into line with the existing S6 README, BACKLOG, PROGRESS, and the already-correct shared contracts overview without widening the contract surface.
+- Files: `streams/S6-harvest/CONTRACTS.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` is clean on `streams/S6-harvest/CONTRACTS.md`. FERROS Lane Validator Agent passed W82 as a single-file S6 owner-contract repair with no broader ownership overreach. FERROS Contract Auditor Agent confirmed the S6 owner page is now honest about the landed local onramp boundaries and that no further overview change is needed after this repair. FERROS Gate Auditor Agent passed W82 with no D1/G4, hardware, Home Assistant, transport, or canonical-mutation overclaim. FERROS Integration Reviewer Agent and FERROS Orchestrator Agent both cleared W82 for immediate closeout and confirmed W80 can close afterward as a clean parity-only wave.
+- Next follow-up: Continue `WAVE-2026-04-30-80` as the final contract-overview parity ratification and then switch into the plan-only hardware-prep packet before `WAVE-2026-04-30-81`.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-82",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: diagnostics are clean on the S6 anchor, scope validation passed, and contract plus gate review found the owner page honest after the repair.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-82 remained a code-track single-file owner-contract documentation lane.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside streams/S6-harvest/CONTRACTS.md with normal queue and run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: no hardware execution, schema change, gate movement, transport expansion, or product behavior change was needed to repair the S6 owner sheet.",
+    "5_run_length_cap": "Not triggered: the requested packet remains in progress with W80 bookkeeping, the plan-only hardware-prep packet, and W81 still outstanding.",
+    "6_escalation_chain": "Not triggered: the newly discovered S6 owner drift was resolved as a narrow inserted lane, and both gatekeeper and orchestrator review cleared it without escalation."
+  },
+  "decision": "continue",
+  "rationale": "The remaining owner-contract drift after W70 is now repaired in both S7 and S6 owner surfaces, so the packet can move from contract cleanup into hardware-prep staging before the final truth sync."
+}
+```
+
+---
+## 2026-04-30 — WAVE-2026-04-30-79
+
+- Selected item: `WAVE-2026-04-30-79`
+- Result: Complete. WAVE-2026-04-30-79 closed as a narrow S7 owner-contract cleanup only: `streams/S7-hub/CONTRACTS.md` and `streams/S7-hub/README.md` now state the post-W70 split honestly, with S6 owning the local onramp proposal and decision models, S7 owning the emitted `.tmp/hub` artifacts plus local `summary | prove-bridge` proof chain and Pack B or G4 runway planning, S4 owning the read-only `/runway-summary(.json)` observation seam, S5 owning display-only shell and harness observation of that seam, and S8 owning shared-truth indexing. No new contract surface, gate movement, hardware evidence, Home Assistant proof, remote transport, canonical mutation, accept or reject transport, or privileged browser control was introduced.
+- Files: `streams/S7-hub/CONTRACTS.md`, `streams/S7-hub/README.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` is clean on `streams/S7-hub/CONTRACTS.md` and `streams/S7-hub/README.md`. FERROS Contract Auditor Agent confirmed the S7 owner cleanup is now honest and isolated the only remaining mismatch to the Local Onramp Proposal consumer row in `docs/contracts/CONTRACTS-OVERVIEW.md`. FERROS Gate Auditor Agent passed W79 with no claim overreach. FERROS Integration Reviewer Agent returned stop-clean rather than escalate: W79 content was clean, but the serial queue required formal ratification before W80 could begin. FERROS Orchestrator Agent then authorized W79 closeout on honest current-state evidence and confirmed `WAVE-2026-04-30-80` as the sole next in-progress parity wave.
+- Next follow-up: Continue `WAVE-2026-04-30-80` as the sole active wave so the shared contracts overview can be brought into parity with the corrected owner docs before the plan-only hardware-prep packet begins.
+
+```json
+{
+  "wave_id": "WAVE-2026-04-30-79",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: diagnostics are clean on the two S7 owner files, contract review found the owner split honest, and gate review found no overclaim.",
+    "2_wave_tag": "Not triggered: WAVE-2026-04-30-79 remained a code-track owner-contract documentation lane with no implementation or cross-track execution.",
+    "3_diff_overrun": "Not triggered: the landed slice stayed inside the two declared S7 owner files with normal queue and run-log bookkeeping.",
+    "4_track_boundary": "Not triggered: no hardware execution, Home Assistant execution, schema change, gate movement, or product behavior change was needed to repair the owner wording.",
+    "5_run_length_cap": "Not triggered: the requested packet remains in progress with W80, the plan-only hardware-prep packet, and W81 still queued behind W79.",
+    "6_escalation_chain": "Stop-clean only: the gatekeeper required W79 to be ratified and logged before the serial-after overview wave could begin, but found no content blocker or escalation trigger inside W79 scope."
+  },
+  "decision": "continue",
+  "rationale": "The owner split is now recorded honestly in the S7 authority docs, and the next remaining contract task is the overview parity row that still lags that owner truth."
+}
+```
+
+---
 ## 2026-04-30 — WAVE-2026-04-30-78
 
 - Selected item: `WAVE-2026-04-30-78`

@@ -8,6 +8,19 @@
 
 Use this worksheet to capture the first Pack B bring-up session against the existing topology, pre-run, and G4 evidence-prep sections in the authoritative hardware runway. Keep entries at the level of operator notes and evidence placeholders only.
 
+## Operator evidence surface capture
+
+These rows mirror the read-only S7 operator evidence surface fields without asserting that any of them are already satisfied.
+
+| Field | Session capture |
+|-------|-----------------|
+| Device target | |
+| Firmware-spike milestone reached | |
+| Profile init status | |
+| HA entity registered (or named stand-in) | |
+| Consent flow visible | |
+| Power-cycle status | |
+
 ## Session header
 
 | Field | Capture |

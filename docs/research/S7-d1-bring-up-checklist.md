@@ -215,7 +215,7 @@ For planning the firmware spike on the chosen D1 device, the four technical mile
 
 ## Not in Scope for D1
 
-- `ferros-hub` binary (not yet built)
+- Additional `ferros-hub` construction work beyond the already-landed local binary and rehearsal path
 - Real HA bridge implementation (stand-in is acceptable for D1)
 - Multi-device operation (G4 requirement, not D1)
 - Unattended operation (G4 requirement, not D1)

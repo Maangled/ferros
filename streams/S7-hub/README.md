@@ -36,7 +36,7 @@ Current S7 work is still runway work. The stream can prepare hardware, deploymen
 - Use the Pack B `x86_64` lane as the first bring-up target unless real hardware availability forces a Pi-first pass, because it improves shell access, log capture, rollback, and restart debugging while staying launch-valid.
 - Keep the first Home Assistant lab topology separate from the device under test so later restart and deny-observability evidence can be attributed cleanly.
 - Keep pairing notes at the level of consumed S2 consumer-boundary assumptions plus the S3/S4 seams still missing before any authoritative pairing flow, durable hub runtime path, or Home Assistant proof is honest.
-- Keep the restart-aware and local onramp rehearsal packets bounded and honest: the `.tmp/hub` snapshot seam, the `.tmp/hub/local-onramp-proposal.json` proposal artifact, the `.tmp/hub/local-onramp-decision-receipt.json` decision artifact, restart-aware `summary | prove-bridge` outputs, additive optional `hubRestart`, `hubOnrampProposal`, and `hubOnrampDecisionReceipt` children on the existing read-only `/runway-summary(.json)` seam, display-only localhost shell render, same-origin acceptance proof, H1 validator coverage, and `cargo xtask hub-runway` are local runway context only, not consent-flow, hardware, Home Assistant, or G4 evidence.
+- Keep the restart-aware and local onramp rehearsal packets bounded and honest: S7 owns the emitted `.tmp/hub` snapshot seam, the emitted `.tmp/hub/local-onramp-proposal.json` and `.tmp/hub/local-onramp-decision-receipt.json` artifacts over the S6-owned proposal and decision models, and the restart-aware `summary | prove-bridge` outputs; S4 owns the existing read-only `/runway-summary(.json)` seam that additively carries optional `hubRestart`, `hubOnrampProposal`, and `hubOnrampDecisionReceipt` context; S5 owns the display-only localhost shell render and same-origin acceptance-harness proof on that seam; H1 validator coverage and `cargo xtask hub-runway` remain local checks; and S8 owns shared-truth indexing of that local runway context. This remains local runway context only, not consent-flow, hardware, Home Assistant, or G4 evidence.
 - Map each unchecked G4 evidence item to one upstream seam and one S7-owned proof point before any device-side G4 evidence or Home Assistant proof is proposed.
 
 ---
@@ -51,7 +51,7 @@ The operator-facing evidence surface for hub bring-up and status is read-only. I
 
 | Field | Source | Notes |
 |-------|--------|-------|
-| Device target | `docs/hub/d1-target-inventory.md` (planned) | Primary D1 target name and form factor |
+| Device target | `docs/hardware/d1-target-inventory.md` | Selected primary D1 target lane and form factor; exact device identifier may remain a required-before-execution placeholder |
 | Firmware-spike milestone reached | HARDWARE-QUEUE wave results | Which of the four milestones (boot / identify / accept-grant / report-state) has been reached |
 | Profile init status | `ferros profile init` on target device | Whether `ferros profile init` and `ferros profile show` have run successfully on the target |
 | HA entity registered (or named stand-in) | S7 bridge runway notes | Which entity or stand-in is registered; must be named if a stand-in is used |
@@ -96,10 +96,12 @@ HA entity discovery through the FERROS bridge is an onramp event under ADR-023 (
 
 ## Dependencies
 
-- **S4 (G3 must be green):** `ferros-runtime` must be stable before hub wraps it.
+- **S4 (G3 must be green):** `ferros-runtime` must be stable before hub wraps it, and S4 owns the read-only `/runway-summary(.json)` observation seam that carries S7-local runway context.
 - **S3 (G3 must be green):** Agent registry and spawn lifecycle must be functional.
 - **S2:** `ProfileId` and `CapabilityGrant` are stable consumer surfaces for runway planning, so S7 should consume them rather than redefine signing, approval, or issuance semantics.
-- **S6:** Harvest patterns may inform hub agent design later.
+- **S6:** Owns the local onramp proposal and decision models that S7 emits as local `.tmp/hub` rehearsal artifacts; S7 should consume those models rather than redefine them.
+- **S5:** Owns display-only localhost shell and harness observation of the read-only `/runway-summary(.json)` seam.
+- **S8:** Owns shared truth and indexing for cross-stream contract and runway summaries.
 
 ---
 

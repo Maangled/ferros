@@ -19,21 +19,6 @@ Optional fields (additive, do not break existing item order):
 
 ## Ready
 
-### HARDWARE-2026-04-27-01
-
-- Title: D1 device-target inventory
-- Status: ready
-- Priority: P1
-- Gate: pre-D1 device selection
-- Owning streams: S7 primary; S8 consumer awareness
-- Goal: Document the candidate demo devices the project has access to and pick a primary D1 target. For each candidate: note the form factor, OS/firmware baseline, display capability, and known bring-up effort. Identify which device is the primary D1 target and why. Record any known blockers or required tools. This is a docs-only research and selection wave; no firmware or code lands.
-- Anchor files: `docs/hardware/d1-target-inventory.md`
-- Validation: `get_errors` clean on `docs/hardware/d1-target-inventory.md`.
-- Constraints: Docs-only. Do not claim D1 evidence (D1 is being defined, not closed). Do not invent bridge protocol or HA fork internals.
-- Last update: 2026-04-27
-- size: S
-- track: hardware
-
 ### HARDWARE-2026-04-27-02
 
 - Title: First firmware-spike target plan for the chosen D1 device
@@ -50,38 +35,6 @@ Optional fields (additive, do not break existing item order):
 - serial-after: HARDWARE-2026-04-27-01
 - track: hardware
 
-### HARDWARE-2026-04-27-03
-
-- Title: First real-world UX session plan for D1
-- Status: ready
-- Priority: P1
-- Gate: pre-D1 UX planning
-- Owning streams: S7 primary; S5 consumer awareness
-- Goal: Define a 60-minute real-world UX session script for D1. The script must cover: (1) profile init via `ferros profile init` on the target device, (2) agent-center read via the localhost shell or CLI, (3) one HA entity registered through the planned bridge contract or documented stand-in, (4) one power cycle with confirmation that profile and agent state reload. Output is a session script the human can run verbatim; findings from the actual session get filed under `docs/hardware/findings/`. This wave produces the script only, not the findings.
-- Anchor files: `docs/hardware/ux-sessions/d1-session-01-script.md`
-- Validation: `get_errors` clean on the session script.
-- Constraints: Docs-only. Do not claim D1 or G4 evidence. Do not invent bridge protocol internals. `parallel-safe-with: [HARDWARE-2026-04-27-01]`.
-- Last update: 2026-04-27
-- size: S
-- parallel-safe-with: [HARDWARE-2026-04-27-01]
-- track: hardware
-
-### HARDWARE-2026-04-30-04
-
-- Title: Name the first Pack B bring-up session from the local handoff
-- Status: ready
-- Priority: P1
-- Gate: pre-D1 named DUT session prep
-- Owning streams: S7 primary; S8 consumer awareness
-- Goal: Turn the local code-runway handoff into a named first hardware session by choosing the Pack B x86_64 device under test, the separate Pack C Home Assistant host, the operator station, and the storage, network, and DUT-only power-cut arrangement that will be used later. Capture the worksheet header, topology confirmation, pre-run checks, and operator rehearsal prep in one plan note without claiming any physical-device evidence, Home Assistant proof, D1 closure, or G4 movement.
-- Anchor files: `docs/hardware/pack-b-session-01-plan.md`
-- Validation: `get_errors` clean on `docs/hardware/pack-b-session-01-plan.md`; the plan names the DUT, HA host, operator station, storage path, network note, and DUT-only power-cut method; wording stays prep-only and future-facing.
-- Constraints: Plan only. Do not execute hardware work in this wave. Preserve Pack B as the first DUT lane and Pack C as the separate HA host. Do not claim any physical-device evidence, HA dashboard proof, D1 closure, or G4 movement.
-- Last update: 2026-04-30
-- size: S
-- serial-after: HARDWARE-2026-04-27-03
-- track: hardware
-
 ### HARDWARE-2026-04-30-05
 
 - Title: First Pack B physical ferros-hub run with profile init/show
@@ -95,7 +48,7 @@ Optional fields (additive, do not break existing item order):
 - Constraints: Physical-device execution is expected in this future wave, but keep the claim ceiling at profile baseline only. Do not claim HA entity visibility, deny visibility, restart-safe state, full power-cycle survival, D1 closure, or G4 movement. Run this lane only after the named session plan exists.
 - Last update: 2026-04-30
 - size: L
-- serial-after: HARDWARE-2026-04-30-04
+- serial-after: HARDWARE-2026-04-30-04D
 - solo: true
 - track: hardware
 
@@ -149,4 +102,113 @@ None.
 
 ## Done
 
-None yet. Hardware queue established in WAVE-2026-04-27-03.
+### HARDWARE-2026-04-27-01
+
+- Title: D1 device-target inventory
+- Status: done
+- Priority: P1
+- Gate: pre-D1 device selection
+- Owning streams: S7 primary; S8 consumer awareness
+- Goal: Document the candidate demo devices the project has access to and pick a primary D1 target. For each candidate: note the form factor, OS/firmware baseline, display capability, and known bring-up effort. Identify which device is the primary D1 target and why. Record any known blockers or required tools. This is a docs-only research and selection wave; no firmware or code lands.
+- Anchor files: `docs/hardware/d1-target-inventory.md`
+- Validation: `get_errors` clean on `docs/hardware/d1-target-inventory.md`.
+- Constraints: Docs-only. Do not claim D1 evidence (D1 is being defined, not closed). Do not invent bridge protocol or HA fork internals.
+- Last update: 2026-04-30
+- size: S
+- track: hardware
+
+### HARDWARE-2026-04-27-03
+
+- Title: First real-world UX session plan for D1
+- Status: done
+- Priority: P1
+- Gate: pre-D1 UX planning
+- Owning streams: S7 primary; S5 consumer awareness
+- Goal: Define a 60-minute real-world UX session script for D1. The script must cover: (1) profile init via `ferros profile init` on the target device, (2) agent-center read via the localhost shell or CLI, (3) one HA entity registered through the planned bridge contract or documented stand-in, (4) one power cycle with confirmation that profile and agent state reload. Output is a session script the human can run verbatim; findings from the actual session get filed under `docs/hardware/findings/`. This wave produces the script only, not the findings.
+- Anchor files: `docs/hardware/ux-sessions/d1-session-01-script.md`
+- Validation: `get_errors` clean on the session script.
+- Constraints: Docs-only. Do not claim D1 or G4 evidence. Do not invent bridge protocol internals. `parallel-safe-with: [HARDWARE-2026-04-27-01]`.
+- Last update: 2026-04-30
+- size: S
+- parallel-safe-with: [HARDWARE-2026-04-27-01]
+- track: hardware
+
+### HARDWARE-2026-04-30-04
+
+- Title: Name the first Pack B bring-up session from the local handoff
+- Status: done
+- Priority: P1
+- Gate: pre-D1 named DUT session prep
+- Owning streams: S7 primary; S8 consumer awareness
+- Goal: Turn the local code-runway handoff into a named first hardware session by choosing the Pack B x86_64 device under test, the separate Pack C Home Assistant host, the operator station, and the storage, network, and DUT-only power-cut arrangement that will be used later. Capture the worksheet header, topology confirmation, pre-run checks, and operator rehearsal prep in one plan note without claiming any physical-device evidence, Home Assistant proof, D1 closure, or G4 movement.
+- Anchor files: `docs/hardware/pack-b-session-01-plan.md`
+- Validation: `get_errors` clean on `docs/hardware/pack-b-session-01-plan.md`; the plan names the DUT, HA host, operator station, storage path, network note, and DUT-only power-cut method or clearly marks each one as a required-before-execution placeholder; wording stays prep-only and future-facing.
+- Constraints: Plan only. Do not execute hardware work in this wave. Preserve Pack B as the first DUT lane and Pack C as the separate HA host. Do not claim any physical-device evidence, HA dashboard proof, D1 closure, or G4 movement.
+- Last update: 2026-04-30
+- size: S
+- serial-after: HARDWARE-2026-04-27-03
+- track: hardware
+
+### HARDWARE-2026-04-30-04A
+
+- Title: Pack B command and artifact rehearsal map
+- Status: done
+- Priority: P1
+- Gate: pre-D1 Pack B command rehearsal prep
+- Owning streams: S7 primary; S8 consumer awareness
+- Goal: Add a plan-only command and artifact rehearsal map for the future Pack B session that ties the existing local-code-runway commands, profile init and show references, and expected `.tmp/hub` artifact names to future DUT-side operator steps without claiming that any physical session has occurred.
+- Anchor files: `docs/hardware/pack-b-session-01-command-map.md`
+- Validation: `get_errors` clean on `docs/hardware/pack-b-session-01-command-map.md`; wording stays future-facing and operator-run only
+- Constraints: Plan only. Run only after `HARDWARE-2026-04-30-04`. Do not record observed results, timestamps, screenshots, or evidence. Do not claim physical-device evidence, Home Assistant proof, D1 closure, or G4 movement.
+- Last update: 2026-04-30
+- size: S
+- serial-after: HARDWARE-2026-04-30-04
+- track: hardware
+
+### HARDWARE-2026-04-30-04B
+
+- Title: Pack B findings template
+- Status: done
+- Priority: P1
+- Gate: pre-D1 Pack B baseline template prep
+- Owning streams: S7 primary; S8 consumer awareness
+- Goal: Create a blank findings template for the first future Pack B physical baseline wave so the eventual operator session can record DUT name, operator, command transcript, profile init and show results, local artifact references, failure notes, and the claim ceiling without inventing any physical result in advance.
+- Anchor files: `docs/hardware/findings/FINDINGS-pack-b-session-01-profile-baseline.md`
+- Validation: `get_errors` clean on `docs/hardware/findings/FINDINGS-pack-b-session-01-profile-baseline.md`; the template is explicitly blank and non-evidentiary until a real session fills it
+- Constraints: Template only. Run only after `HARDWARE-2026-04-30-04A`. Do not insert any physical result, transcript, timestamp, operator identity, or evidence claim. Do not claim D1 closure, G4 movement, or Home Assistant proof.
+- Last update: 2026-04-30
+- size: S
+- serial-after: HARDWARE-2026-04-30-04A
+- track: hardware
+
+### HARDWARE-2026-04-30-04C
+
+- Title: Pack B handoff mirror template
+- Status: done
+- Priority: P1
+- Gate: pre-D1 Pack B handoff mirror template prep
+- Owning streams: S7 primary; S8 consumer awareness
+- Goal: Create a blank findings template for the future DUT-side handoff mirror wave so the eventual operator session can record bridge artifact or stand-in output, proposal and decision fields, shell or log observation, deny visibility, reboot observation, and remaining gaps while clearly distinguishing clean reboot observation from full power-cycle survival.
+- Anchor files: `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`
+- Validation: `get_errors` clean on `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`; the template stays blank, future-facing, and explicit about clean reboot versus full power-cycle survival
+- Constraints: Template only. Run only after `HARDWARE-2026-04-30-04B`. Do not insert any HA result, physical evidence, or executed consent claim. Do not claim D1 closure, G4 movement, or full power-cycle proof.
+- Last update: 2026-04-30
+- size: S
+- serial-after: HARDWARE-2026-04-30-04B
+- track: hardware
+
+### HARDWARE-2026-04-30-04D
+
+- Title: Pack C HA visibility template
+- Status: done
+- Priority: P1
+- Gate: pre-G4 Pack C visibility template prep
+- Owning streams: S7 primary; S8 consumer awareness
+- Goal: Create a blank future Pack C Home Assistant visibility findings template that stays separate from the Pack B local rehearsal surfaces and can later capture the named Pack B DUT, named Pack C HA host, entity or dashboard reference, recovery observation, and claim ceiling without asserting any real HA proof in advance.
+- Anchor files: `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`
+- Validation: `get_errors` clean on `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`; the template stays blank and explicitly non-evidentiary until a real session fills it
+- Constraints: Template only. Run only after `HARDWARE-2026-04-30-04C`. Keep Pack C visibility separate from Pack B local rehearsal. Do not claim real Home Assistant proof, physical-device evidence, D1 closure, G4 movement, or independent install evidence.
+- Last update: 2026-04-30
+- size: S
+- serial-after: HARDWARE-2026-04-30-04C
+- track: hardware
