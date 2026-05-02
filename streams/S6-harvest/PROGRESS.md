@@ -4,6 +4,13 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-05-02 - Final archive sweep closure pass and edge-case coverage
+
+- Added the final archive sweep note at `docs/research/S6-legacy-archive-sweep-2026-05.md` to capture high-confidence archive posture across legacy folders.
+- Captured `tunes-bot-js` as reference-only prior art: keep cross-service reconciliation as a future concept, no major ADR required.
+- Recorded `home-browser` as an empty legacy folder removed from `/home/homelab001/apps`, while preserving "home browser" as future FERROS product-language guidance.
+- Confirmed that Home Assistant remains operationally live and therefore outside blind archive actions.
+
 ## 2026-04-30 - Shared local-runway guardrail layer and H1 proposal parity landed
 
 - Extended `crates/ferros-data/src/lib.rs` so `ferros-data` now owns reusable local-runway wording, scope, evidence, and `.tmp/hub` path guardrails for downstream local hub and node surfaces.

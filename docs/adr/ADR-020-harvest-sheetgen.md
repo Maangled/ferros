@@ -62,10 +62,13 @@ The strongest lesson from sheetgen-rust is not any single utility type. It is th
 - Versioned JSONB snapshot or read-model pattern with indexed latest-version retrieval.
 - Dual validation for polymorphic parents: authoritative database `CHECK` constraint plus application-side pre-validation for better error messages.
 - A shared `revision_base` concept for versioned entities, including identity, lineage, and timestamps.
+- Ordered multi-level composition hierarchies when the domain genuinely has layered authored surfaces, for example `workspace -> project -> sheet -> titleblock -> viewport -> view -> drawing -> annotation`.
+- Child-owned visibility and cropping semantics derived from explicit parentage rather than inferred from loose application state.
+- Exact-one-parent polymorphism enforced in DDL with `CHECK` constraints and partial indexes when one logical entity may attach to several parent kinds but must belong to only one at a time.
 
 ### Adapt
 
-- Z-ordering invariants into a reusable `ferros-data` ordering primitive, but replace random collision retries with a gap-based or sequence-backed strategy.
+- Z-ordering invariants into a reusable `ferros-data` ordering primitive, using sheetgen-rust's per-parent unique indexes and type-banded ordering as strong prior art while still allowing FERROS to choose a simpler owned allocator.
 - Command registry and contract-generation ideas into S8 tooling, but use dedicated tooling or `xtask` flows instead of startup-time source rewrites.
 - Redis JSON cache and invalidation patterns behind FERROS-owned abstractions.
 - Blob-storage pathing and placeholder-then-replace upload workflows behind a `BlobStorage` trait.
@@ -84,6 +87,7 @@ The strongest lesson from sheetgen-rust is not any single utility type. It is th
 - Runtime writes to committed contract files such as `definitions.yaml`.
 - Premature stringification of timestamps or enums in storage models.
 - Any approach that leaves three independently maintained schema sources in play.
+- Flattened or JSON-only hierarchy models that hide parent-child invariants from the database when the domain actually needs enforceable nesting rules.
 
 ---
 

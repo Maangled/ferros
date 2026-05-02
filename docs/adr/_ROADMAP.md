@@ -17,6 +17,8 @@ This note records the ADR backlog state after the BATCH-2026-04-27-C reconciliat
 - **ADR-022** — Decision program governance. Accepted. Establishes ADR evidence tiers and the research-note lane.
 - **ADR-023** — Onramp policy. Accepted. Defines how discovered HA entities route through the S5 consent surface before becoming canonical FERROS state.
 - **ADR-024** — Ledger / value-transfer posture. **Proposed only.** Pending counsel red-line and ratification. Do not promote.
+- **ADR-027** — Service parity broker and assurance tiers. **Proposed.** Extends ADR-023 with reversible provider association and transaction-scoped trust requirements for high-impact actions.
+- **RN-2026-05** — Voting and decision models. Active research note preserving `workpace-rust` vote taxonomy and tally patterns without promoting voting into the ADR lane yet.
 
 ### Open backlog items (not yet an ADR)
 
@@ -69,7 +71,7 @@ This note records the ADR backlog state after the BATCH-2026-04-27-C reconciliat
 
 ## Research-Heavy Topics That Should Stay Out of the ADR Lane Until Evidence Improves
 
-- Voting and governance mechanism choice
+- Voting and governance mechanism choice — active in [RN-2026-05-voting-decision-models.md](./_RESEARCH-NOTES/RN-2026-05-voting-decision-models.md); do not promote until FERROS has a concrete decision surface and evidence beyond prior art
 - Treasury or asset tokenization design
 - Post-quantum migration posture beyond high-level threat awareness
 - Biomedical, education, robotics, or other vertical-domain application commitments

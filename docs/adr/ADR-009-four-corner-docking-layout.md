@@ -94,6 +94,24 @@ Each page chooses its visual mode:
 
 Both modes use the same 8-zone model; only the visual treatment differs.
 
+### Context Switching and Responsive Variants
+
+Some FERROS pages need to switch logical contexts (room, floor, project, board state) while
+preserving dock ownership and user muscle memory. The accepted pattern is to keep the
+docking contract stable while swapping the viewport payload and any context-specific inspector
+content.
+
+- Use the **top edge** for persistent context chrome when needed: chips, tabs, breadcrumbs,
+  or a selector that stays visible while the main surface changes.
+- One edge rail may remain independently scrollable for dense controls or status while the
+  viewport stays fixed.
+- Context switches must not reassign panel home corners. Bag, Tools, Inspector, and Assistant
+  surfaces keep their origin even when their content changes.
+- On narrow touch surfaces, pages may compress top-edge chrome and stack edge content, but
+  corner identities and collapse targets remain stable.
+- Pages that introduce context switching should document what persists across a context change
+  (selection, camera, draft state, filters) versus what intentionally resets.
+
 ---
 
 ## Consequences

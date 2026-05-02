@@ -22,6 +22,8 @@ For each source repository, decide per module or subsystem: **adopt / adapt / re
 | `Maangled/workpace-rust` | S5 Phase B web shell | Workspace/session model; UX shell patterns |
 | `Maangled/sheetgen-rust` | `ferros-data` crate | Data/sheet generation primitives; schema discipline |
 | `Maangled/home-assistant` | S7 reference only | Integration semantics, entity model, and operational patterns; not direct code lift |
+| `tunes-bot-js` | Reference only | Cross-service link reconciliation pattern; no direct architecture lift |
+| `home-browser` | Product-language reference | Empty legacy folder removed; retain "home browser" framing as future end-user narrative |
 
 ## External Prior-Art Policy
 
