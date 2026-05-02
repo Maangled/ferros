@@ -172,3 +172,12 @@ stream needs it:
 - [ADR-019](../adr/ADR-019-harvest-workpace.md)
 - [ADR-020](../adr/ADR-020-harvest-sheetgen.md)
 - [RN-2026-05-voting-decision-models.md](../adr/_RESEARCH-NOTES/RN-2026-05-voting-decision-models.md)
+- [ARCHIVE-MANIFEST-2026-05-02.md](./ARCHIVE-MANIFEST-2026-05-02.md)
+
+## Archive Execution Note
+
+On 2026-05-02, the retirement-target folders were moved from `/home/homelab001/apps` to:
+
+`/home/homelab001/apps/_archive/2026-05-02-ferros-consolidation`
+
+`home-assistant` and `ferros` were intentionally retained in place.
