@@ -1,9 +1,15 @@
-# RN-2026-05 ADR-025 Guardrail Scoreboard (Draft)
+# RN-2026-05 ADR-025 Guardrail Scoreboard
 
-Status: Draft
+Status: Ready for ADR
 Scope: Research-only
 Authority: ADR-022
-Constraint: ADR-025 remains Proposed and non-binding.
+Constraint: ADR-025 acceptance is framework-level only; family-level proof remains separate.
+
+## Disposition Summary
+- Date resolved: 2026-05-03
+- ADR-025 disposition: Accepted as a framework-level architecture and governance record
+- S9 disposition: accepted as a provisional service lane inside the framework, not as a permanent always-running service
+- Remaining non-claims: no D1 movement, no G4 movement, no Home Assistant proof, no physical-device evidence, no FERROS-native OS proof
 
 ## Check 1. Lane Sufficiency
 Question:
@@ -22,16 +28,16 @@ Risks:
 - Lane overlap can blur gate claims.
 
 Recommendation:
-- Pending
+- Adjust.
 
 ADR text impact:
-- Pending
+- Add family-specific lane profiles with required, optional, federated, and deferred lane states.
 
 D1/G4 claim impact:
 - No direct gate movement; structure-only.
 
 Unresolved evidence:
-- Needs concrete lane ownership examples per board family.
+- No framework-level blocker remains. Family-level operational proof is still required before any board-level claim upgrade.
 
 ## Check 2. S9 Necessity
 Question:
@@ -49,16 +55,16 @@ Risks:
 - Duplicate governance loops and unclear stop conditions.
 
 Recommendation:
-- Pending
+- Adjust.
 
 ADR text impact:
-- Pending
+- Keep `S9` provisional and require lane-aware reload or reroute outputs tied to completed findings.
 
 D1/G4 claim impact:
 - No direct gate movement.
 
 Unresolved evidence:
-- Need operational examples showing S9 adds non-redundant value.
+- No framework-level blocker remains. Additional operational repetition is future implementation proof, not an ADR blocker.
 
 ## Check 3. Fastest/FERROS Separation
 Question:
@@ -76,16 +82,16 @@ Risks:
 - Premature binding of FERROS-root authority.
 
 Recommendation:
-- Pending
+- Accept with enforcement language.
 
 ADR text impact:
-- Pending
+- Strengthen non-claim language so Fastest findings do not imply FERROS-root proof or gate movement.
 
 D1/G4 claim impact:
 - No direct gate movement.
 
 Unresolved evidence:
-- Need proof that handoff artifacts are enough to prevent claim leakage.
+- No framework-level blocker remains. Family-level evidence and handoff practice still require later operational proof.
 
 ## Check 4. Embedded-Device Compression
 Question:
@@ -103,16 +109,16 @@ Risks:
 - Over-scaffolding and stalled execution.
 
 Recommendation:
-- Pending
+- Adjust.
 
 ADR text impact:
-- Pending
+- Add compressed-lane rules for constrained targets and treat ESP32 as a compressed peripheral family.
 
 D1/G4 claim impact:
 - No direct gate movement.
 
 Unresolved evidence:
-- Need explicit ESP32 lane-shape proposal and tradeoffs.
+- No framework-level blocker remains. Per-family implementation proof remains future work.
 
 ## Check 5. Server-Control-Plane
 Question:
@@ -130,16 +136,16 @@ Risks:
 - Control-plane overreach can misstate hardware evidence.
 
 Recommendation:
-- Pending
+- Accept with caveats.
 
 ADR text impact:
-- Pending
+- Permit `x86_64/Fastest` control-plane summaries only with named source attribution and copied claim ceilings.
 
 D1/G4 claim impact:
 - No direct gate movement.
 
 Unresolved evidence:
-- Need one complete evidence routing example from DUT to control-plane ledger.
+- No framework-level blocker remains. Multi-board operational routing proof remains future implementation evidence.
 
 ## Check 6. Claim-Boundary
 Question:
@@ -158,16 +164,16 @@ Risks:
 - Language drift can imply D1/G4 closure without evidence.
 
 Recommendation:
-- Pending
+- Adjust.
 
 ADR text impact:
-- Pending
+- Add findings, doc-batches, and run-log claim-boundary checklists so aggregation cannot silently widen claims.
 
 D1/G4 claim impact:
 - Must remain no movement until evidence exists.
 
 Unresolved evidence:
-- Need red-team wording tests tied to run-log and findings outputs.
+- Wording discipline remains manual until tooling exists, but that is not a blocker to framework acceptance.
 
 ## Check 7. Agent-Permission
 Question:
@@ -185,19 +191,19 @@ Risks:
 - Unenforced write boundaries can create conflicting truth surfaces.
 
 Recommendation:
-- Pending
+- Adjust.
 
 ADR text impact:
-- Pending
+- Add governance-level read-wide/write-narrow and serial truth-sync rules for lane packets.
 
 D1/G4 claim impact:
 - No direct gate movement.
 
 Unresolved evidence:
-- Need enforcement mechanism definition (policy, tooling, or CI gate).
+- Policy definition now exists. Tooling or CI enforcement remains future hardening work.
 
 ## Research Disclaimer
-This scoreboard is research-only and does not change ADR status, gate status, or hardware evidence claims.
+This scoreboard remains a research summary and does not itself move any gate or create hardware evidence. It records the completed guardrail dispositions that supported ADR-025 acceptance.
 
 ## HANDOFF CARD
 - Lane ID: B1
@@ -209,4 +215,4 @@ This scoreboard is research-only and does not change ADR status, gate status, or
 - Claims explicitly not added: ADR-025 promotion, gate movement, binding architecture
 - Validation: template completeness review for checks 1-7
 - Residual risks: recommendations remain pending until batch notes are completed
-- Next safe follow-up, if any: complete draft recommendations in batch1 and batch2 notes
+- Next safe follow-up, if any: use the accepted framework to guide real hardware-family execution without widening the existing non-claims

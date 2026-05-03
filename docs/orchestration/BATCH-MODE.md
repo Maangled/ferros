@@ -74,6 +74,8 @@ Any one of the following fires. Conditions 1, 2, 3, 4, and 6 are **hard stops**.
 2. **Wave tag:** the just-finished wave or the next Ready wave is tagged `priority: P0`, `gate-close`, `solo: true`, or touches a frozen schema.
 3. **Diff overrun:** the landing diff touched files outside the wave's declared `anchor files` set, subject to the operational bookkeeping exemption below.
 
+  Shared-truth overlap is treated as a special case of diff overrun. If more than one internal lane writes the same shared-truth surface, or if a non-truth-sync lane mutates queue, run-log, doc-batch, gate, or other cross-stream truth surfaces outside its declared slice, stop condition 3 should fire unless the touch is covered by the bookkeeping exemption.
+
    #### Operational bookkeeping exemption
 
    The following surfaces are exempt from stop condition 3. Every wave touches them as part of the wave-completion contract, not as uncontrolled scope expansion. Overrun does not fire for changes to:
@@ -96,6 +98,7 @@ The following reviewer-sensitive cases already map to the stop rules above and s
 
 - **Gate movement, hardware-proof wording, Home Assistant proof wording, privilege-boundary expansion, or remote-transport introduction** must be queued as `gate-close` or `solo: true`, so they stay Interactive-only and fire stop condition 2 if they appear in or adjacent to a batch.
 - **Two lanes needing the same file** are not parallel-safe. The lane validator should collapse or serialize them before launch. If overlap is discovered only after landing, treat it as diff overrun under stop condition 3 unless it falls under the bookkeeping exemption.
+- **Truth-sync writes inside a multi-lane wave** should be emitted by one serial reconciliation lane after implementation and harness lanes land. If shared-truth mutation happens in parallel across multiple lanes, treat it as diff overrun under stop condition 3 unless the touched surface is exempt bookkeeping and still clearly serialized in practice.
 - **A required harness or targeted validation failing twice inside the same wave** is not a cue for open-ended retries. Route it through the normal validator -> Log Triage -> Trace Analyst chain; if unresolved, stop condition 6 fires.
 - **`STATUS.md` edits that require interpretation instead of factual sync** belong to a solo truth-sync wave, not a continuing batch segment.
 

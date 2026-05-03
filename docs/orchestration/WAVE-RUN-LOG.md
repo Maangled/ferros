@@ -3,6 +3,50 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## BATCH-2026-05-03-ADR025-ACCEPTANCE-01 — System-Track Queue Run
+
+- **Batch open:** 2026-05-03
+- **Track:** system
+- **Waves in batch (declared order):** SYSTEM-2026-05-03-08, SYSTEM-2026-05-03-09, SYSTEM-2026-05-03-10, SYSTEM-2026-05-03-11, SYSTEM-2026-05-03-12
+- **Gatekeeper model:** inline self-review under the current `LOCAL-DRIVER.md` gatekeeper posture; the two `solo: true` waves were executed as isolated slices inside this same user-directed serial run.
+- **Authority lock:** current S1-S8 stream, gate, and queue stack remained authoritative throughout; ADR-025 moved from Proposed to Accepted only at the framework level and kept all family-level non-claims intact.
+- **Result:** Stop-clean. The queued approval path landed cleanly: family lane profiles, evidence-routing rules, one live S9 packet example, lane-packet enforcement guidance, and the final ADR disposition are all now in repo. ADR-025 is accepted as the framework-level dual-root runway model, `S9` remains provisional inside that model, and the system queue is empty again.
+- **Files:**
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-family-lane-profiles.md`
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-evidence-routing-and-claim-boundary.md`
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-s9-live-packet-example.md`
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-lane-packet-enforcement.md`
+  - `docs/adr/ADR-025-dual-root-hardware-runway.md`
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-guardrail-scoreboard.md`
+  - `docs/adr/_INDEX.md`
+  - `docs/orchestration/LOCAL-DRIVER.md`
+  - `docs/orchestration/BATCH-MODE.md`
+  - `docs/orchestration/SYSTEM-QUEUE.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-ADR025-ACCEPTANCE-01.md`
+- **Validation:** `get_errors` is clean on the four new research notes, `docs/adr/ADR-025-dual-root-hardware-runway.md`, `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-guardrail-scoreboard.md`, `docs/adr/_INDEX.md`, `docs/orchestration/LOCAL-DRIVER.md`, `docs/orchestration/BATCH-MODE.md`, and `docs/orchestration/SYSTEM-QUEUE.md`.
+- **Claims added:** ADR-025 is now accepted as a framework-level architecture and governance record; family-specific lane profiles and compressed-lane rules now exist; `x86_64/Fastest` now has a source-attributed control-plane witness pattern; `S9` now has one live non-redundant routing example; and lane-packet enforcement now exists as active orchestration policy.
+- **Claims explicitly not added:** no D1 closure, no G4 closure, no Home Assistant proof, no physical-device evidence, no FERROS-native OS proof for any family, no requirement to instantiate the proposed hardware-root directory tree immediately, and no background-autonomy or always-running S9 claim.
+- **Blocked lanes:** none. No non-acceptance blocker remained once framework-level acceptance was separated from family-level operational proof.
+- **Next follow-up:** no Ready items remain in `docs/orchestration/SYSTEM-QUEUE.md`.
+
+```json
+{
+  "wave_id": "BATCH-2026-05-03-ADR025-ACCEPTANCE-01",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: touched-doc diagnostics are clean on the four new research notes, the ADR disposition surfaces, the authority-doc patch, and the queue bookkeeping surface.",
+    "2_wave_tag": "Not triggered as a halt: the two solo-tagged waves were executed as isolated slices inside this same user-directed serial run, with no overlapping work across them.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside the declared research-note, ADR, authority-doc, and normal bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: the entire run stayed inside system-track work.",
+    "5_run_length_cap": "Satisfied by declared scope rather than ceiling: 5 of 8 possible waves landed and the system queue is now empty.",
+    "6_escalation_chain": "Not triggered: no validator-to-triage-to-trace escalation was needed."
+  },
+  "decision": "stop-clean",
+  "rationale": "The queued ADR-025 approval path landed cleanly, resolved all seven framework-level guardrail questions, and accepted ADR-025 without widening any hardware, gate, or Home Assistant claims beyond the evidence actually in repo."
+}
+```
+
+---
 ## BATCH-2026-05-03-ADR025-X86-OVERLAY-01 — System-Track Batch Mode Run
 
 - **Batch open:** 2026-05-03

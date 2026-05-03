@@ -1,15 +1,15 @@
 # ADR-025 — Dual-root hardware runway and ignition-lane architecture
 
-**Status:** Proposed  
+**Status:** Accepted  
 **Date:** 2026-04-29  
 **Stream:** Cross-cutting / S1 / S4 / S7 / S8  
 **Deciders:** Maangled  
 **Domain tags:** architecture / hardware / runtime / governance / orchestration / research / launch  
-**Primary evidence basis:** Research or precedent proof, with operational proof required before Accepted
+**Primary evidence basis:** Research or precedent proof, with family-level operational proof still required before any hardware, Home Assistant, D1, G4, or FERROS-native runtime claim
 
 _See [ADR-022-decision-program-governance.md](./ADR-022-decision-program-governance.md), [_INDEX.md](./_INDEX.md), and [../../DOCTRINE.md](../../DOCTRINE.md). Cross-reference ADR-023 (onramp policy) for the consent-invariant that any hardware-bridge path must satisfy, and ADR-024 (ledger substrate) for the non-chain signed-ledger posture that hardware evidence records must respect._
 
-> **Note:** This ADR documents a proposed architecture, not a binding commitment. S9 (Ignition lane) is provisional. Implementation work on hardware roots should be scoped to research notes and planning documents until the research guardrail checks listed below are satisfied and this ADR reaches Accepted status through the process defined in ADR-022.
+> **Note:** This ADR is Accepted as a framework-level architecture and governance record. `S9` (Ignition lane) remains provisional inside the accepted framework. Acceptance authorizes the dual-root vocabulary, family-specific lane profiles, source-attributed control-plane summaries, and governance-layer read-wide/write-narrow orchestration rules. It does **not** authorize D1, G4, Home Assistant proof, physical-device evidence, or FERROS-native OS claims for any hardware family.
 
 ---
 
@@ -30,7 +30,7 @@ The existing S1–S8 stream system is already useful as a hardware runway map:
 - **S7** — hub, Home Assistant, physical-device bridge, real-world evidence
 - **S8** — docs, governance, claims, findings, truth-sync
 
-A ninth lane is now proposed as a recursive "ignition" lane. S9 is not a replacement for S1–S8. It is the lane that reloads, rehydrates, and retargets the other lanes after a product path or FERROS-native path learns something important.
+A ninth lane is now accepted as a provisional recursive "ignition" lane. S9 is not a replacement for S1–S8. It is the lane that reloads, rehydrates, and retargets the other lanes after a product path or FERROS-native path learns something important.
 
 ---
 
@@ -160,7 +160,9 @@ This lets FERROS work backward from observed product behavior into operating-sys
 
 ## S9 Ignition lane
 
-S9 is a proposed service lane, not a normal feature lane.
+S9 is an accepted provisional service lane, not a normal feature lane.
+
+It remains provisional even though ADR-025 is now Accepted. Its role is accepted as lane-aware reload or reroute proposal work; its permanence as a long-term lane remains subject to future operational experience.
 
 S9 exists to answer:
 
@@ -247,9 +249,9 @@ Pi 4B FERROS = immediate native boot/runtime tinkering path
 
 ## Research guardrail
 
-The S9 lane and the bidirectional runway model are **Proposed**, not fully frozen.
+The framework-level research guardrails for ADR-025 are now complete.
 
-Before this ADR is promoted to Accepted, the project must produce research notes or equivalent plan documents that check whether the model should use:
+The project needed research notes or equivalent plan documents to check whether the model should use:
 
 * exactly S1–S8 plus S9,
 * fewer lanes for constrained devices,
@@ -269,7 +271,34 @@ Required research checks:
 6. **Claim-boundary check** — Does the model prevent accidental G4, Home Assistant, physical-device, or FERROS-native OS overclaims?
 7. **Agent-permission check** — Can agents safely read across roots while writing only to assigned roots/lanes?
 
-Until those checks are complete, S9 is a proposed service lane and must be marked as provisional in hardware-root docs.
+Disposition of the required checks:
+
+1. **Lane sufficiency check** — complete; resolved by family-specific lane profiles and compression rules.
+2. **S9 necessity check** — complete; resolved by the provisional service-packet note plus one live S9 packet example tied to a completed finding.
+3. **Fastest/FERROS separation check** — complete; accepted with stronger non-claim language so Fastest findings do not imply FERROS-native proof.
+4. **Embedded-device compression check** — complete; constrained targets use explicit compressed or federated lane profiles rather than a fake one-size-fits-all lane map.
+5. **Server-control-plane check** — complete with caveats; `x86_64/Fastest` may aggregate findings only as a witness with named source attribution and copied claim ceilings.
+6. **Claim-boundary check** — complete; findings, doc-batches, and run-log surfaces must preserve explicit non-claim ledgers.
+7. **Agent-permission check** — complete at the governance level; read-wide/write-narrow is accepted as orchestration policy, not runtime enforcement.
+
+The framework is therefore accepted, while family-level operational proof remains separate future implementation evidence.
+
+## Accepted Scope And Non-Claims
+
+Accepted now:
+- dual-root `Fastest`/`FERROS` vocabulary per hardware family
+- family-specific lane profiles, including compressed and federated lane shapes
+- `x86_64/Fastest` control-plane witness role for source-attributed findings
+- `S9` as a provisional service lane for lane-aware reload or reroute proposals
+- governance-level read-wide/write-narrow rules plus serial truth-sync discipline
+
+Not accepted by this ADR status change:
+- any D1 or G4 movement
+- any Home Assistant proof claim
+- any physical-device evidence claim
+- any FERROS-native OS claim for x86_64, Pi, Jetson, or ESP32
+- any requirement to instantiate the proposed hardware-root directory tree immediately
+- any background-autonomy or always-running S9 claim
 
 ---
 
@@ -312,6 +341,10 @@ write: docs/hardware/roots/x86_64/fastest/S4-runtime.md only
 ```
 
 Agents may synchronize construction by reading across roots, but may not write outside their assigned root/lane.
+
+Current enforcement note:
+- this permission model is accepted today as an orchestration and review rule documented in `LOCAL-DRIVER.md` and `BATCH-MODE.md`
+- it is not yet a runtime permission engine or CI-enforced policy gate
 
 ---
 

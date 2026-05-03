@@ -57,7 +57,7 @@ For program rules, see [ADR-022-decision-program-governance.md](./ADR-022-decisi
 | [ADR-007](./ADR-007-single-file-system.md) | Single file system | Long-horizon cards-and-decks execution worldview |
 | [ADR-008](./ADR-008-modular-rendering-system.md) | Modular rendering system | Shared surface primitives and rendering composition |
 | [ADR-014](./ADR-014-three-layer-decomposition.md) | Three-layer decomposition | Domain, surface, and storage/runtime separation |
-| [ADR-025](./ADR-025-dual-root-hardware-runway.md) | Dual-root hardware runway and ignition-lane architecture | Defines the Fastest/FERROS dual-root model per hardware family, S1–S8 hardware lanes, and provisional S9 Ignition lane for recursive reload/handoff |
+| [ADR-025](./ADR-025-dual-root-hardware-runway.md) | Dual-root hardware runway and ignition-lane architecture | Accepted framework for Fastest/FERROS dual-root organization, family-specific lane profiles, and a provisional S9 Ignition lane bounded by explicit non-claims |
 
 ---
 

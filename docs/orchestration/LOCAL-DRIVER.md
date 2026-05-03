@@ -41,6 +41,8 @@ The default execution posture is not single-lane unless the work truly demands i
 	- **Truth-sync lane** — shared-truth surfaces such as `STATUS.md`, gate docs, queue files, and cross-stream progress reconciliation.
 - Prefer to parallelize implementation lanes and non-overlapping harness lanes first, allow docs-owner lanes only when their anchors stay stream-local, and serialize truth-sync lanes after implementation lands.
 - Shared truth surfaces such as `STATUS.md`, gate docs, contracts overview, queue files, CI files, and root workspace manifests should usually be reconciled **after** the implementation lanes land, not edited concurrently by multiple lanes.
+- When a wave fans out into multiple internal lane packets, shared-truth surfaces should have one declared write-owning lane inside that wave. Other lanes may read the same surfaces for context, but should not mutate them unless the mutation is the declared slice.
+- The safe default order is implementation first, targeted validation second, then one serial truth-sync pass for queue, run-log, doc-batch, or other shared-truth reconciliation.
 - When a gate closes or an achievement is verified, the next foundational push should repack the full lane budget against the next highest-leverage safe slice.
 
 ## Two-speed execution posture
@@ -112,6 +114,7 @@ Until that migration, the inline self-review posture is acceptable for `size: S`
 - Keep wave items small enough that one orchestration pass can reasonably finish or sharpen them.
 - Use the queue to encode priority, gate impact, anchor files, and validation before launching work.
 - Optional queue metadata fields (`size`, `parallel-safe-with`, `serial-after`, `solo`, `track`) are additive. Use them to enable Batch Mode scheduling and to express ordering dependencies. See `docs/orchestration/BATCH-MODE.md` for how Batch Mode uses these fields.
+- Internal lane plans may add their own declared shared-truth owner list for review purposes, but that declaration is currently an orchestration rule rather than a queue-schema feature.
 - If a wave is likely to need recursive planning, express that in the queued goal, constraints, or validation rather than adding new queue-only metadata.
 - If a wave is partially complete, move it back to `Ready` with a narrower next step instead of leaving vague notes in chat history.
 - A single queued wave may still fan out into multiple stream-owned lanes internally when the orchestrator can prove the lanes are non-overlapping.
