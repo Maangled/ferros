@@ -41,7 +41,7 @@ Source: docs/hardware/pack-b-session-01-plan.md
 Source: docs/hardware/pack-b-session-01-command-map.md
 - [x] DUT repo path placeholder in command prefixes
 - [x] Pack B DUT name placeholders in profile commands
-- [ ] Agent name placeholder in describe/logs
+- [x] Agent name placeholder in describe/logs
 
 ## Operator-Ready Evidence Checklist for HARDWARE-2026-04-30-05
 Required before execution:

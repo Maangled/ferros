@@ -3,6 +3,46 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-03 - REENTRY-HOMEHUB-LOCAL-ORCH-01
+
+- Selected item: `REENTRY-HOMEHUB-LOCAL-ORCH-01`
+- Result: Stop-clean. This bounded repo-local segment corrected the active Track A critical path toward local `ferros` profile plus `ferros-hub` bring-up on `homelab001`, landed a local bring-up runbook, LAN-device onboarding planning note, local findings template, ADR-025 impact note, dependency hygiene summary, and claim red-team summary, then stopped cleanly because operator-attended command output is still required before any findings file can be filled honestly.
+- Files:
+  - `docs/orchestration/REENTRY-HOMEHUB-LOCAL-ORCH-01.md`
+  - `docs/hardware/homelab001-local-bringup-runbook.md`
+  - `docs/hub/local-lan-device-onboarding.md`
+  - `docs/hardware/findings/FINDINGS-homelab001-local-bringup.md`
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-homehub-local-critical-path.md`
+  - `docs/orchestration/REENTRY-HOMEHUB-LOCAL-DEPENDENCY-HYGIENE.md`
+  - `docs/orchestration/REENTRY-HOMEHUB-LOCAL-CLAIM-REDTEAM.md`
+  - `docs/hardware/pack-b-session-01-command-map.md`
+  - `docs/orchestration/REENTRY-PHASE0-HARDWARE-READINESS-AUDIT.md`
+  - `docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-HOMEHUB-LOCAL-01.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` is clean on all touched docs. `cargo test -p ferros-node run_dispatches_profile_init_and_show_with_explicit_path` passed. `cargo run -p ferros-hub -- summary` passed. `cargo run -p ferros-hub -- prove-bridge` passed. `cargo xtask hub-runway --keep-artifacts` passed and kept the expected `.tmp/hub` artifact set with `hubUnexpectedArtifacts: none`.
+- Claims added: homelab001 local bring-up is the active repo-local Track A priority; exact local commands and capture paths now exist for profile and hub bring-up; a local findings template exists; LAN-device onboarding is planned as local observation-first proposed material; ADR-025 research now records Home Assistant de-emphasis without promotion.
+- Claims explicitly not added: no separate-host Home Assistant proof, no device-control claim, no Matter-support claim, no packet-inspection or deep-telemetry claim, no D1 closure, no G4 closure, no launch-readiness claim, and no ADR-025 promotion.
+- Blocked lanes: none at repo-prep level. Evidence-carrying findings fill is pending operator-attended command output.
+- Exact blocker facts needed: paste the real outputs for profile init, profile show, hub summary, hub prove-bridge, agent list, optional agent describe, optional deny-demo, optional co-located Home Assistant note, and any optional LAN-device observation into `docs/hardware/findings/FINDINGS-homelab001-local-bringup.md`.
+- Next queued orchestration segment: `REENTRY-HOMEHUB-LOCAL-FINDINGS-01`
+
+```json
+{
+  "wave_id": "REENTRY-HOMEHUB-LOCAL-ORCH-01",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: touched-doc diagnostics are clean and the targeted ferros-node, ferros-hub, and xtask validations all passed.",
+    "2_wave_tag": "Not triggered: this segment stayed repo-local, docs-first, and non-gate-closing; no frozen schema or gate-close work landed.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside the declared planning, findings-template, ADR-research, and bookkeeping anchors plus normal run-log/doc-batch closeout.",
+    "4_track_boundary": "Not triggered: the segment remained inside code-track repo-local orchestration and did not hop into hardware execution or system-track work.",
+    "5_run_length_cap": "Not triggered: this was one bounded orchestration segment rather than a queue-drain batch.",
+    "6_escalation_chain": "Not triggered: no validator-to-triage-to-trace escalation was needed."
+  },
+  "decision": "stop-clean",
+  "rationale": "Repo-local prep is complete and the current claim ceiling is honest, but operator-attended command output is still required before the local bring-up findings file can be filled without fabrication."
+}
+```
+
+---
 ## 2026-05-03 - REENTRY-PHASE0-ORCH
 
 - Selected item: `REENTRY-PHASE0-ORCH`

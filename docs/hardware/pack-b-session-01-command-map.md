@@ -12,8 +12,8 @@
 | `ferros profile init` | `ferros profile init` on `homelab001` | Establish or refresh the local profile boundary on the target device | Reported local profile path | Not evidence until captured in a real session. |
 | `ferros profile show` | `ferros profile show` on `homelab001` | Confirm the visible profile fields after init or restart | CLI output only | Not restart-safe proof by itself. |
 | `ferros agent list` | `ferros agent list` on `homelab001` | Confirm agent-center read visibility before and after restart or power-cycle steps | CLI output only | Not re-registration proof until captured during a real session. |
-| `ferros agent describe [SESSION_AGENT_NAME]` | `ferros agent describe [SESSION_AGENT_NAME]` | Inspect the named stand-in or future bridge agent manifest fields | CLI output only | Not Home Assistant proof. |
-| `ferros agent logs [SESSION_AGENT_NAME]` | `ferros agent logs [SESSION_AGENT_NAME]` | Observe deny visibility or bridge-side notes through the FERROS inspection path | CLI output only | Not executed consent transport. |
+| `ferros agent describe ha-local-bridge` | `ferros agent describe ha-local-bridge` | Inspect the current local stand-in or bridge agent manifest fields | CLI output only | Not Home Assistant proof. |
+| `ferros agent logs ha-local-bridge` | `ferros agent logs ha-local-bridge` | Observe deny visibility or bridge-side notes through the FERROS inspection path | CLI output only | Not executed consent transport. |
 | Post-power-cycle `ferros agent list` | `ferros agent list` after the DUT-only power cycle on `homelab001` (or deferred in co-located mode) | Record whether at least one agent re-registers after the required D1-style power-cycle step | CLI output only | Not a G4 claim by itself. |
 
 ## Planned artifact map
@@ -29,7 +29,7 @@
 ## Operator notes
 
 - Replace every placeholder before execution.
-- In current co-located mode, keep `[SESSION_AGENT_NAME]` as a session-time value and record the resolved name in findings.
+- Current validated local bridge agent name is `ha-local-bridge`; record any deviation in findings if the session shows a different local agent name.
 - Record the exact command actually used in the matching findings template.
 - If a command or artifact path differs on the real DUT, record the difference rather than rewriting this map as evidence.
 
