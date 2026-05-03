@@ -41,6 +41,69 @@ None.
 
 ## Done
 
+### SYSTEM-2026-05-03-07
+
+- Title: ADR-025 lane-packet metadata translation note
+- Status: done
+- Priority: P1
+- Gate: pre-ADR-025 overlay pilot
+- Owning streams: S8 primary; S1, S4, and S7 awareness
+- Goal: Define how current queue metadata fields `size`, `parallel-safe-with`, `serial-after`, `solo`, and `track` would translate into ADR-025 lane packets so the overlay pilot can preserve the current scheduling and truth-sync discipline before any migration is attempted.
+- Anchor files: `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-lane-packet-metadata-translation.md`
+- Validation: `get_errors` clean on `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-lane-packet-metadata-translation.md`; note includes one-to-one mappings, preserved current semantics, and explicit enforcement gaps.
+- Constraints: Docs-only and research-only. Run only after `SYSTEM-2026-05-03-06`. Do not change Batch Mode behavior in this wave. Do not claim that ADR-025 packets are active runtime authority yet.
+- Last update: 2026-05-03
+- size: S
+- serial-after: SYSTEM-2026-05-03-06
+- track: system
+
+### SYSTEM-2026-05-03-06
+
+- Title: Provisional S9 ignition non-redundancy packet
+- Status: done
+- Priority: P1
+- Gate: pre-ADR-025 overlay pilot
+- Owning streams: S8 primary; S4 and S7 awareness
+- Goal: Write one provisional S9 service-packet note that proves a concrete reload or reroute function distinct from normal S8 truth-sync, defines the allowed triggers, inputs, outputs, and non-claims, and states how the packet remains subordinate to the current queue and gate system.
+- Anchor files: `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-s9-provisional-service-packet.md`
+- Validation: `get_errors` clean on `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-s9-provisional-service-packet.md`; note names a non-redundant S9 function, explicit authority boundary, and explicit non-claims.
+- Constraints: Docs-only and research-only. Run only after `SYSTEM-2026-05-03-05`. Keep S9 provisional. Do not let S9 replace S8 truth-sync, queue authority, or gatekeeper logic. Do not imply always-running autonomous lanes.
+- Last update: 2026-05-03
+- size: S
+- serial-after: SYSTEM-2026-05-03-05
+- track: system
+
+### SYSTEM-2026-05-03-05
+
+- Title: x86_64 Fastest and FERROS overlay lane map
+- Status: done
+- Priority: P1
+- Gate: pre-ADR-025 overlay pilot
+- Owning streams: S8 primary; S1, S3, S4, S5, S6, and S7 awareness
+- Goal: Produce one research-backed lane-map note that crosswalks the current S1-S8 stream system into provisional `x86_64/Fastest` and `x86_64/FERROS` lanes, tests the proposed Fastest grouping and FERROS-side architecture grouping, and states exactly which current authorities remain in force.
+- Anchor files: `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-x86-overlay-lane-map.md`
+- Validation: `get_errors` clean on `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-x86-overlay-lane-map.md`; note includes current-stream crosswalk, claim ceilings, preserved authorities, and explicit unresolved edges.
+- Constraints: Docs-only and research-only. Run only after `SYSTEM-2026-05-03-04`. Do not create the hardware-root directory standard yet. Do not imply stream retirement, gate movement, hardware evidence, or FERROS-native runtime proof.
+- Last update: 2026-05-03
+- size: S
+- serial-after: SYSTEM-2026-05-03-04
+- track: system
+
+### SYSTEM-2026-05-03-04
+
+- Title: ADR-025 x86_64 overlay pilot coordination lock
+- Status: done
+- Priority: P1
+- Gate: pre-ADR-025 overlay pilot
+- Owning streams: S8 primary; S1, S4, and S7 awareness
+- Goal: Create one explicit coordination note that starts the ADR-025 x86_64 overlay pilot as a bounded non-binding packet, preserves the current S1-S8 plus gate plus queue authority stack, records the claim ceiling, and names the next queued overlay waves.
+- Anchor files: `docs/orchestration/ADR-025-X86-OVERLAY-PILOT-01.md`
+- Validation: `get_errors` clean on `docs/orchestration/ADR-025-X86-OVERLAY-PILOT-01.md`; note records current authority, claim ceiling, provisional S9 posture, and queued next waves.
+- Constraints: Docs-only. Do not promote ADR-025. Do not retire or replace the current stream stack. Do not create binding hardware-root authority. Do not move D1 or G4. Do not claim background autonomy.
+- Last update: 2026-05-03
+- size: S
+- track: system
+
 ### SYSTEM-2026-04-27-02
 
 - Title: Draft ADR — Ledger/chain substrate comparison and recommendation

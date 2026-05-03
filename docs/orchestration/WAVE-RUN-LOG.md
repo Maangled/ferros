@@ -3,6 +3,79 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## BATCH-2026-05-03-ADR025-X86-OVERLAY-01 — System-Track Batch Mode Run
+
+- **Batch open:** 2026-05-03
+- **Track:** system
+- **Waves in batch (declared order):** SYSTEM-2026-05-03-04, SYSTEM-2026-05-03-05, SYSTEM-2026-05-03-06, SYSTEM-2026-05-03-07
+- **Gatekeeper model:** inline self-review under the current `LOCAL-DRIVER.md` gatekeeper posture.
+- **Authority lock:** current S1-S8 stream, gate, and queue stack remained authoritative for the entire batch; ADR-025 stayed Proposed and non-binding.
+- **Result:** Stop-clean. The four declared system-track overlay waves landed cleanly: the pilot authority lock, the x86_64 Fastest or FERROS lane map, the provisional S9 service-packet note, and the metadata translation note are all now in repo. The system queue is empty again. No hardware-root directory standard was instantiated, no live queue authority was replaced, and no gate or hardware claims moved.
+- **Files:**
+  - `docs/orchestration/ADR-025-X86-OVERLAY-PILOT-01.md`
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-x86-overlay-lane-map.md`
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-s9-provisional-service-packet.md`
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-lane-packet-metadata-translation.md`
+  - `docs/orchestration/SYSTEM-QUEUE.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-ADR025-X86-OVERLAY-01.md`
+- **Validation:** `get_errors` is clean on `docs/orchestration/ADR-025-X86-OVERLAY-PILOT-01.md`, `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-x86-overlay-lane-map.md`, `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-s9-provisional-service-packet.md`, `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-lane-packet-metadata-translation.md`, and `docs/orchestration/SYSTEM-QUEUE.md`. Claim review passed: the four-wave packet stays inside Proposed or non-binding posture and adds no gate, hardware, Home Assistant, native-runtime, or background-autonomy claims.
+- **Claims added:** the x86_64 ADR-025 overlay pilot now has an explicit coordination surface; the current S1-S8 model now has a candidate x86_64 Fastest or FERROS lane crosswalk; S9 now has a provisional proposal-only service-packet definition; and current queue metadata now has an explicit translation note for pilot use.
+- **Claims explicitly not added:** no ADR-025 promotion, no S1-S8 retirement, no queue-authority replacement, no D1 closure, no G4 closure, no Home Assistant proof, no physical-device evidence, no FERROS-native OS claim, and no background-autonomy claim.
+- **Blocked lanes:** none. The remaining questions are explicit governance follow-up items rather than blockers to this completed packet.
+- **Next follow-up:** no Ready items remain in `docs/orchestration/SYSTEM-QUEUE.md`.
+
+```json
+{
+  "wave_id": "BATCH-2026-05-03-ADR025-X86-OVERLAY-01",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: touched-doc diagnostics are clean on the pilot coordination note, the three new research notes, and the queue bookkeeping surface.",
+    "2_wave_tag": "Not triggered: all four waves stayed docs-only, research-only, and non-gate-closing; no solo, frozen-schema, or privilege-boundary work landed.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside the declared note anchors plus normal system-queue, run-log, and doc-batch bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: the segment remained entirely inside system-track work.",
+    "5_run_length_cap": "Satisfied by declared scope rather than ceiling: 4 of 8 possible waves landed and the system queue is now empty.",
+    "6_escalation_chain": "Not triggered: no validator-to-triage-to-trace escalation was needed."
+  },
+  "decision": "stop-clean",
+  "rationale": "The four declared ADR-025 overlay pilot waves landed cleanly, stayed inside Proposed and non-binding posture, and emptied the current system-track queue without introducing authority, gate, or hardware-claim drift."
+}
+```
+
+---
+## 2026-05-03 - REENTRY-HOMEHUB-LOCAL-FINDINGS-01
+
+- Selected item: `REENTRY-HOMEHUB-LOCAL-FINDINGS-01`
+- Result: Complete. This segment executed the approved repo-local bring-up commands on `homelab001` under explicit operator authorization from `Maangled`, filled the local findings packet from actual captured outputs, recorded that `ferros-hub summary` reported `ha-local-bridge@0.1.0` while `ferros agent list` showed only `echo` and `timer` and `ferros agent describe ha-local-bridge` returned `unknown agent`, added a passive neighbor-cache note, and kept all claim ceilings intact.
+- Files:
+  - `docs/hardware/findings/FINDINGS-homelab001-local-bringup.md`
+  - `docs/orchestration/REENTRY-HOMEHUB-LOCAL-DEPENDENCY-HYGIENE.md`
+  - `docs/orchestration/REENTRY-HOMEHUB-LOCAL-CLAIM-REDTEAM.md`
+  - `docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-HOMEHUB-LOCAL-FINDINGS-01.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo xtask hub-runway --keep-artifacts` passed and copied the expected four `.tmp/hub` JSON artifacts. `cargo run -p ferros-node --bin ferros -- profile init .local-state/homelab001-profile.json` passed. `cargo run -p ferros-node --bin ferros -- profile show .local-state/homelab001-profile.json` passed. `cargo run -p ferros-hub -- summary` passed. `cargo run -p ferros-hub -- prove-bridge` passed. `cargo run -p ferros-node --bin ferros -- agent list` passed. `cargo run -p ferros-node --bin ferros -- agent describe ha-local-bridge` failed with `unknown agent: ha-local-bridge` and was recorded as a finding. `cargo run -p ferros-hub -- deny-demo` passed. Host fact capture passed. `git check-ignore -v .local-state .local-artifacts .local-artifacts/reentry-homehub-local-01/profile-init.txt` confirmed the local capture paths stay ignored. `git diff --name-only` did not list any manifest or lockfile drift. `get_errors` is clean on the touched docs.
+- Claims added: actual local profile and hub outputs are captured for `homelab001`; copied `.tmp/hub` artifacts are referenced; the bridge-agent visibility mismatch is documented as a real finding; passive host and LAN neighbor-cache observations are recorded as read-only context.
+- Claims explicitly not added: no separate-host Home Assistant proof, no real bridge registration proof beyond local simulated rehearsal output, no device-control claim, no Matter-support claim, no packet-inspection or deep-telemetry claim, no D1 closure, no G4 closure, and no launch-readiness claim.
+- Blocked lanes: none. The bridge-agent visibility mismatch is unresolved but did not block honest findings capture.
+- Exact command outputs captured or artifact paths: `.local-artifacts/reentry-homehub-local-01/xtask-hub-runway.txt`, `.local-artifacts/reentry-homehub-local-01/profile-init.txt`, `.local-artifacts/reentry-homehub-local-01/profile-show.txt`, `.local-artifacts/reentry-homehub-local-01/hub-summary.txt`, `.local-artifacts/reentry-homehub-local-01/hub-prove-bridge.txt`, `.local-artifacts/reentry-homehub-local-01/agent-list.txt`, `.local-artifacts/reentry-homehub-local-01/agent-describe.txt`, `.local-artifacts/reentry-homehub-local-01/hub-deny-demo.txt`, `.local-artifacts/reentry-homehub-local-01/host-facts.txt`, `.local-artifacts/reentry-homehub-local-01/command-exit-codes.tsv`, `.local-artifacts/reentry-homehub-local-01/copied-hub-artifacts.txt`.
+- Next queued orchestration segment: `REENTRY-HOMEHUB-LOCAL-AGENT-VISIBILITY-01`
+
+```json
+{
+  "wave_id": "REENTRY-HOMEHUB-LOCAL-FINDINGS-01",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the segment's success criterion was honest local capture, not all-zero command exits; the single non-zero agent-describe result was preserved as a finding rather than an unhandled validation failure.",
+    "2_wave_tag": "Not triggered: the segment stayed repo-local, non-destructive, and non-gate-closing, with no frozen schema, privilege escalation, or separate-host Home Assistant work.",
+    "3_diff_overrun": "Not triggered: the landed diff stays inside the findings file plus normal orchestration bookkeeping and review surfaces for this segment.",
+    "4_track_boundary": "Not triggered: the segment remained inside the local bring-up documentation and evidence track without crossing into hardware execution or system-track work.",
+    "5_run_length_cap": "Not triggered: this was one bounded evidence-capture segment rather than a queue-drain batch.",
+    "6_escalation_chain": "Not triggered: the observed bridge-agent visibility mismatch is captured honestly and does not require triage escalation to keep this segment truthful."
+  },
+  "decision": "continue",
+  "rationale": "The findings packet is now filled from real homelab001 command execution, failures were captured honestly, and the next highest-leverage follow-up is the narrow bridge-agent visibility investigation segment rather than more generic bring-up work."
+}
+```
+
+---
 ## 2026-05-03 - REENTRY-HOMEHUB-LOCAL-ORCH-01
 
 - Selected item: `REENTRY-HOMEHUB-LOCAL-ORCH-01`

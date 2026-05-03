@@ -48,3 +48,47 @@ Mode: strict initiative policy
 - Validation: git diff and status review after local validation commands
 - Residual risks: later code-track device inventory work must keep the same no-new-dependency ceiling
 - Next safe follow-up, if any: red-team final wording and then serial truth-sync
+
+## Addendum — REENTRY-HOMEHUB-LOCAL-FINDINGS-01
+
+Status: complete
+Date: 2026-05-03
+Mode: strict initiative policy
+
+### Execution Checks
+- `.gitignore` still ignores `.local-state/` and `.local-artifacts`: pass
+- `.local-artifacts/reentry-homehub-local-01/profile-init.txt` is ignored via `.local-artifacts/`: pass
+- Runtime captures stayed inside ignored `.local-artifacts/` and `.local-state/`: pass
+- No `Cargo.toml`, `Cargo.lock`, `package.json`, or `package-lock.json` drift from this segment: pass
+- Tracked repo changes stayed limited to findings and orchestration closeout docs: pass
+
+### Observed Diff Shape
+- `git status --short --ignored` showed only docs closeout changes plus ignored `.local-artifacts/` and `.local-state/` paths.
+- `git diff --name-only` listed `docs/hardware/findings/FINDINGS-homelab001-local-bringup.md`, `docs/orchestration/REENTRY-HOMEHUB-LOCAL-CLAIM-REDTEAM.md`, `docs/orchestration/WAVE-RUN-LOG.md`, and the new findings doc-batch surface before this hygiene addendum landed.
+- No manifest, lockfile, `.tmp/hub`, screenshot, or runtime-capture path was tracked by git.
+
+### Validation Inputs
+- `.gitignore`
+- `git check-ignore -v .local-state .local-artifacts .local-artifacts/reentry-homehub-local-01/profile-init.txt`
+- `git status --short --ignored .local-state .local-artifacts docs/hardware/findings/FINDINGS-homelab001-local-bringup.md docs/orchestration/REENTRY-HOMEHUB-LOCAL-DEPENDENCY-HYGIENE.md docs/orchestration/REENTRY-HOMEHUB-LOCAL-CLAIM-REDTEAM.md docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-HOMEHUB-LOCAL-FINDINGS-01.md docs/orchestration/WAVE-RUN-LOG.md`
+- `git diff --name-only -- docs/hardware/findings/FINDINGS-homelab001-local-bringup.md docs/orchestration/REENTRY-HOMEHUB-LOCAL-DEPENDENCY-HYGIENE.md docs/orchestration/REENTRY-HOMEHUB-LOCAL-CLAIM-REDTEAM.md docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-HOMEHUB-LOCAL-FINDINGS-01.md docs/orchestration/WAVE-RUN-LOG.md Cargo.toml Cargo.lock package.json package-lock.json`
+
+### Claims Added
+- This findings execution segment preserved strict no-new-dependency mode and kept local runtime captures untracked.
+
+### Claims Explicitly Not Added
+- No claim that ignored local captures are durable hardware evidence.
+- No claim that dependency hygiene outside this segment was re-audited.
+- No policy relaxation.
+
+## HANDOFF CARD — REENTRY-HOMEHUB-LOCAL-FINDINGS-01
+- Lane ID: D1
+- Status: complete
+- Files read: .gitignore; docs/orchestration/REENTRY-HOMEHUB-LOCAL-DEPENDENCY-HYGIENE.md; git ignore and diff surfaces after local execution
+- Files changed: docs/orchestration/REENTRY-HOMEHUB-LOCAL-DEPENDENCY-HYGIENE.md
+- Evidence produced: post-execution hygiene addendum for the findings segment
+- Claims added: ignored local capture paths stayed untracked and no dependency drift was introduced by the segment
+- Claims explicitly not added: hardware evidence, policy relaxation, or repo-wide historical hygiene claims
+- Validation: git check-ignore, git status --short --ignored, and targeted git diff review
+- Residual risks: the next investigation segment must keep the same no-new-dependency ceiling
+- Next safe follow-up, if any: continue into `REENTRY-HOMEHUB-LOCAL-AGENT-VISIBILITY-01`
