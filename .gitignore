@@ -23,3 +23,7 @@ tmp/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 nohup.out
+
+# Local hardware-session captures and state (operator machine only)
+.local-artifacts/
+.local-state/

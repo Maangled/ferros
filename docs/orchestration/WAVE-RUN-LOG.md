@@ -3,6 +3,39 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-03 - REENTRY-PHASE0-ORCH
+
+- Selected item: `REENTRY-PHASE0-ORCH`
+- Result: Complete (repo-local segment). Phase 0 orchestration artifacts were produced in bounded lanes: A0 coordination lock, A1 hardware-readiness audit, B1 scoreboard scaffold, B2/B3 guardrail draft batches, D1 strict dependency audit, and R1 claim red-team summary. Track A physical execution remains blocked pending unresolved operator and hardware placeholders, and no physical-world commands were run.
+- Files:
+  - `docs/orchestration/REENTRY-PHASE0-COORDINATION.md`
+  - `docs/orchestration/REENTRY-PHASE0-HARDWARE-READINESS-AUDIT.md`
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-guardrail-scoreboard.md`
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-guardrails-batch1.md`
+  - `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-guardrails-batch2.md`
+  - `docs/orchestration/REENTRY-PHASE0-DEPENDENCY-AUDIT.md`
+  - `docs/orchestration/REENTRY-PHASE0-CLAIM-REDTEAM.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: segment artifacts are present and scoped to ferros docs and research surfaces only; no gate docs were changed; no manifests or lockfiles were changed by this segment; claim language remains within Phase 0 ceilings.
+- Claims added: phase-0 coordination authority and readiness or blocker artifacts, ADR-025 guardrail research scaffolds and draft recommendations, strict dependency compliance snapshot, claim red-team recommendations.
+- Claims explicitly not added: no physical-device evidence, no real Home Assistant proof, no consent acceptance proof, no D1 closure, no G4 closure, no launch-readiness claim, no ADR-025 promotion.
+- Blocked lanes: Track A physical wave execution remains blocked until named DUT, host, operator, path, power-cut, and artifact-root placeholders are replaced with real values in Pack B planning docs.
+- Next queued orchestration segment: `REENTRY-PHASE0B-ORCH` (continue Track B research quality tightening and prepare ADR-025 keep-Proposed disposition draft while Track A remains blocked).
+
+```json
+{
+  "validation_failed": false,
+  "wave_tag": "REENTRY-PHASE0-ORCH",
+  "diff_overrun": false,
+  "track_boundary": false,
+  "run_length_cap": false,
+  "escalation_chain": false,
+  "decision": "continue",
+  "rationale": "All safe repo-local Phase 0 lanes completed with bounded scope and explicit non-claims; Track A physical execution is correctly blocked pending operator facts, so continuation should shift to repo-local Track B and disposition prep."
+}
+```
+
+---
 ## 2026-04-30 — WAVE-2026-04-30-81
 
 - Selected item: `WAVE-2026-04-30-81`

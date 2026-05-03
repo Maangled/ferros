@@ -1,30 +1,35 @@
 # Pack B Session 01 Plan
 
-> Plan-only handoff for the first named Pack B session. This file uses placeholders where real hardware or operator identities are not yet recorded. It is not evidence.
+> Plan-only handoff for the first named Pack B session. This file records current planning facts and does not by itself constitute evidence.
+
+## Temporary mode note (2026-05-03)
+
+For immediate bring-up on `homelab001`, this session allows co-located DUT and HA host usage.
+Separate-host HA validation and isolated DUT-only hard power-cut proof are deferred to a later segment.
 
 ## Session identity
 
 | Field | Current plan value | Note |
 |-------|--------------------|------|
 | Session label | `pack-b-session-01` | Stable planning label only |
-| Pack B DUT name | `[PLACEHOLDER - x86_64 DUT name required before execution]` | Must be a real Pack B class device before execution |
-| Pack C HA host name | `[PLACEHOLDER - HA host name required before execution]` | Must stay separate from the DUT |
-| Operator station | `[PLACEHOLDER - operator station required before execution]` | Separate observation surface |
-| Operator | `[PLACEHOLDER - operator name required before execution]` | Human-attended session only |
-| DUT repo path | `[PLACEHOLDER - repo path on DUT required before execution]` | Used by the command map |
-| Persistent state path | `[PLACEHOLDER - path for profile or grant or log material required before execution]` | Future durability observation only |
-| Network note | `[PLACEHOLDER - LAN or addressing note required before execution]` | Must support DUT and HA host reachability |
-| DUT-only power-cut method | `[PLACEHOLDER - exact power-cut method required before execution]` | Must not power down the HA host |
-| Artifact capture root | `[PLACEHOLDER - output directory or note bundle required before execution]` | For future screenshots and transcripts only |
+| Pack B DUT name | `homelab001` | Pack B class `x86_64` machine for local bring-up |
+| Pack C HA host name | `homelab001` (temporary co-located mode) | Separate-host validation deferred |
+| Operator station | `homelab001` local shell | Current observation surface |
+| Operator | `Maangled` | Human-attended session owner |
+| DUT repo path | `/home/homelab001/apps/ferros` | Used by the command map |
+| Persistent state path | `/home/homelab001/apps/ferros/.local-state` | Local durability observation path |
+| Network note | `homelab001` on `192.168.50.234/24` (`enp4s0`) | Supports local shell or CLI observation |
+| DUT-only power-cut method | `[DEFERRED - define once DUT and HA are separated]` | Deferred under temporary co-located mode |
+| Artifact capture root | `/home/homelab001/apps/ferros/.local-artifacts` | For screenshots and transcripts |
 
 ## Required before execution checklist
 
 - [ ] Replace every placeholder in the session identity table with a real value.
 - [ ] Confirm the DUT is a Pack B class `x86_64` device.
-- [ ] Confirm the HA host is a separate Pack C machine on the same LAN.
-- [ ] Confirm the operator station is separate from both DUT and HA host.
+- [ ] Confirm the HA host role is available (co-located temporary mode allowed).
+- [ ] Confirm the operator station is explicitly declared.
 - [ ] Confirm the persistent state path is writable and intended for restart-safe material.
-- [ ] Confirm the DUT-only power-cut method is isolated from the HA host.
+- [ ] Confirm the DUT-only power-cut method is defined, or explicitly deferred under co-located mode.
 - [ ] Confirm the artifact capture root exists or is planned.
 - [ ] Do not execute the session while any placeholder remains unresolved.
 
@@ -40,12 +45,12 @@
 
 | Role | Planned value | Constraint |
 |------|---------------|------------|
-| Device under test | `[PLACEHOLDER - Pack B DUT name required before execution]` | Must be the only DUT for this session |
-| Home Assistant host | `[PLACEHOLDER - Pack C HA host name required before execution]` | Must remain separate from the DUT |
-| Operator station | `[PLACEHOLDER - operator station required before execution]` | Must remain the observation surface |
-| Storage path | `[PLACEHOLDER - persistent state path required before execution]` | Must be suitable for restart observations |
-| Network | `[PLACEHOLDER - network note required before execution]` | Must support local shell or CLI observation |
-| Power arrangement | `[PLACEHOLDER - DUT-only power-cut method required before execution]` | Must isolate the DUT from the HA host |
+| Device under test | `homelab001` | Must be the only DUT for this session |
+| Home Assistant host | `homelab001` (temporary co-located mode) | Separate-host requirement deferred for current local bring-up |
+| Operator station | `homelab001` local shell | Observation surface for this session |
+| Storage path | `/home/homelab001/apps/ferros/.local-state` | Suitable for restart observations |
+| Network | `192.168.50.234/24` on `enp4s0` | Supports local shell or CLI observation |
+| Power arrangement | Deferred in co-located mode | Hard DUT-only power-cut validation moved to later separated-host segment |
 
 ## Planned observation scope
 
