@@ -17,7 +17,88 @@ Optional fields (additive, do not break existing item order):
 
 ## Ready
 
-None. System queue empty.
+Planned serial path toward approving S9 and ADR-025 under the current authority model:
+
+### SYSTEM-2026-05-03-08
+
+- Title: ADR-025 per-family lane profile and compression table
+- Status: ready
+- Priority: P1
+- Gate: pre-ADR-025 acceptance
+- Owning streams: S8 primary; S1, S4, and S7 awareness
+- Goal: Produce one research-backed note that turns guardrail checks 1 and 4 into concrete per-family tables for `x86_64`, `Raspberry Pi 4B`, `Jetson Orin Nano`, and `ESP32`, stating required versus optional lanes and the compressed-lane rule for constrained targets.
+- Anchor files: `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-family-lane-profiles.md`
+- Validation: `get_errors` clean on `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-family-lane-profiles.md`; note includes required-versus-optional lane tables and an explicit compressed profile for constrained targets.
+- Constraints: Docs-only and research-only. Do not create hardware-root directories. Do not imply any board has runnable FERROS-native implementation, D1 evidence, or G4 evidence.
+- Last update: 2026-05-03
+- size: S
+- track: system
+
+### SYSTEM-2026-05-03-09
+
+- Title: ADR-025 evidence-routing and claim-boundary packet
+- Status: ready
+- Priority: P1
+- Gate: pre-ADR-025 acceptance
+- Owning streams: S8 primary; S7 awareness
+- Goal: Define the control-plane attribution chain and claim red-team checklist that orchestration outputs must carry so `x86_64/Fastest` can aggregate multi-board findings without source-of-evidence drift or overclaim.
+- Anchor files: `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-evidence-routing-and-claim-boundary.md`
+- Validation: `get_errors` clean on `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-evidence-routing-and-claim-boundary.md`; note includes one Pack B or Pack C attribution example plus checklist integration points for findings, doc-batches, and run-log surfaces.
+- Constraints: Docs-only and research-only. Do not claim remote orchestration proof, Home Assistant proof, or physical-device evidence. Preserve the current claim ceiling language.
+- Last update: 2026-05-03
+- size: S
+- serial-after: SYSTEM-2026-05-03-08
+- track: system
+
+### SYSTEM-2026-05-03-10
+
+- Title: S9 live ignition packet from a real finding
+- Status: ready
+- Priority: P1
+- Gate: pre-S9 approval
+- Owning streams: S8 primary; S3, S4, and S7 awareness
+- Goal: Write one actual S9 packet triggered by a real completed finding, showing what `S8` truth-sync already recorded, what `S9` adds beyond that record, which lane or root it reloads, and why the packet is non-redundant. Prefer the current `ha-local-bridge` visibility mismatch unless a stronger completed finding already exists in repo.
+- Anchor files: `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-s9-live-packet-example.md`
+- Validation: `get_errors` clean on `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-s9-live-packet-example.md`; packet cites a real source finding and names explicit reload or reroute outputs distinct from normal `S8` truth-sync.
+- Constraints: Docs-only. Must cite a real source finding already in repo. Do not resolve the underlying code or hardware issue in this wave. Do not imply background autonomy, queue replacement, or gate movement.
+- Last update: 2026-05-03
+- size: S
+- serial-after: SYSTEM-2026-05-03-09
+- track: system
+
+### SYSTEM-2026-05-03-11
+
+- Title: ADR-025 lane-packet enforcement and authority patch
+- Status: ready
+- Priority: P1
+- Gate: pre-ADR-025 acceptance
+- Owning streams: S8 primary; S1, S4, and S7 awareness
+- Goal: Encode the minimum read-wide or write-narrow enforcement and serial truth-sync rules needed for lane packets, and prove them with one bounded batch-plan example that keeps shared truth surfaces non-overlapping.
+- Anchor files: `docs/orchestration/LOCAL-DRIVER.md`, `docs/orchestration/BATCH-MODE.md`, `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-lane-packet-enforcement.md`
+- Validation: `get_errors` clean on the touched authority docs and the new enforcement note; one bounded example batch shows non-overlap plus preserved serial truth-sync authority.
+- Constraints: Docs-only but live orchestration-authority touch. Run solo. Do not widen Batch Mode beyond the current claim ceiling. Do not imply runtime enforcement exists where only policy language is being added.
+- Last update: 2026-05-03
+- size: S
+- serial-after: SYSTEM-2026-05-03-10
+- solo: true
+- track: system
+
+### SYSTEM-2026-05-03-12
+
+- Title: S9 disposition and ADR-025 acceptance packet
+- Status: ready
+- Priority: P1
+- Gate: pre-ADR-025 acceptance
+- Owning streams: S8 primary; S1, S4, and S7 awareness
+- Goal: If `SYSTEM-2026-05-03-08` through `SYSTEM-2026-05-03-11` land cleanly, update ADR-025 from Proposed to Accepted or explicitly record why it remains Proposed, set the final S9 posture, and sync the scoreboard and ADR index surfaces.
+- Anchor files: `docs/adr/ADR-025-dual-root-hardware-runway.md`, `docs/adr/_RESEARCH-NOTES/RN-2026-05-adr025-guardrail-scoreboard.md`, `docs/adr/_INDEX.md`
+- Validation: `get_errors` clean on the touched files; acceptance or non-acceptance rationale cites the landed evidence chain and preserves all surviving non-claims.
+- Constraints: Docs-only. Run solo. Do not move D1 or G4. Do not convert research evidence into hardware proof. If acceptance criteria are still incomplete, this wave must record a non-acceptance disposition instead of force-accepting ADR-025.
+- Last update: 2026-05-03
+- size: S
+- serial-after: SYSTEM-2026-05-03-11
+- solo: true
+- track: system
 
 ---
 
