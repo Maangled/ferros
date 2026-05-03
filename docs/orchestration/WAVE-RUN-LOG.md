@@ -3,6 +3,44 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## BATCH-2026-05-03-HARDWARE-ADR025-PROOF-01 — Hardware-Track Queue Run
+
+- **Batch open:** 2026-05-03
+- **Track:** hardware
+- **Waves in batch (declared order):** HARDWARE-2026-04-27-02, HARDWARE-2026-04-30-05, HARDWARE-2026-05-03-08
+- **Gatekeeper model:** inline self-review under the current `LOCAL-DRIVER.md` gatekeeper posture.
+- **Authority lock:** current D1 and G4 gate definitions and the framework-level ADR-025 posture remained authoritative throughout; the run stopped before any reboot boundary or separate-host HA step.
+- **Result:** Stop-clean. The docs-only firmware-spike plan for `homelab001`, the first Pack B `x86_64` physical profile baseline, and the narrow ADR-025 proof note all landed cleanly. No safe agent-executable Ready items remain in the hardware queue; the next two hardware waves are now explicitly blocked on a reboot window and a separate Pack C host.
+- **Files:**
+  - `docs/hardware/firmware-spikes/homelab001/README.md`
+  - `docs/hardware/findings/FINDINGS-pack-b-session-01-profile-baseline.md`
+  - `docs/hardware/adr25-proof/pack-b-session-01-x86-proof.md`
+  - `docs/orchestration/HARDWARE-QUEUE.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-HARDWARE-ADR025-PROOF-01.md`
+- **Validation:** `cargo xtask hub-runway --keep-artifacts` passed on `homelab001`. `cargo run -p ferros-hub -- summary` passed. `cargo run -p ferros-node --bin ferros -- profile init .local-state/pack-b-session-01-profile.json` passed. `cargo run -p ferros-node --bin ferros -- profile show .local-state/pack-b-session-01-profile.json` passed. `get_errors` is clean on `docs/hardware/firmware-spikes/homelab001/README.md`, `docs/hardware/findings/FINDINGS-pack-b-session-01-profile-baseline.md`, `docs/hardware/adr25-proof/pack-b-session-01-x86-proof.md`, and `docs/orchestration/HARDWARE-QUEUE.md`.
+- **Claims added:** `homelab001` now has a concrete firmware-spike target plan; the repo now contains a findings-backed Pack B `x86_64` physical baseline for `profile init` and `profile show`; and ADR-025 now has a narrow x86_64 operational proof note tied to that completed finding.
+- **Claims explicitly not added:** no D1 closure, no G4 closure, no Home Assistant proof, no reboot-safe or full power-cycle survival proof, no separate-host Pack C proof, no Pi or Jetson or ESP32 family proof, and no FERROS-native runtime proof.
+- **Blocked lanes:** `HARDWARE-2026-04-30-06` now waits on an operator-approved reboot window for `homelab001`. `HARDWARE-2026-04-30-07` now waits on a separate Pack C Home Assistant host on the same LAN.
+- **Next follow-up:** `HARDWARE-2026-04-30-06`, but only inside an explicit reboot window; after that, `HARDWARE-2026-04-30-07` remains the first separate-host HA proof step.
+
+```json
+{
+  "wave_id": "BATCH-2026-05-03-HARDWARE-ADR025-PROOF-01",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the live commands passed and touched-doc diagnostics are clean on the new plan note, findings packet, proof note, and hardware-queue truth surface.",
+    "2_wave_tag": "Not triggered as a halt: the batch stayed inside hardware-track work and did not cross into a reboot action, separate-host HA proof, or gate-close claim.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside declared hardware-proof notes plus normal hardware-queue, run-log, and doc-batch bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: the run stayed entirely inside hardware-track execution and bookkeeping.",
+    "5_run_length_cap": "Satisfied by declared scope rather than ceiling: all currently safe agent-executable hardware packets were drained and the next remaining items are explicitly blocked.",
+    "6_escalation_chain": "Not triggered: no validator-to-triage-to-trace escalation was needed once the reboot-window and separate-host constraints were written back into the queue."
+  },
+  "decision": "stop-clean",
+  "rationale": "The currently safe hardware proof packets landed cleanly, the queue now reflects the real blockers for the remaining waves, and the ADR-025 proof set gained its first findings-backed x86_64 operational note without widening any D1 or G4 claim."
+}
+```
+
+---
 ## BATCH-2026-05-03-ADR025-ACCEPTANCE-01 — System-Track Queue Run
 
 - **Batch open:** 2026-05-03
