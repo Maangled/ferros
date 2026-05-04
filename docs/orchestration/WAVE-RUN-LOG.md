@@ -3,6 +3,231 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-04 - REBOOT-RESUME-HANDOFF-AND-HA-AUTH-BLOCKER
+
+- Selected item: truth-sync follow-up after the detached reboot handoff note and the bridge-state sync change
+- Result: Stop-clean. Repo truth now records that the reboot-sensitive `HARDWARE-2026-04-30-06` work must resume from a detached operator handoff because `homelab001` may return on a different IP, that the temporary Windows HA host `MKY` is intentionally still up for follow-on proof, and that live post-refactor HA validation is currently blocked by an expired bearer token rather than by the `ferros-hub` code path.
+- Files:
+  - `docs/hardware/HARDWARE-2026-04-30-06-detached-reboot-handoff.md`
+  - `docs/orchestration/HANDOFF-2026-05-04-REBOOT-RESUME.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` stayed clean on the detached reboot handoff note and the new repo handoff note. The local bridge refactor remained validated by `cargo test -p ferros-hub remote_`, while a later live rerun against `MKY` returned `401 Unauthorized`; the failed scratch artifact directory was removed and no new live claim was added.
+- Claims added: the repo now explicitly says the Windows HA host is being kept up on purpose; it records that the live HA revalidation blocker is token expiry and not code failure; and it provides a resume note that points the next session at the detached reboot capture path and the next truthful follow-up actions.
+- Claims explicitly not added: no new live HA proof after the bridge-state refactor, no reboot evidence, no D1 closure, and no G4 closure.
+- Blocked lanes: `HARDWARE-2026-04-30-06` still waits on the detached reboot execution itself. Live post-refactor HA validation waits on a fresh operator-provided bearer token or equivalent authenticated operator path.
+- Next queued follow-up: run the detached reboot handoff on `homelab001`, then resume with the saved artifact directory and either a fresh HA bearer token or another authenticated operator validation surface.
+
+```json
+{
+  "wave_id": "2026-05-04-REBOOT-RESUME-HANDOFF-AND-HA-AUTH-BLOCKER",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the touched docs stayed diagnostics-clean, the code change had already passed focused validation, and the failed live HA rerun was recorded as an external auth blocker rather than a silent success.",
+    "2_wave_tag": "Not triggered: this slice stayed in truth-sync and handoff surfaces only.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside the run log and the new reboot or resume handoff note.",
+    "4_track_boundary": "Not triggered: no hardware boundary was executed from this attached session.",
+    "5_run_length_cap": "Not triggered: this was a bounded handoff sync slice.",
+    "6_escalation_chain": "Not triggered: the only unresolved item is external HA authentication and it is now documented explicitly."
+  },
+  "decision": "stop-clean",
+  "rationale": "The repo now captures the remaining operational facts needed to reboot safely and resume honestly without depending on this VS Code session surviving or on stale HA credentials."
+}
+```
+
+---
+## 2026-05-04 - HA-BRIDGE-STATE-SYNC-AND-HARDWARE-QUEUE-TRUTH
+
+- Selected item: follow-up to the Pack C separate-host HA proof and the `ferros-hub` remote bridge seam
+- Result: Stop-clean. `ferros-hub remote-report-state` now derives its Home Assistant entity payload from the local hub runtime summary when that summary is available, falling back to the earlier probe payload only if the local runtime summary cannot be prepared. The hardware queue truth now records that the separate Pack C host requirement is satisfied on `MKY`, while `HARDWARE-2026-04-30-07` still stays blocked behind its `serial-after: HARDWARE-2026-04-30-06` dependency. The reboot-lane blocker for `HARDWARE-2026-04-30-06` is now the detached clean-reboot boundary itself rather than missing operator approval, because `homelab001` may return on a different IP and break the attached VS Code session.
+- Files:
+  - `crates/ferros-hub/src/remote_bridge.rs`
+  - `crates/ferros-hub/src/lib.rs`
+  - `docs/orchestration/HARDWARE-QUEUE.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo test -p ferros-hub remote_state_request_uses_local_runtime_summary_when_available` passed after one local test-import repair in the same slice. `get_errors` stayed clean on `crates/ferros-hub/src/remote_bridge.rs`.
+- Claims added: the HA write path is now tied to the local hub runtime summary rather than a fixed probe payload when local bridge data is available; hardware queue truth now reflects that the Pack C host requirement was met out of order; and the remaining blocker on the handoff-mirror lane is now stated as the reboot boundary itself.
+- Claims explicitly not added: no G4 closure, no real launch-grade HA entity proof, no consent-deny visibility in the HA UI, no power-cycle restoration proof, and no closure of `HARDWARE-2026-04-30-06` or `HARDWARE-2026-04-30-07`.
+- Blocked lanes: `HARDWARE-2026-04-30-06` still requires the actual clean-reboot session on `homelab001`. `HARDWARE-2026-04-30-07` remains blocked by `serial-after: HARDWARE-2026-04-30-06` even though its separate-host prerequisite is now satisfied.
+- Next queued follow-up: execute `HARDWARE-2026-04-30-06` inside a dedicated reboot session, then replay `HARDWARE-2026-04-30-07` against the same Pack B or Pack C topology if a fresh post-reboot HA observation is still needed.
+
+```json
+{
+  "wave_id": "2026-05-04-HA-BRIDGE-STATE-SYNC-AND-HARDWARE-QUEUE-TRUTH",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the new ferros-hub bridge-state helper test passed after one local import repair, and the touched code file stayed diagnostics-clean.",
+    "2_wave_tag": "Not triggered: this follow-up stayed inside one local bridge seam plus queue and run-log truth-sync surfaces, with no reboot execution or gate-close claim.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside the declared bridge, queue, and bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: the work stayed inside code plus queue-truth follow-up and did not execute hardware boundaries.",
+    "5_run_length_cap": "Not triggered: this was one bounded follow-up slice rather than a queue-drain batch.",
+    "6_escalation_chain": "Not triggered: the first validation exposed one local test-import defect, it was repaired in place, and the same focused validation then passed."
+  },
+  "decision": "stop-clean",
+  "rationale": "The HA bridge seam is now less probe-bound, and the queue truth reflects the current blocker stack without pretending the dedicated reboot lane has already been executed."
+}
+```
+
+---
+## BATCH-2026-05-03-X86-RUNTIME-ABSTRACTION-01 — Code-Track Batch Run
+
+- **Batch open:** 2026-05-03
+- **Track:** code
+- **Waves in batch (declared order):** WAVE-2026-05-03-92
+- **Gatekeeper model:** inline self-review under the current `LOCAL-DRIVER.md` gatekeeper posture, with subagent planning for the next seam, validation path, and truth-sync boundary before the implementation landed.
+- **Authority lock:** ADR-025 stayed limited to host-side runtime abstraction work. This batch only hardened the `ferros-runtime` seam for future non-`std` backends and did not claim boot, kernel, QEMU, embedded-runtime, or hardware proof.
+- **Result:** Stop-clean. `ferros-runtime` now exposes queue-backing traits for executor and message-bus composition, keeps the current in-memory hosted implementations as the reference path, and compiles without the default `std` feature while preserving the existing x86_64 host-side subcore tests.
+- **Files:**
+  - `crates/ferros-runtime/Cargo.toml`
+  - `crates/ferros-runtime/src/lib.rs`
+  - `crates/ferros-runtime/src/executor.rs`
+  - `crates/ferros-runtime/src/bus.rs`
+  - `crates/ferros-runtime/tests/boundaries.rs`
+  - `docs/orchestration/WAVE-QUEUE.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-X86-RUNTIME-ABSTRACTION-01.md`
+- **Validation:** `cargo test -p ferros-runtime --test boundaries` passed after one local constructor repair in the same slice; `cargo test -p ferros-runtime x86_64_subcore_` passed; `cargo check -p ferros-runtime --no-default-features` passed.
+- **Claims added:** `ferros-runtime` now has explicit queue-backing traits for executor and message-bus composition; the current hosted in-memory runtime path can be instantiated with alternative queue implementations; and the crate now has a validated compile path without its default `std` feature.
+- **Claims explicitly not added:** no UEFI boot success, no kernel success, no QEMU success, no embedded or native-runtime success, no hardware evidence, no D1 or G4 movement, and no FERROS-native OS claim.
+- **Blocked lanes:** none inside this batch.
+- **Next follow-up:** the next honest implementation edge is either a bounded adapter that drives `LocalRunwayState` through these new runtime seams, or a similarly narrow boot or kernel contract type in `ferros-x86_64-scaffold` that consumes the current artifact and checkpoint vocabulary without claiming execution proof.
+
+```json
+{
+  "wave_id": "BATCH-2026-05-03-X86-RUNTIME-ABSTRACTION-01",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: `cargo test -p ferros-runtime --test boundaries`, `cargo test -p ferros-runtime x86_64_subcore_`, and `cargo check -p ferros-runtime --no-default-features` all passed after one local constructor repair in the same abstraction slice.",
+    "2_wave_tag": "Not triggered: this was a single code-track runtime abstraction wave with no gate-close, hardware, or schema-freeze step.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside the declared ferros-runtime seam plus normal queue, run-log, and doc-batch bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: the run stayed entirely inside code-track work.",
+    "5_run_length_cap": "Satisfied by declared scope rather than ceiling: the requested single-wave runtime abstraction packet was completed in one bounded run.",
+    "6_escalation_chain": "Not triggered: the first validation exposed one local constructor defect, it was repaired in place, and the same focused validation then passed without wider escalation."
+  },
+  "decision": "stop-clean",
+  "rationale": "The x86_64 FERROS-root runway now has a more portable host-side runtime seam, and the claim ceiling remained limited to trait-backed abstraction and host-side validation."
+}
+```
+
+---
+## BATCH-2026-05-03-X86-FERROS-SCAFFOLD-01 — Code-Track Batch Run
+
+- **Batch open:** 2026-05-03
+- **Track:** code
+- **Waves in batch (declared order):** WAVE-2026-05-03-91
+- **Gatekeeper model:** inline self-review under the current `LOCAL-DRIVER.md` gatekeeper posture.
+- **Authority lock:** ADR-025 stayed limited to x86_64 FERROS-root scaffold work: architecture contracts and host-side compilation only, with no boot, kernel, QEMU, or hardware proof claim.
+- **Result:** Stop-clean. The workspace now contains a dedicated `ferros-x86_64-scaffold` crate that records the planned x86_64 boot artifact families, the first boot-observation checkpoints, and the portable `ferros-core` foundation seam for future boot or kernel experiments.
+- **Files:**
+  - `Cargo.toml`
+  - `crates/ferros-x86_64-scaffold/Cargo.toml`
+  - `crates/ferros-x86_64-scaffold/src/lib.rs`
+  - `docs/orchestration/WAVE-QUEUE.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-X86-FERROS-SCAFFOLD-01.md`
+- **Validation:** `cargo test -p ferros-x86_64-scaffold` passed. `cargo check -p ferros-x86_64-scaffold --no-default-features` passed. The new crate's unit tests confirm the planned artifact names, the early boot checkpoint order, and the portable `ferros-core` foundation seam, while the feature-bounded check confirms the crate compiles without its default `std` feature.
+- **Claims added:** the repo now has a dedicated x86_64 FERROS-root scaffold crate in the Rust workspace; the future boot artifact family names and earliest checkpoint vocabulary are encoded in buildable code; and the scaffold stays linked to the existing no-`std` portable foundation seam.
+- **Claims explicitly not added:** no UEFI boot success, no bootloader implementation, no kernel success, no QEMU success, no hardware evidence, no D1 or G4 movement, and no FERROS-native OS claim.
+- **Blocked lanes:** none inside this batch.
+- **Next follow-up:** the next honest implementation edge is a bounded host-side refactor that makes executor or bus backends trait-compatible with future non-`std` work, or a similarly bounded boot or kernel contract seam if it produces real code rather than only prose.
+
+```json
+{
+  "wave_id": "BATCH-2026-05-03-X86-FERROS-SCAFFOLD-01",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: `cargo test -p ferros-x86_64-scaffold` and `cargo check -p ferros-x86_64-scaffold --no-default-features` both passed and covered the new crate's contract surfaces.",
+    "2_wave_tag": "Not triggered: this was a single code-track scaffold wave with no gate-close, hardware, or schema-freeze step.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside the declared scaffold crate files plus normal queue, run-log, and doc-batch bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: the run stayed entirely inside code-track work.",
+    "5_run_length_cap": "Satisfied by declared scope rather than ceiling: the requested single-wave scaffold packet was completed in one bounded run.",
+    "6_escalation_chain": "Not triggered: no local defect repair or broader escalation was needed after the first crate-scoped validation succeeded."
+  },
+  "decision": "stop-clean",
+  "rationale": "The x86_64 FERROS-root runway now has a dedicated scaffold crate in the workspace, and the claim ceiling remained limited to architecture contracts and host-side compilation."
+}
+```
+
+---
+## BATCH-2026-05-03-X86-FERROS-SUBCORE-01 — Code-Track Batch Run
+
+- **Batch open:** 2026-05-03
+- **Track:** code
+- **Waves in batch (declared order):** WAVE-2026-05-03-83, WAVE-2026-05-03-84, WAVE-2026-05-03-85, WAVE-2026-05-03-86, WAVE-2026-05-03-87, WAVE-2026-05-03-88, WAVE-2026-05-03-89, WAVE-2026-05-03-90
+- **Gatekeeper model:** inline self-review under the current `LOCAL-DRIVER.md` gatekeeper posture.
+- **Authority lock:** the accepted ADR-025 framework remained limited to x86_64 FERROS-root seed research, host-side examples, and portable tests; no boot, QEMU, kernel, or hardware proof was claimed.
+- **Result:** Stop-clean. The full x86_64 FERROS subcore seed batch landed cleanly: coordination lock, four research notes, one runnable host-side subcore example, focused runtime tests, focused core tests, and the closing truth-sync update are all now in repo.
+- **Files:**
+  - `docs/orchestration/ADR-025-X86-FERROS-SUBCORE-01.md`
+  - `docs/research/S1-x86_64-ferros-uefi-boot-path.md`
+  - `docs/research/S1-x86_64-ferros-kernel-privilege-model.md`
+  - `docs/research/S4-x86_64-ferros-runtime-port-plan.md`
+  - `docs/research/S1-x86_64-qemu-ovmf-smoke-plan.md`
+  - `crates/ferros-runtime/examples/x86_64_subcore_smoke.rs`
+  - `crates/ferros-runtime/tests/x86_64_subcore_smoke.rs`
+  - `crates/ferros-core/tests/foundation_surface.rs`
+  - `docs/orchestration/WAVE-QUEUE.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-X86-FERROS-SUBCORE-01.md`
+- **Validation:** `cargo run -p ferros-runtime --example x86_64_subcore_smoke` passed; `cargo test -p ferros-runtime x86_64_subcore_` passed; `cargo test -p ferros-core foundation_surface_` passed after replacing an invalid `()` grant placeholder with a local `CapabilityGrantView` test stub; touched-doc diagnostics are clean on the new research notes, the coordination note, and the truth surfaces.
+- **Claims added:** x86_64 FERROS-root now has a first concrete lane packet tied to current repo seams; the repo now has a runnable host-side subcore example for lifecycle, executor, and message-bus composition; and the repo now has focused runtime and core tests that harden the portable and host-side subcore seam.
+- **Claims explicitly not added:** no UEFI boot success, no kernel success, no QEMU success, no hardware evidence, no D1 or G4 movement, and no FERROS-native OS claim.
+- **Blocked lanes:** none inside this seed batch.
+- **Next follow-up:** no new Ready code-track items were left behind by this batch. The next honest follow-up is an explicitly queued scaffold crate or workspace area for boot or kernel experiments, or a bounded host-side refactor for trait-compatible non-`std` executor or bus backends.
+
+```json
+{
+  "wave_id": "BATCH-2026-05-03-X86-FERROS-SUBCORE-01",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the host-side example, focused runtime tests, and focused core tests all passed, and touched-doc diagnostics are clean on the coordination note, research notes, and truth surfaces.",
+    "2_wave_tag": "Not triggered: the batch stayed inside code-track research, example, and test work with no gate-close, hardware, or schema-freeze step.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside the declared research notes, example or test anchors, and normal queue, run-log, and doc-batch bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: the run stayed entirely inside code-track work.",
+    "5_run_length_cap": "Satisfied by declared scope rather than ceiling: the requested eight-wave x86_64 FERROS subcore seed batch was completed in one serial run.",
+    "6_escalation_chain": "Not triggered: one local test defect was repaired in place without widening scope or requiring broader escalation."
+  },
+  "decision": "stop-clean",
+  "rationale": "The x86_64 FERROS subcore seed batch now has concrete research, example, and test outputs in repo, and the claim ceiling remained tight around host-side and architecture-only work."
+}
+```
+
+---
+## BATCH-2026-05-03-HARDWARE-NONX86-FAMILY-BASELINES-01 — Hardware-Track Queue Run
+
+- **Batch open:** 2026-05-03
+- **Track:** hardware
+- **Waves in batch (declared order):** HARDWARE-2026-05-03-09, HARDWARE-2026-05-03-10, HARDWARE-2026-05-03-11
+- **Gatekeeper model:** inline self-review under the current `LOCAL-DRIVER.md` gatekeeper posture.
+- **Authority lock:** the accepted ADR-025 framework remained limited to docs-only family baseline work; no physical board execution, reboot boundary, or separate-host HA proof was attempted.
+- **Result:** Stop-clean. Raspberry Pi 4B, Jetson Orin Nano, and ESP32 now each have a concrete docs-only family baseline packet under the hardware queue, and the Ready section is empty again.
+- **Files:**
+  - `docs/hardware/firmware-spikes/raspberry-pi-4b/README.md`
+  - `docs/hardware/adr25-proof/raspberry-pi-4b-family-baseline.md`
+  - `docs/hardware/firmware-spikes/jetson-orin-nano/README.md`
+  - `docs/hardware/adr25-proof/jetson-orin-nano-family-baseline.md`
+  - `docs/hardware/firmware-spikes/esp32/README.md`
+  - `docs/hardware/adr25-proof/esp32-family-baseline.md`
+  - `docs/orchestration/HARDWARE-QUEUE.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-HARDWARE-NONX86-FAMILY-BASELINES-01.md`
+- **Validation:** `get_errors` is expected to be clean on the six new family-baseline files, `docs/orchestration/HARDWARE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`, and `docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-HARDWARE-NONX86-FAMILY-BASELINES-01.md`.
+- **Claims added:** Raspberry Pi 4B now has an explicit docs-only Pack A baseline; Jetson Orin Nano now has an explicit docs-only family baseline with vendor-image dependency; ESP32 now has an explicit docs-only compressed peripheral baseline; all three now have written control-plane attribution and claim ceilings.
+- **Claims explicitly not added:** no physical-device evidence for Pi or Jetson or ESP32, no Home Assistant proof, no D1 closure, no G4 closure, no FERROS-native OS proof, and no claim that non-x86 families are ready to bypass x86_64 attribution.
+- **Blocked lanes:** the pre-existing `HARDWARE-2026-04-30-06` and `HARDWARE-2026-04-30-07` blockers remain unchanged.
+- **Next follow-up:** any future non-x86 move should be a real named-board baseline findings packet, not another abstract family-profile rewrite.
+
+```json
+{
+  "wave_id": "BATCH-2026-05-03-HARDWARE-NONX86-FAMILY-BASELINES-01",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered pending final diagnostics: the batch stayed inside docs-only family baseline notes with no executable runtime or hardware claim.",
+    "2_wave_tag": "Not triggered: all three waves were docs-only, serial, and non-gate-closing.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside declared family baseline notes plus normal queue, run-log, and doc-batch bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: the run stayed entirely inside hardware-track documentation work.",
+    "5_run_length_cap": "Satisfied by declared scope rather than ceiling: the requested non-x86 family baselines were queued and completed in one serial batch.",
+    "6_escalation_chain": "Not triggered: no validator-to-triage-to-trace escalation was needed."
+  },
+  "decision": "stop-clean",
+  "rationale": "The requested non-x86 family baselines now exist as concrete docs-only hardware packets, and no physical or gate-moving claim was widened to make that happen."
+}
+```
+
+---
 ## BATCH-2026-05-03-HARDWARE-ADR025-PROOF-01 — Hardware-Track Queue Run
 
 - **Batch open:** 2026-05-03

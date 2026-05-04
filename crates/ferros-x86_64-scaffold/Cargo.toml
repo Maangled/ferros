@@ -1,5 +1,5 @@
 [package]
-name = "ferros-runtime"
+name = "ferros-x86_64-scaffold"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true

@@ -1,6 +1,8 @@
 use ferros_hub::{
     cli_help_text, deny_demo_command_output, prepare_default_local_runway,
-    prove_bridge_command_output, summary_command_output,
+    prove_bridge_command_output, remote_fire_event_command_output,
+    remote_report_state_command_output, remote_summary_command_output,
+    summary_command_output,
 };
 
 fn main() {
@@ -26,6 +28,19 @@ fn main() {
         Some("deny-demo") => println!(
             "{}",
             deny_demo_command_output().expect("deny-demo command should succeed")
+        ),
+        Some("remote-summary") => println!(
+            "{}",
+            remote_summary_command_output().expect("remote-summary command should succeed")
+        ),
+        Some("remote-fire-event") => println!(
+            "{}",
+            remote_fire_event_command_output().expect("remote-fire-event command should succeed")
+        ),
+        Some("remote-report-state") => println!(
+            "{}",
+            remote_report_state_command_output()
+                .expect("remote-report-state command should succeed")
         ),
         Some("help") | Some("--help") | Some("-h") => {
             println!("{}", cli_help_text());

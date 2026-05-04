@@ -10,6 +10,8 @@ ferros-agents = { path = "../ferros-agents" }
 ferros-core = { path = "../ferros-core" }
 ferros-data = { path = "../ferros-data" }
 ferros-profile = { path = "../ferros-profile" }
+serde_json = "1"
+ureq = { version = "2", features = ["json"] }
 
 [[bin]]
 name = "ferros-hub"

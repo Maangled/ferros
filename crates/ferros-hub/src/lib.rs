@@ -1,4 +1,5 @@
 mod ha_bridge;
+mod remote_bridge;
 
 use ferros_core::{PolicyDecision, PolicyDenialReason};
 
@@ -21,12 +22,21 @@ pub use ha_bridge::{
     SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
 };
 
+pub use remote_bridge::{
+    remote_fire_event_command_output, remote_report_state_command_output,
+    remote_summary_command_output, RemoteBridgeCommandError, RemoteBridgeEventResult,
+    RemoteBridgeStateResult, RemoteBridgeSummary,
+};
+
 pub fn cli_help_text() -> &'static str {
     concat!(
         "ferros-hub local proof commands:\n",
         "  summary      Print the typed local runtime summary\n",
         "  prove-bridge Run the allowed local bridge proof and emit the local artifact\n",
-        "  deny-demo    Run the denied local bridge proof without emitting an artifact"
+        "  deny-demo    Run the denied local bridge proof without emitting an artifact\n",
+        "  remote-summary    Read authenticated Home Assistant config and FERROS entity matches\n",
+        "  remote-fire-event Fire an authenticated ephemeral ferros_probe event\n",
+        "  remote-report-state Sync FERROS bridge state into Home Assistant"
     )
 }
 

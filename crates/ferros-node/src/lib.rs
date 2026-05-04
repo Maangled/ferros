@@ -13,9 +13,10 @@ use serde::{Deserialize, Serialize};
 
 use ferros_agents::{
     Agent, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult, AgentManifest,
-    AgentRegistry, AgentRpcAgentDetail, AgentRpcAgentSummary, AgentRpcSnapshot, AgentStatus,
-    CapabilityRequirement, DenyLogEntry, EchoAgent, GrantStateRecord, InMemoryAgentRegistry,
-    ReferenceAgentError, RegistryError, TimerAgent, JSON_RPC_AGENT_NOT_FOUND,
+    AgentName, AgentRegistry, AgentRpcAgentDetail, AgentRpcAgentSummary, AgentRpcSnapshot,
+    AgentStatus, CapabilityRequirement, DenyLogEntry, EchoAgent, GrantStateRecord,
+    InMemoryAgentRegistry, ReferenceAgentError, RegistryError, TimerAgent,
+    JSON_RPC_AGENT_NOT_FOUND,
     JSON_RPC_AUTHORIZATION_DENIED, JSON_RPC_INVALID_PARAMS, JSON_RPC_INVALID_REQUEST,
     JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_AGENT_RUN,
     METHOD_AGENT_SNAPSHOT, METHOD_AGENT_STOP, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
@@ -25,9 +26,10 @@ use ferros_core::{
     MessageEnvelope, MessageEnvelopeError, PolicyDecision, PolicyEngine, RequesterProfileIdError,
 };
 use ferros_hub::{
-    default_local_runtime_summary, local_hub_relative_json_path_is_valid,
-    local_onramp_banned_wording, local_runway_evidence_is_non_evidentiary,
-    local_runway_scope_is_local_only, local_runway_text_looks_remote_like_url,
+    default_local_runtime_summary, local_bridge_profile_id,
+    local_hub_relative_json_path_is_valid, local_onramp_banned_wording,
+    local_runway_evidence_is_non_evidentiary, local_runway_scope_is_local_only,
+    local_runway_text_looks_remote_like_url, LocalBridgeAgent,
     LocalBridgeRegistrationError, LocalHubRuntimeSummary, LocalOnrampProposal,
     LOCAL_HUB_STATE_SNAPSHOT_PATH,
 };
@@ -36,7 +38,8 @@ use ferros_profile::{
     FileSystemProfileStore, LocalProfileStore, ProfileId, ProfileIdError, ProfileStoreError,
 };
 use ferros_runtime::{
-    Executor, InMemoryExecutor, InMemoryMessageBus, LocalRunwayState, MessageBus,
+    DequeEnvelopeQueue, DequeJobQueue, Executor, InMemoryExecutor, InMemoryMessageBus,
+    LocalRunwayState, MessageBus,
 };
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
@@ -173,6 +176,61 @@ impl From<ReferenceAgentError> for DemoError {
 struct HostedAgent {
     manifest: AgentManifest,
     agent: Box<dyn Agent<Error = ReferenceAgentError>>,
+}
+
+#[derive(Debug, Clone)]
+struct LocalBridgeStandInAgent {
+    manifest: AgentManifest,
+    status: AgentStatus,
+}
+
+impl LocalBridgeStandInAgent {
+    fn new_default() -> Self {
+        let bridge_agent = LocalBridgeAgent::new_default();
+        let agent_name = AgentName::new(bridge_agent.name)
+            .expect("default local bridge name should be valid");
+        let profile_id = local_bridge_profile_id();
+        let required_capabilities = bridge_agent
+            .required_local_capabilities
+            .into_iter()
+            .map(|capability| CapabilityRequirement::new(profile_id.clone(), capability))
+            .collect();
+
+        Self {
+            manifest: AgentManifest::new(agent_name, bridge_agent.version, required_capabilities),
+            status: AgentStatus::Registered,
+        }
+    }
+
+    fn manifest(&self) -> AgentManifest {
+        self.manifest.clone()
+    }
+}
+
+impl Agent for LocalBridgeStandInAgent {
+    type Error = ReferenceAgentError;
+
+    fn id(&self) -> &AgentName {
+        &self.manifest.name
+    }
+
+    fn capabilities(&self) -> &[CapabilityRequirement] {
+        &self.manifest.required_capabilities
+    }
+
+    fn start(&mut self) -> Result<(), Self::Error> {
+        self.status = AgentStatus::Running;
+        Ok(())
+    }
+
+    fn stop(&mut self) -> Result<(), Self::Error> {
+        self.status = AgentStatus::Stopped;
+        Ok(())
+    }
+
+    fn status(&self) -> AgentStatus {
+        self.status
+    }
 }
 
 struct ActiveGrantView<'a> {
@@ -606,8 +664,8 @@ pub struct DemoRuntime {
     agents: BTreeMap<String, HostedAgent>,
     grants: Vec<CapabilityGrant>,
     policy: DenyByDefaultPolicy,
-    executor: InMemoryExecutor<MessageEnvelope>,
-    bus: InMemoryMessageBus,
+    executor: InMemoryExecutor<DequeJobQueue<MessageEnvelope>>,
+    bus: InMemoryMessageBus<DequeEnvelopeQueue>,
     log_entries: Vec<String>,
     next_nonce: u64,
 }
@@ -651,9 +709,11 @@ impl DemoRuntime {
         let mut runtime = Self::new(grants);
 
         let echo = EchoAgent::new(profile_id.clone());
+        let local_bridge = LocalBridgeStandInAgent::new_default();
         let timer = TimerAgent::new(profile_id);
 
         runtime.register(echo.manifest(), Box::new(echo))?;
+        runtime.register(local_bridge.manifest(), Box::new(local_bridge))?;
         runtime.register(timer.manifest(), Box::new(timer))?;
 
         Ok(runtime)
@@ -2874,7 +2934,11 @@ mod tests {
 
         assert_eq!(
             runtime.list_agents(),
-            vec!["echo".to_string(), "timer".to_string()]
+            vec![
+                "echo".to_string(),
+                "ha-local-bridge".to_string(),
+                "timer".to_string()
+            ]
         );
 
         let summary = runtime
@@ -2892,8 +2956,31 @@ mod tests {
 
         assert_eq!(
             runtime.list_agents(),
-            vec!["echo".to_string(), "timer".to_string()]
+            vec![
+                "echo".to_string(),
+                "ha-local-bridge".to_string(),
+                "timer".to_string()
+            ]
         );
+    }
+
+    #[test]
+    fn runtime_describes_local_bridge_stand_in_agent() {
+        let runtime = DemoRuntime::reference_host().expect("reference host should build");
+
+        let agent = runtime
+            .describe_agent("ha-local-bridge")
+            .expect("local bridge stand-in should be registered");
+
+        assert_eq!(agent.manifest.name.as_str(), "ha-local-bridge");
+        assert_eq!(agent.manifest.version, "0.1.0");
+        assert_eq!(agent.manifest.required_capabilities.len(), 1);
+        assert_eq!(agent.manifest.required_capabilities[0].capability, "bridge.observe");
+        assert_eq!(
+            agent.manifest.required_capabilities[0].profile_id.as_str(),
+            "hub-local-bridge"
+        );
+        assert_eq!(agent.status, AgentStatus::Registered);
     }
 
     #[test]
@@ -2989,11 +3076,13 @@ mod tests {
 
         match response {
             LocalAgentApiResponse::AgentList { agents } => {
-                assert_eq!(agents.len(), 2);
+                assert_eq!(agents.len(), 3);
                 assert_eq!(agents[0].manifest.name.as_str(), "echo");
                 assert_eq!(agents[0].status, AgentStatus::Registered);
-                assert_eq!(agents[1].manifest.name.as_str(), "timer");
+                assert_eq!(agents[1].manifest.name.as_str(), "ha-local-bridge");
                 assert_eq!(agents[1].status, AgentStatus::Registered);
+                assert_eq!(agents[2].manifest.name.as_str(), "timer");
+                assert_eq!(agents[2].status, AgentStatus::Registered);
             }
             other => panic!("unexpected local agent API result: {other:?}"),
         }
@@ -3879,10 +3968,11 @@ mod tests {
 
         match response.result.expect("result should be present") {
             AgentJsonRpcResult::AgentList { agents } => {
-                assert_eq!(agents.len(), 2);
+                assert_eq!(agents.len(), 3);
                 assert_eq!(agents[0].name, "echo");
                 assert_eq!(agents[0].status, "registered");
-                assert_eq!(agents[1].name, "timer");
+                assert_eq!(agents[1].name, "ha-local-bridge");
+                assert_eq!(agents[2].name, "timer");
             }
             other => panic!("unexpected RPC result: {other:?}"),
         }
@@ -4275,7 +4365,7 @@ mod tests {
 
         match response.result.expect("result should be present") {
             AgentJsonRpcResult::AgentList { agents } => {
-                assert_eq!(agents.len(), 2);
+                assert_eq!(agents.len(), 3);
             }
             other => panic!("unexpected RPC result: {other:?}"),
         }
@@ -4596,8 +4686,9 @@ mod tests {
         assert_eq!(response.status_code, 200);
         match payload.result.expect("result should be present") {
             AgentJsonRpcResult::AgentList { agents } => {
-                assert_eq!(agents.len(), 2);
+                assert_eq!(agents.len(), 3);
                 assert_eq!(agents[0].name, "echo");
+                assert_eq!(agents[1].name, "ha-local-bridge");
             }
             other => panic!("unexpected RPC result: {other:?}"),
         }
@@ -4991,9 +5082,10 @@ mod tests {
         assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
         match payload.result.expect("result should be present") {
             AgentJsonRpcResult::AgentList { agents } => {
-                assert_eq!(agents.len(), 2);
+                assert_eq!(agents.len(), 3);
                 assert_eq!(agents[0].name, "echo");
-                assert_eq!(agents[1].name, "timer");
+                assert_eq!(agents[1].name, "ha-local-bridge");
+                assert_eq!(agents[2].name, "timer");
             }
             other => panic!("unexpected RPC result: {other:?}"),
         }
@@ -5038,9 +5130,10 @@ mod tests {
         assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
         match payload.result.expect("result should be present") {
             AgentJsonRpcResult::AgentSnapshot { snapshot } => {
-                assert_eq!(snapshot.agents.len(), 2);
+                assert_eq!(snapshot.agents.len(), 3);
                 assert_eq!(snapshot.agents[0].name, "echo");
-                assert_eq!(snapshot.agents[1].name, "timer");
+                assert_eq!(snapshot.agents[1].name, "ha-local-bridge");
+                assert_eq!(snapshot.agents[2].name, "timer");
             }
             other => panic!("unexpected RPC result: {other:?}"),
         }

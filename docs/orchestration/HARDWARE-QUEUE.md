@@ -42,8 +42,8 @@ None.
 - Anchor files: `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`
 - Validation: `get_errors` clean on `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`; findings record the named stand-in or bridge artifact reference, proposal and decision field refs, shell or log evidence, deny-log evidence, reboot note, and operator-attended note.
 - Constraints: Keep all wording aligned with the current local-only handoff surfaces. Do not turn a named stand-in into real HA proof. Do not treat clean reboot as full power-cycle survival. Do not claim consent acceptance, D1 closure, or G4 movement. Run this lane only after the first physical baseline exists.
-- Blocker: Requires an operator-approved reboot window on `homelab001`; do not trigger the reboot boundary from the current agent-run session.
-- Last update: 2026-05-03
+- Blocker: The operator has approved the reboot work, but the actual clean-reboot boundary must run as a detached operator handoff because `homelab001` can come back on a different IP and strand the current VS Code session; do not trigger that boundary from the current agent-run session.
+- Last update: 2026-05-04
 - size: L
 - serial-after: HARDWARE-2026-04-30-05
 - solo: true
@@ -60,8 +60,8 @@ None.
 - Anchor files: `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`
 - Validation: `get_errors` clean on `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`; findings record the named Pack B DUT, named Pack C HA host, HA entity or dashboard evidence reference, recovery observation if attempted, and claim ceiling.
 - Constraints: Keep this as the first real HA-proof step and do not pull it earlier into the D1-style DUT rehearsal lanes. Do not claim independent install proof, private-beta readiness, G4 closure, or any result not captured on real hardware with a separate HA host. Run this lane only after the DUT-side handoff mirror exists.
-- Blocker: Requires a real separate Pack C Home Assistant host on the same LAN; the current co-located mode on `homelab001` does not satisfy this queue intent.
-- Last update: 2026-05-03
+- Blocker: The separate Pack C host requirement is now satisfied on `MKY` and the first visibility findings packet exists, but canonical queue closure remains blocked until `HARDWARE-2026-04-30-06` lands because `serial-after: HARDWARE-2026-04-30-06` remains authoritative.
+- Last update: 2026-05-04
 - size: L
 - serial-after: HARDWARE-2026-04-30-06
 - solo: true
@@ -70,6 +70,53 @@ None.
 ---
 
 ## Done
+
+### HARDWARE-2026-05-03-09
+
+- Title: Raspberry Pi 4B docs-only family baseline under ADR-025
+- Status: done
+- Priority: P1
+- Gate: ADR-025 family proof prep
+- Owning streams: S7 primary; S8 awareness
+- Goal: Write the first docs-only Raspberry Pi 4B family baseline packet that turns the ADR-025 lane-profile note into a concrete Pack A baseline: target summary, compressed-lane posture, federated identity and storage boundary, and explicit non-claims. This wave must not claim physical Pi execution, D1 movement, G4 movement, Home Assistant proof, or FERROS-native OS proof.
+- Anchor files: `docs/hardware/firmware-spikes/raspberry-pi-4b/README.md`; `docs/hardware/adr25-proof/raspberry-pi-4b-family-baseline.md`
+- Validation: `get_errors` clean on both anchor files; both files cite the ADR-025 family-lane profile note and keep Pi at docs-only baseline posture.
+- Constraints: Docs-only. Keep `S2` and `S6` explicitly federated to x86_64 and keep Pi FERROS-side boot work deferred. No physical-device claim.
+- Last update: 2026-05-03
+- size: S
+- track: hardware
+
+### HARDWARE-2026-05-03-10
+
+- Title: Jetson Orin Nano docs-only family baseline under ADR-025
+- Status: done
+- Priority: P1
+- Gate: ADR-025 family proof prep
+- Owning streams: S7 primary; S8 awareness
+- Goal: Write the first docs-only Jetson Orin Nano family baseline packet that binds the ADR-025 lane-profile note into a concrete family baseline: target summary, compressed-lane posture, federated identity and storage boundary, vendor-image dependency, and explicit non-claims. This wave must not claim physical Jetson execution, D1 movement, G4 movement, Home Assistant proof, or FERROS-native OS proof.
+- Anchor files: `docs/hardware/firmware-spikes/jetson-orin-nano/README.md`; `docs/hardware/adr25-proof/jetson-orin-nano-family-baseline.md`
+- Validation: `get_errors` clean on both anchor files; both files cite the ADR-025 family-lane profile note and keep Jetson at docs-only baseline posture.
+- Constraints: Docs-only. Keep `S2` and `S6` explicitly federated to x86_64 and keep Jetson FERROS-side boot work deferred. No physical-device claim.
+- Last update: 2026-05-03
+- size: S
+- serial-after: HARDWARE-2026-05-03-09
+- track: hardware
+
+### HARDWARE-2026-05-03-11
+
+- Title: ESP32 docs-only compressed family baseline under ADR-025
+- Status: done
+- Priority: P1
+- Gate: ADR-025 family proof prep
+- Owning streams: S7 primary; S8 awareness
+- Goal: Write the first docs-only ESP32 family baseline packet that turns the ADR-025 compressed peripheral profile into a concrete baseline: minimum active lanes, federated identity and storage boundary, firmware-first posture, and explicit non-claims. This wave must not claim board execution, D1 movement, G4 movement, Home Assistant proof, or FERROS-native OS proof.
+- Anchor files: `docs/hardware/firmware-spikes/esp32/README.md`; `docs/hardware/adr25-proof/esp32-family-baseline.md`
+- Validation: `get_errors` clean on both anchor files; both files cite the ADR-025 family-lane profile note and keep ESP32 at docs-only compressed-baseline posture.
+- Constraints: Docs-only. Keep `S2` and `S6` explicitly federated to x86_64, keep `S3` and `S5` optional, and do not recast ESP32 as a FERROS OS computer. No physical-device claim.
+- Last update: 2026-05-03
+- size: S
+- serial-after: HARDWARE-2026-05-03-10
+- track: hardware
 
 ### HARDWARE-2026-04-27-02
 

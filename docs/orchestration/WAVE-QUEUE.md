@@ -29,6 +29,166 @@ None.
 
 ## Done
 
+### WAVE-2026-05-03-83
+
+- Title: x86_64 FERROS subcore coordination lock and lane architect packet
+- Status: done
+- Priority: P1
+- Gate: ADR-025 x86_64 FERROS-root seed runway
+- Owning streams: S8 primary; S1 and S4 awareness
+- Goal: Create one bounded coordination note that turns the accepted ADR-025 x86_64 FERROS-root idea into a concrete first subcore batch: map `R1-R8` research lanes onto current repo seams, preserve current stream and gate authority, name the first executable seed waves, and keep the claim ceiling explicit.
+- Anchor files: `docs/orchestration/ADR-025-X86-FERROS-SUBCORE-01.md`
+- Validation: `get_errors` clean on `docs/orchestration/ADR-025-X86-FERROS-SUBCORE-01.md`; note names concrete repo seams in `crates/ferros-core`, `crates/ferros-runtime`, and `docs/streams/STREAM-E-CORE-OS.md`.
+- Constraints: Docs-only. No hardware proof, no D1 movement, no G4 movement, no QEMU success claim, and no FERROS-native OS claim.
+- Last update: 2026-05-03
+- size: S
+- track: code
+
+### WAVE-2026-05-03-84
+
+- Title: x86_64 FERROS R1 UEFI boot-path note
+- Status: done
+- Priority: P1
+- Gate: ADR-025 x86_64 FERROS-root seed runway
+- Owning streams: S1 primary; S8 awareness
+- Goal: Write one research note that translates Stream E's x86_64-first, UEFI-first posture into a concrete boot-path artifact contract for the future FERROS subcore: firmware, bootloader, kernel handoff, serial or framebuffer checkpoints, and preserved non-claims.
+- Anchor files: `docs/research/S1-x86_64-ferros-uefi-boot-path.md`
+- Validation: `get_errors` clean on `docs/research/S1-x86_64-ferros-uefi-boot-path.md`; note cites Stream E plus ADR-025 and names concrete missing implementation seams.
+- Constraints: Docs-only. No QEMU run, no boot image claim, and no hardware evidence.
+- Last update: 2026-05-03
+- size: S
+- serial-after: WAVE-2026-05-03-83
+- track: code
+
+### WAVE-2026-05-03-85
+
+- Title: x86_64 FERROS R2 kernel and privilege handoff note
+- Status: done
+- Priority: P1
+- Gate: ADR-025 x86_64 FERROS-root seed runway
+- Owning streams: S1 primary; S4 awareness; S8 awareness
+- Goal: Write one research note that defines the first kernel and privilege handoff posture for x86_64 FERROS-root work: bootloader-to-kernel boundary, early memory expectations, privilege separation, and what remains architecture-only.
+- Anchor files: `docs/research/S1-x86_64-ferros-kernel-privilege-model.md`
+- Validation: `get_errors` clean on `docs/research/S1-x86_64-ferros-kernel-privilege-model.md`; note stays architecture-first and preserves the current claim ceiling.
+- Constraints: Docs-only. No kernel proof, no QEMU proof, no hardware proof, and no gate movement.
+- Last update: 2026-05-03
+- size: S
+- serial-after: WAVE-2026-05-03-84
+- track: code
+
+### WAVE-2026-05-03-86
+
+- Title: x86_64 FERROS R3-R4 runtime port plan and subcore example
+- Status: done
+- Priority: P1
+- Gate: ADR-025 x86_64 FERROS-root seed runway
+- Owning streams: S4 primary; S1 and S8 awareness
+- Goal: Write one runtime-port research note for x86_64 FERROS-root work and land one runnable host-side subcore example in `ferros-runtime` that composes the current message bus, executor, and local-runway primitives without claiming no_std or boot success.
+- Anchor files: `docs/research/S4-x86_64-ferros-runtime-port-plan.md`, `crates/ferros-runtime/examples/x86_64_subcore_smoke.rs`
+- Validation: `get_errors` clean on both anchor files; `cargo run -p ferros-runtime --example x86_64_subcore_smoke` succeeds.
+- Constraints: Keep the example std-hosted and local-only. Do not claim no_std runtime success, QEMU success, or hardware proof.
+- Last update: 2026-05-03
+- size: S
+- serial-after: WAVE-2026-05-03-85
+- track: code
+
+### WAVE-2026-05-03-87
+
+- Title: x86_64 FERROS runtime subcore boundary tests
+- Status: done
+- Priority: P1
+- Gate: ADR-025 x86_64 FERROS-root seed runway
+- Owning streams: S4 primary; S8 awareness
+- Goal: Add focused `ferros-runtime` tests that treat the current executor, bus, and local-runway state machine as the host-side subcore seam for future x86_64 FERROS-root work.
+- Anchor files: `crates/ferros-runtime/tests/x86_64_subcore_smoke.rs`
+- Validation: `cargo test -p ferros-runtime x86_64_subcore_` succeeds.
+- Constraints: Test-only. Do not widen runtime claims into no_std or hardware proof.
+- Last update: 2026-05-03
+- size: S
+- serial-after: WAVE-2026-05-03-86
+- track: code
+
+### WAVE-2026-05-03-88
+
+- Title: ferros-core portable foundation surface tests for x86_64 FERROS
+- Status: done
+- Priority: P1
+- Gate: ADR-025 x86_64 FERROS-root seed runway
+- Owning streams: S1 primary; S4 awareness; S8 awareness
+- Goal: Add focused `ferros-core` tests around the portable capability and message surfaces that future x86_64 FERROS-root boot and runtime work will rely on, without claiming kernel or boot progress.
+- Anchor files: `crates/ferros-core/tests/foundation_surface.rs`
+- Validation: `cargo test -p ferros-core foundation_surface_` succeeds.
+- Constraints: Test-only. Preserve `ferros-core` as the portable foundation seam and do not widen into runtime or hardware proof.
+- Last update: 2026-05-03
+- size: S
+- serial-after: WAVE-2026-05-03-87
+- track: code
+
+### WAVE-2026-05-03-89
+
+- Title: x86_64 FERROS QEMU-OVMF smoke plan
+- Status: done
+- Priority: P1
+- Gate: ADR-025 x86_64 FERROS-root seed runway
+- Owning streams: S1 primary; S4 and S8 awareness
+- Goal: Write one concrete QEMU-OVMF smoke-plan note that turns Stream E's R2 posture into exact future inputs and checkpoints: firmware image, boot artifact expectations, serial-log checkpoints, virtual disk expectations, and why the plan is still non-evidentiary tonight.
+- Anchor files: `docs/research/S1-x86_64-qemu-ovmf-smoke-plan.md`
+- Validation: `get_errors` clean on `docs/research/S1-x86_64-qemu-ovmf-smoke-plan.md`; note includes explicit missing pieces and non-claims.
+- Constraints: Docs-only. No QEMU run, no boot-image creation claim, no hardware proof, and no gate movement.
+- Last update: 2026-05-03
+- size: S
+- serial-after: WAVE-2026-05-03-88
+- track: code
+
+### WAVE-2026-05-03-90
+
+- Title: Serial truth-sync after x86 FERROS subcore batch
+- Status: done
+- Priority: P1
+- Gate: ADR-025 x86_64 FERROS-root seed runway closeout
+- Owning streams: S8 primary; S1 and S4 awareness
+- Goal: Reconcile the minimum shared truth surfaces after the x86_64 FERROS subcore seed waves land so the queue, run log, and doc-batch surfaces record exactly what research, examples, and tests now exist and exactly what remains unproven.
+- Anchor files: `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`, `docs/orchestration/doc-batches/DOC-BATCH-2026-05-03-X86-FERROS-SUBCORE-01.md`
+- Validation: `get_errors` clean on the touched truth surfaces; `cargo run -p ferros-runtime --example x86_64_subcore_smoke`; `cargo test -p ferros-runtime x86_64_subcore_`; `cargo test -p ferros-core foundation_surface_` all succeed.
+- Constraints: Final serial wave only. Shared truth surfaces only. No hardware proof, no QEMU success claim, no D1 or G4 movement, and no FERROS-native OS claim.
+- Last update: 2026-05-03
+- size: L
+- serial-after: WAVE-2026-05-03-89
+- solo: true
+- track: code
+
+### WAVE-2026-05-03-91
+
+- Title: x86_64 FERROS scaffold crate for boot and kernel experiments
+- Status: done
+- Priority: P1
+- Gate: ADR-025 x86_64 FERROS-root scaffold runway
+- Owning streams: S1 primary; S4 and S8 awareness
+- Goal: Add one dedicated `x86_64` FERROS-root scaffold crate to the Rust workspace that captures the planned boot artifact families, early boot checkpoints, and portable foundation link for future boot or kernel experiments without claiming a bootloader, kernel, QEMU, or hardware run.
+- Anchor files: `Cargo.toml`, `crates/ferros-x86_64-scaffold/Cargo.toml`, `crates/ferros-x86_64-scaffold/src/lib.rs`
+- Validation: `cargo test -p ferros-x86_64-scaffold` succeeds; `cargo check -p ferros-x86_64-scaffold --no-default-features` succeeds.
+- Constraints: Keep the crate architecture-only and compile-hosted. No UEFI application, no kernel implementation, no QEMU execution, no hardware evidence, no D1 or G4 movement, and no FERROS-native OS claim.
+- Last update: 2026-05-03
+- size: S
+- serial-after: WAVE-2026-05-03-90
+- track: code
+
+### WAVE-2026-05-03-92
+
+- Title: ferros-runtime queue-backed executor and bus seams for future non-std backends
+- Status: done
+- Priority: P1
+- Gate: ADR-025 x86_64 FERROS-root host-side runtime abstraction runway
+- Owning streams: S4 primary; S1 and S8 awareness
+- Goal: Introduce bounded queue-backing traits and feature-gated no-`std` compatibility in `ferros-runtime` so the host-side executor and message-bus seam can accept future non-`std` backends without claiming a native runtime.
+- Anchor files: `crates/ferros-runtime/Cargo.toml`, `crates/ferros-runtime/src/lib.rs`, `crates/ferros-runtime/src/executor.rs`, `crates/ferros-runtime/src/bus.rs`, `crates/ferros-runtime/tests/boundaries.rs`
+- Validation: `cargo test -p ferros-runtime --test boundaries` succeeds; `cargo test -p ferros-runtime x86_64_subcore_` succeeds; `cargo check -p ferros-runtime --no-default-features` succeeds.
+- Constraints: Host-side abstraction only. Keep `InMemoryExecutor` and `InMemoryMessageBus` as hosted reference implementations. No UEFI boot success, no kernel success, no QEMU success, no embedded or native-runtime proof, no hardware evidence, no D1 or G4 movement, and no FERROS-native OS claim.
+- Last update: 2026-05-03
+- size: L
+- serial-after: WAVE-2026-05-03-91
+- track: code
+
 ### WAVE-2026-04-30-81
 
 - Title: Serial truth-sync after contract cleanup and hardware prep
