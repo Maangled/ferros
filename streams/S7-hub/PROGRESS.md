@@ -4,6 +4,17 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-05-04 - G4 closed and `v0.2.0` tagged
+
+- The Pack B `x86_64` launch packet on `homelab001` is now the tagged core-launch record: G4 is closed, `v0.2.0` has been cut, and the core launch lane is now a post-launch anchor rather than an open gate.
+- S7 moves from launch-closeout to post-G4 module-lane follow-up. Home Assistant and future local LLM or external LLM API work continue as optional integrations rather than launch blockers.
+
+## 2026-05-04 - Pack B target-build proof captured; core G4 evidence now documented
+
+- Added `docs/hardware/findings/FINDINGS-pack-b-session-04-g4-target-build.md` to capture the missing Pack B `x86_64-unknown-linux-gnu` target-build proof for `ferros-hub` on `homelab001`, including the resulting binary path under `target/x86_64-unknown-linux-gnu/debug/ferros-hub`.
+- Reconciled `docs/gates/G4.md`, `docs/hub/reference-hardware.md`, and `LAUNCH.md` so the current Pack B hardware anchor, install date, power-cycle recovery, logs-visible consent deny, and coordinated Windows reprovision are all explicitly mapped as the core G4 evidence packet under ADR-028.
+- The S7 lane is now in launch closeout posture rather than evidence discovery: the remaining G4 action is the `v0.2.0` tag, while Home Assistant and future local LLM or external LLM API work continue as optional module lanes.
+
 ## 2026-04-30 - Local code-runway closeout packet packaged for hardware handoff
 
 - WAVE-2026-04-30-71 added `docs/hub/local-code-runway-inventory.md` as the single inventory of the landed local-only hub proof chain, rerun order, and non-claim ledger that future Pack B or Pack C work must inherit.

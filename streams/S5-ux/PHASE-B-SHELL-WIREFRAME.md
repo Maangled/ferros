@@ -67,6 +67,16 @@ The first HTML shell should still be desktop-first, but the topology should degr
 - `Bottom-left` and `Bottom-right` collapse into tabs above the status rail.
 - The degree budget does not change; drawers count the same as revealing a collapsed surface.
 
+## Touch-first operator posture
+
+When the shell is used on a dedicated touch operator screen, the narrow-layout fallback becomes the primary working posture rather than an edge case.
+
+- No primary action may depend on hover, fine pointer precision, or hidden affordances.
+- Route anchors, drawer handles, lifecycle controls, profile actions, and consent actions should be comfortably tappable and persistently discoverable.
+- The top edge and bottom status rail must remain visible while drawers or consent surfaces are open so the operator keeps transport and route context.
+- Opening inspector or consent content must not fully displace the active route context; the operator should always be able to tell what they are acting on and how to back out.
+- Degraded, offline, and denied states should resolve in-slot with clear retry or backout paths rather than detached overlays or transient notices.
+
 ---
 
 ## Workflow frames
@@ -104,6 +114,17 @@ Target budget: 6 degrees
 
 Target budget: 3 degrees
 
+### Touch operator session
+
+```text
+1. Wake or reveal the route drawer and select the current route.
+2. Inspect the selected agent or proposed item in the center plus inspector surfaces.
+3. If action is needed, arm and confirm inside the consent or audit slot without losing the active route context.
+4. Verify the result in the same shell through the status rail, audit slot, or refreshed center surface.
+```
+
+Target budget: 4 degrees
+
 ---
 
 ## Surface behavior rules
@@ -113,6 +134,7 @@ Target budget: 3 degrees
 - Consent is route-scoped, not a free-floating modal stack.
 - Deny-log review should reuse the inspector and center slots before introducing new layers.
 - Empty, loading, degraded, and offline states must appear in-slot rather than as detached overlays.
+- Touch posture should keep one obvious backout path visible whenever a drawer, consent surface, or focused inspector is open.
 
 ---
 

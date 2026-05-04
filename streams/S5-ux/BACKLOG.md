@@ -41,6 +41,14 @@
 - [x] Define the consent-flow copy spec for the S5 consent gate, derived from `docs/legal/CONSENT-LANGUAGE.md` DRAFT sections (capability grant language, onramp accept language, deny-visibility disclosure), marked as draft pending counsel red-line
 - [ ] Clear draft status on consent-flow copy spec once CONSENT-LANGUAGE.md has been reviewed by counsel and draft status cleared (coordinated update with legal scaffold)
 
+## Touch-first operator-session queue
+
+- [ ] Harden the shell for touch operation on a dedicated operator screen: no hover-only affordances, persistent route anchors, and tap-sized controls for drawers, lifecycle bar, consent actions, and profile actions
+- [ ] Rework the narrow-layout shell behavior into a real touch posture: drawers and bottom tabs stay usable at arm's length, status remains persistent, and the operator never loses route context when a detail or consent surface opens
+- [ ] Land the onramp accept/reject path as the first touch-critical consent flow: proposed-item slot, explicit accept event capture, visible audit receipt, and no silent mutation path to canonical state
+- [ ] Add operator-session guardrails for local recovery: clear degraded or offline states, obvious retry paths, and no hidden destructive actions in the touch path
+- [ ] Define the first touch-session walkthroughs as grouped proofs: inspect agent, recover from deny, accept one onramp item, and verify that each flow stays within the current localhost-only privilege ceiling
+
 ## Later (Phase C — post-G3)
 
 - [ ] Compile `ferros-core` to `wasm32-unknown-unknown`

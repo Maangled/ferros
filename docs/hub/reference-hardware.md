@@ -6,8 +6,8 @@
 
 ## Current mode
 
-- S7 is still in runway mode. G3 is already closed; G4 now closes on real hardware plus core `ferros-hub` evidence. Optional integration lanes such as Home Assistant do not block the current launch definition.
-- This file is planning and evidence-prep only until a device moves into the confirmed evidence table below.
+- S7 is still in runway mode, but the current core G4 evidence packet is now documented on the Pack B `x86_64` lane. Optional integration lanes such as Home Assistant do not block the current launch definition.
+- This file remains planning and evidence-prep for future devices, while the confirmed Pack B row below records the current tested-hardware anchor.
 - `LAUNCH.md` and `docs/gates/G4.md` remain the authoritative launch criteria. This file should not be used to imply that launch evidence already exists.
 
 ---
@@ -56,7 +56,7 @@ This section is planning shorthand only. A "pack" is a candidate bundle of devic
 
 The first honest bring-up target is **Pack B - x86_64 lane**. **Pack C - companion lane** remains useful when an optional integration module such as Home Assistant is under test, but it is no longer part of the minimum G4 core-launch boundary. The x86_64 lane is still the most practical first target because it maximizes shell access, log capture, rollback, and power-cycle observation while staying inside the launch-valid hardware classes in `LAUNCH.md`.
 
-Pack A remains the required `aarch64` follow-on for Pi-class evidence, but S7 should earn its first concrete end-to-end bring-up on the more observable `x86_64` lane unless hardware availability forces a Pi-first pass.
+Pack A remains the planned `aarch64` follow-on for Pi-class evidence, but S7 should earn its first concrete end-to-end bring-up on the more observable `x86_64` lane unless hardware availability forces a Pi-first pass.
 
 ### First lab topology contract
 
@@ -199,6 +199,7 @@ Only add a row here when the hardware also satisfies the G4 evidence checklist.
 
 | Hardware | Architecture | Confirmed on | `ferros-hub` version | Evidence location | Notes |
 |----------|--------------|--------------|----------------------|-------------------|-------|
+| `homelab001` Pack B home-server DUT | `x86_64` | `2026-05-04` | `0.1.0` | [docs/gates/G4.md](../gates/G4.md); [docs/hardware/findings/FINDINGS-pack-b-session-01-profile-baseline.md](../hardware/findings/FINDINGS-pack-b-session-01-profile-baseline.md); [docs/hardware/findings/FINDINGS-pack-b-session-04-g4-target-build.md](../hardware/findings/FINDINGS-pack-b-session-04-g4-target-build.md) | Core launch anchor under ADR-028: target build, target-side provisioning, consent-deny visibility, hard-power recovery, and coordinated second-device reprovision are all documented. |
 
 ---
 

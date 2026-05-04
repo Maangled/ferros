@@ -4,7 +4,7 @@
 **Status:** 🟨 Phase A active on the real landing page; Phase B localhost shell slice landed with narrow lifecycle/profile controls and display-only onramp observation
 **Gate:** Contributes to launch-readiness; no blocking gate owned solely by S5
 
-> Current checkpoint: the first localhost browser profile surface is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter with focused route-test coverage, and the existing runway route now renders pending-consent proposed material plus the recorded local decision rehearsal receipt from `/runway-summary.json` as display-only, local-only, non-evidentiary observation with same-origin H9 proof. Remaining S5 follow-up is onramp accept/reject wiring without reopening the frozen S2 contract or widening browser privileges.
+> Current checkpoint: the first localhost browser profile surface is landed for `init`, `show`, `export`, and `import` through the local `/profile` adapter with focused route-test coverage, and the existing runway route now renders pending-consent proposed material plus the recorded local decision rehearsal receipt from `/runway-summary.json` as display-only, local-only, non-evidentiary observation with same-origin H9 proof. Remaining S5 follow-up is now grouped as touch-first operator-session work: onramp accept/reject wiring, touch-safe shell posture, operator recovery states, and session-proof walkthroughs without reopening the frozen S2 contract or widening browser privileges.
 
 ---
 
@@ -169,6 +169,7 @@ Calendar, social-graph, and marketplace onramp variants follow the same pattern.
 
 ## Immediate next steps
 
-1. Verify the remaining site links and archive candidates against current inbound references.
-2. Execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once link hygiene is confirmed.
-3. Implement the localhost onramp consent surface only after the audit-log seam can record explicit accept events, without widening browser privileges or reopening the frozen S2 boundary.
+1. Finish the non-UX hygiene already in flight: verify the remaining site links and archive candidates against current inbound references, then execute the archive plan from `DOCS-HTML-PROTOTYPE-AUDIT.md` once link hygiene is confirmed.
+2. Land the first touch-critical consent flow: localhost onramp accept/reject wiring only after the audit-log seam can record an explicit accept event, with a visible receipt and no silent path to canonical state.
+3. Convert the current narrow-layout fallback into a touch-first operator posture: tap-sized persistent anchors, stable route context, and explicit degraded or offline recovery states for a dedicated operator screen.
+4. Prove the first operator-session loops end to end on the localhost shell: inspect agent, recover from deny, accept one onramp item, and keep each walkthrough within the current localhost-only privilege ceiling.

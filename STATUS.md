@@ -2,7 +2,7 @@
 
 > Dashboard, not a diary. Each section shows current state. Details live in stream PROGRESS.md files.
 >
-> Last updated: 2026-05-04 (ADR-028 and core-launch doc tightening)
+> Last updated: 2026-05-04 (G4 closed; `v0.2.0` tagged)
 
 ---
 
@@ -10,9 +10,9 @@
 
 | Item | State |
 |------|-------|
-| Active gate | **G4** — Launch |
+| Active gate | None — launch gate closed |
 | Demo gate | **D1** — closed (see `docs/gates/D1.md`) |
-| Launch gate | G4 (open) |
+| Launch gate | G4 (closed) |
 | MVP gate | G1 → G2 → G3 in sequence |
 | Open streams | S1 (closeout), S3 (post-G3 contract), S4 (post-G3 hardening), S5 (localhost shell closeout and onramp consent follow-up), S6 (active local-boundary harvest), S7 (G4 runway), S8 (background) |
 
@@ -26,7 +26,7 @@
 | G2 | ✅ Closed | `profile.v0.json` remains the frozen unsigned published v0 consumer contract, `SignedProfileDocument` stays Rust-local at v0, and the real `ferros` binary now proves `profile init | grant | export | import | revoke | show` against temp-file-backed local state while `show` stays unsigned and revoked grant state stays within the frozen grant boundary |
 | G3 | ✅ Closed | CI #20 (`run 24902870499`, commit `8383b67` on `main`) completed successfully on 2026-04-24 after `.github/workflows/ci.yml` wired `cargo check -p ferros-core --no-default-features` plus `cargo run --bin ferros -- demo` into the hosted Ubuntu workflow |
 | D1 | ✅ Closed | Operator-attended demo gate closed on `homelab001`: target profile init/show, named HA stand-in visibility, localhost-shell deny visibility, and full DUT-only power-cycle FERROS-side recovery are all documented in `docs/gates/D1.md` |
-| G4 | 🟡 Active | G3 is closed; S7 now owns the active core launch gate for `ferros-hub` on real hardware, while optional integration module lanes no longer block `v0.2.0` |
+| G4 | ✅ Closed | `v0.2.0` is now tagged from the Pack B `x86_64` launch lane after the target build, physical-device runtime, consent-deny visibility, hard-power recovery, and coordinated reprovision evidence were all documented; optional integration module lanes remain non-blocking |
 
 ---
 
@@ -40,7 +40,7 @@
 | S4 Runtime / OS Core | 🟡 Post-G3 hardening | `ferros-runtime`, in-memory executor and bus, policy property tests, the `cargo run --bin ferros -- demo` path, the `ferros-core --no-default-features` compile slice, a local `thumbv7em-none-eabi --no-default-features` proof, the local-only `LocalRunwayState` checkpoint helper surface for downstream runway-summary consumers, the existing read-only `/runway-summary(.json)` seam with additive optional `hubRestart`, `hubOnrampProposal`, and `hubOnrampDecisionReceipt` local runway context, and the narrow host/controller support for both the local-only `LocalAgentApi` seam and the first local-only lifecycle/write JSON-RPC slice are now in repo; CI is configured to enforce the same thumb-target check while broader `no_std` and host hardening remain | post-G3 |
 | S5 UX | 🟨 Phase A archive/link-hygiene landed; Phase B localhost shell, lifecycle bar, profile slice, and display-only onramp observation landed | real landing page and honest status banner shipped; the Phase A archive/link-hygiene pass and docs-root reference repairs are landed, the fixed-slot localhost shell now reads live agent, grant-state, and deny-log data through `ferros-node`, exposes a narrow grant-aware selected-agent lifecycle bar, renders the first localhost `/profile` slice for `init | show | export | import`, and displays both pending-consent proposed material and the recorded local decision rehearsal receipt on the existing runway route while the same-origin acceptance harness closes the local lifecycle, deny, profile, and display-only proposal-plus-decision observation proof loop on one embedded path; the existing runway route now also states its read-only no-remote-transport and no-G4-closure ceiling explicitly; grant/revoke, onramp accept/reject wiring, remote transport, and broader browser control remain open | post-G3 |
 | S6 Ecosystem Harvest | 🟡 Active | ADR-018/019/020 landed; `ferros-data` now owns the typed local-push audit envelope boundary plus the typed local onramp proposal and decision receipt boundaries, the shared local-runway wording or scope or evidence or `.tmp/hub` path guardrail layer, and the proposal-schema parity ceiling consumed by the current hub or shell or harness rehearsal packet without reopening ADR-020; downstream extraction stays stream-owned | rolling |
-| S7 Smart-Home Hub | 🟡 G4 runway active | the hardware runway, `x86_64`-first bring-up plan, first Home Assistant bridge runway contract, first Pack B bring-up worksheet, operator rehearsal notes, a library-backed local-only `ferros-hub` crate, manifest-backed local bridge registration, `ferros-core` policy-backed allow/deny evaluation, a typed local runtime summary plus bounded `.tmp/hub` restart snapshot seam, bounded `.tmp/hub/local-onramp-proposal.json` and `.tmp/hub/local-onramp-decision-receipt.json` artifacts, restart-aware `summary | prove-bridge` outputs, additive optional `hubRestart`, `hubOnrampProposal`, and `hubOnrampDecisionReceipt` context on the existing read-only `/runway-summary(.json)` seam, display-only localhost shell and inspector rendering plus same-origin acceptance-harness proof on the existing route, bounded local restart snapshot and proposal-plus-decision schema/H1 coverage, `cargo xtask hub-runway` snapshot write or reload plus proposal-and-decision rehearsal validation, the consolidated local code-runway inventory, deterministic helper cleanup, the validated plan-only D1 target inventory plus Pack B session-prep packet, and staged Pack B then Pack C execution lanes are now in repo; core G4 now centers on physical-device evidence, consent visibility, reboot-safe recovery, and one coordinated clean install, while Home Assistant and future local LLM or external LLM API surfaces remain optional module lanes rather than current launch blockers | G4 |
+| S7 Smart-Home Hub | 🟡 Post-G4 module-lane handoff | the hardware runway, `x86_64`-first bring-up plan, first Home Assistant bridge runway contract, first Pack B bring-up worksheet, operator rehearsal notes, a library-backed local-only `ferros-hub` crate, manifest-backed local bridge registration, `ferros-core` policy-backed allow/deny evaluation, a typed local runtime summary plus bounded `.tmp/hub` restart snapshot seam, bounded `.tmp/hub/local-onramp-proposal.json` and `.tmp/hub/local-onramp-decision-receipt.json` artifacts, restart-aware `summary | prove-bridge` outputs, additive optional `hubRestart`, `hubOnrampProposal`, and `hubOnrampDecisionReceipt` context on the existing read-only `/runway-summary(.json)` seam, display-only localhost shell and inspector rendering plus same-origin acceptance-harness proof on the existing route, bounded local restart snapshot and proposal-plus-decision schema/H1 coverage, `cargo xtask hub-runway` snapshot write or reload plus proposal-and-decision rehearsal validation, the consolidated local code-runway inventory, deterministic helper cleanup, the validated plan-only D1 target inventory plus Pack B session-prep packet, the Pack B physical baseline, the Pack B hard-power closeout, the Pack B target-build proof, and the coordinated Windows reprovision packet are now in repo; G4 is closed and Home Assistant plus future local LLM or external LLM API surfaces continue as optional module lanes | post-G4 |
 | S8 Docs / Governance | 🟡 Active (background) | status/gate/contracts truth-sync baseline is in repo; doctrine plus the ADR index/roadmap/research baseline are now landed; `SECURITY.md`, `THREAT-MODEL.md`, `GOVERNANCE.md`, `CODE_OF_CONDUCT.md`, and contributor intake templates now exist, while issue seeding remains open | rolling |
 
 ---
@@ -57,7 +57,7 @@
 | `v0.1.0-rc` | 🟡 | MVP gate path G1 → G2 → G3 is now closed; tag pending |
 | `v0.1.0` | 🟡 | First localhost shell slice plus the narrow local lifecycle/profile proof loop and display-only onramp proposal-plus-decision observation are landed via `ferros-node shell`; privileged grant/revoke, onramp accept/reject wiring, remote transport, and broader browser control remain |
 | `v0.2.0-rc` | ⬜ | `ferros-hub` pairing demo on x86_64 |
-| `v0.2.0` | ⬜ | **Core launch** — hub on Pi or home server, consent enforced, reboot-safe, coordinated clean install confirmed; optional integrations ship as module lanes |
+| `v0.2.0` | ✅ | **Core launch** — tagged on 2026-05-04 from the Pack B home-server lane; optional integrations continue as module lanes |
 
 ---
 
@@ -68,7 +68,7 @@ S1 Foundation → G1 → S2 Profile → G2 → S3 Agent Center → G3 → S7 Hub
                   └→ S4 Runtime ─────────────────────────┘
 ```
 
-The **agent center + runtime convergence** path is now closed at G3. The active gate is G4, while the S3 remote contract, S5 local shell, and additional S4 hardening proceed in parallel behind that launch-facing gate.
+The **agent center + runtime convergence** path is now closed at G3, and the core launch gate G4 is now closed at `v0.2.0`. The S3 remote contract, S5 local shell, additional S4 hardening, and optional module-lane work continue in parallel after launch.
 
 ---
 
@@ -76,6 +76,8 @@ The **agent center + runtime convergence** path is now closed at G3. The active 
 
 | Date | Event |
 |------|-------|
+| 2026-05-04 | `v0.2.0` is now tagged and G4 is closed. The Pack B `x86_64` launch lane on `homelab001` now carries the full documented core launch packet: target build proof, real-device runtime proof, logs-visible consent deny, hard-power recovery, and coordinated Windows reprovision. |
+| 2026-05-04 | Pack B target-build proof is now captured and the G4 evidence ledger is fully reconciled under ADR-028: `cargo build -p ferros-hub --target x86_64-unknown-linux-gnu` succeeded on `homelab001`, `docs/hub/reference-hardware.md` now records the Pack B DUT as confirmed working hardware, and the G4 file now has all core evidence rows filled. The remaining launch-closeout action is the `v0.2.0` tag. |
 | 2026-05-04 | ADR-028 is now accepted: `v0.2.0` is formally defined as core FERROS on real hardware, Home Assistant and future local LLM or external LLM API work are optional module lanes, and strict unmanaged installs are deferred until after coordinated lab rollout and controlled test homes. G4 and `LAUNCH.md` are now tightened around the Pack B `homelab001` hardware anchor plus the Windows fresh-host coordinated reprovision packet. |
 | 2026-05-04 | Launch policy is now reset around core FERROS readiness on real hardware: Home Assistant moved to an optional module lane instead of a current G4 blocker, strict unmanaged independent installs are explicitly deferred until the later controlled test-home rollout, and the immediate launch bar is now core hub behavior plus one coordinated clean install on additional lab-controlled hardware. Local LLM runtimes and external LLM APIs are now first-class candidate module lanes alongside or ahead of Home Assistant. |
 | 2026-05-04 | Separate Windows-host evidence is now captured honestly: on FERROS revision `aafc16bc64012f7fee8fb2a2e2845015b5f6f615`, a fresh explicit profile path and temp-rooted local state root built and ran on a separate Windows host against the homelab Home Assistant deployment, manual `remote-report-state` created `sensor.ferros_ha_local_bridge_status`, restarting only the homelab `homeassistant` container removed it until one manual repair, and a later hard Windows restart preserved the saved profile plus the already-restored entity. Under the pre-reset launch definition, this did not satisfy the stricter independent-install bar or the old HA restoration blocker set. |

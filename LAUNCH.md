@@ -53,13 +53,13 @@ See `docs/gates/G4.md` for the full entry criteria, required evidence, and exit 
 
 Short form:
 
-- [ ] `ferros-hub` binary compiles for `aarch64-unknown-linux-gnu`
-- [ ] Boots and loads profile on Pi / home server
-- [ ] `ferros agent list` shows at least one registered agent
-- [ ] Consent deny verified: ungranted capability request is blocked and logged on an operator-visible FERROS surface
-- [ ] Power cycle survival confirmed
-- [ ] At least one coordinated clean install or reprovision confirmed on additional lab-controlled hardware
-- [ ] `LAUNCH.md` updated with install date and hardware spec
+- [x] `ferros-hub` binary builds for the chosen Pack B `x86_64-unknown-linux-gnu` launch target
+- [x] Boots and loads profile on the chosen home-server lane
+- [x] `ferros agent list` shows registered agents on the running hub
+- [x] Consent deny verified: ungranted capability request is blocked and logged on an operator-visible FERROS surface
+- [x] Power cycle survival confirmed
+- [x] At least one coordinated clean install or reprovision confirmed on additional lab-controlled hardware
+- [x] `LAUNCH.md` now records the current install date and hardware spec
 
 ---
 
@@ -75,7 +75,9 @@ The current core launch lane is the Pack B `x86_64` home-server path centered on
 | Coordinated secondary-device reprovision evidence | `2026-05-04` Windows fresh-host packet with a fresh explicit profile path and temp-rooted local FERROS state root |
 | Rollout note | Strict unmanaged independent installs are deferred until after coordinated lab rollout and later controlled test homes |
 
-This section records the current launch anchor while G4 remains open. It does not by itself declare G4 closed.
+This section records the current launch anchor for the closed G4 launch packet.
+
+`v0.2.0` was tagged on `2026-05-04` from this Pack B launch lane.
 
 ---
 

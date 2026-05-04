@@ -3,6 +3,64 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-04 - G4-CLOSEOUT-TAG-AND-PUSH
+
+- Selected item: tag the closed core launch packet and push the launch-closeout docs plus release tag
+- Result: Stop-clean. The Pack B launch packet is now tagged `v0.2.0`, G4 is closed in the truth surfaces, and the updated `main` plus the new tag are ready to push.
+- Files:
+  - `LAUNCH.md`
+  - `STATUS.md`
+  - `docs/gates/G4.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `streams/S7-hub/PROGRESS.md`
+- Validation: targeted doc diagnostics stayed clean before commit; release validation is the successful commit, tag creation, and remote push.
+- Claims added: G4 is closed and `v0.2.0` is the current tagged core-launch milestone.
+- Claims explicitly not added: no optional module-lane closure claim and no new runtime or transport proof beyond the already documented launch packet.
+- Next queued follow-up: continue touch-first operator UX and optional module-lane packaging work under post-launch scope.
+
+```json
+{
+  "wave_id": "2026-05-04-G4-CLOSEOUT-TAG-AND-PUSH",
+  "decision": "stop-clean",
+  "rationale": "The release action now matches the documented launch packet: tag the existing evidence-complete state and push it."
+}
+```
+
+---
+## 2026-05-04 - PACK-B-TARGET-BUILD-AND-G4-EVIDENCE-RECONCILIATION
+
+- Selected item: capture the missing Pack B target-build proof and reconcile the remaining core G4 evidence surfaces
+- Result: Stop-clean. `cargo build -p ferros-hub --target x86_64-unknown-linux-gnu` now has an explicit Pack B findings packet on `homelab001`, the hardware reference doc now lists the Pack B DUT as confirmed working hardware, and `docs/gates/G4.md` now has all core evidence rows filled under ADR-028. The gate remains active only because the `v0.2.0` tag has not yet been cut.
+- Files:
+  - `LAUNCH.md`
+  - `STATUS.md`
+  - `docs/gates/G4.md`
+  - `docs/hardware/findings/FINDINGS-pack-b-session-04-g4-target-build.md`
+  - `docs/hub/reference-hardware.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo build -p ferros-hub --target x86_64-unknown-linux-gnu` passed and the target binary was present at `target/x86_64-unknown-linux-gnu/debug/ferros-hub`. Touched-doc diagnostics stayed clean.
+- Claims added: the repo now has an explicit Pack B target-build findings packet, a confirmed-working-hardware row for `homelab001`, and a G4 ledger that is evidence-complete under the current core-launch definition.
+- Claims explicitly not added: no `v0.2.0` tag, no G4 status flip to closed, and no change to the optional module-lane non-blocker posture.
+- Blocked lanes: the only remaining G4 closeout action is the release tag.
+- Next queued follow-up: cut `v0.2.0`, then move the main thread to touch-first operator UX and module-lane packaging work.
+
+```json
+{
+  "wave_id": "2026-05-04-PACK-B-TARGET-BUILD-AND-G4-EVIDENCE-RECONCILIATION",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the target build passed and touched-doc diagnostics stayed clean.",
+    "2_wave_tag": "Not triggered: the landed slice stays inside one new findings packet and the minimum launch-truth surfaces that refer to it.",
+    "3_diff_overrun": "Not triggered: the landed diff stays within one findings file plus the launch, hardware-reference, status, gate, and run-log bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: no new product or runtime code was changed; this was evidence capture plus truth-sync only.",
+    "5_run_length_cap": "Not triggered: this was one bounded G4 closeout-prep slice.",
+    "6_escalation_chain": "Not triggered: once the target build passed, the remaining work was local evidence normalization only."
+  },
+  "decision": "stop-clean",
+  "rationale": "The current launch packet is now evidence-complete under ADR-028, leaving only the release tag as the remaining closeout action."
+}
+```
+
+---
 ## 2026-05-04 - ADR-028-AND-G4-CORE-TIGHTENING
 
 - Selected item: formalize the core-launch versus module-lane decision and tighten the launch evidence docs around the new install bar
