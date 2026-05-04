@@ -9,6 +9,10 @@ This is the local operating pattern for running repeatable FERROS orchestration 
 - Hidden helper agents now support the orchestrator: bounded recursive lane planning, lane validation, log triage, and trace analysis.
 - `docs/orchestration/WAVE-QUEUE.md` is the local source of truth for actionable waves.
 - `docs/orchestration/WAVE-RUN-LOG.md` is the append-only history of completed or blocked waves.
+- `docs/orchestration/OPERATOR-SESSION-PATTERN.md` defines the human-operator session loop when work leaves agent-only execution.
+- `docs/backlogs/HUMAN-TEST-BACKLOG.md` is the ordered queue for operator-facing test items.
+- `docs/operator-sessions/SESSION-LOG.md` is the append-only record for named operator sessions.
+- `docs/operator-sessions/INSTRUCTION-TEMPLATE.md` seeds operator instruction packets for `Ready` human-test items.
 
 The runtime is still the local Copilot chat surface. The repo stores the queue, the run history, and the orchestration instructions.
 
@@ -22,7 +26,7 @@ The runtime is still the local Copilot chat surface. The repo stores the queue, 
 
 Interactive Mode is the single-wave posture. For Batch Mode (multiple Ready waves per invocation without per-wave human re-invocation), see `docs/orchestration/BATCH-MODE.md`. When the explicit objective is `clear the queue`, Batch Mode runs in **Queue-Clear** posture: it keeps draining the selected queue, emits doc-batch summaries as non-blocking review artifacts, and stops only when a hard Batch Mode stop condition fires or the scoped queue is empty. All lane policy rules below apply inside every wave regardless of mode.
 
-Human re-entry is not the default safety mechanism. Subagent review is. Human re-entry is reserved for user-directed work, repeated failure or missing-input loops, physical-world actions, and true user-authority or product-direction questions.
+Human re-entry is not the default safety mechanism. Subagent review is. Human re-entry is reserved for user-directed work, repeated failure or missing-input loops, physical-world actions, and true user-authority or product-direction questions. When human re-entry becomes a named operator step, route it through `OPERATOR-SESSION-PATTERN.md` and the Human Test Backlog instead of treating it as an ad hoc chat interruption.
 
 ## Default lane policy
 

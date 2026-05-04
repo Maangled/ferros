@@ -35,6 +35,7 @@ For program rules, see [ADR-022-decision-program-governance.md](./ADR-022-decisi
 | [ADR-024](./ADR-024-ledger-substrate.md) | Ledger/chain substrate comparison and recommendation | Evaluates Solana, EVM L2, Cosmos app-chain, and non-chain signed-ledger options; recommends non-chain signed ledger for v0.1.0–v0.2.0; holds public-chain as a future escalation path |
 | [ADR-027](./ADR-027-service-parity-broker-and-assurance-tiers.md) | Service parity broker and assurance tiers | Extends ADR-023 with provider-parity, detachable association, and transaction-scoped assurance requirements for high-impact actions |
 | [ADR-028](./ADR-028-core-launch-and-optional-module-lanes.md) | Core launch boundary and optional module lanes | Defines `v0.2.0` as core FERROS on real hardware, moves Home Assistant and future LLM-facing integrations into optional module lanes, and defers strict unmanaged installs until after coordinated lab and controlled test-home rollout |
+| [ADR-029](./ADR-029-human-operator-session-orchestration-and-evidence-flow.md) | Human-operator session orchestration and evidence flow | Defines the Human Test Backlog, coordinator triage, and evidence requirements for human-in-the-loop FERROS execution |
 
 ---
 
@@ -74,6 +75,20 @@ For program rules, see [ADR-022-decision-program-governance.md](./ADR-022-decisi
 
 ---
 
+## Operator UX and Staged-State Records
+
+| ADR | Topic | Why it matters |
+|-----|-------|----------------|
+| [ADR-029](./ADR-029-human-operator-session-orchestration-and-evidence-flow.md) | Human-operator session orchestration and evidence flow | Defines the Human Test Backlog, coordinator triage, and evidence requirements for human-in-the-loop FERROS execution |
+| [ADR-030](./ADR-030-proposed-material-receipts-and-canonical-state.md) | Proposed material, receipts, and canonical state (Draft) | Scaffolds the shared staged-state lifecycle for proposal, receipt, and canonical promotion boundaries |
+| [ADR-031](./ADR-031-evidence-badges-and-security-rating-claims.md) | Evidence badges and security-rating claims (Draft) | Scaffolds badge rules so UI state shorthand stays evidence-backed |
+| [ADR-032](./ADR-032-local-tool-and-ai-tool-selector-boundary.md) | Local tool and AI tool selector boundary (Draft) | Scaffolds disclosure requirements for local and external tool lanes |
+| [ADR-033](./ADR-033-home-topology-and-onramp-source-lineage.md) | Home topology and onramp source lineage (Draft) | Scaffolds Home-Hub topology and source-lineage presentation without identity-truth drift |
+| [ADR-034](./ADR-034-arena-non-evidentiary-runtime-boundary.md) | Arena non-evidentiary runtime boundary (Draft) | Scaffolds the rule that Arena output stays staged until explicitly accepted |
+| [ADR-035](./ADR-035-governance-and-merit-signals-are-research-only.md) | Governance and merit signals are research-only (Draft) | Quarantines ranking or authority motifs from becoming product policy prematurely |
+
+---
+
 ## Ecosystem and Prior-Art Integration
 
 | ADR | Topic | Why it matters |
@@ -101,5 +116,6 @@ Research notes capture high-value investigation before a decision is frozen.
 - Shell, ACC, or user-surface work: ADR-009, ADR-010, ADR-015, ADR-017, plus the ACC research note
 - Runtime and contract layering: ADR-007, ADR-014, ADR-021
 - Launch boundary, module-lane, or external-integration posture: ADR-023, ADR-025, ADR-027, ADR-028
+- Operator-session, evidence-flow, staged-state, or badge-language work: ADR-029 through ADR-035 plus the orchestration docs under `docs/orchestration/`
 - Prior-art or harvested-pattern questions: ADR-013, ADR-018, ADR-019, ADR-020
 - Governance, doctrine, or decision-process work: ADR-0001, ADR-021, ADR-022, and [../../DOCTRINE.md](../../DOCTRINE.md)

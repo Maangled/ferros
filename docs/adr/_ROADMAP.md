@@ -6,6 +6,26 @@ Numbering is assigned only when a real ADR or research note is added. This file 
 
 ---
 
+## State Note - Post-v0.2.0 operator-UX planning (as of 2026-05-04)
+
+This note records the ADR backlog state after the `v0.2.0` closeout and the first interconnected operator-UX planning packet. It is additive.
+
+### Landed since last roadmap update
+
+- **ADR-028** - Core launch boundary and optional module lanes. Accepted.
+- **ADR-029** - Human-operator session orchestration and evidence flow. Accepted. Formalizes the Human Test Backlog, coordinator triage, and evidence closure loop used by the next UX lane.
+- **ADR-030 through ADR-035** - Draft scaffolds for proposed material lifecycle, evidence badges, tool-lane disclosures, home-topology lineage, Arena non-evidentiary boundaries, and research-only governance signals.
+- `docs/orchestration/INTERCONNECTED-OPERATOR-UX-PLAN.md` is now the active planning packet for the frontend-first operator UX program. Its PDF-derived motifs and quarantined ideas come from the external discovery packet at `/home/homelab001/apps/FERROS-PDF-DISCOVERY-NOTE.md`, which is planning input rather than ADR authority.
+- `docs/surfaces/MODULE-AND-FORK-SAFETY.md` now carries the non-ADR architecture note for protected shell layers, safe fork points, and current surface-fork boundaries.
+- `docs/operator-sessions/INSTRUCTION-TEMPLATE.md` now scaffolds named operator instruction packets for ready human-test items.
+
+### Open backlog items (not yet an ADR)
+
+- Ratify or rework ADR-030 through ADR-035 after the first implementation evidence exists.
+- Module and fork-safety ADR follow-up, if the current architecture note hardens into a decision boundary.
+
+---
+
 ## State Note — Post-BATCH-2026-04-27-C (as of 2026-04-27)
 
 This note records the ADR backlog state after the BATCH-2026-04-27-C reconciliation pass. It is additive — no ADR bodies are modified here.
@@ -27,6 +47,7 @@ This note records the ADR backlog state after the BATCH-2026-04-27-C reconciliat
 - Multi-device coordination ADRs — pairing-flow contract, reboot-safe persistence guarantees, and target-platform cross-compilation posture (all awaiting `ferros-hub` scaffold work in S7).
 - Module packaging and discovery UX — define how optional Home Assistant, local LLM runtime, and external LLM API modules are listed, installed, updated, disabled, and removed.
 - Controlled test-home rollout criteria — define the handoff bar between coordinated lab installs and the later unmanaged independent-install phase.
+- Interconnected operator UX follow-up ADR ratification — ADR-030 through ADR-035 now exist as drafts and need evidence-backed ratification or revision.
 
 ### Blocked
 
