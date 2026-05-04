@@ -37,9 +37,9 @@ cargo run -p ferros-hub -- remote-summary > .local-artifacts/pack-c-session-01-h
 
 | Field | Value |
 |-------|-------|
-| Entity or dashboard reference | `sensor.ferros_bridge_probe` (`FERROS Bridge Probe` in the HA Entities UI at `/config/entities`) |
-| Capture path | `.local-artifacts/pack-c-session-01-ha-visibility/remote-report-state.txt`; `.local-artifacts/pack-c-session-01-ha-visibility/remote-summary.txt` |
-| Observation note | `remote-report-state` captured `entityId: sensor.ferros_bridge_probe` with `state: report-state` and summary `authenticated remote Home Assistant report-state upsert wrote sensor.ferros_bridge_probe`. The paired `remote-summary` capture reported `locationName: Home`, `version: 2026.4.4`, `ferrosEntityCount: 1`, and `ferrosEntities: sensor.ferros_bridge_probe`. In the same session, the authenticated HA Entities admin UI showed the row `FERROS Bridge Probe — Sensor` with state `report-state` under the `Ungrouped` section after filtering for `ferros`. |
+| Entity or dashboard reference | `sensor.ferros_bridge_probe` and later same-day bridge-state sync entity `sensor.ferros_ha_local_bridge_status` (`FERROS Bridge Probe` and `FERROS ha-local-bridge Status` in the HA Entities UI at `/config/entities`) |
+| Capture path | `.local-artifacts/pack-c-session-01-ha-visibility/remote-report-state.txt`; `.local-artifacts/pack-c-session-01-ha-visibility/remote-summary.txt`; `.local-artifacts/pack-c-session-02-bridge-state-sync/remote-report-state.txt`; `.local-artifacts/pack-c-session-02-bridge-state-sync/remote-summary.txt` |
+| Observation note | `remote-report-state` first captured `entityId: sensor.ferros_bridge_probe` with `state: report-state` and summary `authenticated remote Home Assistant report-state upsert wrote sensor.ferros_bridge_probe`. The paired first `remote-summary` capture reported `locationName: Home`, `version: 2026.4.4`, `ferrosEntityCount: 1`, and `ferrosEntities: sensor.ferros_bridge_probe`. Later on the same day, after the bridge-state sync refactor and a fresh bearer token, `remote-report-state` captured `entityId: sensor.ferros_ha_local_bridge_status` with `state: allowed`, and the paired `remote-summary` capture reported `ferrosEntityCount: 2` with `ferrosEntities: sensor.ferros_bridge_probe,sensor.ferros_ha_local_bridge_status`. In the authenticated HA Entities admin UI, filtering for `FERROS` showed both `FERROS Bridge Probe` with state `report-state` and `FERROS ha-local-bridge Status` with state `allowed` under the `Ungrouped` section. |
 
 ## Recovery observation
 
@@ -54,7 +54,8 @@ cargo run -p ferros-hub -- remote-summary > .local-artifacts/pack-c-session-01-h
 - D1 is not closed by this packet because the other required D1 evidence rows remain open, especially consent-flow visibility and reboot-safe FERROS-side state.
 - G4 remains blocked because this packet uses a documented stand-in entity rather than a non-stubbed launch-grade Home Assistant bridge entity on physical hardware.
 - Full DUT-only power-cycle and Home Assistant restoration behavior remain unobserved.
-- Queue truth remains unchanged: this evidence strengthens the separate-host HA visibility record but does not by itself close `HARDWARE-2026-04-30-07`, which is still serial-after `HARDWARE-2026-04-30-06`.
+- This packet still does not widen D1 or G4 claims, but it can now serve as the canonical `HARDWARE-2026-04-30-07` findings packet because the required Pack B DUT rehearsal has since landed.
+- The fresh-token bridge-state sync adds stronger live validation for the runtime-backed HA sync path, but it still does not satisfy the launch-grade consent-deny, power-cycle restoration, or non-stand-in G4 requirements.
 
 ## Non-claims for this template
 

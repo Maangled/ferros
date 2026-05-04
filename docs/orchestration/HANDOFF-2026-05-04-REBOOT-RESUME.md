@@ -4,22 +4,20 @@
 
 ## Current truth
 
-- `homelab001` should not be rebooted from the attached VS Code session because it may come back on a different IP and strand the session.
-- The reboot-sensitive lane is prepared in `docs/hardware/HARDWARE-2026-04-30-06-detached-reboot-handoff.md`.
+- The detached reboot handoff has now been executed on `homelab001`.
+- `homelab001` came back from the clean reboot on the same IPv4 address `192.168.50.234/24`.
+- Post-reboot artifacts now live under `.local-artifacts/pack-b-session-02-handoff-mirror/`.
 - The temporary Windows Home Assistant host `MKY` is intentionally still up for follow-on proof.
 - `ferros-hub remote-report-state` now syncs Home Assistant bridge state from the local hub runtime summary when that summary is available, with fallback to the earlier probe payload.
 - Local validation for that bridge change is green.
-- Live post-refactor HA validation is currently blocked by bearer-token expiry. The last attempted rerun against `MKY` returned `401 Unauthorized`.
+- Live post-refactor HA validation has now succeeded with a fresh bearer token. The saved artifacts are under `.local-artifacts/pack-c-session-02-bridge-state-sync/`, and the authenticated HA Entities UI showed both `FERROS Bridge Probe` and `FERROS ha-local-bridge Status`.
 
 ## Next truthful actions
 
-1. Run the detached reboot handoff from a detached SSH session or local console on `homelab001`.
-2. After reconnect, use the saved artifacts under `.local-artifacts/pack-b-session-02-handoff-mirror/` to fill `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`.
-3. If live HA validation is still needed after reboot, obtain a fresh operator-provided HA bearer token or another authenticated operator path and rerun `cargo run -p ferros-hub -- remote-report-state` plus `cargo run -p ferros-hub -- remote-summary`.
-4. Keep D1 and G4 claim ceilings unchanged unless the reboot artifacts and any fresh HA observations actually support a wider claim.
+1. Use the saved artifacts under `.local-artifacts/pack-b-session-02-handoff-mirror/` and `.local-artifacts/pack-c-session-02-bridge-state-sync/` to drive any remaining review of the two findings packets.
+2. Keep D1 and G4 claim ceilings unchanged unless a later run adds launch-grade consent-deny or power-cycle restoration proof.
 
 ## Non-claims
 
-- No reboot result has been captured yet.
-- No new live HA proof has been added after the bridge-state refactor.
+- No launch-grade HA proof, consent-deny UI proof, or HA restoration-after-power-cycle proof has been earned by this note.
 - No D1 or G4 closure has been earned by this note.

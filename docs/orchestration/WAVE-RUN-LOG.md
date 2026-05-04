@@ -3,6 +3,70 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-04 - PACK-C SESSION 02 BRIDGE-STATE-SYNC VALIDATION
+
+- Selected item: live post-refactor HA validation on `MKY`
+- Result: Stop-clean. Using a fresh Home Assistant bearer token, `ferros-hub remote-report-state` successfully wrote the runtime-backed entity `sensor.ferros_ha_local_bridge_status` with state `allowed`, and `ferros-hub remote-summary` then reported two FERROS entities on the separate Pack C host: the earlier probe entity plus the new bridge-status entity. The authenticated HA Entities UI confirmed both rows were operator-visible under `Ungrouped`.
+- Files:
+  - `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`
+  - `docs/orchestration/HANDOFF-2026-05-04-REBOOT-RESUME.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `.local-artifacts/pack-c-session-02-bridge-state-sync/remote-report-state.txt` captured `entityId: sensor.ferros_ha_local_bridge_status` with `state: allowed`. `.local-artifacts/pack-c-session-02-bridge-state-sync/remote-summary.txt` captured `ferrosEntityCount: 2` with `ferrosEntities: sensor.ferros_bridge_probe,sensor.ferros_ha_local_bridge_status`. The authenticated HA Entities UI, filtered for `FERROS`, showed `FERROS Bridge Probe` with state `report-state` and `FERROS ha-local-bridge Status` with state `allowed`.
+- Claims added: the runtime-backed HA bridge-state sync path now has live separate-host validation; the Pack C findings packet now covers both the original probe entity and the later runtime-backed status entity; and the earlier auth-expiry blocker is resolved.
+- Claims explicitly not added: no G4 closure, no launch-grade non-stand-in entity claim, no consent-deny visibility in the HA UI, and no HA restoration after power cycle.
+- Blocked lanes: none in the hardware queue. Remaining launch-grade HA work is now substantive bridge and recovery scope, not environment or auth blockage.
+- Next queued follow-up: optional launch-grade follow-up if you want to pursue consent-deny UI visibility or HA restoration after power cycle.
+
+```json
+{
+  "wave_id": "2026-05-04-PACK-C-SESSION-02-BRIDGE-STATE-SYNC-VALIDATION",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the live HA validation succeeded with a fresh token and produced saved artifact files plus UI-visible confirmation.",
+    "2_wave_tag": "Not triggered: this slice stayed inside the existing Pack C evidence surface and supporting handoff bookkeeping.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside the Pack C findings and orchestration truth surfaces.",
+    "4_track_boundary": "Not triggered: the work stayed in hardware-proof validation and truth-sync surfaces.",
+    "5_run_length_cap": "Not triggered: this was one bounded live-validation slice.",
+    "6_escalation_chain": "Not triggered: the only prior blocker was token expiry, and the fresh-token rerun succeeded directly."
+  },
+  "decision": "stop-clean",
+  "rationale": "The refactored HA bridge-state sync path now has live separate-host validation and operator-visible UI confirmation, so repo truth no longer needs to describe authentication as the outstanding blocker."
+}
+```
+
+---
+## 2026-05-04 - HARDWARE-2026-04-30-06 CLEAN-REBOOT MIRROR
+
+- Selected item: `HARDWARE-2026-04-30-06`
+- Result: Stop-clean. `homelab001` rebooted at `2026-05-04 01:56:40` and returned on the same IPv4 address `192.168.50.234/24`, which allowed the post-reboot DUT-side handoff mirror capture to complete immediately. The saved captures now show the local bridge artifact family, proposal and decision artifacts, deny visibility, and a restart-aware hub summary with `restartReload: reloaded`. This closes `HARDWARE-2026-04-30-06` honestly as a clean-reboot rehearsal packet, and it canonically unblocks the already-captured Pack C visibility packet so `HARDWARE-2026-04-30-07` can also close without widening any claim ceiling.
+- Files:
+  - `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`
+  - `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`
+  - `docs/orchestration/HANDOFF-2026-05-04-REBOOT-RESUME.md`
+  - `docs/orchestration/HARDWARE-QUEUE.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `uptime -s` reported boot time `2026-05-04 01:56:40`. `ip -brief address show enp4s0` reported `192.168.50.234/24` after reboot. `cargo xtask hub-runway --keep-artifacts` passed and kept the expected `.tmp/hub` JSON artifacts. `cargo run -p ferros-hub -- summary` passed and reported `restartReload: reloaded`. `cargo run -p ferros-hub -- deny-demo` passed. `cargo run -p ferros-node --bin ferros -- profile show .local-state/pack-b-session-01-profile.json` passed. `cargo run -p ferros-node --bin ferros -- agent list` passed and showed `echo`, `ha-local-bridge`, and `timer`. `cargo run -p ferros-node --bin ferros -- agent describe ha-local-bridge` passed. Post-reboot captures were saved under `.local-artifacts/pack-b-session-02-handoff-mirror/`.
+- Claims added: the Pack B DUT now has a filled clean-reboot handoff-mirror findings packet; the local bridge proposal and decision artifact chain is mirrored on the named DUT after reboot; `ha-local-bridge` is visible and registered after reboot; and the hardware queue can now close both `HARDWARE-2026-04-30-06` and the already-captured separate-host `HARDWARE-2026-04-30-07` packet.
+- Claims explicitly not added: no full DUT-only power-cycle survival, no real Home Assistant proof from the Pack B lane, no consent acceptance claim, no D1 closure, no G4 closure, and no new live HA validation after the bridge-state refactor.
+- Blocked lanes: none in the current hardware queue. If live HA revalidation is still wanted, it remains blocked only on fresh operator-provided authentication for `MKY`.
+- Next queued follow-up: hardware queue is clear; the next honest follow-up is optional live HA revalidation with a fresh token or a new queue item for launch-grade bridge gaps.
+
+```json
+{
+  "wave_id": "2026-05-04-HARDWARE-2026-04-30-06-CLEAN-REBOOT-MIRROR",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: all post-reboot commands passed and the touched findings or queue docs can now be validated directly.",
+    "2_wave_tag": "Not triggered: this slice executed the queued hardware reboot boundary and then wrote the matching truth surfaces without claiming gate closure.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside the declared findings, queue, and handoff bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: the work stayed in the hardware track and did not widen into unrelated code changes.",
+    "5_run_length_cap": "Not triggered: this was one bounded reboot-recovery capture slice.",
+    "6_escalation_chain": "Not triggered: the reboot returned cleanly and the expected post-reboot commands succeeded on the first pass."
+  },
+  "decision": "stop-clean",
+  "rationale": "The queued reboot-sensitive DUT rehearsal is now captured honestly, and the existing Pack C separate-host packet can now close canonically because its serial dependency has landed."
+}
+```
+
+---
 ## 2026-05-04 - REBOOT-RESUME-HANDOFF-AND-HA-AUTH-BLOCKER
 
 - Selected item: truth-sync follow-up after the detached reboot handoff note and the bridge-state sync change

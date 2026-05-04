@@ -31,28 +31,16 @@ None.
 
 ## Blocked
 
-### HARDWARE-2026-04-30-06
+None.
 
-- Title: Mirror the local handoff artifact chain on the named DUT
-- Status: blocked
-- Priority: P1
-- Gate: D1 on-device handoff mirror
-- Owning streams: S7 primary; S2, S3, and S4 consumer awareness
-- Goal: On the named Pack B device under test, mirror the already-landed local code-runway artifact chain by capturing a bridge artifact or named stand-in output, proposal and decision fields, runway shell or log observation, deny visibility, and a clean-reboot reload observation that matches the local handoff map. Record the operator-attended session honestly as DUT-side rehearsal output without claiming real HA entity visibility, full power-cycle survival, consent acceptance, D1 closure, or G4 movement.
-- Anchor files: `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`
-- Validation: `get_errors` clean on `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`; findings record the named stand-in or bridge artifact reference, proposal and decision field refs, shell or log evidence, deny-log evidence, reboot note, and operator-attended note.
-- Constraints: Keep all wording aligned with the current local-only handoff surfaces. Do not turn a named stand-in into real HA proof. Do not treat clean reboot as full power-cycle survival. Do not claim consent acceptance, D1 closure, or G4 movement. Run this lane only after the first physical baseline exists.
-- Blocker: The operator has approved the reboot work, but the actual clean-reboot boundary must run as a detached operator handoff because `homelab001` can come back on a different IP and strand the current VS Code session; do not trigger that boundary from the current agent-run session.
-- Last update: 2026-05-04
-- size: L
-- serial-after: HARDWARE-2026-04-30-05
-- solo: true
-- track: hardware
+---
+
+## Done
 
 ### HARDWARE-2026-04-30-07
 
 - Title: Separate Pack C HA visibility and recovery proof after DUT rehearsal
-- Status: blocked
+- Status: done
 - Priority: P1
 - Gate: G4 separate-host HA lab proof prep
 - Owning streams: S7 primary; S3 and S4 consumer awareness
@@ -60,16 +48,30 @@ None.
 - Anchor files: `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`
 - Validation: `get_errors` clean on `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`; findings record the named Pack B DUT, named Pack C HA host, HA entity or dashboard evidence reference, recovery observation if attempted, and claim ceiling.
 - Constraints: Keep this as the first real HA-proof step and do not pull it earlier into the D1-style DUT rehearsal lanes. Do not claim independent install proof, private-beta readiness, G4 closure, or any result not captured on real hardware with a separate HA host. Run this lane only after the DUT-side handoff mirror exists.
-- Blocker: The separate Pack C host requirement is now satisfied on `MKY` and the first visibility findings packet exists, but canonical queue closure remains blocked until `HARDWARE-2026-04-30-06` lands because `serial-after: HARDWARE-2026-04-30-06` remains authoritative.
+- Note: The separate-host visibility packet on `MKY` was captured earlier on `2026-05-04` and becomes canonically queue-complete now that `HARDWARE-2026-04-30-06` has landed.
 - Last update: 2026-05-04
 - size: L
 - serial-after: HARDWARE-2026-04-30-06
 - solo: true
 - track: hardware
 
----
+### HARDWARE-2026-04-30-06
 
-## Done
+- Title: Mirror the local handoff artifact chain on the named DUT
+- Status: done
+- Priority: P1
+- Gate: D1 on-device handoff mirror
+- Owning streams: S7 primary; S2, S3, and S4 consumer awareness
+- Goal: On the named Pack B device under test, mirror the already-landed local code-runway artifact chain by capturing a bridge artifact or named stand-in output, proposal and decision fields, runway shell or log observation, deny visibility, and a clean-reboot reload observation that matches the local handoff map. Record the operator-attended session honestly as DUT-side rehearsal output without claiming real HA entity visibility, full power-cycle survival, consent acceptance, D1 closure, or G4 movement.
+- Anchor files: `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`
+- Validation: `get_errors` clean on `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`; findings record the named stand-in or bridge artifact reference, proposal and decision field refs, shell or log evidence, deny-log evidence, reboot note, and operator-attended note.
+- Constraints: Keep all wording aligned with the current local-only handoff surfaces. Do not turn a named stand-in into real HA proof. Do not treat clean reboot as full power-cycle survival. Do not claim consent acceptance, D1 closure, or G4 movement. Run this lane only after the first physical baseline exists.
+- Note: `homelab001` rebooted at `2026-05-04 01:56:40`, returned on the same IPv4 address `192.168.50.234/24`, and the post-reboot evidence was captured under `.local-artifacts/pack-b-session-02-handoff-mirror/`.
+- Last update: 2026-05-04
+- size: L
+- serial-after: HARDWARE-2026-04-30-05
+- solo: true
+- track: hardware
 
 ### HARDWARE-2026-05-03-09
 
