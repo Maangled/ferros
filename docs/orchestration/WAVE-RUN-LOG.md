@@ -3,6 +3,37 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-04 - D1 HARD-POWER CLOSEOUT
+
+- Selected item: final D1 reboot-safe FERROS-side state check on `homelab001`
+- Result: Stop-clean. The full DUT-only hard power cut is now captured honestly and D1 is closed. `uptime -s` reported boot time `2026-05-04 02:40:28` after the operator-completed hard reset, the persistent Pack B profile at `.local-state/pack-b-session-01-profile.json` still loaded cleanly, and post-power `ferros agent` reads showed `echo`, `ha-local-bridge`, and `timer` all registered without manual state repair. Repo truth now marks the D1 gate closed while keeping G4 open.
+- Files:
+  - `docs/gates/D1.md`
+  - `STATUS.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `date -Is`, `hostname`, `uname -srmo`, and `uptime -s` were captured under `.local-artifacts/pack-b-session-03-d1-closeout/`. `cargo run -p ferros-node --bin ferros -- profile show .local-state/pack-b-session-01-profile.json` passed after the hard cut and returned the persisted `Fresh Start` profile. `cargo run -p ferros-node --bin ferros -- agent list` passed and reported `echo`, `ha-local-bridge`, and `timer` as registered. `cargo run -p ferros-node --bin ferros -- agent describe ha-local-bridge` passed and kept the expected `hub-local-bridge:bridge.observe` requirement visible. `ip -brief address show enp4s0` reported `192.168.50.234/24` after boot.
+- Claims added: D1 is now closed with profile, named HA stand-in, consent-flow visibility, and full DUT-only power-cycle FERROS-side recovery all documented on the named Pack B DUT.
+- Claims explicitly not added: no G4 closure, no HA restoration-after-power-cycle claim, no independent install claim, and no launch-grade non-stand-in bridge claim.
+- Blocked lanes: none for D1. G4 remains the active launch gate.
+- Next queued follow-up: optional truth-sync commit or push, then plan the G4 closure packet around real HA entity behavior, consent visibility in the launch-grade path, HA restoration after power cycle, and independent install.
+
+```json
+{
+  "wave_id": "2026-05-04-D1-HARD-POWER-CLOSEOUT",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the post-power profile and agent commands all passed and the captured boot time confirms a new boot after the hard reset.",
+    "2_wave_tag": "Not triggered: this slice stayed inside the D1 closeout truth surfaces and did not widen into G4 claims.",
+    "3_diff_overrun": "Not triggered: the landed diff stays inside D1 gate truth, top-level status, and the run log.",
+    "4_track_boundary": "Not triggered: the work stayed on the hardware-backed D1 closeout lane.",
+    "5_run_length_cap": "Not triggered: this was one bounded post-power validation and truth-sync slice.",
+    "6_escalation_chain": "Not triggered: the first focused post-power checks passed directly without repair."
+  },
+  "decision": "stop-clean",
+  "rationale": "The last D1 evidence row is now backed by saved post-power artifacts on the named DUT, so the repo can honestly mark D1 closed while leaving G4 open."
+}
+```
+
+---
 ## 2026-05-04 - D1 PRE-POWER CONSENT AND HARD-POWER HANDOFF
 
 - Selected item: pre-hard-power D1 closeout preparation on `homelab001`

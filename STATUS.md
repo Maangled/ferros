@@ -2,7 +2,7 @@
 
 > Dashboard, not a diary. Each section shows current state. Details live in stream PROGRESS.md files.
 >
-> Last updated: 2026-04-30 (WAVE-2026-04-30-81 truth-sync closeout)
+> Last updated: 2026-05-04 (D1 hard-power closeout)
 
 ---
 
@@ -11,7 +11,7 @@
 | Item | State |
 |------|-------|
 | Active gate | **G4** — Launch |
-| Demo gate | **D1** — active runway (see `docs/gates/D1.md`) |
+| Demo gate | **D1** — closed (see `docs/gates/D1.md`) |
 | Launch gate | G4 (open) |
 | MVP gate | G1 → G2 → G3 in sequence |
 | Open streams | S1 (closeout), S3 (post-G3 contract), S4 (post-G3 hardening), S5 (localhost shell closeout and onramp consent follow-up), S6 (active local-boundary harvest), S7 (G4 runway), S8 (background) |
@@ -25,7 +25,7 @@
 | G1 | ✅ Closed | CI run #24812246339 proved fmt, clippy, build, and test green on ubuntu-latest, macos-latest, and windows-latest |
 | G2 | ✅ Closed | `profile.v0.json` remains the frozen unsigned published v0 consumer contract, `SignedProfileDocument` stays Rust-local at v0, and the real `ferros` binary now proves `profile init | grant | export | import | revoke | show` against temp-file-backed local state while `show` stays unsigned and revoked grant state stays within the frozen grant boundary |
 | G3 | ✅ Closed | CI #20 (`run 24902870499`, commit `8383b67` on `main`) completed successfully on 2026-04-24 after `.github/workflows/ci.yml` wired `cargo check -p ferros-core --no-default-features` plus `cargo run --bin ferros -- demo` into the hosted Ubuntu workflow |
-| D1 | 🟡 Active runway | Demo gate defined in `docs/gates/D1.md`; one device, operator-attended, profile+HA+consent+reboot-safe; not yet closed |
+| D1 | ✅ Closed | Operator-attended demo gate closed on `homelab001`: target profile init/show, named HA stand-in visibility, localhost-shell deny visibility, and full DUT-only power-cycle FERROS-side recovery are all documented in `docs/gates/D1.md` |
 | G4 | 🟡 Active | G3 is closed; S7 now owns the active launch gate for `ferros-hub` on real hardware with Home Assistant integration |
 
 ---
@@ -76,6 +76,7 @@ The **agent center + runtime convergence** path is now closed at G3. The active 
 
 | Date | Event |
 |------|-------|
+| 2026-05-04 | D1 closed: `homelab001` completed the full DUT-only hard-power closeout after the Pack B profile baseline, Pack C named stand-in HA visibility, and Pack B consent-shell deny session were already in repo. Post-power artifacts under `.local-artifacts/pack-b-session-03-d1-closeout/` showed boot time `2026-05-04 02:40:28`, the persisted `Fresh Start` profile still loading from `.local-state/pack-b-session-01-profile.json`, and `echo`, `ha-local-bridge`, plus `timer` all re-registering without manual state repair. G4 remains the active launch gate. |
 | 2026-04-30 | WAVE-2026-04-30-81 completed the final serial truth-sync after WAVE-2026-04-30-79, WAVE-2026-04-30-82, and WAVE-2026-04-30-80 plus the validated plan-only hardware-prep packet: S7 and S6 owner docs plus `docs/contracts/CONTRACTS-OVERVIEW.md` now agree on the local onramp owner split, `docs/orchestration/HARDWARE-QUEUE.md` now closes the plan-only D1 target-inventory and Pack B session-prep packet, the Pack B `x86_64` lane is recorded as the selected first D1 target class, and the exact DUT, HA host, operator station, storage path, network note, and DUT-only power-cut method all remain required before any physical session. No gate moved. No physical-device evidence, real Home Assistant proof, consent acceptance, remote transport, canonical mutation, D1 closure, or G4 closure. |
 | 2026-04-30 | WAVE-2026-04-30-71 through WAVE-2026-04-30-77 completed the local-only G4 code-runway closeout packet: `docs/hub/local-code-runway-inventory.md` now records the full local proof chain and non-claim ledger, `cargo xtask hub-runway` now restores known `.tmp/hub` rehearsal artifacts by default and reports unexpected residue, shared local guardrails plus published proposal-schema parity now align the hub or runtime or harness surfaces, the existing runway route now states its read-only no-remote and no-G4 ceiling explicitly and is re-proved same-origin, future-facing DUT handoff docs now map the local chain into Pack B evidence-prep checklists, and `docs/orchestration/HARDWARE-QUEUE.md` now stages the next Pack B and Pack C hardware-track checkpoints. No gate moved. No physical-device evidence, real Home Assistant proof, consent acceptance, remote transport, canonical mutation, D1 closure, independent-install evidence, or G4 closure. |
 | 2026-04-30 | WAVE-2026-04-29-63 through WAVE-2026-04-29-70 landed in sequence: `docs/contracts/CONTRACTS-OVERVIEW.md` was reconciled to the proposal-era owner split, `ferros-data` now owns a bounded `LocalOnrampDecisionReceipt` model, `ferros-hub` emits `.tmp/hub/local-onramp-decision-receipt.json` and threads it through the hub-owned summary and `prove-bridge` seams, the bounded local decision receipt schema is admitted into H1 coverage, the existing read-only `/runway-summary(.json)` route now additively carries optional `hubOnrampDecisionReceipt` context, the current shell and same-origin acceptance harness observe proposal plus recorded decision rehearsal together on the existing route, and `cargo xtask hub-runway` now validates plus reports both proposal and decision artifacts over the published seam. No gate moved. No accept/reject transport, no canonical profile/grant mutation, no remote transport, no Home Assistant integration proof, and no physical-device evidence. |
