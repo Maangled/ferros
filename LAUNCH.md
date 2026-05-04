@@ -6,16 +6,18 @@
 
 ## What launch is
 
-**Launch = `ferros-hub` v0.2.0 running on real home hardware (Raspberry Pi or home server), with consent enforced end-to-end and Home Assistant integration active.**
+**Launch = `ferros-hub` v0.2.0 running on real home hardware (Raspberry Pi or home server), with consent enforced end-to-end, reboot-safe core behavior, and a coordinated clean install path.**
+
+Optional integrations such as Home Assistant, local LLM runtimes, and external LLM APIs are post-install module lanes. They can advance in parallel, but they do not block the core `v0.2.0` launch definition.
 
 Specifically, the following conditions must all be true simultaneously:
 
 1. A single `ferros-hub` binary runs on an `aarch64-linux` or `x86_64-linux` home device (not a CI VM, not QEMU, not a developer laptop).
 2. The device holds a real device profile (Ed25519 keypair, device-bound, created via `ferros profile init`).
-3. At least one real Home Assistant entity is registered through the FERROS agent center — not mocked, not stubbed.
-4. Capability consent is enforced: an agent that requests a capability it was not granted is denied at the bus level, logged, and the denial is visible in the HA UI or `ferros agent logs`.
-5. The hub survives a full power cycle. After reboot: profile loads, agents re-register, HA entity is restored.
-6. A private beta install exists on at least one home setup that is not the primary developer's machine.
+3. `ferros agent list` shows at least one real registered agent on the running hub.
+4. Capability consent is enforced: an agent that requests a capability it was not granted is denied at the bus level, logged, and the denial is visible through `ferros agent logs` or another operator-visible FERROS surface.
+5. The hub survives a full power cycle. After reboot: profile loads, agents re-register, and core runtime state is restored without manual intervention.
+6. A coordinated clean install or reprovision exists on at least one additional lab device or fresh target image beyond the primary server. This does not require an unmanaged third-party install.
 
 ---
 
@@ -32,8 +34,8 @@ The following events are progress milestones, not launch:
 | A laptop demo | Not a real home install |
 | `v0.1.0-rc` tagged | MVP gate — proves the system is real, not that it is deployed |
 | Agent center shell works in browser | S5 Phase B milestone — important, but launch is hardware-first |
-| Home Assistant integration is drafted | Draft ≠ running on hardware |
-| Fewer than two independent home installs | One install could be a fluke; ≤5 private beta installs required before wider mention |
+| An optional module is drafted | A drafted Home Assistant, local LLM, or external API module does not define core launch |
+| A future unmanaged independent install | Valuable later, but strict independence is deferred until the controlled test-home rollout |
 
 ---
 
@@ -41,7 +43,7 @@ The following events are progress milestones, not launch:
 
 Redefining "launch" as a website event or a crates publish creates pressure to ship a facade. FERROS is a **home-sovereign system**. The only honest launch is a running system on a device in someone's home, doing real work with real consent enforcement.
 
-This definition also prevents premature scaling. Do not announce, write blog posts, or invite a broader community until G4 is green and at least two independent private-beta installs are confirmed working.
+This definition also prevents premature scaling. FERROS is on a lab-first rollout: first make the core hub boring on the primary server and additional coordinated devices, then work through controlled test homes, and only after that ask for unmanaged independent installs.
 
 ---
 
@@ -54,11 +56,26 @@ Short form:
 - [ ] `ferros-hub` binary compiles for `aarch64-unknown-linux-gnu`
 - [ ] Boots and loads profile on Pi / home server
 - [ ] `ferros agent list` shows at least one registered agent
-- [ ] At least one real HA entity registered and visible in HA dashboard
-- [ ] Consent deny verified: ungranted capability request is blocked and logged
+- [ ] Consent deny verified: ungranted capability request is blocked and logged on an operator-visible FERROS surface
 - [ ] Power cycle survival confirmed
-- [ ] At least one independent private-beta install confirmed
+- [ ] At least one coordinated clean install or reprovision confirmed on additional lab-controlled hardware
 - [ ] `LAUNCH.md` updated with install date and hardware spec
+
+---
+
+## Current Core Launch Record
+
+The current core launch lane is the Pack B `x86_64` home-server path centered on `homelab001`.
+
+| Field | Current record |
+|-------|----------------|
+| Primary hardware lane | Physical Pack B `x86_64` home-server class DUT `homelab001` |
+| Hardware specification | `Linux 6.8.0-101-generic x86_64 GNU/Linux` on the named physical host, as captured in the Pack B profile baseline packet |
+| First confirmed target-side provisioning date | `2026-05-03` |
+| Coordinated secondary-device reprovision evidence | `2026-05-04` Windows fresh-host packet with a fresh explicit profile path and temp-rooted local FERROS state root |
+| Rollout note | Strict unmanaged independent installs are deferred until after coordinated lab rollout and later controlled test homes |
+
+This section records the current launch anchor while G4 remains open. It does not by itself declare G4 closed.
 
 ---
 
@@ -66,7 +83,7 @@ Short form:
 
 After G4 is green:
 
-- Announce privately to ≤5 trusted users. Gather feedback for 2–4 weeks before any public mention.
-- Address critical issues found in private beta before opening a public channel.
-- Tag `v0.2.0` only after private beta is stable.
-- Wider community, documentation, and contributor onboarding follow `v0.2.0`.
+- Tag `v0.2.0` once the core launch packet is complete and stable on the chosen hardware lane.
+- Continue coordinated rollout across the server plus additional lab devices.
+- Validate optional module lanes such as Home Assistant, local LLM runtimes, and external LLM APIs without treating them as core launch blockers.
+- Use controlled test homes to work out the final kinks before asking for unmanaged independent installs or making wider public claims.

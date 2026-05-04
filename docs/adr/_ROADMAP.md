@@ -25,6 +25,8 @@ This note records the ADR backlog state after the BATCH-2026-04-27-C reconciliat
 - Post-ratification ledger follow-up — scope and implementation path for ADR-024, after counsel review is complete.
 - Card/deck game ADRs — ADR-015 and ADR-016 are referenced in the near-term FILLER lane; their exact scope is pending research-note completion.
 - Multi-device coordination ADRs — pairing-flow contract, reboot-safe persistence guarantees, and target-platform cross-compilation posture (all awaiting `ferros-hub` scaffold work in S7).
+- Module packaging and discovery UX — define how optional Home Assistant, local LLM runtime, and external LLM API modules are listed, installed, updated, disabled, and removed.
+- Controlled test-home rollout criteria — define the handoff bar between coordinated lab installs and the later unmanaged independent-install phase.
 
 ### Blocked
 
@@ -60,6 +62,7 @@ This note records the ADR backlog state after the BATCH-2026-04-27-C reconciliat
 - Threat-model structure once S2 and S4 stabilize enough for a useful skeleton
 - Governance document posture for decision ownership, approvals, and release sign-off
 - Launch-facing provenance story before any stronger trustless-proof or on-chain claims
+- Module-lane assurance and trust model once optional integrations start shipping to controlled test homes
 
 ### Hub and hardware
 

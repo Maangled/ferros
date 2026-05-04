@@ -33,7 +33,8 @@ For program rules, see [ADR-022-decision-program-governance.md](./ADR-022-decisi
 | [ADR-022](./ADR-022-decision-program-governance.md) | Decision-program governance | Defines the ADR taxonomy, evidence bases, and research lane |
 | [ADR-023](./ADR-023-onramp-policy.md) | Onramp policy — external systems are onramps, not identity truth | Establishes the data-direction invariant: all inbound data from HA, calendar, social-graph, and bundle pipelines is staged and requires explicit user consent before becoming canonical FERROS state |
 | [ADR-024](./ADR-024-ledger-substrate.md) | Ledger/chain substrate comparison and recommendation | Evaluates Solana, EVM L2, Cosmos app-chain, and non-chain signed-ledger options; recommends non-chain signed ledger for v0.1.0–v0.2.0; holds public-chain as a future escalation path |
-| [ADR-027](./ADR-027-service-parity-broker-and-assurance-tiers.md) | Service parity broker and assurance tiers | Extends ADR-023 with provider-parity, detachable association, and transaction-scoped assurance requirements |
+| [ADR-027](./ADR-027-service-parity-broker-and-assurance-tiers.md) | Service parity broker and assurance tiers | Extends ADR-023 with provider-parity, detachable association, and transaction-scoped assurance requirements for high-impact actions |
+| [ADR-028](./ADR-028-core-launch-and-optional-module-lanes.md) | Core launch boundary and optional module lanes | Defines `v0.2.0` as core FERROS on real hardware, moves Home Assistant and future LLM-facing integrations into optional module lanes, and defers strict unmanaged installs until after coordinated lab and controlled test-home rollout |
 
 ---
 
@@ -99,5 +100,6 @@ Research notes capture high-value investigation before a decision is frozen.
 - Profile, grants, consent, or session model work: ADR-001, ADR-002, ADR-003, ADR-005, ADR-011, ADR-012
 - Shell, ACC, or user-surface work: ADR-009, ADR-010, ADR-015, ADR-017, plus the ACC research note
 - Runtime and contract layering: ADR-007, ADR-014, ADR-021
+- Launch boundary, module-lane, or external-integration posture: ADR-023, ADR-025, ADR-027, ADR-028
 - Prior-art or harvested-pattern questions: ADR-013, ADR-018, ADR-019, ADR-020
 - Governance, doctrine, or decision-process work: ADR-0001, ADR-021, ADR-022, and [../../DOCTRINE.md](../../DOCTRINE.md)

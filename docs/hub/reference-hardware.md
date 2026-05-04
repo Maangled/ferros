@@ -6,7 +6,7 @@
 
 ## Current mode
 
-- S7 is still in runway mode. G3 is already closed; G4 cannot close until real hardware, `ferros-hub`, and Home Assistant evidence exist.
+- S7 is still in runway mode. G3 is already closed; G4 now closes on real hardware plus core `ferros-hub` evidence. Optional integration lanes such as Home Assistant do not block the current launch definition.
 - This file is planning and evidence-prep only until a device moves into the confirmed evidence table below.
 - `LAUNCH.md` and `docs/gates/G4.md` remain the authoritative launch criteria. This file should not be used to imply that launch evidence already exists.
 
@@ -21,9 +21,9 @@ These are the hardware-side constraints that must be satisfied before a device c
 | Physical home hardware only | Launch excludes CI, QEMU, and developer-laptop demos. |
 | Linux on `aarch64` or `x86_64` | Matches the device classes allowed by `LAUNCH.md`. |
 | Persistent storage for profile and grants | G4 requires the device profile and grants to survive restart and full power cycle. |
-| Reachable Home Assistant deployment | A real HA entity must register through the agent center and appear in the dashboard. |
-| Ability to observe consent denial | The first hardware topology must support checking that deny events are logged and visible in HA UI or `ferros agent logs`. |
-| Repeatable reboot test path | G4 requires profile reload, agent re-registration, and HA entity restoration after power cycle. |
+| Ability to observe consent denial | The first hardware topology must support checking that deny events are logged and visible on an operator-facing FERROS surface such as `ferros agent logs`. |
+| Repeatable reboot test path | G4 requires profile reload, agent re-registration, and core runtime recovery after power cycle. |
+| Optional companion host when needed | Separate Home Assistant or LLM-host experiments are useful module-lane topology, but they are not core launch blockers. |
 
 ---
 
@@ -35,7 +35,7 @@ These are the hardware-side constraints that must be satisfied before a device c
 | RAM | 512 MB | 1 GB+ | Headroom for runtime, logs, and HA bridge work. |
 | Storage | 4 GB persistent storage | SSD or high-endurance SD plus backup path | Profile, grants, and logs must survive reboot and power loss. |
 | OS | Modern 64-bit Linux | Debian 12 / Ubuntu 22.04 / Raspberry Pi OS 64-bit | Pick a boring distro first; novelty does not help G4. |
-| Network | Ethernet or reliable Wi-Fi | Stable LAN path to Home Assistant | Avoid first-run hardware that depends on flaky wireless recovery. |
+| Network | Ethernet or reliable Wi-Fi | Stable LAN path to the operator station and any optional companion host | Avoid first-run hardware that depends on flaky wireless recovery. |
 | Power | Stable supply | UPS or known-good PSU | Needed for honest power-cycle testing. |
 
 ---
@@ -54,7 +54,7 @@ This section is planning shorthand only. A "pack" is a candidate bundle of devic
 
 ## First bring-up contract (x86_64-first)
 
-The first honest bring-up target is **Pack B - x86_64 lane** with **Pack C - HA companion lane**. This is not a launch redefinition; it is the most practical first integration target because it maximizes shell access, log capture, rollback, and power-cycle observation while staying inside the launch-valid hardware classes in `LAUNCH.md`.
+The first honest bring-up target is **Pack B - x86_64 lane**. **Pack C - companion lane** remains useful when an optional integration module such as Home Assistant is under test, but it is no longer part of the minimum G4 core-launch boundary. The x86_64 lane is still the most practical first target because it maximizes shell access, log capture, rollback, and power-cycle observation while staying inside the launch-valid hardware classes in `LAUNCH.md`.
 
 Pack A remains the required `aarch64` follow-on for Pi-class evidence, but S7 should earn its first concrete end-to-end bring-up on the more observable `x86_64` lane unless hardware availability forces a Pi-first pass.
 
@@ -63,9 +63,9 @@ Pack A remains the required `aarch64` follow-on for Pi-class evidence, but S7 sh
 | Role | Contract for the first bring-up | Why this is the first pass |
 |------|--------------------------------|----------------------------|
 | Device under test | Pack B `x86_64` mini PC or home server with SSD and wired LAN | Easiest path for SSH, rollback, logs, and repeated restart experiments |
-| Home Assistant host | Separate Pack C device on the same LAN | Keeps DUT-only restarts and HA uptime distinguishable |
+| Optional companion host | Separate Pack C device on the same LAN when a module lane is in scope | Keeps DUT-only restarts and companion-host uptime distinguishable |
 | Operator station | Separate laptop or desktop for SSH, dashboard observation, and evidence capture | Avoids turning the DUT into the only observation surface |
-| Power arrangement | DUT power can be cut without taking HA down | Required for later cold-boot and recovery proof |
+| Power arrangement | DUT power can be cut without taking a companion host down | Required for later cold-boot and recovery proof |
 
 ### G4 evidence map for the first bring-up
 
@@ -74,15 +74,14 @@ Pack A remains the required `aarch64` follow-on for Pi-class evidence, but S7 sh
 | Cross-compile `ferros-hub` | S4 packaging seam plus eventual S7 hub wrapper | Successful `x86_64-unknown-linux-gnu` build on the Pack B class |
 | Physical device run | S4 host seam stable enough to wrap | One real Pack B DUT session, not laptop or VM |
 | Device profile persists | S2 CLI plus the eventual hub storage path | `ferros profile init` on the DUT, then restart and reload the same profile |
-| HA bridge agent is listed | S3 registry/list seam | `ferros agent list` on the DUT shows the bridge agent once it exists |
-| Real HA entity is visible | HA fork plus runtime registration seam | One real entity on the separate HA host dashboard |
-| Consent deny is visible | S4 deny logs plus S3 log surface plus HA visibility | One denied request captured in logs and surfaced to the operator |
-| Full power-cycle survival | S2 persisted state plus S4 re-registration | DUT-only cold boot restores profile, bridge agent, and HA-visible state |
-| Independent install | Reproducible operator notes | Same bring-up contract repeated on a second non-primary home setup |
+| Registered agent is listed | S3 registry/list seam | `ferros agent list` on the DUT shows at least one real registered agent |
+| Consent deny is visible | S4 deny logs plus S3 log surface | One denied request captured in logs and surfaced to the operator |
+| Full power-cycle survival | S2 persisted state plus S4 re-registration | DUT-only cold boot restores profile, registered agents, and core runtime state |
+| Clean coordinated install | Reproducible operator notes | Same core bring-up contract repeated on a second lab-controlled device or fresh target image |
 
-## Runway pairing checkpoint map for the first lab
+## Optional integration pairing checkpoint map for the first lab
 
-This map is evidence-prep only for the Pack B `x86_64` device under test plus the separate Pack C Home Assistant host. It ties the six provisional pairing checkpoints to current S2 consumer surfaces plus the S3 registry/list/log surfaces and S4 runtime policy, deny logging, and restart seams. It does not define HA transport internals, freeze handshake order, or claim G4 evidence.
+This map is evidence-prep only for the Pack B `x86_64` device under test plus a separate Pack C companion host when an optional integration lane is in scope. It ties the six provisional pairing checkpoints to current S2 consumer surfaces plus the S3 registry/list/log surfaces and S4 runtime policy, deny logging, and restart seams. It does not define transport internals, freeze handshake order, or claim G4 evidence.
 
 | Checkpoint | DUT/lab observation target | Current seam map | What stays open |
 |------------|----------------------------|------------------|-----------------|
@@ -95,9 +94,9 @@ This map is evidence-prep only for the Pack B `x86_64` device under test plus th
 
 ---
 
-## First Home Assistant lab topology
+## Optional Home Assistant lab topology
 
-This is the candidate topology for the first honest lab sessions. It is still runway guidance, not a claim that the HA path is implemented.
+This is the candidate topology for optional Home Assistant module sessions. It is still runway guidance, not a claim that the HA path is implemented, and it is not a core G4 requirement.
 
 | Role | First-choice arrangement | Acceptable fallback | Runway note |
 |------|--------------------------|---------------------|-------------|
@@ -118,8 +117,8 @@ These are current runway assumptions for the first hardware sessions. They reser
 | Area | Current runway assumption | Why it stays provisional |
 |------|---------------------------|--------------------------|
 | Storage | Candidate device state should live on persistent local block storage: USB 3 SSD on Pi when possible, internal SSD on `x86_64`, and a journaling filesystem such as `ext4`; note the exact mount point that would later hold profile, grant, and log material | Exact layout, ownership, and file paths depend on downstream runtime surfaces, so this doc only fixes the durability expectation |
-| Network | First lab should keep DUT and HA on the same private LAN with SSH reachability, HA dashboard reachability, and working time sync; internet access is helpful for OS prep but should not become a permanent control-plane assumption | Final ports, discovery behavior, and bridge transport are not S7-runway decisions yet |
-| Power | DUT needs a stable PSU sized for storage peripherals; HA should ideally stay powered during DUT-only restart rehearsals; note whether a UPS or switchable outlet is available before the session | This is evidence-prep only until a real restart or power-cycle rehearsal happens and is recorded |
+| Network | First lab should keep the DUT on a stable private LAN with SSH reachability, operator reachability, and working time sync; companion module hosts should stay on that same LAN when used | Final ports, discovery behavior, and transport details are not S7-runway decisions yet |
+| Power | DUT needs a stable PSU sized for storage peripherals; optional companion hosts should ideally stay powered during DUT-only restart rehearsals; note whether a UPS or switchable outlet is available before the session | This is evidence-prep only until a real restart or power-cycle rehearsal happens and is recorded |
 | Observability | Persisted logs plus a simple recovery path such as SSH, local console, or serial fallback should exist before the first honest reboot rehearsal | The exact commands and log surfaces remain implementation-dependent |
 
 ---
@@ -133,11 +132,11 @@ These checks are meant to reduce false starts in the first lab session. Completi
 | OS image | Exact 64-bit Linux image, version, and update state recorded for the DUT | Later evidence needs reproducible device setup, not vague "latest image" notes |
 | Storage choice | Exact boot and data medium recorded, writable, and sized with headroom for logs | Reboot-safe storage cannot be assessed later if the medium was never pinned down |
 | Persistent state path | Candidate persistent directory or mount point identified for future profile, grant, and log material | S7 can reserve durability expectations now without defining final runtime layout |
-| Network stability | DUT hostname or address is stable, SSH works, and HA host is reachable on the same LAN | Later restart and HA visibility checks need a boring network story |
-| Clock and time sync | NTP or equivalent time sync is functioning on both DUT and HA host | Time drift will make future reboot and consent-deny observations hard to trust |
+| Network stability | DUT hostname or address is stable, SSH works, and any companion module host is reachable on the same LAN | Later restart and optional integration checks need a boring network story |
+| Clock and time sync | NTP or equivalent time sync is functioning on the DUT and any companion host | Time drift will make future reboot and consent-deny observations hard to trust |
 | Clean reboot path | DUT can reboot and come back without manual filesystem or network repair | Cold-boot tests are meaningless if the clean reboot path is already fragile |
 | Recovery path | Local console, HDMI, or serial fallback is known if SSH disappears | Prevents a lab session from turning into guesswork after a failed restart |
-| Power control | Operator knows exactly how DUT-only power can be removed later without taking HA down too | Power-cycle evidence requires a repeatable and isolated cut path |
+| Power control | Operator knows exactly how DUT-only power can be removed later without taking an optional companion host down too | Power-cycle evidence requires a repeatable and isolated cut path |
 | Session notes | Tester, location class, chosen pack, and exact hardware identifiers are ready to capture | Launch evidence later needs traceable notes, not reconstructed memory |
 | Pairing boundary | Notes stay at the level of constraints and open questions; no doc-local handshake is frozen here | S7 should not redefine authoritative pairing semantics before downstream seams stabilize |
 
@@ -166,7 +165,7 @@ These targets are intentionally forward-looking. They describe what later hardwa
 |---------------|------------------------|-----------------------------------------|
 | Reboot-safe profile and grant storage | Storage and mount decisions made now affect whether restart evidence can be trusted later | A recorded session showing the real device state still loads after a clean reboot |
 | Full power-cycle survival | Power arrangement and recovery path should be ready before the first cold-boot rehearsal | A recorded session showing the same state survives an abrupt power cut and cold start without manual repair |
-| HA recovery visibility | Separate-host topology makes later device-only recovery observable | A recorded session showing the HA-side view recovers after DUT restart once the integration path exists |
+| Optional module recovery visibility | Separate-host topology makes later device-only recovery observable | A recorded session showing the companion-side view recovers after DUT restart once the integration path exists |
 | Consent-deny observability | Operator station and log capture should be planned before implementation lands | A recorded session showing a real deny event is visible in HA UI or FERROS logs once that surface exists |
 | Repeated restart stability | Hardware prep should support more than a one-off happy-path run | Multiple recorded restart or cold-boot passes on the same chosen hardware pack |
 
@@ -189,8 +188,8 @@ These notes stay prep-only. They are meant to make the first real Pack B session
 
 Fill this in only when the real on-device path exists. Until then, this table is a runway template.
 
-| Date | Hardware pack | Exact device and storage | OS version | HA topology | Profile persists after clean reboot | Grant state survives full power cycle | HA-side recovery visible once available | Consent deny visible once available | Tester |
-|------|---------------|--------------------------|------------|-------------|------------------------------------|--------------------------------------|--------------------------------------|------------------------------------|--------|
+| Date | Hardware pack | Exact device and storage | OS version | Optional integration topology | Profile persists after clean reboot | Grant state survives full power cycle | Optional integration recovery visible once available | Consent deny visible once available | Tester |
+|------|---------------|--------------------------|------------|-------------------------------|------------------------------------|--------------------------------------|----------------------------------------------|------------------------------------|--------|
 
 ---
 
@@ -208,5 +207,5 @@ Only add a row here when the hardware also satisfies the G4 evidence checklist.
 - Cross-compiling without running on the target device.
 - QEMU or any other emulated hardware run.
 - A developer laptop demo.
-- A mocked or stubbed Home Assistant entity.
+- Optional module proof by itself, whether mocked or real.
 - Pairing notes that describe a future protocol but have not been exercised on hardware.

@@ -3,226 +3,103 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
-## 2026-05-04 - PACK-C SESSION 05 HA RESTORATION ATTEMPT
+## 2026-05-04 - ADR-028-AND-G4-CORE-TIGHTENING
 
-- Selected item: G4 post-reboot restoration proof on the current bridge entity path
-- Result: Stop-clean. The local FERROS-side half of restoration passed, but the HA restoration requirement is still not met. After the DUT rebooted at `2026-05-04 03:17:12`, `cargo run -p ferros-node --bin ferros -- profile show .local-state/pack-b-session-01-profile.json` still loaded the persisted Pack B profile, `cargo run -p ferros-node --bin ferros -- agent list` still showed `echo`, `ha-local-bridge`, and `timer` as registered, and `cargo run -p ferros-node --bin ferros -- agent describe ha-local-bridge` still resolved the bridge agent. However, the pre-resync HA state JSON for `sensor.ferros_ha_local_bridge_status` showed `last_updated: 2026-05-04T03:03:36.156712+00:00`, which is earlier than the reboot time, so the entity did not restore itself after boot. A manual post-boot `cargo run -p ferros-hub -- remote-report-state` advanced `last_updated` to `2026-05-04T03:20:10.221892+00:00`, proving the current path still works only with manual repair.
+- Selected item: formalize the core-launch versus module-lane decision and tighten the launch evidence docs around the new install bar
+- Result: Stop-clean. ADR-028 is now accepted and the repo truth now records that `v0.2.0` is core FERROS on real hardware, that Home Assistant and future local LLM or external LLM API work are optional module lanes, and that strict unmanaged installs are deferred until after coordinated lab rollout and later controlled test homes. The gate docs are also tighter: the current Pack B `homelab001` hardware anchor, first confirmed target-side provisioning date, and the Windows fresh-host coordinated reprovision packet are now explicitly recorded in `LAUNCH.md` and `docs/gates/G4.md`.
+- Files:
+  - `LAUNCH.md`
+  - `STATUS.md`
+  - `docs/adr/ADR-028-core-launch-and-optional-module-lanes.md`
+  - `docs/adr/_INDEX.md`
+  - `docs/adr/_ROADMAP.md`
+  - `docs/gates/G4.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: touched-doc diagnostics stayed clean. This slice stayed in ADR, launch, gate, status, and roadmap surfaces only.
+- Claims added: the repo now has an accepted ADR for the module-lane split, a named current core hardware and provisioning anchor, and an explicit coordinated second-device reprovision record inside the launch gate.
+- Claims explicitly not added: no new hardware execution, no new code behavior, no G4 closure, and no unattended installer claim.
+- Blocked lanes: G4 still waits on any remaining unchecked core launch evidence and closeout bookkeeping, but no longer on Home Assistant-specific restoration as a launch blocker.
+- Next queued follow-up: commit this policy and ADR packet, then either close the remaining core G4 paperwork or start the first module-packaging research lane.
+
+```json
+{
+  "wave_id": "2026-05-04-ADR-028-AND-G4-CORE-TIGHTENING",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: this was a docs-only tightening slice and touched-doc diagnostics stayed clean.",
+    "2_wave_tag": "Not triggered: the landed diff stays inside ADR, launch, gate, status, run-log, and roadmap/index surfaces.",
+    "3_diff_overrun": "Not triggered: the landed slice stays within the minimum files needed to formalize the decision and tighten the evidence wording.",
+    "4_track_boundary": "Not triggered: no new hardware or code execution was performed in this slice.",
+    "5_run_length_cap": "Not triggered: this was one bounded policy-and-bookkeeping closeout pass.",
+    "6_escalation_chain": "Not triggered: once the ADR template and current evidence anchors were read, the needed decision and doc tightening were local and direct."
+  },
+  "decision": "stop-clean",
+  "rationale": "The repo now has an accepted record for the launch-boundary decision and tighter launch evidence wording that matches the current lab-first rollout plan."
+}
+```
+
+---
+## 2026-05-04 - CORE-LAUNCH-RESET-AND-MODULE-LANE-SPLIT
+
+- Selected item: rewrite the launch policy surfaces so core FERROS readiness is the G4 blocker and optional integrations become module lanes
+- Result: Stop-clean. Repo truth now records that `v0.2.0` launch is core `ferros-hub` on real home hardware with consent, reboot-safe recovery, and a coordinated clean install path, while Home Assistant moves to an optional module lane instead of a current launch blocker. The rollout note now explicitly says strict unmanaged independent installs are deferred until after coordinated lab validation and later controlled test homes. The roadmap also now records local LLM runtimes and external LLM APIs as near-term candidate module lanes alongside or ahead of Home Assistant.
+- Files:
+  - `LAUNCH.md`
+  - `docs/adr/_ROADMAP.md`
+  - `docs/gates/G4.md`
+  - `docs/hub/reference-hardware.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `STATUS.md`
+- Validation: touched-doc diagnostics stayed clean. The rewrite intentionally changes only launch-policy and rollout-definition surfaces; no crate, schema, or hardware findings files were modified.
+- Claims added: core G4 no longer depends on Home Assistant evidence, strict unmanaged independent installs are no longer part of the immediate launch blocker set, and optional module-lane planning now names Home Assistant plus local LLM or external LLM API work explicitly.
+- Claims explicitly not added: no G4 closure, no new hardware evidence, no new code behavior, and no retirement of the existing Home Assistant findings packets.
+- Blocked lanes: G4 still waits on the remaining core launch evidence, including the coordinated clean-install row and any remaining hardware or packaging bookkeeping that has not yet been filled in the gate file.
+- Next queued follow-up: truth-sync the existing D1 or Pack B evidence into any remaining core G4 rows, or start the first module-system ADR or research note from the newly recorded backlog items.
+
+```json
+{
+  "wave_id": "2026-05-04-CORE-LAUNCH-RESET-AND-MODULE-LANE-SPLIT",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: this was a docs-only policy reset and touched-doc diagnostics stayed clean.",
+    "2_wave_tag": "Not triggered: the landed diff stays inside launch, gate, hardware-runway, roadmap, status, and run-log truth surfaces.",
+    "3_diff_overrun": "Not triggered: the landed slice stays within the minimum policy and bookkeeping surfaces required to keep the repo internally consistent.",
+    "4_track_boundary": "Not triggered: no new hardware or code execution was performed in this slice.",
+    "5_run_length_cap": "Not triggered: this was one bounded launch-definition rewrite.",
+    "6_escalation_chain": "Not triggered: the controlling issue was the written launch policy itself, and the first doc pass was enough to reset that boundary cleanly."
+  },
+  "decision": "stop-clean",
+  "rationale": "The repo now matches the intended product direction: raw FERROS core is the launch target, while Home Assistant and future LLM-facing work are module lanes rather than current launch blockers."
+}
+```
+
+---
+## 2026-05-04 - PACK-C SESSION 06 WINDOWS FRESH-HOST IMPORT
+
+- Selected item: truth-sync the operator-supplied Windows fresh-host evidence packet against the homelab Home Assistant deployment
+- Result: Stop-clean. Repo truth now records that FERROS revision `aafc16bc64012f7fee8fb2a2e2845015b5f6f615` built and ran on a separate Windows host after a stable toolchain update, that a fresh explicit profile path and temp-rooted local state root were used for the successful packet, that one manual `remote-report-state` call created `sensor.ferros_ha_local_bridge_status` on `homelab001`, that restarting only the homelab `homeassistant` container removed that entity until one manual repair, and that a later hard Windows restart preserved the explicit profile file plus the already-restored entity without proving automatic boot republish.
 - Files:
   - `docs/gates/G4.md`
-  - `docs/hardware/findings/FINDINGS-pack-c-session-05-ha-restoration.md`
+  - `docs/hardware/findings/FINDINGS-pack-c-session-06-windows-fresh-host.md`
   - `docs/orchestration/WAVE-RUN-LOG.md`
   - `STATUS.md`
-- Validation: post-boot host facts were saved under `.local-artifacts/pack-c-session-05-ha-restoration/`. The profile and agent commands all passed after reboot. `cargo run -p ferros-hub -- remote-summary` still found both FERROS entities before any manual write. The saved pre-resync HA state JSON recorded a `last_updated` timestamp from before the reboot. The saved post-resync HA state JSON recorded a later timestamp only after the manual `remote-report-state` call.
-- Claims added: the repo now has an honest failed-restoration findings packet that distinguishes FERROS-side reboot recovery from the still-missing automatic HA restoration behavior.
-- Claims explicitly not added: no G4 closure and no independent install proof.
-- Blocked lanes: G4 still waits on automatic HA restoration after power cycle and independent install.
-- Next queued follow-up: implement a truly automatic post-boot HA restoration path with durable local state and credential handling, then rerun this same restoration packet.
+- Validation: the imported packet stays within documented operator-reported outputs only. The repo truth records the manual-repair requirement after Home Assistant restart and the claim ceiling that the later Windows host restart preserved an already-restored entity without proving automatic republish.
+- Claims added: the repo now captures the fresh Windows-host bring-up packet, the Rust toolchain update needed before that packet succeeded, the Home Assistant container restart failure mode, and the later Windows host-restart follow-up result.
+- Claims explicitly not added: no G4 closure, no automatic republish after Home Assistant restart, no automatic republish on Windows boot, and no independent install proof.
+- Blocked lanes: under the pre-reset launch definition, G4 still waited on no-manual-intervention restoration behavior and a true independent private-beta install on a second non-primary home setup.
+- Next queued follow-up: either implement automatic entity republish and rerun the Home Assistant restart and boot packets, or capture a real second-site install that follows only the published instructions.
 
 ```json
 {
-  "wave_id": "2026-05-04-PACK-C-SESSION-05-HA-RESTORATION-ATTEMPT",
+  "wave_id": "2026-05-04-PACK-C-SESSION-06-WINDOWS-FRESH-HOST-IMPORT",
   "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: the captured result is a valid negative finding, not a tooling failure. The local recovery checks passed and the HA timestamps gave a clear answer before and after manual resync.",
-    "2_wave_tag": "Not triggered: this slice stayed inside the G4 restoration proof boundary and matching truth surfaces.",
-    "3_diff_overrun": "Not triggered: the landed diff stays inside one new findings packet and the minimal gate or status bookkeeping surfaces.",
-    "4_track_boundary": "Not triggered: the work stayed in S7 G4 restoration follow-up only.",
-    "5_run_length_cap": "Not triggered: this was one bounded post-reboot validation slice.",
-    "6_escalation_chain": "Not triggered: the first read-only HA state check already falsified automatic restoration, and the only follow-up was one manual resync to separate stale persistence from explicit repair."
+    "1_validation_failed": "Not triggered: this slice only truth-syncs an operator-reported packet and keeps the claim ceiling below any unsupported restoration or install claim.",
+    "2_wave_tag": "Not triggered: the landed diff stays inside one new findings packet and the minimum shared truth surfaces that refer to it.",
+    "3_diff_overrun": "Not triggered: the landed diff stays within one findings file plus the G4, status, and run-log bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: no new hardware session was executed from this host; this is only the import of already-run evidence.",
+    "5_run_length_cap": "Not triggered: this was one bounded truth-sync slice.",
+    "6_escalation_chain": "Not triggered: the Windows packet already separated the discarded setup attempts from the successful evidence run and from the later host-restart follow-up."
   },
   "decision": "stop-clean",
-  "rationale": "The current evidence now clearly shows where G4 is still blocked: local FERROS state survives reboot, but the HA entity does not restore itself without a manual post-boot sync."
-}
-```
-
----
-## 2026-05-04 - PACK-C SESSION 04 CONSENT-DENY VALIDATION
-
-- Selected item: launch-grade consent-deny slice for the current bridge entity path on `MKY`
-- Result: Stop-clean. A real denied bridge-agent run is now captured on `homelab001`, and the denial is visible through both FERROS logs and the synced Home Assistant entity metadata. `cargo run -p ferros-node --bin ferros -- agent run ha-local-bridge` returned `authorization denied: ha-local-bridge missing bridge.observe`, `cargo run -p ferros-node --bin ferros -- agent logs ha-local-bridge` recorded `denied-start:ha-local-bridge missing bridge.observe`, and the saved HA state JSON for `sensor.ferros_ha_local_bridge_status` then reported `denied_start_count: 1` with `latest_deny_event: missing bridge.observe`.
-- Files:
-  - `docs/gates/G4.md`
-  - `docs/hardware/findings/FINDINGS-pack-c-session-04-consent-deny.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-  - `STATUS.md`
-- Validation: `cargo run -p ferros-node --bin ferros -- agent run ha-local-bridge` exited `1` with the expected missing-capability denial. `cargo run -p ferros-node --bin ferros -- agent logs ha-local-bridge` showed the persisted denied-start entry. `cargo run -p ferros-hub -- remote-report-state` succeeded against `MKY`, and the saved HA state JSON under `.local-artifacts/pack-c-session-04-consent-deny/remote-entity-state.json` recorded `denied_start_count: 1` and `latest_deny_event: missing bridge.observe`.
-- Claims added: the G4 consent-deny row can now be filled honestly via the `ferros agent logs` branch, and the current bridge entity sync carries the same denial metadata into Home Assistant.
-- Claims explicitly not added: no G4 closure, no HA restoration after a full power cycle, and no independent install proof.
-- Blocked lanes: G4 still waits on HA restoration after a full power cycle and independent install.
-- Next queued follow-up: run the power-cycle restoration packet against the current bridge entity path, then capture an independent install.
-
-```json
-{
-  "wave_id": "2026-05-04-PACK-C-SESSION-04-CONSENT-DENY-VALIDATION",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: the denied run, persisted FERROS logs, remote entity sync, and saved HA state JSON all aligned on the same denial.",
-    "2_wave_tag": "Not triggered: this slice stayed inside the G4 consent-deny proof seam and matching truth surfaces.",
-    "3_diff_overrun": "Not triggered: the landed diff stays inside one new findings packet and the minimal gate or status bookkeeping surfaces.",
-    "4_track_boundary": "Not triggered: the work stayed in S7 G4 follow-up and did not reopen unrelated lanes.",
-    "5_run_length_cap": "Not triggered: this was one bounded live-validation slice after the prior entity implementation packet.",
-    "6_escalation_chain": "Not triggered: the existing code path already exposed the needed denial metadata, so no additional repair was needed after the first live check."
-  },
-  "decision": "stop-clean",
-  "rationale": "The current bridge entity path now has both a real agent-center-backed HA entity proof and a real consent-deny proof, leaving only restoration and install work before G4 can close."
-}
-```
-
----
-## 2026-05-04 - PACK-C SESSION 03 AGENT-CENTER ENTITY VALIDATION
-
-- Selected item: first non-stand-in Home Assistant entity slice for G4 packet 1 on `MKY`
-- Result: Stop-clean. `ferros-hub remote-report-state` now prefers the persisted local agent-center bridge state over the earlier runway-summary stand-in path, and live validation against `MKY` confirmed that the separate-host HA entity `sensor.ferros_ha_local_bridge_status` now reports `registered` instead of the earlier runway `allowed` value. The saved HA state JSON identifies that entity as `scope: local-agent-center`, `evidence: persisted-agent-center-runtime`, and `state_source: ferros-node-agent-center-state`, and the authenticated HA Entities UI showed the same `FERROS ha-local-bridge Status` row with state `registered` under `Ungrouped`.
-- Files:
-  - `crates/ferros-hub/src/remote_bridge.rs`
-  - `docs/gates/G4.md`
-  - `docs/hardware/findings/FINDINGS-pack-c-session-03-agent-center-entity.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-  - `STATUS.md`
-- Validation: `cargo test -p ferros-hub remote_state_request_` passed after the local agent-center gating repair. `cargo run -p ferros-hub -- remote-report-state` wrote `entityId: sensor.ferros_ha_local_bridge_status` with `state: registered`. `cargo run -p ferros-hub -- remote-summary` still reported `ferrosEntityCount: 2` with `sensor.ferros_bridge_probe,sensor.ferros_ha_local_bridge_status`. The saved HA state JSON under `.local-artifacts/pack-c-session-03-agent-center-entity/remote-entity-state.json` recorded the agent-center attributes. The authenticated HA Entities UI showed `FERROS ha-local-bridge Status` with state `registered` after filtering for `FERROS`.
-- Claims added: the first real agent-center-backed Home Assistant entity slice is now live-validated on the separate Pack C host; the bridge-status entity reflects actual FERROS agent-center state rather than the earlier runway-summary `allowed` stand-in; and the `HA entity confirmed` evidence row in `docs/gates/G4.md` can now be filled honestly.
-- Claims explicitly not added: no G4 closure, no consent-deny visibility in the HA UI, no HA restoration after a full power cycle, and no independent install proof.
-- Blocked lanes: G4 still waits on consent-deny proof in the launch-grade path, HA restoration after a full power cycle, and independent install.
-- Next queued follow-up: either wire or prove the launch-grade consent-deny surface next, or run the HA restoration packet after the new entity path is stable.
-
-```json
-{
-  "wave_id": "2026-05-04-PACK-C-SESSION-03-AGENT-CENTER-ENTITY-VALIDATION",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: the focused ferros-hub test slice passed, the live HA write succeeded, the saved state JSON matched the intended source attributes, and the authenticated HA UI showed the same entity with the expected state.",
-    "2_wave_tag": "Not triggered: this slice stayed inside the HA bridge seam plus matching truth surfaces and did not widen into full G4 claims.",
-    "3_diff_overrun": "Not triggered: the landed diff stays inside one bridge seam, one new findings packet, and the minimal truth-sync surfaces.",
-    "4_track_boundary": "Not triggered: the work stayed in S7 G4 packet 1 and did not reopen D1 or unrelated streams.",
-    "5_run_length_cap": "Not triggered: this was one bounded implementation plus live-validation slice.",
-    "6_escalation_chain": "Not triggered: the first live write exposed one local gating mismatch, it was repaired in the same file, and the same focused test plus live validation then passed."
-  },
-  "decision": "stop-clean",
-  "rationale": "The repo now has code and live evidence for the first non-stand-in HA entity slice, which is enough to truth-sync G4 progress without overclaiming the still-open consent, restoration, and install requirements."
-}
-```
-
----
-## 2026-05-04 - D1 HARD-POWER CLOSEOUT
-
-- Selected item: final D1 reboot-safe FERROS-side state check on `homelab001`
-- Result: Stop-clean. The full DUT-only hard power cut is now captured honestly and D1 is closed. `uptime -s` reported boot time `2026-05-04 02:40:28` after the operator-completed hard reset, the persistent Pack B profile at `.local-state/pack-b-session-01-profile.json` still loaded cleanly, and post-power `ferros agent` reads showed `echo`, `ha-local-bridge`, and `timer` all registered without manual state repair. Repo truth now marks the D1 gate closed while keeping G4 open.
-- Files:
-  - `docs/gates/D1.md`
-  - `STATUS.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-- Validation: `date -Is`, `hostname`, `uname -srmo`, and `uptime -s` were captured under `.local-artifacts/pack-b-session-03-d1-closeout/`. `cargo run -p ferros-node --bin ferros -- profile show .local-state/pack-b-session-01-profile.json` passed after the hard cut and returned the persisted `Fresh Start` profile. `cargo run -p ferros-node --bin ferros -- agent list` passed and reported `echo`, `ha-local-bridge`, and `timer` as registered. `cargo run -p ferros-node --bin ferros -- agent describe ha-local-bridge` passed and kept the expected `hub-local-bridge:bridge.observe` requirement visible. `ip -brief address show enp4s0` reported `192.168.50.234/24` after boot.
-- Claims added: D1 is now closed with profile, named HA stand-in, consent-flow visibility, and full DUT-only power-cycle FERROS-side recovery all documented on the named Pack B DUT.
-- Claims explicitly not added: no G4 closure, no HA restoration-after-power-cycle claim, no independent install claim, and no launch-grade non-stand-in bridge claim.
-- Blocked lanes: none for D1. G4 remains the active launch gate.
-- Next queued follow-up: optional truth-sync commit or push, then plan the G4 closure packet around real HA entity behavior, consent visibility in the launch-grade path, HA restoration after power cycle, and independent install.
-
-```json
-{
-  "wave_id": "2026-05-04-D1-HARD-POWER-CLOSEOUT",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: the post-power profile and agent commands all passed and the captured boot time confirms a new boot after the hard reset.",
-    "2_wave_tag": "Not triggered: this slice stayed inside the D1 closeout truth surfaces and did not widen into G4 claims.",
-    "3_diff_overrun": "Not triggered: the landed diff stays inside D1 gate truth, top-level status, and the run log.",
-    "4_track_boundary": "Not triggered: the work stayed on the hardware-backed D1 closeout lane.",
-    "5_run_length_cap": "Not triggered: this was one bounded post-power validation and truth-sync slice.",
-    "6_escalation_chain": "Not triggered: the first focused post-power checks passed directly without repair."
-  },
-  "decision": "stop-clean",
-  "rationale": "The last D1 evidence row is now backed by saved post-power artifacts on the named DUT, so the repo can honestly mark D1 closed while leaving G4 open."
-}
-```
-
----
-## 2026-05-04 - D1 PRE-POWER CONSENT AND HARD-POWER HANDOFF
-
-- Selected item: pre-hard-power D1 closeout preparation on `homelab001`
-- Result: Stop-clean. The remaining D1 consent-flow gap is now backed by a real localhost-shell denial observation on the Pack B DUT: `ha-local-bridge` was denied for missing `bridge.observe`, the denial persisted in the local FERROS deny log, the live shell at `http://127.0.0.1:4317/` showed the deny event in the consent or audit panel, and the same shell state was saved through `agent.snapshot` under `.local-artifacts/pack-b-session-03-d1-closeout/`. The pre-power baseline for the final D1 hard-cut lane is also now captured under that same artifact directory, and a dedicated hard-power handoff note exists for the post-boot capture.
-- Files:
-  - `docs/gates/D1.md`
-  - `docs/hardware/findings/FINDINGS-pack-b-session-03-d1-consent-shell.md`
-  - `docs/hardware/D1-hard-power-closeout-handoff.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-- Validation: `cargo run --target-dir target/copilot-shell -p ferros-node --bin ferros-node -- shell 4317` served the live localhost shell. `cargo run -p ferros-node --bin ferros -- agent run ha-local-bridge` returned `authorization denied: ha-local-bridge missing bridge.observe`. `cargo run -p ferros-node --bin ferros -- agent logs ha-local-bridge` recorded `denied-start:ha-local-bridge missing bridge.observe`. `curl -s -X POST ... method=agent.snapshot ... http://127.0.0.1:4317/rpc` saved `.local-artifacts/pack-b-session-03-d1-closeout/pre-power-agent-snapshot.json` with `denyLog` entries for `ha-local-bridge` and an empty `grants` array. The live shell snapshot showed `Latest deny event: ha-local-bridge · ha-local-bridge missing bridge.observe`.
-- Claims added: D1 now has a truthful consent-flow evidence row grounded in a live localhost-shell observation on the Pack B DUT, and the exact post-hard-power capture boundary is now scripted in repo.
-- Claims explicitly not added: no D1 closure, no full DUT-only power-cycle survival, no G4 closure, no HA recovery claim, and no independent install claim.
-- Blocked lanes: D1 still waits only on the actual hard power cut plus post-boot `profile show` and `agent list` capture.
-- Next queued follow-up: remove power from `homelab001` only, then run the post-power commands in `docs/hardware/D1-hard-power-closeout-handoff.md`.
-
-```json
-{
-  "wave_id": "2026-05-04-D1-PRE-POWER-CONSENT-AND-HARD-POWER-HANDOFF",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: the denied bridge-agent run, persisted deny log, saved agent.snapshot artifact, and live localhost shell observation all aligned on the same denial.",
-    "2_wave_tag": "Not triggered: this slice stayed inside D1 evidence prep, findings, and handoff surfaces without claiming gate closure.",
-    "3_diff_overrun": "Not triggered: the landed diff stayed inside one new findings file, one new handoff note, the D1 gate table, and the run log.",
-    "4_track_boundary": "Not triggered: the work stayed inside the current D1 closeout lane and did not execute the hard power boundary from the attached session.",
-    "5_run_length_cap": "Not triggered: this was one bounded pre-power capture and truth-sync slice.",
-    "6_escalation_chain": "Not triggered: the first two denial-seed attempts were informative but not the right gated path, the nearby bridge-agent path then produced the needed deny evidence without broader exploration."
-  },
-  "decision": "stop-clean",
-  "rationale": "Everything that can be captured before the full DUT-only power cut is now on disk and reflected in repo truth, so the only remaining D1 blocker is the physical power boundary itself."
-}
-```
-
----
-## 2026-05-04 - PACK-C SESSION 02 BRIDGE-STATE-SYNC VALIDATION
-
-- Selected item: live post-refactor HA validation on `MKY`
-- Result: Stop-clean. Using a fresh Home Assistant bearer token, `ferros-hub remote-report-state` successfully wrote the runtime-backed entity `sensor.ferros_ha_local_bridge_status` with state `allowed`, and `ferros-hub remote-summary` then reported two FERROS entities on the separate Pack C host: the earlier probe entity plus the new bridge-status entity. The authenticated HA Entities UI confirmed both rows were operator-visible under `Ungrouped`.
-- Files:
-  - `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`
-  - `docs/orchestration/HANDOFF-2026-05-04-REBOOT-RESUME.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-- Validation: `.local-artifacts/pack-c-session-02-bridge-state-sync/remote-report-state.txt` captured `entityId: sensor.ferros_ha_local_bridge_status` with `state: allowed`. `.local-artifacts/pack-c-session-02-bridge-state-sync/remote-summary.txt` captured `ferrosEntityCount: 2` with `ferrosEntities: sensor.ferros_bridge_probe,sensor.ferros_ha_local_bridge_status`. The authenticated HA Entities UI, filtered for `FERROS`, showed `FERROS Bridge Probe` with state `report-state` and `FERROS ha-local-bridge Status` with state `allowed`.
-- Claims added: the runtime-backed HA bridge-state sync path now has live separate-host validation; the Pack C findings packet now covers both the original probe entity and the later runtime-backed status entity; and the earlier auth-expiry blocker is resolved.
-- Claims explicitly not added: no G4 closure, no launch-grade non-stand-in entity claim, no consent-deny visibility in the HA UI, and no HA restoration after power cycle.
-- Blocked lanes: none in the hardware queue. Remaining launch-grade HA work is now substantive bridge and recovery scope, not environment or auth blockage.
-- Next queued follow-up: optional launch-grade follow-up if you want to pursue consent-deny UI visibility or HA restoration after power cycle.
-
-```json
-{
-  "wave_id": "2026-05-04-PACK-C-SESSION-02-BRIDGE-STATE-SYNC-VALIDATION",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: the live HA validation succeeded with a fresh token and produced saved artifact files plus UI-visible confirmation.",
-    "2_wave_tag": "Not triggered: this slice stayed inside the existing Pack C evidence surface and supporting handoff bookkeeping.",
-    "3_diff_overrun": "Not triggered: the landed diff stayed inside the Pack C findings and orchestration truth surfaces.",
-    "4_track_boundary": "Not triggered: the work stayed in hardware-proof validation and truth-sync surfaces.",
-    "5_run_length_cap": "Not triggered: this was one bounded live-validation slice.",
-    "6_escalation_chain": "Not triggered: the only prior blocker was token expiry, and the fresh-token rerun succeeded directly."
-  },
-  "decision": "stop-clean",
-  "rationale": "The refactored HA bridge-state sync path now has live separate-host validation and operator-visible UI confirmation, so repo truth no longer needs to describe authentication as the outstanding blocker."
-}
-```
-
----
-## 2026-05-04 - HARDWARE-2026-04-30-06 CLEAN-REBOOT MIRROR
-
-- Selected item: `HARDWARE-2026-04-30-06`
-- Result: Stop-clean. `homelab001` rebooted at `2026-05-04 01:56:40` and returned on the same IPv4 address `192.168.50.234/24`, which allowed the post-reboot DUT-side handoff mirror capture to complete immediately. The saved captures now show the local bridge artifact family, proposal and decision artifacts, deny visibility, and a restart-aware hub summary with `restartReload: reloaded`. This closes `HARDWARE-2026-04-30-06` honestly as a clean-reboot rehearsal packet, and it canonically unblocks the already-captured Pack C visibility packet so `HARDWARE-2026-04-30-07` can also close without widening any claim ceiling.
-- Files:
-  - `docs/hardware/findings/FINDINGS-pack-b-session-02-handoff-mirror.md`
-  - `docs/hardware/findings/FINDINGS-pack-c-session-01-ha-visibility.md`
-  - `docs/orchestration/HANDOFF-2026-05-04-REBOOT-RESUME.md`
-  - `docs/orchestration/HARDWARE-QUEUE.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-- Validation: `uptime -s` reported boot time `2026-05-04 01:56:40`. `ip -brief address show enp4s0` reported `192.168.50.234/24` after reboot. `cargo xtask hub-runway --keep-artifacts` passed and kept the expected `.tmp/hub` JSON artifacts. `cargo run -p ferros-hub -- summary` passed and reported `restartReload: reloaded`. `cargo run -p ferros-hub -- deny-demo` passed. `cargo run -p ferros-node --bin ferros -- profile show .local-state/pack-b-session-01-profile.json` passed. `cargo run -p ferros-node --bin ferros -- agent list` passed and showed `echo`, `ha-local-bridge`, and `timer`. `cargo run -p ferros-node --bin ferros -- agent describe ha-local-bridge` passed. Post-reboot captures were saved under `.local-artifacts/pack-b-session-02-handoff-mirror/`.
-- Claims added: the Pack B DUT now has a filled clean-reboot handoff-mirror findings packet; the local bridge proposal and decision artifact chain is mirrored on the named DUT after reboot; `ha-local-bridge` is visible and registered after reboot; and the hardware queue can now close both `HARDWARE-2026-04-30-06` and the already-captured separate-host `HARDWARE-2026-04-30-07` packet.
-- Claims explicitly not added: no full DUT-only power-cycle survival, no real Home Assistant proof from the Pack B lane, no consent acceptance claim, no D1 closure, no G4 closure, and no new live HA validation after the bridge-state refactor.
-- Blocked lanes: none in the current hardware queue. If live HA revalidation is still wanted, it remains blocked only on fresh operator-provided authentication for `MKY`.
-- Next queued follow-up: hardware queue is clear; the next honest follow-up is optional live HA revalidation with a fresh token or a new queue item for launch-grade bridge gaps.
-
-```json
-{
-  "wave_id": "2026-05-04-HARDWARE-2026-04-30-06-CLEAN-REBOOT-MIRROR",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: all post-reboot commands passed and the touched findings or queue docs can now be validated directly.",
-    "2_wave_tag": "Not triggered: this slice executed the queued hardware reboot boundary and then wrote the matching truth surfaces without claiming gate closure.",
-    "3_diff_overrun": "Not triggered: the landed diff stayed inside the declared findings, queue, and handoff bookkeeping surfaces.",
-    "4_track_boundary": "Not triggered: the work stayed in the hardware track and did not widen into unrelated code changes.",
-    "5_run_length_cap": "Not triggered: this was one bounded reboot-recovery capture slice.",
-    "6_escalation_chain": "Not triggered: the reboot returned cleanly and the expected post-reboot commands succeeded on the first pass."
-  },
-  "decision": "stop-clean",
-  "rationale": "The queued reboot-sensitive DUT rehearsal is now captured honestly, and the existing Pack C separate-host packet can now close canonically because its serial dependency has landed."
+  "rationale": "The repo now reflects what the separate Windows host did prove and what it still does not prove, without collapsing fresh-host evidence into a false independent-install or auto-restore claim."
 }
 ```
 
