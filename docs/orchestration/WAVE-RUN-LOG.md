@@ -3,6 +3,38 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-04 - D1 PRE-POWER CONSENT AND HARD-POWER HANDOFF
+
+- Selected item: pre-hard-power D1 closeout preparation on `homelab001`
+- Result: Stop-clean. The remaining D1 consent-flow gap is now backed by a real localhost-shell denial observation on the Pack B DUT: `ha-local-bridge` was denied for missing `bridge.observe`, the denial persisted in the local FERROS deny log, the live shell at `http://127.0.0.1:4317/` showed the deny event in the consent or audit panel, and the same shell state was saved through `agent.snapshot` under `.local-artifacts/pack-b-session-03-d1-closeout/`. The pre-power baseline for the final D1 hard-cut lane is also now captured under that same artifact directory, and a dedicated hard-power handoff note exists for the post-boot capture.
+- Files:
+  - `docs/gates/D1.md`
+  - `docs/hardware/findings/FINDINGS-pack-b-session-03-d1-consent-shell.md`
+  - `docs/hardware/D1-hard-power-closeout-handoff.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo run --target-dir target/copilot-shell -p ferros-node --bin ferros-node -- shell 4317` served the live localhost shell. `cargo run -p ferros-node --bin ferros -- agent run ha-local-bridge` returned `authorization denied: ha-local-bridge missing bridge.observe`. `cargo run -p ferros-node --bin ferros -- agent logs ha-local-bridge` recorded `denied-start:ha-local-bridge missing bridge.observe`. `curl -s -X POST ... method=agent.snapshot ... http://127.0.0.1:4317/rpc` saved `.local-artifacts/pack-b-session-03-d1-closeout/pre-power-agent-snapshot.json` with `denyLog` entries for `ha-local-bridge` and an empty `grants` array. The live shell snapshot showed `Latest deny event: ha-local-bridge · ha-local-bridge missing bridge.observe`.
+- Claims added: D1 now has a truthful consent-flow evidence row grounded in a live localhost-shell observation on the Pack B DUT, and the exact post-hard-power capture boundary is now scripted in repo.
+- Claims explicitly not added: no D1 closure, no full DUT-only power-cycle survival, no G4 closure, no HA recovery claim, and no independent install claim.
+- Blocked lanes: D1 still waits only on the actual hard power cut plus post-boot `profile show` and `agent list` capture.
+- Next queued follow-up: remove power from `homelab001` only, then run the post-power commands in `docs/hardware/D1-hard-power-closeout-handoff.md`.
+
+```json
+{
+  "wave_id": "2026-05-04-D1-PRE-POWER-CONSENT-AND-HARD-POWER-HANDOFF",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the denied bridge-agent run, persisted deny log, saved agent.snapshot artifact, and live localhost shell observation all aligned on the same denial.",
+    "2_wave_tag": "Not triggered: this slice stayed inside D1 evidence prep, findings, and handoff surfaces without claiming gate closure.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside one new findings file, one new handoff note, the D1 gate table, and the run log.",
+    "4_track_boundary": "Not triggered: the work stayed inside the current D1 closeout lane and did not execute the hard power boundary from the attached session.",
+    "5_run_length_cap": "Not triggered: this was one bounded pre-power capture and truth-sync slice.",
+    "6_escalation_chain": "Not triggered: the first two denial-seed attempts were informative but not the right gated path, the nearby bridge-agent path then produced the needed deny evidence without broader exploration."
+  },
+  "decision": "stop-clean",
+  "rationale": "Everything that can be captured before the full DUT-only power cut is now on disk and reflected in repo truth, so the only remaining D1 blocker is the physical power boundary itself."
+}
+```
+
+---
 ## 2026-05-04 - PACK-C SESSION 02 BRIDGE-STATE-SYNC VALIDATION
 
 - Selected item: live post-refactor HA validation on `MKY`
