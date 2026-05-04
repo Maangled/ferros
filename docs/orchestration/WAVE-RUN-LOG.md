@@ -3,6 +3,71 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-04 - PACK-C SESSION 04 CONSENT-DENY VALIDATION
+
+- Selected item: launch-grade consent-deny slice for the current bridge entity path on `MKY`
+- Result: Stop-clean. A real denied bridge-agent run is now captured on `homelab001`, and the denial is visible through both FERROS logs and the synced Home Assistant entity metadata. `cargo run -p ferros-node --bin ferros -- agent run ha-local-bridge` returned `authorization denied: ha-local-bridge missing bridge.observe`, `cargo run -p ferros-node --bin ferros -- agent logs ha-local-bridge` recorded `denied-start:ha-local-bridge missing bridge.observe`, and the saved HA state JSON for `sensor.ferros_ha_local_bridge_status` then reported `denied_start_count: 1` with `latest_deny_event: missing bridge.observe`.
+- Files:
+  - `docs/gates/G4.md`
+  - `docs/hardware/findings/FINDINGS-pack-c-session-04-consent-deny.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `STATUS.md`
+- Validation: `cargo run -p ferros-node --bin ferros -- agent run ha-local-bridge` exited `1` with the expected missing-capability denial. `cargo run -p ferros-node --bin ferros -- agent logs ha-local-bridge` showed the persisted denied-start entry. `cargo run -p ferros-hub -- remote-report-state` succeeded against `MKY`, and the saved HA state JSON under `.local-artifacts/pack-c-session-04-consent-deny/remote-entity-state.json` recorded `denied_start_count: 1` and `latest_deny_event: missing bridge.observe`.
+- Claims added: the G4 consent-deny row can now be filled honestly via the `ferros agent logs` branch, and the current bridge entity sync carries the same denial metadata into Home Assistant.
+- Claims explicitly not added: no G4 closure, no HA restoration after a full power cycle, and no independent install proof.
+- Blocked lanes: G4 still waits on HA restoration after a full power cycle and independent install.
+- Next queued follow-up: run the power-cycle restoration packet against the current bridge entity path, then capture an independent install.
+
+```json
+{
+  "wave_id": "2026-05-04-PACK-C-SESSION-04-CONSENT-DENY-VALIDATION",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the denied run, persisted FERROS logs, remote entity sync, and saved HA state JSON all aligned on the same denial.",
+    "2_wave_tag": "Not triggered: this slice stayed inside the G4 consent-deny proof seam and matching truth surfaces.",
+    "3_diff_overrun": "Not triggered: the landed diff stays inside one new findings packet and the minimal gate or status bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: the work stayed in S7 G4 follow-up and did not reopen unrelated lanes.",
+    "5_run_length_cap": "Not triggered: this was one bounded live-validation slice after the prior entity implementation packet.",
+    "6_escalation_chain": "Not triggered: the existing code path already exposed the needed denial metadata, so no additional repair was needed after the first live check."
+  },
+  "decision": "stop-clean",
+  "rationale": "The current bridge entity path now has both a real agent-center-backed HA entity proof and a real consent-deny proof, leaving only restoration and install work before G4 can close."
+}
+```
+
+---
+## 2026-05-04 - PACK-C SESSION 03 AGENT-CENTER ENTITY VALIDATION
+
+- Selected item: first non-stand-in Home Assistant entity slice for G4 packet 1 on `MKY`
+- Result: Stop-clean. `ferros-hub remote-report-state` now prefers the persisted local agent-center bridge state over the earlier runway-summary stand-in path, and live validation against `MKY` confirmed that the separate-host HA entity `sensor.ferros_ha_local_bridge_status` now reports `registered` instead of the earlier runway `allowed` value. The saved HA state JSON identifies that entity as `scope: local-agent-center`, `evidence: persisted-agent-center-runtime`, and `state_source: ferros-node-agent-center-state`, and the authenticated HA Entities UI showed the same `FERROS ha-local-bridge Status` row with state `registered` under `Ungrouped`.
+- Files:
+  - `crates/ferros-hub/src/remote_bridge.rs`
+  - `docs/gates/G4.md`
+  - `docs/hardware/findings/FINDINGS-pack-c-session-03-agent-center-entity.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `STATUS.md`
+- Validation: `cargo test -p ferros-hub remote_state_request_` passed after the local agent-center gating repair. `cargo run -p ferros-hub -- remote-report-state` wrote `entityId: sensor.ferros_ha_local_bridge_status` with `state: registered`. `cargo run -p ferros-hub -- remote-summary` still reported `ferrosEntityCount: 2` with `sensor.ferros_bridge_probe,sensor.ferros_ha_local_bridge_status`. The saved HA state JSON under `.local-artifacts/pack-c-session-03-agent-center-entity/remote-entity-state.json` recorded the agent-center attributes. The authenticated HA Entities UI showed `FERROS ha-local-bridge Status` with state `registered` after filtering for `FERROS`.
+- Claims added: the first real agent-center-backed Home Assistant entity slice is now live-validated on the separate Pack C host; the bridge-status entity reflects actual FERROS agent-center state rather than the earlier runway-summary `allowed` stand-in; and the `HA entity confirmed` evidence row in `docs/gates/G4.md` can now be filled honestly.
+- Claims explicitly not added: no G4 closure, no consent-deny visibility in the HA UI, no HA restoration after a full power cycle, and no independent install proof.
+- Blocked lanes: G4 still waits on consent-deny proof in the launch-grade path, HA restoration after a full power cycle, and independent install.
+- Next queued follow-up: either wire or prove the launch-grade consent-deny surface next, or run the HA restoration packet after the new entity path is stable.
+
+```json
+{
+  "wave_id": "2026-05-04-PACK-C-SESSION-03-AGENT-CENTER-ENTITY-VALIDATION",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the focused ferros-hub test slice passed, the live HA write succeeded, the saved state JSON matched the intended source attributes, and the authenticated HA UI showed the same entity with the expected state.",
+    "2_wave_tag": "Not triggered: this slice stayed inside the HA bridge seam plus matching truth surfaces and did not widen into full G4 claims.",
+    "3_diff_overrun": "Not triggered: the landed diff stays inside one bridge seam, one new findings packet, and the minimal truth-sync surfaces.",
+    "4_track_boundary": "Not triggered: the work stayed in S7 G4 packet 1 and did not reopen D1 or unrelated streams.",
+    "5_run_length_cap": "Not triggered: this was one bounded implementation plus live-validation slice.",
+    "6_escalation_chain": "Not triggered: the first live write exposed one local gating mismatch, it was repaired in the same file, and the same focused test plus live validation then passed."
+  },
+  "decision": "stop-clean",
+  "rationale": "The repo now has code and live evidence for the first non-stand-in HA entity slice, which is enough to truth-sync G4 progress without overclaiming the still-open consent, restoration, and install requirements."
+}
+```
+
+---
 ## 2026-05-04 - D1 HARD-POWER CLOSEOUT
 
 - Selected item: final D1 reboot-safe FERROS-side state check on `homelab001`

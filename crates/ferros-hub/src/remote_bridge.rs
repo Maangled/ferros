@@ -1,7 +1,12 @@
 use std::env;
 use std::fmt;
+use std::fs;
+use std::path::{Path, PathBuf};
 
-use crate::{default_local_runtime_summary, LocalHubRuntimeSummary};
+use crate::{
+    default_local_runtime_summary, local_bridge_profile_id, LocalBridgeAgent,
+    LocalHubRuntimeSummary,
+};
 use serde_json::{json, Value};
 
 const HA_URL_ENV: &str = "FERROS_HA_URL";
@@ -11,12 +16,25 @@ const DEFAULT_ENTITY_ID: &str = "sensor.ferros_bridge_probe";
 const DEFAULT_ENTITY_STATE: &str = "report-state";
 const DEFAULT_FRIENDLY_NAME: &str = "FERROS Bridge Probe";
 const DEFAULT_STATE_SOURCE: &str = "ferros-hub-remote-stand-in";
+const LOCAL_AGENT_CENTER_STATE_DIRECTORY: &str = "ferros";
+const LOCAL_AGENT_CENTER_STATE_FILE: &str = "agent-center.state";
+const LOCAL_PROFILE_DIRECTORY: &str = ".ferros";
+const LOCAL_PROFILE_FILE: &str = "profile.json";
+const AGENT_CENTER_SCOPE: &str = "local-agent-center";
+const AGENT_CENTER_EVIDENCE: &str = "persisted-agent-center-runtime";
+const AGENT_CENTER_STATE_SOURCE: &str = "ferros-node-agent-center-state";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct RemoteBridgeStateRequest {
     entity_id: String,
     state: String,
     attributes: Value,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct LocalAgentCenterState {
+    agent_statuses: std::collections::BTreeMap<String, String>,
+    log_entries: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -254,9 +272,67 @@ fn map_ureq_error(error: ureq::Error) -> RemoteBridgeCommandError {
 }
 
 fn remote_bridge_state_request() -> RemoteBridgeStateRequest {
+    if let Some(request) = local_agent_center_bridge_state_request() {
+        return request;
+    }
+
     match default_local_runtime_summary() {
         Ok(summary) => remote_bridge_state_request_from_summary(&summary),
         Err(_) => default_remote_bridge_state_request(),
+    }
+}
+
+fn local_agent_center_bridge_state_request() -> Option<RemoteBridgeStateRequest> {
+    let state_path = default_local_agent_center_state_path();
+    let profile_path = default_local_profile_path();
+
+    let bridge_agent = LocalBridgeAgent::new_default();
+    let state = LocalAgentCenterState::load(&state_path).ok()?;
+
+    Some(remote_bridge_state_request_from_agent_center_state(
+        &bridge_agent,
+        &state,
+        state_path.exists(),
+        profile_path.exists(),
+    ))
+}
+
+fn remote_bridge_state_request_from_agent_center_state(
+    bridge_agent: &LocalBridgeAgent,
+    state: &LocalAgentCenterState,
+    agent_center_state_present: bool,
+    profile_present: bool,
+) -> RemoteBridgeStateRequest {
+    let entity_id = format!(
+        "sensor.ferros_{}_status",
+        normalized_bridge_agent_key(&bridge_agent.name)
+    );
+    let bridge_profile_id = local_bridge_profile_id();
+    let required_capabilities = bridge_agent
+        .required_local_capabilities
+        .iter()
+        .map(|capability| format!("{}:{}", bridge_profile_id.as_str(), capability))
+        .collect::<Vec<_>>();
+    let denied_start_count = state.denied_start_count_for(&bridge_agent.name);
+
+    RemoteBridgeStateRequest {
+        entity_id,
+        state: state.status_for(&bridge_agent.name).to_string(),
+        attributes: json!({
+            "friendly_name": format!("FERROS {} Status", bridge_agent.name),
+            "bridge_agent": bridge_agent.name,
+            "bridge_manifest_identity": format!("{}@{}", bridge_agent.name, bridge_agent.version),
+            "bridge_profile_id": bridge_profile_id.as_str(),
+            "required_capabilities": required_capabilities,
+            "bridge_status": state.status_for(&bridge_agent.name),
+            "denied_start_count": denied_start_count,
+            "latest_deny_event": state.latest_denied_start_for(&bridge_agent.name),
+            "agent_center_state_present": agent_center_state_present,
+            "profile_present": profile_present,
+            "scope": AGENT_CENTER_SCOPE,
+            "evidence": AGENT_CENTER_EVIDENCE,
+            "state_source": AGENT_CENTER_STATE_SOURCE
+        }),
     }
 }
 
@@ -333,6 +409,104 @@ fn normalized_bridge_agent_key(bridge_agent_name: &str) -> String {
     }
 }
 
+fn default_local_agent_center_state_path() -> PathBuf {
+    std::env::temp_dir()
+        .join(LOCAL_AGENT_CENTER_STATE_DIRECTORY)
+        .join(LOCAL_AGENT_CENTER_STATE_FILE)
+}
+
+fn default_local_profile_path() -> PathBuf {
+    if let Some(explicit_path) = std::env::var_os("FERROS_PROFILE_PATH") {
+        let explicit_path = PathBuf::from(explicit_path);
+
+        if !explicit_path.as_os_str().is_empty() {
+            return explicit_path;
+        }
+    }
+
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir)
+        .join(LOCAL_PROFILE_DIRECTORY)
+        .join(LOCAL_PROFILE_FILE)
+}
+
+impl LocalAgentCenterState {
+    fn load(path: &Path) -> Result<Self, String> {
+        match fs::read_to_string(path) {
+            Ok(contents) => Self::parse(&contents),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
+            Err(error) => Err(error.to_string()),
+        }
+    }
+
+    fn parse(contents: &str) -> Result<Self, String> {
+        let mut state = Self::default();
+
+        for line in contents.lines() {
+            if line.is_empty() {
+                continue;
+            }
+
+            let Some((kind, rest)) = line.split_once('\t') else {
+                return Err(format!("malformed state line: {line}"));
+            };
+
+            match kind {
+                "status" => {
+                    let Some((name, status_label)) = rest.split_once('\t') else {
+                        return Err(format!("malformed status entry: {line}"));
+                    };
+
+                    let status = parse_persisted_agent_status(status_label)
+                        .ok_or_else(|| format!("unsupported status {status_label} for {name}"))?;
+
+                    if status == "registered" {
+                        state.agent_statuses.remove(name);
+                    } else {
+                        state.agent_statuses.insert(name.to_string(), status.to_string());
+                    }
+                }
+                "log" => state.log_entries.push(rest.to_string()),
+                _ => return Err(format!("unknown state entry kind: {kind}")),
+            }
+        }
+
+        Ok(state)
+    }
+
+    fn status_for(&self, agent_name: &str) -> &str {
+        self.agent_statuses
+            .get(agent_name)
+            .map(String::as_str)
+            .unwrap_or("registered")
+    }
+
+    fn denied_start_count_for(&self, agent_name: &str) -> usize {
+        self.log_entries
+            .iter()
+            .filter(|entry| entry.starts_with(&format!("denied-start:{agent_name} ")))
+            .count()
+    }
+
+    fn latest_denied_start_for(&self, agent_name: &str) -> Option<&str> {
+        self.log_entries
+            .iter()
+            .rev()
+            .find_map(|entry| entry.strip_prefix(&format!("denied-start:{agent_name} ")))
+    }
+}
+
+fn parse_persisted_agent_status(value: &str) -> Option<&'static str> {
+    match value {
+        "registered" => Some("registered"),
+        "running" => Some("running"),
+        "stopped" => Some("stopped"),
+        _ => None,
+    }
+}
+
 fn format_remote_bridge_summary(summary: &RemoteBridgeSummary) -> String {
     let ferros_entities = if summary.ferros_entities.is_empty() {
         "none".to_string()
@@ -397,14 +571,28 @@ mod tests {
         default_remote_bridge_state_request,
         format_remote_bridge_event_result, format_remote_bridge_state_result,
         format_remote_bridge_summary, normalize_ha_url,
-        remote_bridge_state_request_from_summary, RemoteBridgeCommandError,
+        remote_bridge_state_request_from_agent_center_state,
+        remote_bridge_state_request_from_summary, LocalAgentCenterState,
+        RemoteBridgeCommandError,
         RemoteBridgeEventResult, RemoteBridgeStateResult, RemoteBridgeSummary,
     };
     use crate::{
-        LocalBridgeStatus, LocalHubReloadStatus, LocalHubRestartObservation,
-        LocalHubRuntimeSummary,
+        local_bridge_profile_id, LocalBridgeAgent, LocalBridgeStatus,
+        LocalHubReloadStatus, LocalHubRestartObservation, LocalHubRuntimeSummary,
     };
     use ferros_core::PolicyDecision;
+
+    fn sample_agent_center_state() -> LocalAgentCenterState {
+        let mut state = LocalAgentCenterState::default();
+        state
+            .agent_statuses
+            .insert("ha-local-bridge".to_string(), "running".to_string());
+        state.log_entries = vec![
+            "denied-start:ha-local-bridge missing bridge.observe".to_string(),
+            "started:echo".to_string(),
+        ];
+        state
+    }
 
     fn sample_runtime_summary() -> LocalHubRuntimeSummary {
         LocalHubRuntimeSummary {
@@ -498,6 +686,46 @@ mod tests {
                 .and_then(|value| value.as_str()),
             Some("ferros-hub-local-runtime-summary")
         );
+    }
+
+    #[test]
+    fn remote_state_request_uses_agent_center_bridge_state_when_available() {
+        let request = remote_bridge_state_request_from_agent_center_state(
+            &LocalBridgeAgent::new_default(),
+            &sample_agent_center_state(),
+            true,
+            true,
+        );
+
+        assert_eq!(request.entity_id, "sensor.ferros_ha_local_bridge_status");
+        assert_eq!(request.state, "running");
+        assert_eq!(
+            request.attributes.get("bridge_profile_id").and_then(|value| value.as_str()),
+            Some(local_bridge_profile_id().as_str())
+        );
+        assert_eq!(
+            request.attributes.get("denied_start_count").and_then(|value| value.as_u64()),
+            Some(1)
+        );
+        assert_eq!(
+            request
+                .attributes
+                .get("latest_deny_event")
+                .and_then(|value| value.as_str()),
+            Some("missing bridge.observe")
+        );
+        assert_eq!(
+            request.attributes.get("scope").and_then(|value| value.as_str()),
+            Some("local-agent-center")
+        );
+        assert_eq!(
+            request
+                .attributes
+                .get("state_source")
+                .and_then(|value| value.as_str()),
+            Some("ferros-node-agent-center-state")
+        );
+        assert!(request.attributes.get("stand_in_name").is_none());
     }
 
     #[test]
