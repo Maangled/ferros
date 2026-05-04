@@ -3,6 +3,38 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-04 - PACK-C SESSION 05 HA RESTORATION ATTEMPT
+
+- Selected item: G4 post-reboot restoration proof on the current bridge entity path
+- Result: Stop-clean. The local FERROS-side half of restoration passed, but the HA restoration requirement is still not met. After the DUT rebooted at `2026-05-04 03:17:12`, `cargo run -p ferros-node --bin ferros -- profile show .local-state/pack-b-session-01-profile.json` still loaded the persisted Pack B profile, `cargo run -p ferros-node --bin ferros -- agent list` still showed `echo`, `ha-local-bridge`, and `timer` as registered, and `cargo run -p ferros-node --bin ferros -- agent describe ha-local-bridge` still resolved the bridge agent. However, the pre-resync HA state JSON for `sensor.ferros_ha_local_bridge_status` showed `last_updated: 2026-05-04T03:03:36.156712+00:00`, which is earlier than the reboot time, so the entity did not restore itself after boot. A manual post-boot `cargo run -p ferros-hub -- remote-report-state` advanced `last_updated` to `2026-05-04T03:20:10.221892+00:00`, proving the current path still works only with manual repair.
+- Files:
+  - `docs/gates/G4.md`
+  - `docs/hardware/findings/FINDINGS-pack-c-session-05-ha-restoration.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+  - `STATUS.md`
+- Validation: post-boot host facts were saved under `.local-artifacts/pack-c-session-05-ha-restoration/`. The profile and agent commands all passed after reboot. `cargo run -p ferros-hub -- remote-summary` still found both FERROS entities before any manual write. The saved pre-resync HA state JSON recorded a `last_updated` timestamp from before the reboot. The saved post-resync HA state JSON recorded a later timestamp only after the manual `remote-report-state` call.
+- Claims added: the repo now has an honest failed-restoration findings packet that distinguishes FERROS-side reboot recovery from the still-missing automatic HA restoration behavior.
+- Claims explicitly not added: no G4 closure and no independent install proof.
+- Blocked lanes: G4 still waits on automatic HA restoration after power cycle and independent install.
+- Next queued follow-up: implement a truly automatic post-boot HA restoration path with durable local state and credential handling, then rerun this same restoration packet.
+
+```json
+{
+  "wave_id": "2026-05-04-PACK-C-SESSION-05-HA-RESTORATION-ATTEMPT",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: the captured result is a valid negative finding, not a tooling failure. The local recovery checks passed and the HA timestamps gave a clear answer before and after manual resync.",
+    "2_wave_tag": "Not triggered: this slice stayed inside the G4 restoration proof boundary and matching truth surfaces.",
+    "3_diff_overrun": "Not triggered: the landed diff stays inside one new findings packet and the minimal gate or status bookkeeping surfaces.",
+    "4_track_boundary": "Not triggered: the work stayed in S7 G4 restoration follow-up only.",
+    "5_run_length_cap": "Not triggered: this was one bounded post-reboot validation slice.",
+    "6_escalation_chain": "Not triggered: the first read-only HA state check already falsified automatic restoration, and the only follow-up was one manual resync to separate stale persistence from explicit repair."
+  },
+  "decision": "stop-clean",
+  "rationale": "The current evidence now clearly shows where G4 is still blocked: local FERROS state survives reboot, but the HA entity does not restore itself without a manual post-boot sync."
+}
+```
+
+---
 ## 2026-05-04 - PACK-C SESSION 04 CONSENT-DENY VALIDATION
 
 - Selected item: launch-grade consent-deny slice for the current bridge entity path on `MKY`
