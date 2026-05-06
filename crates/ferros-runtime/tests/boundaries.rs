@@ -260,14 +260,18 @@ impl MessageBus for FailingBus {
 
 struct RetryableBus {
     queued: Vec<MessageEnvelope>,
-    fail_next_send: bool,
+    transient_failures_remaining: usize,
 }
 
 impl RetryableBus {
     fn new() -> Self {
+        Self::with_failures(1)
+    }
+
+    fn with_failures(transient_failures_remaining: usize) -> Self {
         Self {
             queued: Vec::new(),
-            fail_next_send: true,
+            transient_failures_remaining,
         }
     }
 }
@@ -276,8 +280,8 @@ impl MessageBus for RetryableBus {
     type Error = BusFailure;
 
     fn send(&mut self, envelope: MessageEnvelope) -> Result<(), Self::Error> {
-        if self.fail_next_send {
-            self.fail_next_send = false;
+        if self.transient_failures_remaining > 0 {
+            self.transient_failures_remaining -= 1;
             return Err(BusFailure::TransientRouteBlocked);
         }
 
@@ -509,4 +513,106 @@ fn local_runway_adapter_requires_explicit_retry_after_transient_bus_failure() {
         .expect("receive should succeed after explicit retry")
         .expect("retry should deliver one envelope");
     assert_eq!(delivered.nonce(), 25);
+}
+
+#[test]
+fn local_runway_adapter_requires_caller_driven_retry_across_multiple_transient_failures() {
+    let mut adapter = LocalRunwayAdapter::with_state(
+        LocalRunwayState::RuntimeReady,
+        InMemoryExecutor::new(),
+        RetryableBus::with_failures(2),
+    );
+
+    let first_attempt = adapter
+        .advance_submit_and_route(
+            LocalRunwayIntent::Start,
+            "deliver",
+            message("agent.alpha", "agent.bravo", 26),
+        )
+        .expect_err("initial route should fail transiently");
+
+    match first_attempt {
+        LocalRunwayAdapterError::Bus(error) => {
+            assert_eq!(error, BusFailure::TransientRouteBlocked);
+        }
+        other => panic!("expected transient bus error, got {other:?}"),
+    }
+
+    assert_eq!(adapter.state(), LocalRunwayState::Active);
+    assert_eq!(
+        adapter
+            .try_recv("agent.bravo")
+            .expect("receive should remain empty before caller retry"),
+        None
+    );
+
+    let second_attempt = adapter
+        .route(message("agent.alpha", "agent.bravo", 26))
+        .expect_err("first explicit retry should still fail transiently");
+    assert_eq!(second_attempt, BusFailure::TransientRouteBlocked);
+
+    assert_eq!(
+        adapter
+            .try_recv("agent.bravo")
+            .expect("receive should still be empty after failed retry"),
+        None
+    );
+
+    adapter
+        .route(message("agent.alpha", "agent.bravo", 26))
+        .expect("second explicit retry should succeed");
+
+    let (state, mut executor, mut bus) = adapter.into_parts();
+
+    assert_eq!(state, LocalRunwayState::Active);
+    assert_eq!(executor.pending_jobs(), 1);
+    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("deliver"));
+    assert_eq!(executor.pop_next().expect("pop should succeed"), None);
+
+    let delivered = bus
+        .try_recv("agent.bravo")
+        .expect("receive should succeed after second explicit retry")
+        .expect("message should be delivered after explicit retry sequence");
+    assert_eq!(delivered.nonce(), 26);
+}
+
+#[test]
+fn local_runway_adapter_surfaces_transient_and_terminal_bus_failures_for_caller_policy() {
+    let transient_error = LocalRunwayAdapter::with_state(
+        LocalRunwayState::RuntimeReady,
+        InMemoryExecutor::new(),
+        RetryableBus::new(),
+    )
+    .advance_submit_and_route(
+        LocalRunwayIntent::Start,
+        "deliver",
+        message("agent.alpha", "agent.bravo", 27),
+    )
+    .expect_err("transient bus classification should be surfaced");
+
+    let terminal_error = LocalRunwayAdapter::with_state(
+        LocalRunwayState::RuntimeReady,
+        InMemoryExecutor::new(),
+        FailingBus::new(),
+    )
+    .advance_submit_and_route(
+        LocalRunwayIntent::Start,
+        "deliver",
+        message("agent.alpha", "agent.bravo", 28),
+    )
+    .expect_err("terminal bus classification should be surfaced");
+
+    match transient_error {
+        LocalRunwayAdapterError::Bus(error) => {
+            assert_eq!(error, BusFailure::TransientRouteBlocked);
+        }
+        other => panic!("expected transient bus classification, got {other:?}"),
+    }
+
+    match terminal_error {
+        LocalRunwayAdapterError::Bus(error) => {
+            assert_eq!(error, BusFailure::RouteBlocked);
+        }
+        other => panic!("expected terminal bus classification, got {other:?}"),
+    }
 }

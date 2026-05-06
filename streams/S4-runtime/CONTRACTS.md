@@ -78,6 +78,8 @@ This seam currently does **not** claim atomic commit, rollback, or exactly-once 
 
 Compensation and retry policy is caller-owned on this hosted seam: bounded rehearsal now demonstrates that a transient route failure requires an explicit caller retry step rather than any implicit adapter rollback or automatic replay.
 
+The current hosted seam also preserves failure classification for caller policy: bounded rehearsal distinguishes transient route failure from terminal route failure at the bus boundary, and repeated transient failures still require explicit caller re-invocation before any envelope is delivered.
+
 ---
 
 ## Note on `no_std`

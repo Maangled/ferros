@@ -70,6 +70,8 @@ For Core/SubCore responses, treat these as malformed:
 - `Next lane seeds` not sourced from the stream's dedicated lane architect.
 - seed set collapses to only the most recently touched seam.
 - no breadth seed category for the stream type.
+- missing `route_token` in kickoff packet or completion echo.
+- `route_token.target_stream` does not match the receiving stream agent.
 
 4. `user-question-only`
 - User asks architecture, policy, or planning questions without requesting immediate execution.

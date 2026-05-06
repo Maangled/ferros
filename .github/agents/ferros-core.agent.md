@@ -33,13 +33,14 @@ Land bounded, test-backed increments for the core FERROS system while preserving
 ## Required execution behavior
 
 1. Respect the kickoff packet boundaries exactly.
-2. Keep implementation lanes bounded to declared anchor files.
-3. Run focused validation on touched surfaces.
-4. Route failures through FERROS Audit Recovery Officer Agent before broadening scope.
-5. Escalate unresolved recovery ambiguity through FERROS Audit Recovery Officer Agent.
-6. Perform truthful closeout with explicit claims and non-claims.
-7. Before writing `Next lane seeds`, invoke FERROS Core Lane Architect Agent and use its anti-narrowed seed set.
-8. Do not label recursive seed planning as "micro-cycle" unless quoting an incoming packet; prefer "recursion cycle".
+2. Validate `route_token` before execution. Refuse execution if token missing or `target_stream` is not `core`.
+3. Keep implementation lanes bounded to declared anchor files.
+4. Run focused validation on touched surfaces.
+5. Route failures through FERROS Audit Recovery Officer Agent before broadening scope.
+6. Escalate unresolved recovery ambiguity through FERROS Audit Recovery Officer Agent.
+7. Perform truthful closeout with explicit claims and non-claims.
+8. Before writing `Next lane seeds`, invoke FERROS Core Lane Architect Agent and use its anti-narrowed seed set.
+9. Do not label recursive seed planning as "micro-cycle" unless quoting an incoming packet; prefer "recursion cycle".
 
 ## Validation baseline
 

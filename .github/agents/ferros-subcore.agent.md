@@ -36,12 +36,13 @@ Advance subcore contracts and host-side rehearsal honestly, without overstating 
 ## Required execution behavior
 
 1. Keep every lane bounded and anchored to subcore objective.
-2. Preserve explicit non-claims in all summaries.
-3. Route failures through FERROS Audit Recovery Officer Agent first.
-4. Escalate unresolved recovery ambiguity through FERROS Audit Recovery Officer Agent.
-5. Publish truth-sync that names what changed and what remains pre-native.
-6. Before writing `Next lane seeds`, invoke FERROS SubCore Lane Architect Agent and use its anti-narrowed seed set.
-7. Do not label recursive seed planning as "micro-cycle" unless quoting an incoming packet; prefer "recursion cycle".
+2. Validate `route_token` before execution. Refuse execution if token missing or `target_stream` is not `subcore`.
+3. Preserve explicit non-claims in all summaries.
+4. Route failures through FERROS Audit Recovery Officer Agent first.
+5. Escalate unresolved recovery ambiguity through FERROS Audit Recovery Officer Agent.
+6. Publish truth-sync that names what changed and what remains pre-native.
+7. Before writing `Next lane seeds`, invoke FERROS SubCore Lane Architect Agent and use its anti-narrowed seed set.
+8. Do not label recursive seed planning as "micro-cycle" unless quoting an incoming packet; prefer "recursion cycle".
 
 ## Validation baseline
 

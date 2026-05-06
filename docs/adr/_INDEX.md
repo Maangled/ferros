@@ -36,6 +36,7 @@ For program rules, see [ADR-022-decision-program-governance.md](./ADR-022-decisi
 | [ADR-027](./ADR-027-service-parity-broker-and-assurance-tiers.md) | Service parity broker and assurance tiers | Extends ADR-023 with provider-parity, detachable association, and transaction-scoped assurance requirements for high-impact actions |
 | [ADR-028](./ADR-028-core-launch-and-optional-module-lanes.md) | Core launch boundary and optional module lanes | Defines `v0.2.0` as core FERROS on real hardware, moves Home Assistant and future LLM-facing integrations into optional module lanes, and defers strict unmanaged installs until after coordinated lab and controlled test-home rollout |
 | [ADR-029](./ADR-029-human-operator-session-orchestration-and-evidence-flow.md) | Human-operator session orchestration and evidence flow | Defines the Human Test Backlog, coordinator triage, and evidence requirements for human-in-the-loop FERROS execution |
+| [ADR-037](./ADR-037-agent-architect-governance-and-routing-tokens.md) | Agent architect governance and routing-token chain of command (Draft) | Defines Agent Architect rollout authority and fail-closed Core/SubCore packet routing-token checks |
 
 ---
 
@@ -120,3 +121,4 @@ Research notes capture high-value investigation before a decision is frozen.
 - Operator-session, evidence-flow, staged-state, or badge-language work: ADR-029 through ADR-035 plus the orchestration docs under `docs/orchestration/`
 - Prior-art or harvested-pattern questions: ADR-013, ADR-018, ADR-019, ADR-020
 - Governance, doctrine, or decision-process work: ADR-0001, ADR-021, ADR-022, and [../../DOCTRINE.md](../../DOCTRINE.md)
+- Agent architecture, chain-of-command packet routing, or Core/SubCore misroute prevention: ADR-037 plus the active agent specs under `../../.github/agents/`
