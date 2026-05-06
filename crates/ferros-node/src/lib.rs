@@ -1163,7 +1163,8 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
             content_type: "text/html; charset=utf-8",
             body: LOCAL_SHELL_HTML.as_bytes().to_vec(),
         },
-        ("GET", "/harnesses/localhost-shell-acceptance.html") => HttpResponse {
+        ("GET", "/harnesses/localhost-shell-acceptance.html")
+        | ("GET", "/harnesses/localhost-shell-acceptance-harness.html") => HttpResponse {
             status_code: 200,
             status_text: "OK",
             content_type: "text/html; charset=utf-8",

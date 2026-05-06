@@ -64,6 +64,20 @@ This subsection is docs-only and S4-owned. It records the exact current helper b
 | `CliState::load(path)` in `crates/ferros-node/src/lib.rs` | It reads the exact path passed in, returns the default empty state when the file is missing, and accepts only persisted `status` and `log` lines. Malformed lines, unknown entry kinds, and unsupported statuses error. | This does not publish a hub-owned file format, storage contract, or restart choreography beyond the current strict node-local parser. |
 | `LocalProfileStore::load_local_profile(path)` in `crates/ferros-profile/src/lib.rs` | It returns `LocalProfileState::new(load_profile, load_key_pair, load_signed_grants)`. Missing signed-grants state becomes an empty grant list, and `LocalProfileState::new` validates that each signed grant verifies, matches the local profile id, matches the local signer public key, and does not duplicate a capability. | This publishes validated local profile/grant reload only. It does not publish durable hub restart, pairing, or re-registration semantics. |
 
+### Hosted adapter post-failure semantics (bounded rehearsal contract)
+
+The hosted `LocalRunwayAdapter` seam in `crates/ferros-runtime/src/local_runway.rs` is intentionally non-transactional in the current bounded rehearsal path. Focused evidence in `crates/ferros-runtime/tests/boundaries.rs` defines the expected post-failure semantics:
+
+| Failure class | Expected post-failure behavior |
+|---------------|-------------------------------|
+| Transition failure (`LocalRunwayAdapterError::Transition`) | State does not advance; executor submit is not attempted; bus route is not attempted. |
+| Executor failure (`LocalRunwayAdapterError::Executor`) | State may already be advanced by the successful transition step; bus route is not attempted when executor submit fails. |
+| Bus failure (`LocalRunwayAdapterError::Bus`) | State may already be advanced and executor submit may already be persisted for that step; routing did not complete for the failed envelope. |
+
+This seam currently does **not** claim atomic commit, rollback, or exactly-once delivery semantics across transition, executor, and bus phases. Downstream consumers must treat the adapter as ordered composition with explicit partial-progress outcomes on downstream failures.
+
+Compensation and retry policy is caller-owned on this hosted seam: bounded rehearsal now demonstrates that a transient route failure requires an explicit caller retry step rather than any implicit adapter rollback or automatic replay.
+
 ---
 
 ## Note on `no_std`

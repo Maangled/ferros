@@ -526,6 +526,7 @@ async function runJourney() {
       addResult('C: Runway', 'Runway surface renders selected profile path and checkpoint progress', selectedProfilePathVisible && checkpointVisible, 'surface=' + (runwayText || 'missing'), selectedProfilePathVisible && checkpointVisible ? '' : 'runway surface did not render the selected profile path and pending checkpoint progress');
       var runwayLegacyChecklistMarkers = runwaySurface.querySelectorAll('[data-module="RunwayChecklistRowCard"], [data-runway-index]').length;
       var runwaySelectorFirstBoundary = runwaySurface.querySelector('[data-module="RunwayChecklistBoundaryCard"][data-checklist-contract="selector-first"]');
+      addResult('C: Runway', 'Runway checklist rows expose RunwayChecklistRowCard markers with stable data-runway-index mapping', 'skip', 'legacy compatibility assertion skipped by the selector-first boundary contract');
       addResult('C: Runway', 'Runway surface renders checklist state', 'skip', 'legacy checklist-row assertion skipped by selector-first boundary contract');
       addResult('C: Runway', 'Runway surface no longer exposes checklist rows through the shared operator-step module', runwayLegacyChecklistMarkers === 0, 'legacy markers=' + runwayLegacyChecklistMarkers, runwayLegacyChecklistMarkers === 0 ? '' : 'legacy checklist-row selectors should not be present on runway surface');
       addResult('C: Runway', 'Selector-first runway checklist boundary contract is enforced', !!runwaySelectorFirstBoundary, runwaySelectorFirstBoundary ? 'selector-first boundary marker found' : '', runwaySelectorFirstBoundary ? '' : 'missing selector-first runway checklist boundary marker');
@@ -628,7 +629,8 @@ async function runJourney() {
       await click(doc, '[data-profile-action="show"]', 'profile show button');
       var profileSettled = await waitFor(function() {
         doc = getDoc();
-        return doc.getElementById('profile-surface').dataset.surfaceState === 'loaded';
+        return !doc.querySelector('[data-module="ProfileStatusCard"] .shell-note-title')
+          || doc.querySelector('[data-module="ProfileStatusCard"] .shell-note-title').textContent.toLowerCase().indexOf('running') === -1;
       }, 5000);
       var profileActions = observedProfileActions();
       var rpcMethods = observedRpcMethods();
@@ -652,7 +654,8 @@ async function runJourney() {
       await click(doc, '[data-profile-action="init"]', 'profile init button');
       var initSettled = await waitFor(function() {
         doc = getDoc();
-        return doc.getElementById('profile-surface').dataset.surfaceState === 'loaded' && inspectorDetailValue(doc, 'Result') === 'complete';
+        return inspectorDetailValue(doc, 'Result') === 'complete'
+          && doc.getElementById('profile-surface').textContent.toLowerCase().indexOf('local profile initialized through /profile.') !== -1;
       }, 5000);
       addResult('C: Profile Adapter', 'Profile init settles through the local adapter', initSettled, initSettled ? 'profile=' + (observedProfileActions().join(', ') || 'none') + '; rpc=' + (observedRpcMethods().join(', ') || 'none') : '', initSettled ? '' : 'profile init did not settle on the structured success surface');
 

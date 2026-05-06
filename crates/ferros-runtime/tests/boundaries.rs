@@ -14,6 +14,7 @@ enum ExecutorFailure {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum BusFailure {
     RouteBlocked,
+    TransientRouteBlocked,
 }
 
 struct StubExecutor {
@@ -257,6 +258,43 @@ impl MessageBus for FailingBus {
     }
 }
 
+struct RetryableBus {
+    queued: Vec<MessageEnvelope>,
+    fail_next_send: bool,
+}
+
+impl RetryableBus {
+    fn new() -> Self {
+        Self {
+            queued: Vec::new(),
+            fail_next_send: true,
+        }
+    }
+}
+
+impl MessageBus for RetryableBus {
+    type Error = BusFailure;
+
+    fn send(&mut self, envelope: MessageEnvelope) -> Result<(), Self::Error> {
+        if self.fail_next_send {
+            self.fail_next_send = false;
+            return Err(BusFailure::TransientRouteBlocked);
+        }
+
+        self.queued.push(envelope);
+        Ok(())
+    }
+
+    fn try_recv(&mut self, recipient: &str) -> Result<Option<MessageEnvelope>, Self::Error> {
+        let position = self
+            .queued
+            .iter()
+            .position(|envelope| envelope.recipient() == recipient);
+
+        Ok(position.map(|index| self.queued.remove(index)))
+    }
+}
+
 #[test]
 fn in_memory_executor_accepts_custom_job_queue_backing() {
     let mut executor = InMemoryExecutor::from_queue(VecJobQueue::new());
@@ -422,4 +460,53 @@ fn local_runway_adapter_maps_bus_errors_after_executor_submission() {
     assert_eq!(executor.pop_next().expect("pop should succeed"), Some("deliver"));
     assert_eq!(executor.pop_next().expect("pop should succeed"), None);
     assert_eq!(bus.try_recv("agent.bravo").expect("receive should succeed"), None);
+}
+
+#[test]
+fn local_runway_adapter_requires_explicit_retry_after_transient_bus_failure() {
+    let mut adapter = LocalRunwayAdapter::with_state(
+        LocalRunwayState::RuntimeReady,
+        InMemoryExecutor::new(),
+        RetryableBus::new(),
+    );
+
+    let first_attempt = adapter
+        .advance_submit_and_route(
+            LocalRunwayIntent::Start,
+            "deliver",
+            message("agent.alpha", "agent.bravo", 25),
+        )
+        .expect_err("first bus route should fail transiently");
+
+    match first_attempt {
+        LocalRunwayAdapterError::Bus(error) => {
+            assert_eq!(error, BusFailure::TransientRouteBlocked);
+        }
+        other => panic!("expected transient bus error, got {other:?}"),
+    }
+
+    assert_eq!(adapter.state(), LocalRunwayState::Active);
+    assert_eq!(
+        adapter
+            .try_recv("agent.bravo")
+            .expect("receive should succeed before explicit retry"),
+        None
+    );
+
+    adapter
+        .route(message("agent.alpha", "agent.bravo", 25))
+        .expect("explicit caller retry should succeed");
+
+    let (state, mut executor, mut bus) = adapter.into_parts();
+
+    assert_eq!(state, LocalRunwayState::Active);
+    assert_eq!(executor.pending_jobs(), 1);
+    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("deliver"));
+    assert_eq!(executor.pop_next().expect("pop should succeed"), None);
+
+    let delivered = bus
+        .try_recv("agent.bravo")
+        .expect("receive should succeed after explicit retry")
+        .expect("retry should deliver one envelope");
+    assert_eq!(delivered.nonce(), 25);
 }

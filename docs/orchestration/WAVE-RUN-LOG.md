@@ -3,6 +3,99 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-06 - FRS-core-20260506-C1-W1
+
+- Selected item: first shared-name Core recursion cycle after H9 MC4 stop-clean to execute bounded continuity, evidence-hardening, compatibility policy, validation, and truth-sync with preserved non-claims.
+- Result: Stop-clean. Compatibility policy was explicitly set to keep dual harness-path serving in this cycle, unattended versus operator-assisted evidence boundaries were kept explicit, required focused `ferros-node` checks passed, and dual-port unattended live reruns on 4324 and 4326 stayed clean with matching totals.
+- Files:
+  - `docs/surfaces/2026-05-06-FRS-core-C1-W1-TRUTH-SYNC-DELTA-L4.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo test -p ferros-node shell_route` passed (11 passed, 0 failed); `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness` passed (1 passed, 0 failed); unattended live harness reruns on `http://127.0.0.1:4324/harnesses/localhost-shell-acceptance-harness.html?unattended=1` and `http://127.0.0.1:4326/harnesses/localhost-shell-acceptance-harness.html?unattended=1` both finished at `74 passed, 0 failed, 10 skipped, 84 total`.
+- Claims added: cycle-level compatibility policy now explicitly keeps the dual harness-path alias as a bounded bridge with migration criteria; fresh focused and live evidence reconfirms no unexpected dual-port regressions in this cycle.
+- Claims explicitly not added: no gate closure claim, no hardware proof claim, no Home Assistant proof claim, and no widened canonical-state mutation claim.
+- Blocked lanes: none; hygiene lane was a no-op by rationale because temporary local artifact cleanup was not established as policy-safe and reversible within this packet.
+- Next queued follow-up: execute architect-sourced anti-narrowed seeds with one continuity lane, one adjacent seam lane, and one breadth lane so planning does not collapse onto only the alias seam.
+
+```json
+{
+  "wave_id": "FRS-core-20260506-C1-W1",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: required focused route tests and dual-port unattended reruns passed.",
+    "2_hard_stop_authority_or_tag": "Not triggered: authority lock matched expected versions and this bounded packet had no hard-stop escalation tag.",
+    "3_scope_or_track_violation": "Not triggered: changes stayed inside declared truth-sync surfaces for this cycle.",
+    "4_policy_or_chain_break": "Not triggered: execution preserved non-claims and required delegation boundaries.",
+    "5_segment_boundary": "Not triggered: single bounded recursion cycle.",
+    "6_malformed_output": "Not triggered: architect-sourced anti-narrowed next seeds were captured."
+  },
+  "decision": "stop-clean",
+  "rationale": "The bounded Core recursion-cycle objective completed with explicit compatibility policy, clean focused and live evidence, preserved claim ceilings, and serialized truth-sync closeout."
+}
+```
+
+---
+## 2026-05-06 - FRS-subcore-20260506-C3-W2
+
+- Selected item: bounded recursion cycle to harden compensation/retry boundary evidence, preserve architecture-only contract width, and settle seed-governance compliant handoff planning
+- Result: Stop-clean. One hosted compensation/retry evidence-hardening test landed for transient bus-route failure with explicit caller retry semantics, S4 owning contract text now states caller-owned compensation or retry policy, scaffold expansion stayed no-op-by-rule, and the focused validation bundle remained fully green.
+- Files:
+  - `crates/ferros-runtime/tests/boundaries.rs`
+  - `streams/S4-runtime/CONTRACTS.md`
+  - `docs/surfaces/2026-05-06-FRS-subcore-C3-W2-TRUTH-SYNC-DELTA-L4.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo test -p ferros-runtime --test boundaries` passed (11 passed); `cargo test -p ferros-runtime --test x86_64_subcore_smoke` passed (3 passed); `cargo test -p ferros-x86_64-scaffold` passed (7 passed); `cargo check -p ferros-x86_64-scaffold --no-default-features` passed; `cargo test -p ferros-core foundation_surface_` passed (4 passed).
+- Claims added: hosted seam evidence now includes explicit retry-after-transient-failure behavior without implying transactional guarantees; S4 contract ownership now names compensation or retry as caller-owned on this hosted seam.
+- Claims explicitly not added: no bootloader success claim, no kernel boot success claim, no QEMU proof claim, no hardware bring-up claim, no gate-closure claim, and no native-runtime proof claim.
+- Blocked lanes: none in this bounded packet.
+- Next queued follow-up: continue with anti-narrowed seeds spanning continuity, contract-width, and evidence-hardening rather than collapsing planning only to the just-landed retry seam.
+
+```json
+{
+  "wave_id": "FRS-subcore-20260506-C3-W2",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: all required runtime, scaffold, and foundation checks passed.",
+    "2_wave_tag": "Not triggered: this bounded code-track packet had no P0, gate-close, solo, or frozen-schema tag.",
+    "3_diff_overrun": "Not triggered: changes stayed inside declared runtime test, S4 contract docs, and serialized truth-sync surfaces.",
+    "4_track_boundary": "Not triggered: execution stayed inside code track.",
+    "5_run_length_cap": "Not triggered: single bounded recursion cycle.",
+    "6_escalation_chain": "Not triggered: no failing lane required triage escalation."
+  },
+  "decision": "stop-clean",
+  "rationale": "The bounded objective completed with focused compensation or retry evidence hardening, no scope widening, and policy-compliant anti-narrowed seed governance."
+}
+```
+
+---
+## 2026-05-06 - FRS-subcore-20260506-C3-W1
+
+- Selected item: bounded SubCore micro-cycle to document hosted adapter post-failure semantics and settle truth-sync with unchanged execution-proof ceilings
+- Result: Stop-clean. S4 owning docs now explicitly define hosted `LocalRunwayAdapter` post-failure behavior as non-transactional ordered composition, the optional scaffold increment was skipped by rule to avoid scope widening, and the focused runtime/scaffold/foundation validation bundle stayed green.
+- Files:
+  - `streams/S4-runtime/CONTRACTS.md`
+  - `docs/surfaces/2026-05-06-FRS-subcore-C3-W1-TRUTH-SYNC-DELTA-L4.md`
+  - `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo test -p ferros-runtime --test boundaries` passed (10 passed); `cargo test -p ferros-runtime --test x86_64_subcore_smoke` passed (3 passed); `cargo test -p ferros-x86_64-scaffold` passed (7 passed); `cargo check -p ferros-x86_64-scaffold --no-default-features` passed; `cargo test -p ferros-core foundation_surface_` passed (4 passed).
+- Claims added: hosted adapter partial-progress semantics are now explicitly documented for transition, executor, and bus failure classes; bounded subcore evidence remained green without widening runtime seam scope.
+- Claims explicitly not added: no bootloader success claim, no kernel boot success claim, no QEMU boot proof claim, no hardware bring-up claim, no gate-closure claim, and no native-runtime proof claim.
+- Blocked lanes: none in this bounded packet.
+- Next queued follow-up: only pursue stronger adapter guarantees if a bounded consumer contract demands them; otherwise keep hosted seam claims explicit and pre-native.
+
+```json
+{
+  "wave_id": "FRS-subcore-20260506-C3-W1",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: all required runtime, scaffold, and foundation checks passed.",
+    "2_wave_tag": "Not triggered: this bounded code-track packet had no P0, gate-close, solo, or frozen-schema tag.",
+    "3_diff_overrun": "Not triggered: changes stayed within declared S4 contracts and serialized truth-sync surfaces.",
+    "4_track_boundary": "Not triggered: execution stayed inside code track.",
+    "5_run_length_cap": "Not triggered: single bounded micro-cycle.",
+    "6_escalation_chain": "Not triggered: no validation or implementation failure required log triage."
+  },
+  "decision": "stop-clean",
+  "rationale": "The bounded objective completed with explicit hosted-seam semantics, unchanged non-claim ceilings, and clean focused evidence without widening scope."
+}
+```
+
+---
 ## 2026-05-06 - X86-SUBCORE-CYCLE-2026-05-06-02
 
 - Selected item: bounded ADR-025 subcore runtime error-path rehearsal plus scaffold provenance micro-cycle on code track

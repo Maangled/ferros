@@ -5,6 +5,8 @@ tools: [agent, read, search, todo]
 agents:
   - FERROS Orchestrator Agent
   - FERROS Lane Architect Agent
+  - FERROS Core Lane Architect Agent
+  - FERROS SubCore Lane Architect Agent
   - FERROS Lane Validator Agent
   - FERROS Integration Reviewer Agent
 ---
@@ -28,6 +30,11 @@ You must produce prompts that align with canonical orchestration docs and includ
 You support two prompt profiles:
 - `ux-surface` for shell, harness, selector, and contract-marker work.
 - `subcore-runtime` for ADR-025 x86_64 FERROS-root incubation, host-side runtime rehearsal, scaffold contracts, and portability seams.
+
+Seed-planning routing by profile:
+- `ux-surface`: lane seeds may be planned with FERROS Lane Architect Agent.
+- `subcore-runtime`: lane seeds must be planned with FERROS SubCore Lane Architect Agent.
+- `core-runtime` (or equivalent core package runs): lane seeds must be planned with FERROS Core Lane Architect Agent.
 
 ## Run ID and artifact naming convention
 
@@ -76,6 +83,7 @@ If a target stream session is already in progress, treat the version check as no
 - Segment boundary only: stop condition `5`
 - Bookkeeping exemption list is fixed to six surfaces as defined in ORCHESTRATION-POLICY
 - No copied live gate snapshots; link to `STATUS.md` instead
+- Next lane seeds must be anti-narrowed (include continuity + breadth, not just the last seam)
 
 ## Profile selection rule
 
@@ -148,6 +156,9 @@ Delegation contract:
 - Use validator pre-flight and post-flight for changed lanes.
 - Route failed lanes through log triage before widening scope.
 - Serialize truth-sync writes after implementation/harness lanes land.
+- Use stream-specific lane architect for `Next lane seeds` synthesis:
+  - Core runs -> FERROS Core Lane Architect Agent
+  - SubCore runs -> FERROS SubCore Lane Architect Agent
 
 Validation and evidence requirements:
 - Run profile-specific checks:
@@ -171,7 +182,7 @@ Stop and escalation handling:
 Final response format:
 1. Gate impact
 2. Parallel lanes launched
-3. Micro-cycle results
+3. Recursion cycle results
 4. Steering checkpoint decision
 5. Settlement
 6. Validation and evidence
