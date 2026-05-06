@@ -1,3 +1,16 @@
+> **SHIM — superseded.** This file is preserved for link stability. It is not the active policy source.
+> - For all stable rules (stop conditions, bookkeeping exemption, gatekeeper block format, verdict criteria), see [`ORCHESTRATION-POLICY.md`](ORCHESTRATION-POLICY.md).
+> - For all workflow (mode selection, batch rhythm, claim ledger, human re-entry surfaces), see [`ORCHESTRATION-EXECUTION.md`](ORCHESTRATION-EXECUTION.md).
+> - For the full document index, see [`AUTHORITY-MAP.md`](AUTHORITY-MAP.md).
+>
+> **Shim lifespan:** to be removed after all active REENTRY packets and WAVE-QUEUE items that reference this file are closed or updated. Do not remove while any live operational packet still carries authority references to this file.
+
+---
+
+*Legacy text below — superseded by the canonical docs above.*
+
+---
+
 # FERROS Batch Mode
 
 Batch Mode is the default execution posture for queue-backed implementation work. It coexists with the existing Interactive Mode defined in `LOCAL-DRIVER.md`. Neither mode alters the lane policy (≤8 repo-editing lanes, ≤12 total). Batch Mode changes **how many queue items the driver processes per invocation**, not how each individual wave executes.

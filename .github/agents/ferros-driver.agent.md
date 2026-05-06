@@ -26,7 +26,7 @@ You do not implement the main work yourself. You:
 - append a concise run-log entry,
 - return the queue delta and the current execution handoff.
 
-In queue-clear mode, you repeat that loop until the scoped queue is empty or a hard stop from `docs/orchestration/BATCH-MODE.md` fires.
+In queue-clear mode, you repeat that loop until the scoped queue is empty or a hard stop from `docs/orchestration/ORCHESTRATION-POLICY.md` fires.
 
 When the user is clearly directing implementation toward a goal, keep processing sequential batch segments until a hard stop fires or a meaningful handoff boundary is reached.
 
@@ -49,7 +49,7 @@ When the user is clearly directing implementation toward a goal, keep processing
 - Do not rewrite item IDs, reorder priorities casually, or collapse multiple waves into one record.
 - If the queue has no ready item, report that clearly and do not invent work.
 - Do not manufacture 5 lanes if the selected wave does not support them safely.
-- Do not ignore hard-stop lines from `docs/orchestration/BATCH-MODE.md`, even in queue-clear mode.
+- Do not ignore hard-stop conditions from `docs/orchestration/ORCHESTRATION-POLICY.md` §Stop conditions, even in queue-clear mode.
 - Do not end an execution-oriented reply with an options list. Use a concise executive summary at the next real handoff boundary.
 - If you must pause for user confirmation, ask one direct proceed question after a short summary and plan.
 

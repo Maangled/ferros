@@ -744,11 +744,11 @@
         <section id="agents-surface" class="table-list"></section>
         <section id="grants-surface" class="table-list hidden" data-module="GrantsSurfaceCard" data-surface-state="empty"></section>
         <section id="profile-surface" class="table-list hidden" data-module="ProfileSurfaceCard" data-surface-state="empty"></section>
-        <section id="runway-surface" class="table-list hidden"></section>
-        <section id="home-hub-surface" class="table-list hidden"></section>
-        <section id="forge-surface" class="table-list hidden"></section>
-        <section id="arena-surface" class="table-list hidden"></section>
-        <section id="deny-surface" class="table-list hidden"></section>
+        <section id="runway-surface" class="table-list hidden" data-module="RunwaySurfaceCard" data-surface-state="empty"></section>
+        <section id="home-hub-surface" class="table-list hidden" data-module="HomeHubSurfaceContainer" data-surface-state="empty"></section>
+        <section id="forge-surface" class="table-list hidden" data-module="ForgeSurfaceContainer" data-surface-state="empty"></section>
+        <section id="arena-surface" class="table-list hidden" data-module="ArenaSurfaceContainer" data-surface-state="empty"></section>
+        <section id="deny-surface" class="table-list hidden" data-module="DenySurfaceCard" data-surface-state="empty"></section>
       </div>
     </main>
 
@@ -857,36 +857,6 @@
         auditTitle: 'Runway observation only',
         auditCopy: 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Optional hub restart context, pending-consent proposed material, and a local decision rehearsal receipt may appear on the same read-only route. All remain display-only: no acceptance flow, no executed consent event, no canonical state, no grant, no remote transport, no Home Assistant proof, and no durability, power-cycle, hardware, or gate evidence is implied. No G4 closure is claimed.',
         statusLabel: 'runway',
-      }),
-      Object.freeze({
-        id: 'homeHub',
-        buttonLabel: 'Home-Hub',
-        buttonSummaryHtml: 'Read-only topology, source lineage, proposal, and rehearsal receipt on the existing local runway seam.',
-        centerSubtitle: 'Home-Hub reads bridge topology, restart lineage, staged proposal, and local rehearsal receipt from the loaded runway summary without claiming canonical device proof.',
-        toolsCopy: 'Home-Hub route stays on the current local-only runway and registry seams: named bridge topology, source lineage, staged proposal, and rehearsal receipt are all display-only and non-canonical here.',
-        auditTitle: 'Home-Hub evidence ceiling',
-        auditCopy: 'Home-Hub observations here remain local and named only: no Home Assistant identity truth, no executed consent event, no canonical device state, no remote transport, and no host hardware proof is implied on this shell.',
-        statusLabel: 'homeHub',
-      }),
-      Object.freeze({
-        id: 'forge',
-        buttonLabel: 'Forge',
-        buttonSummaryHtml: 'Preview-only authoring and export posture from the current profile adapter and route-local artifact state.',
-        centerSubtitle: 'Forge remains a preview surface: bundle targets, last profile adapter action, and route-local artifact context are visible without granting artifact authority.',
-        toolsCopy: 'Forge route shows preview-only authoring and export posture from /profile plus the current route-local artifact seams. No mint, no canonical publish, and no hidden write are implied.',
-        auditTitle: 'Forge preview only',
-        auditCopy: 'Forge on this shell is preview-only. Bundle paths, profile export results, and route-local artifacts may be inspected, but nothing here implies authoritative publication, provenance closure, or canonical mutation.',
-        statusLabel: 'forge',
-      }),
-      Object.freeze({
-        id: 'arena',
-        buttonLabel: 'Arena',
-        buttonSummaryHtml: 'Preview-only runtime posture and non-evidentiary result staging on top of the current observation shell.',
-        centerSubtitle: 'Arena remains preview-only: selected-agent runtime posture, deny recovery, and any staged result language stay non-evidentiary and out of Profile until an explicit handoff exists.',
-        toolsCopy: 'Arena route reads the current selected-agent and runway recovery posture without silently promoting any result into Profile, grants, or progression.',
-        auditTitle: 'Arena remains non-evidentiary',
-        auditCopy: 'Arena observations here are rehearsal only: runtime posture is readable, but no simulation result becomes canonical evidence or profile progression on this shell.',
-        statusLabel: 'arena',
       }),
       Object.freeze({
         id: 'denyLog',
@@ -1295,16 +1265,21 @@
         : 'loaded';
 
       runwaySurface.innerHTML = runwaySurfaceHtml();
+      runwaySurface.dataset.surfaceState = state.runway ? 'loaded' : 'empty';
 
       homeHubSurface.innerHTML = SharedModules.HomeHubSurfaceCard.render(state.runway);
+      homeHubSurface.dataset.surfaceState = state.runway ? 'loaded' : 'empty';
 
       forgeSurface.innerHTML = SharedModules.ForgeSurfaceCard.render(state.profileSurface, state.runway);
+      forgeSurface.dataset.surfaceState = (state.profileSurface.ok !== null || Boolean(state.runway)) ? 'loaded' : 'empty';
 
       arenaSurface.innerHTML = SharedModules.ArenaSurfaceCard.render(selectedAgentRecord(), state.runway);
+      arenaSurface.dataset.surfaceState = state.runway ? 'loaded' : 'empty';
 
       denySurface.innerHTML = state.denyEntries.map((entry, index) =>
         SharedModules.DenyLogRowCard.render(entry, index, index === state.selectedDenyIndex)
       ).join('') || emptyNote('No deny entries', 'The deny log is currently clear.');
+      denySurface.dataset.surfaceState = state.denyEntries.length > 0 ? 'loaded' : 'empty';
 
       document.querySelectorAll('[data-focus-agent]').forEach((button) => {
         button.addEventListener('click', () => {
@@ -1334,10 +1309,10 @@
         });
       });
 
-      document.querySelectorAll('[data-runway-index]').forEach((button) => {
+      document.querySelectorAll('[data-checklist-index]').forEach((button) => {
         button.addEventListener('click', () => {
           state.route = 'runway';
-          state.selectedRunwayIndex = Number(button.dataset.runwayIndex);
+          state.selectedRunwayIndex = Number(button.dataset.checklistIndex);
           setStatusSelection(`runway:${state.runway.checklist[state.selectedRunwayIndex].item}`);
           renderInspector();
           render();
@@ -2012,6 +1987,32 @@
               <p class="shell-note-copy">checkpoint ${escapeHtml(summary.checkpointState)} · latest deny ${escapeHtml(latestDeny)}.</p>
               <p class="shell-note-copy">Display only. This is preview-only runtime posture and result staging: no simulation result, lifecycle rehearsal, or deny recovery becomes Profile progression or canonical evidence on this shell.</p>
             </div>
+            <div class="detail-stack" data-module="ArenaRehearsalDetailPairs" data-arena-detail-group="surface">
+              <div class="detail-pair" data-arena-detail-key="selected-agent">
+                <div class="detail-key">Selected agent</div>
+                <div class="detail-value" data-arena-detail-value="selected-agent">${escapeHtml(selectedAgent ? selectedAgent.name : 'none')}</div>
+              </div>
+              <div class="detail-pair" data-arena-detail-key="lifecycle-intent">
+                <div class="detail-key">Lifecycle intent</div>
+                <div class="detail-value" data-arena-detail-value="lifecycle-intent">${escapeHtml(lifecycleIntent ? lifecycleIntent.method : 'not staged')}</div>
+              </div>
+              <div class="detail-pair" data-arena-detail-key="checkpoint-state">
+                <div class="detail-key">Checkpoint state</div>
+                <div class="detail-value" data-arena-detail-value="checkpoint-state">${escapeHtml(summary.checkpointState || 'not reported')}</div>
+              </div>
+              <div class="detail-pair" data-arena-detail-key="latest-deny">
+                <div class="detail-key">Latest deny</div>
+                <div class="detail-value" data-arena-detail-value="latest-deny">${escapeHtml(latestDeny)}</div>
+              </div>
+              <div class="detail-pair" data-arena-detail-key="result-boundary">
+                <div class="detail-key">Result boundary</div>
+                <div class="detail-value" data-arena-detail-value="result-boundary">preview-only and non-evidentiary</div>
+              </div>
+              <div class="detail-pair" data-arena-detail-key="handoff-posture">
+                <div class="detail-key">Handoff posture</div>
+                <div class="detail-value" data-arena-detail-value="handoff-posture">explicit handoff required before any profile progression</div>
+              </div>
+            </div>
           </article>
           <article class="note-card" data-module="ArenaLifecycleRehearsalStageCard">
             <div class="shell-note-title">Lifecycle rehearsal stage</div>
@@ -2094,14 +2095,36 @@
           const lifecycleIntent = selectedLifecycleIntent();
           return `
         <div data-module="ArenaInspectorCard">
-          ${SharedModules.renderDetailPairs([
-            ['Surface', 'arena preview'],
-            ['Selected agent', selectedAgent ? selectedAgent.name : 'none'],
-            ['Selected status', selectedAgent ? selectedAgent.status : 'not reported'],
-            ['Lifecycle intent', lifecycleIntent ? lifecycleIntent.method : 'not staged'],
-            ['Result class', 'non-evidentiary'],
-            ['Latest deny', summary.latestDeny ? `${summary.latestDeny.agentName || 'runtime'} · ${summary.latestDeny.message}` : 'none observed'],
-          ])}
+          <div class="detail-stack" data-arena-detail-group="inspector">
+            <div class="detail-pair" data-arena-inspector-key="surface">
+              <div class="detail-key">Surface</div>
+              <div class="detail-value" data-arena-inspector-value="surface">arena preview</div>
+            </div>
+            <div class="detail-pair" data-arena-inspector-key="selected-agent">
+              <div class="detail-key">Selected agent</div>
+              <div class="detail-value" data-arena-inspector-value="selected-agent">${escapeHtml(selectedAgent ? selectedAgent.name : 'none')}</div>
+            </div>
+            <div class="detail-pair" data-arena-inspector-key="selected-status">
+              <div class="detail-key">Selected status</div>
+              <div class="detail-value" data-arena-inspector-value="selected-status">${escapeHtml(selectedAgent ? selectedAgent.status : 'not reported')}</div>
+            </div>
+            <div class="detail-pair" data-arena-inspector-key="lifecycle-intent">
+              <div class="detail-key">Lifecycle intent</div>
+              <div class="detail-value" data-arena-inspector-value="lifecycle-intent">${escapeHtml(lifecycleIntent ? lifecycleIntent.method : 'not staged')}</div>
+            </div>
+            <div class="detail-pair" data-arena-inspector-key="result-class">
+              <div class="detail-key">Result class</div>
+              <div class="detail-value" data-arena-inspector-value="result-class">non-evidentiary</div>
+            </div>
+            <div class="detail-pair" data-arena-inspector-key="latest-deny">
+              <div class="detail-key">Latest deny</div>
+              <div class="detail-value" data-arena-inspector-value="latest-deny">${escapeHtml(summary.latestDeny ? `${summary.latestDeny.agentName || 'runtime'} · ${summary.latestDeny.message}` : 'none observed')}</div>
+            </div>
+            <div class="detail-pair" data-arena-inspector-key="handoff-posture">
+              <div class="detail-key">Handoff posture</div>
+              <div class="detail-value" data-arena-inspector-value="handoff-posture">preview-only until explicit handoff</div>
+            </div>
+          </div>
           ${runwayRecoveryStateInspectorDetails(summary)}
         </div>`;
         },
@@ -2357,14 +2380,18 @@
         ? `${summary.latestDeny.agentName || 'runtime'} · ${summary.latestDeny.message}`
         : 'no deny observed';
       const checkpointProgress = `${summary.checkpointPosition}/${summary.checkpointTotal}`;
-      const checklist = (summary.checklist || []).map((item, index) => {
-        return SharedModules.OperatorStepCard.renderRunwayChecklistItem(
-          item,
-          index,
-          index === state.selectedRunwayIndex,
-          summary,
-        );
-      }).join('');
+      const checklistItems = summary.checklist || [];
+      const checklist = checklistItems.length > 0
+        ? checklistItems.map((item, index) => {
+          const isSelected = index === state.selectedRunwayIndex;
+          return `
+            <article class="table-row ${isSelected ? 'is-selected' : ''}" data-checklist-index="${index}">
+              <strong>${escapeHtml(item.item)}</strong>
+              <small>${escapeHtml(item.status)}</small>
+              <p class="shell-note-copy">${escapeHtml(item.detail)}</p>
+            </article>`;
+        }).join('')
+        : '<p class="shell-note-copy">No runway checklist items were returned for this summary.</p>';
 
       return `
         <article class="note-card">
@@ -2378,7 +2405,12 @@
         ${runwayOnrampProposalNoteHtml(summary.hubOnrampProposal)}
         ${runwayOnrampDecisionReceiptNoteHtml(summary.hubOnrampDecisionReceipt)}
         ${runwayHubRestartNoteHtml(summary.hubRestart)}
-        ${checklist || emptyNote('No runway checklist', 'The runway route loaded, but no checklist items were returned.')}`;
+        <section class="note-card" data-module="RunwayChecklistBoundaryCard" data-checklist-contract="selector-first">
+          <div class="shell-note-title">Runway checklist</div>
+          <div class="table-list">
+            ${checklist}
+          </div>
+        </section>`;
     }
 
     function currentBridgeAgent() {

@@ -1,3 +1,6 @@
+use ferros_core::MessageEnvelope;
+use crate::{Executor, MessageBus};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalRunwayIntent {
     Start,
@@ -22,6 +25,87 @@ pub type LocalRunwayState = LocalRunwayCheckpoint;
 pub struct LocalRunwayTransitionError {
     pub from: LocalRunwayState,
     pub intent: LocalRunwayIntent,
+}
+
+#[derive(Debug)]
+pub enum LocalRunwayAdapterError<ExecutorError, BusError> {
+    Transition(LocalRunwayTransitionError),
+    Executor(ExecutorError),
+    Bus(BusError),
+}
+
+#[derive(Debug)]
+pub struct LocalRunwayAdapter<E, B> {
+    state: LocalRunwayState,
+    executor: E,
+    bus: B,
+}
+
+impl<E, B> LocalRunwayAdapter<E, B> {
+    #[must_use]
+    pub const fn with_state(state: LocalRunwayState, executor: E, bus: B) -> Self {
+        Self {
+            state,
+            executor,
+            bus,
+        }
+    }
+
+    #[must_use]
+    pub fn new(executor: E, bus: B) -> Self {
+        Self::with_state(LocalRunwayState::Pending, executor, bus)
+    }
+
+    #[must_use]
+    pub const fn state(&self) -> LocalRunwayState {
+        self.state
+    }
+
+    #[must_use]
+    pub fn into_parts(self) -> (LocalRunwayState, E, B) {
+        (self.state, self.executor, self.bus)
+    }
+}
+
+impl<E, B> LocalRunwayAdapter<E, B>
+where
+    E: Executor,
+    B: MessageBus,
+{
+    pub fn advance(
+        &mut self,
+        intent: LocalRunwayIntent,
+    ) -> Result<LocalRunwayState, LocalRunwayTransitionError> {
+        let next = self.state.advance(intent)?;
+        self.state = next;
+        Ok(next)
+    }
+
+    pub fn submit(&mut self, job: E::Job) -> Result<(), E::Error> {
+        self.executor.submit(job)
+    }
+
+    pub fn route(&mut self, envelope: MessageEnvelope) -> Result<(), B::Error> {
+        self.bus.send(envelope)
+    }
+
+    pub fn try_recv(&mut self, recipient: &str) -> Result<Option<MessageEnvelope>, B::Error> {
+        self.bus.try_recv(recipient)
+    }
+
+    pub fn advance_submit_and_route(
+        &mut self,
+        intent: LocalRunwayIntent,
+        job: E::Job,
+        envelope: MessageEnvelope,
+    ) -> Result<LocalRunwayState, LocalRunwayAdapterError<E::Error, B::Error>> {
+        let next = self
+            .advance(intent)
+            .map_err(LocalRunwayAdapterError::Transition)?;
+        self.submit(job).map_err(LocalRunwayAdapterError::Executor)?;
+        self.route(envelope).map_err(LocalRunwayAdapterError::Bus)?;
+        Ok(next)
+    }
 }
 
 impl LocalRunwayState {
@@ -119,7 +203,22 @@ impl LocalRunwayState {
 
 #[cfg(test)]
 mod tests {
-    use super::{LocalRunwayIntent, LocalRunwayState};
+    use ferros_core::{Capability, MessageEnvelope};
+
+    use crate::{Executor, InMemoryExecutor, InMemoryMessageBus, MessageBus};
+
+    use super::{LocalRunwayAdapter, LocalRunwayIntent, LocalRunwayState};
+
+    fn message(recipient: &str, nonce: u64) -> MessageEnvelope {
+        MessageEnvelope::new(
+            "subcore.boot",
+            recipient,
+            Capability::new("runtime.dispatch").expect("capability should parse"),
+            format!("payload-{nonce}").into_bytes(),
+            nonce,
+        )
+        .expect("message should parse")
+    }
 
     #[test]
     fn start_path_advances_through_the_local_runway_checkpoints() {
@@ -194,5 +293,37 @@ mod tests {
         );
         assert!(!LocalRunwayState::Draining.is_terminal());
         assert!(LocalRunwayState::Halted.is_terminal());
+    }
+
+    #[test]
+    fn adapter_composes_transition_executor_and_bus_through_runtime_seams() {
+        let mut adapter =
+            LocalRunwayAdapter::new(InMemoryExecutor::new(), InMemoryMessageBus::new());
+
+        for _ in 0..3 {
+            adapter
+                .advance(LocalRunwayIntent::Start)
+                .expect("start path should advance");
+        }
+
+        let next = adapter
+            .advance_submit_and_route(
+                LocalRunwayIntent::Start,
+                "dispatch-message",
+                message("subcore.runtime", 19),
+            )
+            .expect("adapter step should succeed");
+
+        let (_, mut executor, mut bus) = adapter.into_parts();
+
+        assert_eq!(next, LocalRunwayState::Active);
+        assert_eq!(executor.pop_next().expect("pop should succeed"), Some("dispatch-message"));
+        assert_eq!(executor.pop_next().expect("pop should succeed"), None);
+
+        let delivered = bus
+            .try_recv("subcore.runtime")
+            .expect("receive should succeed")
+            .expect("message should exist");
+        assert_eq!(delivered.nonce(), 19);
     }
 }

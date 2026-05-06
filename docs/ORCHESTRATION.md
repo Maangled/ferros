@@ -199,16 +199,18 @@ The Agent Command Center (`docs/agent-command-center.html`, now aligned with S5 
 
 Until those conditions are met, this document remains historical governance context. The active execution references are the current stream docs, gate docs, `STATUS.md`, and the local-driver files in `docs/orchestration/`.
 
-## Current local-driver addendum
+## Current orchestration authority
 
-The active S1-S8 local-driver model is intentionally narrower than the historical A-E control model above.
+The active S1-S8 orchestration model is described in the canonical docs under `docs/orchestration/`. The quick-start reference is [`docs/orchestration/AUTHORITY-MAP.md`](orchestration/AUTHORITY-MAP.md).
 
-- Top-level orchestration still begins with lane planning and keeps the safe ceiling at **5 parallel repo-editing lanes**.
-- Hidden helper agents now allow one extra bounded planning pass per generated lane, capped at depth **2** and **12 total lanes** across a wave.
-- Failed lanes are expected to route through log triage first and trace analysis only when the failing boundary remains ambiguous.
-- Shared truth surfaces remain reconciliation targets, not concurrent implementation lanes.
+Key policy facts at time of last revision:
+- Safe editing-lane ceiling: **8 parallel repo-editing lanes** (raised from 5 after BATCH-2026-04-27 + BATCH-2026-04-27-B; see ORCHESTRATION-POLICY.md for the revert clause).
+- Total lane count cap: **12** (including recursive sub-lanes).
+- Recursive planning depth: **2** maximum.
+- Failed lanes route through Log Triage first, Trace Analyst only if failure boundary remains ambiguous.
+- Shared truth surfaces are reconciliation targets, not concurrent implementation lanes.
 
-For the active operating procedure, queue discipline, and lane rules, defer to `docs/orchestration/LOCAL-DRIVER.md`.
+For all active rules, queue discipline, mode selection, and role map, see [`docs/orchestration/AUTHORITY-MAP.md`](orchestration/AUTHORITY-MAP.md).
 
 ---
 

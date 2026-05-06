@@ -1,3 +1,11 @@
+> **SHIM — superseded.** This file is preserved for link stability. It is not the active policy source.
+> - For the operator session loop, instruction packet fields, session states, and coordinator outcomes, see [`ORCHESTRATION-EXECUTION.md`](ORCHESTRATION-EXECUTION.md) §Operator session integration.
+> - For the full document index, see [`AUTHORITY-MAP.md`](AUTHORITY-MAP.md).
+>
+> **Shim lifespan:** to be removed after all active operator session packets that reference this file are closed.
+
+---
+
 # Operator Session Pattern
 
 This document defines the human-in-the-loop execution pattern for FERROS operator sessions.

@@ -14,7 +14,7 @@ The legacy paper scrape is complete enough for planning. The paper is a motif an
 
 - Durable discovery packet: `/home/homelab001/apps/FERROS-PDF-DISCOVERY-NOTE.md`
 - Current shell stream: `streams/S5-ux/README.md`
-- Current operator loop substrate: `docs/orchestration/LOCAL-DRIVER.md`
+- Current operator loop substrate: `docs/orchestration/AUTHORITY-MAP.md` (see ORCHESTRATION-EXECUTION.md §Operator session integration)
 - Current hardware/operator precedent: `docs/orchestration/HARDWARE-QUEUE.md`
 - Current launch-facing onramp boundary: `docs/adr/ADR-023-onramp-policy.md`
 

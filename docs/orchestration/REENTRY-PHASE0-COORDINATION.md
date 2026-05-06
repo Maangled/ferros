@@ -2,7 +2,7 @@
 
 Status: Active
 Date: 2026-05-03
-Authority: docs/orchestration/LOCAL-DRIVER.md
+Authority: docs/orchestration/AUTHORITY-MAP.md
 
 ## Mission
 Execute the first bounded orchestration segment for the amended Ferros re-entry initiative using parallel owner lanes and one serial truth-sync lane.
@@ -22,12 +22,12 @@ This segment runs under a temporary strict policy tighter than ADR-021:
 - No Cargo.lock drift.
 - No new Cargo workspace members unless explicitly pre-approved as local-only non-dependency structure.
 
-## Gate Truth Snapshot (copied from STATUS)
-- G1: closed.
-- G2: closed.
-- G3: closed.
-- D1: active runway, not closed.
-- G4: active, not closed.
+## Gate Truth
+
+Do not copy gate state into operational packets — snapshots go stale and mislead future readers.
+For current gate state, see [`STATUS.md`](../../STATUS.md).
+
+Non-claim constraints active for this segment:
 - No physical-device evidence claim.
 - No real Home Assistant proof claim.
 - No consent acceptance proof claim.

@@ -1,7 +1,7 @@
 use ferros_core::{Capability, MessageEnvelope};
 use ferros_runtime::{
-    Executor, InMemoryExecutor, InMemoryMessageBus, LocalRunwayIntent, LocalRunwayState,
-    MessageBus,
+    Executor, InMemoryExecutor, InMemoryMessageBus, LocalRunwayAdapter, LocalRunwayIntent,
+    LocalRunwayState, MessageBus,
 };
 
 fn message(nonce: u64) -> MessageEnvelope {
@@ -17,21 +17,21 @@ fn message(nonce: u64) -> MessageEnvelope {
 
 #[test]
 fn x86_64_subcore_host_smoke_advances_to_active_and_routes_message() {
-    let mut state = LocalRunwayState::Pending;
-    let mut executor = InMemoryExecutor::new();
-    let mut bus = InMemoryMessageBus::new();
+    let mut adapter = LocalRunwayAdapter::new(InMemoryExecutor::new(), InMemoryMessageBus::new());
 
     for _ in 0..4 {
-        state = state
+        adapter
             .advance(LocalRunwayIntent::Start)
             .expect("start path should advance");
     }
 
-    executor.submit("boot").expect("submit should succeed");
-    executor
+    adapter.submit("boot").expect("submit should succeed");
+    adapter
         .submit("dispatch-message")
         .expect("submit should succeed");
-    bus.send(message(7)).expect("send should succeed");
+    adapter.route(message(7)).expect("send should succeed");
+
+    let (state, mut executor, mut bus) = adapter.into_parts();
 
     assert_eq!(state, LocalRunwayState::Active);
     assert_eq!(

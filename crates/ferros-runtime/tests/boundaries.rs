@@ -2,8 +2,19 @@ use std::convert::Infallible;
 
 use ferros_core::{Capability, MessageEnvelope};
 use ferros_runtime::{
-    EnvelopeQueue, Executor, InMemoryExecutor, InMemoryMessageBus, JobQueue, MessageBus,
+    EnvelopeQueue, Executor, InMemoryExecutor, InMemoryMessageBus, JobQueue, LocalRunwayAdapter,
+    LocalRunwayAdapterError, LocalRunwayIntent, LocalRunwayState, MessageBus,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExecutorFailure {
+    SubmitBlocked,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BusFailure {
+    RouteBlocked,
+}
 
 struct StubExecutor {
     pending: Vec<&'static str>,
@@ -188,6 +199,64 @@ impl EnvelopeQueue for VecEnvelopeQueue {
     }
 }
 
+struct FailingExecutor {
+    pending: Vec<&'static str>,
+}
+
+impl FailingExecutor {
+    fn new() -> Self {
+        Self { pending: Vec::new() }
+    }
+}
+
+impl Executor for FailingExecutor {
+    type Job = &'static str;
+    type Error = ExecutorFailure;
+
+    fn submit(&mut self, _job: Self::Job) -> Result<(), Self::Error> {
+        Err(ExecutorFailure::SubmitBlocked)
+    }
+
+    fn pop_next(&mut self) -> Result<Option<Self::Job>, Self::Error> {
+        if self.pending.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(self.pending.remove(0)))
+        }
+    }
+
+    fn pending_jobs(&self) -> usize {
+        self.pending.len()
+    }
+}
+
+struct FailingBus {
+    queued: Vec<MessageEnvelope>,
+}
+
+impl FailingBus {
+    fn new() -> Self {
+        Self { queued: Vec::new() }
+    }
+}
+
+impl MessageBus for FailingBus {
+    type Error = BusFailure;
+
+    fn send(&mut self, _envelope: MessageEnvelope) -> Result<(), Self::Error> {
+        Err(BusFailure::RouteBlocked)
+    }
+
+    fn try_recv(&mut self, recipient: &str) -> Result<Option<MessageEnvelope>, Self::Error> {
+        let position = self
+            .queued
+            .iter()
+            .position(|envelope| envelope.recipient() == recipient);
+
+        Ok(position.map(|index| self.queued.remove(index)))
+    }
+}
+
 #[test]
 fn in_memory_executor_accepts_custom_job_queue_backing() {
     let mut executor = InMemoryExecutor::from_queue(VecJobQueue::new());
@@ -223,4 +292,134 @@ fn in_memory_message_bus_accepts_custom_queue_backing() {
         .expect("other recipient should still have its message");
 
     assert_eq!(remaining.nonce(), 11);
+}
+
+#[test]
+fn local_runway_adapter_composes_transition_submit_and_route_with_custom_queues() {
+    let mut adapter = LocalRunwayAdapter::new(
+        InMemoryExecutor::from_queue(VecJobQueue::new()),
+        InMemoryMessageBus::from_queue(VecEnvelopeQueue::new()),
+    );
+
+    adapter
+        .advance(LocalRunwayIntent::Start)
+        .expect("pending -> profile should succeed");
+    adapter
+        .advance(LocalRunwayIntent::Start)
+        .expect("profile -> consent should succeed");
+    adapter
+        .advance(LocalRunwayIntent::Start)
+        .expect("consent -> runtime should succeed");
+
+    let next = adapter
+        .advance_submit_and_route(
+            LocalRunwayIntent::Start,
+            "deliver",
+            message("agent.alpha", "agent.bravo", 21),
+        )
+        .expect("runtime -> active adapter step should succeed");
+
+    let (state, mut executor, mut bus) = adapter.into_parts();
+
+    assert_eq!(next, LocalRunwayState::Active);
+    assert_eq!(state, LocalRunwayState::Active);
+    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("deliver"));
+    assert_eq!(executor.pop_next().expect("pop should succeed"), None);
+
+    let delivered = bus
+        .try_recv("agent.bravo")
+        .expect("receive should succeed")
+        .expect("recipient should have a message");
+    assert_eq!(delivered.nonce(), 21);
+}
+
+#[test]
+fn local_runway_adapter_maps_transition_errors_without_side_effects() {
+    let mut adapter = LocalRunwayAdapter::new(InMemoryExecutor::new(), InMemoryMessageBus::new());
+
+    let error = adapter
+        .advance_submit_and_route(
+            LocalRunwayIntent::Stop,
+            "deliver",
+            message("agent.alpha", "agent.bravo", 22),
+        )
+        .expect_err("pending -> stop should fail before submit or route");
+
+    match error {
+        LocalRunwayAdapterError::Transition(transition) => {
+            assert_eq!(transition.from, LocalRunwayState::Pending);
+            assert_eq!(transition.intent, LocalRunwayIntent::Stop);
+        }
+        other => panic!("expected transition error, got {other:?}"),
+    }
+
+    let (state, mut executor, mut bus) = adapter.into_parts();
+
+    assert_eq!(state, LocalRunwayState::Pending);
+    assert_eq!(executor.pending_jobs(), 0);
+    assert_eq!(executor.pop_next().expect("pop should succeed"), None);
+    assert_eq!(bus.try_recv("agent.bravo").expect("receive should succeed"), None);
+}
+
+#[test]
+fn local_runway_adapter_maps_executor_errors_after_transition() {
+    let mut adapter = LocalRunwayAdapter::with_state(
+        LocalRunwayState::RuntimeReady,
+        FailingExecutor::new(),
+        InMemoryMessageBus::new(),
+    );
+
+    let error = adapter
+        .advance_submit_and_route(
+            LocalRunwayIntent::Start,
+            "deliver",
+            message("agent.alpha", "agent.bravo", 23),
+        )
+        .expect_err("executor failure should be surfaced");
+
+    match error {
+        LocalRunwayAdapterError::Executor(executor_error) => {
+            assert_eq!(executor_error, ExecutorFailure::SubmitBlocked);
+        }
+        other => panic!("expected executor error, got {other:?}"),
+    }
+
+    let (state, mut executor, mut bus) = adapter.into_parts();
+
+    assert_eq!(state, LocalRunwayState::Active);
+    assert_eq!(executor.pending_jobs(), 0);
+    assert_eq!(executor.pop_next().expect("pop should succeed"), None);
+    assert_eq!(bus.try_recv("agent.bravo").expect("receive should succeed"), None);
+}
+
+#[test]
+fn local_runway_adapter_maps_bus_errors_after_executor_submission() {
+    let mut adapter = LocalRunwayAdapter::with_state(
+        LocalRunwayState::RuntimeReady,
+        InMemoryExecutor::new(),
+        FailingBus::new(),
+    );
+
+    let error = adapter
+        .advance_submit_and_route(
+            LocalRunwayIntent::Start,
+            "deliver",
+            message("agent.alpha", "agent.bravo", 24),
+        )
+        .expect_err("bus failure should be surfaced");
+
+    match error {
+        LocalRunwayAdapterError::Bus(bus_error) => {
+            assert_eq!(bus_error, BusFailure::RouteBlocked);
+        }
+        other => panic!("expected bus error, got {other:?}"),
+    }
+
+    let (state, mut executor, mut bus) = adapter.into_parts();
+
+    assert_eq!(state, LocalRunwayState::Active);
+    assert_eq!(executor.pending_jobs(), 1);
+    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("deliver"));
+    assert_eq!(executor.pop_next().expect("pop should succeed"), None);
+    assert_eq!(bus.try_recv("agent.bravo").expect("receive should succeed"), None);
 }

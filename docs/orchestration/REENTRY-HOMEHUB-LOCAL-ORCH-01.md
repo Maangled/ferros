@@ -2,7 +2,7 @@
 
 Status: Active
 Date: 2026-05-03
-Authority: docs/orchestration/LOCAL-DRIVER.md
+Authority: docs/orchestration/AUTHORITY-MAP.md
 
 ## Mission
 Run the next bounded repo-local re-entry segment for homelab001 local bring-up.

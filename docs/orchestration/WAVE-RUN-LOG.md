@@ -3,161 +3,69 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
-## 2026-05-04 - G4-CLOSEOUT-TAG-AND-PUSH
+## 2026-05-06 - X86-SUBCORE-CYCLE-2026-05-06-02
 
-- Selected item: tag the closed core launch packet and push the launch-closeout docs plus release tag
-- Result: Stop-clean. The Pack B launch packet is now tagged `v0.2.0`, G4 is closed in the truth surfaces, and the updated `main` plus the new tag are ready to push.
+- Selected item: bounded ADR-025 subcore runtime error-path rehearsal plus scaffold provenance micro-cycle on code track
+- Result: Stop-clean. Runtime error-path evidence now covers `LocalRunwayAdapter` transition, executor, and bus propagation in the boundary harness, and `ferros-x86_64-scaffold` now carries one additional architecture-only boot artifact lineage contract. An active-session authority-version mismatch remained non-blocking for this cycle and is reported inline here for continuity.
 - Files:
-  - `LAUNCH.md`
-  - `STATUS.md`
-  - `docs/gates/G4.md`
+  - `crates/ferros-runtime/tests/boundaries.rs`
+  - `crates/ferros-x86_64-scaffold/src/lib.rs`
+  - `docs/surfaces/2026-05-06-X86-SUBCORE-CYCLE-2026-05-06-02-DELTA.md`
   - `docs/orchestration/WAVE-RUN-LOG.md`
-  - `streams/S7-hub/PROGRESS.md`
-- Validation: targeted doc diagnostics stayed clean before commit; release validation is the successful commit, tag creation, and remote push.
-- Claims added: G4 is closed and `v0.2.0` is the current tagged core-launch milestone.
-- Claims explicitly not added: no optional module-lane closure claim and no new runtime or transport proof beyond the already documented launch packet.
-- Next queued follow-up: continue touch-first operator UX and optional module-lane packaging work under post-launch scope.
+- Validation: `cargo test -p ferros-runtime --test boundaries` passed (10 passed); `cargo test -p ferros-runtime --test x86_64_subcore_smoke` passed (3 passed); `cargo test -p ferros-x86_64-scaffold` passed (7 passed); `cargo check -p ferros-x86_64-scaffold --no-default-features` passed; `cargo test -p ferros-core foundation_surface_` passed (4 passed).
+- Claims added: runtime seam rehearsal now covers transition, executor, and bus error mapping through the hosted adapter boundary; scaffold architecture contracts now include one explicit boot artifact lineage contract tied to current artifact and checkpoint vocabulary.
+- Claims explicitly not added: no bootloader success claim, no kernel boot success claim, no QEMU boot proof claim, no hardware bring-up claim, no gate closure claim, and no FERROS-native runtime proof claim.
+- Blocked lanes: none in this bounded packet.
+- Next queued follow-up: either document the adapter's post-failure semantics explicitly without implying atomicity, or add one further architecture-only lineage/checkpoint contract while preserving the same non-claim ceiling.
 
 ```json
 {
-  "wave_id": "2026-05-04-G4-CLOSEOUT-TAG-AND-PUSH",
+  "wave_id": "X86-SUBCORE-CYCLE-2026-05-06-02",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: all targeted runtime, scaffold, and foundation checks passed.",
+    "2_wave_tag": "Not triggered: this bounded code-track packet had no P0, gate-close, solo, or frozen-schema tag.",
+    "3_diff_overrun": "Not triggered: the landed diff stayed inside the declared runtime rehearsal, scaffold contract, and truth-sync surfaces.",
+    "4_track_boundary": "Not triggered: execution stayed inside code track.",
+    "5_run_length_cap": "Not triggered: single bounded micro-cycle.",
+    "6_escalation_chain": "Not triggered: validator pre-flight and post-flight passed with no log-triage escalation required."
+  },
   "decision": "stop-clean",
-  "rationale": "The release action now matches the documented launch packet: tag the existing evidence-complete state and push it."
+  "rationale": "The requested bounded cycle objective was completed with focused runtime error-path evidence, one architecture-only lineage increment, and no expansion into execution-proof claims."
 }
 ```
 
 ---
-## 2026-05-04 - PACK-B-TARGET-BUILD-AND-G4-EVIDENCE-RECONCILIATION
+## 2026-05-06 - X86-SUBCORE-CYCLE-2026-05-06-01
 
-- Selected item: capture the missing Pack B target-build proof and reconcile the remaining core G4 evidence surfaces
-- Result: Stop-clean. `cargo build -p ferros-hub --target x86_64-unknown-linux-gnu` now has an explicit Pack B findings packet on `homelab001`, the hardware reference doc now lists the Pack B DUT as confirmed working hardware, and `docs/gates/G4.md` now has all core evidence rows filled under ADR-028. The gate remains active only because the `v0.2.0` tag has not yet been cut.
+- Selected item: bounded ADR-025 subcore runtime-plus-scaffold micro-cycle on code track
+- Result: Stop-clean. One runtime seam lane and one scaffold contract lane landed with focused rehearsal and foundation checks: `ferros-runtime` now has a bounded `LocalRunwayAdapter` seam that composes `LocalRunwayState` with executor and bus traits, and `ferros-x86_64-scaffold` now has one narrow `KernelHandoffContract` type that codifies kernel handoff vocabulary without adding execution claims.
 - Files:
-  - `LAUNCH.md`
-  - `STATUS.md`
-  - `docs/gates/G4.md`
-  - `docs/hardware/findings/FINDINGS-pack-b-session-04-g4-target-build.md`
-  - `docs/hub/reference-hardware.md`
+  - `crates/ferros-runtime/src/local_runway.rs`
+  - `crates/ferros-runtime/src/lib.rs`
+  - `crates/ferros-runtime/tests/x86_64_subcore_smoke.rs`
+  - `crates/ferros-runtime/tests/boundaries.rs`
+  - `crates/ferros-x86_64-scaffold/src/lib.rs`
+  - `docs/surfaces/2026-05-06-X86-SUBCORE-CYCLE-2026-05-06-01-DELTA.md`
   - `docs/orchestration/WAVE-RUN-LOG.md`
-- Validation: `cargo build -p ferros-hub --target x86_64-unknown-linux-gnu` passed and the target binary was present at `target/x86_64-unknown-linux-gnu/debug/ferros-hub`. Touched-doc diagnostics stayed clean.
-- Claims added: the repo now has an explicit Pack B target-build findings packet, a confirmed-working-hardware row for `homelab001`, and a G4 ledger that is evidence-complete under the current core-launch definition.
-- Claims explicitly not added: no `v0.2.0` tag, no G4 status flip to closed, and no change to the optional module-lane non-blocker posture.
-- Blocked lanes: the only remaining G4 closeout action is the release tag.
-- Next queued follow-up: cut `v0.2.0`, then move the main thread to touch-first operator UX and module-lane packaging work.
+- Validation: `cargo test -p ferros-runtime --test x86_64_subcore_smoke` passed (3 passed); `cargo test -p ferros-runtime --test boundaries` passed (7 passed); `cargo test -p ferros-x86_64-scaffold` passed (5 passed); `cargo check -p ferros-x86_64-scaffold --no-default-features` passed; `cargo test -p ferros-core foundation_surface_` passed (4 passed).
+- Claims added: runtime seam composition now has an explicit adapter boundary for transition plus executor plus bus orchestration; scaffold architecture contracts now include one explicit kernel handoff contract type linked to current artifact and checkpoint vocabulary.
+- Claims explicitly not added: no bootloader success claim, no kernel boot success claim, no QEMU boot proof claim, no hardware bring-up claim, no gate closure claim, and no FERROS-native runtime claim.
+- Blocked lanes: none in this bounded packet.
+- Next queued follow-up: either add a bounded runtime adapter error-class rehearsal for malformed routing inputs, or add one additional scaffold contract for boot artifact provenance while preserving the same architecture-only non-claim boundary.
 
 ```json
 {
-  "wave_id": "2026-05-04-PACK-B-TARGET-BUILD-AND-G4-EVIDENCE-RECONCILIATION",
+  "wave_id": "X86-SUBCORE-CYCLE-2026-05-06-01",
   "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: the target build passed and touched-doc diagnostics stayed clean.",
-    "2_wave_tag": "Not triggered: the landed slice stays inside one new findings packet and the minimum launch-truth surfaces that refer to it.",
-    "3_diff_overrun": "Not triggered: the landed diff stays within one findings file plus the launch, hardware-reference, status, gate, and run-log bookkeeping surfaces.",
-    "4_track_boundary": "Not triggered: no new product or runtime code was changed; this was evidence capture plus truth-sync only.",
-    "5_run_length_cap": "Not triggered: this was one bounded G4 closeout-prep slice.",
-    "6_escalation_chain": "Not triggered: once the target build passed, the remaining work was local evidence normalization only."
+    "1_validation_failed": "Not triggered: all targeted runtime, scaffold, and foundation checks passed.",
+    "2_wave_tag": "Not triggered: this bounded code-track packet had no P0, gate-close, solo, or frozen-schema tag.",
+    "3_diff_overrun": "Not triggered: code changes stayed in declared runtime and scaffold anchors plus declared truth-sync surfaces.",
+    "4_track_boundary": "Not triggered: execution stayed inside code track.",
+    "5_run_length_cap": "Not triggered: single bounded micro-cycle.",
+    "6_escalation_chain": "Not triggered: validator pre-flight and post-flight passed with no triage escalation required."
   },
   "decision": "stop-clean",
-  "rationale": "The current launch packet is now evidence-complete under ADR-028, leaving only the release tag as the remaining closeout action."
-}
-```
-
----
-## 2026-05-04 - ADR-028-AND-G4-CORE-TIGHTENING
-
-- Selected item: formalize the core-launch versus module-lane decision and tighten the launch evidence docs around the new install bar
-- Result: Stop-clean. ADR-028 is now accepted and the repo truth now records that `v0.2.0` is core FERROS on real hardware, that Home Assistant and future local LLM or external LLM API work are optional module lanes, and that strict unmanaged installs are deferred until after coordinated lab rollout and later controlled test homes. The gate docs are also tighter: the current Pack B `homelab001` hardware anchor, first confirmed target-side provisioning date, and the Windows fresh-host coordinated reprovision packet are now explicitly recorded in `LAUNCH.md` and `docs/gates/G4.md`.
-- Files:
-  - `LAUNCH.md`
-  - `STATUS.md`
-  - `docs/adr/ADR-028-core-launch-and-optional-module-lanes.md`
-  - `docs/adr/_INDEX.md`
-  - `docs/adr/_ROADMAP.md`
-  - `docs/gates/G4.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-- Validation: touched-doc diagnostics stayed clean. This slice stayed in ADR, launch, gate, status, and roadmap surfaces only.
-- Claims added: the repo now has an accepted ADR for the module-lane split, a named current core hardware and provisioning anchor, and an explicit coordinated second-device reprovision record inside the launch gate.
-- Claims explicitly not added: no new hardware execution, no new code behavior, no G4 closure, and no unattended installer claim.
-- Blocked lanes: G4 still waits on any remaining unchecked core launch evidence and closeout bookkeeping, but no longer on Home Assistant-specific restoration as a launch blocker.
-- Next queued follow-up: commit this policy and ADR packet, then either close the remaining core G4 paperwork or start the first module-packaging research lane.
-
-```json
-{
-  "wave_id": "2026-05-04-ADR-028-AND-G4-CORE-TIGHTENING",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: this was a docs-only tightening slice and touched-doc diagnostics stayed clean.",
-    "2_wave_tag": "Not triggered: the landed diff stays inside ADR, launch, gate, status, run-log, and roadmap/index surfaces.",
-    "3_diff_overrun": "Not triggered: the landed slice stays within the minimum files needed to formalize the decision and tighten the evidence wording.",
-    "4_track_boundary": "Not triggered: no new hardware or code execution was performed in this slice.",
-    "5_run_length_cap": "Not triggered: this was one bounded policy-and-bookkeeping closeout pass.",
-    "6_escalation_chain": "Not triggered: once the ADR template and current evidence anchors were read, the needed decision and doc tightening were local and direct."
-  },
-  "decision": "stop-clean",
-  "rationale": "The repo now has an accepted record for the launch-boundary decision and tighter launch evidence wording that matches the current lab-first rollout plan."
-}
-```
-
----
-## 2026-05-04 - CORE-LAUNCH-RESET-AND-MODULE-LANE-SPLIT
-
-- Selected item: rewrite the launch policy surfaces so core FERROS readiness is the G4 blocker and optional integrations become module lanes
-- Result: Stop-clean. Repo truth now records that `v0.2.0` launch is core `ferros-hub` on real home hardware with consent, reboot-safe recovery, and a coordinated clean install path, while Home Assistant moves to an optional module lane instead of a current launch blocker. The rollout note now explicitly says strict unmanaged independent installs are deferred until after coordinated lab validation and later controlled test homes. The roadmap also now records local LLM runtimes and external LLM APIs as near-term candidate module lanes alongside or ahead of Home Assistant.
-- Files:
-  - `LAUNCH.md`
-  - `docs/adr/_ROADMAP.md`
-  - `docs/gates/G4.md`
-  - `docs/hub/reference-hardware.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-  - `STATUS.md`
-- Validation: touched-doc diagnostics stayed clean. The rewrite intentionally changes only launch-policy and rollout-definition surfaces; no crate, schema, or hardware findings files were modified.
-- Claims added: core G4 no longer depends on Home Assistant evidence, strict unmanaged independent installs are no longer part of the immediate launch blocker set, and optional module-lane planning now names Home Assistant plus local LLM or external LLM API work explicitly.
-- Claims explicitly not added: no G4 closure, no new hardware evidence, no new code behavior, and no retirement of the existing Home Assistant findings packets.
-- Blocked lanes: G4 still waits on the remaining core launch evidence, including the coordinated clean-install row and any remaining hardware or packaging bookkeeping that has not yet been filled in the gate file.
-- Next queued follow-up: truth-sync the existing D1 or Pack B evidence into any remaining core G4 rows, or start the first module-system ADR or research note from the newly recorded backlog items.
-
-```json
-{
-  "wave_id": "2026-05-04-CORE-LAUNCH-RESET-AND-MODULE-LANE-SPLIT",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: this was a docs-only policy reset and touched-doc diagnostics stayed clean.",
-    "2_wave_tag": "Not triggered: the landed diff stays inside launch, gate, hardware-runway, roadmap, status, and run-log truth surfaces.",
-    "3_diff_overrun": "Not triggered: the landed slice stays within the minimum policy and bookkeeping surfaces required to keep the repo internally consistent.",
-    "4_track_boundary": "Not triggered: no new hardware or code execution was performed in this slice.",
-    "5_run_length_cap": "Not triggered: this was one bounded launch-definition rewrite.",
-    "6_escalation_chain": "Not triggered: the controlling issue was the written launch policy itself, and the first doc pass was enough to reset that boundary cleanly."
-  },
-  "decision": "stop-clean",
-  "rationale": "The repo now matches the intended product direction: raw FERROS core is the launch target, while Home Assistant and future LLM-facing work are module lanes rather than current launch blockers."
-}
-```
-
----
-## 2026-05-04 - PACK-C SESSION 06 WINDOWS FRESH-HOST IMPORT
-
-- Selected item: truth-sync the operator-supplied Windows fresh-host evidence packet against the homelab Home Assistant deployment
-- Result: Stop-clean. Repo truth now records that FERROS revision `aafc16bc64012f7fee8fb2a2e2845015b5f6f615` built and ran on a separate Windows host after a stable toolchain update, that a fresh explicit profile path and temp-rooted local state root were used for the successful packet, that one manual `remote-report-state` call created `sensor.ferros_ha_local_bridge_status` on `homelab001`, that restarting only the homelab `homeassistant` container removed that entity until one manual repair, and that a later hard Windows restart preserved the explicit profile file plus the already-restored entity without proving automatic boot republish.
-- Files:
-  - `docs/gates/G4.md`
-  - `docs/hardware/findings/FINDINGS-pack-c-session-06-windows-fresh-host.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-  - `STATUS.md`
-- Validation: the imported packet stays within documented operator-reported outputs only. The repo truth records the manual-repair requirement after Home Assistant restart and the claim ceiling that the later Windows host restart preserved an already-restored entity without proving automatic republish.
-- Claims added: the repo now captures the fresh Windows-host bring-up packet, the Rust toolchain update needed before that packet succeeded, the Home Assistant container restart failure mode, and the later Windows host-restart follow-up result.
-- Claims explicitly not added: no G4 closure, no automatic republish after Home Assistant restart, no automatic republish on Windows boot, and no independent install proof.
-- Blocked lanes: under the pre-reset launch definition, G4 still waited on no-manual-intervention restoration behavior and a true independent private-beta install on a second non-primary home setup.
-- Next queued follow-up: either implement automatic entity republish and rerun the Home Assistant restart and boot packets, or capture a real second-site install that follows only the published instructions.
-
-```json
-{
-  "wave_id": "2026-05-04-PACK-C-SESSION-06-WINDOWS-FRESH-HOST-IMPORT",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: this slice only truth-syncs an operator-reported packet and keeps the claim ceiling below any unsupported restoration or install claim.",
-    "2_wave_tag": "Not triggered: the landed diff stays inside one new findings packet and the minimum shared truth surfaces that refer to it.",
-    "3_diff_overrun": "Not triggered: the landed diff stays within one findings file plus the G4, status, and run-log bookkeeping surfaces.",
-    "4_track_boundary": "Not triggered: no new hardware session was executed from this host; this is only the import of already-run evidence.",
-    "5_run_length_cap": "Not triggered: this was one bounded truth-sync slice.",
-    "6_escalation_chain": "Not triggered: the Windows packet already separated the discarded setup attempts from the successful evidence run and from the later host-restart follow-up."
-  },
-  "decision": "stop-clean",
-  "rationale": "The repo now reflects what the separate Windows host did prove and what it still does not prove, without collapsing fresh-host evidence into a false independent-install or auto-restore claim."
+  "rationale": "The requested bounded cycle objective was completed with evidence-backed runtime and scaffold increments while preserving ADR-025 non-claims."
 }
 ```
 

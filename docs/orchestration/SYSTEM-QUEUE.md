@@ -27,12 +27,6 @@ None.
 
 ---
 
-## In Progress
-
-None.
-
----
-
 ## Blocked
 
 None.

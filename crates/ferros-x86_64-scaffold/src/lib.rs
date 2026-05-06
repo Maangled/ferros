@@ -98,11 +98,142 @@ pub const BOOT_CHECKPOINTS: [BootCheckpoint; 4] = [
     BootCheckpoint::FirstKernelCheckpointEmitted,
 ];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct KernelHandoffContract {
+    arch: &'static str,
+    kernel_artifact: ArtifactFamily,
+    handoff_checkpoint: BootCheckpoint,
+    first_kernel_checkpoint: BootCheckpoint,
+    scope: &'static str,
+}
+
+impl KernelHandoffContract {
+    pub const fn new(
+        arch: &'static str,
+        kernel_artifact: ArtifactFamily,
+        handoff_checkpoint: BootCheckpoint,
+        first_kernel_checkpoint: BootCheckpoint,
+        scope: &'static str,
+    ) -> Self {
+        Self {
+            arch,
+            kernel_artifact,
+            handoff_checkpoint,
+            first_kernel_checkpoint,
+            scope,
+        }
+    }
+
+    #[must_use]
+    pub const fn arch(&self) -> &'static str {
+        self.arch
+    }
+
+    #[must_use]
+    pub const fn kernel_artifact(&self) -> ArtifactFamily {
+        self.kernel_artifact
+    }
+
+    #[must_use]
+    pub const fn handoff_checkpoint(&self) -> BootCheckpoint {
+        self.handoff_checkpoint
+    }
+
+    #[must_use]
+    pub const fn first_kernel_checkpoint(&self) -> BootCheckpoint {
+        self.first_kernel_checkpoint
+    }
+
+    #[must_use]
+    pub const fn scope(&self) -> &'static str {
+        self.scope
+    }
+}
+
+pub const X86_64_KERNEL_HANDOFF_CONTRACT: KernelHandoffContract = KernelHandoffContract::new(
+    TARGET_ARCH,
+    ArtifactFamily::KernelImage,
+    BootCheckpoint::KernelHandoffAttempted,
+    BootCheckpoint::FirstKernelCheckpointEmitted,
+    "architecture-contract only; no execution or bring-up claim",
+);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BootArtifactLineageContract {
+    arch: &'static str,
+    boot_artifact: ArtifactFamily,
+    kernel_artifact: ArtifactFamily,
+    observation_artifact: ArtifactFamily,
+    checkpoint: BootCheckpoint,
+    scope: &'static str,
+}
+
+impl BootArtifactLineageContract {
+    pub const fn new(
+        arch: &'static str,
+        boot_artifact: ArtifactFamily,
+        kernel_artifact: ArtifactFamily,
+        observation_artifact: ArtifactFamily,
+        checkpoint: BootCheckpoint,
+        scope: &'static str,
+    ) -> Self {
+        Self {
+            arch,
+            boot_artifact,
+            kernel_artifact,
+            observation_artifact,
+            checkpoint,
+            scope,
+        }
+    }
+
+    #[must_use]
+    pub const fn arch(&self) -> &'static str {
+        self.arch
+    }
+
+    #[must_use]
+    pub const fn boot_artifact(&self) -> ArtifactFamily {
+        self.boot_artifact
+    }
+
+    #[must_use]
+    pub const fn kernel_artifact(&self) -> ArtifactFamily {
+        self.kernel_artifact
+    }
+
+    #[must_use]
+    pub const fn observation_artifact(&self) -> ArtifactFamily {
+        self.observation_artifact
+    }
+
+    #[must_use]
+    pub const fn checkpoint(&self) -> BootCheckpoint {
+        self.checkpoint
+    }
+
+    #[must_use]
+    pub const fn scope(&self) -> &'static str {
+        self.scope
+    }
+}
+
+pub const X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT: BootArtifactLineageContract =
+    BootArtifactLineageContract::new(
+        TARGET_ARCH,
+        ArtifactFamily::UefiApplication,
+        ArtifactFamily::KernelImage,
+        ArtifactFamily::SerialLog,
+        BootCheckpoint::KernelHandoffAttempted,
+        "architecture-lineage only; artifact provenance without execution proof",
+    );
+
 #[cfg(test)]
 mod tests {
     use super::{
-        checkpoint_label, foundation_ready, ArtifactFamily, ARTIFACT_CONTRACTS,
+        checkpoint_label, foundation_ready, ArtifactFamily, BootCheckpoint, ARTIFACT_CONTRACTS,
         BOOT_CHECKPOINTS, FOUNDATION_MARKER, ROOT_POSTURE, TARGET_ARCH,
+        X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT, X86_64_KERNEL_HANDOFF_CONTRACT,
     };
 
     #[test]
@@ -136,5 +267,59 @@ mod tests {
     fn scaffold_preserves_the_portable_foundation_seam() {
         assert_eq!(FOUNDATION_MARKER, "foundation-ready");
         assert!(foundation_ready());
+    }
+
+    #[test]
+    fn scaffold_x86_64_kernel_handoff_contract_reuses_contract_vocab() {
+        assert_eq!(X86_64_KERNEL_HANDOFF_CONTRACT.arch(), TARGET_ARCH);
+        assert_eq!(
+            X86_64_KERNEL_HANDOFF_CONTRACT.kernel_artifact(),
+            ArtifactFamily::KernelImage
+        );
+        assert_eq!(
+            X86_64_KERNEL_HANDOFF_CONTRACT.handoff_checkpoint(),
+            BootCheckpoint::KernelHandoffAttempted
+        );
+        assert_eq!(
+            X86_64_KERNEL_HANDOFF_CONTRACT.first_kernel_checkpoint(),
+            BootCheckpoint::FirstKernelCheckpointEmitted
+        );
+    }
+
+    #[test]
+    fn scaffold_x86_64_kernel_handoff_contract_states_non_claim_scope() {
+        assert_eq!(
+            X86_64_KERNEL_HANDOFF_CONTRACT.scope(),
+            "architecture-contract only; no execution or bring-up claim"
+        );
+    }
+
+    #[test]
+    fn scaffold_x86_64_boot_artifact_lineage_contract_reuses_artifact_vocab() {
+        assert_eq!(X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT.arch(), TARGET_ARCH);
+        assert_eq!(
+            X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT.boot_artifact(),
+            ArtifactFamily::UefiApplication
+        );
+        assert_eq!(
+            X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT.kernel_artifact(),
+            ArtifactFamily::KernelImage
+        );
+        assert_eq!(
+            X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT.observation_artifact(),
+            ArtifactFamily::SerialLog
+        );
+        assert_eq!(
+            X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT.checkpoint(),
+            BootCheckpoint::KernelHandoffAttempted
+        );
+    }
+
+    #[test]
+    fn scaffold_x86_64_boot_artifact_lineage_contract_states_non_claim_scope() {
+        assert_eq!(
+            X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT.scope(),
+            "architecture-lineage only; artifact provenance without execution proof"
+        );
     }
 }

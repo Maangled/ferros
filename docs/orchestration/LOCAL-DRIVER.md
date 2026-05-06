@@ -1,3 +1,12 @@
+> **SHIM — superseded.** This file is preserved for link stability. It is not the active policy source.
+> - For all stable rules (lane ceilings, stop conditions, failure handling, gatekeeper enum), see [`ORCHESTRATION-POLICY.md`](ORCHESTRATION-POLICY.md).
+> - For all workflow (operating loop, mode selection, batch rhythm, human re-entry), see [`ORCHESTRATION-EXECUTION.md`](ORCHESTRATION-EXECUTION.md).
+> - For the full document index, see [`AUTHORITY-MAP.md`](AUTHORITY-MAP.md).
+>
+> **Shim lifespan:** to be removed after all active REENTRY packets and WAVE-QUEUE items that reference this file are closed or updated. Do not remove while any live operational packet still carries `Authority: docs/orchestration/LOCAL-DRIVER.md`.
+
+---
+
 # FERROS Local Driver Pattern
 
 This is the local operating pattern for running repeatable FERROS orchestration waves without pretending custom agents are background daemons.
