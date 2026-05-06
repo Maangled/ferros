@@ -1,12 +1,12 @@
 # FERROS Batch Mode
 
-Batch Mode is an explicit, user-invoked operating mode that coexists with the existing Interactive Mode defined in `LOCAL-DRIVER.md`. Neither mode alters the lane policy (≤8 repo-editing lanes, ≤12 total). Batch Mode changes **how many queue items the driver processes per invocation**, not how each individual wave executes.
+Batch Mode is the default execution posture for queue-backed implementation work. It coexists with the existing Interactive Mode defined in `LOCAL-DRIVER.md`. Neither mode alters the lane policy (≤8 repo-editing lanes, ≤12 total). Batch Mode changes **how many queue items the driver processes per invocation**, not how each individual wave executes.
 
 ---
 
 ## Modes
 
-### Interactive Mode (default today)
+### Interactive Mode
 
 One wave per invocation. The driver runs one Ready item and stops. The human re-invokes for the next wave.
 
@@ -15,22 +15,47 @@ Interactive Mode is **required** when any of the following is true:
 - Wave is tagged `gate-close`.
 - Wave touches a frozen schema (`schemas/profile.v0.json`, `schemas/capability-grant.v0.json`).
 - Wave is tagged `solo: true`.
-- The current invocation is user-directed work rather than queue execution, such as a requested product direction, message, or specific choice that only the user can authorise.
+- The current invocation is question-driven rather than execution-driven, such as a planning question, code question, product-direction question, requested message, or specific choice that only the user can authorise, and the question itself is the requested outcome.
 - The agent is looping, stuck, or needs external or user-grounded input that the repo and tool surface cannot supply.
 - The wave requires a physical-world action the agent cannot perform directly.
-- The user has not explicitly requested Batch Mode.
 
-Interactive Mode is the safe default. It is not deprecated by Batch Mode.
+Interactive Mode is not deprecated by Batch Mode. It is the required posture for question-driven or authority-sensitive work.
 
-### Batch Mode (new)
+### Batch Mode (default execution posture)
 
 The driver may continue processing Ready waves sequentially — without waiting for a human re-invocation between them — until any stop condition fires (see below).
 
-**To invoke Batch Mode:** include explicit instruction in the driver invocation, e.g. "Run the next batch of code-track waves." or "Run Batch Mode on the system queue."
+Batch Mode applies by default to execution-oriented invocations unless an Interactive-only condition is present. Explicit instruction is still useful when the user wants to scope or steer the run, e.g. "Run the next batch of code-track waves." or "Run Batch Mode on the system queue."
 
 Batch Mode processes `size: S` waves by default. `size: L` waves are eligible when the orchestrator runs the full review stack for that wave: Lane Architect, builder lane(s), validator, scope or claim rationalization, Gatekeeper, then top-level orchestrator authorization.
 
-`size: L` does **not** by itself require human approval. Human re-entry is reserved for Interactive-only conditions: frozen-schema or gate-close work, user-directed authority questions, repeated failure loops or missing external input, and physical-world actions.
+`size: L` does **not** by itself require human approval. Human re-entry is reserved for Interactive-only conditions: frozen-schema or gate-close work, question-driven or user-authority work, repeated failure loops or missing external input, and physical-world actions.
+
+### Mixed invocations: questions plus execution
+
+Not every user question forces Interactive Mode. The controlling distinction is whether the question is the requested outcome or just a light preface to continued execution.
+
+Treat the invocation as **Batch Mode** when the user is still clearly directing execution and the question is lightweight, bounded, or deferrable, for example:
+- "Give me a progress update and then proceed."
+- "Proceed and lay out the next batches leading up to opening another writer lane."
+- "Keep going, and tell me where we are first."
+
+In those mixed invocations:
+- Give the brief answer first if it is cheap and local.
+- If the answer would require broader digging or consume too much context, compress it aggressively or use a read-only subagent to prepare it.
+- Then continue the batch in the same response without waiting for a second user re-invocation.
+
+Treat the invocation as **Interactive Mode** when the question is itself the requested deliverable, or when answering it requires a user-authority decision, product-direction choice, or a deeper investigative pass that would materially interrupt execution.
+
+### Response shape during Batch Mode
+
+Batch Mode replies should optimize for continued execution rather than repeated checkpoint prompts.
+
+- If the user gives a direct implementation goal with no real question, keep running sequential batches until a hard stop, a meaningful handoff boundary, or the stated goal is reached.
+- During a continuing run, progress updates should stay brief unless the user explicitly asks for depth.
+- Close an execution-oriented run with an executive summary when the batch reaches the requested goal, a human-test boundary, or another real handoff surface.
+- Do not end execution-oriented replies with option menus or branching choice lists.
+- If the agent needs a sanity break before proceeding, end with a short summary, the concrete next plan, and one direct proceed question rather than a multi-option menu.
 
 The **target planning width** for Batch Mode runs is 8 waves per batch, matching the queue backfill depth this document is designed to support. The editing-lane ceiling is now 8, matching this planning target, after two consecutive conditional-pass Batch Mode runs were recorded (BATCH-2026-04-27 + BATCH-2026-04-27-B). See `LOCAL-DRIVER.md` for the revert clause.
 
@@ -223,6 +248,6 @@ The verdict is set by the human during doc-batch review. The gatekeeper's `decis
 
 ## Relationship to LOCAL-DRIVER.md
 
-Batch Mode layers on top of the current default Interactive Mode. All existing lane policy rules, recursion limits, failure-handling routes, and queue discipline rules from `LOCAL-DRIVER.md` apply unchanged inside every wave that runs within a batch.
+Batch Mode layers on top of the execution model described in `LOCAL-DRIVER.md`. All existing lane policy rules, recursion limits, failure-handling routes, and queue discipline rules from `LOCAL-DRIVER.md` apply unchanged inside every wave that runs within a batch.
 
 Do not delete or override any rule in `LOCAL-DRIVER.md` to accommodate Batch Mode. Batch Mode is an additive scheduling layer, not a replacement execution model.

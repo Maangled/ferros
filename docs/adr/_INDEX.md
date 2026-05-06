@@ -86,6 +86,7 @@ For program rules, see [ADR-022-decision-program-governance.md](./ADR-022-decisi
 | [ADR-033](./ADR-033-home-topology-and-onramp-source-lineage.md) | Home topology and onramp source lineage (Draft) | Scaffolds Home-Hub topology and source-lineage presentation without identity-truth drift |
 | [ADR-034](./ADR-034-arena-non-evidentiary-runtime-boundary.md) | Arena non-evidentiary runtime boundary (Draft) | Scaffolds the rule that Arena output stays staged until explicitly accepted |
 | [ADR-035](./ADR-035-governance-and-merit-signals-are-research-only.md) | Governance and merit signals are research-only (Draft) | Quarantines ranking or authority motifs from becoming product policy prematurely |
+| [ADR-036](./ADR-036-host-touchscreen-pilot-and-driver-lineage-cards.md) | Host touchscreen pilot and driver-lineage cards (Draft) | Scaffolds how Linux-host touchscreen sessions record connector and driver state now, while deferring subcore driver integrity and card/deck audit automation |
 
 ---
 

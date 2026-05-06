@@ -4653,6 +4653,68 @@ mod tests {
         assert!(html.contains("data-profile-action=\"show\""));
         assert!(html.contains("lifecycle-submit-button"));
         assert!(html.contains("lifecycle-arm-checkbox"));
+        assert!(html.contains("data-module=\"LifecycleControlCard\""));
+        assert!(html.contains("data-module=\"LifecycleOutcomeCard\""));
+        assert!(html.contains("data-module=\"ProposedMaterialCard\""));
+        assert!(html.contains("data-module=\"ReceiptStrip\""));
+        assert!(html.contains("data-module=\"ConsentBoundaryCard\""));
+        assert!(html.contains("data-module=\"RecoveryStateCard\""));
+        assert!(html.contains("data-module=\"TouchAnchorStrip\""));
+        assert!(html.contains("id=\"home-hub-surface\""));
+        assert!(html.contains("id=\"forge-surface\""));
+        assert!(html.contains("id=\"arena-surface\""));
+        assert!(html.contains("id: 'homeHub'"));
+        assert!(html.contains("id: 'forge'"));
+        assert!(html.contains("id: 'arena'"));
+        assert!(html.contains("data-module=\"HomeHubTopologyCard\""));
+        assert!(html.contains("data-module=\"HomeHubBridgeProposalGroup\""));
+        assert!(html.contains("data-module=\"ForgePreviewCard\""));
+        assert!(html.contains("data-module=\"ForgeAuthoringStripCard\""));
+        assert!(html.contains("data-module=\"ExportReadinessCard\""));
+        assert!(html.contains("data-module=\"ArenaPreviewCard\""));
+        assert!(html.contains("data-module=\"ArenaLifecycleRehearsalStageCard\""));
+        assert!(html.contains("data-touch-jump=\"${escapeHtml(anchor.target)}\""));
+        assert!(html.contains("target: 'registry-panel'"));
+        assert!(html.contains("data-module=\"EvidenceBadge\""));
+        assert!(html.contains("data-module=\"SourceLineageCard\""));
+        assert!(html.contains("data-module=\"RunwayChecklistRowCard\""));
+        assert!(html.contains("data-module=\"ToolLaneCard\""));
+        assert!(html.contains("data-module=\"AgentStatusBadge\""));
+        assert!(html.contains("data-module=\"CapabilityPillList\""));
+        assert!(html.contains("data-module=\"AgentListRowCard\""));
+        assert!(html.contains("data-module=\"AgentDetailCard\""));
+        assert!(html.contains("data-module=\"GrantDetailCard\""));
+        assert!(html.contains("data-module=\"DenyEventDetailCard\""));
+        assert!(html.contains("data-module=\"HomeHubSurfaceCard\""));
+        assert!(html.contains("data-module=\"ForgeSurfaceCard\""));
+        assert!(html.contains("data-module=\"ArenaSurfaceCard\""));
+        assert!(html.contains("data-module=\"AgentRowCard\""));
+        assert!(html.contains("data-module=\"GrantRowCard\""));
+        assert!(html.contains("data-module=\"DenyLogRowCard\""));
+        assert!(html.contains("data-module=\"MetricCard\""));
+        assert!(html.contains("data-module=\"GrantsSurfaceCard\""));
+        assert!(html.contains("data-module=\"ProfileSurfaceCard\""));
+        assert!(html.contains("data-surface-state=\"empty\""));
+        for marker in [
+            "data-protected-chrome=\"top-edge\"",
+            "data-protected-chrome=\"bottom-edge\"",
+            "data-status-rail=\"primary\"",
+            "data-status-rail=\"secondary\"",
+            "data-panel-anchor=\"registry\"",
+            "data-panel-anchor=\"center\"",
+            "data-panel-anchor=\"inspector\"",
+            "data-panel-anchor=\"tools\"",
+            "data-panel-anchor=\"audit\"",
+            "data-panel-collapse=\"registry\"",
+            "data-panel-collapse=\"inspector\"",
+            "data-panel-collapse=\"tools\"",
+            "data-panel-collapse=\"audit\"",
+        ] {
+            assert!(
+                html.contains(marker),
+                "expected local shell html to include marker {marker}"
+            );
+        }
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);
@@ -5010,6 +5072,23 @@ mod tests {
         assert!(html.contains("Profile show uses /profile without sending JSON-RPC"));
         assert!(html
             .contains("Lifecycle gate blocks an unarmed or missing-grant click before write RPC"));
+        assert!(html.contains("[data-protected-chrome=\"top-edge\"]"));
+        assert!(html.contains("[data-protected-chrome=\"status-rail\"][data-status-rail=\"primary\"]"));
+        assert!(html.contains("[data-protected-chrome=\"panel-header\"][data-panel-anchor=\""));
+        assert!(html.contains("[data-protected-chrome=\"collapse\"][data-panel-collapse=\""));
+        assert!(html.contains("Base shell exposes stable protected-chrome shell and status markers"));
+        assert!(html.contains("Major panel headers expose stable extraction anchors"));
+        assert!(html.contains("Collapse affordances expose stable extraction anchors"));
+        assert!(html.contains("Touch anchor strip exposes persistent section jumps for touch posture"));
+        assert!(html.contains("Eight route buttons are visible"));
+        assert!(html.contains("Registry list rows expose AgentListRowCard markers with stable data-agent-name selectors"));
+        assert!(html.contains("Runway surface exposes the consent boundary through the shared onramp boundary module"));
+        assert!(html.contains("Runway surface exposes operator recovery posture through the shared recovery module"));
+        assert!(html.contains("Runway checklist rows expose RunwayChecklistRowCard markers with stable data-runway-index mapping"));
+        assert!(html.contains("Home-Hub route activates"));
+        assert!(html.contains("Forge route activates"));
+        assert!(html.contains("Arena route activates"));
+        assert!(html.contains("Audit lifecycle surfaces expose shared lifecycle-card modules while preserving the existing lifecycle controls"));
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);

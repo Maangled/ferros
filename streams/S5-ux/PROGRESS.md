@@ -4,6 +4,14 @@ Reverse-chronological. Append a dated entry at the top per session.
 
 ---
 
+## 2026-05-05 - Cycle delta: side-panel and runway row-card extraction proofed
+
+- Landed a bounded extraction slice in `site/agent-center-shell.html`: side-panel agent rows now render through `AgentListRowCard` and runway checklist rows now render through `RunwayChecklistRowCard`, while preserving existing row semantics and the `data-runway-index` selection seam.
+- Extended `harnesses/localhost-shell-acceptance-harness.html` with direct row-card proof checks: registry rows now assert `AgentListRowCard` marker parity with `data-agent-name`, and runway rows now assert `RunwayChecklistRowCard` markers with stable sequential `data-runway-index` mapping.
+- Extended served-asset contract assertions in `crates/ferros-node/src/lib.rs` so `shell_route_serves_local_shell_html` and `shell_route_serves_localhost_acceptance_harness` lock row-card coverage on the embedded shell and harness assets.
+- Proof IDs for this cycle: `L2-ALRC-2026-05-05` (AgentListRowCard), `L3-RCRC-2026-05-05` (RunwayChecklistRowCard), `L6-H9-CONTRACT-2026-05-05` (asset+harness checks). Truth-sync result: aligned on owner surfaces for this bounded slice with no L0 movement.
+- Next bounded target: evaluate one additional inline-row extraction only if it is isolated to one shared-module member and can be closed with matching contract plus H9 marker proof in the same cycle.
+
 ## 2026-04-30 - Existing runway route claim ceiling made explicit
 
 - Extended `site/agent-center-shell.html` so the existing runway route now says the read-only `/runway-summary.json` surface remains display-only, non-evidentiary, and free of remote-transport or G4-closure claims while preserving the existing selected-agent lifecycle bar and local `/profile` slice elsewhere on the shell.

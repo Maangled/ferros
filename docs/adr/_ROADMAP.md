@@ -15,6 +15,7 @@ This note records the ADR backlog state after the `v0.2.0` closeout and the firs
 - **ADR-028** - Core launch boundary and optional module lanes. Accepted.
 - **ADR-029** - Human-operator session orchestration and evidence flow. Accepted. Formalizes the Human Test Backlog, coordinator triage, and evidence closure loop used by the next UX lane.
 - **ADR-030 through ADR-035** - Draft scaffolds for proposed material lifecycle, evidence badges, tool-lane disclosures, home-topology lineage, Arena non-evidentiary boundaries, and research-only governance signals.
+- **ADR-036** - Draft scaffold for Linux-host touchscreen pilot evidence and driver-lineage cards. Keeps current host-driver use explicit while deferring subcore driver integrity work and later card/deck audit automation.
 - `docs/orchestration/INTERCONNECTED-OPERATOR-UX-PLAN.md` is now the active planning packet for the frontend-first operator UX program. Its PDF-derived motifs and quarantined ideas come from the external discovery packet at `/home/homelab001/apps/FERROS-PDF-DISCOVERY-NOTE.md`, which is planning input rather than ADR authority.
 - `docs/surfaces/MODULE-AND-FORK-SAFETY.md` now carries the non-ADR architecture note for protected shell layers, safe fork points, and current surface-fork boundaries.
 - `docs/operator-sessions/INSTRUCTION-TEMPLATE.md` now scaffolds named operator instruction packets for ready human-test items.

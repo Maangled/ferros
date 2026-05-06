@@ -22,11 +22,11 @@ The runtime is still the local Copilot chat surface. The repo stores the queue, 
 2. The driver reads `WAVE-QUEUE.md`, selects the next ready item, marks it in progress, and delegates to **FERROS Orchestrator Agent**.
 3. The orchestrator runs the default authorization chain: Lane Architect review, builder lane execution, validator review, risk or claim rationalization, Gatekeeper decision, then top-level orchestrator authorization.
 4. The orchestrator uses bounded recursion only when a lane earns one more planning pass, validates lane scope before launch, routes failed lanes through log triage, and returns the integration result.
-5. Reinvoke the driver for the next wave unless Batch Mode or Queue-Clear Mode is active.
+5. Continue automatically when Batch Mode or Queue-Clear Mode is active; stop after one wave when Interactive Mode is required.
 
-Interactive Mode is the single-wave posture. For Batch Mode (multiple Ready waves per invocation without per-wave human re-invocation), see `docs/orchestration/BATCH-MODE.md`. When the explicit objective is `clear the queue`, Batch Mode runs in **Queue-Clear** posture: it keeps draining the selected queue, emits doc-batch summaries as non-blocking review artifacts, and stops only when a hard Batch Mode stop condition fires or the scoped queue is empty. All lane policy rules below apply inside every wave regardless of mode.
+Interactive Mode is the single-wave posture for question-driven or other Interactive-only invocations. Batch Mode is the default for execution-oriented queue work. Mixed requests such as "give me a progress update and then proceed" stay in Batch Mode when the answer is brief and non-blocking; the answer should be given first, then execution should continue in the same response. For Batch Mode (multiple Ready waves per invocation without per-wave human re-invocation), see `docs/orchestration/BATCH-MODE.md`. When the explicit objective is `clear the queue`, Batch Mode runs in **Queue-Clear** posture: it keeps draining the selected queue, emits doc-batch summaries as non-blocking review artifacts, and stops only when a hard Batch Mode stop condition fires or the scoped queue is empty. All lane policy rules below apply inside every wave regardless of mode.
 
-Human re-entry is not the default safety mechanism. Subagent review is. Human re-entry is reserved for user-directed work, repeated failure or missing-input loops, physical-world actions, and true user-authority or product-direction questions. When human re-entry becomes a named operator step, route it through `OPERATOR-SESSION-PATTERN.md` and the Human Test Backlog instead of treating it as an ad hoc chat interruption.
+Human re-entry is not the default safety mechanism. Subagent review is. Human re-entry is reserved for question-driven work where the question itself is the requested outcome, repeated failure or missing-input loops, physical-world actions, and true user-authority or product-direction questions. When human re-entry becomes a named operator step, route it through `OPERATOR-SESSION-PATTERN.md` and the Human Test Backlog instead of treating it as an ad hoc chat interruption.
 
 ## Default lane policy
 
@@ -99,6 +99,17 @@ When Batch Mode or Queue-Clear Mode is active, reuse the same batch shape instea
 7. Perform serial truth sync only after the owner lanes land.
 8. Emit the claim ledger described in `docs/orchestration/BATCH-MODE.md`.
 
+## Mixed invocation handling
+
+When the user mixes a question with an execution directive, prefer the smallest response that preserves momentum.
+
+- If the question is cheap to answer locally, answer it briefly and continue execution in the same turn.
+- If the question needs broader repo reading, use a read-only subagent or compressed summary when possible rather than promoting the whole invocation to Interactive Mode.
+- If the question requires user authority, product-direction arbitration, or a costly deep-dive that would materially interrupt execution, treat the invocation as Interactive Mode.
+- If execution continues across multiple sequential batches, do not stop just to restate plans the user did not ask to inspect in detail.
+- End execution-oriented runs with a concise executive summary at the next meaningful handoff boundary, not with an options list.
+- If a sanity pause is required before continuing, ask one direct proceed question after a short summary and plan.
+
 ## Gatekeeper model intent
 
 The gatekeeper role (used inside Batch Mode between waves) is currently performed by the primary orchestrator model as an inline self-review step. This is a known limitation: the same model that authors the wave is also reviewing it.
@@ -111,7 +122,7 @@ Until that migration, the inline self-review posture is acceptable for `size: S`
 
 - No background autonomy after the chat turn ends.
 - No GitHub-hosted execution of the `.agent.md` stack.
-- No silent batching of multiple queue items unless the user explicitly invokes Batch Mode or explicitly asks to clear or drain a queue (see `docs/orchestration/BATCH-MODE.md`).
+- No unbounded batching outside the Batch Mode stop conditions, and no batching when the invocation is question-driven or otherwise Interactive-only (see `docs/orchestration/BATCH-MODE.md`).
 
 ## Queue discipline
 

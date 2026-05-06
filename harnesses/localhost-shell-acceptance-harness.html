@@ -279,12 +279,51 @@ async function runJourney() {
   addResult('Setup', 'Shell reaches ready/live state', ready, ready ? 'connection-state=ready, rpc-health=' + doc.getElementById('rpc-health').textContent : '', ready ? '' : 'shell did not reach ready state');
   if (!ready) return;
 
+  var shellChromeSelectors = [
+    '[data-protected-chrome="top-edge"]',
+    '[data-protected-chrome="bottom-edge"]',
+    '[data-protected-chrome="status-rail"][data-status-rail="primary"]',
+    '[data-protected-chrome="status-rail"][data-status-rail="secondary"]'
+  ];
+  var missingShellChromeSelectors = shellChromeSelectors.filter(function(selector) {
+    return !doc.querySelector(selector);
+  });
+  addResult('A: Protected Chrome', 'Base shell exposes stable protected-chrome shell and status markers', missingShellChromeSelectors.length === 0, missingShellChromeSelectors.length === 0 ? 'top edge, bottom edge, and both status rails are marked' : '', missingShellChromeSelectors.length === 0 ? '' : 'missing selectors: ' + missingShellChromeSelectors.join(', '));
+
+  var panelHeaderAnchors = ['registry', 'center', 'inspector', 'tools', 'audit'];
+  var missingPanelHeaderAnchors = panelHeaderAnchors.filter(function(anchor) {
+    return !doc.querySelector('[data-protected-chrome="panel-header"][data-panel-anchor="' + anchor + '"]');
+  });
+  addResult('A: Protected Chrome', 'Major panel headers expose stable extraction anchors', missingPanelHeaderAnchors.length === 0, missingPanelHeaderAnchors.length === 0 ? 'registry, center, inspector, tools, and audit headers are marked' : '', missingPanelHeaderAnchors.length === 0 ? '' : 'missing panel anchors: ' + missingPanelHeaderAnchors.join(', '));
+
+  var collapseAnchors = ['registry', 'inspector', 'tools', 'audit'];
+  var missingCollapseAnchors = collapseAnchors.filter(function(anchor) {
+    return !doc.querySelector('[data-protected-chrome="collapse"][data-panel-collapse="' + anchor + '"]');
+  });
+  addResult('A: Protected Chrome', 'Collapse affordances expose stable extraction anchors', missingCollapseAnchors.length === 0, missingCollapseAnchors.length === 0 ? 'registry, inspector, tools, and audit collapse buttons are marked' : '', missingCollapseAnchors.length === 0 ? '' : 'missing collapse anchors: ' + missingCollapseAnchors.join(', '));
+
+  var touchJumpTargets = ['registry-panel', 'center-panel', 'inspector-panel', 'tools-panel', 'audit-panel'];
+  var touchAnchorStrip = doc.querySelector('[data-module="TouchAnchorStrip"]');
+  var missingTouchJumpButtons = touchJumpTargets.filter(function(target) {
+    return !doc.querySelector('[data-touch-jump="' + target + '"]');
+  });
+  addResult('A: Protected Chrome', 'Touch anchor strip exposes persistent section jumps for touch posture', !!touchAnchorStrip && missingTouchJumpButtons.length === 0, !!touchAnchorStrip ? 'touch anchor strip present with panel jumps' : '', !!touchAnchorStrip && missingTouchJumpButtons.length === 0 ? '' : 'missing touch anchors: ' + missingTouchJumpButtons.join(', '));
+
   var routeButtons = doc.querySelectorAll('[data-route]');
-  addResult('A: Registry', 'Five route buttons are visible', routeButtons.length === 5, 'found ' + routeButtons.length + ' route buttons');
+  addResult('A: Registry', 'Eight route buttons are visible', routeButtons.length === 8, 'found ' + routeButtons.length + ' route buttons');
 
   var agentRows = doc.querySelectorAll('[data-agent-name]');
   addResult('A: Registry', 'Live agent list renders the reference agents', agentRows.length >= 2, 'agent rows=' + agentRows.length);
+  var agentListRowCardsVisible = doc.querySelectorAll('[data-module="AgentListRowCard"][data-agent-name]').length === agentRows.length && agentRows.length > 0;
+  addResult('A: Registry', 'Registry list rows expose AgentListRowCard markers with stable data-agent-name selectors', agentListRowCardsVisible, agentListRowCardsVisible ? 'agent list row-card markers match rendered rows' : '', agentListRowCardsVisible ? '' : 'agent list rows are missing AgentListRowCard markers or data-agent-name parity');
   addResult('A: Registry', 'Agent count pill matches the rendered list', doc.getElementById('agent-count-pill').textContent === String(agentRows.length), 'pill=' + doc.getElementById('agent-count-pill').textContent + ', rows=' + agentRows.length);
+  var metricCards = doc.querySelectorAll('[data-module="MetricCard"]');
+  var metricNames = ['agents', 'grants', 'denies', 'connection'];
+  var missingMetricNames = metricNames.filter(function(name) {
+    return !doc.querySelector('[data-module="MetricCard"][data-metric-name="' + name + '"]');
+  });
+  addResult('A: Registry', 'Center panel exposes four MetricCard markers', metricCards.length === 4, metricCards.length === 4 ? 'metric cards=4' : '', metricCards.length === 4 ? '' : 'expected four metric cards, found ' + metricCards.length);
+  addResult('A: Registry', 'Metric cards expose stable data-metric-name selectors', missingMetricNames.length === 0, missingMetricNames.length === 0 ? 'agents, grants, denies, connection' : '', missingMetricNames.length === 0 ? '' : 'missing metric names: ' + missingMetricNames.join(', '));
 
   try {
     resetRpcMonitor();
@@ -369,8 +408,11 @@ async function runJourney() {
       }, 5000);
       addResult('C: Grants', 'Missing profile path degrades to an empty grant view instead of failing the shell', stillReady, stillReady ? 'shell stayed ready after missing profile path refresh' : '', stillReady ? '' : 'shell dropped out of ready state after missing profile path refresh');
 
-      var grantEmpty = doc.getElementById('grants-surface').textContent.indexOf('No grant rows') !== -1;
+      var grantsSurface = doc.getElementById('grants-surface');
+      var grantEmpty = grantsSurface.textContent.indexOf('No grant rows') !== -1;
       addResult('C: Grants', 'Grants surface renders the empty-state note for missing profile state', grantEmpty, grantEmpty ? 'empty-state copy visible' : '', grantEmpty ? '' : 'expected empty-state note was not rendered');
+      var grantStateMarkerValid = grantsSurface.dataset.surfaceState === 'empty';
+      addResult('C: Grants', 'Grants surface exposes deterministic data-surface-state marker', grantStateMarkerValid, grantStateMarkerValid ? 'state=' + grantsSurface.dataset.surfaceState : '', grantStateMarkerValid ? '' : 'expected grants surface state marker to be empty for missing profile path');
     }
   } catch (error) {
     addResult('C: Grants', 'Grants route journey completes', false, '', error.message);
@@ -448,7 +490,12 @@ async function runJourney() {
       addResult('C: Runway', 'Runway request carries the selected profile path', selectedProfilePathRequested, 'urls=' + (runwayUrls.join(', ') || 'none'), selectedProfilePathRequested ? '' : 'runway fetch did not include the selected profilePath query');
       addResult('C: Runway', 'Runway surface renders selected profile path and checkpoint progress', selectedProfilePathVisible && checkpointVisible, 'surface=' + (runwayText || 'missing'), selectedProfilePathVisible && checkpointVisible ? '' : 'runway surface did not render the selected profile path and pending checkpoint progress');
       var checklistVisible = runwayText.indexOf('power cycle') !== -1 || runwayText.indexOf('powercyclestatus') !== -1;
+      var runwayChecklistRows = doc.getElementById('runway-surface').querySelectorAll('[data-module="RunwayChecklistRowCard"][data-runway-index]');
+      var runwayChecklistModulesVisible = runwayChecklistRows.length > 0 && Array.prototype.every.call(runwayChecklistRows, function(row, index) {
+        return Number(row.dataset.runwayIndex) === index;
+      });
       addResult('C: Runway', 'Runway surface renders checklist state', checklistVisible, checklistVisible ? 'runway checklist visible' : '', checklistVisible ? '' : 'runway checklist copy did not render');
+      addResult('C: Runway', 'Runway checklist rows expose RunwayChecklistRowCard markers with stable data-runway-index mapping', runwayChecklistModulesVisible, runwayChecklistModulesVisible ? 'runway checklist rows preserve sequential data-runway-index mapping' : '', runwayChecklistModulesVisible ? '' : 'runway checklist rows are missing RunwayChecklistRowCard markers or data-runway-index mapping drifted');
       addResult('C: Runway', 'Runway tools and audit copy keep restart-aware context on the read-only /runway-summary.json route', runwayToolsCopyVisible && runwayAuditCopyVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayToolsCopyVisible && runwayAuditCopyVisible ? '' : 'runway tools/audit copy lost the restart-aware /runway-summary.json guidance');
       addResult('C: Runway', 'Runway route copy keeps remote transport and G4 closure claims closed', runwayClaimCeilingVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayClaimCeilingVisible ? '' : 'runway route copy lost the explicit no-remote-transport or no-G4-closure ceiling');
       addResult('C: Runway', 'Runway tools and audit copy keep proposed material on the same read-only /runway-summary.json route', runwayProposalCopyVisible, 'tools=' + (toolsCopy || 'missing') + '; audit=' + (auditCopy || 'missing'), runwayProposalCopyVisible ? '' : 'runway tools/audit copy lost the pending-consent proposed-material read-only ceiling');
@@ -459,8 +506,24 @@ async function runJourney() {
       });
       var runwayProposalLocalOnly = runwayText.indexOf('local-only') !== -1 && runwayText.indexOf('non-evidentiary') !== -1;
       var runwayProposalReadOnly = doc.getElementById('runway-surface').querySelectorAll('button, input, select, textarea, form').length === 0;
+      var runwaySharedModulesVisible = !!doc.getElementById('runway-surface').querySelector('[data-module="ProposedMaterialCard"]')
+        && !!doc.getElementById('runway-surface').querySelector('[data-module="ReceiptStrip"]')
+        && doc.getElementById('runway-surface').querySelectorAll('[data-module="EvidenceBadge"]').length >= 6;
       addResult('C: Runway', 'Runway surface renders pending-consent proposed material as local-only non-evidentiary observation', runwayProposalVisible && runwayProposalLocalOnly, 'surface=' + (runwayText || 'missing'), runwayProposalVisible && runwayProposalLocalOnly ? '' : 'runway surface did not render the pending-consent proposed-material field set and local-only/non-evidentiary status');
       addResult('C: Runway', 'Runway surface keeps proposed material display-only with no in-surface controls', runwayProposalReadOnly, runwayProposalReadOnly ? 'runway surface contains no buttons or form controls' : '', runwayProposalReadOnly ? '' : 'runway surface exposed an unexpected control element during the proposed-material observation flow');
+      addResult('C: Runway', 'Runway surface exposes the first shared utility modules on the existing route', runwaySharedModulesVisible, runwaySharedModulesVisible ? 'shared module markers present for proposal, receipt, and badges' : '', runwaySharedModulesVisible ? '' : 'runway surface did not expose the first shared utility module markers on the live route');
+
+      var runwayBoundaryVisible = ['consent boundary', 'accept/reject surface closed on this shell', 'route-local artifact', 'audit seam required before canonical state can change'].every(function(marker) {
+        return runwayText.indexOf(marker) !== -1;
+      });
+      var runwayBoundaryModuleVisible = !!doc.getElementById('runway-surface').querySelector('[data-module="ConsentBoundaryCard"]');
+      addResult('C: Runway', 'Runway surface exposes the consent boundary through the shared onramp boundary module', runwayBoundaryModuleVisible && runwayBoundaryVisible, runwayBoundaryModuleVisible ? 'consent-boundary module marker present on runway surface' : '', runwayBoundaryModuleVisible && runwayBoundaryVisible ? '' : 'runway surface did not expose the consent-boundary module marker and boundary copy');
+
+      var runwayRecoveryVisible = ['operator recovery posture', 'current posture', 'reload status', 'recovery detail', 'next honest move'].every(function(marker) {
+        return runwayText.indexOf(marker) !== -1;
+      });
+      var runwayRecoveryModuleVisible = !!doc.getElementById('runway-surface').querySelector('[data-module="RecoveryStateCard"]');
+      addResult('C: Runway', 'Runway surface exposes operator recovery posture through the shared recovery module', runwayRecoveryModuleVisible && runwayRecoveryVisible, runwayRecoveryModuleVisible ? 'recovery-state module marker present on runway surface' : '', runwayRecoveryModuleVisible && runwayRecoveryVisible ? '' : 'runway surface did not expose the recovery-state module marker and recovery copy');
 
       var runwayDecisionVisible = ['local decision rehearsal receipt', 'proposalid', 'decisionlabel', 'decisiondetail', 'display only', 'not an executed consent event', 'not canonical state', 'not a grant', 'not home assistant proof'].every(function(marker) {
         return runwayText.indexOf(marker) !== -1;
@@ -470,10 +533,12 @@ async function runJourney() {
       var runwayHubRestartPresent = ['reloadstatus', 'snapshotpath', 'scope', 'evidence'].every(function(marker) {
         return runwayText.indexOf(marker) !== -1;
       });
+      var runwayHubRestartModuleVisible = !!doc.getElementById('runway-surface').querySelector('[data-module="SourceLineageCard"]');
       var runwayHubRestartPriorVisible = hubRestartPriorLabels.some(function(label) {
         return runwayText.indexOf(label) !== -1;
       }) || runwayText.indexOf('no prior hub restart observation fields were returned on this summary yet') !== -1;
       var runwayHubRestartMissing = runwayText.indexOf('this runway summary does not include optional hub restart context yet') !== -1;
+      addResult('C: Runway', 'Runway surface exposes the restart context through the shared source-lineage module', runwayHubRestartModuleVisible, runwayHubRestartModuleVisible ? 'source-lineage module marker present on runway surface' : '', runwayHubRestartModuleVisible ? '' : 'runway surface did not expose the shared source-lineage module marker');
       addResult('C: Runway', 'Runway surface renders restart-aware hub observation fields when present', runwayHubRestartPresent ? runwayHubRestartPriorVisible : 'skip', 'surface=' + (runwayText || 'missing'), runwayHubRestartPresent ? (runwayHubRestartPriorVisible ? '' : 'runway surface showed hub restart fields without any prior-field label or empty prior-field note') : 'restart context not present on this summary');
       addResult('C: Runway', 'Runway surface renders the optional hub restart fallback when restart context is absent', runwayHubRestartPresent ? 'skip' : runwayHubRestartMissing, runwayHubRestartPresent ? 'surface includes hub restart fields' : 'surface=' + (runwayText || 'missing'), runwayHubRestartPresent ? 'restart context present on this summary' : runwayHubRestartMissing ? '' : 'runway surface did not render the optional hub restart fallback note');
 
@@ -492,6 +557,16 @@ async function runJourney() {
       var runwayInspectorProposalLocalOnly = inspectorText.indexOf('local-only') !== -1 && inspectorText.indexOf('non-evidentiary') !== -1;
       addResult('C: Runway', 'Inspector renders the proposed-material field set on the existing runway route', runwayInspectorProposalVisible, 'inspector=' + (inspectorText || 'missing'), runwayInspectorProposalVisible ? '' : 'runway inspector did not render the pending-consent proposed-material field set');
       addResult('C: Runway', 'Inspector keeps proposal scope local-only and evidence non-evidentiary', runwayInspectorProposalLocalOnly, 'inspector=' + (inspectorText || 'missing'), runwayInspectorProposalLocalOnly ? '' : 'runway inspector did not keep the proposal scope/evidence inside the local-only non-evidentiary ceiling');
+
+      var runwayInspectorBoundaryVisible = ['consent boundary', 'accept/reject surface', 'route-local artifact', 'canonical state', 'boundary next step'].every(function(marker) {
+        return inspectorText.indexOf(marker) !== -1;
+      });
+      addResult('C: Runway', 'Inspector renders the consent-boundary field set on the runway route', runwayInspectorBoundaryVisible, 'inspector=' + (inspectorText || 'missing'), runwayInspectorBoundaryVisible ? '' : 'runway inspector did not render the consent-boundary field set');
+
+      var runwayInspectorRecoveryVisible = ['operator recovery posture', 'checkpoint state', 'reload status', 'recovery detail', 'next honest move'].every(function(marker) {
+        return inspectorText.indexOf(marker) !== -1;
+      });
+      addResult('C: Runway', 'Inspector renders the operator recovery field set on the runway route', runwayInspectorRecoveryVisible, 'inspector=' + (inspectorText || 'missing'), runwayInspectorRecoveryVisible ? '' : 'runway inspector did not render the operator recovery field set');
 
       var runwayInspectorDecisionVisible = ['hub decision rehearsal', 'local decision rehearsal receipt only', 'proposal id', 'decision label', 'decision detail', 'artifact path'].every(function(marker) {
         return inspectorText.indexOf(marker) !== -1;
@@ -513,6 +588,34 @@ async function runJourney() {
   }
 
   try {
+    await click(doc, '[data-route="homeHub"]', 'home-hub route button');
+    var homeHubRoute = await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('active-route-pill').textContent === 'homeHub'
+        && doc.getElementById('home-hub-surface').textContent.toLowerCase().indexOf('home-hub topology observation') !== -1;
+    }, 3000);
+    addResult('C: Home-Hub', 'Home-Hub route activates', homeHubRoute, homeHubRoute ? 'route=homeHub' : '', homeHubRoute ? '' : 'home-hub route did not activate');
+
+    if (homeHubRoute) {
+      var homeHubText = doc.getElementById('home-hub-surface').textContent.toLowerCase();
+      var homeHubVisible = homeHubText.indexOf('display only') !== -1
+        && homeHubText.indexOf('snapshot') !== -1
+        && homeHubText.indexOf('proposal') !== -1;
+      addResult('C: Home-Hub', 'Home-Hub surface renders topology, lineage, and proposal observation', homeHubVisible, homeHubVisible ? 'surface=' + homeHubText : '', homeHubVisible ? '' : 'home-hub surface did not render the expected topology and proposal observation copy');
+      var bridgeProposalGroupVisible = doc.querySelector('#home-hub-surface [data-module="HomeHubBridgeProposalGroup"]') !== null;
+      addResult('C: Home-Hub', 'Home-Hub surface exposes bridge/proposal group marker', bridgeProposalGroupVisible, bridgeProposalGroupVisible ? 'marker=HomeHubBridgeProposalGroup' : '', bridgeProposalGroupVisible ? '' : 'home-hub bridge/proposal group marker missing');
+
+      var homeHubInspectorText = doc.getElementById('inspector-content').textContent.toLowerCase();
+      var homeHubInspectorVisible = homeHubInspectorText.indexOf('bridge agent') !== -1
+        && homeHubInspectorText.indexOf('decision label') !== -1
+        && homeHubInspectorText.indexOf('snapshot path') !== -1;
+      addResult('C: Home-Hub', 'Inspector renders Home-Hub bridge and lineage detail', homeHubInspectorVisible, homeHubInspectorVisible ? 'inspector=' + homeHubInspectorText : '', homeHubInspectorVisible ? '' : 'home-hub inspector detail did not render the expected bridge and lineage fields');
+    }
+  } catch (error) {
+    addResult('C: Home-Hub', 'Home-Hub route journey completes', false, '', error.message);
+  }
+
+  try {
     await click(doc, '[data-route="profile"]', 'profile route button');
     var profileRoute = await waitFor(function() {
       doc = getDoc();
@@ -530,7 +633,7 @@ async function runJourney() {
       await click(doc, '[data-profile-action="show"]', 'profile show button');
       var profileSettled = await waitFor(function() {
         doc = getDoc();
-        return doc.getElementById('profile-surface').textContent.toLowerCase().indexOf('profile show') !== -1;
+        return doc.getElementById('profile-surface').dataset.surfaceState === 'loaded';
       }, 5000);
       var profileActions = observedProfileActions();
       var rpcMethods = observedRpcMethods();
@@ -538,6 +641,8 @@ async function runJourney() {
       addResult('C: Profile Adapter', 'Profile show uses /profile without sending JSON-RPC', profileOnly, 'profile=' + (profileActions.join(', ') || 'none') + '; rpc=' + (rpcMethods.join(', ') || 'none'), profileOnly ? '' : 'expected profile show to avoid /rpc');
 
       var profileSurfaceText = doc.getElementById('profile-surface').textContent.toLowerCase();
+      var profileStateMarkerValid = doc.getElementById('profile-surface').dataset.surfaceState === 'loaded';
+      addResult('C: Profile Adapter', 'Profile surface exposes deterministic data-surface-state marker', profileStateMarkerValid, profileStateMarkerValid ? 'state=loaded' : '', profileStateMarkerValid ? '' : 'profile surface state marker was not loaded after profile show');
       var structuredBlockedProfile = profileSurfaceText.indexOf('local profile read was blocked on /profile') !== -1 && profileSurfaceText.indexOf('reason not_found') !== -1;
       addResult('C: Profile Adapter', 'Profile surface renders structured blocked status and error detail', structuredBlockedProfile, structuredBlockedProfile ? 'surface=' + profileSurfaceText : '', structuredBlockedProfile ? '' : 'profile surface did not render the structured blocked summary and reason code');
 
@@ -570,6 +675,67 @@ async function runJourney() {
     }
   } catch (error) {
     addResult('C: Profile Adapter', 'Profile adapter route journey completes', false, '', error.message);
+  }
+
+  try {
+    var forgeBundlePath = '.tmp/h9-forge-' + Date.now() + '.bundle.json';
+    var ForgeFrameEvent = getFrameWindow().Event;
+    doc.getElementById('profile-bundle-input').value = forgeBundlePath;
+    doc.getElementById('profile-bundle-input').dispatchEvent(new ForgeFrameEvent('input', { bubbles: true }));
+    await click(doc, '[data-route="forge"]', 'forge route button');
+    var forgeRoute = await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('active-route-pill').textContent === 'forge'
+        && doc.getElementById('forge-surface').textContent.toLowerCase().indexOf('forge preview surface') !== -1;
+    }, 3000);
+    addResult('C: Forge', 'Forge route activates', forgeRoute, forgeRoute ? 'route=forge' : '', forgeRoute ? '' : 'forge route did not activate');
+
+    if (forgeRoute) {
+      var forgeText = doc.getElementById('forge-surface').textContent.toLowerCase();
+      var forgeVisible = forgeText.indexOf('preview-only') !== -1
+        && forgeText.indexOf('bundle target') !== -1
+        && forgeText.indexOf('route-local artifact') !== -1;
+      addResult('C: Forge', 'Forge surface renders preview-only bundle and artifact posture', forgeVisible, forgeVisible ? 'surface=' + forgeText : '', forgeVisible ? '' : 'forge surface did not render the expected preview-only bundle posture');
+      var forgeMarkerVisible = doc.querySelector('#forge-surface [data-module="ForgeAuthoringStripCard"]') !== null
+        && doc.querySelector('#forge-surface [data-module="ExportReadinessCard"]') !== null;
+      addResult('C: Forge', 'Forge surface exposes authoring and export readiness markers', forgeMarkerVisible, forgeMarkerVisible ? 'markers present' : '', forgeMarkerVisible ? '' : 'forge surface markers missing for authoring/export readiness');
+
+      var forgeInspectorText = doc.getElementById('inspector-content').textContent.toLowerCase();
+      var forgeInspectorVisible = forgeInspectorText.indexOf('bundle path') !== -1
+        && forgeInspectorText.indexOf('last profile action') !== -1
+        && forgeInspectorText.indexOf('artifact path') !== -1;
+      addResult('C: Forge', 'Inspector renders Forge preview detail', forgeInspectorVisible, forgeInspectorVisible ? 'inspector=' + forgeInspectorText : '', forgeInspectorVisible ? '' : 'forge inspector detail did not render the expected preview fields');
+    }
+  } catch (error) {
+    addResult('C: Forge', 'Forge route journey completes', false, '', error.message);
+  }
+
+  try {
+    await click(doc, '[data-route="arena"]', 'arena route button');
+    var arenaRoute = await waitFor(function() {
+      doc = getDoc();
+      return doc.getElementById('active-route-pill').textContent === 'arena'
+        && doc.getElementById('arena-surface').textContent.toLowerCase().indexOf('arena preview surface') !== -1;
+    }, 3000);
+    addResult('C: Arena', 'Arena route activates', arenaRoute, arenaRoute ? 'route=arena' : '', arenaRoute ? '' : 'arena route did not activate');
+
+    if (arenaRoute) {
+      var arenaText = doc.getElementById('arena-surface').textContent.toLowerCase();
+      var arenaVisible = arenaText.indexOf('non-evidentiary') !== -1
+        && arenaText.indexOf('selected agent') !== -1
+        && arenaText.indexOf('preview result handoff') !== -1;
+      addResult('C: Arena', 'Arena surface renders preview-only runtime posture', arenaVisible, arenaVisible ? 'surface=' + arenaText : '', arenaVisible ? '' : 'arena surface did not render the expected runtime-preview copy');
+      var arenaMarkerVisible = doc.querySelector('#arena-surface [data-module="ArenaLifecycleRehearsalStageCard"]') !== null;
+      addResult('C: Arena', 'Arena surface exposes lifecycle rehearsal stage marker', arenaMarkerVisible, arenaMarkerVisible ? 'marker=ArenaLifecycleRehearsalStageCard' : '', arenaMarkerVisible ? '' : 'arena lifecycle rehearsal marker missing');
+
+      var arenaInspectorText = doc.getElementById('inspector-content').textContent.toLowerCase();
+      var arenaInspectorVisible = arenaInspectorText.indexOf('selected agent') !== -1
+        && arenaInspectorText.indexOf('result class') !== -1
+        && arenaInspectorText.indexOf('operator recovery posture') !== -1;
+      addResult('C: Arena', 'Inspector renders Arena runtime posture detail', arenaInspectorVisible, arenaInspectorVisible ? 'inspector=' + arenaInspectorText : '', arenaInspectorVisible ? '' : 'arena inspector detail did not render the expected runtime posture fields');
+    }
+  } catch (error) {
+    addResult('C: Arena', 'Arena route journey completes', false, '', error.message);
   }
 
   try {
@@ -793,9 +959,19 @@ async function runJourney() {
   var privilegedLimitsVisible = doc.getElementById('audit-panel').textContent.indexOf('Privileged limits remain closed') !== -1;
   addResult('G: Audit Slot', 'Audit slot preserves the privileged-limit contract copy', privilegedLimitsVisible, privilegedLimitsVisible ? 'privileged-limit note visible' : '', privilegedLimitsVisible ? '' : 'privileged-limit audit note missing');
 
+  var toolLaneCardsVisible = doc.querySelectorAll('[data-module="ToolLaneCard"]').length >= 2;
   var auditCopy = textById(doc, 'intent-note-copy');
   var routeAwareAuditVisible = auditCopy.indexOf('agent.') !== -1 || auditCopy.indexOf('does not stage grant.create or grant.revoke') !== -1 || auditCopy.indexOf('deny entries remain read-only evidence') !== -1;
+  var lifecycleModulesVisible = !!doc.querySelector('[data-module="LifecycleControlCard"]#lifecycle-control')
+    && !!doc.querySelector('[data-module="LifecycleOutcomeCard"]')
+    && !!doc.getElementById('lifecycle-gate-copy')
+    && !!doc.getElementById('lifecycle-arm-checkbox')
+    && !!doc.getElementById('lifecycle-submit-button')
+    && !!doc.getElementById('lifecycle-control-state')
+    && !!doc.getElementById('lifecycle-outcome-copy');
+  addResult('G: Audit Slot', 'Tools and audit note surfaces expose the shared tool-lane module', toolLaneCardsVisible, toolLaneCardsVisible ? 'tool-lane module markers present on tools and audit notes' : '', toolLaneCardsVisible ? '' : 'shared tool-lane module markers missing from the tools/audit note surfaces');
   addResult('G: Audit Slot', 'Audit slot exposes route-scoped lifecycle-control copy', routeAwareAuditVisible, routeAwareAuditVisible ? 'audit=' + auditCopy : '', routeAwareAuditVisible ? '' : 'route-scoped audit copy missing from the audit slot');
+  addResult('G: Audit Slot', 'Audit lifecycle surfaces expose shared lifecycle-card modules while preserving the existing lifecycle controls', lifecycleModulesVisible, lifecycleModulesVisible ? 'lifecycle control/outcome module markers and lifecycle ids present' : '', lifecycleModulesVisible ? '' : 'shared lifecycle-card markers or existing lifecycle ids missing from the audit slot');
 }
 </script>
 </body>

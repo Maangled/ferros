@@ -136,6 +136,15 @@
       font: inherit;
     }
 
+    button,
+    input,
+    .route-button,
+    .list-row,
+    .table-row {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
     button {
       border: 1px solid rgba(122, 167, 201, 0.24);
       background: rgba(122, 167, 201, 0.08);
@@ -220,6 +229,19 @@
 
     .identity-meta {
       margin-top: 14px;
+    }
+
+    .touch-anchor-strip {
+      display: none;
+      grid-column: 1 / -1;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding-top: 4px;
+    }
+
+    .touch-anchor-button {
+      min-height: 44px;
+      padding: 10px 14px;
     }
 
     .top-left {
@@ -398,6 +420,56 @@
       margin: 0;
     }
 
+    .module-badge-rail {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .module-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(122, 167, 201, 0.24);
+      background: rgba(122, 167, 201, 0.08);
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .module-badge-label {
+      color: var(--dim);
+    }
+
+    .evidence-badge[data-tone="warn"] {
+      border-color: rgba(245, 191, 99, 0.36);
+      background: rgba(245, 191, 99, 0.12);
+      color: var(--warn);
+    }
+
+    .evidence-badge[data-tone="ok"] {
+      border-color: rgba(115, 212, 165, 0.34);
+      background: rgba(115, 212, 165, 0.12);
+      color: var(--ok);
+    }
+
+    .evidence-badge[data-tone="danger"] {
+      border-color: rgba(255, 139, 123, 0.34);
+      background: rgba(255, 139, 123, 0.12);
+      color: var(--danger);
+    }
+
+    .module-copy-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
     .shell-controls {
       display: grid;
       gap: 12px;
@@ -539,80 +611,103 @@
         grid-template-columns: 1fr;
       }
     }
+
+    @media (pointer: coarse), (max-width: 800px) {
+      .shell {
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .touch-anchor-strip {
+        display: flex;
+      }
+
+      .top-edge {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        padding: 16px;
+        grid-template-columns: 1fr;
+      }
+
+      .bottom-edge {
+        position: sticky;
+        bottom: 0;
+        z-index: 35;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .panel {
+        scroll-margin-top: 176px;
+        scroll-margin-bottom: 120px;
+      }
+
+      button,
+      input,
+      .route-button,
+      .list-row,
+      .table-row {
+        min-height: 52px;
+        font-size: 16px;
+      }
+
+      .route-button,
+      .list-row,
+      .table-row {
+        padding: 16px;
+      }
+
+      .panel-header {
+        padding: 14px 16px 12px;
+      }
+
+      .panel-actions button {
+        min-width: 92px;
+      }
+
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .module-badge {
+        padding: 8px 12px;
+        font-size: 0.78rem;
+      }
+
+      .table-row-meta,
+      .status-rail {
+        flex-wrap: wrap;
+      }
+
+      .checkbox-control {
+        font-size: 1rem;
+      }
+
+      input[type="checkbox"] {
+        min-width: 24px;
+        min-height: 24px;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="shell">
-    <header class="panel top-edge">
-      <section>
-        <span class="panel-label">FERROS local shell</span>
-        <h1 class="identity-title">Agent Center Observation + Local Control</h1>
-        <p class="identity-subtitle">
-          Fixed-slot localhost shell powered by the landed read-first <code>agent.snapshot</code> JSON-RPC route and the current local-only <code>agent.run</code> / <code>agent.stop</code> backend slice. Agent, grant-state, and deny-log views are real, and selected-agent lifecycle writes stay localhost-only behind a grant-aware consent gate.
-        </p>
-        <div class="identity-meta">
-          <span class="state-pill">route <span id="active-route-pill">agents</span></span>
-          <span class="state-pill">target <span id="target-pill">localhost</span></span>
-          <span class="state-pill">focus shell.phase-b.v1</span>
-        </div>
-      </section>
-
-      <section class="connection-metrics">
-        <span id="connection-state" class="state-pill status-indicator" data-state="connecting">connecting</span>
-        <span class="state-pill">rpc <span id="rpc-health">warming</span></span>
-        <span class="state-pill">agents <span id="agent-count-pill">0</span></span>
-        <span class="state-pill">denies <span id="deny-count-pill">0</span></span>
-      </section>
-
-      <section class="shell-notes">
-        <div class="note-card">
-          <div class="shell-note-title">Current lane contract</div>
-          <p class="shell-note-copy">Consumes <code>agent.snapshot</code> for live observation and may send selected-agent <code>agent.run</code> / <code>agent.stop</code> only after an active loaded grant is confirmed. Grant-write surfaces stay visible as owned future slots rather than fake browser controls.</p>
-        </div>
-      </section>
-    </header>
+    <div data-base-shell-chrome-slot="top-edge"></div>
 
     <aside id="registry-panel" class="panel top-left">
-      <div class="panel-header">
-        <div>
-          <span class="panel-label">Top-left <span class="anchor-pill">registry anchor</span></span>
-          <h2 class="panel-title">Routes and registry</h2>
-          <p class="panel-subtitle">Select the active route and choose an agent for the inspector.</p>
-        </div>
-        <div class="panel-actions">
-          <button type="button" data-collapse-target="registry-panel">Collapse</button>
-        </div>
-      </div>
+      <div data-side-panel-header-slot="registry"></div>
       <div class="panel-body panel-scroll">
-        <div class="route-list" id="route-list">
-          <button class="route-button is-active" data-route="agents" type="button">
-            <strong>Agents</strong>
-            <small>Registry state, status summary, and required capabilities.</small>
-          </button>
-          <button class="route-button" data-route="grants" type="button">
-            <strong>Grants</strong>
-            <small>Real grant state from the current local profile path.</small>
-          </button>
-          <button class="route-button" data-route="profile" type="button">
-            <strong>Profile</strong>
-            <small>Local init, show, export, and import through the profile adapter.</small>
-          </button>
-          <button class="route-button" data-route="runway" type="button">
-            <strong>Runway</strong>
-            <small>Local-only launch checklist plus optional hub restart, pending-consent proposed material, and decision rehearsal receipt from <code>/runway-summary.json</code>.</small>
-          </button>
-          <button class="route-button" data-route="denyLog" type="button">
-            <strong>Deny log</strong>
-            <small>Deny-by-default evidence from current persisted shell log state.</small>
-          </button>
-        </div>
+        <div class="route-list" id="route-list"></div>
 
         <div class="stack" id="agent-list"></div>
       </div>
     </aside>
 
     <main id="center-panel" class="panel center">
-      <div class="panel-header">
+      <div class="panel-header" data-protected-chrome="panel-header" data-panel-anchor="center">
         <div>
           <span class="panel-label">Center <span class="anchor-pill">focus anchor</span></span>
           <h2 class="panel-title">Primary focus</h2>
@@ -624,22 +719,22 @@
       </div>
       <div class="panel-body panel-scroll">
         <div class="metrics-grid">
-          <article class="metric-card">
+          <article class="metric-card" data-module="MetricCard" data-metric-name="agents">
             <div class="metric-label">Registered agents</div>
             <div class="metric-value" id="metric-agents">0</div>
             <div class="metric-copy">Detailed runtime agent rows from <code>agent.snapshot</code>.</div>
           </article>
-          <article class="metric-card">
+          <article class="metric-card" data-module="MetricCard" data-metric-name="grants">
             <div class="metric-label">Grant rows</div>
             <div class="metric-value" id="metric-grants">0</div>
             <div class="metric-copy">Active or revoked grant state from the same <code>agent.snapshot</code> read.</div>
           </article>
-          <article class="metric-card">
+          <article class="metric-card" data-module="MetricCard" data-metric-name="denies">
             <div class="metric-label">Deny entries</div>
             <div class="metric-value" id="metric-denies">0</div>
             <div class="metric-copy">Persisted deny evidence from the same <code>agent.snapshot</code> read.</div>
           </article>
-          <article class="metric-card">
+          <article class="metric-card" data-module="MetricCard" data-metric-name="connection">
             <div class="metric-label">Connection</div>
             <div class="metric-value" id="metric-connection">--</div>
             <div class="metric-copy">Same-origin shell transport to the current localhost server.</div>
@@ -647,24 +742,18 @@
         </div>
 
         <section id="agents-surface" class="table-list"></section>
-        <section id="grants-surface" class="table-list hidden"></section>
-        <section id="profile-surface" class="table-list hidden"></section>
+        <section id="grants-surface" class="table-list hidden" data-module="GrantsSurfaceCard" data-surface-state="empty"></section>
+        <section id="profile-surface" class="table-list hidden" data-module="ProfileSurfaceCard" data-surface-state="empty"></section>
         <section id="runway-surface" class="table-list hidden"></section>
+        <section id="home-hub-surface" class="table-list hidden"></section>
+        <section id="forge-surface" class="table-list hidden"></section>
+        <section id="arena-surface" class="table-list hidden"></section>
         <section id="deny-surface" class="table-list hidden"></section>
       </div>
     </main>
 
     <aside id="inspector-panel" class="panel top-right">
-      <div class="panel-header">
-        <div>
-          <span class="panel-label">Top-right <span class="anchor-pill">inspector anchor</span></span>
-          <h2 class="panel-title">Inspector</h2>
-          <p class="panel-subtitle">Selected object detail, metadata, and required capabilities.</p>
-        </div>
-        <div class="panel-actions">
-          <button type="button" data-collapse-target="inspector-panel">Collapse</button>
-        </div>
-      </div>
+      <div data-side-panel-header-slot="inspector"></div>
       <div id="inspector-content" class="panel-body detail-stack">
         <div class="note-card">
           <div class="shell-note-title">No object selected</div>
@@ -674,16 +763,7 @@
     </aside>
 
     <section id="tools-panel" class="panel bottom-left">
-      <div class="panel-header">
-        <div>
-          <span class="panel-label">Bottom-left <span class="anchor-pill">tools anchor</span></span>
-          <h2 class="panel-title">Tools and filters</h2>
-          <p class="panel-subtitle">Route-scoped filter controls without introducing extra modal layers.</p>
-        </div>
-        <div class="panel-actions">
-          <button type="button" data-collapse-target="tools-panel">Collapse</button>
-        </div>
-      </div>
+      <div data-side-panel-header-slot="tools"></div>
       <div class="panel-body shell-controls">
         <div class="control-row">
           <label for="profile-path-input">Local profile path</label>
@@ -706,45 +786,22 @@
             <button class="profile-action-button" data-profile-action="import" type="button">Import</button>
           </div>
         </div>
-        <div class="note-card">
-          <div class="shell-note-title">Current route scope</div>
+        <div id="tools-note-card" class="note-card" data-module="ToolLaneCard">
+          <div id="tools-note-title" class="shell-note-title">Current route scope</div>
           <p id="tools-copy" class="shell-note-copy">Agents route shows registry rows and promotes the selected agent into the inspector.</p>
         </div>
       </div>
     </section>
 
     <section id="audit-panel" class="panel bottom-right">
-      <div class="panel-header">
-        <div>
-          <span class="panel-label">Bottom-right <span class="anchor-pill">consent / audit anchor</span></span>
-          <h2 class="panel-title">Consent and audit</h2>
-          <p class="panel-subtitle">Visible home for consent-gated local lifecycle actions and future privileged flows.</p>
-        </div>
-        <div class="panel-actions">
-          <button type="button" data-collapse-target="audit-panel">Collapse</button>
-        </div>
-      </div>
+      <div data-side-panel-header-slot="audit"></div>
       <div class="panel-body shell-notes">
-        <div class="note-card">
+        <div id="intent-note-card" class="note-card" data-module="ToolLaneCard">
           <div id="intent-note-title" class="shell-note-title">Selected lifecycle intent</div>
           <p id="intent-note-copy" class="shell-note-copy">Select an agent to stage the current local lifecycle intent.</p>
         </div>
-        <div class="note-card lifecycle-control" id="lifecycle-control">
-          <div class="shell-note-title">Local lifecycle control</div>
-          <p id="lifecycle-gate-copy" class="shell-note-copy">Select an agent and load an active matching grant before sending a local lifecycle action.</p>
-          <label class="checkbox-control" for="lifecycle-arm-checkbox">
-            <input id="lifecycle-arm-checkbox" type="checkbox" />
-            <span>Arm this selected-agent lifecycle write for the current localhost shell only.</span>
-          </label>
-          <div class="lifecycle-actions">
-            <button id="lifecycle-submit-button" class="lifecycle-action-button" data-method="none" type="button">Select an agent</button>
-          </div>
-          <div id="lifecycle-control-state" class="lifecycle-state" data-state="blocked" aria-live="polite">No lifecycle action is ready.</div>
-        </div>
-        <div class="note-card">
-          <div class="shell-note-title">Lifecycle outcome</div>
-          <p id="lifecycle-outcome-copy" class="shell-note-copy">No lifecycle outcome recorded yet.</p>
-        </div>
+        <div data-audit-lifecycle-slot="control"></div>
+        <div data-audit-lifecycle-slot="outcome"></div>
         <div class="note-card">
           <div class="shell-note-title">Privileged limits remain closed</div>
           <p class="shell-note-copy">Grant creation, grant revoke, and remote transport are still not wired. Lifecycle control remains selected-agent <code>agent.run</code> / <code>agent.stop</code> over localhost RPC; profile <code>grant</code> and <code>revoke</code> are not exposed through the profile adapter.</p>
@@ -756,20 +813,97 @@
       </div>
     </section>
 
-    <footer class="panel bottom-edge">
-      <div class="status-rail">
-        <span class="route-pill">route <span id="status-route">agents</span></span>
-        <span class="route-pill">rpc <span id="status-rpc">warming</span></span>
-        <span class="route-pill">profile <span id="status-profile">default</span></span>
-      </div>
-      <div class="status-rail">
-        <span class="route-pill">errors <span id="status-error-count">0</span></span>
-        <span class="route-pill">selected <span id="status-selected">none</span></span>
-      </div>
-    </footer>
+    <div data-base-shell-chrome-slot="bottom-edge"></div>
   </div>
 
   <script>
+    const ROUTE_DESCRIPTORS = Object.freeze([
+      Object.freeze({
+        id: 'agents',
+        buttonLabel: 'Agents',
+        buttonSummaryHtml: 'Registry state, status summary, and required capabilities.',
+        centerSubtitle: 'Agent registry and detail now read through the loaded agent.snapshot seam with no fake data.',
+        toolsCopy: 'Agents route shows live registry rows and promotes a selected agent into the inspector slot.',
+        auditTitle: 'Deny observation only',
+        auditCopy: 'Deny entries remain read-only evidence. If a transmitted lifecycle RPC is denied by the backend, the shell refreshes through agent.snapshot so persisted deny evidence can read back here.',
+        statusLabel: 'agents',
+      }),
+      Object.freeze({
+        id: 'grants',
+        buttonLabel: 'Grants',
+        buttonSummaryHtml: 'Real grant state from the current local profile path.',
+        centerSubtitle: 'Grant rows reflect the current local profile state through the loaded agent.snapshot read.',
+        toolsCopy: 'Grants route reads the local profile state through the current S3/S2 boundary with no mock grant rows.',
+        auditTitle: 'Grant control remains future work',
+        auditCopy: 'Grant rows are live and the lifecycle gate consumes them, but this shell does not stage grant.create or grant.revoke.',
+        statusLabel: 'grants',
+      }),
+      Object.freeze({
+        id: 'profile',
+        buttonLabel: 'Profile',
+        buttonSummaryHtml: 'Local init, show, export, and import through the profile adapter.',
+        centerSubtitle: 'Profile actions use the local /profile adapter for init, show, export, and import only.',
+        toolsCopy: 'Profile route uses the local /profile adapter for init, show, export, and import without sending JSON-RPC grant writes.',
+        auditTitle: 'Profile adapter is local only',
+        auditCopy: 'Profile init, show, export, and import use the same-origin /profile adapter. Profile grant and revoke stay closed here.',
+        statusLabel: 'profile',
+      }),
+      Object.freeze({
+        id: 'runway',
+        buttonLabel: 'Runway',
+        buttonSummaryHtml: 'Local-only launch checklist plus optional hub restart, pending-consent proposed material, and decision rehearsal receipt from <code>/runway-summary.json</code>.',
+        centerSubtitle: 'Runway rows come from the local-only /runway-summary.json surface; any optional hub restart, proposal, or decision rehearsal receipt stays display-only and non-evidentiary.',
+        toolsCopy: 'Runway route reads the local-only /runway-summary.json surface for the selected profile path, checkpoint progress, deny visibility, stand-in readiness observation, optional hub restart context, pending-consent proposed material, and an optional local decision rehearsal receipt. All of it stays display-only, non-evidentiary, and free of remote transport or G4 closure claims here.',
+        auditTitle: 'Runway observation only',
+        auditCopy: 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Optional hub restart context, pending-consent proposed material, and a local decision rehearsal receipt may appear on the same read-only route. All remain display-only: no acceptance flow, no executed consent event, no canonical state, no grant, no remote transport, no Home Assistant proof, and no durability, power-cycle, hardware, or gate evidence is implied. No G4 closure is claimed.',
+        statusLabel: 'runway',
+      }),
+      Object.freeze({
+        id: 'homeHub',
+        buttonLabel: 'Home-Hub',
+        buttonSummaryHtml: 'Read-only topology, source lineage, proposal, and rehearsal receipt on the existing local runway seam.',
+        centerSubtitle: 'Home-Hub reads bridge topology, restart lineage, staged proposal, and local rehearsal receipt from the loaded runway summary without claiming canonical device proof.',
+        toolsCopy: 'Home-Hub route stays on the current local-only runway and registry seams: named bridge topology, source lineage, staged proposal, and rehearsal receipt are all display-only and non-canonical here.',
+        auditTitle: 'Home-Hub evidence ceiling',
+        auditCopy: 'Home-Hub observations here remain local and named only: no Home Assistant identity truth, no executed consent event, no canonical device state, no remote transport, and no host hardware proof is implied on this shell.',
+        statusLabel: 'homeHub',
+      }),
+      Object.freeze({
+        id: 'forge',
+        buttonLabel: 'Forge',
+        buttonSummaryHtml: 'Preview-only authoring and export posture from the current profile adapter and route-local artifact state.',
+        centerSubtitle: 'Forge remains a preview surface: bundle targets, last profile adapter action, and route-local artifact context are visible without granting artifact authority.',
+        toolsCopy: 'Forge route shows preview-only authoring and export posture from /profile plus the current route-local artifact seams. No mint, no canonical publish, and no hidden write are implied.',
+        auditTitle: 'Forge preview only',
+        auditCopy: 'Forge on this shell is preview-only. Bundle paths, profile export results, and route-local artifacts may be inspected, but nothing here implies authoritative publication, provenance closure, or canonical mutation.',
+        statusLabel: 'forge',
+      }),
+      Object.freeze({
+        id: 'arena',
+        buttonLabel: 'Arena',
+        buttonSummaryHtml: 'Preview-only runtime posture and non-evidentiary result staging on top of the current observation shell.',
+        centerSubtitle: 'Arena remains preview-only: selected-agent runtime posture, deny recovery, and any staged result language stay non-evidentiary and out of Profile until an explicit handoff exists.',
+        toolsCopy: 'Arena route reads the current selected-agent and runway recovery posture without silently promoting any result into Profile, grants, or progression.',
+        auditTitle: 'Arena remains non-evidentiary',
+        auditCopy: 'Arena observations here are rehearsal only: runtime posture is readable, but no simulation result becomes canonical evidence or profile progression on this shell.',
+        statusLabel: 'arena',
+      }),
+      Object.freeze({
+        id: 'denyLog',
+        buttonLabel: 'Deny log',
+        buttonSummaryHtml: 'Deny-by-default evidence from current persisted shell log state.',
+        centerSubtitle: 'Deny-log rows stay inside the current persisted shell state loaded through agent.snapshot.',
+        toolsCopy: 'Deny log route uses persisted deny evidence only; route filtering stays in-slot and does not open overlays.',
+        auditTitle: 'Deny observation only',
+        auditCopy: 'Deny entries remain read-only evidence. If a transmitted lifecycle RPC is denied by the backend, the shell refreshes through agent.snapshot so persisted deny evidence can read back here.',
+        statusLabel: 'denyLog',
+      }),
+    ]);
+
+    function routeDescriptor(route = state.route) {
+      return ROUTE_DESCRIPTORS.find((descriptor) => descriptor.id === route) || ROUTE_DESCRIPTORS[0];
+    }
+
     const state = {
       route: 'agents',
       agents: [],
@@ -1040,14 +1174,15 @@
     }
 
     function render() {
+      const descriptor = routeDescriptor();
       document.getElementById('agent-count-pill').textContent = String(state.agents.length);
       document.getElementById('deny-count-pill').textContent = String(state.denyEntries.length);
       document.getElementById('metric-agents').textContent = String(state.agents.length);
       document.getElementById('metric-grants').textContent = String(state.grants.length);
       document.getElementById('metric-denies').textContent = String(state.denyEntries.length);
       document.getElementById('status-error-count').textContent = String(state.errors);
-      document.getElementById('active-route-pill').textContent = state.route;
-      document.getElementById('status-route').textContent = state.route;
+      document.getElementById('active-route-pill').textContent = descriptor.statusLabel;
+      document.getElementById('status-route').textContent = descriptor.statusLabel;
       renderRouteButtons();
       renderAgentList();
       renderSurface();
@@ -1075,6 +1210,9 @@
       document.getElementById('grants-surface').innerHTML = '';
       document.getElementById('profile-surface').innerHTML = '';
       document.getElementById('runway-surface').innerHTML = '';
+      document.getElementById('home-hub-surface').innerHTML = '';
+      document.getElementById('forge-surface').innerHTML = '';
+      document.getElementById('arena-surface').innerHTML = '';
       document.getElementById('deny-surface').innerHTML = '';
       document.getElementById('inspector-content').innerHTML = `
         <div class="note-card">
@@ -1092,20 +1230,18 @@
     }
 
     function renderRouteButtons() {
-      document.querySelectorAll('[data-route]').forEach((button) => {
-        button.classList.toggle('is-active', button.dataset.route === state.route);
-      });
+      document.getElementById('route-list').innerHTML = ROUTE_DESCRIPTORS.map((descriptor) => `
+        <button class="route-button ${descriptor.id === state.route ? 'is-active' : ''}" data-route="${descriptor.id}" type="button">
+          <strong>${escapeHtml(descriptor.buttonLabel)}</strong>
+          <small>${descriptor.buttonSummaryHtml}</small>
+        </button>`).join('');
     }
 
     function renderAgentList() {
       const filter = document.getElementById('agent-filter-input').value.trim().toLowerCase();
       const rows = state.agents
         .filter((agent) => !filter || agent.name.toLowerCase().includes(filter))
-        .map((agent) => `
-          <button class="list-row ${agent.name === state.selectedAgent ? 'is-selected' : ''}" data-agent-name="${agent.name}" type="button">
-            <strong>${escapeHtml(agent.name)}</strong>
-            <small>version ${escapeHtml(agent.version)} · status ${escapeHtml(agent.status)}</small>
-          </button>`)
+        .map((agent) => SharedModules.AgentListRowCard.render(agent, agent.name === state.selectedAgent))
         .join('');
 
       document.getElementById('agent-list').innerHTML = rows || `
@@ -1127,11 +1263,17 @@
       const grantsSurface = document.getElementById('grants-surface');
       const profileSurface = document.getElementById('profile-surface');
       const runwaySurface = document.getElementById('runway-surface');
+      const homeHubSurface = document.getElementById('home-hub-surface');
+      const forgeSurface = document.getElementById('forge-surface');
+      const arenaSurface = document.getElementById('arena-surface');
       const denySurface = document.getElementById('deny-surface');
       agentsSurface.classList.toggle('hidden', state.route !== 'agents');
       grantsSurface.classList.toggle('hidden', state.route !== 'grants');
       profileSurface.classList.toggle('hidden', state.route !== 'profile');
       runwaySurface.classList.toggle('hidden', state.route !== 'runway');
+      homeHubSurface.classList.toggle('hidden', state.route !== 'homeHub');
+      forgeSurface.classList.toggle('hidden', state.route !== 'forge');
+      arenaSurface.classList.toggle('hidden', state.route !== 'arena');
       denySurface.classList.toggle('hidden', state.route !== 'denyLog');
 
       document.getElementById('center-subtitle').textContent = centerSubtitle();
@@ -1139,31 +1281,30 @@
       agentsSurface.innerHTML = state.agents.map((agent) => {
         const intent = lifecycleIntentFor(agent);
         const intentLabel = intent ? `intent ${intent.method} staged` : 'inspect agent';
-        return `
-        <article class="table-row ${agent.name === state.selectedAgent ? 'is-selected' : ''}" data-focus-agent="${agent.name}">
-          <strong>${escapeHtml(agent.name)}</strong>
-          <small>${escapeHtml(agent.status)} · version ${escapeHtml(agent.version)}</small>
-          <div class="table-row-meta"><span>Route focus</span><span>${escapeHtml(intentLabel)}</span></div>
-        </article>`;
+        return SharedModules.AgentRowCard.render(agent, agent.name === state.selectedAgent, intentLabel);
       }).join('') || emptyNote('No registry rows', 'The runtime still exposes a valid read surface, but no agents are currently visible.');
 
-      grantsSurface.innerHTML = state.grants.map((grant, index) => `
-        <article class="table-row ${index === state.selectedGrantIndex ? 'is-selected' : ''}" data-grant-index="${index}">
-          <strong>${escapeHtml(grant.capability)}</strong>
-          <small>${escapeHtml(grant.profileId)} · ${grant.isActive ? 'active' : 'revoked'}</small>
-          <div class="table-row-meta"><span>${grant.revokedAt ? escapeHtml(grant.revokedAt) : 'not revoked'}</span><span>grant state</span></div>
-        </article>`).join('') || emptyNote('No grant rows', 'Grant state is empty for the current local profile path.');
+      grantsSurface.innerHTML = state.grants.map((grant, index) =>
+        SharedModules.GrantRowCard.render(grant, index, index === state.selectedGrantIndex)
+      ).join('') || emptyNote('No grant rows', 'Grant state is empty for the current local profile path.');
+      grantsSurface.dataset.surfaceState = state.grants.length > 0 ? 'loaded' : 'empty';
 
-      profileSurface.innerHTML = profileSurfaceHtml();
+      profileSurface.innerHTML = SharedModules.ProfileStatusCard.render(state.profileSurface);
+      profileSurface.dataset.surfaceState = state.profileSurface.ok === null && !state.profileSurface.busy
+        ? 'empty'
+        : 'loaded';
 
       runwaySurface.innerHTML = runwaySurfaceHtml();
 
-      denySurface.innerHTML = state.denyEntries.map((entry, index) => `
-        <article class="table-row ${index === state.selectedDenyIndex ? 'is-selected' : ''}" data-deny-index="${index}">
-          <strong>${escapeHtml(entry.agentName || 'runtime')}</strong>
-          <small>${escapeHtml(entry.message)}</small>
-          <div class="table-row-meta"><span>${escapeHtml(entry.kind)}</span><span>${escapeHtml(entry.capability || 'no capability parsed')}</span></div>
-        </article>`).join('') || emptyNote('No deny entries', 'The deny log is currently clear.');
+      homeHubSurface.innerHTML = SharedModules.HomeHubSurfaceCard.render(state.runway);
+
+      forgeSurface.innerHTML = SharedModules.ForgeSurfaceCard.render(state.profileSurface, state.runway);
+
+      arenaSurface.innerHTML = SharedModules.ArenaSurfaceCard.render(selectedAgentRecord(), state.runway);
+
+      denySurface.innerHTML = state.denyEntries.map((entry, index) =>
+        SharedModules.DenyLogRowCard.render(entry, index, index === state.selectedDenyIndex)
+      ).join('') || emptyNote('No deny entries', 'The deny log is currently clear.');
 
       document.querySelectorAll('[data-focus-agent]').forEach((button) => {
         button.addEventListener('click', () => {
@@ -1204,41 +1345,498 @@
       });
     }
 
-    function profileSurfaceHtml() {
-      const surface = state.profileSurface;
-      if (surface.busy) {
-        return emptyNote('Profile action running', `${surface.action || 'profile'} is using the local /profile adapter.`);
-      }
+    const BASE_SHELL_SIDE_PANEL_HEADERS = Object.freeze([
+      Object.freeze({
+        anchor: 'registry',
+        panelHeaderAttrs: 'data-protected-chrome="panel-header" data-panel-anchor="registry"',
+        collapseButtonAttrs: 'data-collapse-target="registry-panel" data-protected-chrome="collapse" data-panel-collapse="registry"',
+        panelLabel: 'Top-left',
+        anchorLabel: 'registry anchor',
+        title: 'Routes and registry',
+        subtitle: 'Select the active route and choose an agent for the inspector.',
+      }),
+      Object.freeze({
+        anchor: 'inspector',
+        panelHeaderAttrs: 'data-protected-chrome="panel-header" data-panel-anchor="inspector"',
+        collapseButtonAttrs: 'data-collapse-target="inspector-panel" data-protected-chrome="collapse" data-panel-collapse="inspector"',
+        panelLabel: 'Top-right',
+        anchorLabel: 'inspector anchor',
+        title: 'Inspector',
+        subtitle: 'Selected object detail, metadata, and required capabilities.',
+      }),
+      Object.freeze({
+        anchor: 'tools',
+        panelHeaderAttrs: 'data-protected-chrome="panel-header" data-panel-anchor="tools"',
+        collapseButtonAttrs: 'data-collapse-target="tools-panel" data-protected-chrome="collapse" data-panel-collapse="tools"',
+        panelLabel: 'Bottom-left',
+        anchorLabel: 'tools anchor',
+        title: 'Tools and filters',
+        subtitle: 'Route-scoped filter controls without introducing extra modal layers.',
+      }),
+      Object.freeze({
+        anchor: 'audit',
+        panelHeaderAttrs: 'data-protected-chrome="panel-header" data-panel-anchor="audit"',
+        collapseButtonAttrs: 'data-collapse-target="audit-panel" data-protected-chrome="collapse" data-panel-collapse="audit"',
+        panelLabel: 'Bottom-right',
+        anchorLabel: 'consent / audit anchor',
+        title: 'Consent and audit',
+        subtitle: 'Visible home for consent-gated local lifecycle actions and future privileged flows.',
+      }),
+    ]);
 
-      if (surface.ok === null) {
-        return emptyNote('Profile adapter ready', 'Choose init, show, export, or import from the tools panel.');
-      }
+    const BASE_SHELL_STATIC_CHROME = Object.freeze({
+      topEdge: Object.freeze({
+        shellLabel: 'FERROS local shell',
+        title: 'Agent Center Observation + Local Control',
+        subtitleHtml: 'Fixed-slot localhost shell powered by the landed read-first <code>agent.snapshot</code> JSON-RPC route and the current local-only <code>agent.run</code> / <code>agent.stop</code> backend slice. Agent, grant-state, and deny-log views are real, and selected-agent lifecycle writes stay localhost-only behind a grant-aware consent gate.',
+        identityMeta: Object.freeze([
+          '<span class="state-pill">route <span id="active-route-pill">agents</span></span>',
+          '<span class="state-pill">target <span id="target-pill">localhost</span></span>',
+          '<span class="state-pill">focus shell.phase-b.v1</span>',
+        ]),
+        touchAnchors: Object.freeze([
+          Object.freeze({ label: 'Routes', target: 'registry-panel' }),
+          Object.freeze({ label: 'Focus', target: 'center-panel' }),
+          Object.freeze({ label: 'Inspector', target: 'inspector-panel' }),
+          Object.freeze({ label: 'Tools', target: 'tools-panel' }),
+          Object.freeze({ label: 'Audit', target: 'audit-panel' }),
+        ]),
+        connectionMetrics: Object.freeze([
+          '<span id="connection-state" class="state-pill status-indicator" data-state="connecting">connecting</span>',
+          '<span class="state-pill">rpc <span id="rpc-health">warming</span></span>',
+          '<span class="state-pill">agents <span id="agent-count-pill">0</span></span>',
+          '<span class="state-pill">denies <span id="deny-count-pill">0</span></span>',
+        ]),
+        noteTitle: 'Current lane contract',
+        noteCopyHtml: 'Consumes <code>agent.snapshot</code> for live observation and may send selected-agent <code>agent.run</code> / <code>agent.stop</code> only after an active loaded grant is confirmed. Grant-write surfaces stay visible as owned future slots rather than fake browser controls.',
+      }),
+      bottomEdge: Object.freeze({
+        rails: Object.freeze([
+          Object.freeze({
+            railAttrs: 'data-protected-chrome="status-rail" data-status-rail="primary"',
+            pills: Object.freeze([
+              '<span class="route-pill">route <span id="status-route">agents</span></span>',
+              '<span class="route-pill">rpc <span id="status-rpc">warming</span></span>',
+              '<span class="route-pill">profile <span id="status-profile">default</span></span>',
+            ]),
+          }),
+          Object.freeze({
+            railAttrs: 'data-protected-chrome="status-rail" data-status-rail="secondary"',
+            pills: Object.freeze([
+              '<span class="route-pill">errors <span id="status-error-count">0</span></span>',
+              '<span class="route-pill">selected <span id="status-selected">none</span></span>',
+            ]),
+          }),
+        ]),
+      }),
+    });
 
-      const status = surface.status || {
-        kind: surface.ok ? 'complete' : 'blocked',
-        summary: surface.ok
-          ? `Profile ${surface.action} completed through the local /profile adapter.`
-          : `Profile ${surface.action} was blocked on the local /profile adapter.`,
-      };
-      const statusTitle = status.kind === 'complete'
-        ? `Profile ${surface.action} complete`
-        : `Profile ${surface.action} blocked`;
-      const pathCopy = `profile ${surface.profilePath || 'default'}${surface.bundlePath ? ` | bundle ${surface.bundlePath}` : ''}`;
-      const statusCopy = `<p class="shell-note-copy">${escapeHtml(status.summary || pathCopy)}</p>`;
-      const errorDetail = surface.errorDetail
-        ? `<p class="shell-note-copy">Reason ${escapeHtml(surface.errorDetail.code)} · ${escapeHtml(surface.errorDetail.message)}</p>`
-        : (surface.error && !surface.lines.length
-            ? `<p class="shell-note-copy">${escapeHtml(surface.error)}</p>`
-            : '');
-      const lines = surface.lines.length > 0
-        ? `<pre class="profile-output">${escapeHtml(surface.lines.join('\n'))}</pre>`
-        : '';
-      const profile = surface.profile
-        ? `<pre class="profile-output">${escapeHtml(JSON.stringify(surface.profile, null, 2))}</pre>`
-        : '';
+    // First shared utility-module slice for the protected shell: badges plus runway material cards.
+    const SharedModules = Object.freeze({
+      renderDetailPairs(pairs) {
+        return pairs.map(([label, value]) => `
+          <div class="detail-pair"><div class="detail-key">${escapeHtml(label)}</div><div class="detail-value">${escapeHtml(value)}</div></div>`).join('');
+      },
 
-      return `
-        <article class="note-card">
+      BaseShellChrome: Object.freeze({
+        renderTopEdge(config) {
+          const touchAnchors = (config.touchAnchors || []).map((anchor) => `
+              <button class="touch-anchor-button" type="button" data-touch-jump="${escapeHtml(anchor.target)}">${escapeHtml(anchor.label)}</button>`).join('');
+
+          return `
+        <header class="panel top-edge" data-protected-chrome="top-edge">
+          <section>
+            <span class="panel-label">${escapeHtml(config.shellLabel)}</span>
+            <h1 class="identity-title">${escapeHtml(config.title)}</h1>
+            <p class="identity-subtitle">${config.subtitleHtml}</p>
+            <div class="identity-meta">
+              ${config.identityMeta.join('\n              ')}
+            </div>
+          </section>
+
+          <section class="connection-metrics">
+            ${config.connectionMetrics.join('\n            ')}
+          </section>
+
+          <section class="shell-notes">
+            <div class="note-card">
+              <div class="shell-note-title">${escapeHtml(config.noteTitle)}</div>
+              <p class="shell-note-copy">${config.noteCopyHtml}</p>
+            </div>
+          </section>
+
+          <nav class="touch-anchor-strip" data-module="TouchAnchorStrip" aria-label="Touch posture anchors">
+            ${touchAnchors}
+          </nav>
+        </header>`;
+        },
+
+        renderBottomEdge(config) {
+          const rails = config.rails.map((rail) => `
+          <div class="status-rail" ${rail.railAttrs}>
+            ${rail.pills.join('\n            ')}
+          </div>`).join('');
+
+          return `
+        <footer class="panel bottom-edge" data-protected-chrome="bottom-edge">
+          ${rails}
+        </footer>`;
+        },
+
+        renderSidePanelHeader(config) {
+          return `
+        <div class="panel-header" ${config.panelHeaderAttrs}>
+          <div>
+            <span class="panel-label">${escapeHtml(config.panelLabel)} <span class="anchor-pill">${escapeHtml(config.anchorLabel)}</span></span>
+            <h2 class="panel-title">${escapeHtml(config.title)}</h2>
+            <p class="panel-subtitle">${escapeHtml(config.subtitle)}</p>
+          </div>
+          <div class="panel-actions">
+            <button type="button" ${config.collapseButtonAttrs}>Collapse</button>
+          </div>
+        </div>`;
+        },
+      }),
+
+      EvidenceBadge: Object.freeze({
+        toneForValue(value) {
+          const normalized = String(value || '').toLowerCase();
+          if (normalized.includes('accepted') || normalized.includes('active')) {
+            return 'ok';
+          }
+          if (normalized.includes('blocked') || normalized.includes('error') || normalized.includes('denied') || normalized.includes('reject')) {
+            return 'danger';
+          }
+          if (normalized.includes('non-evidentiary') || normalized.includes('display-only') || normalized.includes('pending') || normalized.includes('quarantine')) {
+            return 'warn';
+          }
+          return 'muted';
+        },
+
+        render(label, value, tone = 'muted') {
+          return `<span class="module-badge evidence-badge" data-module="EvidenceBadge" data-tone="${escapeHtml(tone)}"><span class="module-badge-label">${escapeHtml(label)}</span><span>${escapeHtml(value)}</span></span>`;
+        },
+      }),
+
+      ProposedMaterialCard: Object.freeze({
+        render(proposal) {
+          if (!proposal) {
+            return emptyNote('Optional proposed material', 'This runway summary does not include pending-consent proposed material yet. The runway checklist remains usable without it.');
+          }
+
+          const quarantineStatus = proposal.quarantineStatus || 'not reported';
+          const scope = proposal.scope || 'local-only';
+          const evidence = proposal.evidence || 'non-evidentiary';
+
+          return `
+        <article class="note-card proposed-material-card" data-module="ProposedMaterialCard">
+          <div class="shell-note-title">Pending consent proposed material</div>
+          <div class="module-badge-rail">
+            ${SharedModules.EvidenceBadge.render('quarantine', quarantineStatus, SharedModules.EvidenceBadge.toneForValue(quarantineStatus))}
+            ${SharedModules.EvidenceBadge.render('scope', scope, SharedModules.EvidenceBadge.toneForValue(scope))}
+            ${SharedModules.EvidenceBadge.render('evidence', evidence, SharedModules.EvidenceBadge.toneForValue(evidence))}
+            ${SharedModules.EvidenceBadge.render('mode', 'display-only', SharedModules.EvidenceBadge.toneForValue('display-only'))}
+          </div>
+          <div class="module-copy-stack">
+            <p class="shell-note-copy">quarantineStatus ${escapeHtml(quarantineStatus)} · scope ${escapeHtml(scope)} · evidence ${escapeHtml(evidence)} · artifact ${escapeHtml(proposal.localArtifactPath || 'not reported')}.</p>
+            <p class="shell-note-copy">source ${escapeHtml(proposal.source || 'not reported')} · proposalId ${escapeHtml(proposal.proposalId || 'not reported')}.</p>
+            <p class="shell-note-copy">bridge ${escapeHtml(proposal.bridgeAgentName || 'not reported')} · stand-in ${escapeHtml(proposal.standInEntityName || 'not reported')} · requested ${escapeHtml(proposal.requestedCapability || 'not reported')} / ${escapeHtml(proposal.requestedAction || 'not reported')}.</p>
+            <p class="shell-note-copy">Display only. This is proposed material only: not accepted, not canonical, not a grant, and not Home Assistant proof.</p>
+          </div>
+        </article>`;
+        },
+
+        inspectorDetails(proposal) {
+          if (!proposal) {
+            return `
+          <div class="detail-pair"><div class="detail-key">Hub onramp proposal</div><div class="detail-value">optional proposed material not available yet</div></div>`;
+          }
+
+          return SharedModules.renderDetailPairs([
+            ['Hub onramp proposal', 'pending consent proposed material only'],
+            ['Source', proposal.source || 'not reported'],
+            ['Proposal ID', proposal.proposalId || 'not reported'],
+            ['Bridge agent', proposal.bridgeAgentName || 'not reported'],
+            ['Stand-in entity', proposal.standInEntityName || 'not reported'],
+            ['Requested capability', proposal.requestedCapability || 'not reported'],
+            ['Requested action', proposal.requestedAction || 'not reported'],
+            ['Quarantine status', proposal.quarantineStatus || 'not reported'],
+            ['Proposal scope', proposal.scope || 'local-only'],
+            ['Proposal evidence', proposal.evidence || 'non-evidentiary'],
+            ['Artifact path', proposal.localArtifactPath || 'not reported'],
+          ]);
+        },
+      }),
+
+      ReceiptStrip: Object.freeze({
+        render(receipt) {
+          if (!receipt) {
+            return emptyNote('Optional decision rehearsal receipt', 'This runway summary does not include a recorded local decision rehearsal receipt yet. Any proposal shown here remains display-only pending material.');
+          }
+
+          const decisionLabel = receipt.decisionLabel || 'not reported';
+
+          return `
+        <article class="note-card receipt-strip" data-module="ReceiptStrip">
+          <div class="shell-note-title">Local decision rehearsal receipt</div>
+          <div class="module-badge-rail">
+            ${SharedModules.EvidenceBadge.render('decision', decisionLabel, SharedModules.EvidenceBadge.toneForValue(decisionLabel))}
+            ${SharedModules.EvidenceBadge.render('mode', 'display-only', SharedModules.EvidenceBadge.toneForValue('display-only'))}
+          </div>
+          <div class="module-copy-stack">
+            <p class="shell-note-copy">proposalId ${escapeHtml(receipt.proposalId || 'not reported')} · decisionLabel ${escapeHtml(decisionLabel)} · artifact ${escapeHtml(receipt.localArtifactPath || 'not reported')}.</p>
+            <p class="shell-note-copy">decisionDetail ${escapeHtml(receipt.decisionDetail || 'not reported')}.</p>
+            <p class="shell-note-copy">Display only. This is a recorded local decision rehearsal receipt: not an executed consent event, not canonical state, not a grant, and not Home Assistant proof.</p>
+          </div>
+        </article>`;
+        },
+
+        inspectorDetails(receipt) {
+          if (!receipt) {
+            return `
+          <div class="detail-pair"><div class="detail-key">Hub decision rehearsal</div><div class="detail-value">optional local decision receipt not available yet</div></div>`;
+          }
+
+          return SharedModules.renderDetailPairs([
+            ['Hub decision rehearsal', 'local decision rehearsal receipt only'],
+            ['Proposal ID', receipt.proposalId || 'not reported'],
+            ['Decision label', receipt.decisionLabel || 'not reported'],
+            ['Decision detail', receipt.decisionDetail || 'not reported'],
+            ['Artifact path', receipt.localArtifactPath || 'not reported'],
+          ]);
+        },
+      }),
+
+      ConsentBoundaryCard: Object.freeze({
+        render(summary) {
+          const boundary = runwayOnrampBoundaryState(summary);
+
+          return `
+        <article class="note-card consent-boundary-card" data-module="ConsentBoundaryCard">
+          <div class="shell-note-title">Consent boundary</div>
+          <div class="module-badge-rail">
+            ${SharedModules.EvidenceBadge.render('stage', boundary.stageLabel, boundary.stageTone)}
+            ${SharedModules.EvidenceBadge.render('accept', 'closed', SharedModules.EvidenceBadge.toneForValue('blocked'))}
+            ${SharedModules.EvidenceBadge.render('canonical', boundary.canonicalState, boundary.canonicalTone)}
+          </div>
+          <div class="module-copy-stack">
+            <p class="shell-note-copy">Accept/reject surface closed on this shell.</p>
+            <p class="shell-note-copy">Proposal ${escapeHtml(boundary.proposalId)} · route-local artifact ${escapeHtml(boundary.artifactPath)}.</p>
+            <p class="shell-note-copy">${escapeHtml(boundary.boundaryCopy)}</p>
+            <p class="shell-note-copy">Audit seam required before canonical state can change. ${escapeHtml(boundary.nextAction)}</p>
+          </div>
+        </article>`;
+        },
+
+        inspectorDetails(summary) {
+          const boundary = runwayOnrampBoundaryState(summary);
+          return SharedModules.renderDetailPairs([
+            ['Consent boundary', boundary.stageLabel],
+            ['Accept/reject surface', 'closed on current shell'],
+            ['Proposal ID', boundary.proposalId],
+            ['Route-local artifact', boundary.artifactPath],
+            ['Canonical state', boundary.canonicalState],
+            ['Boundary next step', boundary.nextAction],
+          ]);
+        },
+      }),
+
+      RecoveryStateCard: Object.freeze({
+        render(summary) {
+          const recovery = runwayRecoveryState(summary);
+
+          return `
+        <article class="note-card recovery-state-card" data-module="RecoveryStateCard">
+          <div class="shell-note-title">Operator recovery posture</div>
+          <div class="module-badge-rail">
+            ${SharedModules.EvidenceBadge.render('posture', recovery.posture, recovery.tone)}
+            ${SharedModules.EvidenceBadge.render('reload', recovery.reloadStatus, SharedModules.EvidenceBadge.toneForValue(recovery.reloadStatus))}
+            ${SharedModules.EvidenceBadge.render('checkpoint', recovery.checkpointState, SharedModules.EvidenceBadge.toneForValue(recovery.checkpointState))}
+          </div>
+          <div class="module-copy-stack">
+            <p class="shell-note-copy">Current posture ${escapeHtml(recovery.posture)}.</p>
+            <p class="shell-note-copy">Checkpoint ${escapeHtml(recovery.checkpointState)} · ${escapeHtml(recovery.checkpointDetail)}.</p>
+            <p class="shell-note-copy">Reload status ${escapeHtml(recovery.reloadStatus)}.</p>
+            <p class="shell-note-copy">Recovery detail ${escapeHtml(recovery.detail)}</p>
+            <p class="shell-note-copy">Next honest move: ${escapeHtml(recovery.nextAction)}</p>
+          </div>
+        </article>`;
+        },
+
+        inspectorDetails(summary) {
+          const recovery = runwayRecoveryState(summary);
+          return SharedModules.renderDetailPairs([
+            ['Operator recovery posture', recovery.posture],
+            ['Checkpoint state', recovery.checkpointState],
+            ['Checkpoint detail', recovery.checkpointDetail],
+            ['Reload status', recovery.reloadStatus],
+            ['Recovery detail', recovery.detail],
+            ['Next honest move', recovery.nextAction],
+          ]);
+        },
+      }),
+
+      SourceLineageCard: Object.freeze({
+        render(hubRestart, priorFields) {
+          if (!hubRestart) {
+            return `
+        <article class="note-card source-lineage-card" data-module="SourceLineageCard">
+          <div class="shell-note-title">Optional hub restart context</div>
+          <div class="module-copy-stack">
+            <p class="shell-note-copy">This runway summary does not include optional hub restart context yet. The runway checklist remains usable without it.</p>
+          </div>
+        </article>`;
+          }
+
+          const reloadStatus = hubRestart.reloadStatus || 'not reported';
+          const scope = hubRestart.scope || 'local-only';
+          const evidence = hubRestart.evidence || 'non-evidentiary';
+          const priorCopy = priorFields.length > 0
+            ? priorFields
+              .map(([label, value]) => `<p class="shell-note-copy">${escapeHtml(label)} · ${escapeHtml(value)}</p>`)
+              .join('')
+            : '<p class="shell-note-copy">No prior hub restart observation fields were returned on this summary yet.</p>';
+
+          return `
+        <article class="note-card source-lineage-card" data-module="SourceLineageCard">
+          <div class="shell-note-title">Optional hub restart context</div>
+          <div class="module-badge-rail">
+            ${SharedModules.EvidenceBadge.render('restart', reloadStatus, SharedModules.EvidenceBadge.toneForValue(reloadStatus))}
+            ${SharedModules.EvidenceBadge.render('scope', scope, SharedModules.EvidenceBadge.toneForValue(scope))}
+            ${SharedModules.EvidenceBadge.render('evidence', evidence, SharedModules.EvidenceBadge.toneForValue(evidence))}
+          </div>
+          <div class="module-copy-stack">
+            <p class="shell-note-copy">reloadStatus ${escapeHtml(reloadStatus)} is display-only runway context.</p>
+            <p class="shell-note-copy">snapshotPath ${escapeHtml(hubRestart.snapshotPath || 'not reported')} · scope ${escapeHtml(scope)} · evidence ${escapeHtml(evidence)}.</p>
+            ${priorCopy}
+          </div>
+        </article>`;
+        },
+
+        inspectorDetails(hubRestart, priorFields) {
+          if (!hubRestart) {
+            return SharedModules.renderDetailPairs([
+              ['Hub restart', 'optional context not available yet'],
+            ]);
+          }
+
+          const details = [
+            ['Hub restart', 'optional read-only context'],
+            ['Reload status', hubRestart.reloadStatus || 'not reported'],
+            ['Snapshot path', hubRestart.snapshotPath || 'not reported'],
+            ['Restart scope', hubRestart.scope || 'local-only'],
+            ['Restart evidence', hubRestart.evidence || 'non-evidentiary'],
+          ];
+
+          if (priorFields.length > 0) {
+            details.push(...priorFields);
+          } else {
+            details.push(['Prior observation', 'none reported on this summary yet']);
+          }
+
+          return SharedModules.renderDetailPairs(details);
+        },
+      }),
+
+      OperatorStepCard: Object.freeze({
+        renderRunwayChecklistItem(item, index, isSelected, summary) {
+          return SharedModules.RunwayChecklistRowCard.render(item, index, isSelected, summary);
+        },
+      }),
+
+      RunwayChecklistRowCard: Object.freeze({
+        render(item, index, isSelected, summary) {
+          return `
+        <article class="table-row ${isSelected ? 'is-selected' : ''}" data-module="RunwayChecklistRowCard" data-runway-index="${index}">
+          <strong>${escapeHtml(item.item)}</strong>
+          <small>${escapeHtml(item.status)} · ${escapeHtml(item.detail)}</small>
+          <div class="table-row-meta"><span>${escapeHtml(summary.surface)}</span><span>${escapeHtml(summary.scope)}</span></div>
+        </article>`;
+        },
+      }),
+
+      ToolLaneCard: Object.freeze({
+        render(title, copy, options = {}) {
+          const titleId = options.titleId ? ` id="${escapeHtml(options.titleId)}"` : '';
+          const copyId = options.copyId ? ` id="${escapeHtml(options.copyId)}"` : '';
+          return `
+          <div${titleId} class="shell-note-title">${escapeHtml(title)}</div>
+          <p${copyId} class="shell-note-copy">${escapeHtml(copy)}</p>`;
+        },
+      }),
+
+      LifecycleControlCard: Object.freeze({
+        render() {
+          return `
+        <div class="note-card lifecycle-control" id="lifecycle-control" data-module="LifecycleControlCard">
+          <div class="shell-note-title">Local lifecycle control</div>
+          <p id="lifecycle-gate-copy" class="shell-note-copy">Select an agent and load an active matching grant before sending a local lifecycle action.</p>
+          <label class="checkbox-control" for="lifecycle-arm-checkbox">
+            <input id="lifecycle-arm-checkbox" type="checkbox" />
+            <span>Arm this selected-agent lifecycle write for the current localhost shell only.</span>
+          </label>
+          <div class="lifecycle-actions">
+            <button id="lifecycle-submit-button" class="lifecycle-action-button" data-method="none" type="button">Select an agent</button>
+          </div>
+          <div id="lifecycle-control-state" class="lifecycle-state" data-state="blocked" aria-live="polite">No lifecycle action is ready.</div>
+        </div>`;
+        },
+      }),
+
+      LifecycleOutcomeCard: Object.freeze({
+        render() {
+          return `
+        <div class="note-card" data-module="LifecycleOutcomeCard">
+          <div class="shell-note-title">Lifecycle outcome</div>
+          <p id="lifecycle-outcome-copy" class="shell-note-copy">No lifecycle outcome recorded yet.</p>
+        </div>`;
+        },
+      }),
+
+      ProfileStatusCard: Object.freeze({
+        render(surfaceState) {
+          const surface = surfaceState;
+          if (surface.busy) {
+            return `
+        <article class="note-card" data-module="ProfileStatusCard">
+          <div class="shell-note-title">Profile action running</div>
+          <p class="shell-note-copy">${escapeHtml(surface.action || 'profile')} is using the local /profile adapter.</p>
+        </article>`;
+          }
+
+          if (surface.ok === null) {
+            return `
+        <article class="note-card" data-module="ProfileStatusCard">
+          <div class="shell-note-title">Profile adapter ready</div>
+          <p class="shell-note-copy">Choose init, show, export, or import from the tools panel.</p>
+        </article>`;
+          }
+
+          const status = surface.status || {
+            kind: surface.ok ? 'complete' : 'blocked',
+            summary: surface.ok
+              ? `Profile ${surface.action} completed through the local /profile adapter.`
+              : `Profile ${surface.action} was blocked on the local /profile adapter.`,
+          };
+          const statusTitle = status.kind === 'complete'
+            ? `Profile ${surface.action} complete`
+            : `Profile ${surface.action} blocked`;
+          const pathCopy = `profile ${surface.profilePath || 'default'}${surface.bundlePath ? ` | bundle ${surface.bundlePath}` : ''}`;
+          const statusCopy = `<p class="shell-note-copy">${escapeHtml(status.summary || pathCopy)}</p>`;
+          const errorDetail = surface.errorDetail
+            ? `<p class="shell-note-copy">Reason ${escapeHtml(surface.errorDetail.code)} · ${escapeHtml(surface.errorDetail.message)}</p>`
+            : (surface.error && !surface.lines.length
+                ? `<p class="shell-note-copy">${escapeHtml(surface.error)}</p>`
+                : '');
+          const lines = surface.lines.length > 0
+            ? `<pre class="profile-output">${escapeHtml(surface.lines.join('\n'))}</pre>`
+            : '';
+          const profile = surface.profile
+            ? `<pre class="profile-output">${escapeHtml(JSON.stringify(surface.profile, null, 2))}</pre>`
+            : '';
+
+          return `
+        <article class="note-card" data-module="ProfileStatusCard">
           <div class="shell-note-title">${escapeHtml(statusTitle)}</div>
           <p class="shell-note-copy">${escapeHtml(pathCopy)}</p>
           ${statusCopy}
@@ -1246,6 +1844,453 @@
           ${lines}
           ${profile}
         </article>`;
+        },
+      }),
+
+      AgentDetailCard: Object.freeze({
+        render(agent, intent, gate) {
+          return `
+        <div data-module="AgentDetailCard">
+          ${SharedModules.renderDetailPairs([
+            ['Agent', agent.name],
+            ['Status', agent.status],
+            ['Version', agent.version],
+          ])}
+          <div class="detail-pair"><div class="detail-key">Required capabilities</div><div class="detail-value">${SharedModules.CapabilityPillList.render(agent.requiredCapabilities)}</div></div>
+          ${SharedModules.renderDetailPairs([
+            ['Lifecycle intent', intent ? intent.method : 'none staged'],
+            ['Gate status', gate ? gate.status : 'blocked'],
+          ])}
+        </div>`;
+        },
+      }),
+
+      GrantDetailCard: Object.freeze({
+        render(grant) {
+          return `
+        <div data-module="GrantDetailCard">
+          <div class="detail-pair"><div class="detail-key">Capability</div><div class="detail-value">${escapeHtml(grant.capability)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Profile</div><div class="detail-value">${escapeHtml(grant.profileId)}</div></div>
+          <div class="detail-pair"><div class="detail-key">State</div><div class="detail-value">${grant.isActive ? 'active' : 'revoked'}</div></div>
+          <div class="detail-pair"><div class="detail-key">Revoked at</div><div class="detail-value">${escapeHtml(grant.revokedAt || 'not revoked')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Reason</div><div class="detail-value">${escapeHtml(grant.revocationReason || 'none')}</div></div>
+        </div>`;
+        },
+      }),
+
+      DenyEventDetailCard: Object.freeze({
+        render(entry) {
+          return `
+        <div data-module="DenyEventDetailCard">
+          <div class="detail-pair"><div class="detail-key">Entry ID</div><div class="detail-value">${escapeHtml(entry.entryId)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Kind</div><div class="detail-value">${escapeHtml(entry.kind)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Agent</div><div class="detail-value">${escapeHtml(entry.agentName || 'runtime')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Capability</div><div class="detail-value">${escapeHtml(entry.capability || 'none')}</div></div>
+          <div class="detail-pair"><div class="detail-key">Message</div><div class="detail-value">${escapeHtml(entry.message)}</div></div>
+        </div>`;
+        },
+      }),
+
+      HomeHubSurfaceCard: Object.freeze({
+        render(runway) {
+          if (!runway) {
+            return emptyNote('Home-Hub summary unavailable', 'Load the local runway summary before inspecting bridge topology, source lineage, or staged onramp context.');
+          }
+          const summary = runway;
+          const proposal = summary.hubOnrampProposal || null;
+          const receipt = summary.hubOnrampDecisionReceipt || null;
+          const hubRestart = summary.hubRestart || null;
+          const bridge = currentBridgeAgent();
+          const bridgeLabel = bridge
+            ? `${bridge.name} · ${bridge.status}`
+            : (proposal && proposal.bridgeAgentName ? proposal.bridgeAgentName : 'not reported');
+          const artifactPath = receipt
+            ? (receipt.localArtifactPath || 'not reported')
+            : proposal
+              ? (proposal.localArtifactPath || 'not reported')
+              : 'not reported';
+          const topologyState = bridge ? 'bridge observed' : (proposal ? 'proposal-linked only' : 'not reported');
+
+          return `
+        <div data-module="HomeHubSurfaceCard">
+          <article class="note-card" data-module="HomeHubTopologyCard">
+            <div class="shell-note-title">Home-Hub topology observation</div>
+            <div class="module-badge-rail">
+              ${SharedModules.EvidenceBadge.render('scope', summary.scope, SharedModules.EvidenceBadge.toneForValue(summary.scope))}
+              ${SharedModules.EvidenceBadge.render('evidence', summary.evidence, SharedModules.EvidenceBadge.toneForValue(summary.evidence))}
+              ${SharedModules.EvidenceBadge.render('topology', topologyState, SharedModules.EvidenceBadge.toneForValue(topologyState))}
+            </div>
+            <div class="module-copy-stack">
+              <p class="shell-note-copy">bridge ${escapeHtml(bridgeLabel)} · stand-in ${escapeHtml(proposal ? proposal.standInEntityName : 'not reported')}.</p>
+              <p class="shell-note-copy">snapshot ${escapeHtml(hubRestart ? hubRestart.snapshotPath : 'not reported')} · proposal ${escapeHtml(proposal ? proposal.proposalId : 'not reported')}.</p>
+              <p class="shell-note-copy">decision ${escapeHtml(receipt ? receipt.decisionLabel : 'not reported')} · artifact ${escapeHtml(artifactPath)}.</p>
+              <p class="shell-note-copy">Display only. This is named topology and source-lineage observation only: not Home Assistant identity truth, not executed consent, and not canonical device state.</p>
+            </div>
+          </article>
+          ${runwayConsentBoundaryNoteHtml(summary)}
+          <div data-module="HomeHubBridgeProposalGroup">
+            ${runwayOnrampProposalNoteHtml(proposal)}
+            ${runwayOnrampDecisionReceiptNoteHtml(receipt)}
+          </div>
+          ${runwayHubRestartNoteHtml(hubRestart)}
+        </div>`;
+        },
+      }),
+
+      ForgeSurfaceCard: Object.freeze({
+        render(profileSurface, runway) {
+          const summary = runway;
+          const proposal = summary && summary.hubOnrampProposal ? summary.hubOnrampProposal : null;
+          const receipt = summary && summary.hubOnrampDecisionReceipt ? summary.hubOnrampDecisionReceipt : null;
+          const surface = profileSurface;
+          const status = surface.status || {
+            kind: surface.ok === null ? 'waiting' : surface.ok ? 'complete' : 'blocked',
+            summary: surface.ok === null
+              ? 'No local profile adapter result is loaded yet.'
+              : (surface.error || `Profile ${surface.action || 'adapter'} result is available.`),
+          };
+          const bundlePath = selectedProfileBundlePath() || surface.bundlePath || 'not set';
+          const artifactPath = receipt
+            ? (receipt.localArtifactPath || 'not reported')
+            : proposal
+              ? (proposal.localArtifactPath || 'not reported')
+              : 'not reported';
+          const profileOutput = surface.lines.length > 0
+            ? `<pre class="profile-output">${escapeHtml(surface.lines.join('\n'))}</pre>`
+            : '';
+
+          return `
+        <div data-module="ForgeSurfaceCard">
+          <article class="note-card" data-module="ForgePreviewCard">
+            <div class="shell-note-title">Forge preview surface</div>
+            <div class="module-badge-rail">
+              ${SharedModules.EvidenceBadge.render('mode', 'preview-only', SharedModules.EvidenceBadge.toneForValue('display-only'))}
+              ${SharedModules.EvidenceBadge.render('bundle', bundlePath === 'not set' ? 'not set' : 'target selected', SharedModules.EvidenceBadge.toneForValue(bundlePath === 'not set' ? 'pending' : 'active'))}
+              ${SharedModules.EvidenceBadge.render('status', status.kind, SharedModules.EvidenceBadge.toneForValue(status.kind))}
+            </div>
+            <div data-module="ForgeAuthoringStripCard" class="module-copy-stack">
+              <p class="shell-note-copy">last profile action ${escapeHtml(surface.action || 'none')}.</p>
+            </div>
+            <div data-module="ExportReadinessCard" class="module-copy-stack">
+              <p class="shell-note-copy">bundle target ${escapeHtml(bundlePath)} · route-local artifact ${escapeHtml(artifactPath)}.</p>
+              <p class="shell-note-copy">status ${escapeHtml(status.summary)}.</p>
+            </div>
+            <div class="module-copy-stack">
+              <p class="shell-note-copy">Display only. This is preview-only authoring and export posture: not authoritative publication, not canonical provenance closure, and not a hidden write.</p>
+            </div>
+            ${profileOutput}
+          </article>
+          ${proposal ? runwayOnrampProposalNoteHtml(proposal) : emptyNote('Route-local artifact preview', 'No pending-consent proposal is staged on the current runway summary yet.')}
+          ${receipt ? runwayOnrampDecisionReceiptNoteHtml(receipt) : emptyNote('Receipt preview', 'No local rehearsal receipt is staged yet. Any later export or publish path must stay explicit.')}
+        </div>`;
+        },
+      }),
+
+      ArenaSurfaceCard: Object.freeze({
+        render(selectedAgent, runway) {
+          const summary = runway;
+          if (!summary) {
+            return emptyNote('Arena preview unavailable', 'Load the local runway summary before inspecting runtime posture or preview-only result staging.');
+          }
+          const recovery = runwayRecoveryState(summary);
+          const lifecycleIntent = selectedLifecycleIntent();
+          const latestDeny = summary.latestDeny
+            ? `${summary.latestDeny.agentName || 'runtime'} · ${summary.latestDeny.message}`
+            : 'no deny observed';
+
+          return `
+        <div data-module="ArenaSurfaceCard">
+          <article class="note-card" data-module="ArenaPreviewCard">
+            <div class="shell-note-title">Arena preview surface</div>
+            <div class="module-badge-rail">
+              ${SharedModules.EvidenceBadge.render('posture', recovery.posture, recovery.tone)}
+              ${SharedModules.EvidenceBadge.render('result', 'non-evidentiary', SharedModules.EvidenceBadge.toneForValue('non-evidentiary'))}
+              ${SharedModules.EvidenceBadge.render('agent', selectedAgent ? selectedAgent.status : 'none selected', SharedModules.EvidenceBadge.toneForValue(selectedAgent ? selectedAgent.status : 'pending'))}
+            </div>
+            <div class="module-copy-stack">
+              <p class="shell-note-copy">selected agent ${escapeHtml(selectedAgent ? selectedAgent.name : 'none')} · lifecycle ${escapeHtml(lifecycleIntent ? lifecycleIntent.method : 'not staged')}.</p>
+              <p class="shell-note-copy">checkpoint ${escapeHtml(summary.checkpointState)} · latest deny ${escapeHtml(latestDeny)}.</p>
+              <p class="shell-note-copy">Display only. This is preview-only runtime posture and result staging: no simulation result, lifecycle rehearsal, or deny recovery becomes Profile progression or canonical evidence on this shell.</p>
+            </div>
+          </article>
+          <article class="note-card" data-module="ArenaLifecycleRehearsalStageCard">
+            <div class="shell-note-title">Lifecycle rehearsal stage</div>
+            <div class="module-badge-rail">
+              ${SharedModules.EvidenceBadge.render('intent', lifecycleIntent ? lifecycleIntent.method : 'not staged', SharedModules.EvidenceBadge.toneForValue(lifecycleIntent ? lifecycleIntent.method : 'pending'))}
+              ${SharedModules.EvidenceBadge.render('boundary', 'rehearsal-only', SharedModules.EvidenceBadge.toneForValue('non-evidentiary'))}
+            </div>
+            <div class="module-copy-stack">
+              <p class="shell-note-copy">Staged method ${escapeHtml(lifecycleIntent ? lifecycleIntent.method : 'none')}.</p>
+              <p class="shell-note-copy">Preview-only until explicit handoff. No lifecycle rehearsal result becomes canonical evidence on this shell.</p>
+            </div>
+          </article>
+          ${runwayRecoveryStateNoteHtml(summary)}
+          ${emptyNote('Preview result handoff', 'No route-local runtime result artifact is staged yet. Any future handoff into Profile must remain explicit, named, and non-evidentiary until accepted.')}
+        </div>`;
+        },
+      }),
+
+      HomeHubInspectorCard: Object.freeze({
+        render(runway) {
+          if (!runway) {
+            return '';
+          }
+          const summary = runway;
+          const proposal = summary.hubOnrampProposal || null;
+          const receipt = summary.hubOnrampDecisionReceipt || null;
+          const bridge = currentBridgeAgent();
+          return `
+        <div data-module="HomeHubInspectorCard">
+          ${SharedModules.renderDetailPairs([
+            ['Surface', 'home-hub observation'],
+            ['Bridge agent', bridge ? bridge.name : (proposal ? proposal.bridgeAgentName : 'not reported')],
+            ['Bridge status', bridge ? bridge.status : 'not reported'],
+            ['Stand-in entity', proposal ? proposal.standInEntityName : 'not reported'],
+            ['Requested action', proposal ? proposal.requestedAction : 'not reported'],
+            ['Decision label', receipt ? receipt.decisionLabel : 'not reported'],
+          ])}
+          ${runwayConsentBoundaryInspectorDetails(summary)}
+          ${runwayOnrampProposalInspectorDetails(proposal)}
+          ${runwayOnrampDecisionReceiptInspectorDetails(receipt)}
+          ${runwayHubRestartInspectorDetails(summary.hubRestart || null)}
+        </div>`;
+        },
+      }),
+
+      ForgeInspectorCard: Object.freeze({
+        render(profileSurface, runway) {
+          const summary = runway;
+          const proposal = summary && summary.hubOnrampProposal ? summary.hubOnrampProposal : null;
+          const receipt = summary && summary.hubOnrampDecisionReceipt ? summary.hubOnrampDecisionReceipt : null;
+          const surface = profileSurface;
+          const status = surface.status || {
+            kind: surface.ok === null ? 'waiting' : surface.ok ? 'complete' : 'blocked',
+            summary: surface.ok === null
+              ? 'Choose a local profile adapter action to load a structured result.'
+              : (surface.error || 'Structured profile adapter status not available.'),
+          };
+          return `
+        <div data-module="ForgeInspectorCard">
+          ${SharedModules.renderDetailPairs([
+            ['Surface', 'forge preview'],
+            ['Bundle path', selectedProfileBundlePath() || surface.bundlePath || 'not set'],
+            ['Last profile action', surface.action || 'none'],
+            ['Profile status', status.kind],
+            ['Profile summary', status.summary],
+            ['Artifact path', receipt ? receipt.localArtifactPath : proposal ? proposal.localArtifactPath : 'not reported'],
+          ])}
+          ${runwayOnrampProposalInspectorDetails(proposal)}
+          ${runwayOnrampDecisionReceiptInspectorDetails(receipt)}
+        </div>`;
+        },
+      }),
+
+      ArenaInspectorCard: Object.freeze({
+        render(selectedAgent, runway) {
+          const summary = runway;
+          if (!summary) {
+            return '';
+          }
+          const lifecycleIntent = selectedLifecycleIntent();
+          return `
+        <div data-module="ArenaInspectorCard">
+          ${SharedModules.renderDetailPairs([
+            ['Surface', 'arena preview'],
+            ['Selected agent', selectedAgent ? selectedAgent.name : 'none'],
+            ['Selected status', selectedAgent ? selectedAgent.status : 'not reported'],
+            ['Lifecycle intent', lifecycleIntent ? lifecycleIntent.method : 'not staged'],
+            ['Result class', 'non-evidentiary'],
+            ['Latest deny', summary.latestDeny ? `${summary.latestDeny.agentName || 'runtime'} · ${summary.latestDeny.message}` : 'none observed'],
+          ])}
+          ${runwayRecoveryStateInspectorDetails(summary)}
+        </div>`;
+        },
+      }),
+
+      AgentStatusBadge: Object.freeze({
+        toneForStatus(status) {
+          const s = String(status || '').toLowerCase();
+          if (s === 'running') return 'ok';
+          if (s === 'registered') return 'warn';
+          return 'muted';
+        },
+        render(status) {
+          const tone = this.toneForStatus(status);
+          return `<span class="module-badge evidence-badge" data-module="AgentStatusBadge" data-tone="${escapeHtml(tone)}"><span class="module-badge-label">status</span><span>${escapeHtml(String(status || 'unknown'))}</span></span>`;
+        },
+      }),
+
+      AgentListRowCard: Object.freeze({
+        render(agent, isSelected) {
+          return `
+          <button class="list-row ${isSelected ? 'is-selected' : ''}" data-module="AgentListRowCard" data-agent-name="${escapeHtml(agent.name)}" type="button">
+            <strong>${escapeHtml(agent.name)}</strong>
+            <small>version ${escapeHtml(agent.version)} · ${SharedModules.AgentStatusBadge.render(agent.status)}</small>
+          </button>`;
+        },
+      }),
+
+      CapabilityPillList: Object.freeze({
+        render(requirements) {
+          const reqs = Array.isArray(requirements) ? requirements : [];
+          if (reqs.length === 0) {
+            return `<div class="module-badge-rail" data-module="CapabilityPillList"></div>`;
+          }
+          const pills = reqs
+            .map((req) => SharedModules.EvidenceBadge.render('requires', String(req.capability || req), 'muted'))
+            .join('');
+          return `<div class="module-badge-rail" data-module="CapabilityPillList">${pills}</div>`;
+        },
+      }),
+
+      AgentRowCard: Object.freeze({
+        render(agent, isSelected, intentLabel) {
+          return `
+        <article class="table-row${isSelected ? ' is-selected' : ''}" data-module="AgentRowCard" data-focus-agent="${escapeHtml(agent.name)}">
+          <strong>${escapeHtml(agent.name)}</strong>
+          <small>${SharedModules.AgentStatusBadge.render(agent.status)} version ${escapeHtml(agent.version)}</small>
+          <div class="table-row-meta"><span>Route focus</span><span>${escapeHtml(intentLabel)}</span></div>
+        </article>`;
+        },
+      }),
+
+      GrantRowCard: Object.freeze({
+        render(grant, index, isSelected) {
+          return `
+        <article class="table-row${isSelected ? ' is-selected' : ''}" data-module="GrantRowCard" data-grant-index="${index}">
+          <strong>${escapeHtml(grant.capability)}</strong>
+          <small>${escapeHtml(grant.profileId)} · ${grant.isActive ? 'active' : 'revoked'}</small>
+          <div class="table-row-meta"><span>${grant.revokedAt ? escapeHtml(grant.revokedAt) : 'not revoked'}</span><span>grant state</span></div>
+        </article>`;
+        },
+      }),
+
+      DenyLogRowCard: Object.freeze({
+        render(entry, index, isSelected) {
+          return `
+        <article class="table-row${isSelected ? ' is-selected' : ''}" data-module="DenyLogRowCard" data-deny-index="${index}">
+          <strong>${escapeHtml(entry.agentName || 'runtime')}</strong>
+          <small>${escapeHtml(entry.message)}</small>
+          <div class="table-row-meta"><span>${escapeHtml(entry.kind)}</span><span>${escapeHtml(entry.capability || 'no capability parsed')}</span></div>
+        </article>`;
+        },
+      }),
+    });
+
+    function runwayOnrampBoundaryState(summary) {
+      const proposal = summary.hubOnrampProposal || null;
+      const receipt = summary.hubOnrampDecisionReceipt || null;
+      const proposalId = proposal ? proposal.proposalId : receipt ? receipt.proposalId : 'not reported';
+      const artifactPath = receipt
+        ? (receipt.localArtifactPath || 'not reported')
+        : proposal
+          ? (proposal.localArtifactPath || 'not reported')
+          : 'not reported';
+
+      if (proposal && receipt) {
+        return {
+          stageLabel: 'proposal + rehearsal receipt',
+          stageTone: 'warn',
+          canonicalState: 'blocked pending audit seam',
+          canonicalTone: 'warn',
+          proposalId,
+          artifactPath,
+          boundaryCopy: 'Pending material remains quarantined. A local decision rehearsal exists, but no executed accept/reject path is exposed on this shell.',
+          nextAction: 'Keep this route in review posture until an audit-backed consent write seam exists.',
+        };
+      }
+
+      if (proposal) {
+        return {
+          stageLabel: 'proposal only',
+          stageTone: 'warn',
+          canonicalState: 'blocked pending audit seam',
+          canonicalTone: 'warn',
+          proposalId,
+          artifactPath,
+          boundaryCopy: 'Pending material is visible for review, but the shell still has no wired accept/reject surface.',
+          nextAction: 'Review the staged material and its route-local artifact without inferring accepted state.',
+        };
+      }
+
+      if (receipt) {
+        return {
+          stageLabel: 'rehearsal receipt only',
+          stageTone: 'warn',
+          canonicalState: 'still display-only',
+          canonicalTone: 'warn',
+          proposalId,
+          artifactPath,
+          boundaryCopy: 'A local decision rehearsal exists without a current staged proposal. The receipt remains route-local and non-canonical.',
+          nextAction: 'Treat the recorded rehearsal as observation only and wait for fresh staged material before reopening review.',
+        };
+      }
+
+      return {
+        stageLabel: 'no staged onramp item',
+        stageTone: 'muted',
+        canonicalState: 'unchanged',
+        canonicalTone: 'muted',
+        proposalId,
+        artifactPath,
+        boundaryCopy: 'No staged onramp item is available on this runway summary yet.',
+        nextAction: 'Keep the route in observation posture until staged material appears.',
+      };
+    }
+
+    function runwayRecoveryState(summary) {
+      const checkpointState = summary.checkpointState || 'not reported';
+      const checkpointDetail = summary.checkpointDetail || 'not reported';
+      const latestDeny = summary.latestDeny || null;
+      const reloadStatus = summary.hubRestart && summary.hubRestart.reloadStatus
+        ? summary.hubRestart.reloadStatus
+        : 'unavailable';
+
+      if (latestDeny) {
+        return {
+          posture: 'recover from deny',
+          tone: 'danger',
+          checkpointState,
+          checkpointDetail,
+          reloadStatus,
+          detail: `${latestDeny.kind} · ${latestDeny.agentName || 'runtime'} · ${latestDeny.message}`,
+          nextAction: 'Review the deny visibility and restore the selected-agent lifecycle prerequisites before treating the runway as actionable.',
+        };
+      }
+
+      if (reloadStatus === 'unavailable') {
+        return {
+          posture: 'restart context unavailable',
+          tone: 'warn',
+          checkpointState,
+          checkpointDetail,
+          reloadStatus,
+          detail: 'The runway summary loaded without optional hub restart context on this pass.',
+          nextAction: 'Keep the shell in observation posture and rely on route-local artifacts until restart context returns.',
+        };
+      }
+
+      if (String(checkpointState).toLowerCase().includes('pending')) {
+        return {
+          posture: 'checkpoint pending',
+          tone: 'warn',
+          checkpointState,
+          checkpointDetail,
+          reloadStatus,
+          detail: 'The current checkpoint has not cleared yet, so onramp review should stay read-first.',
+          nextAction: 'Hold to checklist review and local observation until the checkpoint moves forward.',
+        };
+      }
+
+      return {
+        posture: 'lifecycle rehearsal ready',
+        tone: 'ok',
+        checkpointState,
+        checkpointDetail,
+        reloadStatus,
+        detail: 'The shell has local observation plus the current selected-agent lifecycle rehearsal lane.',
+        nextAction: 'Inspect runway artifacts, then rehearse the current selected-agent lifecycle lane only. Onramp accept/reject stays closed and the shell still has one effective writer lane.',
+      };
     }
 
     function runwayHubRestartPriorFields(hubRestart) {
@@ -1261,110 +2306,45 @@
     }
 
     function runwayHubRestartNoteHtml(hubRestart) {
-      if (!hubRestart) {
-        return emptyNote('Optional hub restart context', 'This runway summary does not include optional hub restart context yet. The runway checklist remains usable without it.');
-      }
-
       const priorFields = runwayHubRestartPriorFields(hubRestart);
-      const priorCopy = priorFields.length > 0
-        ? priorFields
-          .map(([label, value]) => `<p class="shell-note-copy">${escapeHtml(label)} · ${escapeHtml(value)}</p>`)
-          .join('')
-        : '<p class="shell-note-copy">No prior hub restart observation fields were returned on this summary yet.</p>';
-
-      return `
-        <article class="note-card">
-          <div class="shell-note-title">Optional hub restart context</div>
-          <p class="shell-note-copy">reloadStatus ${escapeHtml(hubRestart.reloadStatus || 'not reported')} is display-only runway context.</p>
-          <p class="shell-note-copy">snapshotPath ${escapeHtml(hubRestart.snapshotPath || 'not reported')} · scope ${escapeHtml(hubRestart.scope || 'local-only')} · evidence ${escapeHtml(hubRestart.evidence || 'non-evidentiary')}.</p>
-          ${priorCopy}
-        </article>`;
+      return SharedModules.SourceLineageCard.render(hubRestart, priorFields);
     }
 
     function runwayHubRestartInspectorDetails(hubRestart) {
-      if (!hubRestart) {
-        return `
-          <div class="detail-pair"><div class="detail-key">Hub restart</div><div class="detail-value">optional context not available yet</div></div>`;
-      }
-
       const priorFields = runwayHubRestartPriorFields(hubRestart);
-      const priorDetails = priorFields.length > 0
-        ? priorFields
-          .map(([label, value]) => `
-          <div class="detail-pair"><div class="detail-key">${escapeHtml(label)}</div><div class="detail-value">${escapeHtml(value)}</div></div>`)
-          .join('')
-        : `
-          <div class="detail-pair"><div class="detail-key">Prior observation</div><div class="detail-value">none reported on this summary yet</div></div>`;
-
-      return `
-          <div class="detail-pair"><div class="detail-key">Hub restart</div><div class="detail-value">optional read-only context</div></div>
-          <div class="detail-pair"><div class="detail-key">Reload status</div><div class="detail-value">${escapeHtml(hubRestart.reloadStatus || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Snapshot path</div><div class="detail-value">${escapeHtml(hubRestart.snapshotPath || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Restart scope</div><div class="detail-value">${escapeHtml(hubRestart.scope || 'local-only')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Restart evidence</div><div class="detail-value">${escapeHtml(hubRestart.evidence || 'non-evidentiary')}</div></div>${priorDetails}`;
+      return SharedModules.SourceLineageCard.inspectorDetails(hubRestart, priorFields);
     }
 
     function runwayOnrampProposalNoteHtml(proposal) {
-      if (!proposal) {
-        return emptyNote('Optional proposed material', 'This runway summary does not include pending-consent proposed material yet. The runway checklist remains usable without it.');
-      }
-
-      return `
-        <article class="note-card">
-          <div class="shell-note-title">Pending consent proposed material</div>
-          <p class="shell-note-copy">quarantineStatus ${escapeHtml(proposal.quarantineStatus || 'not reported')} · scope ${escapeHtml(proposal.scope || 'local-only')} · evidence ${escapeHtml(proposal.evidence || 'non-evidentiary')} · artifact ${escapeHtml(proposal.localArtifactPath || 'not reported')}.</p>
-          <p class="shell-note-copy">source ${escapeHtml(proposal.source || 'not reported')} · proposalId ${escapeHtml(proposal.proposalId || 'not reported')}.</p>
-          <p class="shell-note-copy">bridge ${escapeHtml(proposal.bridgeAgentName || 'not reported')} · stand-in ${escapeHtml(proposal.standInEntityName || 'not reported')} · requested ${escapeHtml(proposal.requestedCapability || 'not reported')} / ${escapeHtml(proposal.requestedAction || 'not reported')}.</p>
-          <p class="shell-note-copy">Display only. This is proposed material only: not accepted, not canonical, not a grant, and not Home Assistant proof.</p>
-        </article>`;
+      return SharedModules.ProposedMaterialCard.render(proposal);
     }
 
     function runwayOnrampProposalInspectorDetails(proposal) {
-      if (!proposal) {
-        return `
-          <div class="detail-pair"><div class="detail-key">Hub onramp proposal</div><div class="detail-value">optional proposed material not available yet</div></div>`;
-      }
-
-      return `
-          <div class="detail-pair"><div class="detail-key">Hub onramp proposal</div><div class="detail-value">pending consent proposed material only</div></div>
-          <div class="detail-pair"><div class="detail-key">Source</div><div class="detail-value">${escapeHtml(proposal.source || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Proposal ID</div><div class="detail-value">${escapeHtml(proposal.proposalId || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Bridge agent</div><div class="detail-value">${escapeHtml(proposal.bridgeAgentName || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Stand-in entity</div><div class="detail-value">${escapeHtml(proposal.standInEntityName || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Requested capability</div><div class="detail-value">${escapeHtml(proposal.requestedCapability || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Requested action</div><div class="detail-value">${escapeHtml(proposal.requestedAction || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Quarantine status</div><div class="detail-value">${escapeHtml(proposal.quarantineStatus || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Proposal scope</div><div class="detail-value">${escapeHtml(proposal.scope || 'local-only')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Proposal evidence</div><div class="detail-value">${escapeHtml(proposal.evidence || 'non-evidentiary')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Artifact path</div><div class="detail-value">${escapeHtml(proposal.localArtifactPath || 'not reported')}</div></div>`;
+      return SharedModules.ProposedMaterialCard.inspectorDetails(proposal);
     }
 
     function runwayOnrampDecisionReceiptNoteHtml(receipt) {
-      if (!receipt) {
-        return emptyNote('Optional decision rehearsal receipt', 'This runway summary does not include a recorded local decision rehearsal receipt yet. Any proposal shown here remains display-only pending material.');
-      }
-
-      return `
-        <article class="note-card">
-          <div class="shell-note-title">Local decision rehearsal receipt</div>
-          <p class="shell-note-copy">proposalId ${escapeHtml(receipt.proposalId || 'not reported')} · decisionLabel ${escapeHtml(receipt.decisionLabel || 'not reported')} · artifact ${escapeHtml(receipt.localArtifactPath || 'not reported')}.</p>
-          <p class="shell-note-copy">decisionDetail ${escapeHtml(receipt.decisionDetail || 'not reported')}.</p>
-          <p class="shell-note-copy">Display only. This is a recorded local decision rehearsal receipt: not an executed consent event, not canonical state, not a grant, and not Home Assistant proof.</p>
-        </article>`;
+      return SharedModules.ReceiptStrip.render(receipt);
     }
 
     function runwayOnrampDecisionReceiptInspectorDetails(receipt) {
-      if (!receipt) {
-        return `
-          <div class="detail-pair"><div class="detail-key">Hub decision rehearsal</div><div class="detail-value">optional local decision receipt not available yet</div></div>`;
-      }
+      return SharedModules.ReceiptStrip.inspectorDetails(receipt);
+    }
 
-      return `
-          <div class="detail-pair"><div class="detail-key">Hub decision rehearsal</div><div class="detail-value">local decision rehearsal receipt only</div></div>
-          <div class="detail-pair"><div class="detail-key">Proposal ID</div><div class="detail-value">${escapeHtml(receipt.proposalId || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Decision label</div><div class="detail-value">${escapeHtml(receipt.decisionLabel || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Decision detail</div><div class="detail-value">${escapeHtml(receipt.decisionDetail || 'not reported')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Artifact path</div><div class="detail-value">${escapeHtml(receipt.localArtifactPath || 'not reported')}</div></div>`;
+    function runwayConsentBoundaryNoteHtml(summary) {
+      return SharedModules.ConsentBoundaryCard.render(summary);
+    }
+
+    function runwayConsentBoundaryInspectorDetails(summary) {
+      return SharedModules.ConsentBoundaryCard.inspectorDetails(summary);
+    }
+
+    function runwayRecoveryStateNoteHtml(summary) {
+      return SharedModules.RecoveryStateCard.render(summary);
+    }
+
+    function runwayRecoveryStateInspectorDetails(summary) {
+      return SharedModules.RecoveryStateCard.inspectorDetails(summary);
     }
 
     function runwaySurfaceHtml() {
@@ -1377,12 +2357,14 @@
         ? `${summary.latestDeny.agentName || 'runtime'} · ${summary.latestDeny.message}`
         : 'no deny observed';
       const checkpointProgress = `${summary.checkpointPosition}/${summary.checkpointTotal}`;
-      const checklist = (summary.checklist || []).map((item, index) => `
-        <article class="table-row ${index === state.selectedRunwayIndex ? 'is-selected' : ''}" data-runway-index="${index}">
-          <strong>${escapeHtml(item.item)}</strong>
-          <small>${escapeHtml(item.status)} · ${escapeHtml(item.detail)}</small>
-          <div class="table-row-meta"><span>${escapeHtml(summary.surface)}</span><span>${escapeHtml(summary.scope)}</span></div>
-        </article>`).join('');
+      const checklist = (summary.checklist || []).map((item, index) => {
+        return SharedModules.OperatorStepCard.renderRunwayChecklistItem(
+          item,
+          index,
+          index === state.selectedRunwayIndex,
+          summary,
+        );
+      }).join('');
 
       return `
         <article class="note-card">
@@ -1391,10 +2373,20 @@
           <p class="shell-note-copy">Profile ${escapeHtml(summary.profilePath || 'default')} · checkpoint ${escapeHtml(summary.checkpointState)} (${escapeHtml(checkpointProgress)}) · ${escapeHtml(summary.checkpointDetail)}.</p>
           <p class="shell-note-copy">Scope ${escapeHtml(summary.scope)} · evidence ${escapeHtml(summary.evidence)} · latest deny ${escapeHtml(latestDeny)}.</p>
         </article>
+        ${runwayConsentBoundaryNoteHtml(summary)}
+        ${runwayRecoveryStateNoteHtml(summary)}
         ${runwayOnrampProposalNoteHtml(summary.hubOnrampProposal)}
         ${runwayOnrampDecisionReceiptNoteHtml(summary.hubOnrampDecisionReceipt)}
         ${runwayHubRestartNoteHtml(summary.hubRestart)}
         ${checklist || emptyNote('No runway checklist', 'The runway route loaded, but no checklist items were returned.')}`;
+    }
+
+    function currentBridgeAgent() {
+      const proposal = state.runway && state.runway.hubOnrampProposal;
+      const preferredName = proposal && proposal.bridgeAgentName ? proposal.bridgeAgentName : 'ha-local-bridge';
+      return state.agents.find((agent) => agent.name === preferredName)
+        || state.agents.find((agent) => agent.name.includes('bridge'))
+        || null;
     }
 
     function renderInspector() {
@@ -1402,22 +2394,14 @@
       const selectedAgent = selectedAgentRecord();
 
       if (state.route === 'agents' && selectedAgent) {
-        inspector.innerHTML = `
-          <div class="detail-pair"><div class="detail-key">Agent</div><div class="detail-value">${escapeHtml(selectedAgent.name)}</div></div>
-          <div class="detail-pair"><div class="detail-key">Status</div><div class="detail-value">${escapeHtml(selectedAgent.status)}</div></div>
-          <div class="detail-pair"><div class="detail-key">Version</div><div class="detail-value">${escapeHtml(selectedAgent.version)}</div></div>
-          <div class="detail-pair"><div class="detail-key">Required capabilities</div><div class="detail-value">${renderCapabilities(selectedAgent.requiredCapabilities)}</div></div>`;
+        const intent = selectedLifecycleIntent();
+        inspector.innerHTML = SharedModules.AgentDetailCard.render(selectedAgent, intent, lifecycleGateFor(intent));
         return;
       }
 
       if (state.route === 'grants' && state.grants[state.selectedGrantIndex ?? -1]) {
         const grant = state.grants[state.selectedGrantIndex];
-        inspector.innerHTML = `
-          <div class="detail-pair"><div class="detail-key">Capability</div><div class="detail-value">${escapeHtml(grant.capability)}</div></div>
-          <div class="detail-pair"><div class="detail-key">Profile</div><div class="detail-value">${escapeHtml(grant.profileId)}</div></div>
-          <div class="detail-pair"><div class="detail-key">State</div><div class="detail-value">${grant.isActive ? 'active' : 'revoked'}</div></div>
-          <div class="detail-pair"><div class="detail-key">Revoked at</div><div class="detail-value">${escapeHtml(grant.revokedAt || 'not revoked')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Reason</div><div class="detail-value">${escapeHtml(grant.revocationReason || 'none')}</div></div>`;
+        inspector.innerHTML = SharedModules.GrantDetailCard.render(grant);
         return;
       }
 
@@ -1446,6 +2430,8 @@
         const item = summary.checklist && summary.checklist.length > 0
           ? summary.checklist[state.selectedRunwayIndex ?? 0]
           : null;
+        const consentBoundaryDetails = runwayConsentBoundaryInspectorDetails(summary);
+        const recoveryStateDetails = runwayRecoveryStateInspectorDetails(summary);
         const hubOnrampProposalDetails = runwayOnrampProposalInspectorDetails(summary.hubOnrampProposal || null);
         const hubOnrampDecisionReceiptDetails = runwayOnrampDecisionReceiptInspectorDetails(summary.hubOnrampDecisionReceipt || null);
         const hubRestartDetails = runwayHubRestartInspectorDetails(summary.hubRestart || null);
@@ -1457,6 +2443,8 @@
           <div class="detail-pair"><div class="detail-key">Checkpoint</div><div class="detail-value">${escapeHtml(summary.checkpointState)}</div></div>
           <div class="detail-pair"><div class="detail-key">Checkpoint progress</div><div class="detail-value">${escapeHtml(`${summary.checkpointPosition}/${summary.checkpointTotal}`)}</div></div>
           <div class="detail-pair"><div class="detail-key">Checkpoint detail</div><div class="detail-value">${escapeHtml(summary.checkpointDetail)}</div></div>
+          ${consentBoundaryDetails}
+          ${recoveryStateDetails}
           ${hubOnrampProposalDetails}
           ${hubOnrampDecisionReceiptDetails}
           ${hubRestartDetails}
@@ -1466,14 +2454,24 @@
         return;
       }
 
+      if (state.route === 'homeHub' && state.runway) {
+        inspector.innerHTML = SharedModules.HomeHubInspectorCard.render(state.runway);
+        return;
+      }
+
+      if (state.route === 'forge') {
+        inspector.innerHTML = SharedModules.ForgeInspectorCard.render(state.profileSurface, state.runway);
+        return;
+      }
+
+      if (state.route === 'arena' && state.runway) {
+        inspector.innerHTML = SharedModules.ArenaInspectorCard.render(selectedAgentRecord(), state.runway);
+        return;
+      }
+
       if (state.route === 'denyLog' && state.denyEntries[state.selectedDenyIndex ?? -1]) {
         const entry = state.denyEntries[state.selectedDenyIndex];
-        inspector.innerHTML = `
-          <div class="detail-pair"><div class="detail-key">Entry ID</div><div class="detail-value">${entry.entryId}</div></div>
-          <div class="detail-pair"><div class="detail-key">Kind</div><div class="detail-value">${escapeHtml(entry.kind)}</div></div>
-          <div class="detail-pair"><div class="detail-key">Agent</div><div class="detail-value">${escapeHtml(entry.agentName || 'runtime')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Capability</div><div class="detail-value">${escapeHtml(entry.capability || 'none')}</div></div>
-          <div class="detail-pair"><div class="detail-key">Message</div><div class="detail-value">${escapeHtml(entry.message)}</div></div>`;
+        inspector.innerHTML = SharedModules.DenyEventDetailCard.render(entry);
         return;
       }
 
@@ -1485,43 +2483,41 @@
     }
 
     function renderToolsCopy() {
+      const toolsNoteCard = document.getElementById('tools-note-card');
       const lifecycleIntent = selectedLifecycleIntent();
       if (state.route === 'agents' && lifecycleIntent) {
-        document.getElementById('tools-copy').textContent = `${lifecycleIntent.agentName} is ${lifecycleIntent.status}. The local lifecycle control checks loaded active grants before sending ${lifecycleIntent.method}, then refreshes through agent.snapshot.`;
+        toolsNoteCard.innerHTML = SharedModules.ToolLaneCard.render(
+          'Current route scope',
+          `${lifecycleIntent.agentName} is ${lifecycleIntent.status}. The local lifecycle control checks loaded active grants before sending ${lifecycleIntent.method}, then refreshes through agent.snapshot.`,
+          { titleId: 'tools-note-title', copyId: 'tools-copy' },
+        );
         return;
       }
 
-      const copy = {
-        agents: 'Agents route shows live registry rows and promotes a selected agent into the inspector slot.',
-        grants: 'Grants route reads the local profile state through the current S3/S2 boundary with no mock grant rows.',
-        profile: 'Profile route uses the local /profile adapter for init, show, export, and import without sending JSON-RPC grant writes.',
-        runway: 'Runway route reads the local-only /runway-summary.json surface for the selected profile path, checkpoint progress, deny visibility, stand-in readiness observation, optional hub restart context, pending-consent proposed material, and an optional local decision rehearsal receipt. All of it stays display-only, non-evidentiary, and free of remote transport or G4 closure claims here.',
-        denyLog: 'Deny log route uses persisted deny evidence only; route filtering stays in-slot and does not open overlays.',
-      };
-      document.getElementById('tools-copy').textContent = copy[state.route];
+      toolsNoteCard.innerHTML = SharedModules.ToolLaneCard.render(
+        'Current route scope',
+        routeDescriptor().toolsCopy,
+        { titleId: 'tools-note-title', copyId: 'tools-copy' },
+      );
     }
 
     function renderAuditCopy() {
       const lifecycleIntent = selectedLifecycleIntent();
-      const intentTitle = document.getElementById('intent-note-title');
-      const intentCopy = document.getElementById('intent-note-copy');
+      const intentNoteCard = document.getElementById('intent-note-card');
+      const descriptor = routeDescriptor();
+      let title = descriptor.auditTitle;
+      let copy = descriptor.auditCopy;
 
       if (state.route === 'agents' && lifecycleIntent) {
-        intentTitle.textContent = 'Selected lifecycle intent';
-        intentCopy.textContent = `${lifecycleIntent.agentName} is currently ${lifecycleIntent.status}. The shell can send ${lifecycleIntent.method} only after the active-grant gate and arm checkbox both pass, then it refreshes through agent.snapshot.`;
-      } else if (state.route === 'grants') {
-        intentTitle.textContent = 'Grant control remains future work';
-        intentCopy.textContent = 'Grant rows are live and the lifecycle gate consumes them, but this shell does not stage grant.create or grant.revoke.';
-      } else if (state.route === 'profile') {
-        intentTitle.textContent = 'Profile adapter is local only';
-        intentCopy.textContent = 'Profile init, show, export, and import use the same-origin /profile adapter. Profile grant and revoke stay closed here.';
-      } else if (state.route === 'runway') {
-        intentTitle.textContent = 'Runway observation only';
-        intentCopy.textContent = 'Runway rows come from the local-only /runway-summary.json surface for the selected profile path. Optional hub restart context, pending-consent proposed material, and a local decision rehearsal receipt may appear on the same read-only route. All remain display-only: no acceptance flow, no executed consent event, no canonical state, no grant, no remote transport, no Home Assistant proof, and no durability, power-cycle, hardware, or gate evidence is implied. No G4 closure is claimed.';
-      } else {
-        intentTitle.textContent = 'Deny observation only';
-        intentCopy.textContent = 'Deny entries remain read-only evidence. If a transmitted lifecycle RPC is denied by the backend, the shell refreshes through agent.snapshot so persisted deny evidence can read back here.';
+        title = 'Selected lifecycle intent';
+        copy = `${lifecycleIntent.agentName} is currently ${lifecycleIntent.status}. The shell can send ${lifecycleIntent.method} only after the active-grant gate and arm checkbox both pass, then it refreshes through agent.snapshot.`;
       }
+
+      intentNoteCard.innerHTML = SharedModules.ToolLaneCard.render(
+        title,
+        copy,
+        { titleId: 'intent-note-title', copyId: 'intent-note-copy' },
+      );
 
       const latest = state.denyEntries[0];
       document.getElementById('latest-deny-copy').textContent = latest
@@ -1693,31 +2689,7 @@
     }
 
     function centerSubtitle() {
-      switch (state.route) {
-        case 'grants':
-          return 'Grant rows reflect the current local profile state through the loaded agent.snapshot read.';
-        case 'profile':
-          return 'Profile actions use the local /profile adapter for init, show, export, and import only.';
-        case 'runway':
-          return 'Runway rows come from the local-only /runway-summary.json surface; any optional hub restart, proposal, or decision rehearsal receipt stays display-only and non-evidentiary.';
-        case 'denyLog':
-          return 'Deny-log rows stay inside the current persisted shell state loaded through agent.snapshot.';
-        default:
-          return 'Agent registry and detail now read through the loaded agent.snapshot seam with no fake data.';
-      }
-    }
-
-    function renderCapabilities(requiredCapabilities) {
-      if (!requiredCapabilities || requiredCapabilities.length === 0) {
-        return 'none';
-      }
-
-      return requiredCapabilities
-        .map((capability) => {
-          const profileId = capability.profileId ?? capability.profile_id ?? 'unknown-profile';
-          return `${escapeHtml(profileId)}:${escapeHtml(capability.capability)}`;
-        })
-        .join('<br />');
+      return routeDescriptor().centerSubtitle;
     }
 
     function setStatusSelection(value) {
@@ -1742,12 +2714,65 @@
         .replaceAll("'", '&#39;');
     }
 
-    document.querySelectorAll('[data-route]').forEach((button) => {
-      button.addEventListener('click', () => {
-        state.route = button.dataset.route;
-        render();
+    function renderAuditLifecycleCards() {
+      const controlSlot = document.querySelector('[data-audit-lifecycle-slot="control"]');
+      if (controlSlot) {
+        controlSlot.outerHTML = SharedModules.LifecycleControlCard.render();
+      }
+
+      const outcomeSlot = document.querySelector('[data-audit-lifecycle-slot="outcome"]');
+      if (outcomeSlot) {
+        outcomeSlot.outerHTML = SharedModules.LifecycleOutcomeCard.render();
+      }
+    }
+
+    function renderBaseShellChrome() {
+      const topEdgeSlot = document.querySelector('[data-base-shell-chrome-slot="top-edge"]');
+      if (topEdgeSlot) {
+        topEdgeSlot.outerHTML = SharedModules.BaseShellChrome.renderTopEdge(BASE_SHELL_STATIC_CHROME.topEdge);
+      }
+
+      const bottomEdgeSlot = document.querySelector('[data-base-shell-chrome-slot="bottom-edge"]');
+      if (bottomEdgeSlot) {
+        bottomEdgeSlot.outerHTML = SharedModules.BaseShellChrome.renderBottomEdge(BASE_SHELL_STATIC_CHROME.bottomEdge);
+      }
+
+      BASE_SHELL_SIDE_PANEL_HEADERS.forEach((config) => {
+        const slot = document.querySelector(`[data-side-panel-header-slot="${config.anchor}"]`);
+        if (!slot) {
+          return;
+        }
+
+        slot.outerHTML = SharedModules.BaseShellChrome.renderSidePanelHeader(config);
       });
+    }
+
+    function bindTouchAnchors() {
+      document.querySelectorAll('[data-touch-jump]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const target = document.getElementById(button.dataset.touchJump);
+          if (!target) {
+            return;
+          }
+
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+    }
+
+    document.getElementById('route-list').addEventListener('click', (event) => {
+      const button = event.target.closest('[data-route]');
+      if (!button) {
+        return;
+      }
+
+      state.route = button.dataset.route;
+      render();
     });
+
+    renderBaseShellChrome();
+    renderAuditLifecycleCards();
+    bindTouchAnchors();
 
     document.querySelectorAll('[data-collapse-target]').forEach((button) => {
       button.addEventListener('click', () => {
@@ -1775,6 +2800,7 @@
     });
     document.getElementById('lifecycle-submit-button').addEventListener('click', submitLifecycleControl);
 
+    renderRouteButtons();
     refreshShell();
   </script>
 </body>
