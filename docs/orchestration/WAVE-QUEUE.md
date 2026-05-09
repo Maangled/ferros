@@ -29,6 +29,81 @@ None.
 
 ## Done
 
+### FRS-core-20260506-C1-W6
+
+- Title: Anti-narrowed node/runtime/core reconfirmation with runway-summary continuity
+- Status: done
+- Priority: P1
+- Gate: FRS-core continuation cycle C1 wave 6
+- Owning streams: core
+- Goal: Run anti-narrowed lane seeds across node (runway-summary continuity), runtime (local_runway lib + boundaries breadth), and core (message_envelope + capability_policy breadth); resolve any stale assertion drift; truth-sync closeout.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `crates/ferros-runtime/src/local_runway.rs`, `crates/ferros-core/src/capability.rs`, `crates/ferros-core/src/message.rs`, `crates/ferros-core/src/lib.rs`, `docs/orchestration/WAVE-RUN-LOG.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/surfaces/2026-05-09-FRS-core-C1-W6-TRUTH-SYNC-DELTA-L4.md`
+- Validation: `cargo test -p ferros-node local_agent_api_runway_summary_serializes_and_tracks_profile_and_deny_observation`; `cargo test -p ferros-runtime --lib local_runway`; `cargo test -p ferros-runtime --test boundaries`; `cargo test -p ferros-runtime`; `cargo test -p ferros-core --test message_envelope`; `cargo test -p ferros-core --test capability_policy`; `cargo test -p ferros-core`; `cargo test -p ferros-node` (reconciliation).
+- Constraints: Evidence-bounded recursion continuation only. No gate closure, no hardware or Home Assistant proof, no native-runtime claim, and no claims beyond named validations.
+- Last update: 2026-05-09
+- size: L
+- track: code
+
+### FRS-core-20260506-C1-W5
+
+- Title: Core-runtime recursion continuity reconfirmation after W4
+- Status: done
+- Priority: P1
+- Gate: FRS-core continuation cycle C1 wave 5
+- Owning streams: core
+- Goal: Preserve shell-route retirement guarantees, reconfirm adjacent shell boundaries, revalidate runtime checkpoint and consent invariants, and recheck core capability/envelope invariants before serial truth-sync closeout.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `crates/ferros-node/src/ferros.rs`, `crates/ferros-runtime/src/local_runway.rs`, `crates/ferros-core/src/capability.rs`, `crates/ferros-core/src/message.rs`, `crates/ferros-core/src/lib.rs`, `docs/orchestration/WAVE-RUN-LOG.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/surfaces/2026-05-09-FRS-core-C1-W5-TRUTH-SYNC-DELTA-L4.md`
+- Validation: `cargo test -p ferros-node shell_route_rejects_retired_harness_alias_path`; `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness`; `cargo test -p ferros-node shell_route_returns_not_found_for_unknown_paths`; `cargo test -p ferros-node shell_route_gets_local_runway_summary_json`; `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter`; `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions`; `cargo test -p ferros-runtime start_path_advances_through_the_local_runway_checkpoints`; `cargo test -p ferros-runtime shell_detail_matches_terminal_and_consent_boundaries`; `cargo test -p ferros-runtime adapter_composes_transition_executor_and_bus_through_runtime_seams`; `cargo test -p ferros-core`; `cargo test -p ferros-node shell_route_posts_json_rpc_agent_list`; `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions`.
+- Constraints: Evidence-bounded recursion continuation only. No gate closure, no hardware or Home Assistant proof, no native-runtime claim, and no claims beyond named validations.
+- Last update: 2026-05-09
+- size: L
+- track: code
+
+### FRS-core-20260506-C1-W4
+
+- Title: Alias-retirement contract hardening plus runtime and core invariant reconfirmation
+- Status: done
+- Priority: P1
+- Gate: FRS-core continuation cycle C1 wave 4
+- Owning streams: core
+- Goal: Reconfirm retired alias deny behavior, preserve canonical harness serving continuity, harden neighboring shell boundaries, and re-verify runtime plus core allow/deny invariants under the declared bounded packet.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `crates/ferros-node/src/ferros.rs`, `crates/ferros-runtime/src/local_runway.rs`, `crates/ferros-core/src/capability.rs`, `crates/ferros-core/src/message.rs`, `crates/ferros-core/src/lib.rs`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`, `docs/surfaces/2026-05-09-FRS-core-C1-W4-TRUTH-SYNC-DELTA-L4.md`
+- Validation: `cargo test -p ferros-node shell_route_rejects_retired_harness_alias_path`; `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness`; `cargo test -p ferros-node shell_route_returns_not_found_for_unknown_paths`; `cargo test -p ferros-node shell_route_gets_local_runway_summary_json`; `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter`; `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions`; `cargo test -p ferros-runtime start_path_advances_through_the_local_runway_checkpoints`; `cargo test -p ferros-runtime shell_detail_matches_terminal_and_consent_boundaries`; `cargo test -p ferros-runtime adapter_composes_transition_executor_and_bus_through_runtime_seams`; `cargo test -p ferros-core`; `cargo test -p ferros-node shell_route_posts_json_rpc_agent_list`; `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions`.
+- Constraints: Bookkeeping and evidence synchronization only after all packet-named validations pass. No gate closure, no hardware proof, no Home Assistant proof, and no native-runtime claim.
+- Last update: 2026-05-09
+- size: L
+- track: code
+
+### FRS-subcore-20260506-C3-W4
+
+- Title: Hosted retry non-duplication plus recovery vocabulary and scaffold evidence separation closeout
+- Status: done
+- Priority: P1
+- Gate: ADR-025 subcore continuation cycle C3 wave 4
+- Owning streams: S4 primary; S1 and S8 awareness
+- Goal: Extend hosted boundary evidence for retry non-duplication, define narrow recoverable versus terminal recovery vocabulary, separate scaffold hosted rehearsal versus native-observation vocabulary, add smoke retry rehearsal, and serialize truth-sync closeout.
+- Anchor files: `crates/ferros-runtime/tests/boundaries.rs`, `streams/S4-runtime/CONTRACTS.md`, `crates/ferros-x86_64-scaffold/src/lib.rs`, `crates/ferros-runtime/tests/x86_64_subcore_smoke.rs`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`, `docs/surfaces/2026-05-09-FRS-subcore-C3-W4-TRUTH-SYNC-DELTA-L4.md`
+- Validation: `cargo test -p ferros-runtime --test boundaries`; `cargo test -p ferros-runtime --test x86_64_subcore_smoke`; `cargo test -p ferros-x86_64-scaffold`; `cargo check -p ferros-x86_64-scaffold --no-default-features`; `cargo test -p ferros-core foundation_surface_`.
+- Constraints: Hosted-only and architecture-only bounded seams. Preserve ADR-025 non-claim ceiling. No native runtime, hardware, bootloader, kernel, QEMU, gate closure, automatic retry, transactional, rollback, or exactly-once claims.
+- Last update: 2026-05-09
+- size: L
+- track: code
+
+### FRS-subcore-20260506-C3-W5
+
+- Title: Hosted repeated-retry continuity hardening and contract sync closeout
+- Status: done
+- Priority: P1
+- Gate: ADR-025 subcore continuation cycle C3 wave 5
+- Owning streams: S4 primary; S1 and S8 awareness
+- Goal: Continue hosted continuity evidence by extending repeated transient-failure retry rehearsal in boundaries and smoke, synchronize S4 contract wording, run full cross-family matrix, and serialize truth-sync closeout.
+- Anchor files: `crates/ferros-runtime/tests/boundaries.rs`, `crates/ferros-runtime/tests/x86_64_subcore_smoke.rs`, `streams/S4-runtime/CONTRACTS.md`, `crates/ferros-x86_64-scaffold/src/lib.rs`, `docs/orchestration/WAVE-RUN-LOG.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/surfaces/2026-05-09-FRS-subcore-C3-W5-TRUTH-SYNC-DELTA-L4.md`
+- Validation: `cargo test -p ferros-runtime --test boundaries`; `cargo test -p ferros-runtime --test x86_64_subcore_smoke`; `cargo test -p ferros-runtime --test boundaries`; `cargo test -p ferros-x86_64-scaffold`; `cargo check -p ferros-x86_64-scaffold --no-default-features`; `cargo test -p ferros-runtime --test boundaries`; `cargo test -p ferros-runtime --test x86_64_subcore_smoke`; `cargo test -p ferros-x86_64-scaffold`; `cargo check -p ferros-x86_64-scaffold --no-default-features`; `cargo test -p ferros-core foundation_surface_`.
+- Constraints: Hosted and architecture-only bounded evidence. Preserve ADR-025 non-claim ceiling: no native-runtime proof, no FERROS-native OS claim, no bootloader or kernel or QEMU proof, no hardware or Home Assistant proof, no gate closure or D1 or G4 movement, and no transactional, exactly-once, or automatic-retry claim.
+- Last update: 2026-05-09
+- size: L
+- track: code
+
 ### WAVE-2026-05-03-83
 
 - Title: x86_64 FERROS subcore coordination lock and lane architect packet

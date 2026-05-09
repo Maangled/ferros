@@ -80,6 +80,10 @@ Compensation and retry policy is caller-owned on this hosted seam: bounded rehea
 
 The current hosted seam also preserves failure classification for caller policy: bounded rehearsal distinguishes transient route failure from terminal route failure at the bus boundary, and repeated transient failures still require explicit caller re-invocation before any envelope is delivered.
 
+Hosted recovery vocabulary on this seam is intentionally narrow and caller-facing: classify `TransientRouteBlocked` as `recoverable` and `RouteBlocked` as `terminal`. This vocabulary supports caller-owned policy decisions only and does not imply automatic adapter retry, transactional rollback, exactly-once delivery, or native execution proof.
+
+Hosted smoke rehearsal now mirrors this boundary rule: repeated transient route failures still require repeated explicit caller retry attempts, and no delivery occurs until a caller-issued retry succeeds.
+
 ---
 
 ## Note on `no_std`

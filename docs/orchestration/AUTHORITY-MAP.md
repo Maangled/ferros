@@ -10,8 +10,10 @@ This is the front door for the orchestration documentation. Read this first.
 |----------|------|
 | [ORCHESTRATION-POLICY.md](ORCHESTRATION-POLICY.md) | All stable rules: lane ceilings, lane classes, two-speed posture, recursive lane policy, failure handling chain, stop conditions, bookkeeping exemption list, gatekeeper decision enum, queue item schema, overrun rules |
 | [ORCHESTRATION-EXECUTION.md](ORCHESTRATION-EXECUTION.md) | All workflow: operating loop, mode selection (Interactive / Batch / Queue-Clear / Mixed), standard batch rhythm, steering checkpoint, human re-entry triggers, operator session integration, mixed invocation handling, response shape guidance |
-| [ORCHESTRATION-AGENTS.md](ORCHESTRATION-AGENTS.md) | Role map: all named agent roles, invocation decision tree, delegation rules, stream agent list, specialist agent list |
+| [ORCHESTRATION-AGENTS.md](ORCHESTRATION-AGENTS.md) | Role map: all named agent roles, invocation decision tree, delegation rules, stream agent list, specialist agent list, architect-peer roles, invocation gates, ADR authorship gates, canonical-change gates, packet gates |
 | [QUEUE-SURFACES.md](QUEUE-SURFACES.md) | Three queue tracks (code / system / hardware), purpose and ownership of each, queue item schema pointer, WAVE-RUN-LOG as append-only history |
+| [AUTHORITY-INTERRUPTION.md](AUTHORITY-INTERRUPTION.md) | Typed pause/approve/resume contract for authority mismatch discovered mid-run, including authority_ack requirements and route-token normalization |
+| [ARCHITECT-FAMILY-PROMOTION.md](ARCHITECT-FAMILY-PROMOTION.md) | Lifecycle states, promotion gates, evidence standards for architect-family roles (Coding Agent Architect, Business Agent Architect), and current promotion status |
 | [AUTHORITY-MAP.md](AUTHORITY-MAP.md) | This file — the index and shim registry |
 
 ---
@@ -48,9 +50,14 @@ Shim lifespan: each shimmed file declares its removal target in its shim header.
 | When does a human need to re-enter? | ORCHESTRATION-EXECUTION.md §Human re-entry |
 | Who is the Gatekeeper and what does it decide? | ORCHESTRATION-AGENTS.md §Gatekeeper |
 | What is the structured gatekeeper block format? | ORCHESTRATION-EXECUTION.md §Gatekeeper block |
+| How do we handle authority mismatch mid-run? | AUTHORITY-INTERRUPTION.md |
+| Where is the authority_ack template? | AUTHORITY-ACK.template.md |
+| How do architect-family roles get promoted (Coding, Business)? | ARCHITECT-FAMILY-PROMOTION.md |
+| What is the extended routing-token schema for architects? | docs/adr/ADR-038-extended-routing-token-schema-for-architect-families.md |
 | Where is the code-track queue? | QUEUE-SURFACES.md |
 | Where is the run history? | WAVE-RUN-LOG.md (append-only, do not edit past entries) |
+| Who owns orchestration/control-plane ADR authorship and canonical-change sign-off? | ORCHESTRATION-AGENTS.md §Architect peers (control-plane) |
 
 ---
 
-*Last updated: 2026-05-03*
+*Last updated: 2026-05-09*

@@ -228,12 +228,78 @@ pub const X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT: BootArtifactLineageContract =
         "architecture-lineage only; artifact provenance without execution proof",
     );
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostedRehearsalArtifact {
+    RuntimeBoundaries,
+    X86SubcoreSmoke,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NativeObservationArtifact {
+    KernelCheckpointLog,
+    DeviceRunFinding,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EvidenceVocabularySeparationContract {
+    arch: &'static str,
+    hosted_rehearsal: HostedRehearsalArtifact,
+    native_observation: NativeObservationArtifact,
+    scope: &'static str,
+}
+
+impl EvidenceVocabularySeparationContract {
+    pub const fn new(
+        arch: &'static str,
+        hosted_rehearsal: HostedRehearsalArtifact,
+        native_observation: NativeObservationArtifact,
+        scope: &'static str,
+    ) -> Self {
+        Self {
+            arch,
+            hosted_rehearsal,
+            native_observation,
+            scope,
+        }
+    }
+
+    #[must_use]
+    pub const fn arch(&self) -> &'static str {
+        self.arch
+    }
+
+    #[must_use]
+    pub const fn hosted_rehearsal(&self) -> HostedRehearsalArtifact {
+        self.hosted_rehearsal
+    }
+
+    #[must_use]
+    pub const fn native_observation(&self) -> NativeObservationArtifact {
+        self.native_observation
+    }
+
+    #[must_use]
+    pub const fn scope(&self) -> &'static str {
+        self.scope
+    }
+}
+
+pub const X86_64_EVIDENCE_VOCABULARY_SEPARATION: EvidenceVocabularySeparationContract =
+    EvidenceVocabularySeparationContract::new(
+        TARGET_ARCH,
+        HostedRehearsalArtifact::RuntimeBoundaries,
+        NativeObservationArtifact::KernelCheckpointLog,
+        "vocabulary-separation only; hosted rehearsal is distinct from future native observation",
+    );
+
 #[cfg(test)]
 mod tests {
     use super::{
         checkpoint_label, foundation_ready, ArtifactFamily, BootCheckpoint, ARTIFACT_CONTRACTS,
-        BOOT_CHECKPOINTS, FOUNDATION_MARKER, ROOT_POSTURE, TARGET_ARCH,
-        X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT, X86_64_KERNEL_HANDOFF_CONTRACT,
+        BOOT_CHECKPOINTS, FOUNDATION_MARKER, HostedRehearsalArtifact,
+        NativeObservationArtifact, ROOT_POSTURE, TARGET_ARCH,
+        X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT, X86_64_EVIDENCE_VOCABULARY_SEPARATION,
+        X86_64_KERNEL_HANDOFF_CONTRACT,
     };
 
     #[test]
@@ -320,6 +386,27 @@ mod tests {
         assert_eq!(
             X86_64_BOOT_ARTIFACT_LINEAGE_CONTRACT.scope(),
             "architecture-lineage only; artifact provenance without execution proof"
+        );
+    }
+
+    #[test]
+    fn scaffold_x86_64_evidence_vocabulary_keeps_hosted_and_native_terms_separate() {
+        assert_eq!(X86_64_EVIDENCE_VOCABULARY_SEPARATION.arch(), TARGET_ARCH);
+        assert_eq!(
+            X86_64_EVIDENCE_VOCABULARY_SEPARATION.hosted_rehearsal(),
+            HostedRehearsalArtifact::RuntimeBoundaries
+        );
+        assert_eq!(
+            X86_64_EVIDENCE_VOCABULARY_SEPARATION.native_observation(),
+            NativeObservationArtifact::KernelCheckpointLog
+        );
+    }
+
+    #[test]
+    fn scaffold_x86_64_evidence_vocabulary_separation_states_non_claim_scope() {
+        assert_eq!(
+            X86_64_EVIDENCE_VOCABULARY_SEPARATION.scope(),
+            "vocabulary-separation only; hosted rehearsal is distinct from future native observation"
         );
     }
 }

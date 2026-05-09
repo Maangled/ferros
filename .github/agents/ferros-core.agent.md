@@ -41,6 +41,8 @@ Land bounded, test-backed increments for the core FERROS system while preserving
 7. Perform truthful closeout with explicit claims and non-claims.
 8. Before writing `Next lane seeds`, invoke FERROS Core Lane Architect Agent and use its anti-narrowed seed set.
 9. Do not label recursive seed planning as "micro-cycle" unless quoting an incoming packet; prefer "recursion cycle".
+10. You may run bounded internal recursion for lane refinement and execution follow-through up to depth 2 in this session.
+11. Internal recursion does not grant packet authority. Do not self-issue or self-update kickoff or continuation packets; send packet-request details back to FERROS Coding Agent for FERROS Prompt Architect Agent construction.
 
 ## Validation baseline
 

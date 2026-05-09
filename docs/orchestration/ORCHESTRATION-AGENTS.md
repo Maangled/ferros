@@ -76,6 +76,49 @@ These agents handle cross-stream or safety-critical coordination that no single 
 
 ---
 
+## Architect peers (control-plane)
+
+These roles own architectural governance at the orchestration and domain-family layers. They are peers; none may override another's chartered ownership.
+
+| Agent | Owned domain | Invocable by |
+|-------|-------------|-------------|
+| **FERROS Orchestration Architect Agent** | Orchestration/control-plane governance, ADR authorship, canonical-change sign-off, invocation gates, packet gates | Operator or FERROS Agent only |
+| **FERROS Coding Agent Architect** | Coding-family agent proliferation, coding registry and templates, lifecycle promotion | Operator, FERROS Agent, or FERROS Coding Agent |
+| **FERROS Business Agent Architect** | Business-family agent proliferation, operating-company spines, business templates | Operator, FERROS Agent, or FERROS Business Agent |
+| **FERROS Prompt Architect Agent** | Packet construction, route-token normalization, authority_ack template enforcement | Any agent by delegation; packet construction must route here |
+
+### Invocation gate
+
+Only **Operator** or **FERROS Agent** may invoke FERROS Orchestration Architect Agent directly.
+
+Executing domain agents — including FERROS Coding Agent, FERROS Business Agent, FERROS Core Agent, FERROS SubCore Agent, and all stream executors — must not invoke FERROS Orchestration Architect Agent. Governance needs from a domain agent must route up to FERROS Agent first.
+
+### ADR authorship gate
+
+Authorship authority (the `Deciders` field) for orchestration/control-plane ADRs belongs to **FERROS Orchestration Architect Agent**.
+
+Other agents may contribute evidence, draft inputs, or review content. The recorded authorship owner must remain FERROS Orchestration Architect Agent for any ADR whose primary subject is orchestration policy, control-plane governance, invocation rules, canonical-doc structure, or routing-token schema.
+
+### Canonical-change gate
+
+Any edit to a control-plane canonical doc must include a FERROS Orchestration Architect Agent sign-off artifact before the wave closes. The canonical control-plane docs subject to this gate are:
+
+- `docs/orchestration/ORCHESTRATION-POLICY.md`
+- `docs/orchestration/ORCHESTRATION-EXECUTION.md`
+- `docs/orchestration/ORCHESTRATION-AGENTS.md`
+- `docs/orchestration/AUTHORITY-MAP.md`
+- `docs/orchestration/AUTHORITY-INTERRUPTION.md`
+
+### Packet gate
+
+Executing domain agents cannot self-issue or self-update their own kickoff packets.
+
+- **Packet construction authority** remains with FERROS Prompt Architect Agent.
+- **Routing authority** remains with FERROS Agent.
+- A domain agent requesting a packet refresh must ask FERROS Agent, which routes construction to FERROS Prompt Architect Agent.
+
+---
+
 ## Invocation decision tree
 
 ```
@@ -115,6 +158,10 @@ User request
 - Do not claim a gate moved unless the repo evidence actually changed.
 - Keep S2 as the default serial gate owner when identity or grant semantics are involved.
 - Do not end an execution-oriented coordination reply with an options list. Close with a concise executive summary at the current handoff boundary.
+- Do not invoke FERROS Orchestration Architect Agent from any executing domain agent. Only Operator or FERROS Agent may invoke it.
+- For orchestration/control-plane ADR authorship, the recorded author must be FERROS Orchestration Architect Agent. Other agents may contribute evidence but not hold authorship.
+- Canonical control-plane doc edits require FERROS Orchestration Architect Agent sign-off before closeout. Do not close a wave that edits a canonical control-plane doc without that sign-off artifact present.
+- Executing domain agents must not self-issue or self-update their own kickoff packets. Packet construction routes through FERROS Prompt Architect Agent; routing authority stays with FERROS Agent.
 
 ---
 
@@ -130,4 +177,4 @@ Return a short coordination report with these sections:
 
 ---
 
-*Last updated: 2026-05-03*
+*Last updated: 2026-05-09*

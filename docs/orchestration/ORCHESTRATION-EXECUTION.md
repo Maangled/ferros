@@ -140,6 +140,90 @@ When a Track-C (`track: hardware`) deliverable is flashable or runnable on real 
 
 When the Gatekeeper returns `stop-escalate`, the driver emits a brief escalation note in the run log and halts.
 
+### 4. Authority interruption
+
+When authority mismatch is discovered mid-run, the orchestrator must pause expansion and invoke the typed authority interruption contract in `AUTHORITY-INTERRUPTION.md`.
+
+The only valid authority-interruption decisions are:
+
+- `continue-current-state`
+- `continue-but-freeze-new-lanes`
+- `refresh-authority-and-resume`
+- `abort-and-reissue`
+
+Authority interruption decisions are separate from gatekeeper decisions and must produce an `authority_ack` artifact before resume.
+
+---
+
+## Lane-expansion authority checkpoints
+
+Authority revalidation does not happen only at kickoff. It must occur at multiple boundaries within a live run to prevent expansion under drifted authority.
+
+Every lane-expansion decision must check:
+
+1. **Is an active authority_ack in effect?** If yes and not expired, allow lane continuation but freeze new lane expansion. Log the reason in Unresolved Risks.
+
+2. **Has the canonical authority snapshot changed since kickoff?** Check authority_ack expiry first; if expired or missing, do a hash/version-lock check on the five canonical docs. If mismatch, invoke AUTHORITY-INTERRUPTION contract.
+
+3. **Does the token version still match the packet?** If token_version mismatch (v1 → v2, etc.) is detected, invoke authority-interruption contract and do not open new lanes until decision is made.
+
+4. **Is the route-token schema valid?** Validate mutual-exclusivity of `target_stream` and `target_family`. If malformed, refuse new lanes and return corrective guidance.
+
+### Checkpoint timing schedule
+
+Authority checks must run at these exact boundaries:
+
+| Checkpoint | When | Owner | Action |
+|-----------|------|-------|--------|
+| Kickoff preflight | Before first lane opens | FERROS Prompt Architect Agent | Stop if version-lock fails, unless in-flight session exists |
+| Pre-lane expansion | Before each new lane is enqueued | Lane Architect | Freeze expansion if authority_ack is active; escalate if version mismatch |
+| Pre-truth-sync write | Before shared-surface writes (WAVE-RUN-LOG.md, registry updates) | Builder/Validator | Pause truth sync if authority_ack is active; allow append-only writes only |
+| Pre-promotion decision | Before any specialist agent promotion or retirement | Gatekeeper | Require explicit authority_ack absence and full preflight revalidation |
+| Pre-recursion | Before entering recursion depth 2 or beyond | Orchestrator | Revalidate authority snapshot; if drifted, flatten remaining seeds to top level |
+| Pre-canonical-control-plane write | Before closing any wave that edits a control-plane canonical doc | FERROS Orchestration Architect Agent | Block closeout until sign-off artifact is present |
+
+### Checkpoint logic tree
+
+```
+IF authority_ack exists AND not expired:
+    ALLOW: current lane continuation (running work)
+    FREEZE: new lane expansion
+    LOG: reason in Unresolved Risks section
+    SKIP: rest of checkpoint (authority_ack is the active decision)
+END IF
+
+ELSE (no active authority_ack):
+    CHECK: canonical docs version markers against kickoff snapshot
+    IF version mismatch found:
+        INVOKE: AUTHORITY-INTERRUPTION contract
+        PAUSE: new lane expansion (may continue running lanes)
+        SURFACE: decision enum to operator
+        WAIT: operator authority_ack approval
+        SKIP: rest of checkpoint
+    END IF
+    
+    CHECK: route-token schema (target_stream XOR target_family, not both)
+    IF token malformed:
+        REFUSE: new lane expansion
+        RETURN: corrective guidance with token template
+        LOG: as Unresolved Risk
+        SKIP: rest of checkpoint
+    END IF
+    
+    ALLOW: new lane expansion (authority snapshot is current)
+END IF
+```
+
+### What freezing looks like
+
+When expansion is frozen:
+
+- Running lanes complete normally.
+- Truth-sync happens for completed lanes (append-only).
+- New lanes are not opened.
+- If batch mode would normally continue, it pauses and waits for authority_ack decision or expiry.
+- Unresolved Risks section includes the freeze reason and ack_id if applicable.
+
 ---
 
 ## Operator session integration
@@ -241,4 +325,5 @@ When human re-entry becomes a named operator step, route it through the operator
 
 ---
 
-*Last updated: 2026-05-03*
+*Last updated: 2026-05-09*
+

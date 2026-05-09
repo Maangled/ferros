@@ -43,6 +43,8 @@ Advance subcore contracts and host-side rehearsal honestly, without overstating 
 6. Publish truth-sync that names what changed and what remains pre-native.
 7. Before writing `Next lane seeds`, invoke FERROS SubCore Lane Architect Agent and use its anti-narrowed seed set.
 8. Do not label recursive seed planning as "micro-cycle" unless quoting an incoming packet; prefer "recursion cycle".
+9. You may run bounded internal recursion for lane refinement and execution follow-through up to depth 2 in this session.
+10. Internal recursion does not grant packet authority. Do not self-issue or self-update kickoff or continuation packets; send packet-request details back to FERROS Coding Agent for FERROS Prompt Architect Agent construction.
 
 ## Validation baseline
 

@@ -3,127 +3,186 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
-## 2026-05-06 - FRS-core-20260506-C1-W1
+## 2026-05-09 - FRS-core-20260506-C1-W6
 
-- Selected item: first shared-name Core recursion cycle after H9 MC4 stop-clean to execute bounded continuity, evidence-hardening, compatibility policy, validation, and truth-sync with preserved non-claims.
-- Result: Stop-clean. Compatibility policy was explicitly set to keep dual harness-path serving in this cycle, unattended versus operator-assisted evidence boundaries were kept explicit, required focused `ferros-node` checks passed, and dual-port unattended live reruns on 4324 and 4326 stayed clean with matching totals.
+- wave_id: FRS-core-20260506-C1-W6
+- issued_at: 2026-05-09
+- lanes_run: Lane 1 continuity (node runway-summary + runtime lib local_runway); Lane 2 breadth (runtime boundaries + full runtime suite); Lane 3 breadth (core message_envelope + capability_policy + full core suite); Lane 4 reconciliation (full ferros-node suite after assertion fixes); Lane 5 truth-sync serialization.
+- validation_results:
+  - Lane 1a: `cargo test -p ferros-node local_agent_api_runway_summary_serializes_and_tracks_profile_and_deny_observation` — failed initially (agent_count stale: 2→3 after ha-local-bridge added); assertion corrected; rerun pass (1 passed, 0 failed, 58 filtered out).
+  - Lane 1b: `cargo test -p ferros-runtime --lib local_runway` pass (5 passed, 0 failed, 0 filtered out).
+  - Lane 2a: `cargo test -p ferros-runtime --test boundaries` pass (16 passed, 0 failed, 0 filtered out).
+  - Lane 2b: `cargo test -p ferros-runtime` pass (26 passed: 5 lib + 16 boundaries + 5 x86_64_subcore_smoke, 0 failed).
+  - Lane 3a: `cargo test -p ferros-core --test message_envelope` pass (4 passed, 0 failed, 0 filtered out).
+  - Lane 3b: `cargo test -p ferros-core --test capability_policy` pass (15 passed, 0 failed, 0 filtered out).
+  - Lane 3c: `cargo test -p ferros-core` pass (26 passed, 0 failed).
+  - Lane 4: `cargo test -p ferros-node` pass after 3 additional stale agent-list assertions corrected (59 lib passed, 2 bin passed, 1 integration passed, 0 failed).
+- gatekeeper_decision: continue
+- stop_condition: No stop condition fired.
+- truth_sync_delta: `docs/surfaces/2026-05-09-FRS-core-C1-W6-TRUTH-SYNC-DELTA-L4.md`
+- claims:
+  - Named W6 continuity test passes with corrected 3-agent reference host roster;
+  - Runtime local_runway, boundaries, and x86_64_subcore_smoke invariants remain stable;
+  - Core capability, envelope, and foundation invariants remain stable;
+  - Four stale agent-count/list assertions corrected to reflect current 3-agent roster; no behavioral change introduced.
+- non_claims:
+  - no gate closure;
+  - no hardware proof;
+  - no Home Assistant proof;
+  - no native-runtime or OS-level execution claim;
+  - no ha-local-bridge behavioral coverage claim;
+  - no claims outside named validations.
+- authority_status:
+  - authority_mismatch_detected: false
+  - authority_ack: none
+
+---
+## 2026-05-09 - FRS-subcore-20260506-C3-W5
+
+- wave_id: FRS-subcore-20260506-C3-W5
+- issued_at: 2026-05-09
+- lanes_run: [A, B, C, D-no-op, E-truth-sync]
+- validation_results:
+  - Lane A: `cargo test -p ferros-runtime --test boundaries` pass (16 passed, 0 failed, 0 ignored, 0 measured, 0 filtered out)
+  - Lane B: `cargo test -p ferros-runtime --test x86_64_subcore_smoke` pass (5 passed, 0 failed, 0 ignored, 0 measured, 0 filtered out)
+  - Lane C: `cargo test -p ferros-runtime --test boundaries` pass (16 passed, 0 failed, 0 ignored, 0 measured, 0 filtered out)
+  - Lane D: `cargo test -p ferros-x86_64-scaffold` pass (9 passed, 0 failed, 0 ignored, 0 measured, 0 filtered out); `cargo check -p ferros-x86_64-scaffold --no-default-features` pass
+  - Lane E matrix: `cargo test -p ferros-runtime --test boundaries` pass (16 passed, 0 failed); `cargo test -p ferros-runtime --test x86_64_subcore_smoke` pass (5 passed, 0 failed); `cargo test -p ferros-x86_64-scaffold` pass (9 passed, 0 failed); `cargo check -p ferros-x86_64-scaffold --no-default-features` pass; `cargo test -p ferros-core foundation_surface_` pass (4 passed, 0 failed)
+- gatekeeper_decision: continue
+- stop_condition: No stop condition fired.
+- adr025_non_claim_ceiling: preserved
+- truth_sync_delta: `docs/surfaces/2026-05-09-FRS-subcore-C3-W5-TRUTH-SYNC-DELTA-L4.md`
+- claims:
+  - hosted boundary continuity now proves empty delivery is preserved across repeated transient failures until explicit retry succeeds;
+  - hosted smoke continuity now proves repeated explicit retries are required for repeated transient failures;
+  - S4 contract wording now mirrors repeated explicit-retry continuity evidence.
+- non_claims:
+  - no native-runtime execution proof;
+  - no FERROS-native OS claim;
+  - no bootloader, kernel, or QEMU execution proof;
+  - no hardware or Home Assistant proof;
+  - no gate closure, D1 movement, or G4 movement;
+  - no transactional, rollback, exactly-once, or automatic-retry claim.
+- authority_status:
+  - authority_mismatch_detected: false
+  - authority_ack: none
+
+## 2026-05-09 - FRS-core-20260506-C1-W5
+
+- wave_id: FRS-core-20260506-C1-W5
+- issued_at: 2026-05-09
+- lanes_run: Lane 1 shell continuity; Lane 2 adjacent shell boundaries; Lane 3 runtime breadth; Lane 4 core breadth; Lane 5 serial truth-sync.
+- validation_results:
+  - Lane 1: `cargo test -p ferros-node shell_route_rejects_retired_harness_alias_path` pass (1 passed, 0 failed); `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness` pass (1 passed, 0 failed); `cargo test -p ferros-node shell_route_returns_not_found_for_unknown_paths` pass (1 passed, 0 failed).
+  - Lane 2: `cargo test -p ferros-node shell_route_gets_local_runway_summary_json` pass (3 passed, 0 failed); `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter` pass (1 passed, 0 failed); `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions` pass (1 passed, 0 failed).
+  - Lane 3: `cargo test -p ferros-runtime start_path_advances_through_the_local_runway_checkpoints` pass (1 passed, 0 failed); `cargo test -p ferros-runtime shell_detail_matches_terminal_and_consent_boundaries` pass (1 passed, 0 failed); `cargo test -p ferros-runtime adapter_composes_transition_executor_and_bus_through_runtime_seams` pass (1 passed, 0 failed).
+  - Lane 4: `cargo test -p ferros-core` pass (26 passed, 0 failed); `cargo test -p ferros-node shell_route_posts_json_rpc_agent_list` pass (1 passed, 0 failed); `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions` pass (1 passed, 0 failed).
+- gatekeeper_decision: continue
+- stop_condition: No stop condition fired.
+- truth_sync_delta: `docs/surfaces/2026-05-09-FRS-core-C1-W5-TRUTH-SYNC-DELTA-L4.md`
+- claims:
+  - alias-retirement deny durability remained stable;
+  - canonical localhost harness continuity remained stable;
+  - adjacent shell boundaries remained stable including grant-mutation rejection;
+  - runtime checkpoint and consent-detail invariants remained stable;
+  - core capability and envelope invariants remained stable.
+- non_claims:
+  - no gate closure;
+  - no hardware proof;
+  - no Home Assistant proof;
+  - no native-runtime or OS-level execution claim;
+  - no claims outside named validations.
+
+## 2026-05-09 - FRS-subcore-20260506-C3-W4
+
+- wave_id: FRS-subcore-20260506-C3-W4
+- issued_at: 2026-05-09
+- lanes_run: [A, B, C, D, E-truth-sync]
+- validation_results:
+  - Lane A and Lane B: `cargo test -p ferros-runtime --test boundaries` pass (15 passed, 0 failed, 0 ignored, 0 measured, 0 filtered out)
+  - Lane C: `cargo test -p ferros-x86_64-scaffold` pass (9 passed, 0 failed, 0 ignored, 0 measured, 0 filtered out); `cargo check -p ferros-x86_64-scaffold --no-default-features` pass
+  - Lane D: `cargo test -p ferros-runtime --test x86_64_subcore_smoke` pass (4 passed, 0 failed, 0 ignored, 0 measured, 0 filtered out)
+  - Full-suite confirmation: `cargo test -p ferros-runtime --test boundaries` pass (15 passed, 0 failed); `cargo test -p ferros-runtime --test x86_64_subcore_smoke` pass (4 passed, 0 failed); `cargo test -p ferros-x86_64-scaffold` pass (9 passed, 0 failed); `cargo check -p ferros-x86_64-scaffold --no-default-features` pass; `cargo test -p ferros-core foundation_surface_` pass (4 passed, 0 failed)
+- gatekeeper_decision: continue
+- stop_condition: No stop condition fired.
+- adr025_non_claim_ceiling: preserved
+- truth_sync_delta: `docs/surfaces/2026-05-09-FRS-subcore-C3-W4-TRUTH-SYNC-DELTA-L4.md`
+- claims:
+  - hosted retry non-duplication evidence now covers repeated transient route failures with explicit caller retry;
+  - hosted recovery vocabulary now distinguishes recoverable versus terminal route outcomes at the boundary and contract surfaces;
+  - x86_64 hosted smoke now rehearses transient route failure followed by explicit caller retry;
+  - x86_64 scaffold now includes architecture-only vocabulary that separates hosted rehearsal artifacts from future native observation artifacts.
+- non_claims:
+  - no native-runtime execution proof;
+  - no FERROS-native OS claim;
+  - no bootloader, kernel, or QEMU execution proof;
+  - no hardware proof or physical-device evidence;
+  - no Home Assistant proof;
+  - no gate closure, D1 movement, or G4 movement;
+  - no transactional, rollback, or exactly-once delivery claim;
+  - no automatic retry claim.
+
+## 2026-05-09 - FRS-core-20260506-C1-W4
+
+- wave_id: FRS-core-20260506-C1-W4
+- issued_at: 2026-05-09
+- lanes_run: Lane 1 alias retirement negative contract; Lane 2 neighboring shell boundary hardening; Lane 3 runtime runway checkpoint and consent invariants; Lane 4 core capability and envelope invariants.
+- validation_results:
+  - Lane 1: `cargo test -p ferros-node shell_route_rejects_retired_harness_alias_path` pass (1 passed, 0 failed); `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness` pass (1 passed, 0 failed); `cargo test -p ferros-node shell_route_returns_not_found_for_unknown_paths` pass (1 passed, 0 failed).
+  - Lane 2: `cargo test -p ferros-node shell_route_gets_local_runway_summary_json` pass (3 passed, 0 failed); `cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter` pass (1 passed, 0 failed); `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions` pass (1 passed, 0 failed).
+  - Lane 3: `cargo test -p ferros-runtime start_path_advances_through_the_local_runway_checkpoints` pass (1 passed, 0 failed); `cargo test -p ferros-runtime shell_detail_matches_terminal_and_consent_boundaries` pass (1 passed, 0 failed); `cargo test -p ferros-runtime adapter_composes_transition_executor_and_bus_through_runtime_seams` pass (1 passed, 0 failed).
+  - Lane 4: `cargo test -p ferros-core` pass (26 passed, 0 failed); `cargo test -p ferros-node shell_route_posts_json_rpc_agent_list` pass (1 passed, 0 failed); `cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions` pass (1 passed, 0 failed).
+- gatekeeper_decision: continue
+- stop_condition: No stop condition fired.
+- truth_sync_delta: `docs/surfaces/2026-05-09-FRS-core-C1-W4-TRUTH-SYNC-DELTA-L4.md`
+- claims:
+  - retired alias remains enforced as a durable negative contract;
+  - canonical localhost-shell-acceptance path remains served;
+  - shell boundaries and profile grant-mutation rejection behavior remained stable;
+  - runtime runway checkpoint and consent-detail invariants remained stable;
+  - core capability and message-envelope invariants remained intact.
+- non_claims:
+  - no gate closure;
+  - no hardware proof;
+  - no Home Assistant proof;
+  - no native-runtime or OS-level execution claim.
+
+## 2026-05-06 - FRS-core-20260506-C1-W3
+
+- Selected item: FRS-core-20260506-C1-W3 compatibility bridge retirement enforcement for localhost shell harness alias.
+- Result: Stop-clean. No gate closure claimed. Policy impact is bounded to compatibility bridge retirement enforcement for the localhost shell harness alias while preserving canonical serving behavior on the canonical harness path.
 - Files:
-  - `docs/surfaces/2026-05-06-FRS-core-C1-W1-TRUTH-SYNC-DELTA-L4.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-- Validation: `cargo test -p ferros-node shell_route` passed (11 passed, 0 failed); `cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness` passed (1 passed, 0 failed); unattended live harness reruns on `http://127.0.0.1:4324/harnesses/localhost-shell-acceptance-harness.html?unattended=1` and `http://127.0.0.1:4326/harnesses/localhost-shell-acceptance-harness.html?unattended=1` both finished at `74 passed, 0 failed, 10 skipped, 84 total`.
-- Claims added: cycle-level compatibility policy now explicitly keeps the dual harness-path alias as a bounded bridge with migration criteria; fresh focused and live evidence reconfirms no unexpected dual-port regressions in this cycle.
-- Claims explicitly not added: no gate closure claim, no hardware proof claim, no Home Assistant proof claim, and no widened canonical-state mutation claim.
-- Blocked lanes: none; hygiene lane was a no-op by rationale because temporary local artifact cleanup was not established as policy-safe and reversible within this packet.
-- Next queued follow-up: execute architect-sourced anti-narrowed seeds with one continuity lane, one adjacent seam lane, and one breadth lane so planning does not collapse onto only the alias seam.
+  - crates/ferros-node/src/lib.rs
+  - docs/surfaces/2026-05-06-FRS-core-C1-W3-TRUTH-SYNC-DELTA-L4.md
+  - docs/orchestration/WAVE-RUN-LOG.md
+- Validation:
+  - cargo test -p ferros-node shell_route -> pass (12 passed, 0 failed)
+  - cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness -> pass (1 passed, 0 failed)
+  - http://127.0.0.1:4324/harnesses/localhost-shell-acceptance-harness.html?unattended=1 -> 404 (FERROS local shell route not found)
+  - http://127.0.0.1:4324/harnesses/localhost-shell-acceptance.html?unattended=1 -> 74 passed, 0 failed, 10 skipped, 84 total
+  - http://127.0.0.1:4326/harnesses/localhost-shell-acceptance.html?unattended=1 -> 74 passed, 0 failed, 10 skipped, 84 total
+- Claims added: compatibility bridge retirement was executed and is now enforced by route behavior plus dedicated negative test; canonical harness continuity remained stable after retirement in focused tests and dual-port unattended live evidence.
+- Claims explicitly not added: no gate closure claim, no hardware proof claim, no Home Assistant proof claim, and no widened canonical mutation claim beyond evidenced shell-route retirement and canonical-route continuity.
+- Residual risks: operator-assisted lifecycle paths remain out of unattended scope and still require separate interactive evidence for future claim expansion; historical docs may still reference the retired alias as prior-cycle context and those references are historical only.
+- Next queued follow-up:
+  - FRS-core-20260506-C1-W4-S1 continuity: freeze alias retirement as durable negative contract while preserving canonical serving. Validation: cargo test -p ferros-node shell_route_rejects_retired_harness_alias_path; cargo test -p ferros-node shell_route_serves_localhost_acceptance_harness; cargo test -p ferros-node shell_route_returns_not_found_for_unknown_paths.
+  - FRS-core-20260506-C1-W4-S2 adjacent: harden neighboring shell boundaries so route cleanup cannot regress runway/profile surfaces. Validation: cargo test -p ferros-node shell_route_gets_local_runway_summary_json; cargo test -p ferros-node shell_route_posts_profile_init_and_show_through_local_adapter; cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions.
+  - FRS-core-20260506-C1-W4-S3 breadth: verify runtime runway checkpoint and consent-detail invariants independent of shell URL churn. Validation: cargo test -p ferros-runtime start_path_advances_through_the_local_runway_checkpoints; cargo test -p ferros-runtime shell_detail_matches_terminal_and_consent_boundaries; cargo test -p ferros-runtime adapter_composes_transition_executor_and_bus_through_runtime_seams.
+  - FRS-core-20260506-C1-W4-S4 breadth: reconfirm core capability and envelope invariants that drive shell allow or deny behavior. Validation: cargo test -p ferros-core; cargo test -p ferros-node shell_route_posts_json_rpc_agent_list; cargo test -p ferros-node shell_route_profile_adapter_rejects_grant_mutation_actions.
 
 ```json
 {
-  "wave_id": "FRS-core-20260506-C1-W1",
+  "wave_id": "FRS-core-20260506-C1-W3",
   "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: required focused route tests and dual-port unattended reruns passed.",
-    "2_hard_stop_authority_or_tag": "Not triggered: authority lock matched expected versions and this bounded packet had no hard-stop escalation tag.",
-    "3_scope_or_track_violation": "Not triggered: changes stayed inside declared truth-sync surfaces for this cycle.",
-    "4_policy_or_chain_break": "Not triggered: execution preserved non-claims and required delegation boundaries.",
+    "1_validation_failed": "Not triggered: focused route tests and dual-port unattended checks passed; retired alias returned expected 404.",
+    "2_hard_stop_authority_or_tag": "Not triggered: no hard-stop tag or authority interruption was introduced in this bounded cycle.",
+    "3_scope_or_track_violation": "Not triggered: changes stayed within declared shell-route retirement and truth-sync surfaces.",
+    "4_policy_or_chain_break": "Not triggered: policy impact remained bounded and non-claims stayed explicit.",
     "5_segment_boundary": "Not triggered: single bounded recursion cycle.",
-    "6_malformed_output": "Not triggered: architect-sourced anti-narrowed next seeds were captured."
+    "6_malformed_output": "Not triggered: anti-narrowed architect-sourced follow-up seeds were captured."
   },
   "decision": "stop-clean",
-  "rationale": "The bounded Core recursion-cycle objective completed with explicit compatibility policy, clean focused and live evidence, preserved claim ceilings, and serialized truth-sync closeout."
-}
-```
-
----
-## 2026-05-06 - FRS-subcore-20260506-C3-W2
-
-- Selected item: bounded recursion cycle to harden compensation/retry boundary evidence, preserve architecture-only contract width, and settle seed-governance compliant handoff planning
-- Result: Stop-clean. One hosted compensation/retry evidence-hardening test landed for transient bus-route failure with explicit caller retry semantics, S4 owning contract text now states caller-owned compensation or retry policy, scaffold expansion stayed no-op-by-rule, and the focused validation bundle remained fully green.
-- Files:
-  - `crates/ferros-runtime/tests/boundaries.rs`
-  - `streams/S4-runtime/CONTRACTS.md`
-  - `docs/surfaces/2026-05-06-FRS-subcore-C3-W2-TRUTH-SYNC-DELTA-L4.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-- Validation: `cargo test -p ferros-runtime --test boundaries` passed (11 passed); `cargo test -p ferros-runtime --test x86_64_subcore_smoke` passed (3 passed); `cargo test -p ferros-x86_64-scaffold` passed (7 passed); `cargo check -p ferros-x86_64-scaffold --no-default-features` passed; `cargo test -p ferros-core foundation_surface_` passed (4 passed).
-- Claims added: hosted seam evidence now includes explicit retry-after-transient-failure behavior without implying transactional guarantees; S4 contract ownership now names compensation or retry as caller-owned on this hosted seam.
-- Claims explicitly not added: no bootloader success claim, no kernel boot success claim, no QEMU proof claim, no hardware bring-up claim, no gate-closure claim, and no native-runtime proof claim.
-- Blocked lanes: none in this bounded packet.
-- Next queued follow-up: continue with anti-narrowed seeds spanning continuity, contract-width, and evidence-hardening rather than collapsing planning only to the just-landed retry seam.
-
-```json
-{
-  "wave_id": "FRS-subcore-20260506-C3-W2",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: all required runtime, scaffold, and foundation checks passed.",
-    "2_wave_tag": "Not triggered: this bounded code-track packet had no P0, gate-close, solo, or frozen-schema tag.",
-    "3_diff_overrun": "Not triggered: changes stayed inside declared runtime test, S4 contract docs, and serialized truth-sync surfaces.",
-    "4_track_boundary": "Not triggered: execution stayed inside code track.",
-    "5_run_length_cap": "Not triggered: single bounded recursion cycle.",
-    "6_escalation_chain": "Not triggered: no failing lane required triage escalation."
-  },
-  "decision": "stop-clean",
-  "rationale": "The bounded objective completed with focused compensation or retry evidence hardening, no scope widening, and policy-compliant anti-narrowed seed governance."
-}
-```
-
----
-## 2026-05-06 - FRS-subcore-20260506-C3-W1
-
-- Selected item: bounded SubCore micro-cycle to document hosted adapter post-failure semantics and settle truth-sync with unchanged execution-proof ceilings
-- Result: Stop-clean. S4 owning docs now explicitly define hosted `LocalRunwayAdapter` post-failure behavior as non-transactional ordered composition, the optional scaffold increment was skipped by rule to avoid scope widening, and the focused runtime/scaffold/foundation validation bundle stayed green.
-- Files:
-  - `streams/S4-runtime/CONTRACTS.md`
-  - `docs/surfaces/2026-05-06-FRS-subcore-C3-W1-TRUTH-SYNC-DELTA-L4.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-- Validation: `cargo test -p ferros-runtime --test boundaries` passed (10 passed); `cargo test -p ferros-runtime --test x86_64_subcore_smoke` passed (3 passed); `cargo test -p ferros-x86_64-scaffold` passed (7 passed); `cargo check -p ferros-x86_64-scaffold --no-default-features` passed; `cargo test -p ferros-core foundation_surface_` passed (4 passed).
-- Claims added: hosted adapter partial-progress semantics are now explicitly documented for transition, executor, and bus failure classes; bounded subcore evidence remained green without widening runtime seam scope.
-- Claims explicitly not added: no bootloader success claim, no kernel boot success claim, no QEMU boot proof claim, no hardware bring-up claim, no gate-closure claim, and no native-runtime proof claim.
-- Blocked lanes: none in this bounded packet.
-- Next queued follow-up: only pursue stronger adapter guarantees if a bounded consumer contract demands them; otherwise keep hosted seam claims explicit and pre-native.
-
-```json
-{
-  "wave_id": "FRS-subcore-20260506-C3-W1",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: all required runtime, scaffold, and foundation checks passed.",
-    "2_wave_tag": "Not triggered: this bounded code-track packet had no P0, gate-close, solo, or frozen-schema tag.",
-    "3_diff_overrun": "Not triggered: changes stayed within declared S4 contracts and serialized truth-sync surfaces.",
-    "4_track_boundary": "Not triggered: execution stayed inside code track.",
-    "5_run_length_cap": "Not triggered: single bounded micro-cycle.",
-    "6_escalation_chain": "Not triggered: no validation or implementation failure required log triage."
-  },
-  "decision": "stop-clean",
-  "rationale": "The bounded objective completed with explicit hosted-seam semantics, unchanged non-claim ceilings, and clean focused evidence without widening scope."
-}
-```
-
----
-## 2026-05-06 - X86-SUBCORE-CYCLE-2026-05-06-02
-
-- Selected item: bounded ADR-025 subcore runtime error-path rehearsal plus scaffold provenance micro-cycle on code track
-- Result: Stop-clean. Runtime error-path evidence now covers `LocalRunwayAdapter` transition, executor, and bus propagation in the boundary harness, and `ferros-x86_64-scaffold` now carries one additional architecture-only boot artifact lineage contract. An active-session authority-version mismatch remained non-blocking for this cycle and is reported inline here for continuity.
-- Files:
-  - `crates/ferros-runtime/tests/boundaries.rs`
-  - `crates/ferros-x86_64-scaffold/src/lib.rs`
-  - `docs/surfaces/2026-05-06-X86-SUBCORE-CYCLE-2026-05-06-02-DELTA.md`
-  - `docs/orchestration/WAVE-RUN-LOG.md`
-- Validation: `cargo test -p ferros-runtime --test boundaries` passed (10 passed); `cargo test -p ferros-runtime --test x86_64_subcore_smoke` passed (3 passed); `cargo test -p ferros-x86_64-scaffold` passed (7 passed); `cargo check -p ferros-x86_64-scaffold --no-default-features` passed; `cargo test -p ferros-core foundation_surface_` passed (4 passed).
-- Claims added: runtime seam rehearsal now covers transition, executor, and bus error mapping through the hosted adapter boundary; scaffold architecture contracts now include one explicit boot artifact lineage contract tied to current artifact and checkpoint vocabulary.
-- Claims explicitly not added: no bootloader success claim, no kernel boot success claim, no QEMU boot proof claim, no hardware bring-up claim, no gate closure claim, and no FERROS-native runtime proof claim.
-- Blocked lanes: none in this bounded packet.
-- Next queued follow-up: either document the adapter's post-failure semantics explicitly without implying atomicity, or add one further architecture-only lineage/checkpoint contract while preserving the same non-claim ceiling.
-
-```json
-{
-  "wave_id": "X86-SUBCORE-CYCLE-2026-05-06-02",
-  "stop_conditions_evaluated": {
-    "1_validation_failed": "Not triggered: all targeted runtime, scaffold, and foundation checks passed.",
-    "2_wave_tag": "Not triggered: this bounded code-track packet had no P0, gate-close, solo, or frozen-schema tag.",
-    "3_diff_overrun": "Not triggered: the landed diff stayed inside the declared runtime rehearsal, scaffold contract, and truth-sync surfaces.",
-    "4_track_boundary": "Not triggered: execution stayed inside code track.",
-    "5_run_length_cap": "Not triggered: single bounded micro-cycle.",
-    "6_escalation_chain": "Not triggered: validator pre-flight and post-flight passed with no log-triage escalation required."
-  },
-  "decision": "stop-clean",
-  "rationale": "The requested bounded cycle objective was completed with focused runtime error-path evidence, one architecture-only lineage increment, and no expansion into execution-proof claims."
+  "rationale": "Retirement enforcement landed with focused and live evidence while preserving canonical path continuity and explicit claim ceilings."
 }
 ```
 

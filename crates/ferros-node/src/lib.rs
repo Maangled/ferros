@@ -1163,8 +1163,7 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
             content_type: "text/html; charset=utf-8",
             body: LOCAL_SHELL_HTML.as_bytes().to_vec(),
         },
-        ("GET", "/harnesses/localhost-shell-acceptance.html")
-        | ("GET", "/harnesses/localhost-shell-acceptance-harness.html") => HttpResponse {
+        ("GET", "/harnesses/localhost-shell-acceptance.html") => HttpResponse {
             status_code: 200,
             status_text: "OK",
             content_type: "text/html; charset=utf-8",
@@ -2918,7 +2917,7 @@ mod tests {
 
         assert_eq!(
             summary.started_agents,
-            vec!["echo".to_string(), "timer".to_string()]
+            vec!["echo".to_string(), "ha-local-bridge".to_string(), "timer".to_string()]
         );
         assert_eq!(summary.echo_response, "hello");
         assert_eq!(summary.timer_event, "tick-1");
@@ -3060,6 +3059,7 @@ mod tests {
             vec![
                 "name\tversion\tstatus".to_string(),
                 "echo\t0.1.0\tregistered".to_string(),
+                "ha-local-bridge\t0.1.0\tregistered".to_string(),
                 "timer\t0.1.0\tregistered".to_string(),
             ]
         );
@@ -3236,7 +3236,7 @@ mod tests {
             missing_summary.profile_path,
             profile_path.display().to_string()
         );
-        assert_eq!(missing_summary.agent_count, 2);
+        assert_eq!(missing_summary.agent_count, 3);
         assert_eq!(missing_summary.deny_count, 0);
         assert!(missing_summary.latest_deny.is_none());
         assert_eq!(
@@ -3905,6 +3905,7 @@ mod tests {
             records,
             vec![
                 ("echo".to_owned(), AgentStatus::Running),
+                ("ha-local-bridge".to_owned(), AgentStatus::Registered),
                 ("timer".to_owned(), AgentStatus::Stopped),
             ]
         );
@@ -5090,6 +5091,44 @@ mod tests {
         assert!(html.contains("Forge route activates"));
         assert!(html.contains("Arena route activates"));
         assert!(html.contains("Audit lifecycle surfaces expose shared lifecycle-card modules while preserving the existing lifecycle controls"));
+
+        cleanup_state_path(&state_path);
+        cleanup_profile_artifacts(&profile_path);
+    }
+
+    #[test]
+    fn shell_route_rejects_retired_harness_alias_path() {
+        let state_path = unique_state_path("shell-harness-alias-retired");
+        let profile_path = unique_profile_path("shell-harness-alias-retired");
+
+        let canonical = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "GET".to_owned(),
+                path: "/harnesses/localhost-shell-acceptance.html".to_owned(),
+                body: Vec::new(),
+            },
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        );
+
+        let retired_alias = route_shell_request_with_store_and_paths(
+            HttpRequest {
+                method: "GET".to_owned(),
+                path: "/harnesses/localhost-shell-acceptance-harness.html".to_owned(),
+                body: Vec::new(),
+            },
+            &state_path,
+            &profile_path,
+            &FileSystemProfileStore,
+        );
+
+        assert_eq!(canonical.status_code, 200);
+        assert_eq!(retired_alias.status_code, 404);
+        assert_eq!(retired_alias.content_type, "text/plain; charset=utf-8");
+        assert!(String::from_utf8(retired_alias.body)
+            .expect("retired alias error should be valid UTF-8")
+            .contains("FERROS local shell route not found"));
 
         cleanup_state_path(&state_path);
         cleanup_profile_artifacts(&profile_path);

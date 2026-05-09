@@ -17,6 +17,19 @@ enum BusFailure {
     TransientRouteBlocked,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HostedRecoveryClass {
+    Recoverable,
+    Terminal,
+}
+
+fn classify_bus_failure(error: BusFailure) -> HostedRecoveryClass {
+    match error {
+        BusFailure::TransientRouteBlocked => HostedRecoveryClass::Recoverable,
+        BusFailure::RouteBlocked => HostedRecoveryClass::Terminal,
+    }
+}
+
 struct StubExecutor {
     pending: Vec<&'static str>,
 }
@@ -534,6 +547,7 @@ fn local_runway_adapter_requires_caller_driven_retry_across_multiple_transient_f
     match first_attempt {
         LocalRunwayAdapterError::Bus(error) => {
             assert_eq!(error, BusFailure::TransientRouteBlocked);
+            assert_eq!(classify_bus_failure(error), HostedRecoveryClass::Recoverable);
         }
         other => panic!("expected transient bus error, got {other:?}"),
     }
@@ -550,6 +564,8 @@ fn local_runway_adapter_requires_caller_driven_retry_across_multiple_transient_f
         .route(message("agent.alpha", "agent.bravo", 26))
         .expect_err("first explicit retry should still fail transiently");
     assert_eq!(second_attempt, BusFailure::TransientRouteBlocked);
+    assert_eq!(classify_bus_failure(second_attempt), HostedRecoveryClass::Recoverable);
+    assert_eq!(adapter.state(), LocalRunwayState::Active);
 
     assert_eq!(
         adapter
@@ -561,6 +577,7 @@ fn local_runway_adapter_requires_caller_driven_retry_across_multiple_transient_f
     adapter
         .route(message("agent.alpha", "agent.bravo", 26))
         .expect("second explicit retry should succeed");
+    assert_eq!(adapter.state(), LocalRunwayState::Active);
 
     let (state, mut executor, mut bus) = adapter.into_parts();
 
@@ -574,6 +591,136 @@ fn local_runway_adapter_requires_caller_driven_retry_across_multiple_transient_f
         .expect("receive should succeed after second explicit retry")
         .expect("message should be delivered after explicit retry sequence");
     assert_eq!(delivered.nonce(), 26);
+}
+
+#[test]
+fn local_runway_adapter_explicit_retry_does_not_duplicate_executor_submission() {
+    let mut adapter = LocalRunwayAdapter::with_state(
+        LocalRunwayState::RuntimeReady,
+        InMemoryExecutor::new(),
+        RetryableBus::with_failures(2),
+    );
+
+    let first_attempt = adapter
+        .advance_submit_and_route(
+            LocalRunwayIntent::Start,
+            "deliver",
+            message("agent.alpha", "agent.bravo", 29),
+        )
+        .expect_err("initial route should fail transiently");
+
+    match first_attempt {
+        LocalRunwayAdapterError::Bus(error) => {
+            assert_eq!(error, BusFailure::TransientRouteBlocked);
+            assert_eq!(classify_bus_failure(error), HostedRecoveryClass::Recoverable);
+        }
+        other => panic!("expected transient bus error, got {other:?}"),
+    }
+
+    let retry_error = adapter
+        .route(message("agent.alpha", "agent.bravo", 29))
+        .expect_err("first explicit retry should still fail transiently");
+    assert_eq!(retry_error, BusFailure::TransientRouteBlocked);
+    assert_eq!(classify_bus_failure(retry_error), HostedRecoveryClass::Recoverable);
+
+    adapter
+        .route(message("agent.alpha", "agent.bravo", 29))
+        .expect("second explicit retry should succeed");
+
+    let (state, mut executor, mut bus) = adapter.into_parts();
+
+    assert_eq!(state, LocalRunwayState::Active);
+    assert_eq!(executor.pending_jobs(), 1);
+    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("deliver"));
+    assert_eq!(executor.pop_next().expect("pop should succeed"), None);
+
+    let delivered = bus
+        .try_recv("agent.bravo")
+        .expect("receive should succeed after explicit retry")
+        .expect("exactly one routed envelope should be present");
+    assert_eq!(delivered.nonce(), 29);
+    assert_eq!(
+        bus.try_recv("agent.bravo")
+            .expect("receive should succeed after first delivery"),
+        None
+    );
+}
+
+#[test]
+fn local_runway_adapter_preserves_empty_delivery_until_transient_failures_are_exhausted() {
+    let mut adapter = LocalRunwayAdapter::with_state(
+        LocalRunwayState::RuntimeReady,
+        InMemoryExecutor::new(),
+        RetryableBus::with_failures(3),
+    );
+
+    let first_attempt = adapter
+        .advance_submit_and_route(
+            LocalRunwayIntent::Start,
+            "deliver",
+            message("agent.alpha", "agent.bravo", 30),
+        )
+        .expect_err("initial route should fail transiently");
+
+    match first_attempt {
+        LocalRunwayAdapterError::Bus(error) => {
+            assert_eq!(error, BusFailure::TransientRouteBlocked);
+            assert_eq!(classify_bus_failure(error), HostedRecoveryClass::Recoverable);
+        }
+        other => panic!("expected transient bus error, got {other:?}"),
+    }
+
+    assert_eq!(adapter.state(), LocalRunwayState::Active);
+    assert_eq!(
+        adapter
+            .try_recv("agent.bravo")
+            .expect("receive should remain empty after first failure"),
+        None
+    );
+
+    for _ in 0..2 {
+        let retry_error = adapter
+            .route(message("agent.alpha", "agent.bravo", 30))
+            .expect_err("retry should fail while transient failures remain");
+        assert_eq!(retry_error, BusFailure::TransientRouteBlocked);
+        assert_eq!(classify_bus_failure(retry_error), HostedRecoveryClass::Recoverable);
+        assert_eq!(adapter.state(), LocalRunwayState::Active);
+        assert_eq!(
+            adapter
+                .try_recv("agent.bravo")
+                .expect("receive should remain empty before success"),
+            None
+        );
+    }
+
+    adapter
+        .route(message("agent.alpha", "agent.bravo", 30))
+        .expect("retry should succeed after failures are exhausted");
+
+    let (state, mut executor, mut bus) = adapter.into_parts();
+
+    assert_eq!(state, LocalRunwayState::Active);
+    assert_eq!(executor.pending_jobs(), 1);
+    assert_eq!(executor.pop_next().expect("pop should succeed"), Some("deliver"));
+    assert_eq!(executor.pop_next().expect("pop should succeed"), None);
+
+    let delivered = bus
+        .try_recv("agent.bravo")
+        .expect("receive should succeed after final retry")
+        .expect("delivery should occur after explicit successful retry");
+    assert_eq!(delivered.nonce(), 30);
+}
+
+#[test]
+fn hosted_recovery_vocabulary_classifies_transient_and_terminal_bus_failures() {
+    assert_eq!(
+        classify_bus_failure(BusFailure::TransientRouteBlocked),
+        HostedRecoveryClass::Recoverable
+    );
+    assert_eq!(
+        classify_bus_failure(BusFailure::RouteBlocked),
+        HostedRecoveryClass::Terminal
+    );
 }
 
 #[test]
