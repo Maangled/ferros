@@ -17,7 +17,20 @@ Optional fields (additive, do not break existing item order):
 
 ## Ready
 
-None. System queue empty.
+### SYSTEM-2026-05-10-01
+
+- Title: Coding Agent Architect candidate upgrade packet W2 push
+- Status: ready
+- Priority: P1
+- Gate: candidate to research-only evidence chain
+- Owning streams: S8 primary; coding-family orchestration awareness
+- Goal: Push the next bounded coding-family architect continuation packet to FERROS Coding Agent Architect, preserving v2 route-token semantics and candidate evidence-chain continuity.
+- Anchor files: `docs/orchestration/CODING-AGENT-ARCHITECT-UPGRADE-PACKET-2026-05-10.md`, `docs/orchestration/ARCHITECT-FAMILY-PROMOTION.md`
+- Validation: `get_errors` clean on the packet and promotion-status files; route token uses `target_family: coding` with `target_stream: null`; packet keeps bounded scope (<=2 anchors, <=3 recommendation categories).
+- Constraints: Docs-only and system-track only. No gate movement, no schema mutation, no hardware or Home Assistant proof claim, and no runtime execution claim.
+- Last update: 2026-05-10
+- size: S
+- track: system
 
 ---
 

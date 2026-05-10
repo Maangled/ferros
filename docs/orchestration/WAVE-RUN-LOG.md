@@ -3,6 +3,34 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-10 - SYSTEM-2026-05-10-01
+
+- wave_id: SYSTEM-2026-05-10-01
+- issued_at: 2026-05-10
+- lanes_run: Lane 1 packet authoring (Coding Agent Architect W2 continuation packet); Lane 2 promotion-status continuity update; Lane 3 system-queue push and bookkeeping log append.
+- validation_results:
+  - Lane 1: `get_errors` clean on `docs/orchestration/CODING-AGENT-ARCHITECT-UPGRADE-PACKET-2026-05-10.md`.
+  - Lane 2: `get_errors` clean on `docs/orchestration/ARCHITECT-FAMILY-PROMOTION.md`.
+  - Lane 3: `get_errors` clean on `docs/orchestration/SYSTEM-QUEUE.md` and `docs/orchestration/WAVE-RUN-LOG.md`.
+  - Route token conformance check: pass (`token_version: v2`, `target_family: coding`, `target_stream: null`, `track: system`).
+- gatekeeper_decision: continue
+- stop_condition: No stop condition fired.
+- truth_sync_delta: none (packet issuance and queue bookkeeping only)
+- claims:
+  - Next coding-family continuation packet `FRS-coding-20260510-C1-W2` is authored and pushed for FERROS Coding Agent Architect;
+  - Candidate evidence-chain continuity is now explicit in promotion status (W1 kickoff plus W2 continuation issued);
+  - System queue now carries the ready wave item for this packet push.
+- non_claims:
+  - no gate closure;
+  - no hardware proof;
+  - no Home Assistant proof;
+  - no runtime execution or schema-mutation claim;
+  - no claims outside named docs-only validations.
+- authority_status:
+  - authority_mismatch_detected: false
+  - authority_ack: none
+
+---
 ## 2026-05-09 - FRS-core-20260506-C1-W6
 
 - wave_id: FRS-core-20260506-C1-W6
