@@ -3,6 +3,83 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-10 - FRS-coding-20260510-C1-W4
+
+- wave_id: FRS-coding-20260510-C1-W4
+- selected_item_id: FRS-coding-20260510-C1-W4
+- issued_at: 2026-05-10
+- lanes_run: Lane A registry/template delta scan; Lane B routing-token and packet-contract conformance; Lane C lifecycle and promotion-rule coherence; Lane D queue and run-log governance verification.
+- validation_results:
+  - Lane A: coding registry and template boundaries verified against `.github/agents/ferros-coding-agent-architect.agent.md`, `.github/agents/ferros-coding-agent.agent.md`, and `docs/orchestration/CODING-AGENT-ARCHITECT-UPGRADE-PACKET-2026-05-10-W4.md`.
+  - Lane B: route-token conformance pass (`token_version: v2`, `target_stream: null`, `target_family: architect`, `run_id: FRS-coding-20260510-C1-W4`, `parent_run_id: FRS-coding-20260510-C1-W3`, `recursion_depth: 1`, `run_profile: architect-review`, `expiry_cycle: C1`, `posture: recursive-lane-system`, `track: code`, `ttl_ms: 300000`).
+  - Lane C: lifecycle coherence pass; candidate evidence chain now records W2, W3, and W4 bounded continuation packets for operator gate review.
+  - Lane D: queue-surface and run-log governance pass; queue field ordering preserved and run log updated append-only newest-first.
+- gatekeeper_decision: stop-clean
+- stop_condition: Segment closed cleanly after bounded W4 packet completion; no escalation condition fired.
+- truth_sync_delta: `docs/orchestration/CODING-AGENT-ARCHITECT-UPGRADE-PACKET-2026-05-10-W4.md`, `docs/orchestration/ARCHITECT-FAMILY-PROMOTION.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/SYSTEM-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- claims:
+  - W4 execution-authorizable architect-family continuation packet landed with anti-narrowed lane A-D coverage;
+  - route-token and packet-contract conformance validated against supplied W4 constraints with explicit lineage continuity;
+  - promotion rubric now records a complete three-packet bounded evidence chain after W1 kickoff.
+- non_claims:
+  - no gate closure;
+  - no hardware proof;
+  - no Home Assistant proof;
+  - no runtime execution claim;
+  - no schema-freeze mutation claim;
+  - no claims beyond named docs-only validations.
+- authority_status:
+  - authority_mismatch_detected: false
+  - authority_ack: none
+- next_follow_up:
+  - Route W5 packet construction through FERROS Prompt Architect Agent;
+  - Present Candidate -> Research-only promotion decision packet for operator approval;
+  - Continue anti-narrowing seeds across registry, delegation safeguards, recursion guardrails, and evidence normalization.
+
+```json
+{
+  "wave_id": "FRS-coding-20260510-C1-W4",
+  "stop_conditions_evaluated": {
+    "1_validation_failed": "Not triggered: lane A-D validations passed with bounded docs-only scope.",
+    "2_wave_tag": "Not triggered: no P0, gate-close, solo, or frozen-schema touch in this continuation wave.",
+    "3_diff_overrun": "Not triggered: touches remained inside declared packet, promotion rubric, and bookkeeping exemption surfaces.",
+    "4_track_boundary": "Not triggered: W4 stayed in code-track queue bookkeeping scope.",
+    "5_run_length_cap": "Not triggered: bounded single-wave continuation segment.",
+    "6_escalation_chain": "Not triggered: no validator or triage escalation was required."
+  },
+  "decision": "stop-clean",
+  "rationale": "W4 continuation delivered an execution-authorizable architect update packet set with complete lane evidence and no authority drift."
+}
+```
+
+---
+## 2026-05-10 - SYSTEM-2026-05-10-02
+
+- wave_id: SYSTEM-2026-05-10-02
+- issued_at: 2026-05-10
+- lanes_run: Lane 1 packet instantiation (W3 continuation packet with parent traceability fields); Lane 2 strict route-token and lane-plan gate preflight; Lane 3 queue-surface start record.
+- validation_results:
+  - Lane 1: packet authored at `docs/orchestration/CODING-AGENT-ARCHITECT-UPGRADE-PACKET-2026-05-10-W3.md` with required route-token, baton, lane, anti-narrowing, and first-wave sections.
+  - Lane 2: route-token conformance preflight pass (`token_version: v2`, `target_stream: null`, `target_family: coding`, `run_profile: architect-review`, `parent_run_id` bound, `recursion_depth: 1`, `ttl_ms: 300000`, `track: system`).
+  - Lane 3: system queue start entry issued under `SYSTEM-2026-05-10-02`.
+- gatekeeper_decision: continue
+- stop_condition: No stop condition fired.
+- truth_sync_delta: none (packet issuance and queue/run-log bookkeeping only)
+- claims:
+  - Next coding-family continuation packet `FRS-coding-20260510-C1-W3` is authored and started;
+  - First-wave L1/L2/L3 execution plan is sequenced with anti-narrowing seed coverage A-E;
+  - Parent-child run traceability is explicit and normalized for continuation routing.
+- non_claims:
+  - no gate closure;
+  - no hardware proof;
+  - no Home Assistant proof;
+  - no runtime execution or schema-mutation claim;
+  - no claims outside named docs-only validations.
+- authority_status:
+  - authority_mismatch_detected: false
+  - authority_ack: none
+
+---
 ## 2026-05-10 - SYSTEM-2026-05-10-01
 
 - wave_id: SYSTEM-2026-05-10-01

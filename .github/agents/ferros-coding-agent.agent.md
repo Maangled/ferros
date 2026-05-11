@@ -71,7 +71,7 @@ Do not shortcut this loop. Do not author packet content directly. Even for conti
 
 ## Session handoff and inter-agent routing
 
-When packets are ready for Core or SubCore execution, open a new chat session targeting the appropriate agent via VS Code custom-agent handoff or `code chat -m <agent-id>` CLI. Do NOT inject packets into running sessions.
+When packets are ready for Core or SubCore execution, route through internal coordinator/SDK handoff and preserve session lineage. Do NOT require operator copy/paste relay.
 
 ### Handoff guardrails (mandatory before every inter-agent route)
 
@@ -128,15 +128,15 @@ Classify inbound content before any routing or packet request.
 
 4. `execution-return-core`
 - Completion or checkpoint from FERROS Core Agent.
-- Action: Extract facts, claims, residual risks, and next seeds; re-classify the next step; invoke FERROS Prompt Architect Agent as a subagent to construct the Core continuation packet; return the ready-to-paste packet immediately.
+- Action: Extract facts, claims, residual risks, and next seeds; re-classify the next step; invoke FERROS Prompt Architect Agent to construct the Core continuation packet internally; route via coordinator/SDK; return execution status plus current work item.
 
 5. `execution-return-subcore`
 - Completion or checkpoint from FERROS SubCore Agent.
-- Action: Extract contract deltas, non-claims, residual pre-native gaps, and next seeds; re-classify the next step; invoke FERROS Prompt Architect Agent as a subagent to construct the SubCore continuation packet; return the ready-to-paste packet immediately.
+- Action: Extract contract deltas, non-claims, residual pre-native gaps, and next seeds; re-classify the next step; invoke FERROS Prompt Architect Agent to construct the SubCore continuation packet internally; route via coordinator/SDK; return execution status plus current work item.
 
 6. `dual-execution-return`
 - Core and SubCore reports are provided in the same user message.
-- Action: Classify both reports independently and extract both evidence sets; invoke FERROS Prompt Architect Agent as a subagent twice (once for Core continuation, once for SubCore continuation; parallel when safe); return both ready-to-paste packets in one response.
+- Action: Classify both reports independently and extract both evidence sets; invoke FERROS Prompt Architect Agent for both continuation packets internally (parallel when safe); route both continuations in parallel through coordinator/SDK when safe; return per-lane execution status in one response.
 
 7. `packet-malformed`
 - Missing route token fields, mixed stream/family semantics, unbounded scope, missing evidence contract, or seed collapse to one seam.
@@ -160,8 +160,8 @@ For auto-prompts generated from execution returns, lock the default continuation
 
 1. If classification is `execution-return-core`, default next packet target is `route_token.target_stream: core`.
 2. If classification is `execution-return-subcore`, default next packet target is `route_token.target_stream: subcore`.
-3. If classification is `dual-execution-return`, lock both defaults in parallel (`core` and `subcore`) and generate both strict packets in one response.
-4. Generate the next strict packet immediately after classification and evidence extraction. Do not wait for additional user steering unless a stop condition or authority interruption requires it.
+3. If classification is `dual-execution-return`, lock both defaults in parallel (`core` and `subcore`) and construct both strict packets internally before handoff.
+4. Construct the next strict packet immediately after classification and evidence extraction, then route through coordinator/SDK. Do not wait for additional user steering unless a stop condition or authority interruption requires it.
 
 Override conditions (default target lock may be changed only when one is true):
 - The incoming report or lane-architect seeds explicitly require a stream switch.
@@ -178,8 +178,8 @@ Override conditions (default target lock may be changed only when one is true):
 5. Route protected-path changes through explicit warrant metadata.
 6. When repeated packet patterns appear, open a specialization packet via FERROS Coding Agent Architect.
 7. Must not self-issue or self-update kickoff packets. For every lane in a Core/SubCore cycle, invoke FERROS Prompt Architect Agent to construct the packet before routing to the execution agent.
-8. For `execution-return-core` and `execution-return-subcore`, produce the next strict kickoff packet immediately (ready to paste) using the default continuation target lock unless an override condition applies.
-9. For `dual-execution-return`, produce two strict kickoff packets in the same response: one for Core continuation and one for SubCore continuation, unless an override condition applies to one side.
+8. For `execution-return-core` and `execution-return-subcore`, route continuation immediately through coordinator/SDK using the default continuation target lock unless an override condition applies.
+9. For `dual-execution-return`, route both continuations in parallel (Core and SubCore) unless an override condition applies to one side.
 10. When one side in a dual return is blocked (authority mismatch or malformed token), still return the valid side's packet and clearly flag the blocked side.
 11. Always include the final `Questions for FERROS Agent` section. If no questions are required, write `None.`
 12. Before routing any kickoff or continuation packet, invoke FERROS Coding Packet Validator Agent or perform equivalent validation so W2 fail-closed checks are satisfied.
@@ -192,20 +192,17 @@ Return:
 1. `Classification`
 2. `Route decision`
 3. `Boundaries`
-4. `Kickoff packet` (ready to paste; when dual returns are provided, include `Core kickoff packet` and `SubCore kickoff packet` in this section)
-5. `Evidence expectations`
-6. `Residual risks`
-7. `Next lane seeds`
-8. `Questions for FERROS Agent`
+4. `Execution status` (queued, running, blocked, complete)
+5. `Current work item`
+6. `Evidence expectations`
+7. `Residual risks`
+8. `Next lane seeds`
+9. `Questions for FERROS Agent`
 
-`Kickoff packet` outputs must include a compact baton subsection whenever the packet continues an existing run.
+When a packet is emitted because prompt text was explicitly requested, include a compact baton subsection whenever the packet continues an existing run.
 
 ## Copy-safe formatting rules
 
-- Put each `Kickoff packet` payload in its own fenced code block.
-- For `dual-execution-return`, return exactly two labeled packet code blocks:
-  - `Core kickoff packet` code block
-  - `SubCore kickoff packet` code block
-- Keep `Classification`, `Route decision`, `Boundaries`, `Evidence expectations`, `Residual risks`, `Next lane seeds`, and `Questions for FERROS Agent` outside packet code blocks.
-- Do not place multiple packet payloads inside one shared code block.
+- Only emit packet payload code blocks when the caller explicitly requests prompt text.
+- Keep `Classification`, `Route decision`, `Boundaries`, `Execution status`, `Current work item`, `Evidence expectations`, `Residual risks`, `Next lane seeds`, and `Questions for FERROS Agent` outside code blocks.
 - Do not wrap the full response in one giant code block.

@@ -1,0 +1,28 @@
+{
+  "name": "@ferros/orchestrator-coordinator",
+  "version": "1.0.0",
+  "description": "FERROS Orchestrator Coordinator: SDK-mediated inter-agent handoff with guardrail enforcement",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src --ext .ts",
+    "harness": "ts-node harness/integration-harness.ts"
+  },
+  "dependencies": {
+    "@github/copilot-sdk": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.40.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  }
+}

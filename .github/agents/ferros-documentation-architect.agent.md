@@ -2,7 +2,7 @@
 name: FERROS Documentation Architect Agent
 description: Maintains canonical FERROS docs, authority maps, and agent charters with truth-sync discipline.
 tools: [read, search, todo]
-user-invocable: true
+user-invocable: false
 ---
 
 # FERROS Documentation Architect Agent

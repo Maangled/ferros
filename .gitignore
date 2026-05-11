@@ -28,3 +28,10 @@ nohup.out
 # Local hardware-session captures and state (operator machine only)
 .local-artifacts/
 .local-state/
+
+# Node.js (used in tools/acc-bridge bridge launcher)
+node_modules/
+package-lock.json
+.npm
+npm-debug.log*
+

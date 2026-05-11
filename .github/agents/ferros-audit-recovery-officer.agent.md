@@ -4,7 +4,7 @@ description: Audit-first safety officer for incident triage, containment, and re
 tools: [agent, read, search, todo]
 agents:
   - FERROS Backup Officer Agent
-user-invocable: true
+user-invocable: false
 ---
 
 # FERROS Audit Recovery Officer Agent

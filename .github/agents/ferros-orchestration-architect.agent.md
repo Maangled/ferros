@@ -7,7 +7,7 @@ agents:
   - FERROS Documentation Architect Agent
   - FERROS Audit Recovery Officer Agent
   - FERROS Backup Officer Agent
-user-invocable: true
+user-invocable: false
 ---
 
 # FERROS Orchestration Architect Agent
@@ -69,19 +69,22 @@ Executing domain agents cannot self-issue or self-update their own kickoff packe
 
 ## Inter-agent session routing policy
 
-Coding Agent may open new chat sessions for Core/SubCore execution via:
-- VS Code custom-agent handoff (`send: true` button)
-- `code chat -m ferros-core` or `code chat -m ferros-subcore` CLI invocation
-- Coordinator daemon that validates packets, routes to target agent, and captures responses
+Coding Agent hands off packets to Core/SubCore execution via FERROS Orchestrator Coordinator, which uses `@github/copilot-sdk` for session management:
+- `coordinator.handoffToAgent(packet, targetAgent)` for single handoffs (Core or SubCore)
+- `coordinator.handoffToBoth(corePacket, subcorePacket)` for dual-execution (simultaneous Core + SubCore)
 
-Responses are captured as agent outputs and normalized back into execution-return classifications for Coding Agent.
+Responses are captured as SDK session completions and normalized back into `execution-return-core` or `execution-return-subcore` classifications for Coding Agent routing.
 
-Mandatory validation before any inter-agent handoff:
-- Route token must match target agent identity
-- Recursion depth ≤ 2 (internal recursion only; ≥ 2 escalates upward)
-- Packet must include parent_run_id and TTL (expiry_cycle or issued_at)
-- No self-handoffs without explicit authorization
-- All handoff packets must pass the same authority-interruption checks as top-level packets
+Mandatory guardrails (enforced by Coordinator before `sendAndWait`):
+1. **Packet validation**: Route token present, `target_stream` matches agent identity, `run_id` continuous
+2. **Recursion depth ≤ 2**: Internal recursion only; depth ≥ 2 escalates upward (platform + coordinator + agent-spec defense in depth)
+3. **Parent packet ID**: Packet must include `parent_run_id` for response traceability via `toolCallId`
+4. **TTL check**: If packet has `issued_at` and TTL window, confirm not expired before handoff
+5. **Self-handoff prevention**: Target agent identity must not be source identity; Coordinator has `infer: false` to prevent self-delegation
+
+For detailed SDK surface and guardrail mapping, see [HANDOFF-2026-05-09-COPILOT-SDK-VERIFIED.md](HANDOFF-2026-05-09-COPILOT-SDK-VERIFIED.md).
+
+For Coordinator design and implementation, see [ORCHESTRATOR-COORDINATOR-ARCHITECTURE.md](ORCHESTRATOR-COORDINATOR-ARCHITECTURE.md).
 
 ## Required architecture loop
 

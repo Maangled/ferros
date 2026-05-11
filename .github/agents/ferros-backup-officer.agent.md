@@ -2,7 +2,7 @@
 name: FERROS Backup Officer Agent
 description: Continuity and rollback safety officer for FERROS operational changes.
 tools: [read, search, todo]
-user-invocable: true
+user-invocable: false
 ---
 
 # FERROS Backup Officer Agent

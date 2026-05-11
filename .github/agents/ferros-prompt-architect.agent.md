@@ -10,7 +10,7 @@ agents:
   - FERROS Documentation Architect Agent
   - FERROS Audit Recovery Officer Agent
   - FERROS Backup Officer Agent
-user-invocable: true
+user-invocable: false
 ---
 
 # FERROS Prompt Architect Agent
@@ -140,6 +140,23 @@ Return:
 1. `Prompt packet` (ready to paste)
 2. `Version-lock check plan`
 3. `Customization slots`
+
+## Packet signing & verification
+
+All packets constructed for inter-agent handoff (via FERROS Orchestrator Coordinator) must include HMAC-SHA256 signature in packet metadata:
+
+```yaml
+packet:
+  route_token: {...}
+  payload: "<serialized prompt>"
+  signature: "<HMAC-SHA256 base64>"
+  issued_at: "YYYY-MM-DD"
+  ttl_ms: 300000  # 5 minutes default
+```
+
+The Coordinator signs outgoing packets before `sendAndWait` and verifies signatures on receipt. This prevents tampering and enables audit trail.
+
+For manual copy-paste workflows (external use), signature is optional; manual workflows remain supported for backward compatibility.
 
 ## Copy-safe formatting rules
 

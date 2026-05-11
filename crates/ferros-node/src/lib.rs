@@ -1068,8 +1068,14 @@ pub fn local_shell_url(port: u16) -> String {
     format!("http://127.0.0.1:{port}/")
 }
 
+// BRIDGE-WORKAROUND: LAN bind — pre-auth, superseded when native bridge lands
 pub fn serve_local_shell(port: u16) -> io::Result<()> {
-    let listener = TcpListener::bind(("127.0.0.1", port))?;
+    serve_local_shell_with_bind(port, "127.0.0.1")
+}
+
+// BRIDGE-WORKAROUND: LAN bind — pre-auth, superseded when native bridge lands
+pub fn serve_local_shell_with_bind(port: u16, bind_addr: &str) -> io::Result<()> {
+    let listener = TcpListener::bind((bind_addr, port))?;
 
     serve_local_shell_with_listener(listener, None)
 }
@@ -5208,6 +5214,35 @@ mod tests {
             }
             other => panic!("unexpected RPC result: {other:?}"),
         }
+
+        server.join().expect("listener thread should exit cleanly");
+    }
+
+    #[test]
+    fn shell_listener_binds_to_lan_address_over_tcp() {
+        // BRIDGE-WORKAROUND: LAN bind — pre-auth, superseded when native bridge lands
+        let listener = TcpListener::bind(("0.0.0.0", 0)).expect("listener should bind");
+        let address = listener
+            .local_addr()
+            .expect("listener should report local addr");
+
+        let server = thread::spawn(move || {
+            serve_local_shell_with_listener(listener, Some(1))
+                .expect("shell listener should serve one request");
+        });
+
+        let mut stream = TcpStream::connect(address).expect("client should connect to 0.0.0.0");
+        stream
+            .write_all(b"GET / HTTP/1.1\r\nHost: 0.0.0.0\r\nConnection: close\r\n\r\n")
+            .expect("request should write");
+        stream
+            .shutdown(Shutdown::Write)
+            .expect("client write-half should shut down");
+
+        let response = read_stream_to_string(&mut stream);
+
+        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
+        assert!(response.contains("FERROS Local Shell"));
 
         server.join().expect("listener thread should exit cleanly");
     }

@@ -8,7 +8,7 @@ agents:
   - FERROS Documentation Architect Agent
   - FERROS Audit Recovery Officer Agent
   - FERROS Backup Officer Agent
-user-invocable: true
+user-invocable: false
 ---
 
 # FERROS Agent Architect Agent

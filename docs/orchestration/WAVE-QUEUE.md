@@ -29,6 +29,21 @@ None.
 
 ## Done
 
+### FRS-coding-20260510-C1-W4
+
+- Title: Coding architect continuation W4 packet hardening and governance closeout
+- Status: done
+- Priority: P1
+- Gate: candidate to research-only evidence chain
+- Owning streams: S8 primary; coding-family orchestration awareness
+- Goal: Continue from W3 with bounded architect-family lane execution across registry/template checks, route-token contract conformance, lifecycle coherence, and queue-surface governance verification.
+- Anchor files: `docs/orchestration/CODING-AGENT-ARCHITECT-UPGRADE-PACKET-2026-05-10-W4.md`, `docs/orchestration/ARCHITECT-FAMILY-PROMOTION.md`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` clean on packet, promotion status, and queue or run-log surfaces; route token validates v2 mutual exclusivity and lineage fields (`parent_run_id`, `recursion_depth`, `ttl_ms`) with `target_family: architect` and `target_stream: null`.
+- Constraints: Docs-only and code-track bookkeeping only. No gate movement, no schema mutation, no hardware or Home Assistant proof claim, and no runtime execution claim.
+- Last update: 2026-05-10
+- size: S
+- track: code
+
 ### FRS-core-20260506-C1-W6
 
 - Title: Anti-narrowed node/runtime/core reconfirmation with runway-summary continuity

@@ -116,11 +116,13 @@ If a research-only role has not collected sufficient evidence after 2 cycles:
 
 ## FERROS Coding Agent Architect promotion status
 
-**Current state:** Candidate (kickoff packet FRS-coding-20260509-C1-W1 plus continuation packet FRS-coding-20260510-C1-W2 issued)
+**Current state:** Candidate (promotion-ready evidence chain complete for Candidate -> Research-only operator approval)
 
 **Charter:** Route-rule gap review, lifecycle promotion logic audit, registry integrity sweep, evidence standard delta proposal
 
-**Next gate:** Complete the 3-packet bounded evidence chain for Candidate -> Research-only approval (W2 issued, packets 2 and 3 pending successful completion)
+**Evidence chain status:** W1 kickoff (`FRS-coding-20260509-C1-W1`) plus three bounded continuation packets (`FRS-coding-20260510-C1-W2`, `FRS-coding-20260510-C1-W3`, `FRS-coding-20260510-C1-W4`) completed with explicit non-claims and no unresolved authority mismatch.
+
+**Next gate:** Operator review and approval decision for Candidate -> Research-only.
 
 ---
 

@@ -6,6 +6,7 @@ agents:
   - FERROS Business Agent Architect
   - FERROS Audit Recovery Officer Agent
   - FERROS Backup Officer Agent
+user-invocable: false
 ---
 
 # FERROS Business Agent

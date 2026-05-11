@@ -48,6 +48,21 @@ None.
 
 ## Done
 
+### SYSTEM-2026-05-10-02
+
+- Title: Coding Agent Architect update or upgrade packet W3 execution start
+- Status: done
+- Priority: P1
+- Gate: candidate to research-only evidence chain
+- Owning streams: S8 primary; coding-family orchestration awareness
+- Goal: Start the next bounded coding-family architect continuation packet with strict v2 route-token checks, lane anti-narrowing coverage, and execution-ready first-wave sequencing.
+- Anchor files: `docs/orchestration/CODING-AGENT-ARCHITECT-UPGRADE-PACKET-2026-05-10-W3.md`, `docs/orchestration/SYSTEM-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `get_errors` clean on packet plus queue and run-log surfaces; route token validates v2 mutual exclusivity and parent-run traceability (`parent_run_id`, `recursion_depth`, `ttl_ms`).
+- Constraints: Docs-only and system-track only. No gate movement, no schema mutation, no hardware or Home Assistant proof claim, and no runtime execution claim.
+- Last update: 2026-05-10
+- size: S
+- track: system
+
 ### SYSTEM-2026-05-03-12
 
 - Title: S9 disposition and ADR-025 acceptance packet

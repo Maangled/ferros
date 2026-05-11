@@ -106,6 +106,16 @@ An empty diff confirms the committed output matches the current inputs. A non-em
 
 ---
 
+## ACC Bridge + Operator Monitor
+
+**Status:** BRIDGE-WORKAROUND. Pre-auth, pre-ADR. Will be deleted when native Rust bridge lands.
+
+Location: `tools/acc-bridge/`
+
+Standalone launcher and operator monitoring panel for FERROS agent testing. Run `node tools/acc-bridge/bridge.js` to start the ferros shell on LAN and open a monitoring UI in your browser. See [tools/acc-bridge/README.md](acc-bridge/README.md) for details.
+
+---
+
 ## Local Hub Runway Helper
 
 `cargo xtask hub-runway` is the local rehearsal helper for the published hub-owned restart, proposal, and decision seams.

@@ -1,0 +1,797 @@
+<!--
+  BRIDGE-WORKAROUND
+  Status: pre-auth, pre-ADR, pre-safety
+  Purpose: standalone operator monitor — NOT part of ACC, NOT part of ferros-node
+  Scope: test and monitor agents during early development
+  Conventions lifted: FERROS style, Card/Deck layout, ADR requirement
+  Zero external dependencies — all vanilla HTML/CSS/JS
+  Superseded by: ACC when it reaches feature parity with this panel
+  Do not import this into site/ or docs/ or crates/
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FERROS Operator Monitor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 12px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .error-banner {
+      background-color: #3a1a1a;
+      border: 1px solid #ff4444;
+      border-radius: 4px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      color: #ff6666;
+      display: none;
+    }
+
+    .error-banner.show {
+      display: block;
+    }
+
+    .status-bar {
+      background-color: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .status-indicator.active {
+      background-color: #4ade80;
+    }
+
+    .status-indicator.pending {
+      background-color: #facc15;
+    }
+
+    .status-indicator.error {
+      background-color: #ff6666;
+    }
+
+    .status-indicator.unknown {
+      background-color: #666;
+    }
+
+    .status-text {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .timestamp {
+      color: #999;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    button {
+      background-color: #2a4a6a;
+      border: 1px solid #4a7aaa;
+      color: #aaccff;
+      padding: 4px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    button:hover:not(:disabled) {
+      background-color: #3a5a7a;
+      border-color: #6abaff;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .section {
+      background-color: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #444;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .collapsible .section-title {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .collapsible .section-title::before {
+      content: '▶ ';
+      color: #999;
+      display: inline-block;
+      width: 12px;
+    }
+
+    .collapsible.collapsed .section-title::before {
+      content: '▼ ';
+    }
+
+    .collapsible.collapsed .section-content {
+      display: none;
+    }
+
+    .section-content {
+      padding-top: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8px;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 6px 8px;
+      background-color: #1a1a1a;
+      border-bottom: 1px solid #444;
+      font-weight: bold;
+      color: #aaccff;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #333;
+    }
+
+    tbody tr:hover {
+      background-color: #333;
+    }
+
+    td {
+      padding: 6px 8px;
+    }
+
+    .agent-name {
+      color: #aaccff;
+      font-weight: bold;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+
+    .status.running {
+      background-color: #1a3a1a;
+      color: #4ade80;
+    }
+
+    .status.registered {
+      background-color: #2a2a2a;
+      color: #aaa;
+    }
+
+    .status.stopped {
+      background-color: #2a2a2a;
+      color: #999;
+    }
+
+    .status.failed {
+      background-color: #3a1a1a;
+      color: #ff6666;
+    }
+
+    .actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .checklist-item {
+      padding: 6px 0;
+      border-bottom: 1px solid #333;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .checklist-item:last-child {
+      border-bottom: none;
+    }
+
+    .checklist-icon {
+      display: inline-block;
+      width: 12px;
+      text-align: center;
+      flex-shrink: 0;
+      font-weight: bold;
+    }
+
+    .checklist-icon.observed {
+      color: #4ade80;
+    }
+
+    .checklist-icon.pending {
+      color: #facc15;
+    }
+
+    .checklist-icon.error {
+      color: #ff6666;
+    }
+
+    .checklist-text {
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .deny-entry {
+      padding: 6px 0;
+      border-bottom: 1px solid #333;
+      font-size: 12px;
+    }
+
+    .deny-entry:last-child {
+      border-bottom: none;
+    }
+
+    .deny-entry.denied-start {
+      color: #facc15;
+    }
+
+    .deny-entry.denied {
+      color: #ff8888;
+    }
+
+    .deny-entry.other {
+      color: #999;
+    }
+
+    textarea {
+      width: 100%;
+      height: 80px;
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+      border: 1px solid #444;
+      border-radius: 3px;
+      padding: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      resize: vertical;
+      margin-bottom: 6px;
+    }
+
+    .output-box {
+      width: 100%;
+      min-height: 60px;
+      background-color: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 3px;
+      padding: 8px;
+      margin-bottom: 6px;
+      font-size: 11px;
+      overflow-y: auto;
+      max-height: 200px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .output-box.error {
+      border-color: #ff6666;
+      color: #ff8888;
+    }
+
+    .output-box.success {
+      color: #4ade80;
+    }
+
+    .controls-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Error Banner -->
+    <div class="error-banner" id="errorBanner"></div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span class="status-indicator" id="statusIndicator"></span>
+      <span class="status-text">
+        <span id="statusText">Loading...</span>
+      </span>
+      <span class="timestamp" id="timestamp"></span>
+      <button id="refreshBtn">[ Refresh ]</button>
+      <button id="autoToggleBtn">[ Auto ▶ ]</button>
+    </div>
+
+    <!-- Agent Roster -->
+    <div class="section">
+      <div class="section-title">Agent Roster</div>
+      <div class="section-content">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Version</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="agentRoster">
+            <tr>
+              <td colspan="4" style="text-align: center; color: #999;">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Runway Checklist -->
+    <div class="section">
+      <div class="section-title">Runway Checklist</div>
+      <div class="section-content" id="checklistContainer">
+        <div style="color: #999;">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Deny Log -->
+    <div class="section">
+      <div class="section-title">
+        Deny Log
+        <button id="clearDenyViewBtn">[ Clear view ]</button>
+      </div>
+      <div class="section-content" id="denyLogContainer">
+        <div style="color: #999;">Loading...</div>
+      </div>
+    </div>
+
+    <!-- RPC Console -->
+    <div class="section collapsible collapsed">
+      <div class="section-title">Raw RPC Console</div>
+      <div class="section-content">
+        <textarea id="rpcInput">{"jsonrpc":"2.0","id":"manual-1","method":"agent.list","params":{}}</textarea>
+        <div class="controls-row">
+          <button id="rpcSendBtn">[ Send ]</button>
+        </div>
+        <div class="output-box" id="rpcOutput"></div>
+      </div>
+    </div>
+
+    <!-- Profile Actions -->
+    <div class="section collapsible collapsed">
+      <div class="section-title">Profile Quick Actions</div>
+      <div class="section-content">
+        <div class="controls-row">
+          <button id="profileInitBtn">[ Init Profile ]</button>
+          <button id="profileShowBtn">[ Show Profile ]</button>
+        </div>
+        <div
+          style="
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 8px;
+          "
+        >
+          Note: Grant/Revoke are not exposed through this surface — use the ferros CLI directly.
+        </div>
+        <div class="output-box" id="profileOutput"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── BRIDGE-WORKAROUND CONFIG ─────────────────────────────────────
+    // Change FERROS_SHELL_URL if your ferros shell is on a different host/port
+    const FERROS_SHELL_URL = 'http://127.0.0.1:4317';
+    const POLL_INTERVAL_MS = 3000;
+    // ─────────────────────────────────────────────────────────────────
+
+    let autoRefresh = false;
+    let autoRefreshTimer = null;
+    let requestInFlight = {};
+
+    const elements = {
+      errorBanner: document.getElementById('errorBanner'),
+      statusIndicator: document.getElementById('statusIndicator'),
+      statusText: document.getElementById('statusText'),
+      timestamp: document.getElementById('timestamp'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      autoToggleBtn: document.getElementById('autoToggleBtn'),
+      agentRoster: document.getElementById('agentRoster'),
+      checklistContainer: document.getElementById('checklistContainer'),
+      denyLogContainer: document.getElementById('denyLogContainer'),
+      clearDenyViewBtn: document.getElementById('clearDenyViewBtn'),
+      rpcInput: document.getElementById('rpcInput'),
+      rpcSendBtn: document.getElementById('rpcSendBtn'),
+      rpcOutput: document.getElementById('rpcOutput'),
+      profileInitBtn: document.getElementById('profileInitBtn'),
+      profileShowBtn: document.getElementById('profileShowBtn'),
+      profileOutput: document.getElementById('profileOutput'),
+    };
+
+    // Setup collapsibles
+    document.querySelectorAll('.collapsible .section-title').forEach((title) => {
+      title.addEventListener('click', () => {
+        title.parentElement.classList.toggle('collapsed');
+      });
+    });
+
+    /**
+     * Show error banner
+     */
+    function showError(message) {
+      elements.errorBanner.textContent = message;
+      elements.errorBanner.classList.add('show');
+    }
+
+    function hideError() {
+      elements.errorBanner.classList.remove('show');
+    }
+
+    /**
+     * Fetch from ferros shell
+     */
+    async function fetchFromShell(endpoint, options = {}) {
+      try {
+        const url = `${FERROS_SHELL_URL}${endpoint}`;
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
+          },
+        });
+
+        if (!response.ok && response.status !== 200) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        hideError();
+        return data;
+      } catch (error) {
+        showError(`Cannot reach ferros shell at ${FERROS_SHELL_URL} — is it running? (${error.message})`);
+        throw error;
+      }
+    }
+
+    /**
+     * Update status bar
+     */
+    async function updateStatus() {
+      try {
+        const data = await fetchFromShell('/runway-summary.json');
+
+        const stateMap = {
+          'pending': { indicator: 'unknown', color: '#999' },
+          'profile-ready': { indicator: 'pending', color: '#facc15' },
+          'consent-ready': { indicator: 'pending', color: '#facc15' },
+          'runtime-ready': { indicator: 'pending', color: '#facc15' },
+          'active': { indicator: 'active', color: '#4ade80' },
+          'halted': { indicator: 'error', color: '#ff6666' },
+          'error': { indicator: 'error', color: '#ff6666' },
+        };
+
+        const state = stateMap[data.checkpointState] || stateMap['unknown'];
+        elements.statusIndicator.className = `status-indicator ${state.indicator}`;
+        elements.statusText.textContent = `${data.checkpointState} (${data.checkpointPosition}/${data.checkpointTotal}) • ${data.agentCount} agents • ${data.denyCount} denies`;
+        elements.timestamp.textContent = new Date().toLocaleTimeString();
+      } catch (error) {
+        elements.statusIndicator.className = 'status-indicator unknown';
+        elements.statusText.textContent = 'Unable to load status';
+      }
+    }
+
+    /**
+     * Update agent roster
+     */
+    async function updateAgents() {
+      try {
+        const response = await fetchFromShell('/rpc', {
+          method: 'POST',
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 'roster',
+            method: 'agent.list',
+            params: {},
+          }),
+        });
+
+        const agents = response.result?.agents || [];
+        const html = agents
+          .map((agent) => {
+            const statusClass = agent.status.toLowerCase();
+            return `
+              <tr>
+                <td><span class="agent-name">${escapeHtml(agent.name)}</span></td>
+                <td>${escapeHtml(agent.version)}</td>
+                <td><span class="status ${statusClass}">${escapeHtml(agent.status)}</span></td>
+                <td>
+                  <div class="actions">
+                    <button onclick="runAgent('${escapeHtml(agent.name)}')" ${requestInFlight[`run-${agent.name}`] ? 'disabled' : ''}>Run</button>
+                    <button onclick="stopAgent('${escapeHtml(agent.name)}')" ${requestInFlight[`stop-${agent.name}`] ? 'disabled' : ''}>Stop</button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          })
+          .join('');
+
+        elements.agentRoster.innerHTML = html || '<tr><td colspan="4" style="text-align: center; color: #999;">No agents</td></tr>';
+      } catch (error) {
+        elements.agentRoster.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ff6666;">Error loading agents</td></tr>';
+      }
+    }
+
+    /**
+     * Run/Stop agent
+     */
+    window.runAgent = async (name) => {
+      const key = `run-${name}`;
+      requestInFlight[key] = true;
+      updateAgents();
+
+      try {
+        const response = await fetchFromShell('/rpc', {
+          method: 'POST',
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: `run-${name}`,
+            method: 'agent.run',
+            params: { agentName: name },
+          }),
+        });
+
+        if (response.error) {
+          alert(`Error running ${name}: ${response.error.message}`);
+        } else {
+          updateAgents();
+          updateStatus();
+        }
+      } catch (error) {
+        alert(`Failed to run ${name}`);
+      } finally {
+        delete requestInFlight[key];
+        updateAgents();
+      }
+    };
+
+    window.stopAgent = async (name) => {
+      const key = `stop-${name}`;
+      requestInFlight[key] = true;
+      updateAgents();
+
+      try {
+        const response = await fetchFromShell('/rpc', {
+          method: 'POST',
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: `stop-${name}`,
+            method: 'agent.stop',
+            params: { agentName: name },
+          }),
+        });
+
+        if (response.error) {
+          alert(`Error stopping ${name}: ${response.error.message}`);
+        } else {
+          updateAgents();
+          updateStatus();
+        }
+      } catch (error) {
+        alert(`Failed to stop ${name}`);
+      } finally {
+        delete requestInFlight[key];
+        updateAgents();
+      }
+    };
+
+    /**
+     * Update runway checklist
+     */
+    async function updateChecklist() {
+      try {
+        const data = await fetchFromShell('/runway-summary.json');
+        const checklist = data.checklist || [];
+
+        const html = checklist
+          .map((item) => {
+            const iconMap = { 'observed': '●', 'pending': '○', 'error': '✕' };
+            const icon = iconMap[item.status] || '?';
+            const iconClass = item.status;
+            return `
+              <div class="checklist-item">
+                <span class="checklist-icon ${iconClass}">${icon}</span>
+                <span class="checklist-text"><strong>${escapeHtml(item.item)}</strong> — ${escapeHtml(item.detail || 'no detail')}</span>
+              </div>
+            `;
+          })
+          .join('');
+
+        elements.checklistContainer.innerHTML = html || '<div style="color: #999;">No checklist items</div>';
+      } catch (error) {
+        elements.checklistContainer.innerHTML = '<div style="color: #ff6666;">Error loading checklist</div>';
+      }
+    }
+
+    /**
+     * Update deny log
+     */
+    async function updateDenyLog() {
+      try {
+        const response = await fetchFromShell('/rpc', {
+          method: 'POST',
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 'deny-log',
+            method: 'deny-log.list',
+            params: {},
+          }),
+        });
+
+        const entries = response.result?.entries || [];
+        const recent = entries.slice(0, 20).reverse();
+
+        const html = recent
+          .map((entry, idx) => {
+            const entryNum = entries.length - idx;
+            const kind = entry.kind || 'unknown';
+            const className = kind === 'deniedStart' ? 'denied-start' : kind === 'denied' ? 'denied' : 'other';
+            return `
+              <div class="deny-entry ${className}">#${entryNum}  ${escapeHtml(kind)}   ${escapeHtml(entry.agent_name || '—')}   ${escapeHtml(entry.capability || '—')}   ${escapeHtml(entry.message || '')}</div>
+            `;
+          })
+          .join('');
+
+        elements.denyLogContainer.innerHTML = html || '<div style="color: #999;">No deny log entries</div>';
+      } catch (error) {
+        elements.denyLogContainer.innerHTML = '<div style="color: #ff6666;">Error loading deny log</div>';
+      }
+    }
+
+    /**
+     * RPC console send
+     */
+    elements.rpcSendBtn.addEventListener('click', async () => {
+      try {
+        const input = elements.rpcInput.value;
+        const request = JSON.parse(input);
+
+        const response = await fetchFromShell('/rpc', {
+          method: 'POST',
+          body: JSON.stringify(request),
+        });
+
+        elements.rpcOutput.className = 'output-box success';
+        elements.rpcOutput.textContent = JSON.stringify(response, null, 2);
+      } catch (error) {
+        elements.rpcOutput.className = 'output-box error';
+        elements.rpcOutput.textContent = `Error: ${error.message}`;
+      }
+    });
+
+    /**
+     * Profile actions
+     */
+    elements.profileInitBtn.addEventListener('click', async () => {
+      try {
+        const response = await fetchFromShell('/profile', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'init' }),
+        });
+        elements.profileOutput.className = 'output-box success';
+        elements.profileOutput.textContent = JSON.stringify(response, null, 2);
+      } catch (error) {
+        elements.profileOutput.className = 'output-box error';
+        elements.profileOutput.textContent = `Error: ${error.message}`;
+      }
+    });
+
+    elements.profileShowBtn.addEventListener('click', async () => {
+      try {
+        const response = await fetchFromShell('/profile', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'show' }),
+        });
+        elements.profileOutput.className = 'output-box success';
+        elements.profileOutput.textContent = JSON.stringify(response, null, 2);
+      } catch (error) {
+        elements.profileOutput.className = 'output-box error';
+        elements.profileOutput.textContent = `Error: ${error.message}`;
+      }
+    });
+
+    /**
+     * Refresh controls
+     */
+    elements.refreshBtn.addEventListener('click', () => {
+      updateAll();
+    });
+
+    elements.autoToggleBtn.addEventListener('click', () => {
+      autoRefresh = !autoRefresh;
+      elements.autoToggleBtn.textContent = autoRefresh ? '[ Auto ■ ]' : '[ Auto ▶ ]';
+
+      if (autoRefresh) {
+        updateAll();
+        autoRefreshTimer = setInterval(updateAll, POLL_INTERVAL_MS);
+      } else {
+        if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+        autoRefreshTimer = null;
+      }
+    });
+
+    elements.clearDenyViewBtn.addEventListener('click', () => {
+      elements.denyLogContainer.innerHTML = '<div style="color: #999;">Deny log cleared from view</div>';
+    });
+
+    /**
+     * Helper: escape HTML
+     */
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      };
+      return text.replace(/[&<>"']/g, (m) => map[m]);
+    }
+
+    /**
+     * Update all sections
+     */
+    async function updateAll() {
+      await updateStatus();
+      await updateAgents();
+      await updateChecklist();
+      await updateDenyLog();
+    }
+
+    // Initial load
+    updateAll();
+  </script>
+</body>
+</html>

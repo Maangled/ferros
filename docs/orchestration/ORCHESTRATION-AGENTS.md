@@ -82,16 +82,29 @@ These roles own architectural governance at the orchestration and domain-family 
 
 | Agent | Owned domain | Invocable by |
 |-------|-------------|-------------|
-| **FERROS Orchestration Architect Agent** | Orchestration/control-plane governance, ADR authorship, canonical-change sign-off, invocation gates, packet gates | Operator or FERROS Agent only |
-| **FERROS Coding Agent Architect** | Coding-family agent proliferation, coding registry and templates, lifecycle promotion | Operator, FERROS Agent, or FERROS Coding Agent |
-| **FERROS Business Agent Architect** | Business-family agent proliferation, operating-company spines, business templates | Operator, FERROS Agent, or FERROS Business Agent |
+| **FERROS Orchestration Architect Agent** | Orchestration/control-plane governance, ADR authorship, canonical-change sign-off, invocation gates, packet gates | FERROS Agent only |
+| **FERROS Coding Agent Architect** | Coding-family agent proliferation, coding registry and templates, lifecycle promotion | FERROS Agent or FERROS Coding Agent |
+| **FERROS Business Agent Architect** | Business-family agent proliferation, operating-company spines, business templates | FERROS Agent or FERROS Business Agent |
 | **FERROS Prompt Architect Agent** | Packet construction, route-token normalization, authority_ack template enforcement | Any agent by delegation; packet construction must route here |
 
 ### Invocation gate
 
-Only **Operator** or **FERROS Agent** may invoke FERROS Orchestration Architect Agent directly.
+Only **FERROS Agent** may invoke FERROS Orchestration Architect Agent directly.
 
 Executing domain agents — including FERROS Coding Agent, FERROS Business Agent, FERROS Core Agent, FERROS SubCore Agent, and all stream executors — must not invoke FERROS Orchestration Architect Agent. Governance needs from a domain agent must route up to FERROS Agent first.
+
+### Operator-entry gate (single front door)
+
+Operator interaction is restricted to **FERROS Agent** as the only front door.
+
+All other active agents are internal execution/governance nodes and must be invoked by FERROS Agent routing.
+
+Approved 5-agent spine routing is:
+
+1. FERROS Agent ↔ FERROS Coding Agent ↔ dual Core/SubCore execution
+2. FERROS Agent ↔ FERROS Coding Agent Architect
+3. FERROS Agent ↔ FERROS Business Agent Architect
+4. FERROS Agent ↔ FERROS Business Agent
 
 ### ADR authorship gate
 

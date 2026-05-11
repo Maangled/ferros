@@ -1,0 +1,13 @@
+{
+  "name": "ferros-acc-bridge",
+  "version": "0.1.0",
+  "description": "BRIDGE-WORKAROUND: Launcher and operator monitor for FERROS ACC (pre-auth, pre-safety, will be deleted when native bridge lands)",
+  "main": "bridge.js",
+  "scripts": {
+    "start": "node bridge.js"
+  },
+  "keywords": ["ferros", "bridge", "workaround"],
+  "author": "",
+  "license": "SEE LICENCE FILE",
+  "dependencies": {}
+}
