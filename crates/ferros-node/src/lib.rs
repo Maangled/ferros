@@ -7,6 +7,7 @@ use std::fs;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -53,9 +54,109 @@ const CLI_PROFILE_FILE: &str = "profile.json";
 const PROFILE_REVOKE_REASON: &str = "revoked via ferros profile revoke";
 const LOCAL_SHELL_DEFAULT_PORT: u16 = 4317;
 const MAX_HTTP_REQUEST_BYTES: usize = 64 * 1024;
+const MONITOR_MAX_TIMELINE_EVENTS: usize = 200;
+const MONITOR_MAX_ARCHIVED_SESSIONS: usize = 120;
 const LOCAL_SHELL_HTML: &str = include_str!("../../../site/agent-center-shell.html");
 const LOCAL_SHELL_ACCEPTANCE_HARNESS_HTML: &str =
     include_str!("../../../harnesses/localhost-shell-acceptance-harness.html");
+
+static MONITOR_STATE: OnceLock<Mutex<MonitorState>> = OnceLock::new();
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorMessage {
+    speaker: String,
+    who: String,
+    text: String,
+    at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorSession {
+    id: String,
+    label: String,
+    active_agent: String,
+    created_at: String,
+    messages: Vec<MonitorMessage>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorArchivedSession {
+    id: String,
+    label: String,
+    reason: String,
+    archived_at: String,
+    preview: Vec<MonitorMessage>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorLoop {
+    id: String,
+    agent: String,
+    state: String,
+    description: String,
+    started_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorEvent {
+    id: String,
+    kind: String,
+    text: String,
+    at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorStateSnapshot {
+    open_chats: Vec<MonitorSession>,
+    archived_chats: Vec<MonitorArchivedSession>,
+    running_loops: Vec<MonitorLoop>,
+    timeline: Vec<MonitorEvent>,
+    selected_chat_id: Option<String>,
+    next_id: usize,
+}
+
+#[derive(Debug, Clone, Default)]
+struct MonitorState {
+    open_chats: Vec<MonitorSession>,
+    archived_chats: Vec<MonitorArchivedSession>,
+    running_loops: Vec<MonitorLoop>,
+    timeline: Vec<MonitorEvent>,
+    selected_chat_id: Option<String>,
+    next_id: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorCreateSessionRequest {
+    label: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorMessageRequest {
+    speaker: String,
+    who: String,
+    text: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorRouteRequest {
+    target: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorLoopTransitionRequest {
+    action: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DemoSummary {
@@ -1162,6 +1263,12 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
 ) -> HttpResponse {
     let (request_path, request_query) = split_request_path(&request.path);
 
+    if let Some(response) =
+        route_monitor_request(request.method.as_str(), request_path, request.body.clone())
+    {
+        return response;
+    }
+
     match (request.method.as_str(), request_path) {
         ("GET", "/") | ("GET", "/index.html") => HttpResponse {
             status_code: 200,
@@ -1188,6 +1295,160 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
         }
         _ => text_response(404, "Not Found", "FERROS local shell route not found"),
     }
+}
+
+fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Option<HttpResponse> {
+    if request_path == "/monitor/state" && method == "GET" {
+        let state = monitor_state();
+        let guard = state.lock().map_err(|_| ()).ok()?;
+        let snapshot = guard.snapshot();
+        return Some(json_response(200, "OK", &snapshot));
+    }
+
+    if request_path == "/monitor/events" && method == "GET" {
+        let state = monitor_state();
+        let guard = state.lock().map_err(|_| ()).ok()?;
+        return Some(json_response(200, "OK", &guard.timeline));
+    }
+
+    if request_path == "/monitor/sessions" && method == "GET" {
+        let state = monitor_state();
+        let guard = state.lock().map_err(|_| ()).ok()?;
+        return Some(json_response(200, "OK", &guard.open_chats));
+    }
+
+    if request_path == "/monitor/sessions" && method == "POST" {
+        let request: MonitorCreateSessionRequest = match serde_json::from_slice(&body) {
+            Ok(parsed) => parsed,
+            Err(error) => {
+                return Some(text_response(
+                    400,
+                    "Bad Request",
+                    format!("invalid monitor session payload: {error}"),
+                ));
+            }
+        };
+
+        let state = monitor_state();
+        let mut guard = match state.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                return Some(text_response(
+                    500,
+                    "Internal Server Error",
+                    "monitor state lock poisoned",
+                ));
+            }
+        };
+        let session = guard.create_session(request.label);
+        return Some(json_response(200, "OK", &session));
+    }
+
+    if request_path == "/monitor/loops/transition" && method == "POST" {
+        let request: MonitorLoopTransitionRequest = match serde_json::from_slice(&body) {
+            Ok(parsed) => parsed,
+            Err(error) => {
+                return Some(text_response(
+                    400,
+                    "Bad Request",
+                    format!("invalid monitor loop payload: {error}"),
+                ));
+            }
+        };
+
+        let state = monitor_state();
+        let mut guard = match state.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                return Some(text_response(
+                    500,
+                    "Internal Server Error",
+                    "monitor state lock poisoned",
+                ));
+            }
+        };
+        guard.apply_loop_transition(&request.action);
+        return Some(json_response(200, "OK", &guard.snapshot()));
+    }
+
+    let Some((session_id, trailing)) = parse_monitor_session_subroute(request_path) else {
+        return None;
+    };
+
+    if trailing == "messages" && method == "POST" {
+        let request: MonitorMessageRequest = match serde_json::from_slice(&body) {
+            Ok(parsed) => parsed,
+            Err(error) => {
+                return Some(text_response(
+                    400,
+                    "Bad Request",
+                    format!("invalid monitor message payload: {error}"),
+                ));
+            }
+        };
+
+        let state = monitor_state();
+        let mut guard = match state.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                return Some(text_response(
+                    500,
+                    "Internal Server Error",
+                    "monitor state lock poisoned",
+                ));
+            }
+        };
+        if !guard.add_message(session_id, request) {
+            return Some(text_response(404, "Not Found", "monitor session not found"));
+        }
+        return Some(json_response(200, "OK", &guard.snapshot()));
+    }
+
+    if trailing == "route" && method == "POST" {
+        let request: MonitorRouteRequest = match serde_json::from_slice(&body) {
+            Ok(parsed) => parsed,
+            Err(error) => {
+                return Some(text_response(
+                    400,
+                    "Bad Request",
+                    format!("invalid monitor route payload: {error}"),
+                ));
+            }
+        };
+
+        let state = monitor_state();
+        let mut guard = match state.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                return Some(text_response(
+                    500,
+                    "Internal Server Error",
+                    "monitor state lock poisoned",
+                ));
+            }
+        };
+        if !guard.route_session(session_id, &request.target) {
+            return Some(text_response(404, "Not Found", "monitor session not found"));
+        }
+        return Some(json_response(200, "OK", &guard.snapshot()));
+    }
+
+    None
+}
+
+fn parse_monitor_session_subroute(path: &str) -> Option<(&str, &str)> {
+    let prefix = "/monitor/sessions/";
+    if !path.starts_with(prefix) {
+        return None;
+    }
+
+    let tail = &path[prefix.len()..];
+    let (session_id, subroute) = tail.split_once('/')?;
+    if session_id.is_empty() || subroute.is_empty() {
+        return None;
+    }
+
+    Some((session_id, subroute))
 }
 
 fn split_request_path(path: &str) -> (&str, Option<&str>) {
@@ -1501,6 +1762,279 @@ fn text_response(
         status_text,
         content_type: "text/plain; charset=utf-8",
         body: message.into().into_bytes(),
+    }
+}
+
+fn json_response<T: Serialize>(status_code: u16, status_text: &'static str, payload: &T) -> HttpResponse {
+    match serde_json::to_string_pretty(payload) {
+        Ok(body) => HttpResponse {
+            status_code,
+            status_text,
+            content_type: "application/json; charset=utf-8",
+            body: body.into_bytes(),
+        },
+        Err(error) => text_response(
+            500,
+            "Internal Server Error",
+            format!("failed to serialize monitor response: {error}"),
+        ),
+    }
+}
+
+fn monitor_state() -> &'static Mutex<MonitorState> {
+    MONITOR_STATE.get_or_init(|| Mutex::new(MonitorState::default()))
+}
+
+fn monitor_now() -> String {
+    match OffsetDateTime::now_utc().format(&Rfc3339) {
+        Ok(value) => value,
+        Err(_) => "1970-01-01T00:00:00Z".to_owned(),
+    }
+}
+
+impl MonitorState {
+    fn snapshot(&self) -> MonitorStateSnapshot {
+        MonitorStateSnapshot {
+            open_chats: self.open_chats.clone(),
+            archived_chats: self.archived_chats.clone(),
+            running_loops: self.running_loops.clone(),
+            timeline: self.timeline.clone(),
+            selected_chat_id: self.selected_chat_id.clone(),
+            next_id: self.next_id,
+        }
+    }
+
+    fn create_session(&mut self, label: Option<String>) -> MonitorSession {
+        let id = self.next_identifier("chat");
+        let now = monitor_now();
+        let session = MonitorSession {
+            id: id.clone(),
+            label: label.unwrap_or_else(|| format!("User -> FERROS #{}", self.next_id)),
+            active_agent: "FERROS Agent".to_owned(),
+            created_at: now.clone(),
+            messages: vec![MonitorMessage {
+                speaker: "agent".to_owned(),
+                who: "FERROS Agent".to_owned(),
+                text: "Session ready. Route requests into coding, business, or architect lanes.".to_owned(),
+                at: now,
+            }],
+        };
+        self.selected_chat_id = Some(id);
+        self.open_chats.push(session.clone());
+        self.push_event("open-chat", format!("Opened {}", session.label));
+        session
+    }
+
+    fn add_message(&mut self, session_id: &str, request: MonitorMessageRequest) -> bool {
+        let Some(session) = self.open_chats.iter_mut().find(|session| session.id == session_id) else {
+            return false;
+        };
+
+        session.messages.push(MonitorMessage {
+            speaker: request.speaker,
+            who: request.who,
+            text: request.text,
+            at: monitor_now(),
+        });
+        self.push_event("chat.message.added", format!("Message appended in {}", session.label));
+        true
+    }
+
+    fn route_session(&mut self, session_id: &str, target: &str) -> bool {
+        let Some(index) = self.open_chats.iter().position(|session| session.id == session_id) else {
+            return false;
+        };
+
+        let session = self.open_chats.remove(index);
+        let (route_label, loop_agent, loop_desc) = match target {
+            "business" => (
+                "Business Agent",
+                "Business Agent",
+                "Executing business packet and coordinating department loops.",
+            ),
+            "ferros-architect" => (
+                "FERROS Agent Architect Agent",
+                "FERROS Agent Architect Agent",
+                "Coordinating architect-family delegation to coding/business architects.",
+            ),
+            "coding-architect" => (
+                "Coding Agent Architect",
+                "Coding Agent Architect",
+                "Designing coding-family topology and lane architecture.",
+            ),
+            "business-architect" => (
+                "Business Agent Architect",
+                "Business Agent Architect",
+                "Designing business-company and departmental architecture.",
+            ),
+            _ => (
+                "Coding Agent",
+                "Coding Agent",
+                "Executing coding packet and preparing Core/SubCore branch packets.",
+            ),
+        };
+
+        self.archived_chats.insert(
+            0,
+            MonitorArchivedSession {
+                id: session.id,
+                label: session.label.clone(),
+                reason: format!("Packet dispatched to {route_label}"),
+                archived_at: monitor_now(),
+                preview: session.messages.iter().rev().take(3).cloned().collect(),
+            },
+        );
+        self.archived_chats
+            .truncate(MONITOR_MAX_ARCHIVED_SESSIONS);
+
+        self.selected_chat_id = self.open_chats.first().map(|chat| chat.id.clone());
+        self.upsert_loop(loop_agent, "running", loop_desc);
+        self.push_event("packet.sent", format!("{} -> {route_label}", session.label));
+        true
+    }
+
+    fn apply_loop_transition(&mut self, action: &str) {
+        match action {
+            "architect-split" => {
+                self.upsert_loop(
+                    "FERROS Agent Architect Agent",
+                    "running",
+                    "Delegating packets across coding and business architect lanes.",
+                );
+                self.upsert_loop(
+                    "Coding Agent Architect",
+                    "running",
+                    "Coding architect recursion in progress.",
+                );
+                self.upsert_loop(
+                    "Business Agent Architect",
+                    "running",
+                    "Business architect recursion in progress.",
+                );
+                self.push_event(
+                    "loop.started",
+                    "FERROS Agent Architect delegated to Coding and Business architects.",
+                );
+            }
+            "coding-split" => {
+                self.upsert_loop(
+                    "Coding Agent",
+                    "waiting",
+                    "Waiting for Core/SubCore completion packets.",
+                );
+                self.upsert_loop("Core Agent", "running", "Core lane executing routed packet.");
+                self.upsert_loop(
+                    "SubCore Agent",
+                    "running",
+                    "SubCore lane executing routed packet.",
+                );
+                self.push_event("loop.started", "Coding split into Core and SubCore loops.");
+            }
+            "coding-merge" => {
+                self.remove_loop("Core Agent");
+                self.remove_loop("SubCore Agent");
+                self.upsert_loop(
+                    "Coding Agent",
+                    "running",
+                    "Core/SubCore responses merged. Coding continuation active.",
+                );
+                self.push_event("loop.merged", "Core/SubCore returned to Coding.");
+            }
+            "business-split" => {
+                self.upsert_loop(
+                    "Business Agent Architect",
+                    "waiting",
+                    "Awaiting department loop completions.",
+                );
+                self.upsert_loop(
+                    "Operations Department",
+                    "running",
+                    "Operations directives executing.",
+                );
+                self.upsert_loop("Sales Department", "running", "Sales directives executing.");
+                self.upsert_loop(
+                    "Finance Department",
+                    "running",
+                    "Finance directives executing.",
+                );
+                self.upsert_loop("HR Department", "running", "HR directives executing.");
+                self.push_event(
+                    "loop.started",
+                    "Business architect split into Operations/Sales/Finance/HR.",
+                );
+            }
+            "business-merge" => {
+                self.remove_loop("Operations Department");
+                self.remove_loop("Sales Department");
+                self.remove_loop("Finance Department");
+                self.remove_loop("HR Department");
+                self.upsert_loop(
+                    "Business Agent Architect",
+                    "running",
+                    "Department outputs merged; business architecture loop resumed.",
+                );
+                self.push_event("loop.merged", "Department loops returned to Business Architect.");
+            }
+            "escalate" => {
+                self.running_loops.clear();
+                self.push_event(
+                    "escalation.opened",
+                    "Escalation opened. FERROS chat moved to operator-visible queue.",
+                );
+                let session = self.create_session(Some("Escalation -> FERROS".to_owned()));
+                if let Some(open) = self.open_chats.iter_mut().find(|chat| chat.id == session.id) {
+                    open.messages.push(MonitorMessage {
+                        speaker: "agent".to_owned(),
+                        who: "FERROS Agent".to_owned(),
+                        text: "Escalation received. Human decision is required before continuing.".to_owned(),
+                        at: monitor_now(),
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn upsert_loop(&mut self, agent: &str, state: &str, description: &str) {
+        let id = agent.to_ascii_lowercase().replace(' ', "-");
+        let now = monitor_now();
+        if let Some(existing) = self.running_loops.iter_mut().find(|loop_state| loop_state.id == id)
+        {
+            existing.state = state.to_owned();
+            existing.description = description.to_owned();
+            existing.updated_at = now;
+            return;
+        }
+
+        self.running_loops.push(MonitorLoop {
+            id,
+            agent: agent.to_owned(),
+            state: state.to_owned(),
+            description: description.to_owned(),
+            started_at: now.clone(),
+            updated_at: now,
+        });
+    }
+
+    fn remove_loop(&mut self, agent: &str) {
+        let id = agent.to_ascii_lowercase().replace(' ', "-");
+        self.running_loops.retain(|loop_state| loop_state.id != id);
+    }
+
+    fn push_event(&mut self, kind: &str, text: String) {
+        let event = MonitorEvent {
+            id: self.next_identifier("evt"),
+            kind: kind.to_owned(),
+            text,
+            at: monitor_now(),
+        };
+        self.timeline.insert(0, event);
+        self.timeline.truncate(MONITOR_MAX_TIMELINE_EVENTS);
+    }
+
+    fn next_identifier(&mut self, prefix: &str) -> String {
+        self.next_id += 1;
+        format!("{prefix}-{}", self.next_id)
     }
 }
 

@@ -24,6 +24,7 @@ Design and maintain the non-coding business control plane so operating companies
 - Business agent role boundaries and lifecycle states
 - Operating-company architecture and lifecycle rules
 - Governor/Operator/Steward minimum spine standard
+- Business department architecture under each company (Operations, Sales, Finance, HR, and future departments)
 - Business registry and template architecture
 - Business protected-action and warrant policy proposals
 - Business evidence, assumption, and non-claim standards
@@ -58,6 +59,14 @@ Every operating company starts with:
 - Governor
 - Operator
 - Steward
+
+Department baseline under each active company starts with:
+- Operations
+- Sales
+- Finance
+- HR
+
+Additional departments are allowed when packet evidence shows repeated demand and ownership boundaries are explicit.
 
 Initial company set:
 - Profile Company
