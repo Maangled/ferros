@@ -85,6 +85,8 @@ struct MonitorMessage {
 struct MonitorNotification {
     id: String,
     packet_id: Option<String>,
+    session_id: Option<String>,
+    lifecycle_thread_id: Option<String>,
     severity: String,
     title: String,
     summary: String,
@@ -204,6 +206,22 @@ struct MonitorAgentSourceTreeStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+struct MonitorPacket {
+    id: String,
+    session_id: String,
+    origin_message_id: String,
+    manager: String,
+    state: String,
+    lifecycle_thread_id: Option<String>,
+    notification_id: Option<String>,
+    created_at: String,
+    updated_at: String,
+    summary: String,
+    last_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 struct MonitorStateSnapshot {
     open_chats: Vec<MonitorSession>,
     archived_chats: Vec<MonitorArchivedSession>,
@@ -211,6 +229,7 @@ struct MonitorStateSnapshot {
     running_loops: Vec<MonitorLoop>,
     timeline: Vec<MonitorEvent>,
     lifecycle_threads: Vec<MonitorLifecycleThread>,
+    packets: Vec<MonitorPacket>,
     agent_directory: Vec<MonitorAgentDirectoryEntry>,
     agent_source_tree: MonitorAgentSourceTreeStatus,
     selected_chat_id: Option<String>,
@@ -227,6 +246,7 @@ struct MonitorState {
     running_loops: Vec<MonitorLoop>,
     timeline: Vec<MonitorEvent>,
     lifecycle_threads: Vec<MonitorLifecycleThread>,
+    packets: Vec<MonitorPacket>,
     selected_chat_id: Option<String>,
     selected_lifecycle_thread_id: Option<String>,
     next_id: usize,
@@ -333,6 +353,7 @@ impl Default for MonitorState {
             running_loops: Vec::new(),
             timeline: Vec::new(),
             lifecycle_threads: Vec::new(),
+            packets: Vec::new(),
             selected_chat_id: None,
             selected_lifecycle_thread_id: None,
             next_id: 0,
@@ -1626,10 +1647,19 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
                 }
             };
 
+            if !matches!(trailing, "open" | "opened" | "resolve") {
+                return Some(enable_cors(text_response(
+                    400,
+                    "Bad Request",
+                    format!("unknown notification action: {trailing}"),
+                )));
+            }
+
             let updated = match trailing {
-                "open" | "opened" => guard.update_notification_status(notification_id, "opened"),
+                "open" => guard.open_notification(notification_id),
+                "opened" => guard.update_notification_status(notification_id, "opened"),
                 "resolve" => guard.update_notification_status(notification_id, "resolved"),
-                _ => false,
+                _ => unreachable!(),
             };
 
             if !updated {
@@ -1786,6 +1816,96 @@ fn parse_monitor_notification_subroute(path: &str) -> Option<(&str, &str)> {
     }
 
     Some((notification_id, subroute))
+}
+
+/// Test-only: route monitor requests against a caller-supplied `Mutex<MonitorState>` so
+/// tests can use isolated state instead of the global singleton.
+#[cfg(test)]
+fn route_monitor_request_with_state(
+    method: &str,
+    request_path: &str,
+    body: Vec<u8>,
+    state: &std::sync::Mutex<MonitorState>,
+) -> Option<HttpResponse> {
+    if request_path == "/monitor/sessions" && method == "POST" {
+        let request: MonitorCreateSessionRequest = match serde_json::from_slice(&body) {
+            Ok(r) => r,
+            Err(e) => {
+                return Some(enable_cors(text_response(
+                    400,
+                    "Bad Request",
+                    format!("invalid monitor session payload: {e}"),
+                )));
+            }
+        };
+        let mut guard = state.lock().ok()?;
+        let session = guard.create_session(request.label);
+        return Some(enable_cors(json_response(200, "OK", &session)));
+    }
+
+    if let Some((session_id, trailing)) = parse_monitor_session_subroute(request_path) {
+        if trailing == "messages" && method == "POST" {
+            let request: MonitorMessageRequest = match serde_json::from_slice(&body) {
+                Ok(r) => r,
+                Err(e) => {
+                    return Some(enable_cors(text_response(
+                        400,
+                        "Bad Request",
+                        format!("invalid monitor message payload: {e}"),
+                    )));
+                }
+            };
+            let mut guard = state.lock().ok()?;
+            let message_id = match guard.add_message(session_id, request.clone()) {
+                Some(id) => id,
+                None => {
+                    return Some(enable_cors(text_response(
+                        404,
+                        "Not Found",
+                        "monitor session not found",
+                    )));
+                }
+            };
+            if request.speaker.eq_ignore_ascii_case("user")
+                && guard
+                    .session_active_agent(session_id)
+                    .is_some_and(|agent| agent == "FERROS Agent")
+            {
+                let _ =
+                    guard.ferros_agent_handle_human_message(session_id, &message_id, &request.text);
+            }
+            return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+        }
+    }
+
+    if let Some((notification_id, trailing)) = parse_monitor_notification_subroute(request_path) {
+        if method == "POST" {
+            if !matches!(trailing, "open" | "opened" | "resolve") {
+                return Some(enable_cors(text_response(
+                    400,
+                    "Bad Request",
+                    format!("unknown notification action: {trailing}"),
+                )));
+            }
+            let mut guard = state.lock().ok()?;
+            let updated = match trailing {
+                "open" => guard.open_notification(notification_id),
+                "opened" => guard.update_notification_status(notification_id, "opened"),
+                "resolve" => guard.update_notification_status(notification_id, "resolved"),
+                _ => unreachable!(),
+            };
+            if !updated {
+                return Some(enable_cors(text_response(
+                    404,
+                    "Not Found",
+                    "monitor notification not found",
+                )));
+            }
+            return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+        }
+    }
+
+    None
 }
 
 fn split_request_path(path: &str) -> (&str, Option<&str>) {
@@ -2187,6 +2307,13 @@ fn normalize_monitor_state(state: &mut MonitorState) {
             state.next_id += 1;
         }
     }
+
+    for packet in &mut state.packets {
+        if packet.id.is_empty() {
+            packet.id = format!("pkt-{}", state.next_id + 1);
+            state.next_id += 1;
+        }
+    }
 }
 
 fn monitor_now() -> String {
@@ -2509,6 +2636,7 @@ impl MonitorState {
             running_loops: self.running_loops.iter().map(normalize_monitor_loop).collect(),
             timeline: self.timeline.clone(),
             lifecycle_threads: lifecycle_threads.clone(),
+            packets: self.packets.clone(),
             agent_directory: agent_directory.clone(),
             agent_source_tree: monitor_agent_source_tree_status(agent_directory.len()),
             selected_chat_id: self.selected_chat_id.clone(),
@@ -2731,12 +2859,27 @@ impl MonitorState {
 
         let lowered = dispatch_request.operator_text.to_ascii_lowercase();
         if lowered.contains("human intervention") || lowered.contains("needs operator") || lowered.contains("escalate") {
+            let packet_id = self.create_packet(
+                dispatch_request.session_id.clone(),
+                dispatch_request.message_id.clone(),
+                "FERROS Agent".to_owned(),
+                "human_intervention_required",
+                None,
+                None,
+                "Escalation: operator review required".to_owned(),
+            );
             let notification_id = self.create_notification(
+                Some(packet_id.clone()),
+                Some(dispatch_request.session_id.clone()),
                 None,
                 "high",
                 "Human intervention required",
                 "FERROS Agent could not resolve automatically. Open FERROS chat to continue.",
             );
+            // Back-link the notification onto the packet
+            if let Some(p) = self.packets.iter_mut().find(|p| p.id == packet_id) {
+                p.notification_id = Some(notification_id.clone());
+            }
             let ferros_reply = "I could not safely resolve this request automatically. I created an operator notification and paused downstream execution pending your guidance.".to_owned();
             let _ = self.add_message(
                 &dispatch_request.session_id,
@@ -2748,7 +2891,7 @@ impl MonitorState {
             );
             return MonitorDispatchResult {
                 ferros_reply,
-                packet_id: None,
+                packet_id: Some(packet_id),
                 manager: None,
                 lifecycle_thread_id: None,
                 notification_id: Some(notification_id),
@@ -2865,12 +3008,71 @@ impl MonitorState {
 
         self.upsert_loop(loop_agent, "running", loop_desc);
         self.push_event("packet.sent", format!("{} -> {route_label}", session_label));
-        Some((work_order_id, route_label.to_owned(), packet_thread_id))
+
+        let packet_id = self.create_packet(
+            session_id.to_owned(),
+            "".to_owned(),
+            route_label.to_owned(),
+            "dispatched_to_manager",
+            Some(packet_thread_id.clone()),
+            None,
+            format!("Staged from {session_label} → {route_label}"),
+        );
+
+        Some((packet_id, route_label.to_owned(), packet_thread_id))
+    }
+
+    fn create_packet(
+        &mut self,
+        session_id: String,
+        origin_message_id: String,
+        manager: String,
+        state: &str,
+        lifecycle_thread_id: Option<String>,
+        notification_id: Option<String>,
+        summary: String,
+    ) -> String {
+        let id = self.next_identifier("pkt");
+        let now = monitor_now();
+        self.packets.push(MonitorPacket {
+            id: id.clone(),
+            session_id,
+            origin_message_id,
+            manager,
+            state: state.to_owned(),
+            lifecycle_thread_id,
+            notification_id,
+            created_at: now.clone(),
+            updated_at: now,
+            summary,
+            last_error: None,
+        });
+        self.push_event("packet.created", format!("Packet {id} registered"));
+        id
+    }
+
+    fn update_packet_state(&mut self, packet_id: &str, new_state: &str, detail: Option<String>) -> bool {
+        let Some(packet) = self.packets.iter_mut().find(|p| p.id == packet_id) else {
+            return false;
+        };
+        packet.state = new_state.to_owned();
+        packet.updated_at = monitor_now();
+        if let Some(err) = detail {
+            packet.last_error = Some(err);
+        }
+        self.push_event("packet.state_changed", format!("{packet_id} -> {new_state}"));
+        true
+    }
+
+    fn packet_by_id(&self, packet_id: &str) -> Option<&MonitorPacket> {
+        self.packets.iter().find(|p| p.id == packet_id)
     }
 
     fn create_notification(
         &mut self,
         packet_id: Option<String>,
+        session_id: Option<String>,
+        lifecycle_thread_id: Option<String>,
         severity: &str,
         title: &str,
         summary: &str,
@@ -2881,6 +3083,8 @@ impl MonitorState {
             MonitorNotification {
                 id: id.clone(),
                 packet_id,
+                session_id,
+                lifecycle_thread_id,
                 severity: severity.to_owned(),
                 title: title.to_owned(),
                 summary: summary.to_owned(),
@@ -2892,6 +3096,36 @@ impl MonitorState {
         self.notifications.truncate(200);
         self.push_event("notification.created", format!("{title}: {summary}"));
         id
+    }
+
+    fn open_notification(&mut self, notification_id: &str) -> bool {
+        let Some(notification) = self
+            .notifications
+            .iter_mut()
+            .find(|n| n.id == notification_id)
+        else {
+            return false;
+        };
+
+        let session_id = notification.session_id.clone();
+        let lifecycle_thread_id = notification.lifecycle_thread_id.clone();
+        let title = notification.title.clone();
+        notification.status = "opened".to_owned();
+
+        if let Some(sid) = session_id {
+            if self.open_chats.iter().any(|c| c.id == sid) {
+                self.selected_chat_id = Some(sid);
+            }
+        }
+
+        if let Some(tid) = lifecycle_thread_id {
+            if self.lifecycle_threads.iter().any(|t| t.id == tid) {
+                self.selected_lifecycle_thread_id = Some(tid);
+            }
+        }
+
+        self.push_event("notification.opened", format!("{title} acknowledged by operator"));
+        true
     }
 
     fn update_notification_status(&mut self, notification_id: &str, status: &str) -> bool {
@@ -4617,12 +4851,14 @@ mod tests {
         execute_agent_read_rpc_json, execute_agent_read_rpc_with_store_and_paths,
         execute_agent_rpc_with_store_and_paths_and_runtime_loader,
         execute_local_agent_api_with_runtime_loader, execute_profile_cli_with_store,
-        infer_dispatch_target, parse_http_request, route_shell_request_with_store_and_paths,
+        infer_dispatch_target, monitor_now, parse_http_request,
+        route_monitor_request_with_state, route_shell_request_with_store_and_paths,
         run_demo, runtime_with_state, serve_local_shell_with_listener,
         serve_local_shell_with_store_and_paths, AgentCliCommand, AuthorizationDenyDetail,
         CliError, CliState, DemoError, DemoRuntime, DispatchTarget, HttpRequest, LocalAgentApi,
         LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
-        LocalRunwaySummary, MonitorState, PersistedMonitorState, ProfileCliCommand,
+        LocalRunwaySummary, MonitorLifecycleThread, MonitorMessageRequest, MonitorState,
+        PersistedMonitorState, ProfileCliCommand,
         ProfileShellResponse, DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
@@ -4748,6 +4984,8 @@ mod tests {
         let mut state = MonitorState::default();
         let notification_id = state.create_notification(
             Some("wo-1".to_owned()),
+            None,
+            None,
             "high",
             "Human intervention required",
             "Pause and ask Administration",
@@ -4757,6 +4995,324 @@ mod tests {
         assert_eq!(state.notifications[0].status, "opened");
         assert!(state.update_notification_status(&notification_id, "resolved"));
         assert_eq!(state.notifications[0].status, "resolved");
+    }
+
+    #[test]
+    fn notification_open_focuses_linked_session_and_thread() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("FERROS Agent".to_owned()));
+
+        // Push a minimal lifecycle thread directly.
+        let thread_id = "thr-test-01".to_owned();
+        state.lifecycle_threads.push(MonitorLifecycleThread {
+            id: thread_id.clone(),
+            title: "Test thread".to_owned(),
+            kind: "packet".to_owned(),
+            status: "running".to_owned(),
+            owner_agent: "Software Architect".to_owned(),
+            source_agent_id: None,
+            target_agent_id: None,
+            work_order_id: None,
+            escalation_id: None,
+            created_at: monitor_now(),
+            updated_at: monitor_now(),
+            entries: vec![],
+        });
+
+        let notification_id = state.create_notification(
+            None,
+            Some(session.id.clone()),
+            Some(thread_id.clone()),
+            "high",
+            "Needs operator",
+            "FERROS escalated",
+        );
+
+        // Before open: notification should be unread; lifecycle thread not yet selected.
+        assert_eq!(state.notifications[0].status, "unread");
+        // Clear selection state so we can verify open_notification applies notification linkage.
+        state.selected_chat_id = None;
+        state.selected_lifecycle_thread_id = None;
+
+        let opened = state.open_notification(&notification_id);
+        assert!(opened, "open_notification should return true");
+        assert_eq!(state.notifications[0].status, "opened");
+        assert_eq!(state.selected_chat_id.as_deref(), Some(session.id.as_str()));
+        assert_eq!(state.selected_lifecycle_thread_id.as_deref(), Some(thread_id.as_str()));
+    }
+
+    #[test]
+    fn notification_open_unknown_id_returns_false() {
+        let mut state = MonitorState::default();
+        assert!(!state.open_notification("ntf-does-not-exist"));
+    }
+
+    #[test]
+    fn dispatch_creates_packet_and_lifecycle_thread() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Admin liaison".to_owned()));
+        let _ = state.add_message(
+            &session.id,
+            super::MonitorMessageRequest {
+                speaker: "user".to_owned(),
+                who: "Human".to_owned(),
+                text: "please route this to software".to_owned(),
+            },
+        );
+
+        let result = state.ferros_agent_handle_human_message(
+            &session.id,
+            "msg-1",
+            "please route this to software",
+        );
+
+        // Dispatch should succeed and produce a packet + lifecycle thread
+        assert!(
+            matches!(result.status, super::MonitorDispatchStatus::Routed),
+            "expected Routed, got {:?}",
+            result.status
+        );
+        assert!(result.packet_id.is_some(), "packet_id should be set");
+        assert!(result.lifecycle_thread_id.is_some(), "lifecycle_thread_id should be set");
+
+        // Packet should appear in state
+        let packet_id = result.packet_id.unwrap();
+        let packet = state.packet_by_id(&packet_id);
+        assert!(packet.is_some(), "packet should be registered in state");
+        let packet = packet.unwrap();
+        assert_eq!(packet.state, "dispatched_to_manager");
+        assert_eq!(packet.session_id, session.id);
+
+        // Lifecycle thread should exist
+        let thread_id = result.lifecycle_thread_id.unwrap();
+        assert!(
+            state.lifecycle_threads.iter().any(|t| t.id == thread_id),
+            "lifecycle thread should exist"
+        );
+    }
+
+    #[test]
+    fn packet_state_is_persisted_in_snapshot_roundtrip() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Snapshot test".to_owned()));
+        let packet_id = state.create_packet(
+            session.id.clone(),
+            "msg-origin".to_owned(),
+            "Software Architect".to_owned(),
+            "dispatched_to_manager",
+            None,
+            None,
+            "Test summary".to_owned(),
+        );
+
+        let payload = PersistedMonitorState {
+            schema_version: super::MONITOR_STATE_SCHEMA_VERSION,
+            state,
+        };
+        let persisted =
+            serde_json::to_string_pretty(&payload).expect("should serialize");
+        let loaded: PersistedMonitorState =
+            serde_json::from_str(&persisted).expect("should deserialize");
+
+        let packet = loaded.state.packets.iter().find(|p| p.id == packet_id);
+        assert!(packet.is_some(), "packet should survive roundtrip");
+        assert_eq!(packet.unwrap().state, "dispatched_to_manager");
+    }
+
+    #[test]
+    fn human_intervention_notification_links_to_packet_when_available() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Admin liaison".to_owned()));
+
+        let result = state.ferros_agent_handle_human_message(
+            &session.id,
+            "msg-1",
+            "escalate this immediately",
+        );
+
+        assert!(
+            matches!(result.status, super::MonitorDispatchStatus::HumanInterventionRequired),
+            "expected HumanInterventionRequired"
+        );
+        assert!(result.packet_id.is_some(), "packet_id should be set on escalation");
+        assert!(result.notification_id.is_some(), "notification_id should be set");
+
+        let packet_id = result.packet_id.unwrap();
+        let notification_id = result.notification_id.unwrap();
+
+        let packet = state.packet_by_id(&packet_id).expect("packet should exist");
+        assert_eq!(packet.state, "human_intervention_required");
+        assert_eq!(packet.notification_id.as_deref(), Some(notification_id.as_str()));
+
+        let notification = state
+            .notifications
+            .iter()
+            .find(|n| n.id == notification_id)
+            .expect("notification should exist");
+        assert_eq!(notification.packet_id.as_deref(), Some(packet_id.as_str()));
+    }
+
+    // -----------------------------------------------------------------------
+    // Sprint 3 — route-level HTTP tests
+    // -----------------------------------------------------------------------
+
+    fn make_state() -> std::sync::Mutex<MonitorState> {
+        std::sync::Mutex::new(MonitorState::default())
+    }
+
+    fn body(json: serde_json::Value) -> Vec<u8> {
+        serde_json::to_vec(&json).expect("test JSON serialization should not fail")
+    }
+
+    #[test]
+    fn route_create_session_returns_session_with_id_and_ferros_agent() {
+        let state = make_state();
+        let response = route_monitor_request_with_state(
+            "POST",
+            "/monitor/sessions",
+            body(serde_json::json!({})),
+            &state,
+        )
+        .expect("route should return a response");
+
+        assert_eq!(response.status_code, 200);
+        let value: serde_json::Value =
+            serde_json::from_slice(&response.body).expect("body should be valid JSON");
+        assert!(value["id"].as_str().map(|id| !id.is_empty()).unwrap_or(false), "session id should be set");
+        assert_eq!(value["activeAgent"].as_str(), Some("FERROS Agent"));
+        let first_msg_id = value["messages"][0]["id"].as_str();
+        assert!(first_msg_id.map(|id| !id.is_empty()).unwrap_or(false), "first message id should be set");
+    }
+
+    #[test]
+    fn route_send_message_keeps_chat_open_and_creates_packet() {
+        let state = make_state();
+        // First create a session
+        let create_resp = route_monitor_request_with_state(
+            "POST",
+            "/monitor/sessions",
+            body(serde_json::json!({})),
+            &state,
+        )
+        .expect("create session should return a response");
+        let session: serde_json::Value =
+            serde_json::from_slice(&create_resp.body).expect("body should be valid JSON");
+        let session_id = session["id"].as_str().expect("session id should be a string").to_owned();
+
+        // Send a user message
+        let msg_resp = route_monitor_request_with_state(
+            "POST",
+            &format!("/monitor/sessions/{session_id}/messages"),
+            body(serde_json::json!({
+                "speaker": "user",
+                "who": "Human",
+                "text": "please route to software"
+            })),
+            &state,
+        )
+        .expect("send message should return a response");
+
+        assert_eq!(msg_resp.status_code, 200);
+        let snapshot: serde_json::Value =
+            serde_json::from_slice(&msg_resp.body).expect("body should be valid JSON");
+
+        // Chat should still be open, not archived
+        let empty = vec![];
+        let open_ids: Vec<&str> = snapshot["openChats"]
+            .as_array()
+            .unwrap_or(&empty)
+            .iter()
+            .filter_map(|c| c["id"].as_str())
+            .collect();
+        assert!(open_ids.contains(&session_id.as_str()), "session should remain open");
+
+        let archived_ids: Vec<&str> = snapshot["archivedChats"]
+            .as_array()
+            .unwrap_or(&empty)
+            .iter()
+            .filter_map(|c| c["id"].as_str())
+            .collect();
+        assert!(!archived_ids.contains(&session_id.as_str()), "session should not be archived");
+
+        // FERROS Agent should have replied
+        let messages = snapshot["openChats"]
+            .as_array()
+            .and_then(|chats| chats.iter().find(|c| c["id"].as_str() == Some(&session_id)))
+            .and_then(|chat| chat["messages"].as_array())
+            .cloned()
+            .unwrap_or_default();
+        let has_ferros_reply = messages.iter().any(|m| m["who"].as_str() == Some("FERROS Agent"));
+        assert!(has_ferros_reply, "FERROS Agent should have replied");
+
+        // A packet should have been created
+        let packets = snapshot["packets"].as_array().cloned().unwrap_or_default();
+        assert!(!packets.is_empty(), "at least one packet should be created");
+    }
+
+    #[test]
+    fn route_notification_open_updates_selection() {
+        let state = make_state();
+        // Create a session and a notification linked to it
+        let session = {
+            let mut guard = state.lock().unwrap();
+            guard.create_session(None)
+        };
+        let notification_id = {
+            let mut guard = state.lock().unwrap();
+            guard.create_notification(
+                None,
+                Some(session.id.clone()),
+                None,
+                "high",
+                "Test",
+                "Test summary",
+            )
+        };
+
+        let response = route_monitor_request_with_state(
+            "POST",
+            &format!("/monitor/notifications/{notification_id}/open"),
+            vec![],
+            &state,
+        )
+        .expect("route should return a response");
+
+        assert_eq!(response.status_code, 200);
+        let snapshot: serde_json::Value =
+            serde_json::from_slice(&response.body).expect("body should be valid JSON");
+        assert_eq!(
+            snapshot["selectedChatId"].as_str(),
+            Some(session.id.as_str()),
+            "selectedChatId should be updated to linked session"
+        );
+    }
+
+    #[test]
+    fn route_notification_unknown_action_returns_400() {
+        let state = make_state();
+        let response = route_monitor_request_with_state(
+            "POST",
+            "/monitor/notifications/ntf-1/not-real",
+            vec![],
+            &state,
+        )
+        .expect("route should return a response");
+
+        assert_eq!(response.status_code, 400, "unknown action should be 400 Bad Request");
+    }
+
+    #[test]
+    fn route_notification_bad_id_returns_404() {
+        let state = make_state();
+        let response = route_monitor_request_with_state(
+            "POST",
+            "/monitor/notifications/not-real/open",
+            vec![],
+            &state,
+        )
+        .expect("route should return a response");
+
+        assert_eq!(response.status_code, 404, "missing notification should be 404 Not Found");
     }
 
     #[test]
@@ -4773,6 +5329,8 @@ mod tests {
         );
         let notification_id = state.create_notification(
             Some("wo-2".to_owned()),
+            None,
+            None,
             "medium",
             "Follow-up needed",
             "Operator should review this packet",
