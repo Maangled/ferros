@@ -51,6 +51,8 @@ const CLI_STATE_DIRECTORY: &str = "ferros";
 const CLI_STATE_FILE: &str = "agent-center.state";
 const CLI_PROFILE_DIRECTORY: &str = ".ferros";
 const CLI_PROFILE_FILE: &str = "profile.json";
+const MONITOR_STATE_FILE: &str = "monitor-state.json";
+const MONITOR_STATE_SCHEMA_VERSION: u32 = 1;
 const PROFILE_REVOKE_REASON: &str = "revoked via ferros profile revoke";
 const LOCAL_SHELL_DEFAULT_PORT: u16 = 4317;
 const MAX_HTTP_REQUEST_BYTES: usize = 64 * 1024;
@@ -75,6 +77,19 @@ struct MonitorMessage {
     who: String,
     text: String,
     at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorNotification {
+    id: String,
+    packet_id: Option<String>,
+    severity: String,
+    title: String,
+    summary: String,
+    action: String,
+    created_at: String,
+    status: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -191,6 +206,7 @@ struct MonitorAgentSourceTreeStatus {
 struct MonitorStateSnapshot {
     open_chats: Vec<MonitorSession>,
     archived_chats: Vec<MonitorArchivedSession>,
+    notifications: Vec<MonitorNotification>,
     running_loops: Vec<MonitorLoop>,
     timeline: Vec<MonitorEvent>,
     lifecycle_threads: Vec<MonitorLifecycleThread>,
@@ -201,16 +217,25 @@ struct MonitorStateSnapshot {
     next_id: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 struct MonitorState {
     open_chats: Vec<MonitorSession>,
     archived_chats: Vec<MonitorArchivedSession>,
+    notifications: Vec<MonitorNotification>,
     running_loops: Vec<MonitorLoop>,
     timeline: Vec<MonitorEvent>,
     lifecycle_threads: Vec<MonitorLifecycleThread>,
     selected_chat_id: Option<String>,
     selected_lifecycle_thread_id: Option<String>,
     next_id: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct PersistedMonitorState {
+    schema_version: u32,
+    state: MonitorState,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -247,6 +272,35 @@ struct MonitorLoopTransitionRequest {
     action: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+enum MonitorDispatchStatus {
+    Routed,
+    Resolved,
+    HumanInterventionRequired,
+    Failed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorDispatchRequest {
+    session_id: String,
+    message_id: String,
+    operator_text: String,
+    active_agent: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorDispatchResult {
+    ferros_reply: String,
+    packet_id: Option<String>,
+    manager: Option<String>,
+    lifecycle_thread_id: Option<String>,
+    notification_id: Option<String>,
+    status: MonitorDispatchStatus,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentSourceTreeManifest {
@@ -274,6 +328,7 @@ impl Default for MonitorState {
         Self {
             open_chats: Vec::new(),
             archived_chats: Vec::new(),
+            notifications: Vec::new(),
             running_loops: Vec::new(),
             timeline: Vec::new(),
             lifecycle_threads: Vec::new(),
@@ -1489,6 +1544,13 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             }
         };
         let session = guard.create_session(request.label);
+        if let Err(error) = persist_monitor_state(&guard) {
+            return Some(enable_cors(text_response(
+                500,
+                "Internal Server Error",
+                format!("failed to persist monitor state: {error}"),
+            )));
+        }
         return Some(enable_cors(json_response(200, "OK", &session)));
     }
 
@@ -1516,6 +1578,13 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             }
         };
         guard.apply_loop_transition(&request.action);
+        if let Err(error) = persist_monitor_state(&guard) {
+            return Some(enable_cors(text_response(
+                500,
+                "Internal Server Error",
+                format!("failed to persist monitor state: {error}"),
+            )));
+        }
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
@@ -1546,6 +1615,14 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
 
             if !guard.add_lifecycle_message(thread_id, request) {
                 return Some(enable_cors(text_response(404, "Not Found", "monitor lifecycle thread not found")));
+            }
+
+            if let Err(error) = persist_monitor_state(&guard) {
+                return Some(enable_cors(text_response(
+                    500,
+                    "Internal Server Error",
+                    format!("failed to persist monitor state: {error}"),
+                )));
             }
 
             return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
@@ -1579,9 +1656,27 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
                 )));
             }
         };
-        if !guard.add_message(session_id, request) {
-            return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
+        let message_id = match guard.add_message(session_id, request.clone()) {
+            Some(message_id) => message_id,
+            None => {
+                return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
+            }
+        };
+
+        if request.speaker.eq_ignore_ascii_case("user")
+            && guard.session_active_agent(session_id).is_some_and(|agent| agent == "FERROS Agent")
+        {
+            let _ = guard.ferros_agent_handle_human_message(session_id, &message_id, &request.text);
         }
+
+        if let Err(error) = persist_monitor_state(&guard) {
+            return Some(enable_cors(text_response(
+                500,
+                "Internal Server Error",
+                format!("failed to persist monitor state: {error}"),
+            )));
+        }
+
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
@@ -1611,6 +1706,13 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         if !guard.route_session(session_id, &request.target) {
             return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
         }
+        if let Err(error) = persist_monitor_state(&guard) {
+            return Some(enable_cors(text_response(
+                500,
+                "Internal Server Error",
+                format!("failed to persist monitor state: {error}"),
+            )));
+        }
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
@@ -1628,6 +1730,13 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         };
         if !guard.archive_session(session_id) {
             return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
+        }
+        if let Err(error) = persist_monitor_state(&guard) {
+            return Some(enable_cors(text_response(
+                500,
+                "Internal Server Error",
+                format!("failed to persist monitor state: {error}"),
+            )));
         }
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
@@ -2002,7 +2111,33 @@ fn json_response<T: Serialize>(status_code: u16, status_text: &'static str, payl
 }
 
 fn monitor_state() -> &'static Mutex<MonitorState> {
-    MONITOR_STATE.get_or_init(|| Mutex::new(MonitorState::default()))
+    MONITOR_STATE.get_or_init(|| Mutex::new(load_monitor_state().unwrap_or_default()))
+}
+
+fn load_monitor_state() -> Option<MonitorState> {
+    let path = monitor_state_path();
+    let bytes = fs::read(&path).ok()?;
+    let persisted: PersistedMonitorState = serde_json::from_slice(&bytes).ok()?;
+    if persisted.schema_version != MONITOR_STATE_SCHEMA_VERSION {
+        return None;
+    }
+
+    Some(persisted.state)
+}
+
+fn persist_monitor_state(state: &MonitorState) -> io::Result<()> {
+    let path = monitor_state_path();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let payload = PersistedMonitorState {
+        schema_version: MONITOR_STATE_SCHEMA_VERSION,
+        state: state.clone(),
+    };
+    let bytes = serde_json::to_vec_pretty(&payload)
+        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+    fs::write(path, bytes)
 }
 
 fn monitor_now() -> String {
@@ -2046,6 +2181,37 @@ fn monitor_category_for_agent(agent: &str) -> String {
     }
 
     "service".to_owned()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DispatchTarget {
+    Software,
+    Business,
+    FerrosArchitect,
+    CodingArchitect,
+    BusinessArchitect,
+}
+
+fn infer_dispatch_target(operator_text: &str) -> DispatchTarget {
+    let lowered = operator_text.to_ascii_lowercase();
+
+    if lowered.contains("business architect") {
+        return DispatchTarget::BusinessArchitect;
+    }
+
+    if lowered.contains("coding architect") {
+        return DispatchTarget::CodingArchitect;
+    }
+
+    if lowered.contains("ferros architect") || lowered.contains("agent architect") {
+        return DispatchTarget::FerrosArchitect;
+    }
+
+    if lowered.contains("business") || lowered.contains("sales") || lowered.contains("finance") {
+        return DispatchTarget::Business;
+    }
+
+    DispatchTarget::Software
 }
 
 fn monitor_status_detail_for(agent: &str, state: &str, description: &str) -> (String, String, String, Option<u8>) {
@@ -2290,6 +2456,7 @@ impl MonitorState {
         MonitorStateSnapshot {
             open_chats: self.open_chats.clone(),
             archived_chats: self.archived_chats.clone(),
+            notifications: self.notifications.clone(),
             running_loops: self.running_loops.iter().map(normalize_monitor_loop).collect(),
             timeline: self.timeline.clone(),
             lifecycle_threads: lifecycle_threads.clone(),
@@ -2439,8 +2606,9 @@ impl MonitorState {
         session
     }
 
-    fn add_message(&mut self, session_id: &str, request: MonitorMessageRequest) -> bool {
+    fn add_message(&mut self, session_id: &str, request: MonitorMessageRequest) -> Option<String> {
         let MonitorMessageRequest { speaker, who, text } = request;
+        let message_id = self.next_identifier("msg");
         let message = MonitorMessage {
             speaker: speaker.clone(),
             who: who.clone(),
@@ -2449,7 +2617,7 @@ impl MonitorState {
         };
 
         let Some(index) = self.open_chats.iter().position(|session| session.id == session_id) else {
-            return false;
+            return None;
         };
 
         let (session_label, thread_id) = {
@@ -2468,8 +2636,211 @@ impl MonitorState {
                 Some("Await route or reply"),
             );
         }
-        self.push_event("chat.message.added", format!("Message appended in {}", session_label));
-        true
+        self.push_event(
+            "chat.message.added",
+            format!("Message {message_id} appended in {}", session_label),
+        );
+        Some(message_id)
+    }
+
+    fn session_active_agent(&self, session_id: &str) -> Option<&str> {
+        self.open_chats
+            .iter()
+            .find(|session| session.id == session_id)
+            .map(|session| session.active_agent.as_str())
+    }
+
+    fn ferros_agent_handle_human_message(
+        &mut self,
+        session_id: &str,
+        message_id: &str,
+        text: &str,
+    ) -> MonitorDispatchResult {
+        let dispatch_request = MonitorDispatchRequest {
+            session_id: session_id.to_owned(),
+            message_id: message_id.to_owned(),
+            operator_text: text.to_owned(),
+            active_agent: "FERROS Agent".to_owned(),
+        };
+
+        if self
+            .open_chats
+            .iter()
+            .all(|session| session.id != dispatch_request.session_id)
+        {
+            return MonitorDispatchResult {
+                ferros_reply: "Session was not found; dispatch could not run.".to_owned(),
+                packet_id: None,
+                manager: None,
+                lifecycle_thread_id: None,
+                notification_id: None,
+                status: MonitorDispatchStatus::Failed,
+            };
+        }
+
+        let lowered = dispatch_request.operator_text.to_ascii_lowercase();
+        if lowered.contains("human intervention") || lowered.contains("needs operator") || lowered.contains("escalate") {
+            let notification_id = self.create_notification(
+                None,
+                "high",
+                "Human intervention required",
+                "FERROS Agent could not resolve automatically. Open FERROS chat to continue.",
+            );
+            let ferros_reply = "I could not safely resolve this request automatically. I created an operator notification and paused downstream execution pending your guidance.".to_owned();
+            let _ = self.add_message(
+                &dispatch_request.session_id,
+                MonitorMessageRequest {
+                    speaker: "agent".to_owned(),
+                    who: "FERROS Agent".to_owned(),
+                    text: ferros_reply.clone(),
+                },
+            );
+            return MonitorDispatchResult {
+                ferros_reply,
+                packet_id: None,
+                manager: None,
+                lifecycle_thread_id: None,
+                notification_id: Some(notification_id),
+                status: MonitorDispatchStatus::HumanInterventionRequired,
+            };
+        }
+
+        let target = infer_dispatch_target(&dispatch_request.operator_text);
+        let Some((packet_id, manager, lifecycle_thread_id)) =
+            self.dispatch_session_to_manager(&dispatch_request.session_id, target)
+        else {
+            return MonitorDispatchResult {
+                ferros_reply: "Dispatch failed because the session was unavailable.".to_owned(),
+                packet_id: None,
+                manager: None,
+                lifecycle_thread_id: None,
+                notification_id: None,
+                status: MonitorDispatchStatus::Failed,
+            };
+        };
+
+        let ferros_reply = format!(
+            "Packet accepted. Routed to {manager} as {packet_id}. I will keep this Administration liaison chat open and post updates as lifecycle events progress."
+        );
+        let _ = self.add_message(
+            &dispatch_request.session_id,
+            MonitorMessageRequest {
+                speaker: "agent".to_owned(),
+                who: "FERROS Agent".to_owned(),
+                text: ferros_reply.clone(),
+            },
+        );
+
+        MonitorDispatchResult {
+            ferros_reply,
+            packet_id: Some(packet_id),
+            manager: Some(manager),
+            lifecycle_thread_id: Some(lifecycle_thread_id),
+            notification_id: None,
+            status: MonitorDispatchStatus::Routed,
+        }
+    }
+
+    fn dispatch_session_to_manager(
+        &mut self,
+        session_id: &str,
+        target: DispatchTarget,
+    ) -> Option<(String, String, String)> {
+        let (session_label, session_thread_id) = {
+            let session = self.open_chats.iter().find(|session| session.id == session_id)?;
+            (session.label.clone(), session.thread_id.clone())
+        };
+
+        let work_order_id = self.next_identifier("wo");
+        let (route_label, loop_agent, loop_desc) = match target {
+            DispatchTarget::Business => (
+                "Business Agent",
+                "Business Agent",
+                "Executing business packet and coordinating department loops.",
+            ),
+            DispatchTarget::FerrosArchitect => (
+                "FERROS Agent Architect Agent",
+                "FERROS Agent Architect Agent",
+                "Coordinating architect-family delegation to coding/business architects.",
+            ),
+            DispatchTarget::CodingArchitect => (
+                "Coding Agent Architect",
+                "Coding Agent Architect",
+                "Designing coding-family topology and lane architecture.",
+            ),
+            DispatchTarget::BusinessArchitect => (
+                "Business Agent Architect",
+                "Business Agent Architect",
+                "Designing business-company and departmental architecture.",
+            ),
+            DispatchTarget::Software => (
+                "Software Architect",
+                "Software Architect",
+                "Executing software work order and preparing Core/SubCore branch packets.",
+            ),
+        };
+
+        if let Some(thread_id) = session_thread_id.as_deref() {
+            let _ = self.append_thread_entry(
+                thread_id,
+                "packet.sent",
+                "agent",
+                "FERROS Agent",
+                format!("Dispatched to {route_label} as work order {work_order_id}"),
+                Some("work_order_emitted"),
+                Some("Follow downstream packet lifecycle thread"),
+            );
+        }
+
+        let packet_entry = self.create_lifecycle_entry(
+            "packet.created",
+            "agent",
+            "FERROS Agent",
+            format!("Created {work_order_id} and routed to {route_label} from {session_label}"),
+            Some("dispatched_to_manager"),
+            Some("Await manager-level lifecycle updates"),
+        );
+        let packet_thread_id = self.create_lifecycle_thread(
+            format!("{route_label} packet {work_order_id}"),
+            "packet",
+            route_label,
+            "dispatched_to_manager",
+            Some("FERROS Agent".to_owned()),
+            Some(route_label.to_owned()),
+            Some(work_order_id.clone()),
+            None,
+            packet_entry,
+        );
+
+        self.upsert_loop(loop_agent, "running", loop_desc);
+        self.push_event("packet.sent", format!("{} -> {route_label}", session_label));
+        Some((work_order_id, route_label.to_owned(), packet_thread_id))
+    }
+
+    fn create_notification(
+        &mut self,
+        packet_id: Option<String>,
+        severity: &str,
+        title: &str,
+        summary: &str,
+    ) -> String {
+        let id = self.next_identifier("ntf");
+        self.notifications.insert(
+            0,
+            MonitorNotification {
+                id: id.clone(),
+                packet_id,
+                severity: severity.to_owned(),
+                title: title.to_owned(),
+                summary: summary.to_owned(),
+                action: "open_ferros_chat".to_owned(),
+                created_at: monitor_now(),
+                status: "unread".to_owned(),
+            },
+        );
+        self.notifications.truncate(200);
+        self.push_event("notification.created", format!("{title}: {summary}"));
+        id
     }
 
     fn add_lifecycle_message(&mut self, thread_id: &str, request: MonitorLifecycleMessageRequest) -> bool {
@@ -2485,68 +2856,15 @@ impl MonitorState {
     }
 
     fn route_session(&mut self, session_id: &str, target: &str) -> bool {
-        let Some(index) = self.open_chats.iter().position(|session| session.id == session_id) else {
-            return false;
+        let target = match target {
+            "business" => DispatchTarget::Business,
+            "ferros-architect" => DispatchTarget::FerrosArchitect,
+            "coding-architect" => DispatchTarget::CodingArchitect,
+            "business-architect" => DispatchTarget::BusinessArchitect,
+            _ => DispatchTarget::Software,
         };
 
-        let session = self.open_chats.remove(index);
-        let work_order_id = self.next_identifier("wo");
-        let (route_label, loop_agent, loop_desc) = match target {
-            "business" => (
-                "Business Agent",
-                "Business Agent",
-                "Executing business packet and coordinating department loops.",
-            ),
-            "ferros-architect" => (
-                "FERROS Agent Architect Agent",
-                "FERROS Agent Architect Agent",
-                "Coordinating architect-family delegation to coding/business architects.",
-            ),
-            "coding-architect" => (
-                "Coding Agent Architect",
-                "Coding Agent Architect",
-                "Designing coding-family topology and lane architecture.",
-            ),
-            "business-architect" => (
-                "Business Agent Architect",
-                "Business Agent Architect",
-                "Designing business-company and departmental architecture.",
-            ),
-            _ => (
-                "Software Architect",
-                "Software Architect",
-                "Executing software work order and preparing Core/SubCore branch packets.",
-            ),
-        };
-
-        self.archived_chats.insert(
-            0,
-            MonitorArchivedSession {
-                id: session.id,
-                label: session.label.clone(),
-                reason: format!("Packet dispatched to {route_label}"),
-                archived_at: monitor_now(),
-                preview: session.messages.iter().rev().take(3).cloned().collect(),
-            },
-        );
-        self.archived_chats
-            .truncate(MONITOR_MAX_ARCHIVED_SESSIONS);
-
-        self.selected_chat_id = self.open_chats.first().map(|chat| chat.id.clone());
-        if let Some(thread_id) = session.thread_id.as_deref() {
-            let _ = self.append_thread_entry(
-                thread_id,
-                "packet.sent",
-                "agent",
-                "FERROS Agent",
-                format!("Dispatched to {route_label} as work order {work_order_id}"),
-                Some("work_order_emitted"),
-                Some("Follow the downstream loop lifecycle thread"),
-            );
-        }
-        self.upsert_loop(loop_agent, "running", loop_desc);
-        self.push_event("packet.sent", format!("{} -> {route_label}", session.label));
-        true
+        self.dispatch_session_to_manager(session_id, target).is_some()
     }
 
     fn archive_session(&mut self, session_id: &str) -> bool {
@@ -3674,6 +3992,20 @@ fn cli_state_path() -> PathBuf {
         .join(CLI_STATE_FILE)
 }
 
+fn monitor_state_path() -> PathBuf {
+    if let Some(explicit_path) = std::env::var_os("FERROS_MONITOR_STATE_PATH") {
+        let explicit_path = PathBuf::from(explicit_path);
+        if !explicit_path.as_os_str().is_empty() {
+            return explicit_path;
+        }
+    }
+
+    profile_home_dir()
+        .unwrap_or_else(std::env::temp_dir)
+        .join(CLI_PROFILE_DIRECTORY)
+        .join(MONITOR_STATE_FILE)
+}
+
 pub fn default_profile_path() -> PathBuf {
     if let Some(explicit_path) = std::env::var_os("FERROS_PROFILE_PATH") {
         let explicit_path = PathBuf::from(explicit_path);
@@ -4217,11 +4549,13 @@ mod tests {
         execute_agent_read_rpc_json, execute_agent_read_rpc_with_store_and_paths,
         execute_agent_rpc_with_store_and_paths_and_runtime_loader,
         execute_local_agent_api_with_runtime_loader, execute_profile_cli_with_store,
-        parse_http_request, route_shell_request_with_store_and_paths, run_demo, runtime_with_state,
-        serve_local_shell_with_listener, serve_local_shell_with_store_and_paths, AgentCliCommand,
-        AuthorizationDenyDetail, CliError, CliState, DemoError, DemoRuntime, HttpRequest,
-        LocalAgentApi, LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
-        LocalRunwaySummary, ProfileCliCommand, ProfileShellResponse, DEFAULT_PROFILE_NAME,
+        infer_dispatch_target, parse_http_request, route_shell_request_with_store_and_paths,
+        run_demo, runtime_with_state, serve_local_shell_with_listener,
+        serve_local_shell_with_store_and_paths, AgentCliCommand, AuthorizationDenyDetail,
+        CliError, CliState, DemoError, DemoRuntime, DispatchTarget, HttpRequest, LocalAgentApi,
+        LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
+        LocalRunwaySummary, MonitorState, ProfileCliCommand, ProfileShellResponse,
+        DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
@@ -4312,6 +4646,33 @@ mod tests {
             "hub-local-bridge"
         );
         assert_eq!(agent.status, AgentStatus::Registered);
+    }
+
+    #[test]
+    fn infer_dispatch_target_maps_keywords_to_expected_lane() {
+        assert_eq!(infer_dispatch_target("please send to business"), DispatchTarget::Business);
+        assert_eq!(
+            infer_dispatch_target("route this through coding architect"),
+            DispatchTarget::CodingArchitect
+        );
+        assert_eq!(
+            infer_dispatch_target("need ferros architect review"),
+            DispatchTarget::FerrosArchitect
+        );
+        assert_eq!(
+            infer_dispatch_target("general software work order"),
+            DispatchTarget::Software
+        );
+    }
+
+    #[test]
+    fn routing_session_does_not_archive_liaison_chat() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("User -> FERROS".to_owned()));
+
+        assert!(state.route_session(&session.id, "business"));
+        assert!(state.open_chats.iter().any(|chat| chat.id == session.id));
+        assert!(state.archived_chats.is_empty());
     }
 
     #[test]

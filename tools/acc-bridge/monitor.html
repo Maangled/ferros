@@ -1111,6 +1111,7 @@
             <div class="subpanel">
               <div class="subheader">Open Conversation</div>
               <div class="btn-row" style="margin-bottom: 8px;">
+                <button id="newFerrosChatBtn">New FERROS Agent Chat</button>
                 <select id="chatSelector"></select>
                 <button id="archiveChatBtn">Archive</button>
               </div>
@@ -1370,6 +1371,7 @@
       refreshBtn: document.getElementById('refreshBtn'),
       autoToggleBtn: document.getElementById('autoToggleBtn'),
       openChatCount: document.getElementById('openChatCount'),
+      newFerrosChatBtn: document.getElementById('newFerrosChatBtn'),
       chatSelector: document.getElementById('chatSelector'),
       chatMessages: document.getElementById('chatMessages'),
       chatInput: document.getElementById('chatInput'),
@@ -2573,7 +2575,11 @@
         };
         const className = classMap[state] || 'unknown';
         elements.statusIndicator.className = `status-indicator ${className}`;
-        elements.statusText.textContent = `${state} (${data.checkpointPosition}/${data.checkpointTotal}) • ${data.agentCount} agents • ${data.denyCount} denies`;
+        const runwayStateLabel = state
+          .split('-')
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+        elements.statusText.textContent = `Local runway: ${runwayStateLabel} checkpoint ${data.checkpointPosition} of ${data.checkpointTotal} • Reference runtime: ${data.agentCount} shell agents • Policy deny log: ${data.denyCount} capability denials`;
         elements.timestamp.textContent = nowLabel();
         renderRunwayMindmap();
       } catch {
@@ -2693,6 +2699,14 @@
       renderLifecycleShell();
     });
 
+    elements.newFerrosChatBtn.addEventListener('click', async () => {
+      try {
+        await openFerrosChat('User -> FERROS', null);
+      } catch (error) {
+        showError(`Failed to create FERROS chat: ${error.message}`);
+      }
+    });
+
     elements.sendChatBtn.addEventListener('click', async () => {
       const text = elements.chatInput.value.trim();
       if (!text) {
@@ -2700,7 +2714,7 @@
       }
       const chat = getSelectedChat();
       if (!chat) {
-        showError('No open chat selected. Open a chat from a loop card first.');
+        showError('No open chat selected. Use New FERROS Agent Chat from Administration.');
         return;
       }
       try {
@@ -2708,11 +2722,6 @@
           speaker: 'user',
           who: 'Human',
           text,
-        });
-        await postMonitor(`/monitor/sessions/${chat.id}/messages`, {
-          speaker: 'agent',
-          who: 'FERROS Agent',
-          text: 'Packet accepted. I will route this through coding, business, or architect lanes as directed.',
         });
         elements.chatInput.value = '';
         await fetchMonitorState();
