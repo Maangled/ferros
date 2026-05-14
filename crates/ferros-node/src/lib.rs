@@ -319,7 +319,53 @@ struct MonitorDispatchResult {
     manager: Option<String>,
     lifecycle_thread_id: Option<String>,
     notification_id: Option<String>,
+    /// Backend that accepted the dispatch: "scaffold" | "runtime.bus" | "coordinator.sdk"
+    backend: Option<String>,
     status: MonitorDispatchStatus,
+}
+
+/// Result returned by a dispatch backend implementation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MonitorDispatchBackendResult {
+    /// Whether the backend accepted the dispatch request.
+    accepted: bool,
+    /// Identifier for the backend implementation (e.g. "scaffold", "coordinator.sdk").
+    backend: String,
+    /// Optional message to surface in the monitor reply.
+    message: String,
+    /// Error detail if accepted is false.
+    error: Option<String>,
+}
+
+/// Interface for dispatch backends. The scaffold implementation is the only concrete
+/// backend today. Future implementations will call runtime bus or coordinator SDK.
+trait MonitorDispatchBackend: Send + Sync {
+    fn handle_dispatch(
+        &self,
+        session_id: &str,
+        target: &DispatchTarget,
+        operator_text: &str,
+    ) -> MonitorDispatchBackendResult;
+}
+
+/// Scaffold backend: accepts all dispatches without calling any external runtime.
+/// Use until runtime/coordinator handoff is actually wired.
+struct ScaffoldMonitorDispatchBackend;
+
+impl MonitorDispatchBackend for ScaffoldMonitorDispatchBackend {
+    fn handle_dispatch(
+        &self,
+        _session_id: &str,
+        _target: &DispatchTarget,
+        _operator_text: &str,
+    ) -> MonitorDispatchBackendResult {
+        MonitorDispatchBackendResult {
+            accepted: true,
+            backend: "scaffold".to_owned(),
+            message: "Packet staged for manager. Live execution is not yet connected.".to_owned(),
+            error: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -2853,6 +2899,7 @@ impl MonitorState {
                 manager: None,
                 lifecycle_thread_id: None,
                 notification_id: None,
+                backend: None,
                 status: MonitorDispatchStatus::Failed,
             };
         }
@@ -2895,11 +2942,34 @@ impl MonitorState {
                 manager: None,
                 lifecycle_thread_id: None,
                 notification_id: Some(notification_id),
+                backend: None,
                 status: MonitorDispatchStatus::HumanInterventionRequired,
             };
         }
 
         let target = infer_dispatch_target(&dispatch_request.operator_text);
+
+        // Consult the dispatch backend before committing state mutations.
+        let backend_result = ScaffoldMonitorDispatchBackend.handle_dispatch(
+            &dispatch_request.session_id,
+            &target,
+            &dispatch_request.operator_text,
+        );
+
+        if !backend_result.accepted {
+            return MonitorDispatchResult {
+                ferros_reply: backend_result
+                    .error
+                    .unwrap_or_else(|| "Backend rejected dispatch.".to_owned()),
+                packet_id: None,
+                manager: None,
+                lifecycle_thread_id: None,
+                notification_id: None,
+                backend: Some(backend_result.backend),
+                status: MonitorDispatchStatus::Failed,
+            };
+        }
+
         let Some((packet_id, manager, lifecycle_thread_id)) =
             self.dispatch_session_to_manager(&dispatch_request.session_id, target)
         else {
@@ -2909,6 +2979,7 @@ impl MonitorState {
                 manager: None,
                 lifecycle_thread_id: None,
                 notification_id: None,
+                backend: Some(backend_result.backend),
                 status: MonitorDispatchStatus::Failed,
             };
         };
@@ -2931,6 +3002,7 @@ impl MonitorState {
             manager: Some(manager),
             lifecycle_thread_id: Some(lifecycle_thread_id),
             notification_id: None,
+            backend: Some(backend_result.backend),
             status: MonitorDispatchStatus::Routed,
         }
     }
@@ -3051,6 +3123,7 @@ impl MonitorState {
         id
     }
 
+    #[allow(dead_code)]
     fn update_packet_state(&mut self, packet_id: &str, new_state: &str, detail: Option<String>) -> bool {
         let Some(packet) = self.packets.iter_mut().find(|p| p.id == packet_id) else {
             return false;
@@ -3064,6 +3137,7 @@ impl MonitorState {
         true
     }
 
+    #[allow(dead_code)]
     fn packet_by_id(&self, packet_id: &str) -> Option<&MonitorPacket> {
         self.packets.iter().find(|p| p.id == packet_id)
     }
@@ -4859,7 +4933,8 @@ mod tests {
         LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
         LocalRunwaySummary, MonitorLifecycleThread, MonitorMessageRequest, MonitorState,
         PersistedMonitorState, ProfileCliCommand,
-        ProfileShellResponse, DEFAULT_PROFILE_NAME,
+        ProfileShellResponse, ScaffoldMonitorDispatchBackend, MonitorDispatchBackend,
+        DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
@@ -5313,6 +5388,39 @@ mod tests {
         .expect("route should return a response");
 
         assert_eq!(response.status_code, 404, "missing notification should be 404 Not Found");
+    }
+
+    // -----------------------------------------------------------------------
+    // Sprint 4 — dispatch backend seam tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn scaffold_backend_returns_accepted_and_monitor_state_updates() {
+        use super::{DispatchTarget, MonitorDispatchBackend};
+
+        let backend = ScaffoldMonitorDispatchBackend;
+        let result = backend.handle_dispatch("chat-1", &DispatchTarget::Software, "build a thing");
+
+        assert!(result.accepted, "scaffold backend should always accept");
+        assert_eq!(result.backend, "scaffold");
+        assert!(result.error.is_none());
+
+        // Verify that a full dispatch through ferros_agent_handle_human_message
+        // records the backend name on the result.
+        let mut state = MonitorState::default();
+        let session = state.create_session(None);
+        let dispatch_result =
+            state.ferros_agent_handle_human_message(&session.id, "msg-1", "route to software");
+
+        assert!(
+            matches!(dispatch_result.status, super::MonitorDispatchStatus::Routed),
+            "expected Routed"
+        );
+        assert_eq!(
+            dispatch_result.backend.as_deref(),
+            Some("scaffold"),
+            "dispatch result should carry backend label"
+        );
     }
 
     #[test]
