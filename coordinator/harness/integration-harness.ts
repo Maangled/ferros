@@ -25,8 +25,8 @@ class MockSession {
     });
 
     const response = this.id.includes('subcore')
-      ? '## Facts\n- subcore completed\n## Claims\n- rehearsal proven\n## Residual Risks\n- hardware gap'
-      : '## Facts\n- core completed\n## Claims\n- runtime boundary proven\n## Residual Risks\n- integration pending';
+      ? '## Report\n- Returned to FERROS Coding with x86_64 rehearsal notes.\n## Facts\n- subcore completed\n## Claims\n- rehearsal proven\n## Residual Risks\n- hardware gap'
+      : '## Report\n- Returned to FERROS Coding with runtime boundary notes.\n## Facts\n- core completed\n## Claims\n- runtime boundary proven\n## Residual Risks\n- integration pending';
 
     this.emit('subagent.completed', { toolCallId: `${this.id}-tc`, result: response });
     return response;
@@ -67,7 +67,23 @@ function packet(target: 'core' | 'subcore', parent = 'FRS-coding-20260510-C1-W0'
     payload: `${target}-payload`,
     prompt: `${target}-prompt`,
     issued_at: new Date().toISOString(),
-    ttl_ms: ttlMs
+    ttl_ms: ttlMs,
+    metadata: {
+      lifecycle_contract: {
+        cycle_id: `cycle-${target}-20260510-C1-W1`,
+        work_order_id: `WO-${target.toUpperCase()}-20260510-C1-W1`,
+        source_agent_id: 'FERROS Coding Agent',
+        target_agent_id: target,
+        owner_agent_id: 'FERROS Coding Agent',
+        escalation_id: `ESC-${target.toUpperCase()}-20260510-C1-W1`,
+        escalation_target_agent_id: 'FERROS Agent',
+        escalation_reason_code: 'execution-lane-blocked',
+        stop: {
+          allowed_terminal_states: ['report', 'work_order', 'escalation', 'stopped'],
+          stopped_reason_required: true,
+        }
+      }
+    }
   };
 }
 

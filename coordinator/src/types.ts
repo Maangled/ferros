@@ -27,6 +27,36 @@ export interface RouteToken {
   track?: 'code' | 'system' | 'hardware';
 }
 
+export type LifecycleOutcomeKind =
+  | 'report'
+  | 'work_order'
+  | 'escalation'
+  | 'denied'
+  | 'archived'
+  | 'stopped';
+
+export interface PacketLifecycleStopContract {
+  allowed_terminal_states: LifecycleOutcomeKind[];
+  stopped_reason_required: boolean;
+}
+
+export interface PacketLifecycleContract {
+  cycle_id: string;
+  work_order_id: string;
+  source_agent_id: string;
+  target_agent_id: string;
+  owner_agent_id: string;
+  escalation_id?: string;
+  escalation_target_agent_id?: string;
+  escalation_reason_code?: string;
+  stop: PacketLifecycleStopContract;
+}
+
+export interface PacketMetadata {
+  lifecycle_contract?: PacketLifecycleContract;
+  [key: string]: any;
+}
+
 /**
  * Full packet structure for inter-agent handoff
  */
@@ -37,7 +67,16 @@ export interface Packet {
   signature?: string;
   issued_at: string;
   ttl_ms?: number;
-  metadata?: Record<string, any>;
+  metadata?: PacketMetadata;
+}
+
+export interface LifecycleOutcome {
+  kind: LifecycleOutcomeKind;
+  summary: string;
+  work_order_id?: string;
+  escalation_id?: string;
+  target_agent_id?: string;
+  stop_reason?: string;
 }
 
 /**
@@ -53,6 +92,8 @@ export interface ExecutionReturn {
   claims?: string[];
   non_claims?: string[];
   residual_risks?: string[];
+  lifecycle_outcome?: LifecycleOutcome;
+  lifecycle_errors?: string[];
 }
 
 /**

@@ -1,5 +1,5 @@
 import { PacketValidator } from '../src/packet-validator';
-import { makePacket } from './fixtures';
+import { makeLifecycleContract, makePacket } from './fixtures';
 
 describe('PacketValidator', () => {
   test('accepts valid packet', () => {
@@ -47,5 +47,26 @@ describe('PacketValidator', () => {
     });
     const result = PacketValidator.checkTargetStreamMatch(packet, 'core');
     expect(result.valid).toBe(false);
+  });
+
+  test('rejects missing lifecycle contract', () => {
+    const packet = makePacket({ metadata: undefined as any });
+    const result = PacketValidator.validatePacket(packet as any);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join(' ')).toContain('Missing metadata.lifecycle_contract');
+  });
+
+  test('rejects escalation contract without escalation target', () => {
+    const packet = makePacket({
+      metadata: {
+        lifecycle_contract: makeLifecycleContract('core', {
+          escalation_target_agent_id: ''
+        })
+      }
+    });
+
+    const result = PacketValidator.validatePacket(packet);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join(' ')).toContain('Missing lifecycle_contract.escalation_target_agent_id');
   });
 });

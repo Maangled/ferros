@@ -56,11 +56,17 @@ const LOCAL_SHELL_DEFAULT_PORT: u16 = 4317;
 const MAX_HTTP_REQUEST_BYTES: usize = 64 * 1024;
 const MONITOR_MAX_TIMELINE_EVENTS: usize = 200;
 const MONITOR_MAX_ARCHIVED_SESSIONS: usize = 120;
+const MONITOR_MAX_LIFECYCLE_THREADS: usize = 96;
+const MONITOR_MAX_THREAD_ENTRIES: usize = 64;
 const LOCAL_SHELL_HTML: &str = include_str!("../../../site/agent-center-shell.html");
 const LOCAL_SHELL_ACCEPTANCE_HARNESS_HTML: &str =
     include_str!("../../../harnesses/localhost-shell-acceptance-harness.html");
 
 static MONITOR_STATE: OnceLock<Mutex<MonitorState>> = OnceLock::new();
+
+const MONITOR_AGENT_MANIFEST_PATH: &str = "agents/manifest.json";
+const MONITOR_AGENT_SOURCE_ROOT: &str = "agents/source";
+const MONITOR_AGENT_MIRROR_ROOT: &str = ".github/agents";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -77,6 +83,7 @@ struct MonitorSession {
     id: String,
     label: String,
     active_agent: String,
+    thread_id: Option<String>,
     created_at: String,
     messages: Vec<MonitorMessage>,
 }
@@ -97,9 +104,20 @@ struct MonitorLoop {
     id: String,
     agent: String,
     state: String,
+    category: String,
+    status: String,
+    status_reason: String,
+    status_detail: String,
     description: String,
     started_at: String,
     updated_at: String,
+    stale_after: Option<String>,
+    progress: Option<u8>,
+    thread_id: Option<String>,
+    work_order_id: Option<String>,
+    escalation_id: Option<String>,
+    source_agent_id: Option<String>,
+    target_agent_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -113,22 +131,85 @@ struct MonitorEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+struct MonitorLifecycleEntry {
+    id: String,
+    kind: String,
+    speaker: String,
+    who: String,
+    text: String,
+    at: String,
+    status: Option<String>,
+    next_action: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorLifecycleThread {
+    id: String,
+    title: String,
+    kind: String,
+    status: String,
+    owner_agent: String,
+    source_agent_id: Option<String>,
+    target_agent_id: Option<String>,
+    work_order_id: Option<String>,
+    escalation_id: Option<String>,
+    created_at: String,
+    updated_at: String,
+    entries: Vec<MonitorLifecycleEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorAgentDirectoryEntry {
+    id: String,
+    display_name: String,
+    description: String,
+    family: String,
+    role: String,
+    lane: String,
+    source_path: String,
+    mirror_path: String,
+    sync_state: String,
+    user_invocable: bool,
+    tools: Vec<String>,
+    child_agents: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct MonitorAgentSourceTreeStatus {
+    manifest_path: String,
+    canonical_root: String,
+    mirror_root: String,
+    sync_state: String,
+    entry_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 struct MonitorStateSnapshot {
     open_chats: Vec<MonitorSession>,
     archived_chats: Vec<MonitorArchivedSession>,
     running_loops: Vec<MonitorLoop>,
     timeline: Vec<MonitorEvent>,
+    lifecycle_threads: Vec<MonitorLifecycleThread>,
+    agent_directory: Vec<MonitorAgentDirectoryEntry>,
+    agent_source_tree: MonitorAgentSourceTreeStatus,
     selected_chat_id: Option<String>,
+    selected_lifecycle_thread_id: Option<String>,
     next_id: usize,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 struct MonitorState {
     open_chats: Vec<MonitorSession>,
     archived_chats: Vec<MonitorArchivedSession>,
     running_loops: Vec<MonitorLoop>,
     timeline: Vec<MonitorEvent>,
+    lifecycle_threads: Vec<MonitorLifecycleThread>,
     selected_chat_id: Option<String>,
+    selected_lifecycle_thread_id: Option<String>,
     next_id: usize,
 }
 
@@ -148,6 +229,14 @@ struct MonitorMessageRequest {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct MonitorLifecycleMessageRequest {
+    speaker: String,
+    who: String,
+    text: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct MonitorRouteRequest {
     target: String,
 }
@@ -156,6 +245,43 @@ struct MonitorRouteRequest {
 #[serde(rename_all = "camelCase")]
 struct MonitorLoopTransitionRequest {
     action: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSourceTreeManifest {
+    entries: Vec<AgentSourceTreeManifestEntry>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSourceTreeManifestEntry {
+    id: String,
+    display_name: String,
+    description: Option<String>,
+    family: String,
+    role: String,
+    lane: Option<String>,
+    source_path: String,
+    mirror_path: String,
+    user_invocable: Option<bool>,
+    tools: Option<Vec<String>>,
+    child_agents: Option<Vec<String>>,
+}
+
+impl Default for MonitorState {
+    fn default() -> Self {
+        Self {
+            open_chats: Vec::new(),
+            archived_chats: Vec::new(),
+            running_loops: Vec::new(),
+            timeline: Vec::new(),
+            lifecycle_threads: Vec::new(),
+            selected_chat_id: None,
+            selected_lifecycle_thread_id: None,
+            next_id: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1261,6 +1387,9 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
     default_profile_path: &Path,
     store: &S,
 ) -> HttpResponse {
+    if request.method == "OPTIONS" {
+        return text_response(200, "OK", "");
+    }
     let (request_path, request_query) = split_request_path(&request.path);
 
     if let Some(response) =
@@ -1297,35 +1426,54 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
     }
 }
 
+fn enable_cors(response: HttpResponse) -> HttpResponse {
+    response
+}
+
 fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Option<HttpResponse> {
+    if request_path.starts_with("/monitor") && method == "OPTIONS" {
+        return Some(enable_cors(text_response(200, "OK", "")));
+    }
+
     if request_path == "/monitor/state" && method == "GET" {
         let state = monitor_state();
         let guard = state.lock().map_err(|_| ()).ok()?;
         let snapshot = guard.snapshot();
-        return Some(json_response(200, "OK", &snapshot));
+        return Some(enable_cors(json_response(200, "OK", &snapshot)));
     }
 
     if request_path == "/monitor/events" && method == "GET" {
         let state = monitor_state();
         let guard = state.lock().map_err(|_| ()).ok()?;
-        return Some(json_response(200, "OK", &guard.timeline));
+        return Some(enable_cors(json_response(200, "OK", &guard.timeline)));
+    }
+
+    if request_path == "/monitor/lifecycle" && method == "GET" {
+        let state = monitor_state();
+        let guard = state.lock().map_err(|_| ()).ok()?;
+        return Some(enable_cors(json_response(200, "OK", &guard.lifecycle_threads)));
+    }
+
+    if request_path == "/monitor/agent-directory" && method == "GET" {
+        let directory = load_monitor_agent_directory();
+        return Some(enable_cors(json_response(200, "OK", &directory)));
     }
 
     if request_path == "/monitor/sessions" && method == "GET" {
         let state = monitor_state();
         let guard = state.lock().map_err(|_| ()).ok()?;
-        return Some(json_response(200, "OK", &guard.open_chats));
+        return Some(enable_cors(json_response(200, "OK", &guard.open_chats)));
     }
 
     if request_path == "/monitor/sessions" && method == "POST" {
         let request: MonitorCreateSessionRequest = match serde_json::from_slice(&body) {
             Ok(parsed) => parsed,
             Err(error) => {
-                return Some(text_response(
+                return Some(enable_cors(text_response(
                     400,
                     "Bad Request",
                     format!("invalid monitor session payload: {error}"),
-                ));
+                )));
             }
         };
 
@@ -1341,18 +1489,18 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             }
         };
         let session = guard.create_session(request.label);
-        return Some(json_response(200, "OK", &session));
+        return Some(enable_cors(json_response(200, "OK", &session)));
     }
 
     if request_path == "/monitor/loops/transition" && method == "POST" {
         let request: MonitorLoopTransitionRequest = match serde_json::from_slice(&body) {
             Ok(parsed) => parsed,
             Err(error) => {
-                return Some(text_response(
+                return Some(enable_cors(text_response(
                     400,
                     "Bad Request",
                     format!("invalid monitor loop payload: {error}"),
-                ));
+                )));
             }
         };
 
@@ -1360,15 +1508,48 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         let mut guard = match state.lock() {
             Ok(guard) => guard,
             Err(_) => {
-                return Some(text_response(
+                return Some(enable_cors(text_response(
                     500,
                     "Internal Server Error",
                     "monitor state lock poisoned",
-                ));
+                )));
             }
         };
         guard.apply_loop_transition(&request.action);
-        return Some(json_response(200, "OK", &guard.snapshot()));
+        return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+    }
+
+    if let Some((thread_id, trailing)) = parse_monitor_lifecycle_subroute(request_path) {
+        if trailing == "messages" && method == "POST" {
+            let request: MonitorLifecycleMessageRequest = match serde_json::from_slice(&body) {
+                Ok(parsed) => parsed,
+                Err(error) => {
+                    return Some(enable_cors(text_response(
+                        400,
+                        "Bad Request",
+                        format!("invalid lifecycle message payload: {error}"),
+                    )));
+                }
+            };
+
+            let state = monitor_state();
+            let mut guard = match state.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    return Some(enable_cors(text_response(
+                        500,
+                        "Internal Server Error",
+                        "monitor state lock poisoned",
+                    )));
+                }
+            };
+
+            if !guard.add_lifecycle_message(thread_id, request) {
+                return Some(enable_cors(text_response(404, "Not Found", "monitor lifecycle thread not found")));
+            }
+
+            return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+        }
     }
 
     let Some((session_id, trailing)) = parse_monitor_session_subroute(request_path) else {
@@ -1379,11 +1560,11 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         let request: MonitorMessageRequest = match serde_json::from_slice(&body) {
             Ok(parsed) => parsed,
             Err(error) => {
-                return Some(text_response(
+                return Some(enable_cors(text_response(
                     400,
                     "Bad Request",
                     format!("invalid monitor message payload: {error}"),
-                ));
+                )));
             }
         };
 
@@ -1391,28 +1572,28 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         let mut guard = match state.lock() {
             Ok(guard) => guard,
             Err(_) => {
-                return Some(text_response(
+                return Some(enable_cors(text_response(
                     500,
                     "Internal Server Error",
                     "monitor state lock poisoned",
-                ));
+                )));
             }
         };
         if !guard.add_message(session_id, request) {
-            return Some(text_response(404, "Not Found", "monitor session not found"));
+            return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
         }
-        return Some(json_response(200, "OK", &guard.snapshot()));
+        return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
     if trailing == "route" && method == "POST" {
         let request: MonitorRouteRequest = match serde_json::from_slice(&body) {
             Ok(parsed) => parsed,
             Err(error) => {
-                return Some(text_response(
+                return Some(enable_cors(text_response(
                     400,
                     "Bad Request",
                     format!("invalid monitor route payload: {error}"),
-                ));
+                )));
             }
         };
 
@@ -1420,17 +1601,35 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         let mut guard = match state.lock() {
             Ok(guard) => guard,
             Err(_) => {
-                return Some(text_response(
+                return Some(enable_cors(text_response(
                     500,
                     "Internal Server Error",
                     "monitor state lock poisoned",
-                ));
+                )));
             }
         };
         if !guard.route_session(session_id, &request.target) {
-            return Some(text_response(404, "Not Found", "monitor session not found"));
+            return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
         }
-        return Some(json_response(200, "OK", &guard.snapshot()));
+        return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+    }
+
+    if trailing == "archive" && method == "POST" {
+        let state = monitor_state();
+        let mut guard = match state.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                return Some(enable_cors(text_response(
+                    500,
+                    "Internal Server Error",
+                    "monitor state lock poisoned",
+                )));
+            }
+        };
+        if !guard.archive_session(session_id) {
+            return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
+        }
+        return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
     None
@@ -1449,6 +1648,21 @@ fn parse_monitor_session_subroute(path: &str) -> Option<(&str, &str)> {
     }
 
     Some((session_id, subroute))
+}
+
+fn parse_monitor_lifecycle_subroute(path: &str) -> Option<(&str, &str)> {
+    let prefix = "/monitor/lifecycle/";
+    if !path.starts_with(prefix) {
+        return None;
+    }
+
+    let tail = &path[prefix.len()..];
+    let (thread_id, subroute) = tail.split_once('/')?;
+    if thread_id.is_empty() || subroute.is_empty() {
+        return None;
+    }
+
+    Some((thread_id, subroute))
 }
 
 fn split_request_path(path: &str) -> (&str, Option<&str>) {
@@ -1739,13 +1953,19 @@ fn find_http_header_end(bytes: &[u8]) -> Option<usize> {
 }
 
 fn write_http_response(stream: &mut TcpStream, response: HttpResponse) -> io::Result<()> {
-    let header = format!(
-        "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n",
+    let mut header = format!(
+        "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\nCache-Control: no-store",
         response.status_code,
         response.status_text,
         response.content_type,
         response.body.len()
     );
+
+    header.push_str("\r\nAccess-Control-Allow-Origin: *");
+    header.push_str("\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS");
+    header.push_str("\r\nAccess-Control-Allow-Headers: Content-Type");
+
+    header.push_str("\r\n\r\n");
 
     stream.write_all(header.as_bytes())?;
     stream.write_all(&response.body)?;
@@ -1792,25 +2012,419 @@ fn monitor_now() -> String {
     }
 }
 
+fn monitor_at_plus_seconds(seconds: i64) -> Option<String> {
+    let timestamp = OffsetDateTime::now_utc() + time::Duration::seconds(seconds);
+    timestamp.format(&Rfc3339).ok()
+}
+
+fn monitor_category_for_agent(agent: &str) -> String {
+    let normalized = agent.to_ascii_lowercase();
+    if normalized.contains("business")
+        || normalized.contains("business manager")
+        || normalized.contains("operations")
+        || normalized.contains("sales")
+        || normalized.contains("finance")
+        || normalized.contains("hr")
+    {
+        return "business".to_owned();
+    }
+
+    if normalized.contains("software architect")
+        || normalized.contains("core")
+        || normalized.contains("subcore")
+        || normalized.contains("coding")
+    {
+        return "software".to_owned();
+    }
+
+    if normalized.contains("architect") {
+        return "architect".to_owned();
+    }
+
+    if normalized.contains("ferros") || normalized.contains("escalation") {
+        return "administration".to_owned();
+    }
+
+    "service".to_owned()
+}
+
+fn monitor_status_detail_for(agent: &str, state: &str, description: &str) -> (String, String, String, Option<u8>) {
+    let category = monitor_category_for_agent(agent);
+    match state {
+        "running" => (
+            "running".to_owned(),
+            "work-order-active".to_owned(),
+            description.to_owned(),
+            Some(48),
+        ),
+        "waiting" => {
+            let status = if category == "administration" || agent.to_ascii_lowercase().contains("escalation") {
+                "attention"
+            } else {
+                "escalating"
+            };
+            (
+                status.to_owned(),
+                "awaiting-upstream-or-operator".to_owned(),
+                description.to_owned(),
+                Some(if status == "attention" { 82 } else { 62 }),
+            )
+        }
+        "stopped" | "failed" => (
+            "stopped".to_owned(),
+            "stopped-before-closure".to_owned(),
+            description.to_owned(),
+            Some(18),
+        ),
+        _ => (
+            "idle".to_owned(),
+            "no-active-cycle".to_owned(),
+            description.to_owned(),
+            Some(10),
+        ),
+    }
+}
+
+fn monitor_loop_is_stale(loop_state: &MonitorLoop) -> bool {
+    let Some(stale_after) = loop_state.stale_after.as_deref() else {
+        return false;
+    };
+
+    let Ok(stale_after) = OffsetDateTime::parse(stale_after, &Rfc3339) else {
+        return false;
+    };
+
+    OffsetDateTime::now_utc() > stale_after
+}
+
+fn normalize_monitor_loop(loop_state: &MonitorLoop) -> MonitorLoop {
+    let mut normalized = loop_state.clone();
+    if monitor_loop_is_stale(loop_state)
+        && normalized.status != "stopped"
+        && normalized.status != "attention"
+    {
+        normalized.status = "stalled".to_owned();
+        normalized.status_reason = "stale-timeout".to_owned();
+        normalized.status_detail = format!("No lifecycle update since {}", normalized.updated_at);
+        normalized.progress = Some(76);
+    }
+
+    normalized
+}
+
+fn parse_agent_frontmatter(content: &str) -> BTreeMap<String, String> {
+    let mut map = BTreeMap::new();
+    let mut lines = content.lines();
+    if lines.next() != Some("---") {
+        return map;
+    }
+
+    let mut current_key: Option<String> = None;
+    let mut list_accumulator: Vec<String> = Vec::new();
+    for line in lines {
+        if line.trim() == "---" {
+            if let Some(key) = current_key.take() {
+                map.insert(key, list_accumulator.join("\n"));
+            }
+            break;
+        }
+
+        let trimmed = line.trim_end();
+        if let Some((key, value)) = trimmed.split_once(':') {
+            if let Some(previous_key) = current_key.take() {
+                map.insert(previous_key, list_accumulator.join("\n"));
+                list_accumulator.clear();
+            }
+
+            let key = key.trim().to_owned();
+            let value = value.trim();
+            if value.is_empty() {
+                current_key = Some(key);
+            } else {
+                map.insert(key, value.to_owned());
+            }
+            continue;
+        }
+
+        if trimmed.trim_start().starts_with('-') {
+            list_accumulator.push(trimmed.trim().trim_start_matches('-').trim().to_owned());
+        }
+    }
+
+    map
+}
+
+fn parse_frontmatter_list(value: Option<&String>) -> Vec<String> {
+    let Some(value) = value else {
+        return Vec::new();
+    };
+
+    let trimmed = value.trim();
+    if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        return trimmed[1..trimmed.len() - 1]
+            .split(',')
+            .map(|item| item.trim().trim_matches('"').trim_matches('\''))
+            .filter(|item| !item.is_empty())
+            .map(str::to_owned)
+            .collect();
+    }
+
+    trimmed
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
+fn fallback_directory_entry_from_path(path: &Path) -> Option<MonitorAgentDirectoryEntry> {
+    let file_name = path.file_name()?.to_string_lossy().to_string();
+    let content = fs::read_to_string(path).ok()?;
+    let frontmatter = parse_agent_frontmatter(&content);
+    let display_name = frontmatter
+        .get("name")
+        .cloned()
+        .unwrap_or_else(|| file_name.replace(".agent.md", ""));
+    let description = frontmatter
+        .get("description")
+        .cloned()
+        .unwrap_or_else(|| "No description published in frontmatter.".to_owned());
+    let family = monitor_category_for_agent(&display_name);
+    let role = if display_name.to_ascii_lowercase().contains("architect") {
+        "architect"
+    } else if display_name.to_ascii_lowercase().contains("officer") {
+        "officer"
+    } else if display_name.to_ascii_lowercase().contains("core") || display_name.to_ascii_lowercase().contains("subcore") {
+        "execution"
+    } else {
+        "agent"
+    };
+    Some(MonitorAgentDirectoryEntry {
+        id: file_name.replace(".agent.md", ""),
+        display_name,
+        description,
+        family,
+        role: role.to_owned(),
+        lane: role.to_owned(),
+        source_path: path.display().to_string(),
+        mirror_path: path.display().to_string(),
+        sync_state: "mirror-only".to_owned(),
+        user_invocable: frontmatter
+            .get("user-invocable")
+            .map(|value| value == "true")
+            .unwrap_or(false),
+        tools: parse_frontmatter_list(frontmatter.get("tools")),
+        child_agents: parse_frontmatter_list(frontmatter.get("agents")),
+    })
+}
+
+fn load_monitor_agent_directory() -> Vec<MonitorAgentDirectoryEntry> {
+    let manifest_path = Path::new(MONITOR_AGENT_MANIFEST_PATH);
+    if let Ok(content) = fs::read_to_string(manifest_path) {
+        if let Ok(manifest) = serde_json::from_str::<AgentSourceTreeManifest>(&content) {
+            let mut entries = manifest
+                .entries
+                .into_iter()
+                .map(|entry| MonitorAgentDirectoryEntry {
+                    id: entry.id,
+                    display_name: entry.display_name,
+                    description: entry.description.unwrap_or_else(|| "No description published.".to_owned()),
+                    family: entry.family,
+                    role: entry.role.clone(),
+                    lane: entry.lane.unwrap_or(entry.role),
+                    source_path: entry.source_path,
+                    mirror_path: entry.mirror_path,
+                    sync_state: "mirrored".to_owned(),
+                    user_invocable: entry.user_invocable.unwrap_or(false),
+                    tools: entry.tools.unwrap_or_default(),
+                    child_agents: entry.child_agents.unwrap_or_default(),
+                })
+                .collect::<Vec<_>>();
+            entries.sort_by(|left, right| left.display_name.cmp(&right.display_name));
+            return entries;
+        }
+    }
+
+    let mut entries = Vec::new();
+    if let Ok(read_dir) = fs::read_dir(MONITOR_AGENT_MIRROR_ROOT) {
+        for entry in read_dir.flatten() {
+            let path = entry.path();
+            if path.extension().is_some_and(|ext| ext == "md")
+                && path.file_name().is_some_and(|name| name.to_string_lossy().ends_with(".agent.md"))
+            {
+                if let Some(directory_entry) = fallback_directory_entry_from_path(&path) {
+                    entries.push(directory_entry);
+                }
+            }
+        }
+    }
+    entries.sort_by(|left, right| left.display_name.cmp(&right.display_name));
+    entries
+}
+
+fn monitor_agent_source_tree_status(entry_count: usize) -> MonitorAgentSourceTreeStatus {
+    let source_root = Path::new(MONITOR_AGENT_SOURCE_ROOT);
+    let mirror_root = Path::new(MONITOR_AGENT_MIRROR_ROOT);
+    let manifest_path = Path::new(MONITOR_AGENT_MANIFEST_PATH);
+    let sync_state = if manifest_path.exists() && source_root.exists() {
+        "mirrored"
+    } else if mirror_root.exists() {
+        "mirror-only"
+    } else {
+        "missing"
+    };
+
+    MonitorAgentSourceTreeStatus {
+        manifest_path: manifest_path.display().to_string(),
+        canonical_root: source_root.display().to_string(),
+        mirror_root: mirror_root.display().to_string(),
+        sync_state: sync_state.to_owned(),
+        entry_count,
+    }
+}
+
 impl MonitorState {
     fn snapshot(&self) -> MonitorStateSnapshot {
+        let lifecycle_threads = self.lifecycle_threads.clone();
+        let agent_directory = load_monitor_agent_directory();
         MonitorStateSnapshot {
             open_chats: self.open_chats.clone(),
             archived_chats: self.archived_chats.clone(),
-            running_loops: self.running_loops.clone(),
+            running_loops: self.running_loops.iter().map(normalize_monitor_loop).collect(),
             timeline: self.timeline.clone(),
+            lifecycle_threads: lifecycle_threads.clone(),
+            agent_directory: agent_directory.clone(),
+            agent_source_tree: monitor_agent_source_tree_status(agent_directory.len()),
             selected_chat_id: self.selected_chat_id.clone(),
+            selected_lifecycle_thread_id: self
+                .selected_lifecycle_thread_id
+                .clone()
+                .or_else(|| lifecycle_threads.first().map(|thread| thread.id.clone())),
             next_id: self.next_id,
+        }
+    }
+
+    fn create_lifecycle_thread(
+        &mut self,
+        title: String,
+        kind: &str,
+        owner_agent: &str,
+        status: &str,
+        source_agent_id: Option<String>,
+        target_agent_id: Option<String>,
+        work_order_id: Option<String>,
+        escalation_id: Option<String>,
+        initial_entry: MonitorLifecycleEntry,
+    ) -> String {
+        let id = self.next_identifier("thr");
+        let thread = MonitorLifecycleThread {
+            id: id.clone(),
+            title,
+            kind: kind.to_owned(),
+            status: status.to_owned(),
+            owner_agent: owner_agent.to_owned(),
+            source_agent_id,
+            target_agent_id,
+            work_order_id,
+            escalation_id,
+            created_at: initial_entry.at.clone(),
+            updated_at: initial_entry.at.clone(),
+            entries: vec![initial_entry],
+        };
+        self.selected_lifecycle_thread_id = Some(id.clone());
+        self.lifecycle_threads.insert(0, thread);
+        self.lifecycle_threads.truncate(MONITOR_MAX_LIFECYCLE_THREADS);
+        id
+    }
+
+    fn append_thread_entry(
+        &mut self,
+        thread_id: &str,
+        kind: &str,
+        speaker: &str,
+        who: &str,
+        text: String,
+        status: Option<&str>,
+        next_action: Option<&str>,
+    ) -> bool {
+        let entry = MonitorLifecycleEntry {
+            id: self.next_identifier("lfe"),
+            kind: kind.to_owned(),
+            speaker: speaker.to_owned(),
+            who: who.to_owned(),
+            text,
+            at: monitor_now(),
+            status: status.map(str::to_owned),
+            next_action: next_action.map(str::to_owned),
+        };
+
+        let Some(index) = self.lifecycle_threads.iter().position(|thread| thread.id == thread_id) else {
+            return false;
+        };
+
+        let thread = &mut self.lifecycle_threads[index];
+        if let Some(status) = status {
+            thread.status = status.to_owned();
+        }
+        thread.updated_at = entry.at.clone();
+        thread.entries.push(entry);
+        if thread.entries.len() > MONITOR_MAX_THREAD_ENTRIES {
+            let drain_count = thread.entries.len() - MONITOR_MAX_THREAD_ENTRIES;
+            thread.entries.drain(0..drain_count);
+        }
+        self.selected_lifecycle_thread_id = Some(thread_id.to_owned());
+        true
+    }
+
+    fn create_lifecycle_entry(
+        &mut self,
+        kind: &str,
+        speaker: &str,
+        who: &str,
+        text: String,
+        status: Option<&str>,
+        next_action: Option<&str>,
+    ) -> MonitorLifecycleEntry {
+        MonitorLifecycleEntry {
+            id: self.next_identifier("lfe"),
+            kind: kind.to_owned(),
+            speaker: speaker.to_owned(),
+            who: who.to_owned(),
+            text,
+            at: monitor_now(),
+            status: status.map(str::to_owned),
+            next_action: next_action.map(str::to_owned),
         }
     }
 
     fn create_session(&mut self, label: Option<String>) -> MonitorSession {
         let id = self.next_identifier("chat");
         let now = monitor_now();
+        let label = label.unwrap_or_else(|| format!("User -> FERROS #{}", self.next_id));
+        let initial_entry = self.create_lifecycle_entry(
+            "chat.opened",
+            "agent",
+            "FERROS Agent",
+            format!("Lifecycle chat opened for {label}"),
+            Some("running"),
+            Some("Await operator message or route request"),
+        );
+        let thread_id = self.create_lifecycle_thread(
+            label.clone(),
+            "chat",
+            "FERROS Agent",
+            "running",
+            Some("operator".to_owned()),
+            Some("FERROS Agent".to_owned()),
+            None,
+            None,
+            initial_entry,
+        );
         let session = MonitorSession {
             id: id.clone(),
-            label: label.unwrap_or_else(|| format!("User -> FERROS #{}", self.next_id)),
+            label,
             active_agent: "FERROS Agent".to_owned(),
+            thread_id: Some(thread_id),
             created_at: now.clone(),
             messages: vec![MonitorMessage {
                 speaker: "agent".to_owned(),
@@ -1826,18 +2440,48 @@ impl MonitorState {
     }
 
     fn add_message(&mut self, session_id: &str, request: MonitorMessageRequest) -> bool {
-        let Some(session) = self.open_chats.iter_mut().find(|session| session.id == session_id) else {
+        let MonitorMessageRequest { speaker, who, text } = request;
+        let message = MonitorMessage {
+            speaker: speaker.clone(),
+            who: who.clone(),
+            text: text.clone(),
+            at: monitor_now(),
+        };
+
+        let Some(index) = self.open_chats.iter().position(|session| session.id == session_id) else {
             return false;
         };
 
-        session.messages.push(MonitorMessage {
-            speaker: request.speaker,
-            who: request.who,
-            text: request.text,
-            at: monitor_now(),
-        });
-        self.push_event("chat.message.added", format!("Message appended in {}", session.label));
+        let (session_label, thread_id) = {
+            let session = &mut self.open_chats[index];
+            session.messages.push(message);
+            (session.label.clone(), session.thread_id.clone())
+        };
+        if let Some(thread_id) = thread_id {
+            let _ = self.append_thread_entry(
+                &thread_id,
+                "chat.message",
+                &speaker,
+                &who,
+                text,
+                Some("running"),
+                Some("Await route or reply"),
+            );
+        }
+        self.push_event("chat.message.added", format!("Message appended in {}", session_label));
         true
+    }
+
+    fn add_lifecycle_message(&mut self, thread_id: &str, request: MonitorLifecycleMessageRequest) -> bool {
+        self.append_thread_entry(
+            thread_id,
+            "lifecycle.note",
+            &request.speaker,
+            &request.who,
+            request.text,
+            None,
+            None,
+        )
     }
 
     fn route_session(&mut self, session_id: &str, target: &str) -> bool {
@@ -1846,6 +2490,7 @@ impl MonitorState {
         };
 
         let session = self.open_chats.remove(index);
+        let work_order_id = self.next_identifier("wo");
         let (route_label, loop_agent, loop_desc) = match target {
             "business" => (
                 "Business Agent",
@@ -1868,9 +2513,9 @@ impl MonitorState {
                 "Designing business-company and departmental architecture.",
             ),
             _ => (
-                "Coding Agent",
-                "Coding Agent",
-                "Executing coding packet and preparing Core/SubCore branch packets.",
+                "Software Architect",
+                "Software Architect",
+                "Executing software work order and preparing Core/SubCore branch packets.",
             ),
         };
 
@@ -1888,8 +2533,51 @@ impl MonitorState {
             .truncate(MONITOR_MAX_ARCHIVED_SESSIONS);
 
         self.selected_chat_id = self.open_chats.first().map(|chat| chat.id.clone());
+        if let Some(thread_id) = session.thread_id.as_deref() {
+            let _ = self.append_thread_entry(
+                thread_id,
+                "packet.sent",
+                "agent",
+                "FERROS Agent",
+                format!("Dispatched to {route_label} as work order {work_order_id}"),
+                Some("work_order_emitted"),
+                Some("Follow the downstream loop lifecycle thread"),
+            );
+        }
         self.upsert_loop(loop_agent, "running", loop_desc);
         self.push_event("packet.sent", format!("{} -> {route_label}", session.label));
+        true
+    }
+
+    fn archive_session(&mut self, session_id: &str) -> bool {
+        let Some(index) = self.open_chats.iter().position(|s| s.id == session_id) else {
+            return false;
+        };
+        let session = self.open_chats.remove(index);
+        self.archived_chats.insert(
+            0,
+            MonitorArchivedSession {
+                id: session.id,
+                label: session.label.clone(),
+                reason: "Manually archived by operator".to_owned(),
+                archived_at: monitor_now(),
+                preview: session.messages.iter().rev().take(3).cloned().collect(),
+            },
+        );
+        self.archived_chats.truncate(MONITOR_MAX_ARCHIVED_SESSIONS);
+        self.selected_chat_id = self.open_chats.first().map(|c| c.id.clone());
+        if let Some(thread_id) = session.thread_id.as_deref() {
+            let _ = self.append_thread_entry(
+                thread_id,
+                "chat.archived",
+                "system",
+                "Monitor",
+                format!("{} archived by operator", session.label),
+                Some("archived"),
+                Some("See archive drawer for retained preview"),
+            );
+        }
+        self.push_event("session.archived", format!("{} archived", session.label));
         true
     }
 
@@ -1913,12 +2601,12 @@ impl MonitorState {
                 );
                 self.push_event(
                     "loop.started",
-                    "FERROS Agent Architect delegated to Coding and Business architects.",
+                    "FERROS Agent Architect delegated to Coding and Business architects.".to_string(),
                 );
             }
             "coding-split" => {
                 self.upsert_loop(
-                    "Coding Agent",
+                    "Software Architect",
                     "waiting",
                     "Waiting for Core/SubCore completion packets.",
                 );
@@ -1928,17 +2616,23 @@ impl MonitorState {
                     "running",
                     "SubCore lane executing routed packet.",
                 );
-                self.push_event("loop.started", "Coding split into Core and SubCore loops.");
+                self.push_event(
+                    "loop.started",
+                    "Software Architect split into Core and SubCore loops.".to_string(),
+                );
             }
             "coding-merge" => {
                 self.remove_loop("Core Agent");
                 self.remove_loop("SubCore Agent");
                 self.upsert_loop(
-                    "Coding Agent",
+                    "Software Architect",
                     "running",
-                    "Core/SubCore responses merged. Coding continuation active.",
+                    "Core/SubCore responses merged. Software Architect continuation active.",
                 );
-                self.push_event("loop.merged", "Core/SubCore returned to Coding.");
+                self.push_event(
+                    "loop.merged",
+                    "Core/SubCore returned to Software Architect.".to_string(),
+                );
             }
             "business-split" => {
                 self.upsert_loop(
@@ -1960,7 +2654,7 @@ impl MonitorState {
                 self.upsert_loop("HR Department", "running", "HR directives executing.");
                 self.push_event(
                     "loop.started",
-                    "Business architect split into Operations/Sales/Finance/HR.",
+                    "Business architect split into Operations/Sales/Finance/HR.".to_string(),
                 );
             }
             "business-merge" => {
@@ -1973,13 +2667,18 @@ impl MonitorState {
                     "running",
                     "Department outputs merged; business architecture loop resumed.",
                 );
-                self.push_event("loop.merged", "Department loops returned to Business Architect.");
+                self.push_event("loop.merged", "Department loops returned to Business Architect.".to_string());
             }
             "escalate" => {
                 self.running_loops.clear();
+                self.upsert_loop(
+                    "FERROS Escalation",
+                    "waiting",
+                    "Escalation reached Administration and needs operator-visible clarification.",
+                );
                 self.push_event(
                     "escalation.opened",
-                    "Escalation opened. FERROS chat moved to operator-visible queue.",
+                    "Escalation opened. FERROS chat moved to operator-visible queue.".to_string(),
                 );
                 let session = self.create_session(Some("Escalation -> FERROS".to_owned()));
                 if let Some(open) = self.open_chats.iter_mut().find(|chat| chat.id == session.id) {
@@ -1990,6 +2689,17 @@ impl MonitorState {
                         at: monitor_now(),
                     });
                 }
+                if let Some(thread_id) = session.thread_id.as_deref() {
+                    let _ = self.append_thread_entry(
+                        thread_id,
+                        "escalation.opened",
+                        "agent",
+                        "FERROS Agent",
+                        "Escalation received. Human decision is required before continuing.".to_owned(),
+                        Some("attention"),
+                        Some("Open or explain from Administration"),
+                    );
+                }
             }
             _ => {}
         }
@@ -1998,27 +2708,108 @@ impl MonitorState {
     fn upsert_loop(&mut self, agent: &str, state: &str, description: &str) {
         let id = agent.to_ascii_lowercase().replace(' ', "-");
         let now = monitor_now();
-        if let Some(existing) = self.running_loops.iter_mut().find(|loop_state| loop_state.id == id)
-        {
+        let category = monitor_category_for_agent(agent);
+        let (status, status_reason, status_detail, progress) =
+            monitor_status_detail_for(agent, state, description);
+        let stale_after = monitor_at_plus_seconds(if status == "running" { 300 } else { 180 });
+
+        if let Some(existing) = self.running_loops.iter_mut().find(|loop_state| loop_state.id == id) {
+            let thread_id = existing.thread_id.clone();
             existing.state = state.to_owned();
+            existing.category = category;
+            existing.status = status.clone();
+            existing.status_reason = status_reason.clone();
+            existing.status_detail = status_detail.clone();
             existing.description = description.to_owned();
+            existing.progress = progress;
+            existing.stale_after = stale_after;
             existing.updated_at = now;
+            if let Some(thread_id) = thread_id {
+                let _ = self.append_thread_entry(
+                    &thread_id,
+                    "loop.status",
+                    "system",
+                    "Monitor",
+                    format!("{agent}: {description}"),
+                    Some(&status),
+                    Some("Await report, merge, or escalation"),
+                );
+            }
             return;
         }
+
+        let work_order_id = if status == "running" {
+            Some(self.next_identifier("wo"))
+        } else {
+            None
+        };
+        let escalation_id = if status == "attention" || status == "escalating" {
+            Some(self.next_identifier("esc"))
+        } else {
+            None
+        };
+        let initial_entry = self.create_lifecycle_entry(
+            "loop.created",
+            "system",
+            "Monitor",
+            format!("{agent}: {description}"),
+            Some(&status),
+            Some("Await report, merge, or escalation"),
+        );
+        let thread_id = self.create_lifecycle_thread(
+            agent.to_owned(),
+            "loop",
+            agent,
+            &status,
+            Some(category.clone()),
+            Some(agent.to_owned()),
+            work_order_id.clone(),
+            escalation_id.clone(),
+            initial_entry,
+        );
 
         self.running_loops.push(MonitorLoop {
             id,
             agent: agent.to_owned(),
             state: state.to_owned(),
+            category,
+            status,
+            status_reason,
+            status_detail,
             description: description.to_owned(),
             started_at: now.clone(),
             updated_at: now,
+            stale_after,
+            progress,
+            thread_id: Some(thread_id),
+            work_order_id,
+            escalation_id,
+            source_agent_id: Some("FERROS Monitor".to_owned()),
+            target_agent_id: Some(agent.to_owned()),
         });
     }
 
     fn remove_loop(&mut self, agent: &str) {
         let id = agent.to_ascii_lowercase().replace(' ', "-");
+        let removed = self
+            .running_loops
+            .iter()
+            .find(|loop_state| loop_state.id == id)
+            .cloned();
         self.running_loops.retain(|loop_state| loop_state.id != id);
+        if let Some(removed) = removed {
+            if let Some(thread_id) = removed.thread_id.as_deref() {
+                let _ = self.append_thread_entry(
+                    thread_id,
+                    "loop.closed",
+                    "system",
+                    "Monitor",
+                    format!("{} removed from the active loop roster", removed.agent),
+                    Some("reported"),
+                    Some("Inspect merged parent or archive history"),
+                );
+            }
+        }
     }
 
     fn push_event(&mut self, kind: &str, text: String) {

@@ -12,9 +12,7 @@ import {
   ExecutionReturn,
   CoordinatorError,
   CoordinatorOptions,
-  DualHandoffResult,
-  isCoordinatorError,
-  isExecutionReturn
+  DualHandoffResult
 } from './types';
 import { PacketValidator } from './packet-validator';
 import { GuardrailChecker } from './guardrails';
@@ -66,6 +64,7 @@ export class OrchestrationCoordinator {
   ): Promise<ExecutionReturn | CoordinatorError> {
     const startTime = Date.now();
     const handoffId = `${packet.route_token.parent_run_id}-${targetAgent}`;
+    let sessionId: string | undefined;
 
     try {
       this.log('info', `[${handoffId}] Starting handoff to ${targetAgent} agent...`);
@@ -98,7 +97,7 @@ export class OrchestrationCoordinator {
       // Step 3: Create SDK session
       this.log('info', `[${handoffId}] Creating session...`);
       const session = await this.sessionManager.createSession(targetAgent);
-      const sessionId = session.id;
+      sessionId = session.id;
 
       // Setup event listeners
       let eventCtx: { getToolCallId: () => string | undefined; getEvents: () => any[] } | undefined;
@@ -119,10 +118,28 @@ export class OrchestrationCoordinator {
       const toolCallId = eventCtx?.getToolCallId();
       const executionReturn = this.eventTracer.normalizeResponse(response, packet, toolCallId);
 
-      this.log('info', `[${handoffId}] Handoff completed successfully (${Date.now() - startTime}ms)`);
+      const lifecycleValidation = this.packetValidator.validateExecutionOutcome(packet, executionReturn);
+      if (!lifecycleValidation.valid) {
+        this.log(
+          'error',
+          `[${handoffId}] Lifecycle contract failure: ${lifecycleValidation.errors.join('; ')}`
+        );
 
-      // Step 6: Cleanup session
-      await this.sessionManager.cleanupSession(sessionId);
+        return {
+          error: 'Lifecycle stop contract failed',
+          failedChecks: ['execution_lifecycle_contract'],
+          details: {
+            errors: lifecycleValidation.errors,
+            warnings: lifecycleValidation.warnings,
+            lifecycle_outcome: executionReturn.lifecycle_outcome,
+            lifecycle_errors: executionReturn.lifecycle_errors,
+          },
+          escalate: true,
+          timestamp: new Date().toISOString()
+        } as CoordinatorError;
+      }
+
+      this.log('info', `[${handoffId}] Handoff completed successfully (${Date.now() - startTime}ms)`);
 
       return executionReturn;
     } catch (error) {
@@ -134,6 +151,10 @@ export class OrchestrationCoordinator {
         escalate: true,
         timestamp: new Date().toISOString()
       } as CoordinatorError;
+    } finally {
+      if (sessionId) {
+        await this.sessionManager.cleanupSession(sessionId);
+      }
     }
   }
 

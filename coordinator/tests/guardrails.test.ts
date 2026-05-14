@@ -45,4 +45,11 @@ describe('GuardrailChecker', () => {
     expect(result.passed).toBe(false);
     expect(result.failedChecks).toContain('check1_PacketValid');
   });
+
+  test('fails when lifecycle contract is missing', async () => {
+    const packet = makePacket({ metadata: undefined as any });
+    const result = await GuardrailChecker.checkAll(packet as any, 'core');
+    expect(result.passed).toBe(false);
+    expect(result.failedChecks).toContain('check1_PacketValid');
+  });
 });

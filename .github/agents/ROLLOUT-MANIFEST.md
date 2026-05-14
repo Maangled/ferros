@@ -1,13 +1,13 @@
 # FERROS Agent Rollout Manifest
 
-Last updated: 2026-05-09
+Last updated: 2026-05-13
 
 ## Active Agents
 
 - `ferros-agent.agent.md`
 - `ferros-prompt-architect.agent.md`
 - `ferros-orchestration-architect.agent.md`
-- `ferros-coding-agent.agent.md`
+- `ferros-software-architect.agent.md`
 - `ferros-business-agent.agent.md`
 - `ferros-coding-agent-architect.agent.md`
 - `ferros-business-agent-architect.agent.md`
@@ -18,7 +18,7 @@ Last updated: 2026-05-09
 ## Top 5 Agents
 
 - `ferros-agent.agent.md`
-- `ferros-coding-agent.agent.md`
+- `ferros-software-architect.agent.md`
 - `ferros-business-agent.agent.md`
 - `ferros-coding-agent-architect.agent.md`
 - `ferros-business-agent-architect.agent.md`

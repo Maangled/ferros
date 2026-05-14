@@ -37,6 +37,9 @@ For program rules, see [ADR-022-decision-program-governance.md](./ADR-022-decisi
 | [ADR-028](./ADR-028-core-launch-and-optional-module-lanes.md) | Core launch boundary and optional module lanes | Defines `v0.2.0` as core FERROS on real hardware, moves Home Assistant and future LLM-facing integrations into optional module lanes, and defers strict unmanaged installs until after coordinated lab and controlled test-home rollout |
 | [ADR-029](./ADR-029-human-operator-session-orchestration-and-evidence-flow.md) | Human-operator session orchestration and evidence flow | Defines the Human Test Backlog, coordinator triage, and evidence requirements for human-in-the-loop FERROS execution |
 | [ADR-037](./ADR-037-agent-architect-governance-and-routing-tokens.md) | Agent architect governance and routing-token chain of command (Draft) | Defines Agent Architect rollout authority and fail-closed Core/SubCore packet routing-token checks |
+| [ADR-038](./ADR-038-extended-routing-token-schema-for-architect-families.md) | Extended routing-token schema for architect-family roles | Extends routing-token semantics so architect-family packets can target coding, business, or architect families without overloading Core/SubCore stream fields |
+| [ADR-039](./ADR-039-operator-admin-agent-control-plane.md) | Operator administration agent control plane (Draft) | Defines the near-term monitor/admin surface for agent categories, escalations, packet lifecycle chat, agent-directory separation, and guarded chat creation |
+| [ADR-040](./ADR-040-agent-command-center-administration-translation.md) | Agent Command Center administration translation reservation (Draft) | Reserves the ACC translation of ADR-039 and sets the proof bar for multi-operator Administration, lifecycle chat, status tracking, and hardened service contracts |
 
 ---
 
@@ -88,6 +91,8 @@ For program rules, see [ADR-022-decision-program-governance.md](./ADR-022-decisi
 | [ADR-034](./ADR-034-arena-non-evidentiary-runtime-boundary.md) | Arena non-evidentiary runtime boundary (Draft) | Scaffolds the rule that Arena output stays staged until explicitly accepted |
 | [ADR-035](./ADR-035-governance-and-merit-signals-are-research-only.md) | Governance and merit signals are research-only (Draft) | Quarantines ranking or authority motifs from becoming product policy prematurely |
 | [ADR-036](./ADR-036-host-touchscreen-pilot-and-driver-lineage-cards.md) | Host touchscreen pilot and driver-lineage cards (Draft) | Scaffolds how Linux-host touchscreen sessions record connector and driver state now, while deferring subcore driver integrity and card/deck audit automation |
+| [ADR-039](./ADR-039-operator-admin-agent-control-plane.md) | Operator administration agent control plane (Draft) | Turns the live monitor into the near-term Administration control surface for escalations, category health, lifecycle chat, and agent-directory/runtime-service separation |
+| [ADR-040](./ADR-040-agent-command-center-administration-translation.md) | Agent Command Center administration translation reservation (Draft) | Holds the ACC follow-up scope for four-corner Administration, shared queues, lifecycle chat replay, real status tracking, and permissioned controls |
 
 ---
 
@@ -118,7 +123,7 @@ Research notes capture high-value investigation before a decision is frozen.
 - Shell, ACC, or user-surface work: ADR-009, ADR-010, ADR-015, ADR-017, plus the ACC research note
 - Runtime and contract layering: ADR-007, ADR-014, ADR-021
 - Launch boundary, module-lane, or external-integration posture: ADR-023, ADR-025, ADR-027, ADR-028
-- Operator-session, evidence-flow, staged-state, or badge-language work: ADR-029 through ADR-035 plus the orchestration docs under `docs/orchestration/`
+- Operator-session, evidence-flow, staged-state, badge-language, Administration control-plane, or ACC translation work: ADR-029 through ADR-035, ADR-039, ADR-040, plus the orchestration docs under `docs/orchestration/`
 - Prior-art or harvested-pattern questions: ADR-013, ADR-018, ADR-019, ADR-020
 - Governance, doctrine, or decision-process work: ADR-0001, ADR-021, ADR-022, and [../../DOCTRINE.md](../../DOCTRINE.md)
-- Agent architecture, chain-of-command packet routing, or Core/SubCore misroute prevention: ADR-037 plus the active agent specs under `../../.github/agents/`
+- Agent architecture, chain-of-command packet routing, architect-family routing, Core/SubCore misroute prevention, or ACC agent-admin translation: ADR-037, ADR-038, ADR-039, ADR-040, plus the active agent specs under `../../.github/agents/`

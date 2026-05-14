@@ -8,7 +8,7 @@
 
 const { spawn } = require('child_process');
 const http = require('http');
-const { createReadStream } = require('fs');
+const { accessSync, constants, createReadStream } = require('fs');
 const { resolve } = require('path');
 const { execSync } = require('child_process');
 const net = require('net');
@@ -141,19 +141,11 @@ function spawnShell(port) {
   let args = ['shell', '--bind', '0.0.0.0', '--port', port.toString()];
 
   try {
-    // Check if release binary exists
-    const { execSync: exec } = require('child_process');
-    try {
-      exec('./target/release/ferros-node --help', { stdio: 'ignore' });
-      cmd = './target/release/ferros-node';
-    } catch {
-      // Fall back to cargo run
-      cmd = 'cargo';
-      args = ['run', '--bin', 'ferros-node', '--', ...args];
-    }
+    accessSync('./target/release/ferros-node', constants.X_OK);
+    cmd = './target/release/ferros-node';
   } catch {
-    // Use ferros-node as fallback
-    cmd = 'ferros-node';
+    cmd = 'cargo';
+    args = ['run', '--bin', 'ferros-node', '--', ...args];
   }
 
   console.log(`[bridge] Spawning: ${cmd} ${args.join(' ')}`);

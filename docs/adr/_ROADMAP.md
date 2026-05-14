@@ -6,6 +6,28 @@ Numbering is assigned only when a real ADR or research note is added. This file 
 
 ---
 
+## State Note - Operator administration control plane planning (as of 2026-05-13)
+
+This note records the next local-agent-control decision after the first monitor wiring pass. It is additive and does not pre-approve the ACC translation before ADR-040 has implementation evidence and is promoted beyond Draft.
+
+### Landed since last roadmap update
+
+- **ADR-039** - Operator administration agent control plane. Draft. Defines the near-term bridge monitor as the local Administration surface for special-agent categories, escalation triage, packet lifecycle chat, guarded chat creation, and agent-directory/runtime-service separation.
+- **ADR-040** - Agent Command Center administration translation reservation. Draft. Reserves the ACC translation scope for multi-operator Administration, lifecycle chat replay, permissioned controls, real status tracking, and hardened service contracts.
+
+### Active follow-up scope
+
+- **Four-corners monitor layout:** project the local monitor into ADR-009 zones: Agent Directory in top-left, Running Services and Console in top-right, Administration and Quick Actions in bottom-left, Packet Lifecycle Chat in bottom-right, Runway mindmap in the center viewport, category carousel on the top edge, Archive drawer on the left edge, and Deny Log drawer on the right edge.
+- **Carousel attention model:** special-agent category controls should stay compact, show title plus quick-view icons only in collapsed/running buttons, and center the highest weighted attention score. Administration remains the tie-breaker until another category has strictly higher attention.
+- **Runway mindmap:** replace the old checklist-first view with a lane/loop/work-order graph that shows current lane health, packet flow, blocked nodes, reports, escalations, and next actions. Checklist items can remain as node details or proof gates, not the primary mental model.
+- **Archive / deny / console / quick-actions placement:** Archive becomes a left-edge drawer for closed chats and lifecycle history; Deny Log becomes a right-edge drawer near service/console context; Console belongs to Running Services; Quick Actions belong to Administration and must be bound to a selected packet, loop, service, or escalation.
+- **Real status-tracking requirements:** replace provisional progress with packet-backed fields for `agentId`, `cycleId`, `workOrderId`, `escalationId`, `status`, `statusReason`, `statusDetail`, `startedAt`, `updatedAt`, `staleAfter`, optional `progress`, `sourceAgentId`, and `targetAgentId`.
+- **Background-agent lifecycle contract:** every background cycle must finish through report, work order, escalation, denial, archive, or stopped reason. Silent stops become Administration attention.
+- **Hierarchy-backed agent source proposal:** keep `.github/agents/*.agent.md` canonical until a generator proves a flat mirror from an outside source tree such as `agents/source/{ferros,coding,business}/`.
+- **ACC translation bar:** ADR-040 must remain Draft until ACC has implementation evidence for multi-operator queues, permissioned controls, lifecycle chat replay, audit retention, service contracts, and migration from bridge-local monitor endpoints.
+
+---
+
 ## State Note - Post-v0.2.0 operator-UX planning (as of 2026-05-04)
 
 This note records the ADR backlog state after the `v0.2.0` closeout and the first interconnected operator-UX planning packet. It is additive.

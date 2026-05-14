@@ -28,10 +28,24 @@ describe('EventTracer', () => {
     const corePacket = makePacket({
       route_token: { ...makePacket().route_token, target_stream: 'core' }
     });
-    const result = tracer.normalizeResponse('## Facts\n- ok', corePacket, 'tc-2');
+    const result = tracer.normalizeResponse(
+      '## Report\n- Returned to FERROS Coding with runtime findings.\n## Facts\n- ok',
+      corePacket,
+      'tc-2'
+    );
 
     expect(result.classification).toBe('execution-return-core');
     expect(result.parent_run_id).toBe(corePacket.route_token.parent_run_id);
     expect(result.tool_call_id).toBe('tc-2');
+    expect(result.lifecycle_outcome?.kind).toBe('report');
+    expect(result.lifecycle_errors).toBeUndefined();
+  });
+
+  test('records lifecycle error when no terminal outcome is present', () => {
+    const tracer = new EventTracer();
+    const result = tracer.normalizeResponse('## Facts\n- ok', makePacket(), 'tc-3');
+
+    expect(result.lifecycle_outcome).toBeUndefined();
+    expect(result.lifecycle_errors?.join(' ')).toContain('Missing lifecycle outcome section');
   });
 });

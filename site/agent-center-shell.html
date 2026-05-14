@@ -745,6 +745,7 @@
         <section id="grants-surface" class="table-list hidden" data-module="GrantsSurfaceCard" data-surface-state="empty"></section>
         <section id="profile-surface" class="table-list hidden" data-module="ProfileSurfaceCard" data-surface-state="empty"></section>
         <section id="runway-surface" class="table-list hidden" data-module="RunwaySurfaceCard" data-surface-state="empty"></section>
+        <section id="administration-surface" class="table-list hidden" data-module="AdministrationSurfaceCard" data-surface-state="empty"></section>
         <!-- legacy ferros-node compatibility shim: id: 'homeHub' | id: 'forge' | id: 'arena' | data-module="RunwayChecklistRowCard" -->
         <section id="home-hub-surface" class="table-list hidden" data-module="HomeHubSurfaceContainer" data-surface-state="empty"></section>
         <section id="forge-surface" class="table-list hidden" data-module="ForgeSurfaceContainer" data-surface-state="empty"></section>
@@ -860,6 +861,16 @@
         statusLabel: 'runway',
       }),
       Object.freeze({
+        id: 'administration',
+        buttonLabel: 'Administration',
+        buttonSummaryHtml: 'Live monitor lifecycle threads, open chats, loop heat, and directory visibility from <code>/monitor/state</code>.',
+        centerSubtitle: 'Administration route reads the live monitor state so packet lifecycle chats, open operator-visible sessions, loop health, and source-tree directory visibility surface inside the shell.',
+        toolsCopy: 'Administration route reads the local-only /monitor/state surface. It does not transmit monitor writes here; it promotes lifecycle threads and directory facts into the existing shell slots.',
+        auditTitle: 'Monitor observation only',
+        auditCopy: 'Administration uses the same local monitor state that powers the operator monitor. It is display-focused here: no work-order enforcement or remote control claims are implied by this read surface.',
+        statusLabel: 'administration',
+      }),
+      Object.freeze({
         id: 'denyLog',
         buttonLabel: 'Deny log',
         buttonSummaryHtml: 'Deny-by-default evidence from current persisted shell log state.',
@@ -885,6 +896,8 @@
       selectedDenyIndex: null,
       runway: null,
       selectedRunwayIndex: null,
+      monitor: null,
+      selectedMonitorThreadId: null,
       errors: 0,
       connection: 'connecting',
       rpcHealth: 'warming',
@@ -978,6 +991,16 @@
         ? `/runway-summary.json?profilePath=${encodeURIComponent(profilePath)}`
         : '/runway-summary.json';
       const response = await fetch(runwayUrl);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return response.json();
+    }
+
+    async function fetchMonitorState() {
+      const response = await fetch('/monitor/state');
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -1119,17 +1142,23 @@
       try {
         const snapshotResult = await rpc('agent.snapshot', snapshotParams());
         const runwaySummary = await fetchRunwaySummary().catch(() => null);
+        const monitorSummary = await fetchMonitorState().catch(() => null);
         const snapshot = snapshotResult.snapshot || {};
 
         state.agents = snapshot.agents || [];
         state.grants = snapshot.grants || [];
         state.denyEntries = snapshot.denyLog || [];
         state.runway = runwaySummary;
+        state.monitor = monitorSummary;
         state.selectedGrantIndex = state.grants[state.selectedGrantIndex ?? -1] ? state.selectedGrantIndex : null;
         state.selectedDenyIndex = state.denyEntries[state.selectedDenyIndex ?? -1] ? state.selectedDenyIndex : null;
         state.selectedRunwayIndex = state.runway && state.runway.checklist && state.runway.checklist[state.selectedRunwayIndex ?? -1]
           ? state.selectedRunwayIndex
           : (state.runway && state.runway.checklist && state.runway.checklist.length > 0 ? 0 : null);
+        const lifecycleThreads = (state.monitor && state.monitor.lifecycleThreads) || [];
+        state.selectedMonitorThreadId = lifecycleThreads.some((thread) => thread.id === state.selectedMonitorThreadId)
+          ? state.selectedMonitorThreadId
+          : (lifecycleThreads[0] ? lifecycleThreads[0].id : null);
         state.errors = 0;
 
         reconcileSelectedAgent();
@@ -1181,6 +1210,7 @@
       document.getElementById('grants-surface').innerHTML = '';
       document.getElementById('profile-surface').innerHTML = '';
       document.getElementById('runway-surface').innerHTML = '';
+      document.getElementById('administration-surface').innerHTML = '';
       document.getElementById('home-hub-surface').innerHTML = '';
       document.getElementById('forge-surface').innerHTML = '';
       document.getElementById('arena-surface').innerHTML = '';
@@ -1229,11 +1259,74 @@
       });
     }
 
+    function selectedMonitorThread() {
+      const threads = (state.monitor && state.monitor.lifecycleThreads) || [];
+      return threads.find((thread) => thread.id === state.selectedMonitorThreadId) || null;
+    }
+
+    function administrationSurfaceHtml() {
+      if (!state.monitor) {
+        return emptyNote('Monitor unavailable', 'The shell could not read /monitor/state yet.');
+      }
+
+      const openChats = state.monitor.openChats || [];
+      const lifecycleThreads = state.monitor.lifecycleThreads || [];
+      const runningLoops = state.monitor.runningLoops || [];
+      const agentDirectory = state.monitor.agentDirectory || [];
+      const sourceTree = state.monitor.agentSourceTree || null;
+
+      const summaryCards = `
+        <article class="metric-card">
+          <div class="metric-label">Open chats</div>
+          <div class="metric-value">${escapeHtml(openChats.length)}</div>
+          <div class="metric-copy">Operator-visible FERROS sessions from /monitor/state.</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-label">Lifecycle threads</div>
+          <div class="metric-value">${escapeHtml(lifecycleThreads.length)}</div>
+          <div class="metric-copy">Packet, work-order, escalation, and loop threads.</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-label">Running loops</div>
+          <div class="metric-value">${escapeHtml(runningLoops.length)}</div>
+          <div class="metric-copy">Current loop roster with backend-issued status.</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-label">Directory sync</div>
+          <div class="metric-value">${escapeHtml(sourceTree ? sourceTree.syncState : 'unknown')}</div>
+          <div class="metric-copy">${escapeHtml(agentDirectory.length)} directory rows mirrored from the current agent tree.</div>
+        </article>`;
+
+      const threadRows = lifecycleThreads.map((thread) => {
+        const selected = thread.id === state.selectedMonitorThreadId;
+        return `
+          <article class="table-row${selected ? ' is-selected' : ''}" data-monitor-thread-id="${escapeHtml(thread.id)}">
+            <strong>${escapeHtml(thread.title)}</strong>
+            <small>${escapeHtml(thread.kind)} • ${escapeHtml(thread.status)} • ${escapeHtml(thread.ownerAgent)}</small>
+            <div class="table-row-meta">
+              <span>${escapeHtml(thread.workOrderId || thread.escalationId || thread.targetAgentId || 'no external id')}</span>
+              <span>${escapeHtml(thread.updatedAt)}</span>
+            </div>
+          </article>`;
+      }).join('') || emptyNote('No lifecycle threads', 'Open or route a monitor chat to create packet lifecycle rows.');
+
+      return `
+        <div class="metrics-grid">${summaryCards}</div>
+        <div class="module-badge-rail">
+          <span class="module-badge">open chats <span class="module-badge-label">${escapeHtml(openChats.length)}</span></span>
+          <span class="module-badge">threads <span class="module-badge-label">${escapeHtml(lifecycleThreads.length)}</span></span>
+          <span class="module-badge">loops <span class="module-badge-label">${escapeHtml(runningLoops.length)}</span></span>
+          <span class="module-badge">directory <span class="module-badge-label">${escapeHtml(agentDirectory.length)}</span></span>
+        </div>
+        <div class="table-list">${threadRows}</div>`;
+    }
+
     function renderSurface() {
       const agentsSurface = document.getElementById('agents-surface');
       const grantsSurface = document.getElementById('grants-surface');
       const profileSurface = document.getElementById('profile-surface');
       const runwaySurface = document.getElementById('runway-surface');
+      const administrationSurface = document.getElementById('administration-surface');
       const homeHubSurface = document.getElementById('home-hub-surface');
       const forgeSurface = document.getElementById('forge-surface');
       const arenaSurface = document.getElementById('arena-surface');
@@ -1242,6 +1335,7 @@
       grantsSurface.classList.toggle('hidden', state.route !== 'grants');
       profileSurface.classList.toggle('hidden', state.route !== 'profile');
       runwaySurface.classList.toggle('hidden', state.route !== 'runway');
+      administrationSurface.classList.toggle('hidden', state.route !== 'administration');
       homeHubSurface.classList.toggle('hidden', state.route !== 'homeHub');
       forgeSurface.classList.toggle('hidden', state.route !== 'forge');
       arenaSurface.classList.toggle('hidden', state.route !== 'arena');
@@ -1267,6 +1361,9 @@
 
       runwaySurface.innerHTML = runwaySurfaceHtml();
       runwaySurface.dataset.surfaceState = state.runway ? 'loaded' : 'empty';
+
+      administrationSurface.innerHTML = administrationSurfaceHtml();
+      administrationSurface.dataset.surfaceState = state.monitor ? 'loaded' : 'empty';
 
       homeHubSurface.innerHTML = SharedModules.HomeHubSurfaceCard.render(state.runway);
       homeHubSurface.dataset.surfaceState = state.runway ? 'loaded' : 'empty';
@@ -1315,6 +1412,17 @@
           state.route = 'runway';
           state.selectedRunwayIndex = Number(button.dataset.checklistIndex);
           setStatusSelection(`runway:${state.runway.checklist[state.selectedRunwayIndex].item}`);
+          renderInspector();
+          render();
+        });
+      });
+
+      document.querySelectorAll('[data-monitor-thread-id]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.route = 'administration';
+          state.selectedMonitorThreadId = button.dataset.monitorThreadId;
+          const thread = selectedMonitorThread();
+          setStatusSelection(thread ? `monitor:${thread.title}` : 'monitor:none');
           renderInspector();
           render();
         });
@@ -2484,6 +2592,34 @@
           <div class="detail-pair"><div class="detail-key">Checklist item</div><div class="detail-value">${escapeHtml(item ? item.item : 'none')}</div></div>
           <div class="detail-pair"><div class="detail-key">Checklist status</div><div class="detail-value">${escapeHtml(item ? item.status : 'none')}</div></div>
           <div class="detail-pair"><div class="detail-key">Checklist detail</div><div class="detail-value">${escapeHtml(item ? item.detail : 'no checklist detail loaded')}</div></div>`;
+        return;
+      }
+
+      if (state.route === 'administration' && state.monitor) {
+        const monitor = state.monitor;
+        const thread = selectedMonitorThread();
+        const sourceTree = monitor.agentSourceTree || null;
+        if (thread) {
+          const lastEntry = thread.entries && thread.entries.length > 0 ? thread.entries[thread.entries.length - 1] : null;
+          inspector.innerHTML = `
+            <div class="detail-pair"><div class="detail-key">Thread</div><div class="detail-value">${escapeHtml(thread.title)}</div></div>
+            <div class="detail-pair"><div class="detail-key">Kind</div><div class="detail-value">${escapeHtml(thread.kind)}</div></div>
+            <div class="detail-pair"><div class="detail-key">Status</div><div class="detail-value">${escapeHtml(thread.status)}</div></div>
+            <div class="detail-pair"><div class="detail-key">Owner</div><div class="detail-value">${escapeHtml(thread.ownerAgent)}</div></div>
+            <div class="detail-pair"><div class="detail-key">Source -> target</div><div class="detail-value">${escapeHtml(thread.sourceAgentId || 'n/a')} -> ${escapeHtml(thread.targetAgentId || 'n/a')}</div></div>
+            <div class="detail-pair"><div class="detail-key">Work order</div><div class="detail-value">${escapeHtml(thread.workOrderId || 'none')}</div></div>
+            <div class="detail-pair"><div class="detail-key">Escalation</div><div class="detail-value">${escapeHtml(thread.escalationId || 'none')}</div></div>
+            <div class="detail-pair"><div class="detail-key">Latest entry</div><div class="detail-value">${escapeHtml(lastEntry ? `${lastEntry.who}: ${lastEntry.text}` : 'No entries')}</div></div>
+            <div class="detail-pair"><div class="detail-key">Directory sync</div><div class="detail-value">${escapeHtml(sourceTree ? `${sourceTree.syncState} (${sourceTree.entryCount} rows)` : 'unknown')}</div></div>`;
+          return;
+        }
+
+        inspector.innerHTML = `
+          <div class="detail-pair"><div class="detail-key">Open chats</div><div class="detail-value">${escapeHtml((monitor.openChats || []).length)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Lifecycle threads</div><div class="detail-value">${escapeHtml((monitor.lifecycleThreads || []).length)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Running loops</div><div class="detail-value">${escapeHtml((monitor.runningLoops || []).length)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Agent directory</div><div class="detail-value">${escapeHtml((monitor.agentDirectory || []).length)}</div></div>
+          <div class="detail-pair"><div class="detail-key">Source tree</div><div class="detail-value">${escapeHtml(sourceTree ? `${sourceTree.syncState} • ${sourceTree.entryCount} rows` : 'unknown')}</div></div>`;
         return;
       }
 

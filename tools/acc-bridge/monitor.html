@@ -204,35 +204,6 @@
       display: block;
     }
 
-    .flow-map {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-
-    @media (max-width: 900px) {
-      .flow-map {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    .flow-node {
-      background: rgba(13, 21, 34, 0.9);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 8px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .flow-node.active {
-      border-color: rgba(45, 212, 191, 0.7);
-      color: #cffafe;
-      box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.3);
-    }
-
     .split {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -340,6 +311,366 @@
       font-size: 12px;
     }
 
+    .loop-control-grid {
+      position: relative;
+      display: block;
+      margin-bottom: 10px;
+      min-height: 126px;
+      overflow: hidden;
+      padding: 0 22px 4px;
+      isolation: isolate;
+      cursor: grab;
+      user-select: none;
+      touch-action: pan-y;
+    }
+
+    .loop-control-grid.is-dragging {
+      cursor: grabbing;
+    }
+
+    .loop-control-grid::before,
+    .loop-control-grid::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 72px;
+      z-index: 6;
+      pointer-events: none;
+    }
+
+    .loop-control-grid::before {
+      left: 0;
+      background: linear-gradient(90deg, rgba(7, 11, 19, 0.96), rgba(7, 11, 19, 0));
+    }
+
+    .loop-control-grid::after {
+      right: 0;
+      background: linear-gradient(270deg, rgba(7, 11, 19, 0.96), rgba(7, 11, 19, 0));
+    }
+
+    .loop-control-card {
+      position: absolute;
+      left: 0;
+      top: 0;
+      border-radius: 12px;
+      border: 0;
+      padding: 13px 10px;
+      text-align: center;
+      width: 138px;
+      min-width: 138px;
+      min-height: 118px;
+      background: linear-gradient(180deg, rgba(12, 18, 30, 0.98), rgba(10, 15, 25, 0.98));
+      overflow: hidden;
+      isolation: isolate;
+      transform: scale(0.82);
+      opacity: 0.48;
+      z-index: 1;
+      clip-path: inset(0 0 0 0 round 12px);
+      filter: saturate(0.72) brightness(0.82);
+      transition: transform 0.28s ease, opacity 0.28s ease, filter 0.28s ease, clip-path 0.28s ease, box-shadow 0.28s ease;
+    }
+
+    .loop-control-card[data-carousel-hidden="true"] {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loop-control-card.carousel-ghost {
+      pointer-events: none !important;
+      cursor: default;
+    }
+
+    .loop-control-card.is-centered {
+      box-shadow: 0 0 0 1px rgba(232, 237, 245, 0.18), 0 0 24px rgba(45, 212, 191, 0.18);
+    }
+
+    .loop-control-card::before {
+      content: '';
+      position: absolute;
+      inset: -40%;
+      background: conic-gradient(from 0deg, var(--status-a), var(--status-b), var(--status-c), var(--status-a));
+      animation: spin-border 6s linear infinite;
+      opacity: 0.9;
+      z-index: -2;
+    }
+
+    .loop-control-card::after {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(12, 18, 30, 0.98), rgba(10, 15, 25, 0.98));
+      z-index: -1;
+    }
+
+    .loop-control-card.status-good {
+      --status-a: rgba(52, 211, 153, 0.8);
+      --status-b: rgba(74, 222, 128, 0.65);
+      --status-c: rgba(20, 184, 166, 0.7);
+    }
+
+    .loop-control-card.status-warn {
+      --status-a: rgba(245, 158, 11, 0.85);
+      --status-b: rgba(251, 191, 36, 0.7);
+      --status-c: rgba(234, 88, 12, 0.75);
+    }
+
+    .loop-control-card.status-alert {
+      --status-a: rgba(248, 113, 113, 0.88);
+      --status-b: rgba(251, 146, 60, 0.72);
+      --status-c: rgba(245, 158, 11, 0.75);
+    }
+
+    .loop-control-card.status-stalled {
+      --status-a: rgba(251, 113, 133, 0.88);
+      --status-b: rgba(248, 113, 113, 0.74);
+      --status-c: rgba(244, 63, 94, 0.7);
+    }
+
+    .loop-control-card.status-idle {
+      --status-a: rgba(120, 168, 210, 0.7);
+      --status-b: rgba(93, 119, 160, 0.68);
+      --status-c: rgba(74, 144, 217, 0.68);
+    }
+
+    .loop-control-card.selected {
+      outline: 1px solid rgba(232, 237, 245, 0.42);
+      outline-offset: 3px;
+    }
+
+    .lane-title {
+      font-size: 15px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      margin-bottom: 9px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      line-height: 1.1;
+    }
+
+    .word {
+      display: inline-block;
+      animation: word-glow 2.7s ease-in-out infinite;
+    }
+
+    .word-a { color: #7dd3fc; animation-delay: 0s; }
+    .word-b { color: #a7f3d0; animation-delay: 0.22s; }
+    .word-c { color: #fcd34d; animation-delay: 0.44s; }
+    .word-d { color: #f9a8d4; animation-delay: 0.66s; }
+
+    .lane-icons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+    }
+
+    .lane-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 23px;
+      line-height: 1;
+      filter: saturate(1.1);
+      transition: 0.2s ease;
+    }
+
+    .loop-control-card.status-good .lane-icon,
+    .agent-play-card.status-running .agent-card-icon {
+      text-shadow: 0 0 10px rgba(52, 211, 153, 0.9), 0 0 22px rgba(52, 211, 153, 0.45);
+    }
+
+    .loop-control-card.status-warn .lane-icon,
+    .agent-play-card.status-escalating .agent-card-icon {
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.95), 0 0 22px rgba(245, 158, 11, 0.45);
+    }
+
+    .loop-control-card.status-alert .lane-icon,
+    .agent-play-card.status-attention .agent-card-icon,
+    .agent-play-card.status-stopped .agent-card-icon {
+      text-shadow: 0 0 10px rgba(248, 113, 113, 0.95), 0 0 22px rgba(248, 113, 113, 0.45);
+    }
+
+    .lane-sub,
+    .lane-meta {
+      display: none;
+    }
+
+    .lane-meta {
+      margin-top: 6px;
+      font-family: var(--font-mono);
+    }
+
+    .loop-card {
+      position: relative;
+      padding: 0;
+      perspective: 1000px;
+      cursor: pointer;
+    }
+
+    .loop-card-inner {
+      position: relative;
+      min-height: 120px;
+      transform-style: preserve-3d;
+      transition: transform 0.32s ease;
+    }
+
+    .loop-card.flipped .loop-card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .loop-face {
+      padding: 9px;
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+    }
+
+    .loop-face.back {
+      transform: rotateY(180deg);
+      border-top: 1px solid rgba(120, 168, 210, 0.2);
+      background: rgba(7, 11, 19, 0.95);
+    }
+
+    .loop-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .loop-card.backlog .pill {
+      border-color: rgba(245, 158, 11, 0.8);
+      color: #fde68a;
+    }
+
+    .loop-hint {
+      margin-top: 8px;
+      color: var(--dim);
+      font-family: var(--font-mono);
+      font-size: 10px;
+    }
+
+    .category-view-title {
+      color: #c7d2fe;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .agent-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .agent-play-card {
+      min-height: 236px;
+      border-radius: 8px;
+    }
+
+    .agent-play-card .loop-card-inner {
+      min-height: 236px;
+    }
+
+    .agent-card-front,
+    .agent-card-back {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: 100%;
+    }
+
+    .agent-card-topline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .agent-card-icon {
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .status-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+      background: #64748b;
+      box-shadow: 0 0 8px rgba(100, 116, 139, 0.55);
+      flex: 0 0 auto;
+    }
+
+    .status-dot.running { background: var(--accent-green); box-shadow: 0 0 10px rgba(52, 211, 153, 0.8); }
+    .status-dot.escalating { background: var(--accent-amber); box-shadow: 0 0 10px rgba(245, 158, 11, 0.8); }
+    .status-dot.attention,
+    .status-dot.stopped { background: var(--accent-red); box-shadow: 0 0 10px rgba(248, 113, 113, 0.8); }
+
+    .agent-card-name {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .agent-card-subtitle {
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .progress-shell {
+      height: 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 168, 210, 0.22);
+      background: rgba(7, 11, 19, 0.9);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+    }
+
+    .agent-card-description {
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .flip-note {
+      margin-top: auto;
+      color: var(--dim);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      writing-mode: vertical-rl;
+      align-self: flex-end;
+      opacity: 0.72;
+    }
+
+    .agent-card-back .agent-card-description {
+      color: var(--muted);
+    }
+
+    @keyframes spin-border {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes word-glow {
+      0%, 100% { filter: brightness(0.9); transform: translateY(0); }
+      50% { filter: brightness(1.35); transform: translateY(-1px); }
+    }
+
     .loop-head,
     .archive-head {
       display: flex;
@@ -369,6 +700,19 @@
       border-color: rgba(245, 158, 11, 0.8);
       color: #fde68a;
       background: rgba(51, 27, 0, 0.5);
+    }
+
+    .pill.escalating {
+      border-color: rgba(245, 158, 11, 0.75);
+      color: #fde68a;
+      background: rgba(67, 36, 7, 0.58);
+    }
+
+    .pill.stalled,
+    .pill.stopped {
+      border-color: rgba(248, 113, 113, 0.75);
+      color: #fecaca;
+      background: rgba(68, 19, 19, 0.58);
     }
 
     .pill.done {
@@ -477,6 +821,263 @@
       font-size: 11px;
       color: var(--muted);
     }
+
+    .lifecycle-shell {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.4fr);
+      gap: 12px;
+      min-height: 360px;
+    }
+
+    @media (max-width: 900px) {
+      .lifecycle-shell {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .lifecycle-thread-list,
+    .directory-tree {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+
+    .lifecycle-thread-item,
+    .directory-group,
+    .mindmap-node,
+    .mindmap-center {
+      background: rgba(8, 12, 20, 0.88);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .lifecycle-thread-item {
+      cursor: pointer;
+      transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .lifecycle-thread-item:hover,
+    .directory-entry:hover {
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+    }
+
+    .lifecycle-thread-item.selected,
+    .directory-entry.selected {
+      border-color: rgba(45, 212, 191, 0.65);
+      box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.24);
+    }
+
+    .lifecycle-thread-view {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .lifecycle-thread-header {
+      background: rgba(8, 12, 20, 0.88);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .lifecycle-messages {
+      min-height: 0;
+      max-height: 420px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-right: 2px;
+    }
+
+    .lifecycle-entry {
+      border-radius: 12px;
+      padding: 10px;
+      border: 1px solid rgba(120, 168, 210, 0.18);
+      background: rgba(10, 16, 26, 0.94);
+    }
+
+    .lifecycle-entry.user {
+      border-color: rgba(74, 144, 217, 0.5);
+      background: rgba(27, 47, 76, 0.42);
+    }
+
+    .lifecycle-entry.agent {
+      border-color: rgba(45, 212, 191, 0.42);
+      background: rgba(14, 46, 42, 0.34);
+    }
+
+    .lifecycle-entry.system {
+      border-color: rgba(245, 158, 11, 0.35);
+      background: rgba(61, 39, 4, 0.34);
+    }
+
+    .lifecycle-entry .meta-line,
+    .thread-meta,
+    .directory-meta,
+    .mindmap-meta,
+    .source-tree-meta {
+      color: var(--dim);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      line-height: 1.45;
+    }
+
+    .thread-title,
+    .directory-title,
+    .mindmap-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .directory-group-title {
+      color: #c7d2fe;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .directory-entry {
+      border: 1px solid rgba(120, 168, 210, 0.18);
+      border-radius: 10px;
+      padding: 9px;
+      background: rgba(10, 16, 26, 0.92);
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .directory-entry-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      align-items: center;
+    }
+
+    .sync-pill,
+    .utility-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 168, 210, 0.34);
+      background: rgba(20, 32, 51, 0.88);
+      color: var(--muted);
+    }
+
+    .sync-pill.mirrored {
+      border-color: rgba(52, 211, 153, 0.6);
+      color: #bbf7d0;
+    }
+
+    .sync-pill.mirror-only {
+      border-color: rgba(245, 158, 11, 0.58);
+      color: #fde68a;
+    }
+
+    .sync-pill.missing {
+      border-color: rgba(248, 113, 113, 0.58);
+      color: #fecaca;
+    }
+
+    .mindmap-shell {
+      display: grid;
+      gap: 12px;
+    }
+
+    .mindmap-center {
+      background: radial-gradient(circle at 50% 0%, rgba(45, 212, 191, 0.18), rgba(10, 16, 26, 0.95));
+    }
+
+    .mindmap-node-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .mindmap-node.status-observed {
+      border-color: rgba(52, 211, 153, 0.42);
+    }
+
+    .mindmap-node.status-pending {
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+
+    .mindmap-node.status-error {
+      border-color: rgba(248, 113, 113, 0.42);
+    }
+
+    .utility-dock {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .utility-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 8px 12px;
+    }
+
+    .utility-button.active {
+      border-color: rgba(45, 212, 191, 0.65);
+      background: rgba(45, 212, 191, 0.16);
+      color: #d1fae5;
+    }
+
+    .utility-drawer {
+      display: none;
+      margin-top: 14px;
+    }
+
+    .utility-drawer.open {
+      display: block;
+    }
+
+    .utility-sections {
+      display: grid;
+      gap: 12px;
+    }
+
+    .utility-section[hidden] {
+      display: none !important;
+    }
+
+    .drawer-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .drawer-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .status-dot.stalled {
+      background: #fb7185;
+      box-shadow: 0 0 10px rgba(251, 113, 133, 0.8);
+    }
+
+    .loop-control-card.status-stalled .lane-icon,
+    .agent-play-card.status-stalled .agent-card-icon {
+      text-shadow: 0 0 10px rgba(251, 113, 133, 0.95), 0 0 22px rgba(251, 113, 133, 0.45);
+    }
   </style>
 </head>
 <body>
@@ -500,59 +1101,58 @@
       <div class="panel">
         <div class="panel-header">
           <div>
-            <div class="label">Human Control Loop</div>
-            <div class="title">User -> FERROS -> Domain/Architect -> Runtime Loops -> Escalation -> FERROS</div>
+            <div class="label">Ferros Agent Dispatch</div>
+            <div class="title">Mediated Administration Runtime Spiral</div>
           </div>
           <div class="pill" id="openChatCount">0 open chats</div>
         </div>
         <div class="panel-body">
-          <div class="flow-map" id="flowMap">
-            <div class="flow-node" data-stage="human">HUMAN CHAT</div>
-            <div class="flow-node" data-stage="ferros">FERROS AGENT</div>
-            <div class="flow-node" data-stage="ferros-architect">FERROS AGENT ARCHITECT</div>
-            <div class="flow-node" data-stage="coding">CODING AGENT</div>
-            <div class="flow-node" data-stage="business">BUSINESS AGENT</div>
-            <div class="flow-node" data-stage="coding-architect">CODING AGENT ARCHITECT</div>
-            <div class="flow-node" data-stage="business-architect">BUSINESS AGENT ARCHITECT</div>
-            <div class="flow-node" data-stage="core">CORE AGENT</div>
-            <div class="flow-node" data-stage="subcore">SUBCORE AGENT</div>
-            <div class="flow-node" data-stage="escalation">ESCALATION RETURN</div>
-          </div>
-
           <div class="split">
             <div class="subpanel">
               <div class="subheader">Open Conversation</div>
               <div class="btn-row" style="margin-bottom: 8px;">
                 <select id="chatSelector"></select>
-                <button id="newChatBtn">New User Chat</button>
+                <button id="archiveChatBtn">Archive</button>
               </div>
               <div class="chat-messages" id="chatMessages"></div>
               <div class="chat-controls">
                 <textarea id="chatInput" placeholder="Write to FERROS Agent..."></textarea>
                 <div class="btn-row" style="align-self: end;">
                   <button id="sendChatBtn">Send</button>
-                  <select id="routeTargetSelect">
-                    <option value="coding">Route To Coding Agent</option>
-                    <option value="business">Route To Business Agent</option>
-                    <option value="ferros-architect">Route To FERROS Agent Architect</option>
-                    <option value="coding-architect">Route To Coding Agent Architect</option>
-                    <option value="business-architect">Route To Business Agent Architect</option>
-                  </select>
-                  <button id="dispatchRouteBtn">Send Packet</button>
                 </div>
               </div>
             </div>
 
             <div class="subpanel">
               <div class="subheader">Running Loops</div>
-              <div class="btn-row" style="margin-bottom: 8px;">
-                <button id="architectToDomainArchitectsBtn">Agent Architect -> Coding+Business Architects</button>
-                <button id="codingToCoreBtn">Coding -> Core+SubCore</button>
-                <button id="coreBackBtn">Core/SubCore -> Coding</button>
-                <button id="businessToDepartmentsBtn">Business Architect -> Departments</button>
-                <button id="departmentsBackBtn">Departments -> Business Architect</button>
-                <button id="escalateBtn">Coding Escalates -> FERROS</button>
+              <div class="loop-control-grid">
+                <button id="laneAgentArchitectBtn" class="loop-control-card status-idle">
+                  <div class="lane-title"><span class="word word-a">Agent</span><span class="word word-b">Architect</span></div>
+                  <div class="lane-icons"><span class="lane-icon">🤖</span><span class="lane-icon">👨🏻‍💼</span></div>
+                  <div class="lane-sub">Software Agent Architect + Business Agent Architect</div>
+                  <div class="lane-meta" id="laneAgentArchitectMeta">idle</div>
+                </button>
+                <button id="laneSoftwareArchitectBtn" class="loop-control-card status-idle">
+                  <div class="lane-title"><span class="word word-c">Software</span><span class="word word-d">Architect</span></div>
+                  <div class="lane-icons"><span class="lane-icon">💻</span><span class="lane-icon">🧰</span></div>
+                  <div class="lane-sub">Core Programmer + SubCore Programmer loop</div>
+                  <div class="lane-meta" id="laneSoftwareArchitectMeta">idle</div>
+                </button>
+                <button id="laneBusinessManagerBtn" class="loop-control-card status-idle">
+                  <div class="lane-title"><span class="word word-b">Business</span><span class="word word-c">Manager</span></div>
+                  <div class="lane-icons"><span class="lane-icon">📄</span><span class="lane-icon">💰</span><span class="lane-icon">👥</span></div>
+                  <div class="lane-sub">Operations + Sales + Finance + HR</div>
+                  <div class="lane-meta" id="laneBusinessManagerMeta">idle</div>
+                </button>
+                <button id="laneOperatorBacklogBtn" class="loop-control-card status-idle">
+                  <div class="lane-title"><span class="word word-d">Administration</span></div>
+                  <div class="lane-icons"><span class="lane-icon">🛡️</span><span class="lane-icon">💬</span><span class="lane-icon">🚨</span></div>
+                  <div class="lane-sub">Open escalations requiring operator visibility</div>
+                  <div class="lane-meta" id="laneOperatorBacklogMeta">no waiting issues</div>
+                  <span id="laneOperatorBacklogCount" class="lane-meta">[0]</span>
+                </button>
               </div>
+              <div class="category-view-title" id="categoryViewTitle">Administration</div>
               <div class="loop-list" id="loopList"></div>
             </div>
           </div>
@@ -563,23 +1163,87 @@
         <div class="panel-header">
           <div>
             <div class="label">Packet Lifecycle</div>
-            <div class="title">Handoff Timeline</div>
+            <div class="title">Lifecycle Chat</div>
           </div>
+          <span class="utility-pill" id="sourceTreeStatus">sync unknown</span>
         </div>
-        <div class="panel-body">
-          <div class="timeline-list" id="timelineList"></div>
+        <div class="panel-body lifecycle-shell">
+          <div class="lifecycle-thread-list" id="lifecycleThreadList"></div>
+          <div class="lifecycle-thread-view">
+            <div class="lifecycle-thread-header" id="lifecycleThreadHeader">
+              <div class="thread-title">No lifecycle thread selected</div>
+              <div class="thread-meta">Select a packet, work order, escalation, or loop thread.</div>
+            </div>
+            <div class="lifecycle-messages" id="lifecycleMessages"></div>
+            <div class="chat-controls">
+              <textarea id="lifecycleInput" placeholder="Add operator note to selected lifecycle thread..."></textarea>
+              <div class="btn-row" style="align-self: end;">
+                <button id="sendLifecycleBtn">Add Note</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="panel" style="margin-top: 14px;">
+      <div class="utility-dock">
+        <button id="utilityArchiveBtn" class="utility-button">🗄️ Archive</button>
+        <button id="utilityDenyBtn" class="utility-button">⛔ Deny</button>
+        <button id="utilityConsoleBtn" class="utility-button">⌘ Console</button>
+        <button id="utilityQuickActionsBtn" class="utility-button">⚡ Quick Actions</button>
+      </div>
+
+      <div class="panel utility-drawer" id="utilityDrawer">
         <div class="panel-header">
           <div>
-            <div class="label">Archived Conversations</div>
-            <div class="title">Completed Or In-Flight Packet Chats</div>
+            <div class="label">Operator Utility</div>
+            <div class="title" id="utilityDrawerTitle">Drawer</div>
           </div>
+          <button id="utilityDrawerCloseBtn">Close</button>
         </div>
-        <div class="panel-body">
-          <div class="archive-list" id="archiveList"></div>
+        <div class="panel-body utility-sections">
+          <div class="utility-section" data-drawer="archive" hidden>
+            <div class="drawer-head">
+              <strong>Archived Conversations</strong>
+              <span class="minor">Completed or parked packet chats</span>
+            </div>
+            <div class="archive-list" id="archiveList"></div>
+          </div>
+
+          <div class="utility-section" data-drawer="deny" hidden>
+            <div class="drawer-head">
+              <strong>Deny Log</strong>
+              <button id="clearDenyViewBtn">Clear View</button>
+            </div>
+            <div class="drawer-grid">
+              <div id="denyLogContainer">
+                <div class="minor">Loading deny log...</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="utility-section" data-drawer="console" hidden>
+            <div class="drawer-head">
+              <strong>Raw Console</strong>
+              <span class="minor">Direct JSON-RPC probe</span>
+            </div>
+            <textarea id="rpcInput">{"jsonrpc":"2.0","id":"manual-1","method":"agent.list","params":{}}</textarea>
+            <div class="btn-row" style="margin-top: 8px; margin-bottom: 8px;">
+              <button id="rpcSendBtn">Send RPC</button>
+            </div>
+            <div class="outbox" id="rpcOutput"></div>
+          </div>
+
+          <div class="utility-section" data-drawer="quick-actions" hidden>
+            <div class="drawer-head">
+              <strong>Quick Actions</strong>
+              <span class="minor">Profile and local shell shortcuts</span>
+            </div>
+            <div class="btn-row" style="margin-bottom: 8px;">
+              <button id="profileInitBtn">Init Profile</button>
+              <button id="profileShowBtn">Show Profile</button>
+            </div>
+            <div class="outbox" id="profileOutput"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -588,8 +1252,22 @@
       <div class="panel">
         <div class="panel-header">
           <div>
+            <div class="label">Definitions</div>
+            <div class="title">Agent Directory</div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="directory-tree" id="agentDirectoryTree">
+            <div class="minor">Loading agent directory...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div>
             <div class="label">Live Runtime</div>
-            <div class="title">Agent Roster</div>
+            <div class="title">Running Services</div>
           </div>
         </div>
         <div class="panel-body">
@@ -615,56 +1293,11 @@
         <div class="panel-header">
           <div>
             <div class="label">Runway</div>
-            <div class="title">Checklist</div>
+            <div class="title">Mindmap</div>
           </div>
         </div>
-        <div class="panel-body" id="checklistContainer">
-          <div class="minor">Loading checklist...</div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="label">Safety</div>
-            <div class="title">Deny Log</div>
-          </div>
-          <button id="clearDenyViewBtn">Clear View</button>
-        </div>
-        <div class="panel-body" id="denyLogContainer">
-          <div class="minor">Loading deny log...</div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="label">RPC</div>
-            <div class="title">Raw Console</div>
-          </div>
-        </div>
-        <div class="panel-body">
-          <textarea id="rpcInput">{"jsonrpc":"2.0","id":"manual-1","method":"agent.list","params":{}}</textarea>
-          <div class="btn-row" style="margin-top: 8px; margin-bottom: 8px;">
-            <button id="rpcSendBtn">Send RPC</button>
-          </div>
-          <div class="outbox" id="rpcOutput"></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="label">Profile</div>
-            <div class="title">Quick Actions</div>
-          </div>
-        </div>
-        <div class="panel-body">
-          <div class="btn-row" style="margin-bottom: 8px;">
-            <button id="profileInitBtn">Init Profile</button>
-            <button id="profileShowBtn">Show Profile</button>
-          </div>
-          <div class="outbox" id="profileOutput"></div>
+        <div class="panel-body" id="runwayMindmap">
+          <div class="minor">Loading mindmap...</div>
         </div>
       </div>
     </div>
@@ -672,7 +1305,8 @@
 
   <script>
     // BRIDGE-WORKAROUND CONFIG
-    const FERROS_SHELL_URL = 'http://127.0.0.1:4317';
+    // Dynamically construct shell URL to support both localhost and remote access
+    const FERROS_SHELL_URL = `http://${window.location.hostname}:4317`;
     const POLL_INTERVAL_MS = 3000;
 
     let autoRefresh = false;
@@ -685,8 +1319,19 @@
       archivedChats: [],
       runningLoops: [],
       timeline: [],
+      lifecycleThreads: [],
+      agentDirectory: [],
+      agentSourceTree: null,
+      runwaySummary: null,
+      denyEntries: [],
       selectedChatId: null,
+      selectedLifecycleThreadId: null,
       nextId: 1,
+      flippedLoopIds: {},
+      selectedCategory: null,
+      centeredCategory: null,
+      utilityDrawer: null,
+      autoFollowAttention: true,
     };
 
     async function fetchMonitorState() {
@@ -695,12 +1340,18 @@
       sessionStore.archivedChats = response.archivedChats || [];
       sessionStore.runningLoops = response.runningLoops || [];
       sessionStore.timeline = response.timeline || [];
+      sessionStore.lifecycleThreads = response.lifecycleThreads || [];
+      sessionStore.agentDirectory = response.agentDirectory || [];
+      sessionStore.agentSourceTree = response.agentSourceTree || null;
       sessionStore.selectedChatId = response.selectedChatId || sessionStore.openChats[0]?.id || null;
+      sessionStore.selectedLifecycleThreadId = response.selectedLifecycleThreadId || sessionStore.selectedLifecycleThreadId || sessionStore.lifecycleThreads[0]?.id || null;
       sessionStore.nextId = response.nextId || 1;
       renderChats();
       renderLoops();
-      renderTimeline();
+      renderLifecycleShell();
       renderArchive();
+      renderAgentDirectory();
+      renderUtilityDrawer();
       updateFlowMap();
     }
 
@@ -718,26 +1369,40 @@
       timestamp: document.getElementById('timestamp'),
       refreshBtn: document.getElementById('refreshBtn'),
       autoToggleBtn: document.getElementById('autoToggleBtn'),
-      flowMap: document.getElementById('flowMap'),
       openChatCount: document.getElementById('openChatCount'),
       chatSelector: document.getElementById('chatSelector'),
-      newChatBtn: document.getElementById('newChatBtn'),
       chatMessages: document.getElementById('chatMessages'),
       chatInput: document.getElementById('chatInput'),
       sendChatBtn: document.getElementById('sendChatBtn'),
-      routeTargetSelect: document.getElementById('routeTargetSelect'),
-      dispatchRouteBtn: document.getElementById('dispatchRouteBtn'),
-      architectToDomainArchitectsBtn: document.getElementById('architectToDomainArchitectsBtn'),
-      codingToCoreBtn: document.getElementById('codingToCoreBtn'),
-      coreBackBtn: document.getElementById('coreBackBtn'),
-      businessToDepartmentsBtn: document.getElementById('businessToDepartmentsBtn'),
-      departmentsBackBtn: document.getElementById('departmentsBackBtn'),
-      escalateBtn: document.getElementById('escalateBtn'),
+      archiveChatBtn: document.getElementById('archiveChatBtn'),
+      laneAgentArchitectBtn: document.getElementById('laneAgentArchitectBtn'),
+      laneSoftwareArchitectBtn: document.getElementById('laneSoftwareArchitectBtn'),
+      laneBusinessManagerBtn: document.getElementById('laneBusinessManagerBtn'),
+      laneOperatorBacklogBtn: document.getElementById('laneOperatorBacklogBtn'),
+      laneAgentArchitectMeta: document.getElementById('laneAgentArchitectMeta'),
+      laneSoftwareArchitectMeta: document.getElementById('laneSoftwareArchitectMeta'),
+      laneBusinessManagerMeta: document.getElementById('laneBusinessManagerMeta'),
+      laneOperatorBacklogMeta: document.getElementById('laneOperatorBacklogMeta'),
+      laneOperatorBacklogCount: document.getElementById('laneOperatorBacklogCount'),
+      categoryViewTitle: document.getElementById('categoryViewTitle'),
       loopList: document.getElementById('loopList'),
-      timelineList: document.getElementById('timelineList'),
+      lifecycleThreadList: document.getElementById('lifecycleThreadList'),
+      lifecycleThreadHeader: document.getElementById('lifecycleThreadHeader'),
+      lifecycleMessages: document.getElementById('lifecycleMessages'),
+      lifecycleInput: document.getElementById('lifecycleInput'),
+      sendLifecycleBtn: document.getElementById('sendLifecycleBtn'),
+      sourceTreeStatus: document.getElementById('sourceTreeStatus'),
       archiveList: document.getElementById('archiveList'),
+      utilityArchiveBtn: document.getElementById('utilityArchiveBtn'),
+      utilityDenyBtn: document.getElementById('utilityDenyBtn'),
+      utilityConsoleBtn: document.getElementById('utilityConsoleBtn'),
+      utilityQuickActionsBtn: document.getElementById('utilityQuickActionsBtn'),
+      utilityDrawer: document.getElementById('utilityDrawer'),
+      utilityDrawerTitle: document.getElementById('utilityDrawerTitle'),
+      utilityDrawerCloseBtn: document.getElementById('utilityDrawerCloseBtn'),
+      agentDirectoryTree: document.getElementById('agentDirectoryTree'),
       agentRoster: document.getElementById('agentRoster'),
-      checklistContainer: document.getElementById('checklistContainer'),
+      runwayMindmap: document.getElementById('runwayMindmap'),
       denyLogContainer: document.getElementById('denyLogContainer'),
       clearDenyViewBtn: document.getElementById('clearDenyViewBtn'),
       rpcInput: document.getElementById('rpcInput'),
@@ -746,6 +1411,127 @@
       profileInitBtn: document.getElementById('profileInitBtn'),
       profileShowBtn: document.getElementById('profileShowBtn'),
       profileOutput: document.getElementById('profileOutput'),
+    };
+
+    const categoryLabels = {
+      architect: 'Agent Architect',
+      software: 'Software Architect',
+      business: 'Business Manager',
+      administration: 'Administration',
+    };
+
+    const categoryButtons = {
+      architect: 'laneAgentArchitectBtn',
+      software: 'laneSoftwareArchitectBtn',
+      business: 'laneBusinessManagerBtn',
+      administration: 'laneOperatorBacklogBtn',
+    };
+
+    let lastRankedKeys = [];
+    let carouselDragActive = false;
+    let categoryGhosts = {};
+
+    const SOFTWARE_QUEUE_NAMES = ['Software Architect', 'Coding Agent'];
+
+    const categoryCardDefinitions = {
+      architect: [
+        {
+          id: 'architect-software-agent-architect',
+          name: 'Software Agent Architect',
+          subtitle: 'Coding-family agent maker',
+          icon: '🤖',
+          sourceNames: ['Coding Agent Architect'],
+          description: 'Designs coding agents, lane rules, packet templates, and promotion gates.',
+          detail: 'Broad target: software agent topology. Current detail path: category model -> coding-family registry -> Core/SubCore packet contracts -> implementation lane guidance.',
+        },
+        {
+          id: 'architect-business-agent-architect',
+          name: 'Business Agent Architect',
+          subtitle: 'Business-family agent maker',
+          icon: '👨🏻‍💼',
+          sourceNames: ['Business Agent Architect'],
+          description: 'Designs business agents, operating-company roles, templates, and escalation boundaries.',
+          detail: 'Broad target: business agent topology. Current detail path: category model -> department roles -> business templates -> operator escalation rules.',
+        },
+      ],
+      software: [
+        {
+          id: 'software-architect',
+          name: 'Software Architect',
+          subtitle: 'Software work-order router',
+          icon: '💻',
+          sourceNames: SOFTWARE_QUEUE_NAMES,
+          description: 'Routes the software queue into Core and SubCore, then closes or escalates the merged result.',
+          detail: 'Broad target: software execution. Current detail path: FERROS packet -> Software Architect queue -> Core/SubCore work orders -> merge, report, or escalation.',
+        },
+        {
+          id: 'software-core-programmer',
+          name: 'Core Programmer',
+          subtitle: 'Platform-neutral implementation',
+          icon: '🧰',
+          sourceNames: ['Core Agent'],
+          description: 'Executes main FERROS package work and returns implementation reports.',
+          detail: 'Broad target: FERROS package code. Current detail path: work order -> scoped edit -> focused validation -> Coding report.',
+        },
+        {
+          id: 'software-subcore-programmer',
+          name: 'SubCore Programmer',
+          subtitle: 'FERROS-root incubation',
+          icon: '⚙️',
+          sourceNames: ['SubCore Agent'],
+          description: 'Executes x86_64 FERROS-root scaffold work and runtime-seam rehearsals.',
+          detail: 'Broad target: SubCore runtime incubation. Current detail path: scaffold contract -> runtime rehearsal -> non-claim report -> Coding merge.',
+        },
+      ],
+      business: [
+        {
+          id: 'business-operations',
+          name: 'Operations',
+          subtitle: 'Operating process lane',
+          icon: '📄',
+          sourceNames: ['Operations Department'],
+          description: 'Turns business direction into process, SOP, and operating cadence packets.',
+          detail: 'Broad target: operating company process. Current detail path: business directive -> operations template -> execution note -> Business Manager report.',
+        },
+        {
+          id: 'business-sales',
+          name: 'Sales',
+          subtitle: 'Pipeline and offer lane',
+          icon: '💼',
+          sourceNames: ['Sales Department'],
+          description: 'Prepares offer, pipeline, and customer-facing business packets.',
+          detail: 'Broad target: business development. Current detail path: market prompt -> offer draft -> risk language -> Business Manager report.',
+        },
+        {
+          id: 'business-finance',
+          name: 'Finance',
+          subtitle: 'Numbers and runway lane',
+          icon: '💰',
+          sourceNames: ['Finance Department'],
+          description: 'Maintains finance, pricing, runway, and budget packet outputs.',
+          detail: 'Broad target: financial operations. Current detail path: planning input -> model draft -> assumptions -> Business Manager report.',
+        },
+        {
+          id: 'business-hr',
+          name: 'HR',
+          subtitle: 'People and role lane',
+          icon: '👥',
+          sourceNames: ['HR Department'],
+          description: 'Maintains role design, hiring packet, and people-operation outputs.',
+          detail: 'Broad target: people systems. Current detail path: role need -> responsibility map -> governance note -> Business Manager report.',
+        },
+      ],
+      administration: [
+        {
+          id: 'admin-ferros-agent',
+          name: 'FERROS Agent',
+          subtitle: 'Operator-facing escalation resolver',
+          icon: '🛡️',
+          sourceNames: ['FERROS Agent', 'FERROS Escalation'],
+          description: 'Handles escalations before they reach the operator and routes clarification when needed.',
+          detail: 'Broad target: operator attention. Current detail path: escalation packet -> FERROS triage -> resolve back to Coding/Business or ask Administration.',
+        },
+      ],
     };
 
     function showError(message) {
@@ -773,7 +1559,6 @@
         ...entry,
       });
       sessionStore.timeline = sessionStore.timeline.slice(0, 120);
-      renderTimeline();
     }
 
     function createChatSession(label = 'User -> FERROS') {
@@ -852,37 +1637,590 @@
       updateFlowMap();
     }
 
-    function renderFlowNode(stage, active) {
-      const node = elements.flowMap.querySelector(`[data-stage="${stage}"]`);
-      if (!node) {
-        return;
-      }
-      node.classList.toggle('active', active);
+    function updateFlowMap() {
+      elements.openChatCount.textContent = `${sessionStore.openChats.length} open chats`;
     }
 
-    function updateFlowMap() {
-      const hasOpenFerrosChat = sessionStore.openChats.some((c) => c.activeAgent === 'FERROS Agent');
-      const hasCodingLoop = sessionStore.runningLoops.some((l) => l.agent === 'Coding Agent');
-      const hasBusinessLoop = sessionStore.runningLoops.some((l) => l.agent === 'Business Agent');
-      const hasAgentArchitectLoop = sessionStore.runningLoops.some((l) => l.agent === 'FERROS Agent Architect Agent');
-      const hasCodingArchitectLoop = sessionStore.runningLoops.some((l) => l.agent === 'Coding Agent Architect');
-      const hasBusinessArchitectLoop = sessionStore.runningLoops.some((l) => l.agent === 'Business Agent Architect');
-      const hasCoreLoop = sessionStore.runningLoops.some((l) => l.agent === 'Core Agent');
-      const hasSubCoreLoop = sessionStore.runningLoops.some((l) => l.agent === 'SubCore Agent');
-      const hasEscalation = sessionStore.runningLoops.some((l) => l.agent === 'FERROS Escalation');
+    function normalizeLoopStatus(status) {
+      const value = String(status || '').toLowerCase();
+      if (['running', 'escalating', 'attention', 'stalled', 'stopped'].includes(value)) {
+        return value;
+      }
+      if (value === 'waiting') {
+        return 'attention';
+      }
+      return 'idle';
+    }
 
-      renderFlowNode('human', sessionStore.openChats.length > 0);
-      renderFlowNode('ferros', hasOpenFerrosChat || hasEscalation);
-      renderFlowNode('ferros-architect', hasAgentArchitectLoop);
-      renderFlowNode('coding', hasCodingLoop);
-      renderFlowNode('business', hasBusinessLoop);
-      renderFlowNode('coding-architect', hasCodingArchitectLoop);
-      renderFlowNode('business-architect', hasBusinessArchitectLoop);
-      renderFlowNode('core', hasCoreLoop);
-      renderFlowNode('subcore', hasSubCoreLoop);
-      renderFlowNode('escalation', hasEscalation);
+    function summarizeLoopSet(names) {
+      const loops = sessionStore.runningLoops.filter((loop) => names.includes(normalizeAgentName(loop.agent)));
+      const summary = {
+        running: 0,
+        escalating: 0,
+        attention: 0,
+        stalled: 0,
+        stopped: 0,
+        total: loops.length,
+      };
+      for (const loop of loops) {
+        const status = normalizeLoopStatus(loop.status || loop.state);
+        if (summary[status] !== undefined) {
+          summary[status] += 1;
+        }
+      }
+      return summary;
+    }
 
-      elements.openChatCount.textContent = `${sessionStore.openChats.length} open chats`;
+    function scoreCategorySummary(summary) {
+      return (summary.attention * 5) + (summary.stalled * 4) + (summary.stopped * 4) + (summary.escalating * 3) + (summary.running * 0.75);
+    }
+
+    function summarizeAttentionHotness(summary) {
+      return summary.escalating + summary.attention + summary.stalled + summary.stopped;
+    }
+
+    function statusClassForSummary(summary) {
+      if (summary.attention > 0 || summary.stalled > 0 || summary.stopped > 0) {
+        return summary.stalled > 0 ? 'status-stalled' : 'status-alert';
+      }
+      if (summary.escalating > 0) {
+        return 'status-warn';
+      }
+      if (summary.running > 0) {
+        return 'status-good';
+      }
+      return 'status-idle';
+    }
+
+    function applyControlCardStatus(categoryKey, element, summary, metaElement, label) {
+      element.classList.remove('status-idle', 'status-good', 'status-warn', 'status-alert', 'status-stalled');
+      element.classList.add(statusClassForSummary(summary));
+      element.classList.toggle('selected', sessionStore.selectedCategory === categoryKey);
+      metaElement.textContent = `${label}: ${summary.running} running / ${summary.escalating + summary.attention + summary.stalled + summary.stopped} hot`;
+    }
+
+    function circularOffset(index, centerIndex, length) {
+      let offset = index - centerIndex;
+      const wrapThreshold = Math.floor(length / 2);
+
+      if (offset > wrapThreshold) {
+        offset -= length;
+      }
+      if (offset < -wrapThreshold) {
+        offset += length;
+      }
+
+      return offset;
+    }
+
+    function carouselPresentationForOffset(offset) {
+      const presentationByOffset = {
+        0: { shift: 0, scale: 1, opacity: 1, zIndex: 5, clipLeft: 0, clipRight: 0, saturate: 1, brightness: 1 },
+        1: { shift: 106, scale: 0.88, opacity: 0.9, zIndex: 4, clipLeft: 0, clipRight: 0, saturate: 0.92, brightness: 0.94 },
+        '-1': { shift: -106, scale: 0.88, opacity: 0.9, zIndex: 4, clipLeft: 0, clipRight: 0, saturate: 0.92, brightness: 0.94 },
+        2: { shift: 192, scale: 0.72, opacity: 0.75, zIndex: 3, clipLeft: 0, clipRight: 42, saturate: 0.72, brightness: 0.82 },
+        '-2': { shift: -192, scale: 0.72, opacity: 0.75, zIndex: 3, clipLeft: 42, clipRight: 0, saturate: 0.72, brightness: 0.82 },
+      };
+
+      return presentationByOffset[offset] || {
+        shift: offset * 242,
+        scale: 0.7,
+        opacity: 0,
+        zIndex: 1,
+        clipLeft: 60,
+        clipRight: 60,
+        saturate: 0.65,
+        brightness: 0.78,
+        hidden: true,
+      };
+    }
+
+    function lerpPresentation(a, b, t) {
+      return {
+        shift:      a.shift      + (b.shift      - a.shift)      * t,
+        scale:      a.scale      + (b.scale      - a.scale)      * t,
+        opacity:    a.opacity    + (b.opacity    - a.opacity)    * t,
+        zIndex:     Math.round(a.zIndex + (b.zIndex - a.zIndex) * t),
+        clipLeft:   a.clipLeft   + (b.clipLeft   - a.clipLeft)   * t,
+        clipRight:  a.clipRight  + (b.clipRight  - a.clipRight)  * t,
+        saturate:   a.saturate   + (b.saturate   - a.saturate)   * t,
+        brightness: a.brightness + (b.brightness - a.brightness) * t,
+        hidden:     false,
+      };
+    }
+
+    function carouselPresentationForFloatOffset(floatOffset) {
+      const floor = Math.floor(floatOffset);
+      const t = floatOffset - floor;
+      if (t < 0.001) return carouselPresentationForOffset(floor);
+      if (t > 0.999) return carouselPresentationForOffset(floor + 1);
+      return lerpPresentation(
+        carouselPresentationForOffset(floor),
+        carouselPresentationForOffset(floor + 1),
+        t,
+      );
+    }
+
+    function normalizeFloatOffset(offset, length) {
+      const half = length / 2;
+      let o = offset;
+      while (o > half)  o -= length;
+      while (o < -half) o += length;
+      return o;
+    }
+
+    function applyCarouselLayout(categoryKeys, centeredCategory, dragOffset = 0) {
+      const orderedCategories = categoryKeys.length > 0 ? categoryKeys : Object.keys(categoryButtons);
+      const n = orderedCategories.length;
+      const centerIndex = Math.max(0, orderedCategories.indexOf(centeredCategory));
+      const carouselGrid = elements.laneAgentArchitectBtn?.parentElement;
+      const cardWidth = elements.laneAgentArchitectBtn?.offsetWidth || 138;
+      const centerLeft = carouselGrid
+        ? Math.max(0, Math.round((carouselGrid.clientWidth - cardWidth) / 2))
+        : 0;
+
+      // Convert pixel drag to fractional step offset.
+      // 126px = 1 step. Drag left = negative pixels = right card advances toward center.
+      const stepPx = 126;
+      const fractionalDrag = dragOffset / stepPx;
+
+      Object.entries(categoryButtons).forEach(([categoryKey, elementKey]) => {
+        const button = elements[elementKey];
+        if (!button) return;
+
+        const categoryIndex = orderedCategories.indexOf(categoryKey);
+        const baseOffset = categoryIndex === -1 ? Math.ceil(n / 2) : circularOffset(categoryIndex, centerIndex, n);
+        const floatOffset = normalizeFloatOffset(baseOffset + fractionalDrag, n);
+        const presentation = carouselPresentationForFloatOffset(floatOffset);
+
+        button.dataset.carouselHidden = presentation.hidden ? 'true' : 'false';
+        button.classList.toggle('is-centered', Math.abs(floatOffset) < 0.5);
+        button.style.pointerEvents = presentation.hidden ? 'none' : 'auto';
+        button.style.left = `${centerLeft + presentation.shift}px`;
+        button.style.transform = `scale(${presentation.scale})`;
+        button.style.opacity = String(presentation.opacity);
+        button.style.zIndex = String(presentation.zIndex);
+        button.style.clipPath = `inset(0 ${presentation.clipRight}% 0 ${presentation.clipLeft}% round 12px)`;
+        button.style.filter = `saturate(${presentation.saturate}) brightness(${presentation.brightness})`;
+
+        // Portal ghost: show the same card peeking from the opposite edge.
+        const ghost = categoryGhosts[categoryKey];
+        if (ghost) {
+          // Mirror offset: opposite side of the circle (floatOffset ± n).
+          const mirrorSign = floatOffset >= 0 ? -1 : 1;
+          const mirrorOffset = floatOffset + mirrorSign * n;
+          if (Math.abs(mirrorOffset) <= 2.5) {
+            // Sync visual state from real button (status classes etc).
+            ghost.className = button.className + ' carousel-ghost';
+            ghost.innerHTML = button.innerHTML;
+            const gPres = carouselPresentationForFloatOffset(mirrorOffset);
+            ghost.style.display = '';
+            ghost.style.left = `${centerLeft + gPres.shift}px`;
+            ghost.style.transform = `scale(${gPres.scale})`;
+            ghost.style.opacity = String(gPres.opacity);
+            ghost.style.zIndex = String(gPres.zIndex - 1);
+            ghost.style.clipPath = `inset(0 ${gPres.clipRight}% 0 ${gPres.clipLeft}% round 12px)`;
+            ghost.style.filter = `saturate(${gPres.saturate}) brightness(${gPres.brightness})`;
+          } else {
+            ghost.style.display = 'none';
+          }
+        }
+      });
+    }
+
+    function initCarouselDrag() {
+      const grid = elements.laneAgentArchitectBtn?.parentElement;
+      if (!grid) return;
+
+      let startX = 0;
+      let startY = 0;
+      let currentDelta = 0;
+      let wheelAccum = 0;
+
+      // 1 step = shift distance for offset ±1.
+      const stepPx = 106;
+
+      function snapIndexDelta(delta) {
+        const steps = -delta / stepPx;
+        return Math.max(-2, Math.min(2, Math.round(steps)));
+      }
+
+      function setCardTransitions(value) {
+        Object.values(categoryButtons).forEach(key => {
+          const btn = elements[key];
+          if (btn) btn.style.transition = value;
+        });
+        Object.values(categoryGhosts).forEach(ghost => {
+          if (ghost) ghost.style.transition = value;
+        });
+      }
+
+      function commitSnap(delta) {
+        const indexDelta = snapIndexDelta(delta);
+        if (indexDelta !== 0) {
+          const ordered = lastRankedKeys.length > 0 ? lastRankedKeys : Object.keys(categoryButtons);
+          const current = Math.max(0, ordered.indexOf(sessionStore.centeredCategory));
+          const snapped = ordered[(current + indexDelta + ordered.length) % ordered.length];
+          sessionStore.centeredCategory = snapped;
+          sessionStore.selectedCategory = snapped;
+        }
+        renderLoops();
+      }
+
+      // ── Mouse drag (document-level listeners guarantee events even outside element) ──
+      grid.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        startX = e.clientX;
+        currentDelta = 0;
+        carouselDragActive = true;
+        setCardTransitions('none');
+        grid.classList.add('is-dragging');
+
+        function onMouseMove(me) {
+          currentDelta = me.clientX - startX;
+          applyCarouselLayout(lastRankedKeys, sessionStore.centeredCategory, currentDelta);
+        }
+
+        function onMouseUp() {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+          const snapDelta = currentDelta;
+          currentDelta = 0;
+          carouselDragActive = false;
+          setCardTransitions('');
+          grid.classList.remove('is-dragging');
+          if (Math.abs(snapDelta) > 4) {
+            grid.addEventListener('click', (ce) => ce.stopPropagation(), { capture: true, once: true });
+          }
+          commitSnap(snapDelta);
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+
+      // ── Touch drag (pointer events, deferred capture to not fight page scroll) ──
+      let touchDragging = false;
+      let touchDragged = false;
+
+      grid.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse') return; // handled above
+        touchDragging = true;
+        touchDragged = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        currentDelta = 0;
+      });
+
+      grid.addEventListener('pointermove', (e) => {
+        if (e.pointerType === 'mouse' || !touchDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if (!touchDragged) {
+          if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+          if (Math.abs(dy) > Math.abs(dx)) {
+            touchDragging = false;
+            return;
+          }
+          touchDragged = true;
+          carouselDragActive = true;
+          setCardTransitions('none');
+          grid.classList.add('is-dragging');
+          try { grid.setPointerCapture(e.pointerId); } catch (_) {}
+        }
+        currentDelta = dx;
+        applyCarouselLayout(lastRankedKeys, sessionStore.centeredCategory, currentDelta);
+      });
+
+      function endTouchDrag() {
+        if (!touchDragging) return;
+        const snapDelta = currentDelta;
+        const didDrag = touchDragged;
+        touchDragging = false;
+        touchDragged = false;
+        currentDelta = 0;
+        carouselDragActive = false;
+        setCardTransitions('');
+        grid.classList.remove('is-dragging');
+        if (didDrag) {
+          if (Math.abs(snapDelta) > 4) {
+            grid.addEventListener('click', (ce) => ce.stopPropagation(), { capture: true, once: true });
+          }
+          commitSnap(snapDelta);
+        }
+      }
+
+      grid.addEventListener('pointerup', (e) => {
+        if (e.pointerType !== 'mouse') endTouchDrag();
+      });
+      grid.addEventListener('pointercancel', (e) => {
+        if (e.pointerType !== 'mouse') {
+          touchDragging = false;
+          touchDragged = false;
+          currentDelta = 0;
+          carouselDragActive = false;
+          setCardTransitions('');
+          grid.classList.remove('is-dragging');
+          renderLoops();
+        }
+      });
+
+      // ── Wheel / trackpad ──
+      grid.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 600 : 1;
+        const raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+        wheelAccum += raw * scale;
+        if (Math.abs(wheelAccum) < 40) return;
+        const dir = wheelAccum > 0 ? 1 : -1;
+        wheelAccum = 0;
+        const ordered = lastRankedKeys.length > 0 ? lastRankedKeys : Object.keys(categoryButtons);
+        const current = Math.max(0, ordered.indexOf(sessionStore.centeredCategory));
+        const next = ordered[(current + dir + ordered.length) % ordered.length];
+        sessionStore.centeredCategory = next;
+        sessionStore.selectedCategory = next;
+        renderLoops();
+      }, { passive: false });
+    }
+
+    function initCarouselGhosts() {
+      const grid = elements.laneAgentArchitectBtn?.parentElement;
+      if (!grid) return;
+      Object.entries(categoryButtons).forEach(([key, elementKey]) => {
+        const btn = elements[elementKey];
+        if (!btn) return;
+        const ghost = document.createElement('div');
+        ghost.className = 'loop-control-card carousel-ghost';
+        ghost.setAttribute('aria-hidden', 'true');
+        ghost.style.display = 'none';
+        grid.appendChild(ghost);
+        categoryGhosts[key] = ghost;
+      });
+    }
+
+    function getOperatorBacklogItems() {
+      const byAgent = new Map();
+      for (const loop of sessionStore.runningLoops) {
+        const status = normalizeLoopStatus(loop.status || loop.state);
+        if (!['attention', 'escalating', 'stalled', 'stopped'].includes(status)) {
+          continue;
+        }
+        const key = normalizeAgentName(loop.agent);
+        if (!byAgent.has(key)) {
+          byAgent.set(key, {
+            id: `backlog-${loop.id}`,
+            sourceLoopId: loop.id,
+            threadId: loop.threadId,
+            agent: loop.agent,
+            status,
+            description: loop.statusDetail || loop.description,
+            startedAt: loop.startedAt,
+            updatedAt: loop.updatedAt,
+          });
+        }
+      }
+      return Array.from(byAgent.values());
+    }
+
+    function renderLoopControlCards() {
+      const summaries = {
+        architect: summarizeLoopSet(['FERROS Agent Architect Agent', 'Coding Agent Architect', 'Business Agent Architect']),
+        software: summarizeLoopSet(['Software Architect', 'Core Agent', 'SubCore Agent']),
+        business: summarizeLoopSet(['Business Agent', 'Business Agent Architect', 'Operations Department', 'Sales Department', 'Finance Department', 'HR Department']),
+        administration: {
+          running: 0,
+          escalating: getOperatorBacklogItems().filter((item) => item.status === 'escalating').length,
+          attention: getOperatorBacklogItems().filter((item) => item.status === 'attention').length + sessionStore.openChats.length,
+          stalled: getOperatorBacklogItems().filter((item) => item.status === 'stalled').length,
+          stopped: getOperatorBacklogItems().filter((item) => item.status === 'stopped').length,
+          total: getOperatorBacklogItems().length + sessionStore.openChats.length,
+        },
+      };
+
+      const rankedKeys = Object.entries(summaries)
+        .sort((left, right) => scoreCategorySummary(right[1]) - scoreCategorySummary(left[1]))
+        .map(([key]) => key);
+      const hottestCategory = rankedKeys[0] || sessionStore.selectedCategory || 'administration';
+      const hottestScore = scoreCategorySummary(summaries[hottestCategory] || { running: 0, escalating: 0, attention: 0, stalled: 0, stopped: 0 });
+      sessionStore.centeredCategory = hottestScore > 0
+        ? hottestCategory
+        : (sessionStore.selectedCategory || hottestCategory);
+      if (!sessionStore.selectedCategory) {
+        sessionStore.selectedCategory = sessionStore.centeredCategory;
+      }
+
+      applyControlCardStatus('architect', elements.laneAgentArchitectBtn, summaries.architect, elements.laneAgentArchitectMeta, 'architect');
+      applyControlCardStatus('software', elements.laneSoftwareArchitectBtn, summaries.software, elements.laneSoftwareArchitectMeta, 'software');
+      applyControlCardStatus('business', elements.laneBusinessManagerBtn, summaries.business, elements.laneBusinessManagerMeta, 'business');
+      applyControlCardStatus('administration', elements.laneOperatorBacklogBtn, summaries.administration, elements.laneOperatorBacklogMeta, 'administration');
+      elements.laneOperatorBacklogCount.textContent = `[${summaries.administration.attention + summaries.administration.stalled + summaries.administration.stopped}]`;
+      elements.laneOperatorBacklogMeta.textContent = `${summaries.administration.total} operator-visible issue(s) • hottest ${summarizeAttentionHotness(summaries.administration)}`;
+      elements.categoryViewTitle.textContent = categoryLabels[sessionStore.selectedCategory] || categoryLabels[sessionStore.centeredCategory] || 'Administration';
+      lastRankedKeys = rankedKeys;
+      if (!carouselDragActive) {
+        applyCarouselLayout(rankedKeys, sessionStore.centeredCategory);
+      }
+    }
+
+    function setSelectedCategory(categoryKey) {
+      sessionStore.selectedCategory = categoryKey;
+      renderLoops();
+    }
+
+    function findLoopBySourceNames(sourceNames) {
+      return sessionStore.runningLoops.find((loop) => sourceNames.includes(normalizeAgentName(loop.agent))) || null;
+    }
+
+    function statusForLoop(loop) {
+      if (!loop) {
+        return 'idle';
+      }
+      return normalizeLoopStatus(loop.status || loop.state);
+    }
+
+    function progressForStatus(status) {
+      const progress = {
+        running: 54,
+        escalating: 68,
+        attention: 84,
+        stalled: 91,
+        stopped: 24,
+        idle: 10,
+      };
+      return progress[status] || progress.idle;
+    }
+
+    function renderAgentPlayCard(definition) {
+      const loop = definition.loop || findLoopBySourceNames(definition.sourceNames || []);
+      const status = definition.status || statusForLoop(loop);
+      const description = loop?.statusDetail || loop?.description || definition.description;
+      const detail = loop
+        ? `${loop.statusReason || status}: ${loop.statusDetail || loop.description}`
+        : (definition.detail || description);
+      const flipped = Boolean(sessionStore.flippedLoopIds[definition.id]);
+      const progress = loop?.progress ?? progressForStatus(status);
+      const actionTargetId = definition.loop?.id || loop?.id || definition.id;
+      let actionMarkup = '';
+
+      if (definition.loop?.sourceLoopId) {
+        actionMarkup = `
+          <div class="loop-actions">
+            <button data-loop-action="open" data-loop-id="${escapeHtml(actionTargetId)}">Open</button>
+            <button data-loop-action="explain" data-loop-id="${escapeHtml(actionTargetId)}">Explain</button>
+          </div>
+        `;
+      } else if (loop) {
+        actionMarkup = `
+          <div class="loop-actions">
+            <button data-loop-action="stop-chat" data-loop-id="${escapeHtml(actionTargetId)}">Stop</button>
+            <button data-loop-action="chat" data-loop-id="${escapeHtml(actionTargetId)}">Chat</button>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="loop-card agent-play-card status-${escapeHtml(status)} ${flipped ? 'flipped' : ''}" data-loop-id="${escapeHtml(definition.id)}">
+          <div class="loop-card-inner">
+            <div class="loop-face front agent-card-front">
+              <div class="agent-card-topline">
+                <span class="agent-card-icon">${escapeHtml(definition.icon || '◆')}</span>
+                <span class="status-dot ${escapeHtml(status)}"></span>
+              </div>
+              <div class="agent-card-name">${escapeHtml(definition.name)}</div>
+              <div class="agent-card-subtitle">${escapeHtml(definition.subtitle)}</div>
+              <div class="progress-shell"><div class="progress-fill" style="width: ${progress}%;"></div></div>
+              <div class="agent-card-description">${escapeHtml(description)}</div>
+              <div class="flip-note">click to flip</div>
+            </div>
+            <div class="loop-face back agent-card-back">
+              <div class="agent-card-topline">
+                <strong>${escapeHtml(definition.name)}</strong>
+                <span class="pill ${status === 'attention' ? 'waiting' : status}">${escapeHtml(status)}</span>
+              </div>
+              <div class="agent-card-description">${escapeHtml(detail)}</div>
+              <div class="minor">${escapeHtml(loop?.workOrderId || definition.loop?.threadId || 'no packet id yet')}</div>
+              ${actionMarkup}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCategoryDeck(categoryKey) {
+      const definitions = [...(categoryCardDefinitions[categoryKey] || [])];
+
+      if (categoryKey === 'administration') {
+        for (const item of getOperatorBacklogItems()) {
+          definitions.push({
+            id: item.id,
+            name: `${item.agent} Escalation`,
+            subtitle: 'Operator attention required',
+            icon: item.status === 'stalled' ? '🧯' : '🚨',
+            status: item.status === 'stopped' ? 'stopped' : item.status,
+            description: item.description,
+            detail: `Administration path: ${item.agent} is ${item.status}. Open or explain will create a FERROS-visible follow-up chat keyed to this escalation.`,
+            loop: item,
+          });
+        }
+      }
+
+      if (definitions.length === 0) {
+        return '<div class="minor">No cards defined for this category yet.</div>';
+      }
+
+      return `<div class="agent-card-grid">${definitions.map((definition) => renderAgentPlayCard(definition)).join('')}</div>`;
+    }
+
+    async function openFerrosChat(label, openingMessage) {
+      const chat = await postMonitor('/monitor/sessions', { label });
+      if (openingMessage) {
+        await postMonitor(`/monitor/sessions/${chat.id}/messages`, {
+          speaker: 'user',
+          who: 'Operator',
+          text: openingMessage,
+        });
+      }
+      await fetchMonitorState();
+      sessionStore.selectedChatId = chat.id;
+      const selectedChat = getSelectedChat();
+      sessionStore.selectedLifecycleThreadId = selectedChat?.threadId || sessionStore.selectedLifecycleThreadId;
+      renderChats();
+      renderLifecycleShell();
+    }
+
+    async function runLoopAction(action, loopId) {
+      const loop = sessionStore.runningLoops.find((item) => item.id === loopId);
+      const backlog = getOperatorBacklogItems().find((item) => item.id === loopId);
+      const target = loop || backlog;
+      if (!target) {
+        return;
+      }
+
+      if (action === 'open') {
+        await openFerrosChat(`${target.agent} -> FERROS`, null);
+        return;
+      }
+
+      if (action === 'explain') {
+        await openFerrosChat(`${target.agent} escalation -> FERROS`, `Please explain current status for ${target.agent}: ${target.description}`);
+        return;
+      }
+
+      if (action === 'chat') {
+        await openFerrosChat(`${target.agent} -> FERROS`, `Operator requested direct chat on ${target.agent}. Current loop summary: ${target.description}`);
+        return;
+      }
+
+      if (action === 'stop-chat') {
+        try {
+          await stopAgentByName(target.agent);
+        } catch (error) {
+          showError(`Stop request failed for ${target.agent}: ${error.message}`);
+        }
+        await openFerrosChat(`${target.agent} stopped -> FERROS`, `Stopped ${target.agent}. Please triage and route next action.`);
+      }
     }
 
     function renderChats() {
@@ -896,9 +2234,11 @@
       }
 
       if (!selected) {
-        elements.chatMessages.innerHTML = '<div class="minor">No open chat. Create one with New User Chat.</div>';
+        elements.chatMessages.innerHTML = '<div class="minor">No open chat. Open one from a loop card.</div>';
         return;
       }
+
+      sessionStore.selectedLifecycleThreadId = selected.threadId || sessionStore.selectedLifecycleThreadId;
 
       elements.chatMessages.innerHTML = selected.messages
         .map((message) => `
@@ -912,42 +2252,66 @@
     }
 
     function renderLoops() {
-      if (sessionStore.runningLoops.length === 0) {
-        elements.loopList.innerHTML = '<div class="minor">No running loops yet.</div>';
-        return;
-      }
-
-      elements.loopList.innerHTML = sessionStore.runningLoops
-        .map((loop) => `
-          <div class="loop-card">
-            <div class="loop-head">
-              <strong>${escapeHtml(loop.agent)}</strong>
-              <span class="pill ${loop.state}">${escapeHtml(loop.state)}</span>
-            </div>
-            <div>${escapeHtml(loop.description)}</div>
-            <div class="minor" style="margin-top: 6px;">started ${escapeHtml(loop.startedAt)} • updated ${escapeHtml(loop.updatedAt)}</div>
-          </div>
-        `)
-        .join('');
+      renderLoopControlCards();
+      elements.loopList.innerHTML = renderCategoryDeck(sessionStore.selectedCategory || sessionStore.centeredCategory || 'administration');
     }
 
-    function renderTimeline() {
-      if (sessionStore.timeline.length === 0) {
-        elements.timelineList.innerHTML = '<div class="minor">No packet timeline yet.</div>';
+    function getSelectedLifecycleThread() {
+      return sessionStore.lifecycleThreads.find((thread) => thread.id === sessionStore.selectedLifecycleThreadId) || null;
+    }
+
+    function renderLifecycleShell() {
+      const sourceTree = sessionStore.agentSourceTree;
+      const syncState = sourceTree?.syncState || 'unknown';
+      elements.sourceTreeStatus.className = `sync-pill ${escapeHtml(syncState)}`;
+      elements.sourceTreeStatus.textContent = `${syncState} • ${sourceTree?.entryCount || 0} agents`;
+
+      if (sessionStore.lifecycleThreads.length === 0) {
+        elements.lifecycleThreadList.innerHTML = '<div class="minor">No lifecycle threads yet.</div>';
+        elements.lifecycleThreadHeader.innerHTML = '<div class="thread-title">No lifecycle thread selected</div><div class="thread-meta">Route a chat or trigger a loop transition to create one.</div>';
+        elements.lifecycleMessages.innerHTML = '<div class="minor">No packet lifecycle yet.</div>';
         return;
       }
 
-      elements.timelineList.innerHTML = sessionStore.timeline
-        .map((item) => `
-          <div class="timeline-item">
-            <div class="loop-head">
-              <strong>${escapeHtml(item.kind)}</strong>
-              <span class="minor">${escapeHtml(item.at)}</span>
-            </div>
-            <div>${escapeHtml(item.text)}</div>
+      if (!getSelectedLifecycleThread()) {
+        sessionStore.selectedLifecycleThreadId = sessionStore.lifecycleThreads[0]?.id || null;
+      }
+
+      elements.lifecycleThreadList.innerHTML = sessionStore.lifecycleThreads
+        .map((thread) => {
+          const selected = thread.id === sessionStore.selectedLifecycleThreadId;
+          return `
+            <button class="lifecycle-thread-item ${selected ? 'selected' : ''}" data-thread-id="${escapeHtml(thread.id)}">
+              <div class="thread-title">${escapeHtml(thread.title)}</div>
+              <div class="thread-meta">${escapeHtml(thread.kind)} • ${escapeHtml(thread.status)} • ${escapeHtml(thread.ownerAgent)}</div>
+              <div class="thread-meta">${escapeHtml(thread.workOrderId || thread.escalationId || thread.targetAgentId || 'no external id')} • ${escapeHtml(thread.updatedAt)}</div>
+            </button>
+          `;
+        })
+        .join('');
+
+      const selectedThread = getSelectedLifecycleThread();
+      if (!selectedThread) {
+        elements.lifecycleMessages.innerHTML = '<div class="minor">No lifecycle thread selected.</div>';
+        return;
+      }
+
+      elements.lifecycleThreadHeader.innerHTML = `
+        <div class="thread-title">${escapeHtml(selectedThread.title)}</div>
+        <div class="thread-meta">${escapeHtml(selectedThread.kind)} • ${escapeHtml(selectedThread.status)} • owner ${escapeHtml(selectedThread.ownerAgent)}</div>
+        <div class="thread-meta">source ${escapeHtml(selectedThread.sourceAgentId || 'n/a')} -> target ${escapeHtml(selectedThread.targetAgentId || 'n/a')} • created ${escapeHtml(selectedThread.createdAt)}</div>
+      `;
+
+      elements.lifecycleMessages.innerHTML = selectedThread.entries
+        .map((entry) => `
+          <div class="lifecycle-entry ${escapeHtml(entry.speaker || 'system')}">
+            <div class="meta-line">${escapeHtml(entry.who)} • ${escapeHtml(entry.kind)} • ${escapeHtml(entry.at)}</div>
+            <div style="margin-top: 4px;">${escapeHtml(entry.text)}</div>
+            <div class="meta-line" style="margin-top: 6px;">${escapeHtml(entry.status || 'no status')} • next ${escapeHtml(entry.nextAction || 'await operator or loop update')}</div>
           </div>
         `)
         .join('');
+      elements.lifecycleMessages.scrollTop = elements.lifecycleMessages.scrollHeight;
     }
 
     function renderArchive() {
@@ -965,11 +2329,107 @@
             </div>
             <div class="minor">${escapeHtml(chat.reason)}</div>
             <div style="margin-top: 6px;">
-              ${chat.preview.map((line) => `<div class="minor">${escapeHtml(line.who)}: ${escapeHtml(line.text)}</div>`).join('')}
+              ${(chat.preview || []).map((line) => `<div class="minor">${escapeHtml(line.who)}: ${escapeHtml(line.text)}</div>`).join('')}
             </div>
           </div>
         `)
         .join('');
+    }
+
+    function renderAgentDirectory() {
+      const entries = [...sessionStore.agentDirectory];
+      if (entries.length === 0) {
+        elements.agentDirectoryTree.innerHTML = '<div class="minor">No agent directory entries found.</div>';
+        return;
+      }
+
+      const grouped = entries.reduce((accumulator, entry) => {
+        const key = entry.family || 'uncategorized';
+        accumulator[key] = accumulator[key] || [];
+        accumulator[key].push(entry);
+        return accumulator;
+      }, {});
+
+      elements.agentDirectoryTree.innerHTML = Object.keys(grouped)
+        .sort()
+        .map((family) => {
+          const groupEntries = grouped[family].sort((left, right) => left.displayName.localeCompare(right.displayName));
+          return `
+            <div class="directory-group">
+              <div class="directory-group-title">${escapeHtml(family)}</div>
+              ${groupEntries.map((entry) => `
+                <div class="directory-entry">
+                  <div class="directory-entry-head">
+                    <div class="directory-title">${escapeHtml(entry.displayName)}</div>
+                    <span class="sync-pill ${escapeHtml(entry.syncState)}">${escapeHtml(entry.syncState)}</span>
+                  </div>
+                  <div class="directory-meta">${escapeHtml(entry.role)} • ${escapeHtml(entry.lane || 'lane n/a')} • ${entry.userInvocable ? 'user-invocable' : 'internal'}</div>
+                  <div style="margin-top: 6px;">${escapeHtml(entry.description || 'No description available.')}</div>
+                  <div class="directory-meta" style="margin-top: 6px;">source ${escapeHtml(entry.sourcePath)} • mirror ${escapeHtml(entry.mirrorPath)}</div>
+                  <div class="directory-meta">tools ${escapeHtml((entry.tools || []).join(', ') || 'none')} • children ${escapeHtml((entry.childAgents || []).join(', ') || 'none')}</div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    function renderRunwayMindmap() {
+      const data = sessionStore.runwaySummary;
+      if (!data) {
+        elements.runwayMindmap.innerHTML = '<div class="minor">Unable to load runway mindmap.</div>';
+        return;
+      }
+
+      const checklist = data.checklist || [];
+      elements.runwayMindmap.innerHTML = `
+        <div class="mindmap-shell">
+          <div class="mindmap-center">
+            <div class="mindmap-title">${escapeHtml(data.checkpointState || 'unknown')}</div>
+            <div class="mindmap-meta">Checkpoint ${escapeHtml(data.checkpointPosition || 0)} / ${escapeHtml(data.checkpointTotal || 0)} • ${escapeHtml(data.agentCount || 0)} agents • ${escapeHtml(data.denyCount || 0)} denies</div>
+            <div style="margin-top: 8px;">Current runway summary anchors the live operator focus and checklist attention.</div>
+          </div>
+          <div class="mindmap-node-grid">
+            ${checklist.map((item) => `
+              <div class="mindmap-node status-${escapeHtml(item.status || 'pending')}">
+                <div class="mindmap-title">${escapeHtml(item.item || 'unnamed checkpoint')}</div>
+                <div class="mindmap-meta">${escapeHtml(item.status || 'pending')}</div>
+                <div style="margin-top: 6px;">${escapeHtml(item.detail || 'no detail')}</div>
+              </div>
+            `).join('') || '<div class="minor">No checklist items.</div>'}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderUtilityDrawer() {
+      const drawerKey = sessionStore.utilityDrawer;
+      const sections = elements.utilityDrawer.querySelectorAll('.utility-section');
+      sections.forEach((section) => {
+        section.hidden = section.dataset.drawer !== drawerKey;
+      });
+      elements.utilityDrawer.classList.toggle('open', Boolean(drawerKey));
+      elements.utilityDrawerTitle.textContent = {
+        archive: 'Archive',
+        deny: 'Deny Log',
+        console: 'Raw Console',
+        'quick-actions': 'Quick Actions',
+      }[drawerKey] || 'Drawer';
+
+      [
+        ['utilityArchiveBtn', 'archive'],
+        ['utilityDenyBtn', 'deny'],
+        ['utilityConsoleBtn', 'console'],
+        ['utilityQuickActionsBtn', 'quick-actions'],
+      ].forEach(([elementKey, key]) => {
+        elements[elementKey].classList.toggle('active', drawerKey === key);
+      });
+    }
+
+    function toggleUtilityDrawer(drawerKey) {
+      sessionStore.utilityDrawer = sessionStore.utilityDrawer === drawerKey ? null : drawerKey;
+      renderUtilityDrawer();
     }
 
     async function fetchFromShell(endpoint, options = {}) {
@@ -1054,11 +2514,14 @@
       if (value.includes('subcore')) {
         return 'SubCore Agent';
       }
+      if (value.includes('software architect')) {
+        return 'Software Architect';
+      }
       if (value.includes('core')) {
         return 'Core Agent';
       }
       if (value.includes('coding')) {
-        return 'Coding Agent';
+        return 'Software Architect';
       }
       if (value.includes('ferros')) {
         return 'FERROS Agent';
@@ -1097,6 +2560,7 @@
     async function updateStatus() {
       try {
         const data = await fetchFromShell('/runway-summary.json');
+        sessionStore.runwaySummary = data;
         const state = String(data.checkpointState || 'unknown');
         const classMap = {
           active: 'active',
@@ -1111,9 +2575,12 @@
         elements.statusIndicator.className = `status-indicator ${className}`;
         elements.statusText.textContent = `${state} (${data.checkpointPosition}/${data.checkpointTotal}) • ${data.agentCount} agents • ${data.denyCount} denies`;
         elements.timestamp.textContent = nowLabel();
+        renderRunwayMindmap();
       } catch {
+        sessionStore.runwaySummary = null;
         elements.statusIndicator.className = 'status-indicator unknown';
         elements.statusText.textContent = 'Unable to load status';
+        renderRunwayMindmap();
       }
     }
 
@@ -1128,30 +2595,12 @@
       }
     }
 
-    async function updateChecklist() {
-      try {
-        const data = await fetchFromShell('/runway-summary.json');
-        const checklist = data.checklist || [];
-        if (checklist.length === 0) {
-          elements.checklistContainer.innerHTML = '<div class="minor">No checklist items.</div>';
-          return;
-        }
-        elements.checklistContainer.innerHTML = checklist
-          .map((item) => {
-            const icon = item.status === 'observed' ? '●' : item.status === 'pending' ? '○' : '✕';
-            return `<div class="checklist-item"><span class="check-icon">${icon}</span><strong>${escapeHtml(item.item)}</strong> — ${escapeHtml(item.detail || 'no detail')}</div>`;
-          })
-          .join('');
-      } catch {
-        elements.checklistContainer.innerHTML = '<div class="minor">Unable to load checklist.</div>';
-      }
-    }
-
     async function updateDenyLog() {
       try {
         const response = await rpcCall('deny-log', 'deny-log.list', {});
         const entries = response.result?.entries || [];
         const recent = entries.slice(0, 20).reverse();
+        sessionStore.denyEntries = recent;
         if (recent.length === 0) {
           elements.denyLogContainer.innerHTML = '<div class="minor">No deny entries.</div>';
           return;
@@ -1160,14 +2609,15 @@
           .map((entry) => `<div class="deny-entry"><strong>${escapeHtml(entry.kind || 'unknown')}</strong> — ${escapeHtml(entry.agent_name || '-')}: ${escapeHtml(entry.message || '')}</div>`)
           .join('');
       } catch {
+        sessionStore.denyEntries = [];
         elements.denyLogContainer.innerHTML = '<div class="minor">Unable to load deny log.</div>';
       }
     }
 
     async function updateAll() {
+      await fetchMonitorState();
       await updateStatus();
       await updateAgents();
-      await updateChecklist();
       await updateDenyLog();
     }
 
@@ -1219,18 +2669,28 @@
       }
     });
 
-    elements.newChatBtn.addEventListener('click', async () => {
+    elements.archiveChatBtn.addEventListener('click', async () => {
+      const chat = getSelectedChat();
+      if (!chat) {
+        showError('No open chat selected.');
+        return;
+      }
       try {
-        await postMonitor('/monitor/sessions', { label: `User -> FERROS #${Date.now()}` });
+        await postMonitor(`/monitor/sessions/${chat.id}/archive`, {});
+        sessionStore.utilityDrawer = 'archive';
         await fetchMonitorState();
+        renderUtilityDrawer();
       } catch (error) {
-        showError(`Failed to create chat session: ${error.message}`);
+        showError(`Failed to archive chat: ${error.message}`);
       }
     });
 
     elements.chatSelector.addEventListener('change', () => {
       sessionStore.selectedChatId = elements.chatSelector.value;
+      const selected = getSelectedChat();
+      sessionStore.selectedLifecycleThreadId = selected?.threadId || sessionStore.selectedLifecycleThreadId;
       renderChats();
+      renderLifecycleShell();
     });
 
     elements.sendChatBtn.addEventListener('click', async () => {
@@ -1240,7 +2700,7 @@
       }
       const chat = getSelectedChat();
       if (!chat) {
-        showError('No open chat selected. Create a new session first.');
+        showError('No open chat selected. Open a chat from a loop card first.');
         return;
       }
       try {
@@ -1256,142 +2716,108 @@
         });
         elements.chatInput.value = '';
         await fetchMonitorState();
+        renderLifecycleShell();
       } catch (error) {
         showError(`Failed to append message: ${error.message}`);
       }
     });
 
-    const routeConfig = {
-      coding: {
-        targetLabel: 'Coding Agent',
-        loopAgent: 'Coding Agent',
-        loopDescription: 'Executing task packet and preparing branch packets for Core/SubCore.',
-      },
-      business: {
-        targetLabel: 'Business Agent',
-        loopAgent: 'Business Agent',
-        loopDescription: 'Executing business packet and coordinating specialist departments.',
-      },
-      'ferros-architect': {
-        targetLabel: 'FERROS Agent Architect Agent',
-        loopAgent: 'FERROS Agent Architect Agent',
-        loopDescription: 'Classifying architecture lane and delegating to coding/business architect.',
-      },
-      'coding-architect': {
-        targetLabel: 'Coding Agent Architect',
-        loopAgent: 'Coding Agent Architect',
-        loopDescription: 'Designing coding-family topology and runtime lane architecture.',
-      },
-      'business-architect': {
-        targetLabel: 'Business Agent Architect',
-        loopAgent: 'Business Agent Architect',
-        loopDescription: 'Designing business-company topology and departmental architecture.',
-      },
-    };
-
-    function findAgentByNormalizedName(targetLabel) {
-      return knownAgents.find((agent) => normalizeAgentName(agent.name) === targetLabel);
-    }
-
-    async function runNormalizedTarget(targetLabel) {
-      const target = findAgentByNormalizedName(targetLabel);
-      if (!target) {
+    elements.lifecycleThreadList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-thread-id]');
+      if (!button) {
         return;
       }
-      await runAgentByName(target.name);
-    }
+      sessionStore.selectedLifecycleThreadId = button.getAttribute('data-thread-id');
+      renderLifecycleShell();
+    });
 
-    elements.dispatchRouteBtn.addEventListener('click', async () => {
-      const chat = getSelectedChat();
-      if (!chat) {
+    elements.sendLifecycleBtn.addEventListener('click', async () => {
+      const thread = getSelectedLifecycleThread();
+      const text = elements.lifecycleInput.value.trim();
+      if (!thread || !text) {
         return;
       }
-      const routeKey = elements.routeTargetSelect.value;
-      const cfg = routeConfig[routeKey] || routeConfig.coding;
       try {
-        await postMonitor(`/monitor/sessions/${chat.id}/route`, { target: routeKey });
-        await runNormalizedTarget(cfg.targetLabel);
-        await updateAll();
+        await postMonitor(`/monitor/lifecycle/${thread.id}/messages`, {
+          speaker: 'user',
+          who: 'Operator',
+          text,
+        });
+        elements.lifecycleInput.value = '';
         await fetchMonitorState();
       } catch (error) {
-        showError(`${cfg.targetLabel} run failed: ${error.message}`);
+        showError(`Failed to append lifecycle note: ${error.message}`);
       }
     });
 
-    elements.architectToDomainArchitectsBtn.addEventListener('click', async () => {
-      for (const targetLabel of ['FERROS Agent Architect Agent', 'Coding Agent Architect', 'Business Agent Architect']) {
+    elements.laneAgentArchitectBtn.addEventListener('click', () => {
+      setSelectedCategory('architect');
+    });
+
+    elements.laneSoftwareArchitectBtn.addEventListener('click', () => {
+      setSelectedCategory('software');
+    });
+
+    elements.laneBusinessManagerBtn.addEventListener('click', () => {
+      setSelectedCategory('business');
+    });
+
+    elements.laneOperatorBacklogBtn.addEventListener('click', () => {
+      setSelectedCategory('administration');
+    });
+
+    initCarouselDrag();
+    initCarouselGhosts();
+
+    elements.loopList.addEventListener('click', async (event) => {
+      const actionButton = event.target.closest('button[data-loop-action]');
+      if (actionButton) {
+        const action = actionButton.getAttribute('data-loop-action');
+        const loopId = actionButton.getAttribute('data-loop-id');
         try {
-          await runNormalizedTarget(targetLabel);
+          await runLoopAction(action, loopId);
+          await updateAll();
         } catch (error) {
-          showError(`Failed to run ${targetLabel}: ${error.message}`);
+          showError(`Loop action failed: ${error.message}`);
         }
+        return;
       }
-      await postMonitor('/monitor/loops/transition', { action: 'architect-split' });
-      await updateAll();
-      await fetchMonitorState();
-    });
 
-    elements.codingToCoreBtn.addEventListener('click', async () => {
-      await postMonitor('/monitor/loops/transition', { action: 'coding-split' });
-
-      const targets = knownAgents.filter((agent) => {
-        const normalized = normalizeAgentName(agent.name);
-        return normalized === 'Core Agent' || normalized === 'SubCore Agent';
-      });
-      for (const target of targets) {
-        try {
-          await runAgentByName(target.name);
-        } catch (error) {
-          showError(`Failed to run ${target.name}: ${error.message}`);
-        }
+      const card = event.target.closest('.loop-card');
+      if (!card) {
+        return;
       }
-      await updateAll();
-      await fetchMonitorState();
-    });
-
-    elements.coreBackBtn.addEventListener('click', async () => {
-      await postMonitor('/monitor/loops/transition', { action: 'coding-merge' });
-
-      const codingTarget = knownAgents.find((agent) => normalizeAgentName(agent.name) === 'Coding Agent');
-      if (codingTarget) {
-        try {
-          await runAgentByName(codingTarget.name);
-        } catch (error) {
-          showError(`Failed to resume coding: ${error.message}`);
-        }
+      const loopId = card.getAttribute('data-loop-id');
+      if (!loopId) {
+        return;
       }
-      await updateAll();
-      await fetchMonitorState();
+      sessionStore.flippedLoopIds[loopId] = !sessionStore.flippedLoopIds[loopId];
+      renderLoops();
     });
 
-    elements.businessToDepartmentsBtn.addEventListener('click', async () => {
-      await postMonitor('/monitor/loops/transition', { action: 'business-split' });
-      await updateAll();
-      await fetchMonitorState();
+    elements.utilityArchiveBtn.addEventListener('click', () => {
+      toggleUtilityDrawer('archive');
     });
 
-    elements.departmentsBackBtn.addEventListener('click', async () => {
-      await postMonitor('/monitor/loops/transition', { action: 'business-merge' });
-      await updateAll();
-      await fetchMonitorState();
+    elements.utilityDenyBtn.addEventListener('click', () => {
+      toggleUtilityDrawer('deny');
     });
 
-    elements.escalateBtn.addEventListener('click', async () => {
-      await postMonitor('/monitor/loops/transition', { action: 'escalate' });
+    elements.utilityConsoleBtn.addEventListener('click', () => {
+      toggleUtilityDrawer('console');
+    });
 
-      const ferrosTarget = knownAgents.find((agent) => normalizeAgentName(agent.name) === 'FERROS Agent');
-      if (ferrosTarget) {
-        try {
-          await runAgentByName(ferrosTarget.name);
-        } catch (error) {
-          showError(`Failed to run FERROS agent: ${error.message}`);
-        }
-      }
-      await updateAll();
-      await fetchMonitorState();
+    elements.utilityQuickActionsBtn.addEventListener('click', () => {
+      toggleUtilityDrawer('quick-actions');
+    });
+
+    elements.utilityDrawerCloseBtn.addEventListener('click', () => {
+      sessionStore.utilityDrawer = null;
+      renderUtilityDrawer();
     });
 
     elements.clearDenyViewBtn.addEventListener('click', () => {
+      sessionStore.denyEntries = [];
       elements.denyLogContainer.innerHTML = '<div class="minor">Deny log view cleared.</div>';
     });
 
@@ -1433,11 +2859,6 @@
     });
 
     async function bootstrap() {
-      await fetchMonitorState();
-      if (sessionStore.openChats.length === 0) {
-        await postMonitor('/monitor/sessions', { label: 'User -> FERROS #1' });
-        await fetchMonitorState();
-      }
       await updateAll();
     }
 

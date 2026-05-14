@@ -1,0 +1,9 @@
+{
+  "name": "ferros",
+  "version": "0.1.0",
+  "scripts": {
+    "agents:sync": "node tools/agent-source-sync.js",
+    "start": "node tools/acc-bridge/bridge.js --lan --no-open",
+    "test": "node tools/acc-bridge/bridge.js --lan --monitor-port 4318 --no-open"
+  }
+}

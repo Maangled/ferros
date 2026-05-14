@@ -3,7 +3,22 @@
  * Part of Check #1: Packet Validation in guardrail enforcement
  */
 
-import { Packet, ValidationResult } from './types';
+import {
+  ExecutionReturn,
+  LifecycleOutcomeKind,
+  Packet,
+  PacketLifecycleContract,
+  ValidationResult,
+} from './types';
+
+const VALID_TERMINAL_STATES: LifecycleOutcomeKind[] = [
+  'report',
+  'work_order',
+  'escalation',
+  'denied',
+  'archived',
+  'stopped',
+];
 
 export class PacketValidator {
   /**
@@ -86,11 +101,169 @@ export class PacketValidator {
       errors.push('Missing prompt payload');
     }
 
+    const lifecycleValidation = this.validateLifecycleContract(packet);
+    if (!lifecycleValidation.valid) {
+      errors.push(...lifecycleValidation.errors);
+    }
+    if (lifecycleValidation.warnings?.length) {
+      warnings.push(...lifecycleValidation.warnings);
+    }
+
     return {
       valid: errors.length === 0,
       errors,
       warnings: warnings.length > 0 ? warnings : undefined
     };
+  }
+
+  /**
+   * Validate the lifecycle contract carried with the packet.
+   */
+  static validateLifecycleContract(packet: Packet): ValidationResult {
+    const errors: string[] = [];
+    const contract = packet.metadata?.lifecycle_contract;
+
+    if (!contract) {
+      return {
+        valid: false,
+        errors: ['Missing metadata.lifecycle_contract'],
+      };
+    }
+
+    const requiredStringFields: Array<[keyof PacketLifecycleContract, string]> = [
+      ['cycle_id', 'cycle_id'],
+      ['work_order_id', 'work_order_id'],
+      ['source_agent_id', 'source_agent_id'],
+      ['target_agent_id', 'target_agent_id'],
+      ['owner_agent_id', 'owner_agent_id'],
+    ];
+
+    for (const [field, label] of requiredStringFields) {
+      const value = contract[field];
+      if (typeof value !== 'string' || value.trim() === '') {
+        errors.push(`Missing lifecycle_contract.${label}`);
+      }
+    }
+
+    if (!contract.stop) {
+      errors.push('Missing lifecycle_contract.stop');
+      return { valid: false, errors };
+    }
+
+    if (!Array.isArray(contract.stop.allowed_terminal_states) || contract.stop.allowed_terminal_states.length === 0) {
+      errors.push('Missing lifecycle_contract.stop.allowed_terminal_states');
+      return { valid: false, errors };
+    }
+
+    const invalidStates = contract.stop.allowed_terminal_states.filter(
+      (state) => !VALID_TERMINAL_STATES.includes(state)
+    );
+    if (invalidStates.length > 0) {
+      errors.push(
+        `Invalid lifecycle_contract.stop.allowed_terminal_states: ${invalidStates.join(', ')}`
+      );
+    }
+
+    if (
+      contract.stop.allowed_terminal_states.includes('stopped') &&
+      contract.stop.stopped_reason_required !== true
+    ) {
+      errors.push(
+        "lifecycle_contract.stop.stopped_reason_required must be true when 'stopped' is allowed"
+      );
+    }
+
+    if (contract.stop.allowed_terminal_states.includes('escalation')) {
+      if (!contract.escalation_id || contract.escalation_id.trim() === '') {
+        errors.push('Missing lifecycle_contract.escalation_id');
+      }
+      if (!contract.escalation_target_agent_id || contract.escalation_target_agent_id.trim() === '') {
+        errors.push('Missing lifecycle_contract.escalation_target_agent_id');
+      }
+    }
+
+    if (
+      packet.route_token.target_stream &&
+      contract.target_agent_id &&
+      packet.route_token.target_stream !== contract.target_agent_id
+    ) {
+      errors.push(
+        `lifecycle_contract.target_agent_id '${contract.target_agent_id}' does not match route_token.target_stream '${packet.route_token.target_stream}'`
+      );
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
+
+  /**
+   * Validate that the normalized execution return satisfies the lifecycle contract.
+   */
+  static validateExecutionOutcome(packet: Packet, executionReturn: ExecutionReturn): ValidationResult {
+    const errors: string[] = [];
+    const lifecycleValidation = this.validateLifecycleContract(packet);
+    if (!lifecycleValidation.valid) {
+      errors.push(...lifecycleValidation.errors);
+    }
+
+    const contract = packet.metadata?.lifecycle_contract;
+    if (executionReturn.lifecycle_errors?.length) {
+      errors.push(...executionReturn.lifecycle_errors);
+    }
+
+    if (!executionReturn.lifecycle_outcome) {
+      errors.push('Execution return missing lifecycle outcome');
+      return { valid: false, errors };
+    }
+
+    const outcome = executionReturn.lifecycle_outcome;
+    if (!outcome.summary || outcome.summary.trim() === '') {
+      errors.push(`Execution return lifecycle outcome '${outcome.kind}' is missing a summary`);
+    }
+
+    if (
+      contract &&
+      !contract.stop.allowed_terminal_states.includes(outcome.kind)
+    ) {
+      errors.push(
+        `Lifecycle outcome '${outcome.kind}' is not allowed by the packet stop contract`
+      );
+    }
+
+    if (
+      outcome.kind === 'work_order' &&
+      contract?.work_order_id &&
+      outcome.work_order_id &&
+      outcome.work_order_id !== contract.work_order_id
+    ) {
+      errors.push(
+        `Lifecycle work_order_id '${outcome.work_order_id}' does not match contract '${contract.work_order_id}'`
+      );
+    }
+
+    if (outcome.kind === 'escalation') {
+      if (!contract?.escalation_id || !contract.escalation_target_agent_id) {
+        errors.push('Execution return escalated without escalation fields in the packet lifecycle contract');
+      }
+      if (
+        contract?.escalation_id &&
+        outcome.escalation_id &&
+        outcome.escalation_id !== contract.escalation_id
+      ) {
+        errors.push(
+          `Lifecycle escalation_id '${outcome.escalation_id}' does not match contract '${contract.escalation_id}'`
+        );
+      }
+    }
+
+    if (
+      outcome.kind === 'stopped' &&
+      contract?.stop.stopped_reason_required &&
+      (!outcome.stop_reason || outcome.stop_reason.trim() === '')
+    ) {
+      errors.push('Execution return stopped without a stop reason');
+    }
+
+    return { valid: errors.length === 0, errors };
   }
 
   /**

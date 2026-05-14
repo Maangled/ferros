@@ -4,7 +4,63 @@
  * Normalizes SDK responses back to execution-return classifications
  */
 
-import { Packet, ExecutionReturn } from './types';
+import {
+  ExecutionReturn,
+  LifecycleOutcome,
+  LifecycleOutcomeKind,
+  Packet,
+} from './types';
+
+const LIFECYCLE_SECTION_PATTERNS: Array<{
+  kind: LifecycleOutcomeKind;
+  label: string;
+  pattern: RegExp;
+}> = [
+  {
+    kind: 'work_order',
+    label: 'Work Order',
+    pattern: /##\s*(?:Work Order|Work-Order|Next Work Order)\s*\n([\s\S]*?)(?=\n##|$)/i,
+  },
+  {
+    kind: 'escalation',
+    label: 'Escalation',
+    pattern: /##\s*Escalation\s*\n([\s\S]*?)(?=\n##|$)/i,
+  },
+  {
+    kind: 'report',
+    label: 'Report',
+    pattern: /##\s*(?:Report|Status Report|Report Back)\s*\n([\s\S]*?)(?=\n##|$)/i,
+  },
+  {
+    kind: 'denied',
+    label: 'Denied',
+    pattern: /##\s*Denied\s*\n([\s\S]*?)(?=\n##|$)/i,
+  },
+  {
+    kind: 'archived',
+    label: 'Archived',
+    pattern: /##\s*Archived\s*\n([\s\S]*?)(?=\n##|$)/i,
+  },
+  {
+    kind: 'stopped',
+    label: 'Stop',
+    pattern: /##\s*(?:Stop|Stopped|Stop Reason)\s*\n([\s\S]*?)(?=\n##|$)/i,
+  },
+];
+
+type LifecycleSectionMatch =
+  | {
+      kind: LifecycleOutcomeKind;
+      label: string;
+      summary: string;
+      empty?: false;
+    }
+  | {
+      kind: LifecycleOutcomeKind;
+      label: string;
+      empty: true;
+      summary?: never;
+    };
 
 export interface SDKEvent {
   type: 'started' | 'completed' | 'failed';
@@ -103,8 +159,9 @@ export class EventTracer {
     toolCallId?: string
   ): ExecutionReturn {
     const targetStream = packet.route_token.target_stream;
-    const classification: 'execution-return-core' | 'execution-return-subcore' = 
+    const classification: 'execution-return-core' | 'execution-return-subcore' =
       targetStream === 'core' ? 'execution-return-core' : 'execution-return-subcore';
+    const lifecycle = this.extractLifecycleOutcome(response, packet);
 
     return {
       classification,
@@ -115,8 +172,92 @@ export class EventTracer {
       facts: this.extractFacts(response),
       claims: this.extractClaims(response),
       non_claims: this.extractNonClaims(response),
-      residual_risks: this.extractRisks(response)
+      residual_risks: this.extractRisks(response),
+      lifecycle_outcome: lifecycle.outcome,
+      lifecycle_errors: lifecycle.errors,
     };
+  }
+
+  /**
+   * Extract a single terminal lifecycle outcome from the response.
+   */
+  private extractLifecycleOutcome(
+    response: string,
+    packet: Packet
+  ): { outcome?: LifecycleOutcome; errors?: string[] } {
+    const matches: LifecycleSectionMatch[] = [];
+
+    for (const section of LIFECYCLE_SECTION_PATTERNS) {
+      const match = response.match(section.pattern);
+      if (!match) {
+        continue;
+      }
+
+      const summary = this.extractSectionSummary(match[1]);
+      if (!summary) {
+        matches.push({ kind: section.kind, label: section.label, empty: true });
+        continue;
+      }
+
+      matches.push({ kind: section.kind, label: section.label, summary });
+    }
+
+    if (matches.length === 0) {
+      return {
+        errors: [
+          'Missing lifecycle outcome section (expected one of Report, Work Order, Escalation, Denied, Archived, or Stop)',
+        ],
+      };
+    }
+
+    if (matches.some((match) => match.empty)) {
+      const emptyLabels = matches
+        .filter((match) => match.empty)
+        .map((match) => match.label);
+      return {
+        errors: [`Lifecycle outcome section is empty: ${emptyLabels.join(', ')}`],
+      };
+    }
+
+    if (matches.length > 1) {
+      return {
+        errors: [
+          `Multiple lifecycle outcome sections found: ${matches.map((match) => match.label).join(', ')}`,
+        ],
+      };
+    }
+
+    const match = matches[0] as Extract<LifecycleSectionMatch, { summary: string }>;
+    const contract = packet.metadata?.lifecycle_contract;
+    const outcome: LifecycleOutcome = {
+      kind: match.kind,
+      summary: match.summary,
+      work_order_id: match.kind === 'work_order' ? contract?.work_order_id : undefined,
+      escalation_id: match.kind === 'escalation' ? contract?.escalation_id : undefined,
+      target_agent_id:
+        match.kind === 'escalation' ? contract?.escalation_target_agent_id : undefined,
+      stop_reason: match.kind === 'stopped' ? match.summary : undefined,
+    };
+
+    return { outcome };
+  }
+
+  private extractSectionSummary(section: string): string {
+    const lines = section
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (lines.length === 0) {
+      return '';
+    }
+
+    const bulletLine = lines.find(
+      (line) => line.startsWith('-') || line.startsWith('•')
+    );
+    const summaryLine = bulletLine || lines[0];
+
+    return summaryLine.replace(/^[-•]\s*/, '').trim();
   }
 
   /**
