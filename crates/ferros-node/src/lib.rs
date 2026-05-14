@@ -73,6 +73,7 @@ const MONITOR_AGENT_MIRROR_ROOT: &str = ".github/agents";
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 struct MonitorMessage {
+    id: String,
     speaker: String,
     who: String,
     text: String,
@@ -1544,13 +1545,7 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             }
         };
         let session = guard.create_session(request.label);
-        if let Err(error) = persist_monitor_state(&guard) {
-            return Some(enable_cors(text_response(
-                500,
-                "Internal Server Error",
-                format!("failed to persist monitor state: {error}"),
-            )));
-        }
+        persist_monitor_state_best_effort(&mut guard, "session.create persistence warning");
         return Some(enable_cors(json_response(200, "OK", &session)));
     }
 
@@ -1578,13 +1573,7 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             }
         };
         guard.apply_loop_transition(&request.action);
-        if let Err(error) = persist_monitor_state(&guard) {
-            return Some(enable_cors(text_response(
-                500,
-                "Internal Server Error",
-                format!("failed to persist monitor state: {error}"),
-            )));
-        }
+        persist_monitor_state_best_effort(&mut guard, "loop.transition persistence warning");
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
@@ -1617,14 +1606,41 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
                 return Some(enable_cors(text_response(404, "Not Found", "monitor lifecycle thread not found")));
             }
 
-            if let Err(error) = persist_monitor_state(&guard) {
+            persist_monitor_state_best_effort(&mut guard, "lifecycle.message persistence warning");
+
+            return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+        }
+    }
+
+    if let Some((notification_id, trailing)) = parse_monitor_notification_subroute(request_path) {
+        if method == "POST" {
+            let state = monitor_state();
+            let mut guard = match state.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    return Some(enable_cors(text_response(
+                        500,
+                        "Internal Server Error",
+                        "monitor state lock poisoned",
+                    )));
+                }
+            };
+
+            let updated = match trailing {
+                "open" | "opened" => guard.update_notification_status(notification_id, "opened"),
+                "resolve" => guard.update_notification_status(notification_id, "resolved"),
+                _ => false,
+            };
+
+            if !updated {
                 return Some(enable_cors(text_response(
-                    500,
-                    "Internal Server Error",
-                    format!("failed to persist monitor state: {error}"),
+                    404,
+                    "Not Found",
+                    "monitor notification not found",
                 )));
             }
 
+            persist_monitor_state_best_effort(&mut guard, "notification.action persistence warning");
             return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
         }
     }
@@ -1656,6 +1672,7 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
                 )));
             }
         };
+
         let message_id = match guard.add_message(session_id, request.clone()) {
             Some(message_id) => message_id,
             None => {
@@ -1669,13 +1686,7 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             let _ = guard.ferros_agent_handle_human_message(session_id, &message_id, &request.text);
         }
 
-        if let Err(error) = persist_monitor_state(&guard) {
-            return Some(enable_cors(text_response(
-                500,
-                "Internal Server Error",
-                format!("failed to persist monitor state: {error}"),
-            )));
-        }
+        persist_monitor_state_best_effort(&mut guard, "session.message persistence warning");
 
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
@@ -1706,13 +1717,7 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         if !guard.route_session(session_id, &request.target) {
             return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
         }
-        if let Err(error) = persist_monitor_state(&guard) {
-            return Some(enable_cors(text_response(
-                500,
-                "Internal Server Error",
-                format!("failed to persist monitor state: {error}"),
-            )));
-        }
+        persist_monitor_state_best_effort(&mut guard, "session.route persistence warning");
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
@@ -1731,13 +1736,7 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         if !guard.archive_session(session_id) {
             return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
         }
-        if let Err(error) = persist_monitor_state(&guard) {
-            return Some(enable_cors(text_response(
-                500,
-                "Internal Server Error",
-                format!("failed to persist monitor state: {error}"),
-            )));
-        }
+        persist_monitor_state_best_effort(&mut guard, "session.archive persistence warning");
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
@@ -1772,6 +1771,21 @@ fn parse_monitor_lifecycle_subroute(path: &str) -> Option<(&str, &str)> {
     }
 
     Some((thread_id, subroute))
+}
+
+fn parse_monitor_notification_subroute(path: &str) -> Option<(&str, &str)> {
+    let prefix = "/monitor/notifications/";
+    if !path.starts_with(prefix) {
+        return None;
+    }
+
+    let tail = &path[prefix.len()..];
+    let (notification_id, subroute) = tail.split_once('/')?;
+    if notification_id.is_empty() || subroute.is_empty() {
+        return None;
+    }
+
+    Some((notification_id, subroute))
 }
 
 fn split_request_path(path: &str) -> (&str, Option<&str>) {
@@ -2122,7 +2136,9 @@ fn load_monitor_state() -> Option<MonitorState> {
         return None;
     }
 
-    Some(persisted.state)
+    let mut state = persisted.state;
+    normalize_monitor_state(&mut state);
+    Some(state)
 }
 
 fn persist_monitor_state(state: &MonitorState) -> io::Result<()> {
@@ -2138,6 +2154,39 @@ fn persist_monitor_state(state: &MonitorState) -> io::Result<()> {
     let bytes = serde_json::to_vec_pretty(&payload)
         .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
     fs::write(path, bytes)
+}
+
+fn persist_monitor_state_best_effort(state: &mut MonitorState, context: &str) {
+    if let Err(error) = persist_monitor_state(state) {
+        state.push_event("monitor.persistence.warning", format!("{context}: {error}"));
+    }
+}
+
+fn normalize_monitor_state(state: &mut MonitorState) {
+    for session in &mut state.open_chats {
+        for message in &mut session.messages {
+            if message.id.is_empty() {
+                message.id = format!("msg-{}", state.next_id + 1);
+                state.next_id += 1;
+            }
+        }
+    }
+
+    for archive in &mut state.archived_chats {
+        for message in &mut archive.preview {
+            if message.id.is_empty() {
+                message.id = format!("msg-{}", state.next_id + 1);
+                state.next_id += 1;
+            }
+        }
+    }
+
+    for notification in &mut state.notifications {
+        if notification.id.is_empty() {
+            notification.id = format!("ntf-{}", state.next_id + 1);
+            state.next_id += 1;
+        }
+    }
 }
 
 fn monitor_now() -> String {
@@ -2594,6 +2643,7 @@ impl MonitorState {
             thread_id: Some(thread_id),
             created_at: now.clone(),
             messages: vec![MonitorMessage {
+                id: self.next_identifier("msg"),
                 speaker: "agent".to_owned(),
                 who: "FERROS Agent".to_owned(),
                 text: "Session ready. Route requests into coding, business, or architect lanes.".to_owned(),
@@ -2610,6 +2660,7 @@ impl MonitorState {
         let MonitorMessageRequest { speaker, who, text } = request;
         let message_id = self.next_identifier("msg");
         let message = MonitorMessage {
+            id: message_id.clone(),
             speaker: speaker.clone(),
             who: who.clone(),
             text: text.clone(),
@@ -2720,7 +2771,7 @@ impl MonitorState {
         };
 
         let ferros_reply = format!(
-            "Packet accepted. Routed to {manager} as {packet_id}. I will keep this Administration liaison chat open and post updates as lifecycle events progress."
+            "Packet staged for {manager} as {packet_id}. Live manager execution is not yet connected, but this Administration liaison chat will stay open for updates."
         );
         let _ = self.add_message(
             &dispatch_request.session_id,
@@ -2796,7 +2847,7 @@ impl MonitorState {
             "packet.created",
             "agent",
             "FERROS Agent",
-            format!("Created {work_order_id} and routed to {route_label} from {session_label}"),
+            format!("Staged {work_order_id} for {route_label} from {session_label}"),
             Some("dispatched_to_manager"),
             Some("Await manager-level lifecycle updates"),
         );
@@ -2841,6 +2892,21 @@ impl MonitorState {
         self.notifications.truncate(200);
         self.push_event("notification.created", format!("{title}: {summary}"));
         id
+    }
+
+    fn update_notification_status(&mut self, notification_id: &str, status: &str) -> bool {
+        let Some(notification) = self
+            .notifications
+            .iter_mut()
+            .find(|notification| notification.id == notification_id)
+        else {
+            return false;
+        };
+
+        let title = notification.title.clone();
+        notification.status = status.to_owned();
+        self.push_event("notification.updated", format!("{title} -> {status}"));
+        true
     }
 
     fn add_lifecycle_message(&mut self, thread_id: &str, request: MonitorLifecycleMessageRequest) -> bool {
@@ -2999,8 +3065,10 @@ impl MonitorState {
                     "Escalation opened. FERROS chat moved to operator-visible queue.".to_string(),
                 );
                 let session = self.create_session(Some("Escalation -> FERROS".to_owned()));
+                let escalation_message_id = self.next_identifier("msg");
                 if let Some(open) = self.open_chats.iter_mut().find(|chat| chat.id == session.id) {
                     open.messages.push(MonitorMessage {
+                        id: escalation_message_id,
                         speaker: "agent".to_owned(),
                         who: "FERROS Agent".to_owned(),
                         text: "Escalation received. Human decision is required before continuing.".to_owned(),
@@ -4554,8 +4622,8 @@ mod tests {
         serve_local_shell_with_store_and_paths, AgentCliCommand, AuthorizationDenyDetail,
         CliError, CliState, DemoError, DemoRuntime, DispatchTarget, HttpRequest, LocalAgentApi,
         LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
-        LocalRunwaySummary, MonitorState, ProfileCliCommand, ProfileShellResponse,
-        DEFAULT_PROFILE_NAME,
+        LocalRunwaySummary, MonitorState, PersistedMonitorState, ProfileCliCommand,
+        ProfileShellResponse, DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
@@ -4673,6 +4741,61 @@ mod tests {
         assert!(state.route_session(&session.id, "business"));
         assert!(state.open_chats.iter().any(|chat| chat.id == session.id));
         assert!(state.archived_chats.is_empty());
+    }
+
+    #[test]
+    fn notification_actions_update_status() {
+        let mut state = MonitorState::default();
+        let notification_id = state.create_notification(
+            Some("wo-1".to_owned()),
+            "high",
+            "Human intervention required",
+            "Pause and ask Administration",
+        );
+
+        assert!(state.update_notification_status(&notification_id, "opened"));
+        assert_eq!(state.notifications[0].status, "opened");
+        assert!(state.update_notification_status(&notification_id, "resolved"));
+        assert_eq!(state.notifications[0].status, "resolved");
+    }
+
+    #[test]
+    fn monitor_state_persistence_roundtrip_preserves_messages_and_notifications() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Persisted chat".to_owned()));
+        let _ = state.add_message(
+            &session.id,
+            super::MonitorMessageRequest {
+                speaker: "user".to_owned(),
+                who: "Human".to_owned(),
+                text: "please route this through business".to_owned(),
+            },
+        );
+        let notification_id = state.create_notification(
+            Some("wo-2".to_owned()),
+            "medium",
+            "Follow-up needed",
+            "Operator should review this packet",
+        );
+        let _ = state.update_notification_status(&notification_id, "opened");
+
+        let payload = PersistedMonitorState {
+            schema_version: super::MONITOR_STATE_SCHEMA_VERSION,
+            state,
+        };
+        let persisted = serde_json::to_string_pretty(&payload).expect("persisted snapshot should serialize");
+        let loaded: PersistedMonitorState = serde_json::from_str(&persisted).expect("persisted snapshot should deserialize");
+
+        assert_eq!(loaded.schema_version, super::MONITOR_STATE_SCHEMA_VERSION);
+        assert!(loaded
+            .state
+            .open_chats
+            .iter()
+            .flat_map(|chat| chat.messages.iter())
+            .all(|message| !message.id.is_empty()));
+        assert_eq!(loaded.state.notifications.len(), 1);
+        assert_eq!(loaded.state.notifications[0].status, "opened");
+        assert_eq!(loaded.state.notifications[0].packet_id.as_deref(), Some("wo-2"));
     }
 
     #[test]

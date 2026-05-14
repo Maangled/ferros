@@ -1318,6 +1318,7 @@
     const sessionStore = {
       openChats: [],
       archivedChats: [],
+      notifications: [],
       runningLoops: [],
       timeline: [],
       lifecycleThreads: [],
@@ -1339,6 +1340,7 @@
       const response = await fetchFromShell('/monitor/state');
       sessionStore.openChats = response.openChats || [];
       sessionStore.archivedChats = response.archivedChats || [];
+      sessionStore.notifications = response.notifications || [];
       sessionStore.runningLoops = response.runningLoops || [];
       sessionStore.timeline = response.timeline || [];
       sessionStore.lifecycleThreads = response.lifecycleThreads || [];
@@ -2106,6 +2108,16 @@
       const actionTargetId = definition.loop?.id || loop?.id || definition.id;
       let actionMarkup = '';
 
+      if (definition.notification) {
+        actionMarkup = `
+          <div class="loop-actions">
+            <button data-notification-action="open" data-notification-id="${escapeHtml(definition.notification.id)}">Open</button>
+            <button data-notification-action="opened" data-notification-id="${escapeHtml(definition.notification.id)}">Mark Opened</button>
+            <button data-notification-action="resolve" data-notification-id="${escapeHtml(definition.notification.id)}">Resolve</button>
+          </div>
+        `;
+      }
+
       if (definition.loop?.sourceLoopId) {
         actionMarkup = `
           <div class="loop-actions">
@@ -2154,6 +2166,19 @@
       const definitions = [...(categoryCardDefinitions[categoryKey] || [])];
 
       if (categoryKey === 'administration') {
+        for (const notification of sessionStore.notifications.filter((item) => item.status !== 'resolved')) {
+          definitions.unshift({
+            id: notification.id,
+            name: notification.title,
+            subtitle: `Notification • ${notification.severity}`,
+            icon: notification.status === 'resolved' ? '✅' : '🔔',
+            description: notification.summary,
+            detail: `packet ${notification.packetId || 'n/a'} • action ${notification.action} • status ${notification.status}`,
+            status: notification.status === 'opened' ? 'waiting' : 'attention',
+            notification,
+          });
+        }
+
         for (const item of getOperatorBacklogItems()) {
           definitions.push({
             id: item.id,
@@ -2225,6 +2250,12 @@
       }
     }
 
+    async function runNotificationAction(action, notificationId) {
+      await postMonitor(`/monitor/notifications/${notificationId}/${action}`, {});
+      await fetchMonitorState();
+      renderLoops();
+    }
+
     function renderChats() {
       const selected = getSelectedChat();
       elements.chatSelector.innerHTML = sessionStore.openChats
@@ -2245,7 +2276,7 @@
       elements.chatMessages.innerHTML = selected.messages
         .map((message) => `
           <div class="msg ${message.speaker}">
-            <div class="msg-meta">${escapeHtml(message.who)} • ${escapeHtml(message.at)}</div>
+            <div class="msg-meta">${escapeHtml(message.who)} • ${escapeHtml(message.id || 'msg-n/a')} • ${escapeHtml(message.at)}</div>
             <div>${escapeHtml(message.text)}</div>
           </div>
         `)
@@ -2779,6 +2810,18 @@
     initCarouselGhosts();
 
     elements.loopList.addEventListener('click', async (event) => {
+      const notificationActionButton = event.target.closest('button[data-notification-action]');
+      if (notificationActionButton) {
+        const action = notificationActionButton.getAttribute('data-notification-action');
+        const notificationId = notificationActionButton.getAttribute('data-notification-id');
+        try {
+          await runNotificationAction(action, notificationId);
+        } catch (error) {
+          showError(`Notification action failed: ${error.message}`);
+        }
+        return;
+      }
+
       const actionButton = event.target.closest('button[data-loop-action]');
       if (actionButton) {
         const action = actionButton.getAttribute('data-loop-action');
