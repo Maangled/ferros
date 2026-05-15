@@ -2324,19 +2324,25 @@ fn load_monitor_state() -> Option<MonitorState> {
     Some(state)
 }
 
-fn persist_monitor_state(state: &MonitorState) -> io::Result<()> {
-    let path = monitor_state_path();
+fn persist_monitor_state_to(path: &Path, state: &MonitorState) -> io::Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-
     let payload = PersistedMonitorState {
         schema_version: MONITOR_STATE_SCHEMA_VERSION,
         state: state.clone(),
     };
     let bytes = serde_json::to_vec_pretty(&payload)
         .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-    fs::write(path, bytes)
+    let tmp_path = path.with_file_name(
+        format!("{}.tmp", path.file_name().unwrap_or_default().to_string_lossy()),
+    );
+    fs::write(&tmp_path, bytes)?;
+    fs::rename(&tmp_path, path)
+}
+
+fn persist_monitor_state(state: &MonitorState) -> io::Result<()> {
+    persist_monitor_state_to(&monitor_state_path(), state)
 }
 
 fn persist_monitor_state_best_effort(state: &mut MonitorState, context: &str) {
@@ -2346,35 +2352,41 @@ fn persist_monitor_state_best_effort(state: &mut MonitorState, context: &str) {
 }
 
 fn normalize_monitor_state(state: &mut MonitorState) {
-    for session in &mut state.open_chats {
-        for message in &mut session.messages {
-            if message.id.is_empty() {
-                message.id = format!("msg-{}", state.next_id + 1);
-                state.next_id += 1;
+    let open_len = state.open_chats.len();
+    for i in 0..open_len {
+        let msg_len = state.open_chats[i].messages.len();
+        for j in 0..msg_len {
+            if state.open_chats[i].messages[j].id.is_empty() {
+                let id = state.next_identifier("msg");
+                state.open_chats[i].messages[j].id = id;
             }
         }
     }
 
-    for archive in &mut state.archived_chats {
-        for message in &mut archive.preview {
-            if message.id.is_empty() {
-                message.id = format!("msg-{}", state.next_id + 1);
-                state.next_id += 1;
+    let archive_len = state.archived_chats.len();
+    for i in 0..archive_len {
+        let preview_len = state.archived_chats[i].preview.len();
+        for j in 0..preview_len {
+            if state.archived_chats[i].preview[j].id.is_empty() {
+                let id = state.next_identifier("msg");
+                state.archived_chats[i].preview[j].id = id;
             }
         }
     }
 
-    for notification in &mut state.notifications {
-        if notification.id.is_empty() {
-            notification.id = format!("ntf-{}", state.next_id + 1);
-            state.next_id += 1;
+    let ntf_len = state.notifications.len();
+    for i in 0..ntf_len {
+        if state.notifications[i].id.is_empty() {
+            let id = state.next_identifier("ntf");
+            state.notifications[i].id = id;
         }
     }
 
-    for packet in &mut state.packets {
-        if packet.id.is_empty() {
-            packet.id = format!("pkt-{}", state.next_id + 1);
-            state.next_id += 1;
+    let pkt_len = state.packets.len();
+    for i in 0..pkt_len {
+        if state.packets[i].id.is_empty() {
+            let id = state.next_identifier("pkt");
+            state.packets[i].id = id;
         }
     }
 
@@ -8184,6 +8196,97 @@ mod tests {
             None,
             "route path origin_message_id must be None, not Some(\"\")"
         );
+    }
+
+    #[test]
+    fn normalize_state_assigns_unique_prefixed_ids_to_empty_entries() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(None);
+        let pkt_id = state.create_packet(
+            session.id.clone(),
+            None,
+            None,
+            "Test".to_owned(),
+            "dispatched_to_manager",
+            None,
+            None,
+            "normalize test packet".to_owned(),
+        );
+        let ntf_id = state.create_notification(
+            None,
+            None,
+            None,
+            "low",
+            "normalize test",
+            "summary",
+        );
+
+        // Blank out IDs to simulate legacy snapshots loaded without IDs.
+        state.open_chats[0].messages[0].id = String::new();
+        state.packets.iter_mut().find(|p| p.id == pkt_id).unwrap().id = String::new();
+        state.notifications.iter_mut().find(|n| n.id == ntf_id).unwrap().id = String::new();
+
+        let next_id_before = state.next_id;
+        super::normalize_monitor_state(&mut state);
+
+        // next_id must have advanced once per filled slot.
+        assert_eq!(
+            state.next_id,
+            next_id_before + 3,
+            "next_id should advance once per empty ID filled"
+        );
+
+        let msg_id = &state.open_chats[0].messages[0].id;
+        assert!(!msg_id.is_empty(), "message id should be filled");
+        assert!(msg_id.starts_with("msg-"), "message id should use msg- prefix, got {msg_id}");
+
+        let pkt = &state.packets[0];
+        assert!(!pkt.id.is_empty(), "packet id should be filled");
+        assert!(pkt.id.starts_with("pkt-"), "packet id should use pkt- prefix, got {}", pkt.id);
+
+        let ntf = &state.notifications[0];
+        assert!(!ntf.id.is_empty(), "notification id should be filled");
+        assert!(ntf.id.starts_with("ntf-"), "notification id should use ntf- prefix, got {}", ntf.id);
+
+        // All three assigned IDs must be unique.
+        let ids = [msg_id.as_str(), pkt.id.as_str(), ntf.id.as_str()];
+        let unique: std::collections::HashSet<_> = ids.iter().collect();
+        assert_eq!(unique.len(), ids.len(), "all assigned IDs must be unique");
+    }
+
+    #[test]
+    fn persist_monitor_state_file_is_readable_and_no_tmp_remains() {
+        let path = unique_state_path("persist-atomic");
+
+        let mut state = MonitorState::default();
+        state.create_session(Some("persist test".to_owned()));
+
+        super::persist_monitor_state_to(&path, &state)
+            .expect("persist_monitor_state_to should succeed");
+
+        // Main file must exist.
+        assert!(path.exists(), "persisted file should exist at target path");
+
+        // Temp file must NOT remain after a successful atomic persist.
+        let tmp_path = path.with_file_name(format!(
+            "{}.tmp",
+            path.file_name().unwrap_or_default().to_string_lossy()
+        ));
+        assert!(
+            !tmp_path.exists(),
+            ".tmp file must not remain after successful atomic persist"
+        );
+
+        // File must deserialize into a valid persisted state.
+        let bytes = fs::read(&path).expect("should read persisted file");
+        let loaded: PersistedMonitorState =
+            serde_json::from_slice(&bytes).expect("persisted file should deserialize");
+        assert!(
+            !loaded.state.open_chats.is_empty(),
+            "persisted state should contain the session we created"
+        );
+
+        cleanup_state_path(&path);
     }
 
     #[test]
