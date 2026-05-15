@@ -2311,22 +2311,25 @@ fn monitor_state() -> &'static Mutex<MonitorState> {
     MONITOR_STATE.get_or_init(|| Mutex::new(load_monitor_state().unwrap_or_default()))
 }
 
-fn load_monitor_state() -> Option<MonitorState> {
-    let path = monitor_state_path();
-    let bytes = fs::read(&path).ok()?;
+fn load_monitor_state_from(path: &Path) -> Option<MonitorState> {
+    let bytes = fs::read(path).ok()?;
     let persisted: PersistedMonitorState = serde_json::from_slice(&bytes).ok()?;
     if persisted.schema_version != MONITOR_STATE_SCHEMA_VERSION {
         // Back up the mismatched file so data is not silently lost.
         let bak = path.with_file_name(
             format!("{}.bak", path.file_name().unwrap_or_default().to_string_lossy()),
         );
-        let _ = fs::copy(&path, bak);
+        let _ = fs::copy(path, bak);
         return None;
     }
 
     let mut state = persisted.state;
     normalize_monitor_state(&mut state);
     Some(state)
+}
+
+fn load_monitor_state() -> Option<MonitorState> {
+    load_monitor_state_from(&monitor_state_path())
 }
 
 fn persist_monitor_state_to(path: &Path, state: &MonitorState) -> io::Result<()> {
@@ -3105,7 +3108,7 @@ impl MonitorState {
         }
 
         let packet_entry = self.create_lifecycle_entry(
-            "packet.registered",
+            "packet.created",
             "agent",
             "FERROS Agent",
             format!("Staged {work_order_id} for {route_label} from {session_label}"),
@@ -8216,26 +8219,17 @@ mod tests {
             "schemaVersion": 99,
             "state": super::MonitorState::default(),
         });
-        let parent = path.parent().unwrap();
-        fs::create_dir_all(parent).expect("create parent dirs");
         fs::write(&path, serde_json::to_vec_pretty(&stale).unwrap())
             .expect("write stale state file");
 
-        // Override the monitor state path by writing through persist_monitor_state_to
-        // so load_monitor_state can find it. We exercise load_monitor_state_from instead
-        // via the internal helper injected in this test.
+        // Call through load_monitor_state_from directly — the production path.
+        let result = super::load_monitor_state_from(&path);
+        assert!(result.is_none(), "mismatched schema version should return None");
+
         let bak_path = path.with_file_name(format!(
             "{}.bak",
             path.file_name().unwrap_or_default().to_string_lossy()
         ));
-        // Simulate what load_monitor_state does: parse and check schema version.
-        let bytes = fs::read(&path).expect("read stale file");
-        let persisted: PersistedMonitorState = serde_json::from_slice(&bytes)
-            .expect("stale file should parse");
-        if persisted.schema_version != super::MONITOR_STATE_SCHEMA_VERSION {
-            let _ = fs::copy(&path, &bak_path);
-        }
-
         assert!(
             bak_path.exists(),
             "backup file should be created on schema mismatch"
@@ -8246,7 +8240,58 @@ mod tests {
         );
         cleanup_state_path(&bak_path);
         cleanup_state_path(&path);
-        cleanup_parent_dir(&path);
+    }
+
+    #[test]
+    fn packet_lifecycle_and_timeline_event_kinds_are_distinct() {
+        let state_lock = make_state();
+        let mut state = state_lock.lock().unwrap();
+
+        // Create a session and route it so dispatch_session_to_manager runs.
+        let session = state.create_session(Some("kind-split test".to_owned()));
+        let backend = ScaffoldMonitorDispatchBackend;
+        let (_, dispatch_ids) = state.dispatch_session_via_backend(
+            &session.id,
+            None,
+            DispatchTarget::Software,
+            &backend,
+            "route to software",
+        );
+        let (packet_id, _, packet_thread_id) = dispatch_ids
+            .expect("dispatch should succeed and return ids");
+
+        // --- Lifecycle thread entry kind ---
+        let thread = state
+            .lifecycle_threads
+            .iter()
+            .find(|t| t.id == packet_thread_id)
+            .expect("packet lifecycle thread should exist");
+        let packet_entry = thread
+            .entries
+            .iter()
+            .find(|e| e.kind == "packet.created")
+            .expect("lifecycle thread should have a packet.created entry");
+        assert_eq!(
+            packet_entry.kind, "packet.created",
+            "lifecycle thread entry kind should be 'packet.created'"
+        );
+
+        // --- Timeline event kind ---
+        let timeline_event = state
+            .timeline
+            .iter()
+            .find(|e| e.kind == "packet.registered" && e.text.contains(&packet_id))
+            .expect("timeline should have a packet.registered event for the packet");
+        assert_eq!(
+            timeline_event.kind, "packet.registered",
+            "timeline event kind should be 'packet.registered'"
+        );
+
+        // --- The two kinds must be different ---
+        assert_ne!(
+            packet_entry.kind, timeline_event.kind,
+            "lifecycle entry kind and timeline event kind must be distinct"
+        );
     }
 
     #[test]
