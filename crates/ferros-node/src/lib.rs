@@ -305,6 +305,27 @@ fn try_transition(
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+struct PacketAuditEntry {
+    seq: usize,
+    from: PacketState,
+    to: PacketState,
+    actor: String,
+    reason: String,
+    at: String,
+    #[serde(default)]
+    evidence_refs: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PacketTransitionApplied {
+    packet_id: String,
+    from: PacketState,
+    to: PacketState,
+    seq: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 struct MonitorPacket {
     id: String,
     session_id: String,
@@ -319,6 +340,10 @@ struct MonitorPacket {
     updated_at: String,
     summary: String,
     last_error: Option<String>,
+    #[serde(default)]
+    audit_seq: usize,
+    #[serde(default)]
+    audit_trail: Vec<PacketAuditEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -3291,6 +3316,8 @@ impl MonitorState {
             updated_at: now,
             summary,
             last_error: None,
+            audit_seq: 0,
+            audit_trail: vec![],
         });
         self.push_event("packet.registered", format!("Packet {id} registered"));
         id
@@ -3318,6 +3345,56 @@ impl MonitorState {
         }
         self.push_event("packet.state_changed", label);
         Ok(true)
+    }
+
+    /// Runs the FSM guard, then — only on acceptance — applies the transition,
+    /// appends an immutable audit entry, and pushes a timeline event.
+    /// Returns `Ok(None)` if `packet_id` is not found.
+    fn apply_packet_transition(
+        &mut self,
+        packet_id: &str,
+        to_state: PacketState,
+        actor: &str,
+        reason: &str,
+        evidence_refs: Vec<String>,
+    ) -> Result<Option<PacketTransitionApplied>, PacketTransitionError> {
+        let at = monitor_now();
+        // Phase 1: collect read-only data; immutable borrow ends with this block.
+        let (from, seq) = {
+            let Some(packet) = self.packets.iter().find(|p| p.id == packet_id) else {
+                return Ok(None);
+            };
+            (packet.state.clone(), packet.audit_seq + 1)
+        };
+        // Phase 2: FSM guard — pure, no mutation.
+        let next = try_transition(&from, to_state, actor, reason, &at)?;
+        // Phase 3: mutation only after guard accepts.
+        let audit_entry = PacketAuditEntry {
+            seq,
+            from: from.clone(),
+            to: next.clone(),
+            actor: actor.to_owned(),
+            reason: reason.to_owned(),
+            at: at.clone(),
+            evidence_refs,
+        };
+        let packet = self
+            .packets
+            .iter_mut()
+            .find(|p| p.id == packet_id)
+            .unwrap();
+        packet.state = next.clone();
+        packet.updated_at = at;
+        packet.audit_seq = seq;
+        packet.audit_trail.push(audit_entry);
+        let label = format!("{packet_id} -> {next}");
+        self.push_event("packet.state_changed", label);
+        Ok(Some(PacketTransitionApplied {
+            packet_id: packet_id.to_owned(),
+            from,
+            to: next,
+            seq,
+        }))
     }
 
     #[allow(dead_code)]
@@ -5115,7 +5192,7 @@ mod tests {
         CliError, CliState, DemoError, DemoRuntime, DispatchTarget, HttpRequest, LocalAgentApi,
         LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
         LocalRunwaySummary, MonitorDispatchBackend, MonitorDispatchBackendResult,
-        MonitorLifecycleThread, MonitorState, PersistedMonitorState, PacketState,
+        MonitorLifecycleThread, MonitorPacket, MonitorState, PersistedMonitorState, PacketState,
         PacketTransitionError, ProfileCliCommand,
         ProfileShellResponse, ScaffoldMonitorDispatchBackend,
         DEFAULT_PROFILE_NAME,
@@ -8550,6 +8627,144 @@ mod tests {
             result.unwrap(),
             PacketState::DispatchedToManager,
             "returned state must be DispatchedToManager"
+        );
+    }
+
+    // ── Packet 4 helpers ─────────────────────────────────────────────────────
+
+    fn make_staged_packet(id: &str) -> MonitorPacket {
+        MonitorPacket {
+            id: id.to_owned(),
+            session_id: "test-session".to_owned(),
+            origin_message_id: None,
+            work_order_id: None,
+            manager: "test-manager".to_owned(),
+            state: PacketState::Staged,
+            lifecycle_thread_id: None,
+            notification_id: None,
+            created_at: "2026-01-01T00:00:00Z".to_owned(),
+            updated_at: "2026-01-01T00:00:00Z".to_owned(),
+            summary: "test packet".to_owned(),
+            last_error: None,
+            audit_seq: 0,
+            audit_trail: vec![],
+        }
+    }
+
+    // ── Packet 4 tests ────────────────────────────────────────────────────────
+
+    #[test]
+    fn apply_packet_transition_updates_state_and_audit_trail() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p1"));
+
+        let result = state.apply_packet_transition(
+            "p1",
+            PacketState::DispatchedToManager,
+            "test-actor",
+            "test reason",
+            vec![],
+        );
+        assert!(result.is_ok(), "valid transition must not return Err");
+        let applied = result.unwrap().expect("packet p1 should be found");
+        assert_eq!(applied.from, PacketState::Staged);
+        assert_eq!(applied.to, PacketState::DispatchedToManager);
+        assert_eq!(applied.seq, 1);
+        assert_eq!(applied.packet_id, "p1");
+
+        let packet = state.packets.iter().find(|p| p.id == "p1").unwrap();
+        assert_eq!(packet.state, PacketState::DispatchedToManager);
+        assert_eq!(packet.audit_seq, 1);
+        assert_eq!(packet.audit_trail.len(), 1);
+        assert_eq!(packet.audit_trail[0].from, PacketState::Staged);
+        assert_eq!(packet.audit_trail[0].to, PacketState::DispatchedToManager);
+        assert_eq!(packet.audit_trail[0].seq, 1);
+    }
+
+    #[test]
+    fn apply_packet_transition_increments_audit_seq() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p2"));
+
+        state
+            .apply_packet_transition(
+                "p2",
+                PacketState::DispatchedToManager,
+                "a",
+                "r",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p2", PacketState::InProgress, "a", "r", vec![])
+            .unwrap();
+
+        let packet = state.packets.iter().find(|p| p.id == "p2").unwrap();
+        assert_eq!(packet.audit_seq, 2, "audit_seq should be 2 after two transitions");
+        assert_eq!(packet.audit_trail.len(), 2);
+        assert_eq!(packet.audit_trail[0].seq, 1);
+        assert_eq!(packet.audit_trail[1].seq, 2);
+    }
+
+    #[test]
+    fn apply_packet_transition_rejects_illegal_transition_via_guard() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p3"));
+
+        let result = state.apply_packet_transition(
+            "p3",
+            PacketState::Resolved, // illegal: Staged → Resolved has no legal edge
+            "test-actor",
+            "test reason",
+            vec![],
+        );
+        assert!(result.is_err(), "illegal transition must be rejected by guard");
+
+        // State must be unchanged — guard ran before any mutation
+        let packet = state.packets.iter().find(|p| p.id == "p3").unwrap();
+        assert_eq!(packet.state, PacketState::Staged, "state must not mutate on guard rejection");
+        assert_eq!(packet.audit_seq, 0);
+        assert!(packet.audit_trail.is_empty());
+    }
+
+    #[test]
+    fn apply_packet_transition_records_evidence_refs() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p4"));
+
+        let refs = vec!["evidence-a".to_owned(), "evidence-b".to_owned()];
+        state
+            .apply_packet_transition(
+                "p4",
+                PacketState::DispatchedToManager,
+                "test-actor",
+                "test reason",
+                refs.clone(),
+            )
+            .unwrap();
+
+        let packet = state.packets.iter().find(|p| p.id == "p4").unwrap();
+        assert_eq!(
+            packet.audit_trail[0].evidence_refs,
+            refs,
+            "evidence_refs must be stored in the audit entry"
+        );
+    }
+
+    #[test]
+    fn apply_packet_transition_returns_none_for_missing_packet() {
+        let mut state = MonitorState::default();
+        let result = state.apply_packet_transition(
+            "nonexistent-packet",
+            PacketState::DispatchedToManager,
+            "test-actor",
+            "test reason",
+            vec![],
+        );
+        assert!(result.is_ok(), "missing packet must not produce an Err");
+        assert!(
+            result.unwrap().is_none(),
+            "missing packet must return Ok(None)"
         );
     }
 
