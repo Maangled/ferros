@@ -3,6 +3,41 @@
 Newest entry first. Each entry records one local driver invocation.
 
 ---
+## 2026-05-15 - FSM-monitor-seam-packet-5
+
+- wave_id: FSM-monitor-seam-packet-5
+- selected_item_id: FSM-monitor-seam-packet-5
+- issued_at: 2026-05-15
+- commit: f909cfa
+- lanes_run: Packet 5 of 5 — coordinator-ready scaffold backend contract for `ferros-node`.
+- validation_results:
+  - BackendTicket struct added with `external_ref: String`; `ticket: Option<BackendTicket>` field added to `MonitorDispatchBackendResult`.
+  - `MonitorDispatchBackend::handle_dispatch` signature extended with `packet_id: &str`; `ScaffoldMonitorDispatchBackend` returns `ticket.external_ref = "scaffold:{packet_id}"`.
+  - `try_transition` legal matrix expanded from 12 to 13 edges: `Staged → Failed` added for backend-rejection path.
+  - `dispatch_session_to_manager` now creates packets in `PacketState::Staged`.
+  - `dispatch_session_via_backend` restructured: stage first, consult backend with real packet_id, then `apply_packet_transition(Staged → DispatchedToManager)` on acceptance (ticket as evidence) or `apply_packet_transition(Staged → Failed)` on rejection.
+  - `ferros_reply` copy updated to honest "staged and accepted by scaffold. Live manager execution is not connected."
+  - All existing tests updated: `RejectingBackend` gains `_packet_id` param and `ticket: None`; `route_endpoint_uses_backend_dispatch_path` assertions updated for new staged-first flow.
+  - 4 new Packet 5 tests added: scaffold ticket external_ref, Staged→DispatchedToManager transition + audit entry, ticket evidence in audit trail, rejection→Failed.
+  - 107 tests pass (103 pre-existing + 4 new).
+- gatekeeper_decision: stop-clean
+- stop_condition: All 5 FSM+monitor seam hardening packets landed and verified. Segment complete.
+- truth_sync_delta: `crates/ferros-node/src/lib.rs`, `docs/orchestration/WAVE-RUN-LOG.md`
+- claims:
+  - Packet 5 scaffold backend contract implemented with packet-scoped BackendTicket and FSM-gated dispatch flow;
+  - 107 tests pass with no unsafe code; all 5 packets (1, 2a, 2b, 2b-corrective, 3a, 3b, 4a, 4b, 5) committed and pushed;
+  - audit trail records ticket evidence on Staged → DispatchedToManager transition;
+  - honest operator-facing copy used throughout.
+- non_claims:
+  - no async traits;
+  - no TS coordinator integration;
+  - no live manager execution;
+  - no WorkOrder trees;
+  - no gate closure;
+  - no hardware proof;
+  - no runtime execution claim beyond scaffold seam.
+
+---
 ## 2026-05-10 - FRS-coding-20260510-C1-W4
 
 - wave_id: FRS-coding-20260510-C1-W4
