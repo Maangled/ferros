@@ -207,27 +207,99 @@ struct MonitorAgentSourceTreeStatus {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 enum PacketState {
+    Staged,
     DispatchedToManager,
+    InProgress,
+    AwaitingReview,
+    Reviewed,
+    Resolved,
+    Failed,
     HumanInterventionRequired,
+    Cancelled,
 }
 
 impl fmt::Display for PacketState {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            PacketState::Staged => formatter.write_str("staged"),
             PacketState::DispatchedToManager => formatter.write_str("dispatched_to_manager"),
+            PacketState::InProgress => formatter.write_str("in_progress"),
+            PacketState::AwaitingReview => formatter.write_str("awaiting_review"),
+            PacketState::Reviewed => formatter.write_str("reviewed"),
+            PacketState::Resolved => formatter.write_str("resolved"),
+            PacketState::Failed => formatter.write_str("failed"),
             PacketState::HumanInterventionRequired => {
                 formatter.write_str("human_intervention_required")
             }
+            PacketState::Cancelled => formatter.write_str("cancelled"),
         }
     }
 }
 
-fn advance_packet_state(current: &PacketState, next: &PacketState) -> Result<(), String> {
-    match (current, next) {
-        (PacketState::DispatchedToManager, PacketState::HumanInterventionRequired) => Ok(()),
-        _ => Err(format!(
-            "invalid packet state transition: {current} \u{2192} {next}"
-        )),
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PacketTransitionError {
+    from: PacketState,
+    to: PacketState,
+    message: String,
+}
+
+impl fmt::Display for PacketTransitionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "cannot transition {} \u{2192} {}: {}",
+            self.from, self.to, self.message
+        )
+    }
+}
+
+/// Pure FSM guard. Validates `actor` and `reason` are non-empty, then
+/// checks the legal transition matrix. Returns the next state on success.
+/// `at` is an audit timestamp carried by the caller; not validated here.
+fn try_transition(
+    from: &PacketState,
+    to: PacketState,
+    actor: &str,
+    reason: &str,
+    _at: &str,
+) -> Result<PacketState, PacketTransitionError> {
+    if actor.is_empty() {
+        return Err(PacketTransitionError {
+            from: from.clone(),
+            to,
+            message: "actor must not be empty".to_owned(),
+        });
+    }
+    if reason.is_empty() {
+        return Err(PacketTransitionError {
+            from: from.clone(),
+            to,
+            message: "reason must not be empty".to_owned(),
+        });
+    }
+    let legal = matches!(
+        (from, &to),
+        (PacketState::Staged, PacketState::DispatchedToManager)
+            | (PacketState::Staged, PacketState::HumanInterventionRequired)
+            | (PacketState::DispatchedToManager, PacketState::InProgress)
+            | (PacketState::DispatchedToManager, PacketState::HumanInterventionRequired)
+            | (PacketState::InProgress, PacketState::AwaitingReview)
+            | (PacketState::InProgress, PacketState::Failed)
+            | (PacketState::InProgress, PacketState::HumanInterventionRequired)
+            | (PacketState::AwaitingReview, PacketState::Reviewed)
+            | (PacketState::AwaitingReview, PacketState::HumanInterventionRequired)
+            | (PacketState::Reviewed, PacketState::Resolved)
+            | (PacketState::Reviewed, PacketState::Failed)
+            | (PacketState::Reviewed, PacketState::HumanInterventionRequired)
+    );
+    if legal {
+        Ok(to)
+    } else {
+        Err(PacketTransitionError {
+            from: from.clone(),
+            to,
+            message: "no legal edge from this state".to_owned(),
+        })
     }
 }
 
@@ -3229,15 +3301,18 @@ impl MonitorState {
         &mut self,
         packet_id: &str,
         new_state: PacketState,
+        actor: &str,
+        reason: &str,
         detail: Option<String>,
-    ) -> Result<bool, String> {
+    ) -> Result<bool, PacketTransitionError> {
         let Some(packet) = self.packets.iter_mut().find(|p| p.id == packet_id) else {
             return Ok(false);
         };
-        advance_packet_state(&packet.state, &new_state)?;
-        let label = format!("{packet_id} -> {new_state}");
-        packet.state = new_state;
-        packet.updated_at = monitor_now();
+        let at = monitor_now();
+        let next = try_transition(&packet.state, new_state, actor, reason, &at)?;
+        let label = format!("{packet_id} -> {next}");
+        packet.state = next;
+        packet.updated_at = at;
         if let Some(err) = detail {
             packet.last_error = Some(err);
         }
@@ -5041,7 +5116,7 @@ mod tests {
         LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
         LocalRunwaySummary, MonitorDispatchBackend, MonitorDispatchBackendResult,
         MonitorLifecycleThread, MonitorState, PersistedMonitorState, PacketState,
-        ProfileCliCommand,
+        PacketTransitionError, ProfileCliCommand,
         ProfileShellResponse, ScaffoldMonitorDispatchBackend,
         DEFAULT_PROFILE_NAME,
     };
@@ -8249,9 +8324,12 @@ mod tests {
     #[test]
     fn packet_state_fsm_allows_valid_transition() {
         assert!(
-            super::advance_packet_state(
+            super::try_transition(
                 &PacketState::DispatchedToManager,
-                &PacketState::HumanInterventionRequired,
+                PacketState::HumanInterventionRequired,
+                "test-actor",
+                "test reason",
+                "2026-01-01T00:00:00Z",
             )
             .is_ok(),
             "DispatchedToManager → HumanInterventionRequired must be a valid transition"
@@ -8262,27 +8340,36 @@ mod tests {
     fn packet_state_fsm_rejects_invalid_transitions() {
         // Self-transition: dispatched_to_manager → dispatched_to_manager
         assert!(
-            super::advance_packet_state(
+            super::try_transition(
                 &PacketState::DispatchedToManager,
-                &PacketState::DispatchedToManager,
+                PacketState::DispatchedToManager,
+                "test-actor",
+                "test reason",
+                "2026-01-01T00:00:00Z",
             )
             .is_err(),
             "self-transition on DispatchedToManager must be rejected"
         );
         // Terminal: human_intervention_required → dispatched_to_manager (backward)
         assert!(
-            super::advance_packet_state(
+            super::try_transition(
                 &PacketState::HumanInterventionRequired,
-                &PacketState::DispatchedToManager,
+                PacketState::DispatchedToManager,
+                "test-actor",
+                "test reason",
+                "2026-01-01T00:00:00Z",
             )
             .is_err(),
             "backward transition from HumanInterventionRequired must be rejected"
         );
         // Terminal self-transition
         assert!(
-            super::advance_packet_state(
+            super::try_transition(
                 &PacketState::HumanInterventionRequired,
-                &PacketState::HumanInterventionRequired,
+                PacketState::HumanInterventionRequired,
+                "test-actor",
+                "test reason",
+                "2026-01-01T00:00:00Z",
             )
             .is_err(),
             "self-transition on HumanInterventionRequired must be rejected"
@@ -8316,6 +8403,154 @@ mod tests {
         let back: PacketState = serde_json::from_value(escalated)
             .expect("human_intervention_required should deserialize to PacketState");
         assert_eq!(back, PacketState::HumanInterventionRequired);
+    }
+
+    #[test]
+    fn packet_state_serializes_current_wire_names() {
+        fn wire(state: &PacketState) -> String {
+            serde_json::to_string(state).expect("PacketState should serialize")
+        }
+        // Legacy wire names — must never change
+        assert_eq!(wire(&PacketState::DispatchedToManager), "\"dispatched_to_manager\"");
+        assert_eq!(
+            wire(&PacketState::HumanInterventionRequired),
+            "\"human_intervention_required\""
+        );
+        // Dormant variants added in 3b
+        assert_eq!(wire(&PacketState::Staged), "\"staged\"");
+        assert_eq!(wire(&PacketState::InProgress), "\"in_progress\"");
+        assert_eq!(wire(&PacketState::AwaitingReview), "\"awaiting_review\"");
+        assert_eq!(wire(&PacketState::Reviewed), "\"reviewed\"");
+        assert_eq!(wire(&PacketState::Resolved), "\"resolved\"");
+        assert_eq!(wire(&PacketState::Failed), "\"failed\"");
+        assert_eq!(wire(&PacketState::Cancelled), "\"cancelled\"");
+    }
+
+    #[test]
+    fn packet_state_deserializes_dormant_future_states() {
+        let cases: &[(&str, PacketState)] = &[
+            ("\"staged\"", PacketState::Staged),
+            ("\"in_progress\"", PacketState::InProgress),
+            ("\"awaiting_review\"", PacketState::AwaitingReview),
+            ("\"reviewed\"", PacketState::Reviewed),
+            ("\"resolved\"", PacketState::Resolved),
+            ("\"failed\"", PacketState::Failed),
+            ("\"cancelled\"", PacketState::Cancelled),
+        ];
+        for (json_str, expected) in cases {
+            let got: PacketState = serde_json::from_str(json_str)
+                .unwrap_or_else(|e| panic!("should deserialize {json_str}: {e}"));
+            assert_eq!(got, *expected, "deserialized from {json_str}");
+        }
+    }
+
+    #[test]
+    fn packet_transition_requires_actor_and_reason() {
+        let empty_actor = super::try_transition(
+            &PacketState::Staged,
+            PacketState::DispatchedToManager,
+            "",
+            "valid reason",
+            "2026-01-01T00:00:00Z",
+        );
+        assert!(empty_actor.is_err(), "empty actor must be rejected");
+        let err = empty_actor.unwrap_err();
+        assert!(
+            err.message.contains("actor"),
+            "error message should mention 'actor', got: {}",
+            err.message
+        );
+
+        let empty_reason = super::try_transition(
+            &PacketState::Staged,
+            PacketState::DispatchedToManager,
+            "valid-actor",
+            "",
+            "2026-01-01T00:00:00Z",
+        );
+        assert!(empty_reason.is_err(), "empty reason must be rejected");
+        let err = empty_reason.unwrap_err();
+        assert!(
+            err.message.contains("reason"),
+            "error message should mention 'reason', got: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn packet_transition_matrix_accepts_only_legal_edges() {
+        let check = |from: &PacketState, to: PacketState| {
+            super::try_transition(from, to, "test-actor", "test reason", "2026-01-01T00:00:00Z")
+        };
+
+        // All 12 legal edges
+        assert!(check(&PacketState::Staged, PacketState::DispatchedToManager).is_ok());
+        assert!(check(&PacketState::Staged, PacketState::HumanInterventionRequired).is_ok());
+        assert!(check(&PacketState::DispatchedToManager, PacketState::InProgress).is_ok());
+        assert!(
+            check(&PacketState::DispatchedToManager, PacketState::HumanInterventionRequired)
+                .is_ok()
+        );
+        assert!(check(&PacketState::InProgress, PacketState::AwaitingReview).is_ok());
+        assert!(check(&PacketState::InProgress, PacketState::Failed).is_ok());
+        assert!(check(&PacketState::InProgress, PacketState::HumanInterventionRequired).is_ok());
+        assert!(check(&PacketState::AwaitingReview, PacketState::Reviewed).is_ok());
+        assert!(
+            check(&PacketState::AwaitingReview, PacketState::HumanInterventionRequired).is_ok()
+        );
+        assert!(check(&PacketState::Reviewed, PacketState::Resolved).is_ok());
+        assert!(check(&PacketState::Reviewed, PacketState::Failed).is_ok());
+        assert!(check(&PacketState::Reviewed, PacketState::HumanInterventionRequired).is_ok());
+
+        // Terminal states must reject all outbound transitions
+        assert!(check(&PacketState::Resolved, PacketState::Staged).is_err());
+        assert!(check(&PacketState::Failed, PacketState::Staged).is_err());
+        assert!(check(&PacketState::HumanInterventionRequired, PacketState::Staged).is_err());
+        assert!(check(&PacketState::Cancelled, PacketState::Staged).is_err());
+    }
+
+    #[test]
+    fn illegal_packet_transition_returns_structured_error() {
+        let result = super::try_transition(
+            &PacketState::Resolved,
+            PacketState::DispatchedToManager,
+            "test-actor",
+            "test reason",
+            "2026-01-01T00:00:00Z",
+        );
+        assert!(result.is_err(), "illegal transition must return Err");
+        let err = result.unwrap_err();
+        assert_eq!(
+            err.from,
+            PacketState::Resolved,
+            "PacketTransitionError.from should be Resolved"
+        );
+        assert_eq!(
+            err.to,
+            PacketState::DispatchedToManager,
+            "PacketTransitionError.to should be DispatchedToManager"
+        );
+        assert!(!err.message.is_empty(), "error message must not be empty");
+    }
+
+    #[test]
+    fn staged_to_dispatched_is_valid_for_backend_contract() {
+        let result = super::try_transition(
+            &PacketState::Staged,
+            PacketState::DispatchedToManager,
+            "scaffold-backend",
+            "accepted by scaffold backend",
+            "2026-01-01T00:00:00Z",
+        );
+        assert!(
+            result.is_ok(),
+            "Staged → DispatchedToManager must be valid for the backend contract"
+        );
+        assert_eq!(
+            result.unwrap(),
+            PacketState::DispatchedToManager,
+            "returned state must be DispatchedToManager"
+        );
     }
 
     #[test]
