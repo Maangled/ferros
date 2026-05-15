@@ -384,6 +384,109 @@ fn is_completion_claim(text: &str) -> bool {
 /// Determine if a session is a background agent session (not Administration/FERROS Agent).
 fn is_background_agent_session(session: &MonitorSession) -> bool {
     session.active_agent != "FERROS Agent" && !session.label.to_lowercase().contains("administration")
+
+}
+
+/// Get the fixed corrective instruction for watchdog events.
+fn get_fixed_corrective_instruction() -> String {
+    "Questions cannot be answered in this background chat. Continue through the packet protocol. If human input is required, transition the packet to HumanInterventionRequired with reason and evidence. Otherwise continue the current packet using the available context.".to_owned()
+}
+
+/// Prune watchdog events to stay within cap, preferring to keep unresolved events.
+fn prune_watchdog_events(events: &mut Vec<WatchdogEvent>) {
+    const MAX: usize = MONITOR_MAX_WATCHDOG_EVENTS;
+    if events.len() <= MAX {
+        return;
+    }
+    let mut unresolved_indices: Vec<usize> = events
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, event)| {
+            if event.correction_status != WatchdogCorrectionStatus::Resolved {
+                Some(idx)
+            } else {
+                None
+            }
+        })
+        .collect();
+    let resolved_indices: Vec<usize> = events
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, event)| {
+            if event.correction_status == WatchdogCorrectionStatus::Resolved {
+                Some(idx)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Keep unresolved events first. If unresolved alone exceed MAX, keep the newest unresolved.
+    if unresolved_indices.len() > MAX {
+        let drop_count = unresolved_indices.len() - MAX;
+        unresolved_indices.drain(0..drop_count);
+    }
+
+    let mut keep_indices = unresolved_indices;
+    if keep_indices.len() < MAX {
+        let remaining = MAX - keep_indices.len();
+        for idx in resolved_indices.into_iter().rev().take(remaining) {
+            keep_indices.push(idx);
+        }
+    }
+
+    keep_indices.sort_unstable();
+    *events = events
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, event)| {
+            if keep_indices.binary_search(&idx).is_ok() {
+                Some(event.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+}
+
+/// Check if a recent open watchdog event exists (dedupe window).
+fn has_recent_open_event(
+    events: &[WatchdogEvent],
+    kind: WatchdogEventKind,
+    session_id: Option<&str>,
+    packet_id: Option<&str>,
+    message_id: Option<&str>,
+    now_secs: i64,
+) -> bool {
+    const DEDUPE_WINDOW_SECS: i64 = 300;
+    events.iter().any(|event| {
+        if event.kind != kind {
+            return false;
+        }
+        if !matches!(
+            event.correction_status,
+            WatchdogCorrectionStatus::Pending
+                | WatchdogCorrectionStatus::CorrectionIssued
+                | WatchdogCorrectionStatus::Escalated
+        ) {
+            return false;
+        }
+
+        if let Some(msg_id) = message_id {
+            if event.message_id.as_deref() == Some(msg_id) {
+                return true;
+            }
+        }
+
+        if event.session_id.as_deref() != session_id || event.packet_id.as_deref() != packet_id {
+            return false;
+        }
+
+        match OffsetDateTime::parse(&event.detected_at, &Rfc3339) {
+            Ok(detected_at) => (now_secs - detected_at.unix_timestamp()).abs() <= DEDUPE_WINDOW_SECS,
+            Err(_) => false,
+        }
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -1810,7 +1913,10 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
     if request_path == "/monitor/state" && method == "GET" {
         let state = monitor_state();
         let mut guard = state.lock().map_err(|_| ()).ok()?;
-        guard.detect_stalled_packets();
+        let stalled_events_created = guard.detect_stalled_packets();
+        if stalled_events_created {
+            persist_monitor_state_best_effort(&mut guard, "stalled.packets.detection");
+        }
         let snapshot = guard.snapshot();
         return Some(enable_cors(json_response(200, "OK", &snapshot)));
     }
@@ -2075,6 +2181,18 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
+    if trailing == "watchdog/correct" && method == "POST" {
+        let request: MonitorWatchdogCorrectRequest = match serde_json::from_slice(&body) {
+            Ok(r) => r,
+            Err(e) => return Some(enable_cors(text_response(400, "Bad Request", format!("invalid watchdog correction request: {e}")))),
+        };
+        let state = monitor_state();
+        let mut guard = match state.lock() {
+            Ok(guard) => guard,
+            Err(_) => return Some(enable_cors(text_response(500, "Internal Server Error", "monitor state lock poisoned"))),
+        };
+        return handle_watchdog_correct_route(&mut guard, session_id, &request);
+    }
     if let Some((packet_id, trailing)) = parse_monitor_packet_subroute(request_path) {
         if trailing == "state" && method == "POST" {
             let request: MonitorPacketStateRequest = match serde_json::from_slice(&body) {
@@ -2340,75 +2458,7 @@ fn route_monitor_request_with_state(
                 }
             };
             let mut guard = state.lock().ok()?;
-            
-            // Find the watchdog event and extract needed data
-            let event_index = match guard.watchdog_events.iter().position(|e| e.id == request.watchdog_event_id) {
-                Some(idx) => idx,
-                None => {
-                    return Some(enable_cors(text_response(
-                        404,
-                        "Not Found",
-                        "watchdog event not found",
-                    )));
-                }
-            };
-            
-            // Check status and clone instruction before mutating
-            let event_status = guard.watchdog_events[event_index].correction_status.clone();
-            if !matches!(event_status, WatchdogCorrectionStatus::Pending) {
-                return Some(enable_cors(text_response(
-                    409,
-                    "Conflict",
-                    "watchdog event is not pending correction",
-                )));
-            }
-            
-            let instruction = guard.watchdog_events[event_index].corrective_instruction.clone();
-            let packet_id = guard.watchdog_events[event_index].packet_id.clone();
-            
-            // Get the corrective instruction (if any)
-            if let Some(instr) = instruction {
-                // Inject corrective message into session
-                let message = MonitorMessage {
-                    id: guard.next_identifier("msg"),
-                    speaker: "watchdog".to_owned(),
-                    who: "FERROS Watchdog".to_owned(),
-                    text: instr.clone(),
-                    at: monitor_now(),
-                };
-                
-                if let Some(sess_idx) = guard.open_chats.iter().position(|s| s.id == session_id) {
-                    guard.open_chats[sess_idx].messages.push(message.clone());
-                    
-                    // Update the event status
-                    guard.watchdog_events[event_index].correction_status = WatchdogCorrectionStatus::CorrectionIssued;
-                    
-                    // Create notification
-                    let _ = guard.create_notification(
-                        packet_id,
-                        Some(session_id.to_owned()),
-                        None,
-                        "med",
-                        "Watchdog correction injected",
-                        "System injected a corrective instruction. Continue via packet protocol.",
-                    );
-                    
-                    return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
-                } else {
-                    return Some(enable_cors(text_response(
-                        404,
-                        "Not Found",
-                        "session not found",
-                    )));
-                }
-            } else {
-                // No corrective instruction available
-                return Some(enable_cors(json_response(
-                    400,
-                    "Bad Request",
-                    &serde_json::json!({"error": "watchdog event has no corrective instruction"}),
-                )));
-            }
+            return handle_watchdog_correct_route(&mut guard, session_id, &request);
         }
     }
 
@@ -2419,6 +2469,40 @@ fn split_request_path(path: &str) -> (&str, Option<&str>) {
     match path.split_once('?') {
         Some((request_path, request_query)) => (request_path, Some(request_query)),
         None => (path, None),
+    }
+}
+
+/// Shared handler for watchdog correction injection.
+fn handle_watchdog_correct_route(guard: &mut MonitorState, session_id: &str, request: &MonitorWatchdogCorrectRequest) -> Option<HttpResponse> {
+    let event_index = match guard.watchdog_events.iter().position(|e| e.id == request.watchdog_event_id) {
+        Some(idx) => idx,
+        None => return Some(enable_cors(text_response(404, "Not Found", "watchdog event not found"))),
+    };
+    let event_status = guard.watchdog_events[event_index].correction_status.clone();
+    if !matches!(event_status, WatchdogCorrectionStatus::Pending) {
+        return Some(enable_cors(text_response(409, "Conflict", "watchdog event is not pending correction")));
+    }
+    let instruction = guard.watchdog_events[event_index].corrective_instruction.clone();
+    let packet_id = guard.watchdog_events[event_index].packet_id.clone();
+    if let Some(instr) = instruction {
+        let message = MonitorMessage {
+            id: guard.next_identifier("msg"),
+            speaker: "watchdog".to_owned(),
+            who: "FERROS Watchdog".to_owned(),
+            text: instr.clone(),
+            at: monitor_now(),
+        };
+        if let Some(sess_idx) = guard.open_chats.iter().position(|s| s.id == session_id) {
+            guard.open_chats[sess_idx].messages.push(message.clone());
+            guard.watchdog_events[event_index].correction_status = WatchdogCorrectionStatus::CorrectionIssued;
+            let _ = guard.create_notification(packet_id, Some(session_id.to_owned()), None, "med", "Watchdog correction injected", "System injected a corrective instruction. Continue via packet protocol.");
+            persist_monitor_state_best_effort(guard, "watchdog.correct persistence warning");
+            return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+        } else {
+            return Some(enable_cors(text_response(404, "Not Found", "session not found")));
+        }
+    } else {
+        return Some(enable_cors(json_response(400, "Bad Request", &serde_json::json!({"error": "watchdog event has no corrective instruction"}))));
     }
 }
 
@@ -3359,7 +3443,17 @@ impl MonitorState {
             // Run watchdog detection patterns on message text
             // Only for non-watchdog messages (speaker != "watchdog")
             if speaker != "watchdog" {
-                if is_hidden_human_question(&text) {
+                let now_secs = OffsetDateTime::now_utc().unix_timestamp();
+                if is_hidden_human_question(&text)
+                    && !has_recent_open_event(
+                        &self.watchdog_events,
+                        WatchdogEventKind::HiddenHumanQuestion,
+                        Some(session_id),
+                        linked_packet_id.as_deref(),
+                        Some(message_id.as_str()),
+                        now_secs,
+                    )
+                {
                     let event_id = self.next_identifier("wde");
                     let event = WatchdogEvent {
                         id: event_id,
@@ -3384,7 +3478,16 @@ impl MonitorState {
                         "Hidden human question detected",
                         &format!("{}: asked '{}'", active_agent, text),
                     );
-                } else if is_waiting_for_human(&text) {
+                } else if is_waiting_for_human(&text)
+                    && !has_recent_open_event(
+                        &self.watchdog_events,
+                        WatchdogEventKind::WaitingForHuman,
+                        Some(session_id),
+                        linked_packet_id.as_deref(),
+                        Some(message_id.as_str()),
+                        now_secs,
+                    )
+                {
                     let event_id = self.next_identifier("wde");
                     let event = WatchdogEvent {
                         id: event_id,
@@ -3395,7 +3498,7 @@ impl MonitorState {
                         message_id: Some(message_id.clone()),
                         detected_at: monitor_now(),
                         detail: format!("Background agent is waiting for human input: '{}'", text),
-                        corrective_instruction: None,
+                        corrective_instruction: Some(get_fixed_corrective_instruction()),
                         correction_status: WatchdogCorrectionStatus::Pending,
                     };
                     self.watchdog_events.push(event);
@@ -3411,6 +3514,14 @@ impl MonitorState {
                     // Check if linked packet has no evidence (evidence check will be in Packet 3)
                     // For now, just flag it
                     if let Some(ref pkt_id) = linked_packet_id {
+                        if !has_recent_open_event(
+                            &self.watchdog_events,
+                            WatchdogEventKind::CompletionClaimWithoutEvidence,
+                            Some(session_id),
+                            linked_packet_id.as_deref(),
+                            Some(message_id.as_str()),
+                            now_secs,
+                        ) {
                         let event_id = self.next_identifier("wde");
                         let event = WatchdogEvent {
                             id: event_id,
@@ -3433,12 +3544,13 @@ impl MonitorState {
                             "Completion claimed without evidence",
                             &format!("{}: completed but needs evidence check", active_agent),
                         );
+                        }
                     }
                 }
                 
                 // Cap watchdog events
                 if self.watchdog_events.len() > MONITOR_MAX_WATCHDOG_EVENTS {
-                    self.watchdog_events.truncate(MONITOR_MAX_WATCHDOG_EVENTS);
+                    prune_watchdog_events(&mut self.watchdog_events);
                 }
             }
         }
@@ -3687,6 +3799,10 @@ impl MonitorState {
             format!("Staged from {session_label} \u{2192} {route_label}"),
         );
 
+        if let Some(loop_entry) = self.running_loops.iter_mut().find(|l| l.agent == loop_agent) {
+            loop_entry.current_packet_id = Some(packet_id.clone());
+        }
+
         Some((packet_id, route_label.to_owned(), packet_thread_id))
     }
 
@@ -3855,6 +3971,19 @@ impl MonitorState {
         packet.updated_at = at;
         packet.audit_seq = seq;
         packet.audit_trail.push(audit_entry);
+                if matches!(
+                    next,
+                    PacketState::Resolved
+                        | PacketState::Failed
+                        | PacketState::HumanInterventionRequired
+                        | PacketState::Cancelled
+                ) {
+                    for loop_entry in &mut self.running_loops {
+                        if loop_entry.current_packet_id.as_deref() == Some(packet_id) {
+                            loop_entry.current_packet_id = None;
+                        }
+                    }
+                }
         let label = format!("{packet_id} -> {next}");
         self.push_event("packet.state_changed", label);
         Ok(Some(PacketTransitionApplied {
@@ -3949,12 +4078,14 @@ impl MonitorState {
     /// Called during monitor maintenance (e.g., from /monitor/state routes).
     /// Scans active packets for stalls: packets in InProgress/AwaitingReview/Reviewed
     /// states that have exceeded WATCHDOG_STALL_THRESHOLD_SECONDS.
-    fn detect_stalled_packets(&mut self) {
-        let now_secs = OffsetDateTime::now_utc()
-            .unix_timestamp();
-        
+    fn detect_stalled_packets(&mut self) -> bool {
+        let now_secs = OffsetDateTime::now_utc().unix_timestamp();
+        let mut events_created = false;
+
         // Collect stalled packets first (to avoid borrow issues)
-        let stalled_packets: Vec<(String, String, Option<String>, i64, PacketState)> = self.packets.iter()
+        let stalled_packets: Vec<(String, String, Option<String>, i64, PacketState)> = self
+            .packets
+            .iter()
             .filter_map(|packet| {
                 // Only check active states
                 if !matches!(
@@ -3963,18 +4094,19 @@ impl MonitorState {
                 ) {
                     return None;
                 }
-                
+
                 // Parse updated_at timestamp
-                let packet_age_secs = if let Ok(updated_time) = OffsetDateTime::parse(&packet.updated_at, &Rfc3339) {
+                let packet_age_secs =
+                    if let Ok(updated_time) = OffsetDateTime::parse(&packet.updated_at, &Rfc3339) {
                     now_secs - updated_time.unix_timestamp()
                 } else {
                     return None;
                 };
-                
+
                 if packet_age_secs <= WATCHDOG_STALL_THRESHOLD_SECONDS {
                     return None;
                 }
-                
+
                 // Check if we already have an open PacketStalled event for this packet
                 let has_stalled_event = self.watchdog_events.iter().any(|e| {
                     e.packet_id == Some(packet.id.clone())
@@ -3985,7 +4117,7 @@ impl MonitorState {
                 if has_stalled_event {
                     return None;
                 }
-                
+
                 Some((
                     packet.id.clone(),
                     packet.manager.clone(),
@@ -3995,7 +4127,7 @@ impl MonitorState {
                 ))
             })
             .collect();
-        
+
         // Now process stalled packets (can safely borrow self mutably)
         for (packet_id, manager, thread_id, age_secs, state) in stalled_packets {
             let event_id = self.next_identifier("wde");
@@ -4016,7 +4148,8 @@ impl MonitorState {
                 correction_status: WatchdogCorrectionStatus::Pending,
             };
             self.watchdog_events.push(event);
-            
+            events_created = true;
+
             // Create notification
             let _ = self.create_notification(
                 Some(packet_id),
@@ -4027,11 +4160,13 @@ impl MonitorState {
                 &detail,
             );
         }
-        
+
         // Cap watchdog events
         if self.watchdog_events.len() > MONITOR_MAX_WATCHDOG_EVENTS {
-            self.watchdog_events.truncate(MONITOR_MAX_WATCHDOG_EVENTS);
+            prune_watchdog_events(&mut self.watchdog_events);
         }
+
+        events_created
     }
 
     fn add_lifecycle_message(&mut self, thread_id: &str, request: MonitorLifecycleMessageRequest) -> bool {
@@ -10191,9 +10326,9 @@ mod tests {
             });
         }
 
-        // Cap manually
+        // Prune using production helper behavior
         if state.watchdog_events.len() > MONITOR_MAX_WATCHDOG_EVENTS {
-            state.watchdog_events.truncate(MONITOR_MAX_WATCHDOG_EVENTS);
+            super::prune_watchdog_events(&mut state.watchdog_events);
         }
 
         assert_eq!(
