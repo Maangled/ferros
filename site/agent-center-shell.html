@@ -1272,6 +1272,7 @@
       const openChats = state.monitor.openChats || [];
       const lifecycleThreads = state.monitor.lifecycleThreads || [];
       const runningLoops = state.monitor.runningLoops || [];
+      const watchdogEvents = state.monitor.watchdogEvents || [];
       const agentDirectory = state.monitor.agentDirectory || [];
       const sourceTree = state.monitor.agentSourceTree || null;
 
@@ -1292,6 +1293,11 @@
           <div class="metric-copy">Current loop roster with backend-issued status.</div>
         </article>
         <article class="metric-card">
+          <div class="metric-label">Watchdog events</div>
+          <div class="metric-value">${escapeHtml(watchdogEvents.length)}</div>
+          <div class="metric-copy">Chat monitoring sensor detecting stalls, hidden questions, and issues.</div>
+        </article>
+        <article class="metric-card">
           <div class="metric-label">Directory sync</div>
           <div class="metric-value">${escapeHtml(sourceTree ? sourceTree.syncState : 'unknown')}</div>
           <div class="metric-copy">${escapeHtml(agentDirectory.length)} directory rows mirrored from the current agent tree.</div>
@@ -1310,15 +1316,37 @@
           </article>`;
       }).join('') || emptyNote('No lifecycle threads', 'Open or route a monitor chat to create packet lifecycle rows.');
 
+      const watchdogEventRows = watchdogEvents.map((event) => {
+        const kindLabel = event.kind
+          .replace(/_/g, ' ')
+          .split(' ')
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+        const statusBadge = `<span class="status-badge status-${escapeHtml(event.correctionStatus)}">${escapeHtml(event.correctionStatus)}</span>`;
+        return `
+          <article class="table-row" data-watchdog-event-id="${escapeHtml(event.id)}">
+            <strong>${escapeHtml(kindLabel)}</strong>
+            <small>${escapeHtml(event.agentId)} • ${escapeHtml(event.packetId || 'unlinked')}</small>
+            <div class="table-row-meta">
+              <span>${statusBadge}</span>
+              <span>${escapeHtml(event.detectedAt)}</span>
+            </div>
+          </article>`;
+      }).join('') || emptyNote('No watchdog events', 'Watchdog monitors for hidden human questions, stalled packets, and completion claims.');
+
       return `
         <div class="metrics-grid">${summaryCards}</div>
         <div class="module-badge-rail">
           <span class="module-badge">open chats <span class="module-badge-label">${escapeHtml(openChats.length)}</span></span>
           <span class="module-badge">threads <span class="module-badge-label">${escapeHtml(lifecycleThreads.length)}</span></span>
           <span class="module-badge">loops <span class="module-badge-label">${escapeHtml(runningLoops.length)}</span></span>
+          <span class="module-badge">watchdog <span class="module-badge-label">${escapeHtml(watchdogEvents.length)}</span></span>
           <span class="module-badge">directory <span class="module-badge-label">${escapeHtml(agentDirectory.length)}</span></span>
         </div>
-        <div class="table-list">${threadRows}</div>`;
+        <h3>Lifecycle Threads</h3>
+        <div class="table-list">${threadRows}</div>
+        <h3>Watchdog Events</h3>
+        <div class="table-list">${watchdogEventRows}</div>`;
     }
 
     function renderSurface() {
