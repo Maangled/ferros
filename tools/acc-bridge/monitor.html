@@ -2116,9 +2116,7 @@
             <button data-notification-action="resolve" data-notification-id="${escapeHtml(definition.notification.id)}">Resolve</button>
           </div>
         `;
-      }
-
-      if (definition.loop?.sourceLoopId) {
+      } else if (definition.loop?.sourceLoopId) {
         actionMarkup = `
           <div class="loop-actions">
             <button data-loop-action="open" data-loop-id="${escapeHtml(actionTargetId)}">Open</button>
