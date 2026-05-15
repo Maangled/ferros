@@ -17,7 +17,20 @@ Optional fields (additive, layered on top of the existing field order without br
 
 ## Ready
 
-None.
+### FRS-monitor-20260515-C1-W1
+- Title: FSM + monitor seam hardening — packets 1–5
+- Status: ready
+- Priority: P1
+- Gate: pre-coordinator staging seam
+- Owning streams: S4-runtime; S3-agent-center
+- Goal: Harden packet state and dispatch contracts before coordinator wiring.
+- Anchor files: `crates/ferros-node/src/lib.rs`, `docs/orchestration/WAVE-QUEUE.md`, `docs/orchestration/WAVE-RUN-LOG.md`
+- Validation: `cargo check -p ferros-node`; `cargo test -p ferros-node`; per-packet named tests pass; sample snapshot shows PacketState values, optional origin IDs, audit_seq, ticket/evidence fields, no live-execution language.
+- Constraints: No async traits. No TS coordinator. No manager execution. No WorkOrder trees. Scaffold staging-only. Legacy wire names preserved in Packet 3. sha2 dep decision made before Packet 4.
+- Last update: 2026-05-15
+- size: L
+- serial-after: FRS-coding-20260510-C1-W4
+- track: code
 
 ## In Progress
 

@@ -209,7 +209,8 @@ struct MonitorAgentSourceTreeStatus {
 struct MonitorPacket {
     id: String,
     session_id: String,
-    origin_message_id: String,
+    #[serde(default)]
+    origin_message_id: Option<String>,
     work_order_id: Option<String>,
     manager: String,
     state: String,
@@ -1750,6 +1751,17 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             }
         };
 
+        // Reject human messages on non-FERROS Agent sessions before appending.
+        if request.speaker.eq_ignore_ascii_case("user") {
+            if let Some(active_agent) = guard.session_active_agent(session_id) {
+                if active_agent != "FERROS Agent" {
+                    return Some(enable_cors(json_response(400, "Bad Request", &serde_json::json!({
+                        "error": "human messages are only accepted for FERROS Agent sessions"
+                    }))));
+                }
+            }
+        }
+
         let message_id = match guard.add_message(session_id, request.clone()) {
             Some(message_id) => message_id,
             None => {
@@ -1757,9 +1769,7 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             }
         };
 
-        if request.speaker.eq_ignore_ascii_case("user")
-            && guard.session_active_agent(session_id).is_some_and(|agent| agent == "FERROS Agent")
-        {
+        if request.speaker.eq_ignore_ascii_case("user") {
             let _ = guard.ferros_agent_handle_human_message(session_id, &message_id, &request.text);
         }
 
@@ -1903,6 +1913,16 @@ fn route_monitor_request_with_state(
                 }
             };
             let mut guard = state.lock().ok()?;
+            // Reject human messages on non-FERROS Agent sessions before appending.
+            if request.speaker.eq_ignore_ascii_case("user") {
+                if let Some(active_agent) = guard.session_active_agent(session_id) {
+                    if active_agent != "FERROS Agent" {
+                        return Some(enable_cors(json_response(400, "Bad Request", &serde_json::json!({
+                            "error": "human messages are only accepted for FERROS Agent sessions"
+                        }))));
+                    }
+                }
+            }
             let message_id = match guard.add_message(session_id, request.clone()) {
                 Some(id) => id,
                 None => {
@@ -1913,11 +1933,7 @@ fn route_monitor_request_with_state(
                     )));
                 }
             };
-            if request.speaker.eq_ignore_ascii_case("user")
-                && guard
-                    .session_active_agent(session_id)
-                    .is_some_and(|agent| agent == "FERROS Agent")
-            {
+            if request.speaker.eq_ignore_ascii_case("user") {
                 let _ =
                     guard.ferros_agent_handle_human_message(session_id, &message_id, &request.text);
             }
@@ -2359,6 +2375,12 @@ fn normalize_monitor_state(state: &mut MonitorState) {
         if packet.id.is_empty() {
             packet.id = format!("pkt-{}", state.next_id + 1);
             state.next_id += 1;
+        }
+    }
+
+    for packet in &mut state.packets {
+        if packet.origin_message_id.as_deref() == Some("") {
+            packet.origin_message_id = None;
         }
     }
 }
@@ -2909,7 +2931,7 @@ impl MonitorState {
         if lowered.contains("human intervention") || lowered.contains("needs operator") || lowered.contains("escalate") {
             let packet_id = self.create_packet(
                 dispatch_request.session_id.clone(),
-                dispatch_request.message_id.clone(),
+                Some(dispatch_request.message_id.clone()),
                 None,
                 "FERROS Agent".to_owned(),
                 "human_intervention_required",
@@ -2951,10 +2973,11 @@ impl MonitorState {
 
         let target = infer_dispatch_target(&dispatch_request.operator_text);
 
-        // Consult the dispatch backend before committing state mutations.
-        let backend_result = ScaffoldMonitorDispatchBackend.handle_dispatch(
+        let (backend_result, dispatch_ids) = self.dispatch_session_via_backend(
             &dispatch_request.session_id,
-            &target,
+            Some(dispatch_request.message_id.clone()),
+            target,
+            &ScaffoldMonitorDispatchBackend,
             &dispatch_request.operator_text,
         );
 
@@ -2972,13 +2995,7 @@ impl MonitorState {
             };
         }
 
-        let Some((packet_id, manager, lifecycle_thread_id)) =
-            self.dispatch_session_to_manager(
-                &dispatch_request.session_id,
-                &dispatch_request.message_id,
-                target,
-            )
-        else {
+        let Some((packet_id, manager, lifecycle_thread_id)) = dispatch_ids else {
             return MonitorDispatchResult {
                 ferros_reply: "Dispatch failed because the session was unavailable.".to_owned(),
                 packet_id: None,
@@ -3016,7 +3033,7 @@ impl MonitorState {
     fn dispatch_session_to_manager(
         &mut self,
         session_id: &str,
-        origin_message_id: &str,
+        origin_message_id: Option<String>,
         target: DispatchTarget,
     ) -> Option<(String, String, String)> {
         let (session_label, session_thread_id) = {
@@ -3090,7 +3107,7 @@ impl MonitorState {
 
         let packet_id = self.create_packet(
             session_id.to_owned(),
-            origin_message_id.to_owned(),
+            origin_message_id,
             Some(work_order_id.clone()),
             route_label.to_owned(),
             "dispatched_to_manager",
@@ -3102,10 +3119,32 @@ impl MonitorState {
         Some((packet_id, route_label.to_owned(), packet_thread_id))
     }
 
+    /// Call the dispatch backend and, if accepted, create a packet via `dispatch_session_to_manager`.
+    /// Returns `(backend_result, dispatch_ids)` where `dispatch_ids` is `None` if the backend
+    /// rejected or the session was unavailable.
+    ///
+    /// This is the shared dispatch seam for both FERROS chat and `/route`.
+    fn dispatch_session_via_backend(
+        &mut self,
+        session_id: &str,
+        origin_message_id: Option<String>,
+        target: DispatchTarget,
+        backend: &dyn MonitorDispatchBackend,
+        operator_text: &str,
+    ) -> (MonitorDispatchBackendResult, Option<(String, String, String)>) {
+        let backend_result = backend.handle_dispatch(session_id, &target, operator_text);
+        if !backend_result.accepted {
+            return (backend_result, None);
+        }
+        let dispatch_ids =
+            self.dispatch_session_to_manager(session_id, origin_message_id, target);
+        (backend_result, dispatch_ids)
+    }
+
     fn create_packet(
         &mut self,
         session_id: String,
-        origin_message_id: String,
+        origin_message_id: Option<String>,
         work_order_id: Option<String>,
         manager: String,
         state: &str,
@@ -3248,7 +3287,7 @@ impl MonitorState {
             _ => DispatchTarget::Software,
         };
 
-        self.dispatch_session_to_manager(session_id, "", target).is_some()
+        self.dispatch_session_via_backend(session_id, None, target, &ScaffoldMonitorDispatchBackend, "").1.is_some()
     }
 
     fn archive_session(&mut self, session_id: &str) -> bool {
@@ -4941,8 +4980,8 @@ mod tests {
         serve_local_shell_with_store_and_paths, AgentCliCommand, AuthorizationDenyDetail,
         CliError, CliState, DemoError, DemoRuntime, DispatchTarget, HttpRequest, LocalAgentApi,
         LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
-        LocalRunwaySummary, MonitorLifecycleThread, MonitorMessageRequest, MonitorState,
-        PersistedMonitorState, ProfileCliCommand,
+        LocalRunwaySummary, MonitorLifecycleThread, MonitorMessage, MonitorMessageRequest,
+        MonitorSession, MonitorState, PersistedMonitorState, ProfileCliCommand,
         ProfileShellResponse, ScaffoldMonitorDispatchBackend,
         DEFAULT_PROFILE_NAME,
     };
@@ -5168,7 +5207,7 @@ mod tests {
         let packet = packet.unwrap();
         assert_eq!(packet.state, "dispatched_to_manager");
         assert_eq!(packet.session_id, session.id);
-        assert_eq!(packet.origin_message_id, origin_message_id);
+        assert_eq!(packet.origin_message_id, Some(origin_message_id.clone()));
         assert!(packet.work_order_id.is_some(), "packet should carry work order id");
 
         // Lifecycle thread should exist
@@ -5185,7 +5224,7 @@ mod tests {
         let session = state.create_session(Some("Snapshot test".to_owned()));
         let packet_id = state.create_packet(
             session.id.clone(),
-            "msg-origin".to_owned(),
+            Some("msg-origin".to_owned()),
             None,
             "Software Architect".to_owned(),
             "dispatched_to_manager",
@@ -8084,5 +8123,138 @@ mod tests {
 
         assert_eq!(error.code, code);
         assert_eq!(error.message, message);
+    }
+
+    #[test]
+    fn route_messages_rejects_human_message_when_session_not_ferros_agent() {
+        let state = make_state();
+        let session_id = {
+            let mut guard = state.lock().unwrap();
+            let session = guard.create_session(Some("SA session".to_owned()));
+            let idx = guard
+                .open_chats
+                .iter()
+                .position(|s| s.id == session.id)
+                .unwrap();
+            guard.open_chats[idx].active_agent = "Software Architect".to_owned();
+            session.id
+        };
+
+        let response = route_monitor_request_with_state(
+            "POST",
+            &format!("/monitor/sessions/{session_id}/messages"),
+            body(serde_json::json!({ "speaker": "user", "who": "Operator", "text": "Hello" })),
+            &state,
+        )
+        .expect("should return a response");
+
+        assert_eq!(response.status_code, 400, "expected 400 for non-FERROS session");
+        let value: serde_json::Value =
+            serde_json::from_slice(&response.body).expect("body should be JSON");
+        assert_eq!(
+            value["error"].as_str(),
+            Some("human messages are only accepted for FERROS Agent sessions"),
+            "expected rejection message, got: {value}"
+        );
+    }
+
+    #[test]
+    fn non_ferros_rejection_does_not_append_message_or_packet() {
+        let state = make_state();
+        let session_id = {
+            let mut guard = state.lock().unwrap();
+            let session = guard.create_session(Some("SA session 2".to_owned()));
+            let idx = guard
+                .open_chats
+                .iter()
+                .position(|s| s.id == session.id)
+                .unwrap();
+            guard.open_chats[idx].active_agent = "Software Architect".to_owned();
+            session.id
+        };
+
+        let initial_message_count = state
+            .lock()
+            .unwrap()
+            .open_chats
+            .iter()
+            .find(|s| s.id == session_id)
+            .unwrap()
+            .messages
+            .len();
+
+        let _ = route_monitor_request_with_state(
+            "POST",
+            &format!("/monitor/sessions/{session_id}/messages"),
+            body(serde_json::json!({
+                "speaker": "user",
+                "who": "Operator",
+                "text": "Unauthorized message"
+            })),
+            &state,
+        );
+
+        let guard = state.lock().unwrap();
+        let session = guard
+            .open_chats
+            .iter()
+            .find(|s| s.id == session_id)
+            .unwrap();
+        assert_eq!(
+            session.messages.len(),
+            initial_message_count,
+            "no messages should be appended on rejection"
+        );
+        assert!(
+            guard.packets.is_empty(),
+            "no packets should be created on rejection"
+        );
+    }
+
+    #[test]
+    fn ferros_message_dispatch_retains_origin_message_id() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Origin ID test".to_owned()));
+        let msg_id = "msg-origin-test".to_owned();
+        let result = state.ferros_agent_handle_human_message(
+            &session.id,
+            &msg_id,
+            "Please route this to the coding team",
+        );
+        let packet_id = result.packet_id.expect("packet_id should be set");
+        let packet = state
+            .packet_by_id(&packet_id)
+            .expect("packet should exist");
+        assert_eq!(
+            packet.origin_message_id,
+            Some(msg_id),
+            "origin_message_id should be retained as Some(msg_id)"
+        );
+    }
+
+    #[test]
+    fn route_endpoint_packet_origin_is_none_not_empty_string() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Route origin test".to_owned()));
+        let routed = state.route_session(&session.id, "software");
+        assert!(routed, "route_session should succeed");
+        let packet = state
+            .packets
+            .first()
+            .expect("a packet should have been created");
+        assert_eq!(
+            packet.origin_message_id,
+            None,
+            "origin_message_id from /route should be None, not Some(\"\")"
+        );
+        let json = serde_json::to_string(packet).unwrap();
+        assert!(
+            !json.contains("\"originMessageId\":\"\""),
+            "JSON must not contain empty-string originMessageId"
+        );
+        assert!(
+            json.contains("\"originMessageId\":null"),
+            "JSON should contain null originMessageId, got: {json}"
+        );
     }
 }
