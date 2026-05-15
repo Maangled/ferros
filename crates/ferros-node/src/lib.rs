@@ -210,6 +210,7 @@ struct MonitorPacket {
     id: String,
     session_id: String,
     origin_message_id: String,
+    work_order_id: Option<String>,
     manager: String,
     state: String,
     lifecycle_thread_id: Option<String>,
@@ -2909,6 +2910,7 @@ impl MonitorState {
             let packet_id = self.create_packet(
                 dispatch_request.session_id.clone(),
                 dispatch_request.message_id.clone(),
+                None,
                 "FERROS Agent".to_owned(),
                 "human_intervention_required",
                 None,
@@ -2971,7 +2973,11 @@ impl MonitorState {
         }
 
         let Some((packet_id, manager, lifecycle_thread_id)) =
-            self.dispatch_session_to_manager(&dispatch_request.session_id, target)
+            self.dispatch_session_to_manager(
+                &dispatch_request.session_id,
+                &dispatch_request.message_id,
+                target,
+            )
         else {
             return MonitorDispatchResult {
                 ferros_reply: "Dispatch failed because the session was unavailable.".to_owned(),
@@ -3010,6 +3016,7 @@ impl MonitorState {
     fn dispatch_session_to_manager(
         &mut self,
         session_id: &str,
+        origin_message_id: &str,
         target: DispatchTarget,
     ) -> Option<(String, String, String)> {
         let (session_label, session_thread_id) = {
@@ -3083,7 +3090,8 @@ impl MonitorState {
 
         let packet_id = self.create_packet(
             session_id.to_owned(),
-            "".to_owned(),
+            origin_message_id.to_owned(),
+            Some(work_order_id.clone()),
             route_label.to_owned(),
             "dispatched_to_manager",
             Some(packet_thread_id.clone()),
@@ -3098,6 +3106,7 @@ impl MonitorState {
         &mut self,
         session_id: String,
         origin_message_id: String,
+        work_order_id: Option<String>,
         manager: String,
         state: &str,
         lifecycle_thread_id: Option<String>,
@@ -3110,6 +3119,7 @@ impl MonitorState {
             id: id.clone(),
             session_id,
             origin_message_id,
+            work_order_id,
             manager,
             state: state.to_owned(),
             lifecycle_thread_id,
@@ -3238,7 +3248,7 @@ impl MonitorState {
             _ => DispatchTarget::Software,
         };
 
-        self.dispatch_session_to_manager(session_id, target).is_some()
+        self.dispatch_session_to_manager(session_id, "", target).is_some()
     }
 
     fn archive_session(&mut self, session_id: &str) -> bool {
@@ -4933,7 +4943,7 @@ mod tests {
         LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
         LocalRunwaySummary, MonitorLifecycleThread, MonitorMessageRequest, MonitorState,
         PersistedMonitorState, ProfileCliCommand,
-        ProfileShellResponse, ScaffoldMonitorDispatchBackend, MonitorDispatchBackend,
+        ProfileShellResponse, ScaffoldMonitorDispatchBackend,
         DEFAULT_PROFILE_NAME,
     };
     use ferros_agents::{
@@ -5126,18 +5136,19 @@ mod tests {
     fn dispatch_creates_packet_and_lifecycle_thread() {
         let mut state = MonitorState::default();
         let session = state.create_session(Some("Admin liaison".to_owned()));
-        let _ = state.add_message(
+        let origin_message_id = state.add_message(
             &session.id,
             super::MonitorMessageRequest {
                 speaker: "user".to_owned(),
                 who: "Human".to_owned(),
                 text: "please route this to software".to_owned(),
             },
-        );
+        )
+        .expect("user message should be added");
 
         let result = state.ferros_agent_handle_human_message(
             &session.id,
-            "msg-1",
+            &origin_message_id,
             "please route this to software",
         );
 
@@ -5157,6 +5168,8 @@ mod tests {
         let packet = packet.unwrap();
         assert_eq!(packet.state, "dispatched_to_manager");
         assert_eq!(packet.session_id, session.id);
+        assert_eq!(packet.origin_message_id, origin_message_id);
+        assert!(packet.work_order_id.is_some(), "packet should carry work order id");
 
         // Lifecycle thread should exist
         let thread_id = result.lifecycle_thread_id.unwrap();
@@ -5173,6 +5186,7 @@ mod tests {
         let packet_id = state.create_packet(
             session.id.clone(),
             "msg-origin".to_owned(),
+            None,
             "Software Architect".to_owned(),
             "dispatched_to_manager",
             None,

@@ -2129,7 +2129,7 @@
         actionMarkup = `
           <div class="loop-actions">
             <button data-loop-action="stop-chat" data-loop-id="${escapeHtml(actionTargetId)}">Stop</button>
-            <button data-loop-action="chat" data-loop-id="${escapeHtml(actionTargetId)}">Chat</button>
+            <button data-loop-action="chat" data-loop-id="${escapeHtml(actionTargetId)}">Ask FERROS</button>
           </div>
         `;
       }
@@ -2236,7 +2236,7 @@
       }
 
       if (action === 'chat') {
-        await openFerrosChat(`${target.agent} -> FERROS`, `Operator requested direct chat on ${target.agent}. Current loop summary: ${target.description}`);
+        await openFerrosChat('User -> FERROS', `Operator requested FERROS triage for ${target.agent}. Current loop summary: ${target.description}`);
         return;
       }
 
@@ -2246,7 +2246,7 @@
         } catch (error) {
           showError(`Stop request failed for ${target.agent}: ${error.message}`);
         }
-        await openFerrosChat(`${target.agent} stopped -> FERROS`, `Stopped ${target.agent}. Please triage and route next action.`);
+        await openFerrosChat('User -> FERROS', `Stopped ${target.agent}. Please triage and route any follow-up through FERROS Agent.`);
       }
     }
 
@@ -2268,7 +2268,7 @@
       }
 
       if (!selected) {
-        elements.chatMessages.innerHTML = '<div class="minor">No open chat. Open one from a loop card.</div>';
+        elements.chatMessages.innerHTML = '<div class="minor">No open chat. Use Administration and the New FERROS Agent Chat button.</div>';
         return;
       }
 
