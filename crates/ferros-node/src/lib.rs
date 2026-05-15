@@ -281,6 +281,7 @@ fn try_transition(
         (from, &to),
         (PacketState::Staged, PacketState::DispatchedToManager)
             | (PacketState::Staged, PacketState::HumanInterventionRequired)
+            | (PacketState::Staged, PacketState::Failed)
             | (PacketState::DispatchedToManager, PacketState::InProgress)
             | (PacketState::DispatchedToManager, PacketState::HumanInterventionRequired)
             | (PacketState::InProgress, PacketState::AwaitingReview)
@@ -460,6 +461,14 @@ struct MonitorDispatchResult {
     status: MonitorDispatchStatus,
 }
 
+/// A reference token returned by a backend when it accepts a dispatch request.
+/// Carries a scoped `external_ref` for use as audit evidence.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BackendTicket {
+    /// Opaque external reference, e.g. `"scaffold:{packet_id}"`.
+    external_ref: String,
+}
+
 /// Result returned by a dispatch backend implementation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct MonitorDispatchBackendResult {
@@ -471,6 +480,8 @@ struct MonitorDispatchBackendResult {
     message: String,
     /// Error detail if accepted is false.
     error: Option<String>,
+    /// Ticket issued by the backend when accepted. `None` on rejection.
+    ticket: Option<BackendTicket>,
 }
 
 /// Interface for dispatch backends. The scaffold implementation is the only concrete
@@ -479,6 +490,7 @@ trait MonitorDispatchBackend: Send + Sync {
     fn handle_dispatch(
         &self,
         session_id: &str,
+        packet_id: &str,
         target: &DispatchTarget,
         operator_text: &str,
     ) -> MonitorDispatchBackendResult;
@@ -492,14 +504,21 @@ impl MonitorDispatchBackend for ScaffoldMonitorDispatchBackend {
     fn handle_dispatch(
         &self,
         _session_id: &str,
+        packet_id: &str,
         _target: &DispatchTarget,
         _operator_text: &str,
     ) -> MonitorDispatchBackendResult {
         MonitorDispatchBackendResult {
             accepted: true,
             backend: "scaffold".to_owned(),
-            message: "Packet staged for manager. Live execution is not yet connected.".to_owned(),
+            message: format!(
+                "Packet {packet_id} staged and accepted by scaffold. \
+                 Live manager execution is not connected."
+            ),
             error: None,
+            ticket: Some(BackendTicket {
+                external_ref: format!("scaffold:{packet_id}"),
+            }),
         }
     }
 }
@@ -3278,7 +3297,8 @@ impl MonitorState {
         };
 
         let ferros_reply = format!(
-            "Packet staged for {manager} as {packet_id}. Live manager execution is not yet connected, but this Administration liaison chat will stay open for updates."
+            "Packet {packet_id} staged and accepted by scaffold for {manager}. \
+             Live manager execution is not connected; this liaison chat will stay open for updates."
         );
         let _ = self.add_message(
             &dispatch_request.session_id,
@@ -3380,7 +3400,7 @@ impl MonitorState {
             origin_message_id,
             Some(work_order_id.clone()),
             route_label.to_owned(),
-            PacketState::DispatchedToManager,
+            PacketState::Staged,
             Some(packet_thread_id.clone()),
             None,
             format!("Staged from {session_label} \u{2192} {route_label}"),
@@ -3389,11 +3409,18 @@ impl MonitorState {
         Some((packet_id, route_label.to_owned(), packet_thread_id))
     }
 
-    /// Call the dispatch backend and, if accepted, create a packet via `dispatch_session_to_manager`.
+    /// Stage a packet, consult the backend with the real packet id, then apply an FSM transition.
     /// Returns `(backend_result, dispatch_ids)` where `dispatch_ids` is `None` if the backend
     /// rejected or the session was unavailable.
     ///
-    /// This is the shared dispatch seam for both FERROS chat and `/route`.
+    /// Flow:
+    /// 1. `dispatch_session_to_manager` creates the packet in `Staged` state.
+    /// 2. `backend.handle_dispatch` is called with the real `packet_id` so it can generate a
+    ///    scoped ticket (`scaffold:{packet_id}`).
+    /// 3. On acceptance: `apply_packet_transition(Staged → DispatchedToManager)` records the
+    ///    audit entry and stores the ticket's `external_ref` as evidence.
+    /// 4. On rejection: `apply_packet_transition(Staged → Failed)` so the attempt is visible
+    ///    in the audit trail.
     fn dispatch_session_via_backend(
         &mut self,
         session_id: &str,
@@ -3402,13 +3429,52 @@ impl MonitorState {
         backend: &dyn MonitorDispatchBackend,
         operator_text: &str,
     ) -> (MonitorDispatchBackendResult, Option<(String, String, String)>) {
-        let backend_result = backend.handle_dispatch(session_id, &target, operator_text);
+        // Phase 1: Stage the packet (creates packet in Staged state, no backend call yet).
+        let staged = self.dispatch_session_to_manager(session_id, origin_message_id, target);
+        let Some((ref packet_id, _, _)) = staged else {
+            return (
+                MonitorDispatchBackendResult {
+                    accepted: false,
+                    backend: "scaffold".to_owned(),
+                    message: String::new(),
+                    error: Some("session not available for dispatch".to_owned()),
+                    ticket: None,
+                },
+                None,
+            );
+        };
+
+        // Phase 2: Consult backend with the real packet id so it can generate a scoped ticket.
+        let backend_result =
+            backend.handle_dispatch(session_id, packet_id, &target, operator_text);
+
         if !backend_result.accepted {
+            // Transition Staged → Failed so the attempt is visible in the audit trail.
+            let _ = self.apply_packet_transition(
+                packet_id,
+                PacketState::Failed,
+                "scaffold-backend",
+                backend_result.error.as_deref().unwrap_or("backend rejected"),
+                vec![],
+            );
             return (backend_result, None);
         }
-        let dispatch_ids =
-            self.dispatch_session_to_manager(session_id, origin_message_id, target);
-        (backend_result, dispatch_ids)
+
+        // Phase 3: Transition Staged → DispatchedToManager, recording the ticket as evidence.
+        let evidence = backend_result
+            .ticket
+            .as_ref()
+            .map(|t| vec![t.external_ref.clone()])
+            .unwrap_or_default();
+        let _ = self.apply_packet_transition(
+            packet_id,
+            PacketState::DispatchedToManager,
+            "scaffold-backend",
+            "accepted by scaffold backend",
+            evidence,
+        );
+
+        (backend_result, staged)
     }
 
     fn create_packet(
@@ -5785,7 +5851,7 @@ mod tests {
         use super::{DispatchTarget, MonitorDispatchBackend};
 
         let backend = ScaffoldMonitorDispatchBackend;
-        let result = backend.handle_dispatch("chat-1", &DispatchTarget::Software, "build a thing");
+        let result = backend.handle_dispatch("chat-1", "pkt-test", &DispatchTarget::Software, "build a thing");
 
         assert!(result.accepted, "scaffold backend should always accept");
         assert_eq!(result.backend, "scaffold");
@@ -8464,6 +8530,7 @@ mod tests {
         fn handle_dispatch(
             &self,
             _session_id: &str,
+            _packet_id: &str,
             _target: &DispatchTarget,
             _operator_text: &str,
         ) -> MonitorDispatchBackendResult {
@@ -8472,6 +8539,7 @@ mod tests {
                 backend: "rejecting".to_owned(),
                 message: String::new(),
                 error: Some("test backend rejection".to_owned()),
+                ticket: None,
             }
         }
     }
@@ -8499,9 +8567,15 @@ mod tests {
             "backend error should be propagated"
         );
         assert!(reject_ids.is_none(), "no dispatch ids on backend rejection");
-        assert!(state.packets.is_empty(), "no packet created when backend rejects");
+        // With the staged-first flow a packet IS created (Staged) then transitioned to Failed.
+        assert_eq!(state.packets.len(), 1, "rejected dispatch leaves a Failed packet");
+        assert_eq!(
+            state.packets[0].state,
+            PacketState::Failed,
+            "rejected packet must be transitioned to Failed"
+        );
 
-        // Accepting backend (same impl route_session uses) must create a packet.
+        // Accepting backend (same impl route_session uses) must create a second packet.
         let (accept_result, accept_ids) = state.dispatch_session_via_backend(
             &session.id,
             None,
@@ -8511,11 +8585,108 @@ mod tests {
         );
         assert!(accept_result.accepted, "scaffold backend should accept");
         assert!(accept_ids.is_some(), "accepting backend should yield dispatch ids");
-        assert_eq!(state.packets.len(), 1, "exactly one packet should exist");
+        // Two packets exist: the Failed one and the newly DispatchedToManager one.
+        assert_eq!(state.packets.len(), 2, "two packets: one Failed, one DispatchedToManager");
+        let dispatched = state
+            .packets
+            .iter()
+            .find(|p| p.state == PacketState::DispatchedToManager)
+            .expect("DispatchedToManager packet must exist after acceptance");
         assert_eq!(
-            state.packets[0].origin_message_id,
+            dispatched.origin_message_id,
             None,
             "route path origin_message_id must be None, not Some(\"\")"
+        );
+    }
+
+    // ── Packet 5 tests ───────────────────────────────────────────────────────
+
+    #[test]
+    fn scaffold_backend_returns_ticket_with_packet_scoped_external_ref() {
+        let backend = ScaffoldMonitorDispatchBackend;
+        let result = backend.handle_dispatch(
+            "session-abc",
+            "pkt-42",
+            &DispatchTarget::Software,
+            "",
+        );
+        assert!(result.accepted, "scaffold backend must always accept");
+        let ticket = result.ticket.expect("scaffold backend must return a ticket");
+        assert_eq!(
+            ticket.external_ref,
+            "scaffold:pkt-42",
+            "external_ref must be scaffold:{{packet_id}}"
+        );
+    }
+
+    #[test]
+    fn dispatch_via_scaffold_transitions_staged_packet_to_dispatched() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Packet 5 dispatch test".to_owned()));
+        let (result, ids) = state.dispatch_session_via_backend(
+            &session.id,
+            None,
+            DispatchTarget::Software,
+            &ScaffoldMonitorDispatchBackend,
+            "",
+        );
+        assert!(result.accepted, "scaffold backend must accept");
+        let (packet_id, _, _) = ids.expect("dispatch must return ids on acceptance");
+        let pkt = state
+            .packets
+            .iter()
+            .find(|p| p.id == packet_id)
+            .expect("packet must exist after dispatch");
+        // Packet must have been transitioned Staged → DispatchedToManager.
+        assert_eq!(pkt.state, PacketState::DispatchedToManager);
+        // Audit trail must carry one entry for the Staged → DispatchedToManager transition.
+        assert_eq!(pkt.audit_trail.len(), 1, "one audit entry for Staged → DispatchedToManager");
+        let entry = &pkt.audit_trail[0];
+        assert_eq!(entry.from, PacketState::Staged);
+        assert_eq!(entry.to, PacketState::DispatchedToManager);
+        assert_eq!(entry.actor, "scaffold-backend");
+    }
+
+    #[test]
+    fn dispatch_via_scaffold_records_ticket_as_evidence_in_audit_trail() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Ticket evidence test".to_owned()));
+        let (_, ids) = state.dispatch_session_via_backend(
+            &session.id,
+            None,
+            DispatchTarget::Software,
+            &ScaffoldMonitorDispatchBackend,
+            "",
+        );
+        let (packet_id, _, _) = ids.expect("dispatch must succeed");
+        let pkt = state.packets.iter().find(|p| p.id == packet_id).unwrap();
+        let entry = &pkt.audit_trail[0];
+        let expected_ref = format!("scaffold:{packet_id}");
+        assert!(
+            entry.evidence_refs.contains(&expected_ref),
+            "ticket external_ref must be recorded as evidence; got {:?}",
+            entry.evidence_refs
+        );
+    }
+
+    #[test]
+    fn dispatch_rejection_transitions_staged_packet_to_failed() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Rejection test".to_owned()));
+        let (result, ids) = state.dispatch_session_via_backend(
+            &session.id,
+            None,
+            DispatchTarget::Software,
+            &RejectingBackend,
+            "",
+        );
+        assert!(!result.accepted, "rejecting backend must not accept");
+        assert!(ids.is_none(), "rejected dispatch must not return dispatch ids");
+        assert_eq!(state.packets.len(), 1, "one packet must exist after rejection");
+        assert_eq!(
+            state.packets[0].state,
+            PacketState::Failed,
+            "rejected packet must be in Failed state"
         );
     }
 
@@ -8681,9 +8852,10 @@ mod tests {
             super::try_transition(from, to, "test-actor", "test reason", "2026-01-01T00:00:00Z")
         };
 
-        // All 12 legal edges
+        // All 13 legal edges (12 original + Staged → Failed added in Packet 5)
         assert!(check(&PacketState::Staged, PacketState::DispatchedToManager).is_ok());
         assert!(check(&PacketState::Staged, PacketState::HumanInterventionRequired).is_ok());
+        assert!(check(&PacketState::Staged, PacketState::Failed).is_ok()); // Packet 5
         assert!(check(&PacketState::DispatchedToManager, PacketState::InProgress).is_ok());
         assert!(
             check(&PacketState::DispatchedToManager, PacketState::HumanInterventionRequired)
