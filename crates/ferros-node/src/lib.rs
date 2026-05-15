@@ -205,6 +205,33 @@ struct MonitorAgentSourceTreeStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+enum PacketState {
+    DispatchedToManager,
+    HumanInterventionRequired,
+}
+
+impl fmt::Display for PacketState {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PacketState::DispatchedToManager => formatter.write_str("dispatched_to_manager"),
+            PacketState::HumanInterventionRequired => {
+                formatter.write_str("human_intervention_required")
+            }
+        }
+    }
+}
+
+fn advance_packet_state(current: &PacketState, next: &PacketState) -> Result<(), String> {
+    match (current, next) {
+        (PacketState::DispatchedToManager, PacketState::HumanInterventionRequired) => Ok(()),
+        _ => Err(format!(
+            "invalid packet state transition: {current} \u{2192} {next}"
+        )),
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 struct MonitorPacket {
     id: String,
@@ -213,7 +240,7 @@ struct MonitorPacket {
     origin_message_id: Option<String>,
     work_order_id: Option<String>,
     manager: String,
-    state: String,
+    state: PacketState,
     lifecycle_thread_id: Option<String>,
     notification_id: Option<String>,
     created_at: String,
@@ -2959,7 +2986,7 @@ impl MonitorState {
                 Some(dispatch_request.message_id.clone()),
                 None,
                 "FERROS Agent".to_owned(),
-                "human_intervention_required",
+                PacketState::HumanInterventionRequired,
                 None,
                 None,
                 "Escalation: operator review required".to_owned(),
@@ -3135,10 +3162,10 @@ impl MonitorState {
             origin_message_id,
             Some(work_order_id.clone()),
             route_label.to_owned(),
-            "dispatched_to_manager",
+            PacketState::DispatchedToManager,
             Some(packet_thread_id.clone()),
             None,
-            format!("Staged from {session_label} → {route_label}"),
+            format!("Staged from {session_label} \u{2192} {route_label}"),
         );
 
         Some((packet_id, route_label.to_owned(), packet_thread_id))
@@ -3172,7 +3199,7 @@ impl MonitorState {
         origin_message_id: Option<String>,
         work_order_id: Option<String>,
         manager: String,
-        state: &str,
+        state: PacketState,
         lifecycle_thread_id: Option<String>,
         notification_id: Option<String>,
         summary: String,
@@ -3185,7 +3212,7 @@ impl MonitorState {
             origin_message_id,
             work_order_id,
             manager,
-            state: state.to_owned(),
+            state,
             lifecycle_thread_id,
             notification_id,
             created_at: now.clone(),
@@ -3198,17 +3225,24 @@ impl MonitorState {
     }
 
     #[allow(dead_code)]
-    fn update_packet_state(&mut self, packet_id: &str, new_state: &str, detail: Option<String>) -> bool {
+    fn update_packet_state(
+        &mut self,
+        packet_id: &str,
+        new_state: PacketState,
+        detail: Option<String>,
+    ) -> Result<bool, String> {
         let Some(packet) = self.packets.iter_mut().find(|p| p.id == packet_id) else {
-            return false;
+            return Ok(false);
         };
-        packet.state = new_state.to_owned();
+        advance_packet_state(&packet.state, &new_state)?;
+        let label = format!("{packet_id} -> {new_state}");
+        packet.state = new_state;
         packet.updated_at = monitor_now();
         if let Some(err) = detail {
             packet.last_error = Some(err);
         }
-        self.push_event("packet.state_changed", format!("{packet_id} -> {new_state}"));
-        true
+        self.push_event("packet.state_changed", label);
+        Ok(true)
     }
 
     #[allow(dead_code)]
@@ -5006,7 +5040,8 @@ mod tests {
         CliError, CliState, DemoError, DemoRuntime, DispatchTarget, HttpRequest, LocalAgentApi,
         LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
         LocalRunwaySummary, MonitorDispatchBackend, MonitorDispatchBackendResult,
-        MonitorLifecycleThread, MonitorState, PersistedMonitorState, ProfileCliCommand,
+        MonitorLifecycleThread, MonitorState, PersistedMonitorState, PacketState,
+        ProfileCliCommand,
         ProfileShellResponse, ScaffoldMonitorDispatchBackend,
         DEFAULT_PROFILE_NAME,
     };
@@ -5230,7 +5265,7 @@ mod tests {
         let packet = state.packet_by_id(&packet_id);
         assert!(packet.is_some(), "packet should be registered in state");
         let packet = packet.unwrap();
-        assert_eq!(packet.state, "dispatched_to_manager");
+        assert_eq!(packet.state, PacketState::DispatchedToManager);
         assert_eq!(packet.session_id, session.id);
         assert_eq!(packet.origin_message_id, Some(origin_message_id.clone()));
         assert!(packet.work_order_id.is_some(), "packet should carry work order id");
@@ -5252,7 +5287,7 @@ mod tests {
             Some("msg-origin".to_owned()),
             None,
             "Software Architect".to_owned(),
-            "dispatched_to_manager",
+            PacketState::DispatchedToManager,
             None,
             None,
             "Test summary".to_owned(),
@@ -5269,7 +5304,7 @@ mod tests {
 
         let packet = loaded.state.packets.iter().find(|p| p.id == packet_id);
         assert!(packet.is_some(), "packet should survive roundtrip");
-        assert_eq!(packet.unwrap().state, "dispatched_to_manager");
+        assert_eq!(packet.unwrap().state, PacketState::DispatchedToManager);
     }
 
     #[test]
@@ -5294,7 +5329,7 @@ mod tests {
         let notification_id = result.notification_id.unwrap();
 
         let packet = state.packet_by_id(&packet_id).expect("packet should exist");
-        assert_eq!(packet.state, "human_intervention_required");
+        assert_eq!(packet.state, PacketState::HumanInterventionRequired);
         assert_eq!(packet.notification_id.as_deref(), Some(notification_id.as_str()));
 
         let notification = state
@@ -8212,6 +8247,78 @@ mod tests {
     }
 
     #[test]
+    fn packet_state_fsm_allows_valid_transition() {
+        assert!(
+            super::advance_packet_state(
+                &PacketState::DispatchedToManager,
+                &PacketState::HumanInterventionRequired,
+            )
+            .is_ok(),
+            "DispatchedToManager → HumanInterventionRequired must be a valid transition"
+        );
+    }
+
+    #[test]
+    fn packet_state_fsm_rejects_invalid_transitions() {
+        // Self-transition: dispatched_to_manager → dispatched_to_manager
+        assert!(
+            super::advance_packet_state(
+                &PacketState::DispatchedToManager,
+                &PacketState::DispatchedToManager,
+            )
+            .is_err(),
+            "self-transition on DispatchedToManager must be rejected"
+        );
+        // Terminal: human_intervention_required → dispatched_to_manager (backward)
+        assert!(
+            super::advance_packet_state(
+                &PacketState::HumanInterventionRequired,
+                &PacketState::DispatchedToManager,
+            )
+            .is_err(),
+            "backward transition from HumanInterventionRequired must be rejected"
+        );
+        // Terminal self-transition
+        assert!(
+            super::advance_packet_state(
+                &PacketState::HumanInterventionRequired,
+                &PacketState::HumanInterventionRequired,
+            )
+            .is_err(),
+            "self-transition on HumanInterventionRequired must be rejected"
+        );
+    }
+
+    #[test]
+    fn packet_state_wire_names_roundtrip_legacy_strings() {
+        // Serialize
+        let dispatched = serde_json::to_value(PacketState::DispatchedToManager)
+            .expect("PacketState::DispatchedToManager should serialize");
+        assert_eq!(
+            dispatched.as_str(),
+            Some("dispatched_to_manager"),
+            "DispatchedToManager wire name must be dispatched_to_manager"
+        );
+
+        let escalated = serde_json::to_value(PacketState::HumanInterventionRequired)
+            .expect("PacketState::HumanInterventionRequired should serialize");
+        assert_eq!(
+            escalated.as_str(),
+            Some("human_intervention_required"),
+            "HumanInterventionRequired wire name must be human_intervention_required"
+        );
+
+        // Deserialize round-trip
+        let back: PacketState = serde_json::from_value(dispatched)
+            .expect("dispatched_to_manager should deserialize to PacketState");
+        assert_eq!(back, PacketState::DispatchedToManager);
+
+        let back: PacketState = serde_json::from_value(escalated)
+            .expect("human_intervention_required should deserialize to PacketState");
+        assert_eq!(back, PacketState::HumanInterventionRequired);
+    }
+
+    #[test]
     fn load_monitor_state_backs_up_file_on_schema_mismatch() {
         let path = unique_state_path("schema-mismatch");
         // Write a persisted state with a deliberately wrong schema version.
@@ -8340,7 +8447,7 @@ mod tests {
             None,
             None,
             "Test".to_owned(),
-            "dispatched_to_manager",
+            PacketState::DispatchedToManager,
             None,
             None,
             "normalize test packet".to_owned(),
