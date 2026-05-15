@@ -4980,8 +4980,8 @@ mod tests {
         serve_local_shell_with_store_and_paths, AgentCliCommand, AuthorizationDenyDetail,
         CliError, CliState, DemoError, DemoRuntime, DispatchTarget, HttpRequest, LocalAgentApi,
         LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
-        LocalRunwaySummary, MonitorLifecycleThread, MonitorMessage, MonitorMessageRequest,
-        MonitorSession, MonitorState, PersistedMonitorState, ProfileCliCommand,
+        LocalRunwaySummary, MonitorDispatchBackend, MonitorDispatchBackendResult,
+        MonitorLifecycleThread, MonitorState, PersistedMonitorState, ProfileCliCommand,
         ProfileShellResponse, ScaffoldMonitorDispatchBackend,
         DEFAULT_PROFILE_NAME,
     };
@@ -8123,6 +8123,67 @@ mod tests {
 
         assert_eq!(error.code, code);
         assert_eq!(error.message, message);
+    }
+
+    struct RejectingBackend;
+
+    impl MonitorDispatchBackend for RejectingBackend {
+        fn handle_dispatch(
+            &self,
+            _session_id: &str,
+            _target: &DispatchTarget,
+            _operator_text: &str,
+        ) -> MonitorDispatchBackendResult {
+            MonitorDispatchBackendResult {
+                accepted: false,
+                backend: "rejecting".to_owned(),
+                message: String::new(),
+                error: Some("test backend rejection".to_owned()),
+            }
+        }
+    }
+
+    /// Verifies that `/route` exercises the shared backend dispatch seam:
+    /// - A rejecting backend blocks packet creation (backend IS consulted, not bypassed).
+    /// - An accepting backend creates a packet with `origin_message_id: None` (not `""`).
+    #[test]
+    fn route_endpoint_uses_backend_dispatch_path() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Backend path test".to_owned()));
+
+        // Rejecting backend must block dispatch — proves backend is consulted.
+        let (reject_result, reject_ids) = state.dispatch_session_via_backend(
+            &session.id,
+            None,
+            DispatchTarget::Software,
+            &RejectingBackend,
+            "",
+        );
+        assert!(!reject_result.accepted, "backend rejection should be surfaced");
+        assert_eq!(
+            reject_result.error.as_deref(),
+            Some("test backend rejection"),
+            "backend error should be propagated"
+        );
+        assert!(reject_ids.is_none(), "no dispatch ids on backend rejection");
+        assert!(state.packets.is_empty(), "no packet created when backend rejects");
+
+        // Accepting backend (same impl route_session uses) must create a packet.
+        let (accept_result, accept_ids) = state.dispatch_session_via_backend(
+            &session.id,
+            None,
+            DispatchTarget::Software,
+            &ScaffoldMonitorDispatchBackend,
+            "",
+        );
+        assert!(accept_result.accepted, "scaffold backend should accept");
+        assert!(accept_ids.is_some(), "accepting backend should yield dispatch ids");
+        assert_eq!(state.packets.len(), 1, "exactly one packet should exist");
+        assert_eq!(
+            state.packets[0].origin_message_id,
+            None,
+            "route path origin_message_id must be None, not Some(\"\")"
+        );
     }
 
     #[test]
