@@ -419,6 +419,16 @@ struct MonitorLoopTransitionRequest {
     action: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorPacketStateRequest {
+    to_state: PacketState,
+    actor: String,
+    reason: String,
+    #[serde(default)]
+    evidence_refs: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 enum MonitorDispatchStatus {
@@ -1951,6 +1961,61 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
+    if let Some((packet_id, trailing)) = parse_monitor_packet_subroute(request_path) {
+        if trailing == "state" && method == "POST" {
+            let request: MonitorPacketStateRequest = match serde_json::from_slice(&body) {
+                Ok(parsed) => parsed,
+                Err(error) => {
+                    return Some(enable_cors(text_response(
+                        400,
+                        "Bad Request",
+                        format!("invalid packet state request: {error}"),
+                    )));
+                }
+            };
+            let state = monitor_state();
+            let mut guard = match state.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    return Some(enable_cors(text_response(
+                        500,
+                        "Internal Server Error",
+                        "monitor state lock poisoned",
+                    )));
+                }
+            };
+            match guard.apply_packet_transition(
+                packet_id,
+                request.to_state,
+                &request.actor,
+                &request.reason,
+                request.evidence_refs,
+            ) {
+                Ok(Some(_)) => {
+                    persist_monitor_state_best_effort(
+                        &mut guard,
+                        "packet.state persistence warning",
+                    );
+                    return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+                }
+                Ok(None) => {
+                    return Some(enable_cors(text_response(
+                        404,
+                        "Not Found",
+                        "monitor packet not found",
+                    )));
+                }
+                Err(e) => {
+                    return Some(enable_cors(json_response(
+                        409,
+                        "Conflict",
+                        &serde_json::json!({ "error": e.to_string() }),
+                    )));
+                }
+            }
+        }
+    }
+
     None
 }
 
@@ -1997,6 +2062,21 @@ fn parse_monitor_notification_subroute(path: &str) -> Option<(&str, &str)> {
     }
 
     Some((notification_id, subroute))
+}
+
+fn parse_monitor_packet_subroute(path: &str) -> Option<(&str, &str)> {
+    let prefix = "/monitor/packets/";
+    if !path.starts_with(prefix) {
+        return None;
+    }
+
+    let tail = &path[prefix.len()..];
+    let (packet_id, subroute) = tail.split_once('/')?;
+    if packet_id.is_empty() || subroute.is_empty() {
+        return None;
+    }
+
+    Some((packet_id, subroute))
 }
 
 /// Test-only: route monitor requests against a caller-supplied `Mutex<MonitorState>` so
@@ -2089,6 +2169,47 @@ fn route_monitor_request_with_state(
                 )));
             }
             return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+        }
+    }
+
+    if let Some((packet_id, trailing)) = parse_monitor_packet_subroute(request_path) {
+        if trailing == "state" && method == "POST" {
+            let request: MonitorPacketStateRequest = match serde_json::from_slice(&body) {
+                Ok(r) => r,
+                Err(e) => {
+                    return Some(enable_cors(text_response(
+                        400,
+                        "Bad Request",
+                        format!("invalid packet state request: {e}"),
+                    )));
+                }
+            };
+            let mut guard = state.lock().ok()?;
+            match guard.apply_packet_transition(
+                packet_id,
+                request.to_state,
+                &request.actor,
+                &request.reason,
+                request.evidence_refs,
+            ) {
+                Ok(Some(_)) => {
+                    return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+                }
+                Ok(None) => {
+                    return Some(enable_cors(text_response(
+                        404,
+                        "Not Found",
+                        "monitor packet not found",
+                    )));
+                }
+                Err(e) => {
+                    return Some(enable_cors(json_response(
+                        409,
+                        "Conflict",
+                        &serde_json::json!({ "error": e.to_string() }),
+                    )));
+                }
+            }
         }
     }
 
@@ -8766,6 +8887,131 @@ mod tests {
             result.unwrap().is_none(),
             "missing packet must return Ok(None)"
         );
+    }
+
+    // ── Packet 4b tests ───────────────────────────────────────────────────────
+
+    #[test]
+    fn packet_state_route_applies_valid_transition_and_writes_audit_entry() {
+        let mut initial = MonitorState::default();
+        initial.packets.push(make_staged_packet("pkt-r1"));
+        let state = std::sync::Mutex::new(initial);
+
+        let body = serde_json::to_vec(&serde_json::json!({
+            "toState": "dispatched_to_manager",
+            "actor": "route-actor",
+            "reason": "route reason",
+            "evidenceRefs": ["ev-1"],
+        }))
+        .unwrap();
+        let response = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-r1/state",
+            body,
+            &state,
+        );
+        assert!(response.is_some(), "route must produce a response");
+        assert_eq!(
+            response.unwrap().status_code,
+            200,
+            "valid transition must return 200"
+        );
+
+        let guard = state.lock().unwrap();
+        let pkt = guard.packets.iter().find(|p| p.id == "pkt-r1").unwrap();
+        assert_eq!(pkt.state, PacketState::DispatchedToManager);
+        assert_eq!(pkt.audit_seq, 1);
+        assert_eq!(pkt.audit_trail.len(), 1);
+        assert_eq!(pkt.audit_trail[0].evidence_refs, vec!["ev-1".to_owned()]);
+    }
+
+    #[test]
+    fn packet_state_route_rejects_illegal_transition_without_mutation() {
+        let mut initial = MonitorState::default();
+        initial.packets.push(make_staged_packet("pkt-r2"));
+        let state = std::sync::Mutex::new(initial);
+
+        let body = serde_json::to_vec(&serde_json::json!({
+            "toState": "resolved", // illegal: Staged → Resolved
+            "actor": "route-actor",
+            "reason": "route reason",
+        }))
+        .unwrap();
+        let response = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-r2/state",
+            body,
+            &state,
+        )
+        .unwrap();
+        assert_eq!(response.status_code, 409, "illegal transition must return 409");
+
+        let guard = state.lock().unwrap();
+        let pkt = guard.packets.iter().find(|p| p.id == "pkt-r2").unwrap();
+        assert_eq!(pkt.state, PacketState::Staged, "state must not mutate on rejection");
+        assert!(pkt.audit_trail.is_empty(), "audit trail must not grow on rejection");
+    }
+
+    #[test]
+    fn packet_state_route_returns_404_for_missing_packet() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        let body = serde_json::to_vec(&serde_json::json!({
+            "toState": "dispatched_to_manager",
+            "actor": "route-actor",
+            "reason": "route reason",
+        }))
+        .unwrap();
+        let response = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/no-such-packet/state",
+            body,
+            &state,
+        )
+        .unwrap();
+        assert_eq!(response.status_code, 404, "missing packet must return 404");
+    }
+
+    #[test]
+    fn packet_state_route_rejects_empty_actor_or_reason() {
+        let initial = MonitorState::default();
+
+        // Empty actor → 409 (guard rejects before any mutation)
+        let mut s = initial.clone();
+        s.packets.push(make_staged_packet("pkt-r4a"));
+        let state = std::sync::Mutex::new(s);
+        let body = serde_json::to_vec(&serde_json::json!({
+            "toState": "dispatched_to_manager",
+            "actor": "",
+            "reason": "reason",
+        }))
+        .unwrap();
+        let resp = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-r4a/state",
+            body,
+            &state,
+        )
+        .unwrap();
+        assert_eq!(resp.status_code, 409, "empty actor must return 409");
+
+        // Empty reason → 409
+        let mut s = initial.clone();
+        s.packets.push(make_staged_packet("pkt-r4b"));
+        let state = std::sync::Mutex::new(s);
+        let body = serde_json::to_vec(&serde_json::json!({
+            "toState": "dispatched_to_manager",
+            "actor": "actor",
+            "reason": "",
+        }))
+        .unwrap();
+        let resp = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-r4b/state",
+            body,
+            &state,
+        )
+        .unwrap();
+        assert_eq!(resp.status_code, 409, "empty reason must return 409");
     }
 
     #[test]
