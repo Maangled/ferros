@@ -19,14 +19,6 @@ impl TickReport {
         }
     }
 
-    fn claimed(role: PacketClaimRole, packet_id: String) -> Self {
-        Self {
-            role,
-            claimed_packet_id: Some(packet_id),
-            advanced_to: None,
-        }
-    }
-
     fn advanced(role: PacketClaimRole, packet_id: String, advanced_to: PacketState) -> Self {
         Self {
             role,
@@ -68,7 +60,10 @@ impl RoleAgent for StubManagerAgent {
         repo: &mut dyn PacketRepository,
         at: &str,
     ) -> Result<TickReport, RoleAgentError> {
-        let Some(claim) = repo.claim_next(self.role()) else {
+        let Some(claim) = repo
+            .claim_next(self.role(), at)
+            .map_err(RoleAgentError::Repository)?
+        else {
             return Ok(TickReport::idle(self.role()));
         };
         let packet_id = claim.packet_id;
@@ -78,6 +73,7 @@ impl RoleAgent for StubManagerAgent {
             actor: "stub-manager-agent".to_owned(),
             reason: "manager claimed packet".to_owned(),
             at: at.to_owned(),
+            idempotency_key: None,
             evidence_refs: vec![],
         })?;
         Ok(TickReport::advanced(
@@ -101,7 +97,10 @@ impl RoleAgent for StubWorkerAgent {
         repo: &mut dyn PacketRepository,
         at: &str,
     ) -> Result<TickReport, RoleAgentError> {
-        let Some(claim) = repo.claim_next(self.role()) else {
+        let Some(claim) = repo
+            .claim_next(self.role(), at)
+            .map_err(RoleAgentError::Repository)?
+        else {
             return Ok(TickReport::idle(self.role()));
         };
         let packet_id = claim.packet_id;
@@ -111,6 +110,7 @@ impl RoleAgent for StubWorkerAgent {
             actor: "stub-worker-agent".to_owned(),
             reason: "worker completed packet".to_owned(),
             at: at.to_owned(),
+            idempotency_key: None,
             evidence_refs: vec![format!("evidence://{packet_id}")],
         })?;
         Ok(TickReport::advanced(
@@ -134,7 +134,10 @@ impl RoleAgent for StubReviewerAgent {
         repo: &mut dyn PacketRepository,
         at: &str,
     ) -> Result<TickReport, RoleAgentError> {
-        let Some(claim) = repo.claim_next(self.role()) else {
+        let Some(claim) = repo
+            .claim_next(self.role(), at)
+            .map_err(RoleAgentError::Repository)?
+        else {
             return Ok(TickReport::idle(self.role()));
         };
         let packet_id = claim.packet_id;
@@ -146,6 +149,7 @@ impl RoleAgent for StubReviewerAgent {
             actor: "stub-reviewer-agent".to_owned(),
             reason: "reviewer approved packet".to_owned(),
             at: at.to_owned(),
+            idempotency_key: None,
             evidence_refs: vec![],
         })?;
         Ok(TickReport::advanced(
@@ -169,7 +173,10 @@ impl RoleAgent for StubRecoveryAgent {
         repo: &mut dyn PacketRepository,
         at: &str,
     ) -> Result<TickReport, RoleAgentError> {
-        let Some(claim) = repo.claim_next(self.role()) else {
+        let Some(claim) = repo
+            .claim_next(self.role(), at)
+            .map_err(RoleAgentError::Repository)?
+        else {
             return Ok(TickReport::idle(self.role()));
         };
         let packet_id = claim.packet_id;
@@ -205,6 +212,7 @@ impl RoleAgent for StubRecoveryAgent {
             actor: "stub-recovery-agent".to_owned(),
             reason,
             at: at.to_owned(),
+            idempotency_key: None,
             evidence_refs: vec![],
         })?;
         Ok(TickReport::advanced(self.role(), packet_id, next_state))
@@ -224,7 +232,10 @@ impl RoleAgent for StubGatekeeperAgent {
         repo: &mut dyn PacketRepository,
         at: &str,
     ) -> Result<TickReport, RoleAgentError> {
-        let Some(claim) = repo.claim_next(self.role()) else {
+        let Some(claim) = repo
+            .claim_next(self.role(), at)
+            .map_err(RoleAgentError::Repository)?
+        else {
             return Ok(TickReport::idle(self.role()));
         };
         let packet_id = claim.packet_id;
@@ -240,6 +251,7 @@ impl RoleAgent for StubGatekeeperAgent {
             actor: "stub-gatekeeper-agent".to_owned(),
             reason: "gatekeeper closed packet".to_owned(),
             at: at.to_owned(),
+            idempotency_key: None,
             evidence_refs,
         })?;
         Ok(TickReport::advanced(
@@ -289,9 +301,12 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_owned(),
             summary: "test packet".to_owned(),
             last_error: None,
+            registration_idempotency_key: None,
             retry_count: 0,
             retry_budget: 0,
             last_failure_retryable: false,
+            lease_role: None,
+            lease_expires_at: None,
             audit_seq: 0,
             audit_trail: vec![],
         }
@@ -304,7 +319,8 @@ mod tests {
             "flow-1",
             "Software Architect",
             PacketState::DispatchedToManager,
-        ));
+        ))
+        .expect("packet registration should succeed");
 
         let manager = StubManagerAgent;
         let worker = StubWorkerAgent;
@@ -354,7 +370,8 @@ mod tests {
         let mut packet = make_packet("failed-1", "Software Architect", PacketState::Failed);
         packet.retry_budget = 2;
         packet.last_failure_retryable = true;
-        repo.register_packet(packet);
+        repo.register_packet(packet)
+            .expect("packet registration should succeed");
 
         let report = StubRecoveryAgent
             .tick(&mut repo, "2026-01-01T00:00:01Z")
@@ -374,7 +391,8 @@ mod tests {
         packet.retry_budget = 1;
         packet.retry_count = 1;
         packet.last_failure_retryable = true;
-        repo.register_packet(packet);
+        repo.register_packet(packet)
+            .expect("packet registration should succeed");
 
         let report = StubRecoveryAgent
             .tick(&mut repo, "2026-01-01T00:00:01Z")

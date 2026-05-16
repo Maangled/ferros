@@ -6,6 +6,7 @@ use std::fmt;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -36,9 +37,10 @@ use ferros_hub::{
     LOCAL_HUB_STATE_SNAPSHOT_PATH,
 };
 use ferros_orchestrator::{
-    try_transition, GatekeeperDecision, InMemoryPacketRepository, MonitorPacket, OrchestratorLoop,
-    OrchestratorMode, PacketRepository, PacketState, PacketTransitionApplied,
-    PacketTransitionError, PacketTransitionRequest, ReviewVerdict,
+    try_transition, FilePacketRepository, GatekeeperDecision, InMemoryPacketRepository,
+    MonitorPacket, OrchestratorLoop, OrchestratorMode, PacketClaim, PacketClaimRole,
+    PacketRepository, PacketState, PacketTransitionApplied, PacketTransitionError,
+    PacketTransitionRequest, ReviewVerdict,
 };
 use ferros_profile::{
     grant_profile_capability, init_local_profile, revoke_profile_capability, CapabilityGrant,
@@ -434,6 +436,101 @@ struct MonitorOrchestratorStatus {
     detail: String,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(transparent)]
+struct MonitorPacketStore {
+    repo: InMemoryPacketRepository,
+}
+
+#[allow(dead_code)]
+impl MonitorPacketStore {
+    fn load_or_default_from_path(path: &Path) -> Result<Self, String> {
+        Ok(Self {
+            repo: FilePacketRepository::load_or_default(path.to_path_buf())?.into_inner(),
+        })
+    }
+
+    fn persist_to_path(&self, path: &Path) -> Result<(), String> {
+        FilePacketRepository::persist_snapshot(path.to_path_buf(), &self.repo)
+    }
+}
+
+impl Deref for MonitorPacketStore {
+    type Target = InMemoryPacketRepository;
+
+    fn deref(&self) -> &Self::Target {
+        &self.repo
+    }
+}
+
+impl DerefMut for MonitorPacketStore {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.repo
+    }
+}
+
+impl PacketRepository for MonitorPacketStore {
+    fn register_packet(&mut self, packet: MonitorPacket) -> Result<(), String> {
+        self.repo.register_packet(packet)
+    }
+
+    fn packet(&self, packet_id: &str) -> Option<&MonitorPacket> {
+        self.repo.packet(packet_id)
+    }
+
+    fn packet_by_registration_idempotency_key(&self, key: &str) -> Option<&MonitorPacket> {
+        self.repo.packet_by_registration_idempotency_key(key)
+    }
+
+    fn claim_next(&mut self, role: PacketClaimRole, at: &str) -> Result<Option<PacketClaim>, String> {
+        self.repo.claim_next(role, at)
+    }
+
+    fn reclaim_expired(&mut self, now: &str) -> Result<Vec<String>, String> {
+        self.repo.reclaim_expired(now)
+    }
+
+    fn has_child_packets(&self, packet_id: &str) -> bool {
+        self.repo.has_child_packets(packet_id)
+    }
+
+    fn apply_transition(
+        &mut self,
+        transition: PacketTransitionRequest,
+    ) -> Result<Option<PacketTransitionApplied>, PacketTransitionError> {
+        self.repo.apply_transition(transition)
+    }
+
+    fn set_review_verdict(
+        &mut self,
+        packet_id: &str,
+        verdict: ReviewVerdict,
+        at: String,
+    ) -> Result<bool, String> {
+        self.repo.set_review_verdict(packet_id, verdict, at)
+    }
+
+    fn set_gatekeeper_decision(
+        &mut self,
+        packet_id: &str,
+        decision: GatekeeperDecision,
+        at: String,
+    ) -> Result<bool, String> {
+        self.repo.set_gatekeeper_decision(packet_id, decision, at)
+    }
+
+    fn set_retry_policy(
+        &mut self,
+        packet_id: &str,
+        retryable: Option<bool>,
+        retry_budget: Option<usize>,
+        at: String,
+    ) -> Result<bool, String> {
+        self.repo
+            .set_retry_policy(packet_id, retryable, retry_budget, at)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 struct MonitorStateSnapshot {
@@ -443,7 +540,7 @@ struct MonitorStateSnapshot {
     running_loops: Vec<MonitorLoop>,
     timeline: Vec<MonitorEvent>,
     lifecycle_threads: Vec<MonitorLifecycleThread>,
-    packets: InMemoryPacketRepository,
+    packets: MonitorPacketStore,
     #[serde(default)]
     watchdog_events: Vec<WatchdogEvent>,
     #[serde(default)]
@@ -465,7 +562,7 @@ struct MonitorState {
     running_loops: Vec<MonitorLoop>,
     timeline: Vec<MonitorEvent>,
     lifecycle_threads: Vec<MonitorLifecycleThread>,
-    packets: InMemoryPacketRepository,
+    packets: MonitorPacketStore,
     #[serde(default)]
     watchdog_events: Vec<WatchdogEvent>,
     #[serde(default)]
@@ -530,6 +627,8 @@ struct MonitorPacketStateRequest {
     reason: String,
     #[serde(default)]
     evidence_refs: Vec<String>,
+    #[serde(default)]
+    idempotency_key: Option<String>,
     #[serde(default)]
     retryable: Option<bool>,
     #[serde(default)]
@@ -693,7 +792,7 @@ impl Default for MonitorState {
             running_loops: Vec::new(),
             timeline: Vec::new(),
             lifecycle_threads: Vec::new(),
-            packets: InMemoryPacketRepository::default(),
+            packets: MonitorPacketStore::default(),
             watchdog_events: Vec::new(),
             orchestrator_mode: OrchestratorMode::Disabled,
             selected_chat_id: None,
@@ -2273,6 +2372,7 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
                 actor,
                 reason,
                 evidence_refs,
+                idempotency_key,
                 retryable,
                 retry_budget,
             } = request;
@@ -2287,11 +2387,12 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
                     )));
                 }
             };
-            match guard.apply_packet_transition(
+            match guard.apply_packet_transition_with_idempotency(
                 packet_id,
                 to_state.clone(),
                 &actor,
                 &reason,
+                idempotency_key,
                 evidence_refs,
             ) {
                 Ok(Some(_)) => {
@@ -2818,15 +2919,17 @@ fn route_monitor_request_with_state(
                 actor,
                 reason,
                 evidence_refs,
+                idempotency_key,
                 retryable,
                 retry_budget,
             } = request;
             let mut guard = state.lock().ok()?;
-            match guard.apply_packet_transition(
+            match guard.apply_packet_transition_with_idempotency(
                 packet_id,
                 to_state.clone(),
                 &actor,
                 &reason,
+                idempotency_key,
                 evidence_refs,
             ) {
                 Ok(Some(_)) => {
@@ -3416,7 +3519,7 @@ fn normalize_monitor_state(state: &mut MonitorState) {
         }
     }
 
-    for packet in &mut state.packets {
+    for packet in state.packets.iter_mut() {
         if packet.origin_message_id.as_deref() == Some("") {
             packet.origin_message_id = None;
         }
@@ -3473,6 +3576,32 @@ enum DispatchTarget {
     FerrosArchitect,
     CodingArchitect,
     BusinessArchitect,
+}
+
+fn dispatch_target_backend_label(target: DispatchTarget) -> &'static str {
+    match target {
+        DispatchTarget::Software => "software",
+        DispatchTarget::Business => "business",
+        DispatchTarget::FerrosArchitect => "ferros-architect",
+        DispatchTarget::CodingArchitect => "coding-architect",
+        DispatchTarget::BusinessArchitect => "business-architect",
+    }
+}
+
+fn dispatch_registration_idempotency_key(
+    session_id: &str,
+    origin_message_id: Option<&str>,
+    target: DispatchTarget,
+) -> Option<String> {
+    let message_id = origin_message_id?.trim();
+    if message_id.is_empty() {
+        return None;
+    }
+
+    Some(format!(
+        "dispatch:{session_id}:{message_id}:{}",
+        dispatch_target_backend_label(target)
+    ))
 }
 
 fn infer_dispatch_target(operator_text: &str) -> DispatchTarget {
@@ -4164,6 +4293,7 @@ impl MonitorState {
                 None,
                 None,
                 "Escalation: operator review required".to_owned(),
+                None,
             );
             let notification_id = self.create_notification(
                 Some(packet_id.clone()),
@@ -4262,6 +4392,7 @@ impl MonitorState {
         session_id: &str,
         origin_message_id: Option<String>,
         target: DispatchTarget,
+        registration_idempotency_key: Option<String>,
     ) -> Option<(String, String, String)> {
         let (session_label, session_thread_id) = {
             let session = self
@@ -4345,6 +4476,7 @@ impl MonitorState {
             Some(packet_thread_id.clone()),
             None,
             format!("Staged from {session_label} \u{2192} {route_label}"),
+            registration_idempotency_key,
         );
 
         if let Some(loop_entry) = self
@@ -4381,8 +4513,49 @@ impl MonitorState {
         MonitorDispatchBackendResult,
         Option<(String, String, String)>,
     ) {
+        let registration_idempotency_key =
+            dispatch_registration_idempotency_key(session_id, origin_message_id.as_deref(), target);
+
+        if let Some(existing_packet) = registration_idempotency_key
+            .as_deref()
+            .and_then(|key| self.packets.packet_by_registration_idempotency_key(key))
+        {
+            let route_label = existing_packet.manager.clone();
+            let packet_id = existing_packet.id.clone();
+            let lifecycle_thread_id = existing_packet.lifecycle_thread_id.clone().unwrap_or_default();
+
+            return (
+                MonitorDispatchBackendResult {
+                    accepted: existing_packet.state != PacketState::Failed,
+                    backend: "scaffold".to_owned(),
+                    message: if existing_packet.state == PacketState::Failed {
+                        String::new()
+                    } else {
+                        "reused existing dispatch packet".to_owned()
+                    },
+                    error: if existing_packet.state == PacketState::Failed {
+                        Some(
+                            existing_packet
+                                .last_error
+                                .clone()
+                                .unwrap_or_else(|| "backend rejected".to_owned()),
+                        )
+                    } else {
+                        None
+                    },
+                    ticket: None,
+                },
+                Some((packet_id, route_label, lifecycle_thread_id)),
+            );
+        }
+
         // Phase 1: Stage the packet (creates packet in Staged state, no backend call yet).
-        let staged = self.dispatch_session_to_manager(session_id, origin_message_id, target);
+        let staged = self.dispatch_session_to_manager(
+            session_id,
+            origin_message_id,
+            target,
+            registration_idempotency_key,
+        );
         let Some((ref packet_id, _, _)) = staged else {
             return (
                 MonitorDispatchBackendResult {
@@ -4442,31 +4615,44 @@ impl MonitorState {
         lifecycle_thread_id: Option<String>,
         notification_id: Option<String>,
         summary: String,
+        registration_idempotency_key: Option<String>,
     ) -> String {
+        if let Some(existing_packet) = registration_idempotency_key
+            .as_deref()
+            .and_then(|key| self.packets.packet_by_registration_idempotency_key(key))
+        {
+            return existing_packet.id.clone();
+        }
+
         let id = self.next_identifier("pkt");
         let now = monitor_now();
-        self.packets.register_packet(MonitorPacket {
-            id: id.clone(),
-            session_id,
-            origin_message_id,
-            parent_packet_id,
-            work_order_id,
-            manager,
-            state,
-            review_verdict: None,
-            gatekeeper_decision: None,
-            lifecycle_thread_id,
-            notification_id,
-            created_at: now.clone(),
-            updated_at: now,
-            summary,
-            last_error: None,
-            retry_count: 0,
-            retry_budget: 0,
-            last_failure_retryable: false,
-            audit_seq: 0,
-            audit_trail: vec![],
-        });
+        self.packets
+            .register_packet(MonitorPacket {
+                id: id.clone(),
+                session_id,
+                origin_message_id,
+                parent_packet_id,
+                work_order_id,
+                manager,
+                state,
+                review_verdict: None,
+                gatekeeper_decision: None,
+                lifecycle_thread_id,
+                notification_id,
+                created_at: now.clone(),
+                updated_at: now,
+                summary,
+                last_error: None,
+                registration_idempotency_key,
+                retry_count: 0,
+                retry_budget: 0,
+                last_failure_retryable: false,
+                lease_role: None,
+                lease_expires_at: None,
+                audit_seq: 0,
+                audit_trail: vec![],
+            })
+            .expect("packet registration should succeed");
         self.push_event("packet.registered", format!("Packet {id} registered"));
         id
     }
@@ -4506,12 +4692,32 @@ impl MonitorState {
         reason: &str,
         evidence_refs: Vec<String>,
     ) -> Result<Option<PacketTransitionApplied>, PacketTransitionError> {
+        self.apply_packet_transition_with_idempotency(
+            packet_id,
+            to_state,
+            actor,
+            reason,
+            None,
+            evidence_refs,
+        )
+    }
+
+    fn apply_packet_transition_with_idempotency(
+        &mut self,
+        packet_id: &str,
+        to_state: PacketState,
+        actor: &str,
+        reason: &str,
+        idempotency_key: Option<String>,
+        evidence_refs: Vec<String>,
+    ) -> Result<Option<PacketTransitionApplied>, PacketTransitionError> {
         let Some(applied) = self.packets.apply_transition(PacketTransitionRequest {
             packet_id: packet_id.to_owned(),
             to_state,
             actor: actor.to_owned(),
             reason: reason.to_owned(),
             at: monitor_now(),
+            idempotency_key,
             evidence_refs,
         })?
         else {
@@ -6813,7 +7019,7 @@ mod tests {
         LocalAgentApi, LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
         LocalRunwaySummary, MonitorDispatchBackend, MonitorDispatchBackendResult,
         MonitorLifecycleThread, MonitorMessageRequest, MonitorPacket, MonitorState,
-        OrchestratorMode, PacketRepository, PacketState, PersistedMonitorState,
+        OrchestratorMode, PacketState, PersistedMonitorState,
         ProfileCliCommand, ProfileShellResponse, ReviewVerdict,
         ScaffoldMonitorDispatchBackend, WatchdogCorrectionStatus, WatchdogEvent, WatchdogEventKind,
         DEFAULT_PROFILE_NAME, MONITOR_MAX_WATCHDOG_EVENTS,
@@ -7055,7 +7261,7 @@ mod tests {
         let packet = state.packet_by_id(&packet_id);
         assert!(packet.is_some(), "packet should be registered in state");
         let packet = packet.unwrap();
-        assert_eq!(packet.state, PacketState::Staged);
+        assert_eq!(packet.state, PacketState::DispatchedToManager);
         assert_eq!(packet.session_id, session.id);
         assert_eq!(packet.origin_message_id, Some(origin_message_id.clone()));
         assert!(
@@ -7068,6 +7274,34 @@ mod tests {
         assert!(
             state.lifecycle_threads.iter().any(|t| t.id == thread_id),
             "lifecycle thread should exist"
+        );
+    }
+
+    #[test]
+    fn repeated_message_dispatch_reuses_existing_packet() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Dispatch dedupe".to_owned()));
+        let origin_message_id = "msg-dedupe-1".to_owned();
+
+        let first = state.ferros_agent_handle_human_message(
+            &session.id,
+            &origin_message_id,
+            "please route this to software",
+        );
+        let second = state.ferros_agent_handle_human_message(
+            &session.id,
+            &origin_message_id,
+            "please route this to software",
+        );
+
+        assert!(matches!(first.status, super::MonitorDispatchStatus::Routed));
+        assert!(matches!(second.status, super::MonitorDispatchStatus::Routed));
+        assert_eq!(state.packets.len(), 1, "duplicate dispatch must not create a new packet");
+        assert_eq!(first.packet_id, second.packet_id);
+        assert_eq!(first.lifecycle_thread_id, second.lifecycle_thread_id);
+        assert_eq!(
+            state.packets[0].registration_idempotency_key.as_deref(),
+            Some("dispatch:chat-1:msg-dedupe-1:software")
         );
     }
 
@@ -7085,6 +7319,7 @@ mod tests {
             None,
             None,
             "Test summary".to_owned(),
+            None,
         );
 
         let payload = PersistedMonitorState {
@@ -10181,6 +10416,35 @@ mod tests {
     }
 
     #[test]
+    fn repeated_failed_dispatch_reuses_existing_packet() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Reject dedupe".to_owned()));
+
+        let first = state.dispatch_session_via_backend(
+            &session.id,
+            Some("msg-reject-1".to_owned()),
+            DispatchTarget::Software,
+            &RejectingBackend,
+            "route to software",
+        );
+        let second = state.dispatch_session_via_backend(
+            &session.id,
+            Some("msg-reject-1".to_owned()),
+            DispatchTarget::Software,
+            &RejectingBackend,
+            "route to software",
+        );
+
+        assert!(!first.0.accepted);
+        assert!(!second.0.accepted);
+        assert_eq!(state.packets.len(), 1, "duplicate failed dispatch must not create a new packet");
+        assert!(first.1.is_none(), "failed dispatch should not return dispatch ids");
+        assert!(second.1.is_some(), "duplicate failed dispatch should surface the existing packet ids");
+        let (second_packet_id, _, _) = second.1.expect("duplicate should return existing ids");
+        assert_eq!(second_packet_id, state.packets[0].id);
+    }
+
+    #[test]
     fn dispatch_via_scaffold_records_ticket_as_evidence_in_audit_trail() {
         let mut state = MonitorState::default();
         let session = state.create_session(Some("Ticket evidence test".to_owned()));
@@ -10397,7 +10661,10 @@ mod tests {
         let state = std::sync::Mutex::new(MonitorState::default());
         {
             let mut guard = state.lock().unwrap();
-            guard.packets.register_packet(make_staged_packet("failed-policy-1"));
+            guard
+                .packets
+                .register_packet(make_staged_packet("failed-policy-1"))
+                .expect("packet registration should succeed");
         }
 
         let response = route_monitor_request_with_state(
@@ -10431,7 +10698,10 @@ mod tests {
             let mut packet = make_staged_packet("failed-policy-2");
             packet.state = PacketState::Failed;
             packet.last_error = Some("existing failure".to_owned());
-            guard.packets.register_packet(packet);
+            guard
+                .packets
+                .register_packet(packet)
+                .expect("packet registration should succeed");
         }
 
         let response = route_monitor_request_with_state(
@@ -10462,7 +10732,10 @@ mod tests {
         let state = std::sync::Mutex::new(MonitorState::default());
         {
             let mut guard = state.lock().unwrap();
-            guard.packets.register_packet(make_staged_packet("failed-policy-3"));
+            guard
+                .packets
+                .register_packet(make_staged_packet("failed-policy-3"))
+                .expect("packet registration should succeed");
         }
 
         let response = route_monitor_request_with_state(
@@ -10505,7 +10778,10 @@ mod tests {
             packet.last_error = Some("retryable failure".to_owned());
             packet.retry_budget = 1;
             packet.last_failure_retryable = true;
-            guard.packets.register_packet(packet);
+            guard
+                .packets
+                .register_packet(packet)
+                .expect("packet registration should succeed");
         }
 
         let response = route_monitor_request_with_state("POST", "/orchestrator/tick", vec![], &state)
@@ -10819,9 +11095,12 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_owned(),
             summary: "test packet".to_owned(),
             last_error: None,
+            registration_idempotency_key: None,
             retry_count: 0,
             retry_budget: 0,
             last_failure_retryable: false,
+            lease_role: None,
+            lease_expires_at: None,
             audit_seq: 0,
             audit_trail: vec![],
         }
@@ -11954,6 +12233,54 @@ mod tests {
     }
 
     #[test]
+    fn packet_state_route_dedupes_by_idempotency_key() {
+        let mut initial = MonitorState::default();
+        initial.packets.push(make_staged_packet("pkt-r1-idem"));
+        let state = std::sync::Mutex::new(initial);
+
+        let first_body = serde_json::to_vec(&serde_json::json!({
+            "toState": "dispatched_to_manager",
+            "actor": "route-actor",
+            "reason": "route reason",
+            "idempotencyKey": "route-transition-1",
+        }))
+        .unwrap();
+        let first = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-r1-idem/state",
+            first_body,
+            &state,
+        )
+        .unwrap();
+        assert_eq!(first.status_code, 200);
+
+        let second_body = serde_json::to_vec(&serde_json::json!({
+            "toState": "dispatched_to_manager",
+            "actor": "route-actor",
+            "reason": "route reason",
+            "idempotencyKey": "route-transition-1",
+        }))
+        .unwrap();
+        let second = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-r1-idem/state",
+            second_body,
+            &state,
+        )
+        .unwrap();
+        assert_eq!(second.status_code, 200);
+
+        let guard = state.lock().unwrap();
+        let pkt = guard.packets.iter().find(|p| p.id == "pkt-r1-idem").unwrap();
+        assert_eq!(pkt.state, PacketState::DispatchedToManager);
+        assert_eq!(pkt.audit_trail.len(), 1);
+        assert_eq!(
+            pkt.audit_trail[0].idempotency_key.as_deref(),
+            Some("route-transition-1")
+        );
+    }
+
+    #[test]
     fn packet_state_route_rejects_illegal_transition_without_mutation() {
         let mut initial = MonitorState::default();
         initial.packets.push(make_staged_packet("pkt-r2"));
@@ -12207,6 +12534,7 @@ mod tests {
             None,
             None,
             "normalize test packet".to_owned(),
+            None,
         );
         let ntf_id =
             state.create_notification(None, None, None, "low", "normalize test", "summary");
@@ -12298,6 +12626,45 @@ mod tests {
         );
 
         cleanup_state_path(&path);
+    }
+
+    #[test]
+    fn monitor_packet_store_round_trips_via_file_packet_repository() {
+        let path = unique_state_path("packet-store-roundtrip");
+
+        let mut store = super::MonitorPacketStore::default();
+        store.push(make_staged_packet("pkt-sidecar-1"));
+
+        store
+            .persist_to_path(&path)
+            .expect("packet store file persist should succeed");
+
+        assert!(path.exists(), "packet store file should exist at target path");
+        let tmp_path = path.with_file_name(format!(
+            "{}.tmp",
+            path.file_name().unwrap_or_default().to_string_lossy()
+        ));
+        assert!(
+            !tmp_path.exists(),
+            "packet store temp file must not remain after successful persist"
+        );
+
+        let loaded = super::MonitorPacketStore::load_or_default_from_path(&path)
+            .expect("packet store load should succeed");
+        assert_eq!(loaded.len(), 1, "round-tripped packet store should retain packet count");
+        assert_eq!(loaded[0].id, "pkt-sidecar-1");
+
+        cleanup_state_path(&path);
+    }
+
+    #[test]
+    fn monitor_packet_store_load_defaults_when_file_is_missing() {
+        let path = unique_state_path("packet-store-missing");
+        cleanup_state_path(&path);
+
+        let loaded = super::MonitorPacketStore::load_or_default_from_path(&path)
+            .expect("missing packet store file should default cleanly");
+        assert!(loaded.is_empty(), "missing packet store file should load as empty store");
     }
 
     #[test]
@@ -12536,7 +12903,7 @@ mod tests {
     #[test]
     fn is_background_agent_session_classifies_correctly() {
         let mut state = MonitorState::default();
-        let ferros_session = state.create_session(Some("FERROS session".to_owned()));
+        let _ferros_session = state.create_session(Some("FERROS session".to_owned()));
         let background_session = state.create_session(Some("software-coder session".to_owned()));
 
         // FERROS Agent sessions should not be background
@@ -13031,6 +13398,7 @@ mod tests {
             None,
             None,
             "child packet".to_owned(),
+            None,
         );
 
         let _ = state.detect_manager_closure_contract_violations();
@@ -13088,6 +13456,7 @@ mod tests {
             None,
             None,
             "unrelated packet".to_owned(),
+            None,
         );
 
         let changed = state.detect_manager_closure_contract_violations();
@@ -13116,6 +13485,7 @@ mod tests {
             None,
             None,
             "worker packet".to_owned(),
+            None,
         );
 
         if let Some(packet) = state

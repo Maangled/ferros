@@ -50,6 +50,8 @@ impl OrchestratorLoop {
         repo: &mut dyn PacketRepository,
         at: &str,
     ) -> Result<Vec<TickReport>, RoleAgentError> {
+        repo.reclaim_expired(at)
+            .map_err(RoleAgentError::Repository)?;
         let mut reports = Vec::with_capacity(self.agents.len());
         for agent in &self.agents {
             reports.push(agent.tick(repo, at)?);
@@ -83,9 +85,12 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_owned(),
             summary: "test packet".to_owned(),
             last_error: None,
+            registration_idempotency_key: None,
             retry_count: 0,
             retry_budget: 0,
             last_failure_retryable: false,
+            lease_role: None,
+            lease_expires_at: None,
             audit_seq: 0,
             audit_trail: vec![],
         }
@@ -99,7 +104,8 @@ mod tests {
             "loop-1",
             "Software Architect",
             PacketState::DispatchedToManager,
-        ));
+        ))
+        .expect("packet registration should succeed");
 
         let tick1 = loop_runner
             .tick_once(&mut repo, "2026-01-01T00:00:01Z")

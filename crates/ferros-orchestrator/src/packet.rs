@@ -1,8 +1,12 @@
 use std::fmt;
+use std::fs;
+use std::io;
 use std::ops::{Index, IndexMut};
+use std::path::{Path, PathBuf};
 use std::slice::{Iter, IterMut};
 
 use serde::{Deserialize, Serialize};
+use time::{format_description::well_known::Rfc3339, Duration, OffsetDateTime};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -223,6 +227,8 @@ pub struct PacketAuditEntry {
     pub reason: String,
     pub at: String,
     #[serde(default)]
+    pub idempotency_key: Option<String>,
+    #[serde(default)]
     pub evidence_refs: Vec<String>,
 }
 
@@ -257,11 +263,17 @@ pub struct MonitorPacket {
     pub summary: String,
     pub last_error: Option<String>,
     #[serde(default)]
+    pub registration_idempotency_key: Option<String>,
+    #[serde(default)]
     pub retry_count: usize,
     #[serde(default)]
     pub retry_budget: usize,
     #[serde(default)]
     pub last_failure_retryable: bool,
+    #[serde(default)]
+    pub lease_role: Option<PacketClaimRole>,
+    #[serde(default)]
+    pub lease_expires_at: Option<String>,
     #[serde(default)]
     pub audit_seq: usize,
     #[serde(default)]
@@ -281,10 +293,12 @@ pub struct PacketTransitionRequest {
     pub actor: String,
     pub reason: String,
     pub at: String,
+    pub idempotency_key: Option<String>,
     pub evidence_refs: Vec<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum PacketClaimRole {
     Manager,
     Worker,
@@ -299,6 +313,12 @@ pub struct PacketClaim {
     pub role: PacketClaimRole,
     pub state: PacketState,
 }
+
+const MANAGER_LEASE_SECONDS: i64 = 10;
+const WORKER_LEASE_SECONDS: i64 = 30;
+const REVIEWER_LEASE_SECONDS: i64 = 5;
+const GATEKEEPER_LEASE_SECONDS: i64 = 5;
+const RECOVERY_LEASE_SECONDS: i64 = 60;
 
 fn is_manager_role(manager: &str) -> bool {
     matches!(
@@ -323,10 +343,55 @@ fn packet_is_claimable_by_role(packet: &MonitorPacket, role: PacketClaimRole) ->
     }
 }
 
+fn lease_duration_seconds(role: PacketClaimRole) -> i64 {
+    match role {
+        PacketClaimRole::Manager => MANAGER_LEASE_SECONDS,
+        PacketClaimRole::Worker => WORKER_LEASE_SECONDS,
+        PacketClaimRole::Reviewer => REVIEWER_LEASE_SECONDS,
+        PacketClaimRole::Gatekeeper => GATEKEEPER_LEASE_SECONDS,
+        PacketClaimRole::Recovery => RECOVERY_LEASE_SECONDS,
+    }
+}
+
+fn parse_rfc3339(timestamp: &str) -> Result<OffsetDateTime, String> {
+    OffsetDateTime::parse(timestamp, &Rfc3339)
+        .map_err(|error| format!("invalid RFC3339 timestamp `{timestamp}`: {error}"))
+}
+
+fn compute_lease_expiry(at: &str, role: PacketClaimRole) -> Result<String, String> {
+    let expires_at = parse_rfc3339(at)? + Duration::seconds(lease_duration_seconds(role));
+    expires_at
+        .format(&Rfc3339)
+        .map_err(|error| format!("failed to format lease expiry: {error}"))
+}
+
+fn current_rfc3339_timestamp() -> Result<String, String> {
+    OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .map_err(|error| format!("failed to format current timestamp: {error}"))
+}
+
+fn normalize_idempotency_key(idempotency_key: Option<String>) -> Result<Option<String>, String> {
+    let Some(key) = idempotency_key else {
+        return Ok(None);
+    };
+    let trimmed = key.trim();
+    if trimmed.is_empty() {
+        return Err("idempotency key must not be empty".to_owned());
+    }
+    Ok(Some(trimmed.to_owned()))
+}
+
 pub trait PacketRepository {
-    fn register_packet(&mut self, packet: MonitorPacket);
+    fn register_packet(&mut self, packet: MonitorPacket) -> Result<(), String>;
     fn packet(&self, packet_id: &str) -> Option<&MonitorPacket>;
-    fn claim_next(&self, role: PacketClaimRole) -> Option<PacketClaim>;
+    fn packet_by_registration_idempotency_key(&self, key: &str) -> Option<&MonitorPacket>;
+    fn claim_next(
+        &mut self,
+        role: PacketClaimRole,
+        at: &str,
+    ) -> Result<Option<PacketClaim>, String>;
+    fn reclaim_expired(&mut self, now: &str) -> Result<Vec<String>, String>;
     fn has_child_packets(&self, packet_id: &str) -> bool;
     fn apply_transition(
         &mut self,
@@ -364,6 +429,10 @@ impl InMemoryPacketRepository {
         Self::default()
     }
 
+    pub fn register_packet(&mut self, packet: MonitorPacket) -> Result<(), String> {
+        self.register_packet_inner(packet)
+    }
+
     pub fn iter(&self) -> Iter<'_, MonitorPacket> {
         self.packets.iter()
     }
@@ -381,7 +450,43 @@ impl InMemoryPacketRepository {
     }
 
     pub fn push(&mut self, packet: MonitorPacket) {
-        self.register_packet(packet);
+        self.register_packet(packet)
+            .expect("in-memory packet registration should succeed");
+    }
+
+    fn register_packet_inner(&mut self, mut packet: MonitorPacket) -> Result<(), String> {
+        packet.registration_idempotency_key =
+            normalize_idempotency_key(packet.registration_idempotency_key)?;
+        if let Some(key) = packet.registration_idempotency_key.as_deref() {
+            if self.packet_by_registration_idempotency_key(key).is_some() {
+                return Ok(());
+            }
+        }
+
+        self.packets.push(packet);
+        Ok(())
+    }
+
+    fn packet_by_registration_idempotency_key(&self, key: &str) -> Option<&MonitorPacket> {
+        self.packets.iter().find(|packet| {
+            packet.registration_idempotency_key.as_deref() == Some(key)
+        })
+    }
+
+    fn applied_transition_by_idempotency_key(
+        &self,
+        key: &str,
+    ) -> Option<PacketTransitionApplied> {
+        self.packets.iter().find_map(|packet| {
+            packet.audit_trail.iter().find_map(|entry| {
+                (entry.idempotency_key.as_deref() == Some(key)).then(|| PacketTransitionApplied {
+                    packet_id: packet.id.clone(),
+                    from: entry.from.clone(),
+                    to: entry.to.clone(),
+                    seq: entry.seq,
+                })
+            })
+        })
     }
 
     pub fn len(&self) -> usize {
@@ -426,23 +531,63 @@ impl<'a> IntoIterator for &'a mut InMemoryPacketRepository {
 }
 
 impl PacketRepository for InMemoryPacketRepository {
-    fn register_packet(&mut self, packet: MonitorPacket) {
-        self.packets.push(packet);
+    fn register_packet(&mut self, packet: MonitorPacket) -> Result<(), String> {
+        self.register_packet_inner(packet)
     }
 
     fn packet(&self, packet_id: &str) -> Option<&MonitorPacket> {
         self.packets.iter().find(|packet| packet.id == packet_id)
     }
 
-    fn claim_next(&self, role: PacketClaimRole) -> Option<PacketClaim> {
-        self.packets
-            .iter()
-            .find(|packet| packet_is_claimable_by_role(packet, role))
-            .map(|packet| PacketClaim {
-                packet_id: packet.id.clone(),
-                role,
-                state: packet.state.clone(),
-            })
+    fn packet_by_registration_idempotency_key(&self, key: &str) -> Option<&MonitorPacket> {
+        self.packet_by_registration_idempotency_key(key)
+    }
+
+    fn claim_next(
+        &mut self,
+        role: PacketClaimRole,
+        at: &str,
+    ) -> Result<Option<PacketClaim>, String> {
+        let lease_expires_at = compute_lease_expiry(at, role)?;
+        let Some(packet) = self
+            .packets
+            .iter_mut()
+            .find(|packet| packet_is_claimable_by_role(packet, role) && packet.lease_role.is_none())
+        else {
+            return Ok(None);
+        };
+
+        packet.lease_role = Some(role);
+        packet.lease_expires_at = Some(lease_expires_at);
+        Ok(Some(PacketClaim {
+            packet_id: packet.id.clone(),
+            role,
+            state: packet.state.clone(),
+        }))
+    }
+
+    fn reclaim_expired(&mut self, now: &str) -> Result<Vec<String>, String> {
+        let now = parse_rfc3339(now)?;
+        let mut reclaimed = Vec::new();
+
+        for packet in &mut self.packets {
+            let Some(_) = packet.lease_role else {
+                continue;
+            };
+            let expired = match packet.lease_expires_at.as_deref() {
+                Some(expires_at) => parse_rfc3339(expires_at)? <= now,
+                None => true,
+            };
+            if !expired {
+                continue;
+            }
+
+            packet.lease_role = None;
+            packet.lease_expires_at = None;
+            reclaimed.push(packet.id.clone());
+        }
+
+        Ok(reclaimed)
     }
 
     fn has_child_packets(&self, packet_id: &str) -> bool {
@@ -461,6 +606,7 @@ impl PacketRepository for InMemoryPacketRepository {
             actor,
             reason,
             at,
+            idempotency_key,
             evidence_refs,
         } = transition;
 
@@ -475,6 +621,19 @@ impl PacketRepository for InMemoryPacketRepository {
                 packet.gatekeeper_decision.clone(),
             )
         };
+
+        let idempotency_key = normalize_idempotency_key(idempotency_key).map_err(|message| {
+            PacketTransitionError {
+                from: from.clone(),
+                to: to_state.clone(),
+                message,
+            }
+        })?;
+        if let Some(key) = idempotency_key.as_deref() {
+            if let Some(applied) = self.applied_transition_by_idempotency_key(key) {
+                return Ok(Some(applied));
+            }
+        }
 
         validate_transition_requirements(
             &from,
@@ -492,6 +651,7 @@ impl PacketRepository for InMemoryPacketRepository {
             actor,
             reason,
             at: at.clone(),
+            idempotency_key,
             evidence_refs,
         };
         let packet = self
@@ -501,6 +661,8 @@ impl PacketRepository for InMemoryPacketRepository {
             .unwrap();
         packet.state = next.clone();
         packet.updated_at = at;
+        packet.lease_role = None;
+        packet.lease_expires_at = None;
         if next == PacketState::Failed {
             packet.last_error = Some(audit_entry.reason.clone());
         }
@@ -579,6 +741,9 @@ impl PacketRepository for InMemoryPacketRepository {
         else {
             return Ok(false);
         };
+        if packet.state != PacketState::Failed {
+            return Err("retry policy can only be set while packet is failed".to_owned());
+        }
 
         if let Some(retryable) = retryable {
             packet.last_failure_retryable = retryable;
@@ -591,13 +756,234 @@ impl PacketRepository for InMemoryPacketRepository {
     }
 }
 
+const PACKET_REPOSITORY_SCHEMA_VERSION: u32 = 1;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct PersistedPacketRepository {
+    schema_version: u32,
+    packets: InMemoryPacketRepository,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FilePacketRepository {
+    path: PathBuf,
+    packets: InMemoryPacketRepository,
+}
+
+impl FilePacketRepository {
+    pub fn load_or_default(path: impl Into<PathBuf>) -> Result<Self, String> {
+        let now = current_rfc3339_timestamp()?;
+        Self::load_or_default_at(path.into(), &now)
+    }
+
+    pub fn into_inner(self) -> InMemoryPacketRepository {
+        self.packets
+    }
+
+    pub fn persist_snapshot(
+        path: impl Into<PathBuf>,
+        packets: &InMemoryPacketRepository,
+    ) -> Result<(), String> {
+        let path = path.into();
+        persist_packet_repository_to(&path, packets)
+    }
+
+    fn load_or_default_at(path: PathBuf, now: &str) -> Result<Self, String> {
+        let packets = load_packet_repository_from(&path)?;
+        let mut repository = Self { path, packets };
+        let reclaimed = repository.packets.reclaim_expired(now)?;
+        if !reclaimed.is_empty() {
+            repository.persist()?;
+        }
+        Ok(repository)
+    }
+
+    fn persist(&self) -> Result<(), String> {
+        persist_packet_repository_to(&self.path, &self.packets)
+    }
+}
+
+fn load_packet_repository_from(path: &Path) -> Result<InMemoryPacketRepository, String> {
+    let bytes = match fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            return Ok(InMemoryPacketRepository::default())
+        }
+        Err(error) => {
+            return Err(format!(
+                "failed to read packet repository {}: {error}",
+                path.display()
+            ))
+        }
+    };
+
+    let persisted: PersistedPacketRepository = serde_json::from_slice(&bytes)
+        .map_err(|error| format!("failed to deserialize packet repository {}: {error}", path.display()))?;
+    if persisted.schema_version != PACKET_REPOSITORY_SCHEMA_VERSION {
+        return Err(format!(
+            "unsupported packet repository schema version {}",
+            persisted.schema_version
+        ));
+    }
+
+    Ok(persisted.packets)
+}
+
+fn persist_packet_repository_to(
+    path: &Path,
+    packets: &InMemoryPacketRepository,
+) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("failed to create packet repository directory {}: {error}", parent.display()))?;
+    }
+
+    let payload = PersistedPacketRepository {
+        schema_version: PACKET_REPOSITORY_SCHEMA_VERSION,
+        packets: packets.clone(),
+    };
+    let bytes = serde_json::to_vec_pretty(&payload)
+        .map_err(|error| format!("failed to serialize packet repository {}: {error}", path.display()))?;
+    let tmp_path = path.with_file_name(format!(
+        "{}.tmp",
+        path.file_name().unwrap_or_default().to_string_lossy()
+    ));
+    fs::write(&tmp_path, bytes)
+        .map_err(|error| format!("failed to write packet repository temp file {}: {error}", tmp_path.display()))?;
+    fs::rename(&tmp_path, path).map_err(|error| {
+        format!(
+            "failed to replace packet repository {} from temp file {}: {error}",
+            path.display(),
+            tmp_path.display()
+        )
+    })
+}
+
+impl PacketRepository for FilePacketRepository {
+    fn register_packet(&mut self, packet: MonitorPacket) -> Result<(), String> {
+        self.packets.register_packet(packet)?;
+        self.persist()
+    }
+
+    fn packet(&self, packet_id: &str) -> Option<&MonitorPacket> {
+        self.packets.packet(packet_id)
+    }
+
+    fn packet_by_registration_idempotency_key(&self, key: &str) -> Option<&MonitorPacket> {
+        self.packets.packet_by_registration_idempotency_key(key)
+    }
+
+    fn claim_next(
+        &mut self,
+        role: PacketClaimRole,
+        at: &str,
+    ) -> Result<Option<PacketClaim>, String> {
+        let claim = self.packets.claim_next(role, at)?;
+        if claim.is_some() {
+            self.persist()?;
+        }
+        Ok(claim)
+    }
+
+    fn reclaim_expired(&mut self, now: &str) -> Result<Vec<String>, String> {
+        let reclaimed = self.packets.reclaim_expired(now)?;
+        if !reclaimed.is_empty() {
+            self.persist()?;
+        }
+        Ok(reclaimed)
+    }
+
+    fn has_child_packets(&self, packet_id: &str) -> bool {
+        self.packets.has_child_packets(packet_id)
+    }
+
+    fn apply_transition(
+        &mut self,
+        transition: PacketTransitionRequest,
+    ) -> Result<Option<PacketTransitionApplied>, PacketTransitionError> {
+        let applied = self.packets.apply_transition(transition)?;
+        if let Some(ref applied_transition) = applied {
+            self.persist().map_err(|message| PacketTransitionError {
+                from: applied_transition.from.clone(),
+                to: applied_transition.to.clone(),
+                message,
+            })?;
+        }
+        Ok(applied)
+    }
+
+    fn set_review_verdict(
+        &mut self,
+        packet_id: &str,
+        verdict: ReviewVerdict,
+        at: String,
+    ) -> Result<bool, String> {
+        let updated = self.packets.set_review_verdict(packet_id, verdict, at)?;
+        if updated {
+            self.persist()?;
+        }
+        Ok(updated)
+    }
+
+    fn set_gatekeeper_decision(
+        &mut self,
+        packet_id: &str,
+        decision: GatekeeperDecision,
+        at: String,
+    ) -> Result<bool, String> {
+        let updated = self.packets.set_gatekeeper_decision(packet_id, decision, at)?;
+        if updated {
+            self.persist()?;
+        }
+        Ok(updated)
+    }
+
+    fn set_retry_policy(
+        &mut self,
+        packet_id: &str,
+        retryable: Option<bool>,
+        retry_budget: Option<usize>,
+        at: String,
+    ) -> Result<bool, String> {
+        let updated = self
+            .packets
+            .set_retry_policy(packet_id, retryable, retry_budget, at)?;
+        if updated {
+            self.persist()?;
+        }
+        Ok(updated)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
     use super::{
-        try_transition, validate_transition_requirements, GatekeeperDecision,
-        InMemoryPacketRepository, MonitorPacket, PacketClaimRole, PacketRepository, PacketState,
-        PacketTransitionRequest, ReviewVerdict,
+        try_transition, validate_transition_requirements, FilePacketRepository,
+        GatekeeperDecision, InMemoryPacketRepository, MonitorPacket, PacketClaimRole,
+        PacketRepository, PacketState, PacketTransitionRequest, PersistedPacketRepository,
+        ReviewVerdict, PACKET_REPOSITORY_SCHEMA_VERSION,
     };
+
+    fn unique_temp_repo_path(test_name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("ferros-orchestrator-{test_name}-{nonce}.json"))
+    }
+
+    fn cleanup_repo_path(path: &Path) {
+        let _ = fs::remove_file(path);
+        let tmp_path = path.with_file_name(format!(
+            "{}.tmp",
+            path.file_name().unwrap_or_default().to_string_lossy()
+        ));
+        let _ = fs::remove_file(tmp_path);
+    }
 
     fn make_packet(id: &str, manager: &str, state: PacketState) -> MonitorPacket {
         MonitorPacket {
@@ -616,9 +1002,12 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_owned(),
             summary: "test packet".to_owned(),
             last_error: None,
+            registration_idempotency_key: None,
             retry_count: 0,
             retry_budget: 0,
             last_failure_retryable: false,
+            lease_role: None,
+            lease_expires_at: None,
             audit_seq: 0,
             audit_trail: vec![],
         }
@@ -751,7 +1140,8 @@ mod tests {
     #[test]
     fn in_memory_repository_apply_transition_updates_state_and_audit_trail() {
         let mut repo = InMemoryPacketRepository::default();
-        repo.register_packet(make_staged_packet("repo-p1"));
+        repo.register_packet(make_staged_packet("repo-p1"))
+            .expect("packet registration should succeed");
 
         let result = repo.apply_transition(PacketTransitionRequest {
             packet_id: "repo-p1".to_owned(),
@@ -759,6 +1149,7 @@ mod tests {
             actor: "test-actor".to_owned(),
             reason: "test reason".to_owned(),
             at: "2026-01-01T00:00:01Z".to_owned(),
+            idempotency_key: None,
             evidence_refs: vec![],
         });
 
@@ -777,7 +1168,8 @@ mod tests {
     #[test]
     fn in_memory_repository_rejects_review_verdict_outside_awaiting_review() {
         let mut repo = InMemoryPacketRepository::default();
-        repo.register_packet(make_staged_packet("repo-p2"));
+        repo.register_packet(make_staged_packet("repo-p2"))
+            .expect("packet registration should succeed");
 
         let result = repo.set_review_verdict(
             "repo-p2",
@@ -797,7 +1189,8 @@ mod tests {
         packet.review_verdict = Some(ReviewVerdict::Approved);
         packet.gatekeeper_decision = Some(GatekeeperDecision::KeepOpen);
         packet.last_error = Some("transient failure".to_owned());
-        repo.register_packet(packet);
+        repo.register_packet(packet)
+            .expect("packet registration should succeed");
 
         let result = repo.apply_transition(PacketTransitionRequest {
             packet_id: "failed-p1".to_owned(),
@@ -805,6 +1198,7 @@ mod tests {
             actor: "stub-recovery-agent".to_owned(),
             reason: "recovery requeued retryable packet".to_owned(),
             at: "2026-01-01T00:00:01Z".to_owned(),
+            idempotency_key: None,
             evidence_refs: vec![],
         });
 
@@ -825,7 +1219,8 @@ mod tests {
             "failed-p2",
             "Software Architect",
             PacketState::Failed,
-        ));
+        ))
+        .expect("packet registration should succeed");
 
         let updated = repo
             .set_retry_policy(
@@ -843,26 +1238,112 @@ mod tests {
     }
 
     #[test]
+    fn in_memory_repository_dedupes_registration_by_idempotency_key() {
+        let mut repo = InMemoryPacketRepository::default();
+        let mut first = make_staged_packet("idem-p1");
+        first.registration_idempotency_key = Some("register-1".to_owned());
+        let mut second = make_staged_packet("idem-p2");
+        second.registration_idempotency_key = Some("register-1".to_owned());
+
+        repo.register_packet(first)
+            .expect("first registration should succeed");
+        repo.register_packet(second)
+            .expect("duplicate idempotent registration should succeed");
+
+        assert_eq!(repo.len(), 1);
+        assert!(repo.packet("idem-p1").is_some());
+        assert!(repo.packet("idem-p2").is_none());
+    }
+
+    #[test]
+    fn in_memory_repository_dedupes_transition_by_idempotency_key() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_staged_packet("idem-t1"))
+            .expect("packet registration should succeed");
+
+        let first = repo
+            .apply_transition(PacketTransitionRequest {
+                packet_id: "idem-t1".to_owned(),
+                to_state: PacketState::DispatchedToManager,
+                actor: "test-actor".to_owned(),
+                reason: "dispatch packet".to_owned(),
+                at: "2026-01-01T00:00:01Z".to_owned(),
+                idempotency_key: Some("transition-1".to_owned()),
+                evidence_refs: vec![],
+            })
+            .expect("first transition should succeed")
+            .expect("packet should exist");
+        let second = repo
+            .apply_transition(PacketTransitionRequest {
+                packet_id: "idem-t1".to_owned(),
+                to_state: PacketState::DispatchedToManager,
+                actor: "test-actor".to_owned(),
+                reason: "dispatch packet".to_owned(),
+                at: "2026-01-01T00:00:02Z".to_owned(),
+                idempotency_key: Some("transition-1".to_owned()),
+                evidence_refs: vec![],
+            })
+            .expect("duplicate transition should succeed")
+            .expect("packet should still resolve to prior transition");
+
+        assert_eq!(first, second);
+        let packet = repo.packet("idem-t1").unwrap();
+        assert_eq!(packet.state, PacketState::DispatchedToManager);
+        assert_eq!(packet.audit_trail.len(), 1);
+        assert_eq!(
+            packet.audit_trail[0].idempotency_key.as_deref(),
+            Some("transition-1")
+        );
+    }
+
+    #[test]
+    fn in_memory_repository_rejects_retry_policy_for_non_failed_packet() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_staged_packet("repo-p3"))
+            .expect("packet registration should succeed");
+
+        let result = repo.set_retry_policy(
+            "repo-p3",
+            Some(true),
+            Some(1),
+            "2026-01-01T00:00:01Z".to_owned(),
+        );
+
+        assert!(result.is_err(), "retry policy should require failed state");
+        assert_eq!(
+            result.unwrap_err(),
+            "retry policy can only be set while packet is failed"
+        );
+        let packet = repo.packet("repo-p3").unwrap();
+        assert!(!packet.last_failure_retryable);
+        assert_eq!(packet.retry_budget, 0);
+    }
+
+    #[test]
     fn claim_next_manager_returns_first_dispatched_manager_packet() {
         let mut repo = InMemoryPacketRepository::default();
         repo.register_packet(make_packet(
             "not-manager",
             "test-manager",
             PacketState::DispatchedToManager,
-        ));
+        ))
+        .expect("packet registration should succeed");
         repo.register_packet(make_packet(
             "manager-1",
             "Software Architect",
             PacketState::DispatchedToManager,
-        ));
+        ))
+        .expect("packet registration should succeed");
         repo.register_packet(make_packet(
             "manager-2",
             "Business Agent Architect",
             PacketState::DispatchedToManager,
-        ));
+        ))
+        .expect("packet registration should succeed");
 
         let claim = repo
-            .claim_next(PacketClaimRole::Manager)
+            .claim_next(PacketClaimRole::Manager, "2026-01-01T00:00:00Z")
+            .expect("manager claim lookup should succeed")
             .expect("manager claim should exist");
 
         assert_eq!(claim.packet_id, "manager-1");
@@ -871,32 +1352,92 @@ mod tests {
     }
 
     #[test]
+    fn claim_next_does_not_return_same_packet_twice_without_reclaim() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_packet(
+            "manager-1",
+            "Software Architect",
+            PacketState::DispatchedToManager,
+        ))
+        .expect("packet registration should succeed");
+
+        let first = repo
+            .claim_next(PacketClaimRole::Manager, "2026-01-01T00:00:00Z")
+            .expect("first claim lookup should succeed")
+            .expect("first claim should exist");
+        let second = repo
+            .claim_next(PacketClaimRole::Manager, "2026-01-01T00:00:00Z")
+            .expect("second claim lookup should succeed");
+
+        assert_eq!(first.packet_id, "manager-1");
+        assert!(
+            second.is_none(),
+            "claimed packet should be leased and unavailable until reclaimed or advanced"
+        );
+    }
+
+    #[test]
+    fn reclaim_expired_returns_packet_to_claimable_pool() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_packet(
+            "manager-1",
+            "Software Architect",
+            PacketState::DispatchedToManager,
+        ))
+        .expect("packet registration should succeed");
+
+        let first = repo
+            .claim_next(PacketClaimRole::Manager, "2026-01-01T00:00:00Z")
+            .expect("first claim lookup should succeed")
+            .expect("first claim should exist");
+        let reclaimed = repo
+            .reclaim_expired("2026-01-01T00:00:10Z")
+            .expect("lease reclaim should succeed");
+        let second = repo
+            .claim_next(PacketClaimRole::Manager, "2026-01-01T00:00:10Z")
+            .expect("second claim lookup should succeed")
+            .expect("second claim should exist after expiry");
+
+        assert_eq!(first.packet_id, "manager-1");
+        assert_eq!(reclaimed, vec!["manager-1".to_owned()]);
+        assert_eq!(second.packet_id, "manager-1");
+    }
+
+    #[test]
     fn claim_next_routes_other_roles_by_packet_state() {
         let mut repo = InMemoryPacketRepository::default();
-        repo.register_packet(make_packet("worker-1", "worker", PacketState::InProgress));
+        repo.register_packet(make_packet("worker-1", "worker", PacketState::InProgress))
+            .expect("packet registration should succeed");
         repo.register_packet(make_packet(
             "reviewer-1",
             "reviewer",
             PacketState::AwaitingReview,
-        ));
+        ))
+        .expect("packet registration should succeed");
         repo.register_packet(make_packet(
             "gatekeeper-1",
             "gatekeeper",
             PacketState::Reviewed,
-        ));
-        repo.register_packet(make_packet("recovery-1", "recovery", PacketState::Failed));
+        ))
+        .expect("packet registration should succeed");
+        repo.register_packet(make_packet("recovery-1", "recovery", PacketState::Failed))
+            .expect("packet registration should succeed");
 
         let worker = repo
-            .claim_next(PacketClaimRole::Worker)
+            .claim_next(PacketClaimRole::Worker, "2026-01-01T00:00:00Z")
+            .expect("worker claim lookup should succeed")
             .expect("worker claim should exist");
         let reviewer = repo
-            .claim_next(PacketClaimRole::Reviewer)
+            .claim_next(PacketClaimRole::Reviewer, "2026-01-01T00:00:00Z")
+            .expect("reviewer claim lookup should succeed")
             .expect("reviewer claim should exist");
         let gatekeeper = repo
-            .claim_next(PacketClaimRole::Gatekeeper)
+            .claim_next(PacketClaimRole::Gatekeeper, "2026-01-01T00:00:00Z")
+            .expect("gatekeeper claim lookup should succeed")
             .expect("gatekeeper claim should exist");
         let recovery = repo
-            .claim_next(PacketClaimRole::Recovery)
+            .claim_next(PacketClaimRole::Recovery, "2026-01-01T00:00:00Z")
+            .expect("recovery claim lookup should succeed")
             .expect("recovery claim should exist");
 
         assert_eq!(worker.packet_id, "worker-1");
@@ -908,11 +1449,182 @@ mod tests {
     #[test]
     fn claim_next_returns_none_when_no_packet_matches_role() {
         let mut repo = InMemoryPacketRepository::default();
-        repo.register_packet(make_staged_packet("repo-p3"));
+        repo.register_packet(make_staged_packet("repo-p3"))
+            .expect("packet registration should succeed");
 
-        assert!(repo.claim_next(PacketClaimRole::Worker).is_none());
-        assert!(repo.claim_next(PacketClaimRole::Reviewer).is_none());
-        assert!(repo.claim_next(PacketClaimRole::Gatekeeper).is_none());
-        assert!(repo.claim_next(PacketClaimRole::Recovery).is_none());
+        assert!(repo
+            .claim_next(PacketClaimRole::Worker, "2026-01-01T00:00:00Z")
+            .expect("worker claim lookup should succeed")
+            .is_none());
+        assert!(repo
+            .claim_next(PacketClaimRole::Reviewer, "2026-01-01T00:00:00Z")
+            .expect("reviewer claim lookup should succeed")
+            .is_none());
+        assert!(repo
+            .claim_next(PacketClaimRole::Gatekeeper, "2026-01-01T00:00:00Z")
+            .expect("gatekeeper claim lookup should succeed")
+            .is_none());
+        assert!(repo
+            .claim_next(PacketClaimRole::Recovery, "2026-01-01T00:00:00Z")
+            .expect("recovery claim lookup should succeed")
+            .is_none());
+    }
+
+    #[test]
+    fn file_packet_repository_round_trips_persisted_transitions() {
+        let path = unique_temp_repo_path("roundtrip");
+
+        let mut repo = FilePacketRepository::load_or_default_at(
+            path.clone(),
+            "2026-01-01T00:00:00Z",
+        )
+        .expect("file repository should load");
+        PacketRepository::register_packet(
+            &mut repo,
+            make_packet(
+                "file-p1",
+                "Software Architect",
+                PacketState::DispatchedToManager,
+            ),
+        )
+        .expect("packet registration should persist");
+        repo.apply_transition(PacketTransitionRequest {
+            packet_id: "file-p1".to_owned(),
+            to_state: PacketState::InProgress,
+            actor: "test-actor".to_owned(),
+            reason: "manager claimed packet".to_owned(),
+            at: "2026-01-01T00:00:01Z".to_owned(),
+            idempotency_key: None,
+            evidence_refs: vec![],
+        })
+        .expect("transition should succeed");
+        drop(repo);
+
+        let repo = FilePacketRepository::load_or_default_at(path.clone(), "2026-01-01T00:00:01Z")
+            .expect("file repository should reload");
+        let packet = repo.packet("file-p1").expect("packet should persist");
+        assert_eq!(packet.state, PacketState::InProgress);
+        assert_eq!(packet.audit_trail.len(), 1);
+        assert!(packet.lease_role.is_none());
+        assert!(packet.lease_expires_at.is_none());
+
+        cleanup_repo_path(&path);
+    }
+
+    #[test]
+    fn file_packet_repository_reclaims_expired_leases_on_load() {
+        let path = unique_temp_repo_path("reclaim-load");
+
+        let mut repo = FilePacketRepository::load_or_default_at(
+            path.clone(),
+            "2026-01-01T00:00:00Z",
+        )
+        .expect("file repository should load");
+        PacketRepository::register_packet(
+            &mut repo,
+            make_packet(
+                "file-p2",
+                "Software Architect",
+                PacketState::DispatchedToManager,
+            ),
+        )
+        .expect("packet registration should persist");
+        let claim = repo
+            .claim_next(PacketClaimRole::Manager, "2026-01-01T00:00:00Z")
+            .expect("claim should succeed")
+            .expect("claim should exist");
+        assert_eq!(claim.packet_id, "file-p2");
+        drop(repo);
+
+        let mut repo = FilePacketRepository::load_or_default_at(path.clone(), "2026-01-01T00:00:11Z")
+            .expect("file repository should reload and reclaim expired lease");
+        let packet = repo.packet("file-p2").expect("packet should persist");
+        assert!(packet.lease_role.is_none());
+        assert!(packet.lease_expires_at.is_none());
+        let reclaimed_claim = repo
+            .claim_next(PacketClaimRole::Manager, "2026-01-01T00:00:11Z")
+            .expect("claim should succeed after reload")
+            .expect("claim should be available after expired lease is rebuilt");
+        assert_eq!(reclaimed_claim.packet_id, "file-p2");
+
+        cleanup_repo_path(&path);
+    }
+
+    #[test]
+    fn file_packet_repository_persists_without_tmp_remains() {
+        let path = unique_temp_repo_path("persist-atomic");
+
+        let mut repo = FilePacketRepository::load_or_default_at(
+            path.clone(),
+            "2026-01-01T00:00:00Z",
+        )
+        .expect("file repository should load");
+        PacketRepository::register_packet(&mut repo, make_staged_packet("file-p3"))
+            .expect("packet registration should persist");
+
+        assert!(path.exists(), "persisted repository file should exist");
+        let tmp_path = path.with_file_name(format!(
+            "{}.tmp",
+            path.file_name().unwrap_or_default().to_string_lossy()
+        ));
+        assert!(
+            !tmp_path.exists(),
+            ".tmp file must not remain after successful repository persist"
+        );
+
+        let bytes = fs::read(&path).expect("persisted repository file should be readable");
+        let persisted: PersistedPacketRepository =
+            serde_json::from_slice(&bytes).expect("persisted repository should deserialize");
+        assert_eq!(persisted.schema_version, PACKET_REPOSITORY_SCHEMA_VERSION);
+        assert!(persisted.packets.packet("file-p3").is_some());
+
+        cleanup_repo_path(&path);
+    }
+
+    #[test]
+    fn file_packet_repository_persists_transition_idempotency_across_reload() {
+        let path = unique_temp_repo_path("idempotency-reload");
+
+        let mut repo = FilePacketRepository::load_or_default_at(
+            path.clone(),
+            "2026-01-01T00:00:00Z",
+        )
+        .expect("file repository should load");
+        PacketRepository::register_packet(&mut repo, make_staged_packet("file-p4"))
+            .expect("packet registration should persist");
+        let first = repo
+            .apply_transition(PacketTransitionRequest {
+                packet_id: "file-p4".to_owned(),
+                to_state: PacketState::DispatchedToManager,
+                actor: "test-actor".to_owned(),
+                reason: "dispatch packet".to_owned(),
+                at: "2026-01-01T00:00:01Z".to_owned(),
+                idempotency_key: Some("transition-file-1".to_owned()),
+                evidence_refs: vec![],
+            })
+            .expect("transition should succeed")
+            .expect("packet should exist");
+        drop(repo);
+
+        let mut repo = FilePacketRepository::load_or_default_at(path.clone(), "2026-01-01T00:00:02Z")
+            .expect("file repository should reload");
+        let second = repo
+            .apply_transition(PacketTransitionRequest {
+                packet_id: "file-p4".to_owned(),
+                to_state: PacketState::DispatchedToManager,
+                actor: "test-actor".to_owned(),
+                reason: "dispatch packet".to_owned(),
+                at: "2026-01-01T00:00:02Z".to_owned(),
+                idempotency_key: Some("transition-file-1".to_owned()),
+                evidence_refs: vec![],
+            })
+            .expect("duplicate transition should succeed")
+            .expect("packet should still resolve to prior transition");
+
+        assert_eq!(first, second);
+        let packet = repo.packet("file-p4").unwrap();
+        assert_eq!(packet.audit_trail.len(), 1);
+
+        cleanup_repo_path(&path);
     }
 }

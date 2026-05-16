@@ -1646,7 +1646,8 @@
           }
 
           const increment = button.dataset.packetRetryPolicy === 'two-more' ? 2 : 1;
-          await setPacketRetryPolicy(packetId, true, (packet.retryCount || 0) + increment);
+          const baseBudget = Math.max(packet.retryBudget || 0, packet.retryCount || 0);
+          await setPacketRetryPolicy(packetId, true, baseBudget + increment);
         });
       });
     }
