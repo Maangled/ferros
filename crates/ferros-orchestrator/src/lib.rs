@@ -4,7 +4,7 @@ mod loop_runner;
 mod packet;
 mod role;
 
-pub use loop_runner::OrchestratorLoop;
+pub use loop_runner::{OrchestratorLoop, OrchestratorMode};
 pub use packet::{
     has_non_empty_evidence_refs, try_transition, validate_transition_requirements,
     GatekeeperDecision, InMemoryPacketRepository, MonitorPacket, PacketAuditEntry, PacketClaim,
@@ -12,6 +12,6 @@ pub use packet::{
     PacketTransitionRequest, ReviewVerdict,
 };
 pub use role::{
-    RoleAgent, RoleAgentError, StubGatekeeperAgent, StubManagerAgent, StubReviewerAgent,
-    StubWorkerAgent, TickReport,
+    RoleAgent, RoleAgentError, StubGatekeeperAgent, StubManagerAgent, StubRecoveryAgent,
+    StubReviewerAgent, StubWorkerAgent, TickReport,
 };

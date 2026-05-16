@@ -19,6 +19,14 @@ impl TickReport {
         }
     }
 
+    fn claimed(role: PacketClaimRole, packet_id: String) -> Self {
+        Self {
+            role,
+            claimed_packet_id: Some(packet_id),
+            advanced_to: None,
+        }
+    }
+
     fn advanced(role: PacketClaimRole, packet_id: String, advanced_to: PacketState) -> Self {
         Self {
             role,
@@ -149,6 +157,26 @@ impl RoleAgent for StubReviewerAgent {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
+pub struct StubRecoveryAgent;
+
+impl RoleAgent for StubRecoveryAgent {
+    fn role(&self) -> PacketClaimRole {
+        PacketClaimRole::Recovery
+    }
+
+    fn tick(
+        &self,
+        repo: &mut dyn PacketRepository,
+        _at: &str,
+    ) -> Result<TickReport, RoleAgentError> {
+        let Some(claim) = repo.claim_next(self.role()) else {
+            return Ok(TickReport::idle(self.role()));
+        };
+        Ok(TickReport::claimed(self.role(), claim.packet_id))
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
 pub struct StubGatekeeperAgent;
 
 impl RoleAgent for StubGatekeeperAgent {
@@ -205,7 +233,8 @@ mod tests {
     use crate::{InMemoryPacketRepository, MonitorPacket, PacketRepository, PacketState};
 
     use super::{
-        RoleAgent, StubGatekeeperAgent, StubManagerAgent, StubReviewerAgent, StubWorkerAgent,
+        RoleAgent, StubGatekeeperAgent, StubManagerAgent, StubRecoveryAgent,
+        StubReviewerAgent, StubWorkerAgent,
     };
 
     fn make_packet(id: &str, manager: &str, state: PacketState) -> MonitorPacket {
@@ -279,5 +308,23 @@ mod tests {
 
         assert!(report.claimed_packet_id.is_none());
         assert!(report.advanced_to.is_none());
+    }
+
+    #[test]
+    fn stub_recovery_agent_claims_failed_packet_without_transition() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_packet(
+            "failed-1",
+            "Software Architect",
+            PacketState::Failed,
+        ));
+
+        let report = StubRecoveryAgent
+            .tick(&mut repo, "2026-01-01T00:00:01Z")
+            .unwrap();
+
+        assert_eq!(report.claimed_packet_id.as_deref(), Some("failed-1"));
+        assert!(report.advanced_to.is_none());
+        assert_eq!(repo.packet("failed-1").unwrap().state, PacketState::Failed);
     }
 }

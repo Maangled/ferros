@@ -37,9 +37,8 @@ use ferros_hub::{
 };
 use ferros_orchestrator::{
     try_transition, GatekeeperDecision, InMemoryPacketRepository, MonitorPacket, OrchestratorLoop,
-    PacketRepository, PacketState, PacketTransitionApplied, PacketTransitionError,
-    PacketTransitionRequest, ReviewVerdict, StubGatekeeperAgent, StubManagerAgent,
-    StubReviewerAgent, StubWorkerAgent,
+    OrchestratorMode, PacketRepository, PacketState, PacketTransitionApplied,
+    PacketTransitionError, PacketTransitionRequest, ReviewVerdict,
 };
 use ferros_profile::{
     grant_profile_capability, init_local_profile, revoke_profile_capability, CapabilityGrant,
@@ -438,6 +437,8 @@ struct MonitorStateSnapshot {
     packets: InMemoryPacketRepository,
     #[serde(default)]
     watchdog_events: Vec<WatchdogEvent>,
+    #[serde(default)]
+    orchestrator_mode: OrchestratorMode,
     agent_directory: Vec<MonitorAgentDirectoryEntry>,
     agent_source_tree: MonitorAgentSourceTreeStatus,
     selected_chat_id: Option<String>,
@@ -457,9 +458,17 @@ struct MonitorState {
     packets: InMemoryPacketRepository,
     #[serde(default)]
     watchdog_events: Vec<WatchdogEvent>,
+    #[serde(default)]
+    orchestrator_mode: OrchestratorMode,
     selected_chat_id: Option<String>,
     selected_lifecycle_thread_id: Option<String>,
     next_id: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum OrchestratorTickError {
+    Disabled,
+    LiveModeUnsupported,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -658,6 +667,7 @@ impl Default for MonitorState {
             lifecycle_threads: Vec::new(),
             packets: InMemoryPacketRepository::default(),
             watchdog_events: Vec::new(),
+            orchestrator_mode: OrchestratorMode::Disabled,
             selected_chat_id: None,
             selected_lifecycle_thread_id: None,
             next_id: 0,
@@ -1863,13 +1873,40 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         return Some(enable_cors(text_response(200, "OK", "")));
     }
 
-    if request_path == "/monitor/state" && method == "GET" {
+    if request_path.starts_with("/orchestrator") && method == "OPTIONS" {
+        return Some(enable_cors(text_response(200, "OK", "")));
+    }
+
+    if request_path == "/orchestrator/tick" && method == "POST" {
         let state = monitor_state();
         let mut guard = state.lock().map_err(|_| ()).ok()?;
-        let maintenance_changed = run_monitor_maintenance(&mut guard);
-        if maintenance_changed {
-            persist_monitor_state_best_effort(&mut guard, "stalled.packets.detection");
+        match guard.run_orchestrator_tick() {
+            Ok(changed) => {
+                if changed {
+                    persist_monitor_state_best_effort(&mut guard, "orchestrator.tick persistence warning");
+                }
+                return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+            }
+            Err(OrchestratorTickError::Disabled) => {
+                return Some(enable_cors(text_response(
+                    409,
+                    "Conflict",
+                    "orchestrator mode is disabled",
+                )));
+            }
+            Err(OrchestratorTickError::LiveModeUnsupported) => {
+                return Some(enable_cors(text_response(
+                    501,
+                    "Not Implemented",
+                    "live orchestrator mode is not implemented",
+                )));
+            }
         }
+    }
+
+    if request_path == "/monitor/state" && method == "GET" {
+        let state = monitor_state();
+        let guard = state.lock().map_err(|_| ()).ok()?;
         let snapshot = guard.snapshot();
         return Some(enable_cors(json_response(200, "OK", &snapshot)));
     }
@@ -2389,7 +2426,7 @@ fn parse_monitor_packet_subroute(path: &str) -> Option<(&str, &str)> {
 }
 
 fn run_monitor_maintenance(guard: &mut MonitorState) -> bool {
-    let orchestrator_advanced = guard.run_orchestrator_tick();
+    let orchestrator_advanced = guard.run_orchestrator_tick().unwrap_or(false);
     let stalled_events_created = guard.detect_stalled_packets();
     let closure_events_created = guard.detect_manager_closure_contract_violations();
     orchestrator_advanced || stalled_events_created || closure_events_created
@@ -2404,9 +2441,31 @@ fn route_monitor_request_with_state(
     body: Vec<u8>,
     state: &std::sync::Mutex<MonitorState>,
 ) -> Option<HttpResponse> {
-    if request_path == "/monitor/state" && method == "GET" {
+    if request_path == "/orchestrator/tick" && method == "POST" {
         let mut guard = state.lock().ok()?;
-        let _ = run_monitor_maintenance(&mut guard);
+        match guard.run_orchestrator_tick() {
+            Ok(_) => {
+                return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+            }
+            Err(OrchestratorTickError::Disabled) => {
+                return Some(enable_cors(text_response(
+                    409,
+                    "Conflict",
+                    "orchestrator mode is disabled",
+                )));
+            }
+            Err(OrchestratorTickError::LiveModeUnsupported) => {
+                return Some(enable_cors(text_response(
+                    501,
+                    "Not Implemented",
+                    "live orchestrator mode is not implemented",
+                )));
+            }
+        }
+    }
+
+    if request_path == "/monitor/state" && method == "GET" {
+        let guard = state.lock().ok()?;
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
@@ -3476,6 +3535,7 @@ impl MonitorState {
             lifecycle_threads: lifecycle_threads.clone(),
             packets: self.packets.clone(),
             watchdog_events: self.watchdog_events.clone(),
+            orchestrator_mode: self.orchestrator_mode,
             agent_directory: agent_directory.clone(),
             agent_source_tree: monitor_agent_source_tree_status(agent_directory.len()),
             selected_chat_id: self.selected_chat_id.clone(),
@@ -4214,17 +4274,21 @@ impl MonitorState {
         Ok(Some(applied))
     }
 
-    fn run_orchestrator_tick(&mut self) -> bool {
-        let orchestrator = Self::default_stub_orchestrator_loop();
+    fn run_orchestrator_tick(&mut self) -> Result<bool, OrchestratorTickError> {
+        let orchestrator = match self.orchestrator_mode {
+            OrchestratorMode::Disabled => return Err(OrchestratorTickError::Disabled),
+            OrchestratorMode::Stub => OrchestratorLoop::stub(),
+            OrchestratorMode::Live => return Err(OrchestratorTickError::LiveModeUnsupported),
+        };
         let tick_at = monitor_now();
         let reports = match orchestrator.tick_once(&mut self.packets, &tick_at) {
             Ok(reports) => reports,
             Err(error) => {
                 self.push_event(
                     "packet.orchestrator_error",
-                    format!("stub orchestrator tick failed: {error:?}"),
+                    format!("[{}] orchestrator tick failed: {error:?}", self.orchestrator_mode),
                 );
-                return true;
+                return Ok(true);
             }
         };
 
@@ -4240,11 +4304,11 @@ impl MonitorState {
             self.clear_running_loop_packet_if_terminal(&packet_id, &next_state);
             self.push_event(
                 "packet.state_changed",
-                format!("{packet_id} -> {next_state}"),
+                format!("[{}] {packet_id} -> {next_state}", self.orchestrator_mode),
             );
         }
 
-        changed
+        Ok(changed)
     }
 
     fn clear_running_loop_packet_if_terminal(&mut self, packet_id: &str, state: &PacketState) {
@@ -4306,15 +4370,6 @@ impl MonitorState {
             );
         }
         Ok(updated)
-    }
-
-    fn default_stub_orchestrator_loop() -> OrchestratorLoop {
-        OrchestratorLoop::new(vec![
-            Box::new(StubGatekeeperAgent),
-            Box::new(StubReviewerAgent),
-            Box::new(StubWorkerAgent),
-            Box::new(StubManagerAgent),
-        ])
     }
 
     fn create_notification(
@@ -6458,7 +6513,8 @@ mod tests {
         LocalAgentApi, LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
         LocalRunwaySummary, MonitorDispatchBackend, MonitorDispatchBackendResult,
         MonitorLifecycleThread, MonitorMessageRequest, MonitorPacket, MonitorState, PacketState,
-        PersistedMonitorState, ProfileCliCommand, ProfileShellResponse, ReviewVerdict,
+        OrchestratorMode, PersistedMonitorState, ProfileCliCommand, ProfileShellResponse,
+        ReviewVerdict,
         ScaffoldMonitorDispatchBackend, WatchdogCorrectionStatus, WatchdogEvent, WatchdogEventKind,
         DEFAULT_PROFILE_NAME, MONITOR_MAX_WATCHDOG_EVENTS,
     };
@@ -9840,10 +9896,11 @@ mod tests {
     }
 
     #[test]
-    fn monitor_state_route_runs_stub_orchestrator_until_packet_resolves() {
+    fn monitor_state_get_is_read_only_and_tick_route_advances_stub_packets() {
         let state = std::sync::Mutex::new(MonitorState::default());
         let packet_id = {
             let mut guard = state.lock().unwrap();
+            guard.orchestrator_mode = OrchestratorMode::Stub;
             let session = guard.create_session(Some("Orchestrator route test".to_owned()));
             let (result, ids) = guard.dispatch_session_via_backend(
                 &session.id,
@@ -9861,11 +9918,23 @@ mod tests {
             packet_id
         };
 
+        let get_response = route_monitor_request_with_state("GET", "/monitor/state", vec![], &state)
+            .expect("route should return a response");
+        assert_eq!(get_response.status_code, 200, "monitor state should return 200");
+        {
+            let guard = state.lock().unwrap();
+            assert_eq!(
+                guard.packet_by_id(&packet_id).unwrap().state,
+                PacketState::DispatchedToManager,
+                "GET /monitor/state must not advance packet state"
+            );
+        }
+
         for _ in 0..4 {
             let response =
-                route_monitor_request_with_state("GET", "/monitor/state", vec![], &state)
+                route_monitor_request_with_state("POST", "/orchestrator/tick", vec![], &state)
                     .expect("route should return a response");
-            assert_eq!(response.status_code, 200, "monitor state should return 200");
+            assert_eq!(response.status_code, 200, "orchestrator tick should return 200");
         }
 
         let guard = state.lock().unwrap();
@@ -9890,6 +9959,35 @@ mod tests {
                 .iter()
                 .all(|entry| { entry.current_packet_id.as_deref() != Some(packet_id.as_str()) }),
             "terminal packet should be cleared from running loops"
+        );
+    }
+
+    #[test]
+    fn orchestrator_tick_route_rejects_disabled_mode() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        let packet_id = {
+            let mut guard = state.lock().unwrap();
+            let session = guard.create_session(Some("Disabled orchestrator test".to_owned()));
+            let (result, ids) = guard.dispatch_session_via_backend(
+                &session.id,
+                None,
+                DispatchTarget::Software,
+                &ScaffoldMonitorDispatchBackend,
+                "",
+            );
+            assert!(result.accepted, "scaffold backend should accept");
+            ids.expect("dispatch must return ids").0
+        };
+
+        let response = route_monitor_request_with_state("POST", "/orchestrator/tick", vec![], &state)
+            .expect("route should return a response");
+
+        assert_eq!(response.status_code, 409, "disabled orchestrator should reject tick");
+
+        let guard = state.lock().unwrap();
+        assert_eq!(
+            guard.packet_by_id(&packet_id).unwrap().state,
+            PacketState::DispatchedToManager
         );
     }
 
