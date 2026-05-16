@@ -4491,8 +4491,9 @@ impl MonitorState {
     }
 
     /// Stage a packet, consult the backend with the real packet id, then apply an FSM transition.
-    /// Returns `(backend_result, dispatch_ids)` where `dispatch_ids` is `None` if the backend
-    /// rejected or the session was unavailable.
+    /// Returns `(backend_result, dispatch_ids)` where `dispatch_ids` is `None` if the session is
+    /// unavailable or when a new dispatch attempt is rejected by the backend.
+    /// Duplicate rejected dispatches may return the existing packet ids for operator visibility.
     ///
     /// Flow:
     /// 1. `dispatch_session_to_manager` creates the packet in `Staged` state.
@@ -12665,6 +12666,51 @@ mod tests {
         let loaded = super::MonitorPacketStore::load_or_default_from_path(&path)
             .expect("missing packet store file should default cleanly");
         assert!(loaded.is_empty(), "missing packet store file should load as empty store");
+    }
+
+    #[test]
+    fn monitor_packet_store_reload_reclaims_expired_lease_and_remains_claimable() {
+        let path = unique_state_path("packet-store-reclaim-claimable");
+
+        let mut store = super::MonitorPacketStore::default();
+        let mut packet = make_staged_packet("pkt-sidecar-lease-1");
+        packet.state = PacketState::DispatchedToManager;
+        packet.manager = "Software Architect".to_owned();
+        store.push(packet);
+
+        let claim = super::PacketRepository::claim_next(
+            &mut store,
+            super::PacketClaimRole::Manager,
+            "1970-01-01T00:00:00Z",
+        )
+        .expect("initial claim should succeed")
+        .expect("initial claim should exist");
+        assert_eq!(claim.packet_id, "pkt-sidecar-lease-1");
+
+        store
+            .persist_to_path(&path)
+            .expect("packet store file persist should succeed");
+
+        let mut reloaded = super::MonitorPacketStore::load_or_default_from_path(&path)
+            .expect("packet store reload should succeed");
+        let packet = super::PacketRepository::packet(&reloaded, "pkt-sidecar-lease-1")
+            .expect("packet should persist after reload");
+        assert!(packet.lease_role.is_none(), "expired lease should be reclaimed on reload");
+        assert!(
+            packet.lease_expires_at.is_none(),
+            "expired lease timestamp should be cleared on reload"
+        );
+
+        let reclaimed_claim = super::PacketRepository::claim_next(
+            &mut reloaded,
+            super::PacketClaimRole::Manager,
+            "1970-01-01T00:01:00Z",
+        )
+        .expect("claim after reload should succeed")
+        .expect("packet should remain claimable after reload reclaim");
+        assert_eq!(reclaimed_claim.packet_id, "pkt-sidecar-lease-1");
+
+        cleanup_state_path(&path);
     }
 
     #[test]

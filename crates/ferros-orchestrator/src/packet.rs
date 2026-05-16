@@ -474,17 +474,15 @@ impl InMemoryPacketRepository {
     }
 
     fn applied_transition_by_idempotency_key(
-        &self,
+        packet: &MonitorPacket,
         key: &str,
     ) -> Option<PacketTransitionApplied> {
-        self.packets.iter().find_map(|packet| {
-            packet.audit_trail.iter().find_map(|entry| {
-                (entry.idempotency_key.as_deref() == Some(key)).then(|| PacketTransitionApplied {
-                    packet_id: packet.id.clone(),
-                    from: entry.from.clone(),
-                    to: entry.to.clone(),
-                    seq: entry.seq,
-                })
+        packet.audit_trail.iter().find_map(|entry| {
+            (entry.idempotency_key.as_deref() == Some(key)).then(|| PacketTransitionApplied {
+                packet_id: packet.id.clone(),
+                from: entry.from.clone(),
+                to: entry.to.clone(),
+                seq: entry.seq,
             })
         })
     }
@@ -630,7 +628,11 @@ impl PacketRepository for InMemoryPacketRepository {
             }
         })?;
         if let Some(key) = idempotency_key.as_deref() {
-            if let Some(applied) = self.applied_transition_by_idempotency_key(key) {
+            if let Some(applied) = Self::applied_transition_by_idempotency_key(
+                self.packet(&packet_id)
+                    .expect("packet should still exist during idempotent lookup"),
+                key,
+            ) {
                 return Ok(Some(applied));
             }
         }
@@ -1294,6 +1296,48 @@ mod tests {
             packet.audit_trail[0].idempotency_key.as_deref(),
             Some("transition-1")
         );
+    }
+
+    #[test]
+    fn in_memory_transition_idempotency_is_scoped_per_packet() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_staged_packet("idem-scope-1"))
+            .expect("packet registration should succeed");
+        repo.register_packet(make_staged_packet("idem-scope-2"))
+            .expect("packet registration should succeed");
+
+        let first = repo
+            .apply_transition(PacketTransitionRequest {
+                packet_id: "idem-scope-1".to_owned(),
+                to_state: PacketState::DispatchedToManager,
+                actor: "test-actor".to_owned(),
+                reason: "dispatch first packet".to_owned(),
+                at: "2026-01-01T00:00:01Z".to_owned(),
+                idempotency_key: Some("transition-scope-1".to_owned()),
+                evidence_refs: vec![],
+            })
+            .expect("first transition should succeed")
+            .expect("packet should exist");
+        let second = repo
+            .apply_transition(PacketTransitionRequest {
+                packet_id: "idem-scope-2".to_owned(),
+                to_state: PacketState::DispatchedToManager,
+                actor: "test-actor".to_owned(),
+                reason: "dispatch second packet".to_owned(),
+                at: "2026-01-01T00:00:02Z".to_owned(),
+                idempotency_key: Some("transition-scope-1".to_owned()),
+                evidence_refs: vec![],
+            })
+            .expect("second transition should succeed")
+            .expect("packet should exist");
+
+        assert_ne!(first.packet_id, second.packet_id);
+        let first_packet = repo.packet("idem-scope-1").unwrap();
+        let second_packet = repo.packet("idem-scope-2").unwrap();
+        assert_eq!(first_packet.audit_trail.len(), 1);
+        assert_eq!(second_packet.audit_trail.len(), 1);
+        assert_eq!(first_packet.state, PacketState::DispatchedToManager);
+        assert_eq!(second_packet.state, PacketState::DispatchedToManager);
     }
 
     #[test]
