@@ -261,6 +261,14 @@ enum PacketState {
     Cancelled,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+enum ReviewVerdict {
+    Approved,
+    ChangesRequested,
+    EscalateHuman,
+}
+
 impl fmt::Display for PacketState {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -552,6 +560,8 @@ struct MonitorPacket {
     work_order_id: Option<String>,
     manager: String,
     state: PacketState,
+    #[serde(default)]
+    review_verdict: Option<ReviewVerdict>,
     lifecycle_thread_id: Option<String>,
     notification_id: Option<String>,
     created_at: String,
@@ -649,6 +659,12 @@ struct MonitorPacketStateRequest {
     reason: String,
     #[serde(default)]
     evidence_refs: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorPacketReviewVerdictRequest {
+    verdict: ReviewVerdict,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -2111,6 +2127,39 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
     }
 
     if let Some((packet_id, trailing)) = parse_monitor_packet_subroute(request_path) {
+        if trailing == "review-verdict" && method == "POST" {
+            let request: MonitorPacketReviewVerdictRequest = match serde_json::from_slice(&body) {
+                Ok(parsed) => parsed,
+                Err(error) => {
+                    return Some(enable_cors(text_response(
+                        400,
+                        "Bad Request",
+                        format!("invalid packet review verdict request: {error}"),
+                    )));
+                }
+            };
+            let state = monitor_state();
+            let mut guard = match state.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    return Some(enable_cors(text_response(
+                        500,
+                        "Internal Server Error",
+                        "monitor state lock poisoned",
+                    )));
+                }
+            };
+            if !guard.set_packet_review_verdict(packet_id, request.verdict) {
+                return Some(enable_cors(text_response(
+                    404,
+                    "Not Found",
+                    "monitor packet not found",
+                )));
+            }
+            persist_monitor_state_best_effort(&mut guard, "packet.review_verdict persistence warning");
+            return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+        }
+
         if trailing == "state" && method == "POST" {
             let request: MonitorPacketStateRequest = match serde_json::from_slice(&body) {
                 Ok(parsed) => parsed,
@@ -2438,6 +2487,28 @@ fn route_monitor_request_with_state(
     }
 
     if let Some((packet_id, trailing)) = parse_monitor_packet_subroute(request_path) {
+        if trailing == "review-verdict" && method == "POST" {
+            let request: MonitorPacketReviewVerdictRequest = match serde_json::from_slice(&body) {
+                Ok(r) => r,
+                Err(e) => {
+                    return Some(enable_cors(text_response(
+                        400,
+                        "Bad Request",
+                        format!("invalid packet review verdict request: {e}"),
+                    )));
+                }
+            };
+            let mut guard = state.lock().ok()?;
+            if !guard.set_packet_review_verdict(packet_id, request.verdict) {
+                return Some(enable_cors(text_response(
+                    404,
+                    "Not Found",
+                    "monitor packet not found",
+                )));
+            }
+            return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+        }
+
         if trailing == "state" && method == "POST" {
             let request: MonitorPacketStateRequest = match serde_json::from_slice(&body) {
                 Ok(r) => r,
@@ -3938,6 +4009,7 @@ impl MonitorState {
             work_order_id,
             manager,
             state,
+            review_verdict: None,
             lifecycle_thread_id,
             notification_id,
             created_at: now.clone(),
@@ -3988,11 +4060,15 @@ impl MonitorState {
     ) -> Result<Option<PacketTransitionApplied>, PacketTransitionError> {
         let at = monitor_now();
         // Phase 1: collect read-only data; immutable borrow ends with this block.
-        let (from, seq) = {
+        let (from, seq, has_review_verdict) = {
             let Some(packet) = self.packets.iter().find(|p| p.id == packet_id) else {
                 return Ok(None);
             };
-            (packet.state.clone(), packet.audit_seq + 1)
+            (
+                packet.state.clone(),
+                packet.audit_seq + 1,
+                packet.review_verdict.is_some(),
+            )
         };
 
         // Packet 3 worker evidence contract:
@@ -4002,6 +4078,14 @@ impl MonitorState {
                 from,
                 to: to_state,
                 message: "review-ready transition requires packet evidence".to_owned(),
+            });
+        }
+
+        if to_state == PacketState::Reviewed && !has_review_verdict {
+            return Err(PacketTransitionError {
+                from,
+                to: to_state,
+                message: "reviewed transition requires reviewer verdict".to_owned(),
             });
         }
 
@@ -4058,6 +4142,20 @@ impl MonitorState {
         self.packets
             .iter()
             .any(|packet| packet.parent_packet_id.as_deref() == Some(packet_id))
+    }
+
+    fn set_packet_review_verdict(&mut self, packet_id: &str, verdict: ReviewVerdict) -> bool {
+        let Some(packet) = self
+            .packets
+            .iter_mut()
+            .find(|packet| packet.id == packet_id)
+        else {
+            return false;
+        };
+        packet.review_verdict = Some(verdict);
+        packet.updated_at = monitor_now();
+        self.push_event("packet.review_verdict", format!("{packet_id} verdict updated"));
+        true
     }
 
     fn create_notification(
@@ -6164,7 +6262,7 @@ mod tests {
         LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
         LocalRunwaySummary, MonitorDispatchBackend, MonitorDispatchBackendResult,
         MonitorLifecycleThread, MonitorMessageRequest, MonitorPacket, MonitorState,
-        PersistedMonitorState, PacketState, ProfileCliCommand,
+        PersistedMonitorState, PacketState, ProfileCliCommand, ReviewVerdict,
         ProfileShellResponse, ScaffoldMonitorDispatchBackend, WatchdogEvent, WatchdogEventKind,
         WatchdogCorrectionStatus, MONITOR_MAX_WATCHDOG_EVENTS,
         DEFAULT_PROFILE_NAME,
@@ -9720,6 +9818,7 @@ mod tests {
             work_order_id: None,
             manager: "test-manager".to_owned(),
             state: PacketState::Staged,
+            review_verdict: None,
             lifecycle_thread_id: None,
             notification_id: None,
             created_at: "2026-01-01T00:00:00Z".to_owned(),
@@ -10082,6 +10181,155 @@ mod tests {
             transition_response.status_code,
             409,
             "watchdog correction message must not count as packet evidence"
+        );
+    }
+
+    #[test]
+    fn apply_packet_transition_rejects_reviewed_without_reviewer_verdict() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p7"));
+
+        state
+            .apply_packet_transition(
+                "p7",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p7", PacketState::InProgress, "worker", "working", vec![])
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p7",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/p7".to_owned()],
+            )
+            .unwrap();
+
+        let result = state.apply_packet_transition(
+            "p7",
+            PacketState::Reviewed,
+            "reviewer",
+            "verdict ready",
+            vec![],
+        );
+        assert!(result.is_err(), "reviewed transition must require reviewer verdict");
+        let err = result.err().unwrap();
+        assert_eq!(
+            err.message,
+            "reviewed transition requires reviewer verdict",
+            "expected reviewer verdict contract message"
+        );
+    }
+
+    #[test]
+    fn apply_packet_transition_allows_reviewed_with_reviewer_verdict() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p8"));
+
+        state
+            .apply_packet_transition(
+                "p8",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p8", PacketState::InProgress, "worker", "working", vec![])
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p8",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/p8".to_owned()],
+            )
+            .unwrap();
+
+        assert!(
+            state.set_packet_review_verdict("p8", ReviewVerdict::Approved),
+            "setting verdict should succeed"
+        );
+
+        let result = state.apply_packet_transition(
+            "p8",
+            PacketState::Reviewed,
+            "reviewer",
+            "approved",
+            vec![],
+        );
+        assert!(result.is_ok(), "reviewed transition should succeed with verdict");
+        let packet = state.packets.iter().find(|packet| packet.id == "p8").unwrap();
+        assert_eq!(packet.state, PacketState::Reviewed);
+        assert_eq!(packet.review_verdict, Some(ReviewVerdict::Approved));
+    }
+
+    #[test]
+    fn packet_review_verdict_route_sets_verdict_and_enables_reviewed_transition() {
+        let mut initial = MonitorState::default();
+        initial.packets.push(make_staged_packet("pkt-rv1"));
+        initial
+            .apply_packet_transition(
+                "pkt-rv1",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        initial
+            .apply_packet_transition(
+                "pkt-rv1",
+                PacketState::InProgress,
+                "worker",
+                "working",
+                vec![],
+            )
+            .unwrap();
+        initial
+            .apply_packet_transition(
+                "pkt-rv1",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/rv1".to_owned()],
+            )
+            .unwrap();
+        let state = std::sync::Mutex::new(initial);
+
+        let set_verdict_resp = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-rv1/review-verdict",
+            serde_json::to_vec(&serde_json::json!({ "verdict": "approved" })).unwrap(),
+            &state,
+        )
+        .unwrap();
+        assert_eq!(set_verdict_resp.status_code, 200, "setting verdict route should succeed");
+
+        let transition_resp = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-rv1/state",
+            serde_json::to_vec(&serde_json::json!({
+                "toState": "reviewed",
+                "actor": "reviewer",
+                "reason": "approved"
+            }))
+            .unwrap(),
+            &state,
+        )
+        .unwrap();
+        assert_eq!(
+            transition_resp.status_code,
+            200,
+            "reviewed transition should succeed after machine-readable verdict"
         );
     }
 
