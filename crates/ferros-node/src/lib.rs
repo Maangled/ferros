@@ -2077,6 +2077,61 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         }
     }
 
+    if let Some((packet_id, trailing)) = parse_monitor_packet_subroute(request_path) {
+        if trailing == "state" && method == "POST" {
+            let request: MonitorPacketStateRequest = match serde_json::from_slice(&body) {
+                Ok(parsed) => parsed,
+                Err(error) => {
+                    return Some(enable_cors(text_response(
+                        400,
+                        "Bad Request",
+                        format!("invalid packet state request: {error}"),
+                    )));
+                }
+            };
+            let state = monitor_state();
+            let mut guard = match state.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    return Some(enable_cors(text_response(
+                        500,
+                        "Internal Server Error",
+                        "monitor state lock poisoned",
+                    )));
+                }
+            };
+            match guard.apply_packet_transition(
+                packet_id,
+                request.to_state,
+                &request.actor,
+                &request.reason,
+                request.evidence_refs,
+            ) {
+                Ok(Some(_)) => {
+                    persist_monitor_state_best_effort(
+                        &mut guard,
+                        "packet.state persistence warning",
+                    );
+                    return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+                }
+                Ok(None) => {
+                    return Some(enable_cors(text_response(
+                        404,
+                        "Not Found",
+                        "monitor packet not found",
+                    )));
+                }
+                Err(e) => {
+                    return Some(enable_cors(json_response(
+                        409,
+                        "Conflict",
+                        &serde_json::json!({ "error": e.to_string() }),
+                    )));
+                }
+            }
+        }
+    }
+
     let Some((session_id, trailing)) = parse_monitor_session_subroute(request_path) else {
         return None;
     };
@@ -2193,61 +2248,6 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         };
         return handle_watchdog_correct_route(&mut guard, session_id, &request);
     }
-    if let Some((packet_id, trailing)) = parse_monitor_packet_subroute(request_path) {
-        if trailing == "state" && method == "POST" {
-            let request: MonitorPacketStateRequest = match serde_json::from_slice(&body) {
-                Ok(parsed) => parsed,
-                Err(error) => {
-                    return Some(enable_cors(text_response(
-                        400,
-                        "Bad Request",
-                        format!("invalid packet state request: {error}"),
-                    )));
-                }
-            };
-            let state = monitor_state();
-            let mut guard = match state.lock() {
-                Ok(guard) => guard,
-                Err(_) => {
-                    return Some(enable_cors(text_response(
-                        500,
-                        "Internal Server Error",
-                        "monitor state lock poisoned",
-                    )));
-                }
-            };
-            match guard.apply_packet_transition(
-                packet_id,
-                request.to_state,
-                &request.actor,
-                &request.reason,
-                request.evidence_refs,
-            ) {
-                Ok(Some(_)) => {
-                    persist_monitor_state_best_effort(
-                        &mut guard,
-                        "packet.state persistence warning",
-                    );
-                    return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
-                }
-                Ok(None) => {
-                    return Some(enable_cors(text_response(
-                        404,
-                        "Not Found",
-                        "monitor packet not found",
-                    )));
-                }
-                Err(e) => {
-                    return Some(enable_cors(json_response(
-                        409,
-                        "Conflict",
-                        &serde_json::json!({ "error": e.to_string() }),
-                    )));
-                }
-            }
-        }
-    }
-
     None
 }
 
@@ -2478,6 +2478,13 @@ fn handle_watchdog_correct_route(guard: &mut MonitorState, session_id: &str, req
         Some(idx) => idx,
         None => return Some(enable_cors(text_response(404, "Not Found", "watchdog event not found"))),
     };
+    if guard.watchdog_events[event_index].session_id.as_deref() != Some(session_id) {
+        return Some(enable_cors(text_response(
+            409,
+            "Conflict",
+            "watchdog event is not linked to this session",
+        )));
+    }
     let event_status = guard.watchdog_events[event_index].correction_status.clone();
     if !matches!(event_status, WatchdogCorrectionStatus::Pending) {
         return Some(enable_cors(text_response(409, "Conflict", "watchdog event is not pending correction")));
@@ -9653,6 +9660,24 @@ mod tests {
     }
 
     #[test]
+    fn production_route_packet_state_is_not_shadowed_by_session_parser() {
+        let response = super::route_monitor_request(
+            "POST",
+            "/monitor/packets/pkt-shadow/state",
+            b"{}".to_vec(),
+        );
+        assert!(
+            response.is_some(),
+            "packet state route should be reachable in production router"
+        );
+        assert_eq!(
+            response.unwrap().status_code,
+            400,
+            "invalid packet payload should return 400 when packet route is reached"
+        );
+    }
+
+    #[test]
     fn packet_state_route_rejects_empty_actor_or_reason() {
         let initial = MonitorState::default();
 
@@ -10460,6 +10485,80 @@ mod tests {
         assert!(
             state.watchdog_events.is_empty(),
             "Watchdog events should not be created for non-active states"
+        );
+    }
+
+    #[test]
+    fn watchdog_correct_rejects_event_session_mismatch() {
+        let state = make_state();
+
+        let (session_a, session_b, message_count_b) = {
+            let mut guard = state.lock().unwrap();
+            let sa = guard.create_session(Some("watchdog-a".to_owned()));
+            let sb = guard.create_session(Some("watchdog-b".to_owned()));
+            let count_b = guard
+                .open_chats
+                .iter()
+                .find(|s| s.id == sb.id)
+                .map(|s| s.messages.len())
+                .unwrap_or(0);
+            guard.watchdog_events.push(WatchdogEvent {
+                id: "wde-mismatch".to_owned(),
+                kind: WatchdogEventKind::HiddenHumanQuestion,
+                agent_id: "Software Architect".to_owned(),
+                session_id: Some(sa.id.clone()),
+                packet_id: None,
+                message_id: None,
+                detected_at: monitor_now(),
+                detail: "test mismatch".to_owned(),
+                corrective_instruction: Some(super::get_fixed_corrective_instruction()),
+                correction_status: WatchdogCorrectionStatus::Pending,
+            });
+            (sa.id, sb.id, count_b)
+        };
+
+        let response = route_monitor_request_with_state(
+            "POST",
+            &format!("/monitor/sessions/{session_b}/watchdog/correct"),
+            body(serde_json::json!({ "watchdogEventId": "wde-mismatch" })),
+            &state,
+        )
+        .expect("should return a response");
+
+        assert_eq!(
+            response.status_code,
+            409,
+            "mismatched session/event correction should be rejected"
+        );
+
+        let guard = state.lock().unwrap();
+        let event = guard
+            .watchdog_events
+            .iter()
+            .find(|e| e.id == "wde-mismatch")
+            .expect("event should exist");
+        assert_eq!(
+            event.correction_status,
+            WatchdogCorrectionStatus::Pending,
+            "event status should not change on mismatch"
+        );
+        let current_count_b = guard
+            .open_chats
+            .iter()
+            .find(|s| s.id == session_b)
+            .map(|s| s.messages.len())
+            .unwrap_or(0);
+        assert_eq!(
+            current_count_b,
+            message_count_b,
+            "no corrective message should be injected into mismatched session"
+        );
+        assert!(
+            guard
+                .open_chats
+                .iter()
+                .any(|s| s.id == session_a),
+            "source session should still be present"
         );
     }
 }
