@@ -418,6 +418,10 @@ fn is_manager_role(manager: &str) -> bool {
     )
 }
 
+fn has_non_empty_evidence_refs(evidence_refs: &[String]) -> bool {
+    evidence_refs.iter().any(|reference| !reference.trim().is_empty())
+}
+
 /// Prune watchdog events to stay within cap, preferring to keep unresolved events.
 fn prune_watchdog_events(events: &mut Vec<WatchdogEvent>) {
     const MAX: usize = MONITOR_MAX_WATCHDOG_EVENTS;
@@ -3993,7 +3997,7 @@ impl MonitorState {
 
         // Packet 3 worker evidence contract:
         // AwaitingReview is review-ready and must have packet evidence.
-        if to_state == PacketState::AwaitingReview && evidence_refs.is_empty() {
+        if to_state == PacketState::AwaitingReview && !has_non_empty_evidence_refs(&evidence_refs) {
             return Err(PacketTransitionError {
                 from,
                 to: to_state,
@@ -9907,6 +9911,114 @@ mod tests {
 
         let packet = state.packets.iter().find(|p| p.id == "p6").unwrap();
         assert_eq!(packet.state, PacketState::AwaitingReview);
+    }
+
+    #[test]
+    fn apply_packet_transition_rejects_awaiting_review_with_empty_string_evidence() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p6-empty"));
+
+        state
+            .apply_packet_transition(
+                "p6-empty",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p6-empty",
+                PacketState::InProgress,
+                "worker",
+                "working",
+                vec![],
+            )
+            .unwrap();
+
+        let result = state.apply_packet_transition(
+            "p6-empty",
+            PacketState::AwaitingReview,
+            "worker",
+            "done",
+            vec!["".to_owned()],
+        );
+
+        assert!(result.is_err(), "empty evidence ref must be rejected");
+    }
+
+    #[test]
+    fn apply_packet_transition_rejects_awaiting_review_with_whitespace_evidence() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p6-space"));
+
+        state
+            .apply_packet_transition(
+                "p6-space",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p6-space",
+                PacketState::InProgress,
+                "worker",
+                "working",
+                vec![],
+            )
+            .unwrap();
+
+        let result = state.apply_packet_transition(
+            "p6-space",
+            PacketState::AwaitingReview,
+            "worker",
+            "done",
+            vec!["   ".to_owned()],
+        );
+
+        assert!(result.is_err(), "whitespace-only evidence ref must be rejected");
+    }
+
+    #[test]
+    fn apply_packet_transition_allows_awaiting_review_with_mixed_blank_and_valid_evidence() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p6-mixed"));
+
+        state
+            .apply_packet_transition(
+                "p6-mixed",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p6-mixed",
+                PacketState::InProgress,
+                "worker",
+                "working",
+                vec![],
+            )
+            .unwrap();
+
+        let result = state.apply_packet_transition(
+            "p6-mixed",
+            PacketState::AwaitingReview,
+            "worker",
+            "done",
+            vec!["".to_owned(), "   ".to_owned(), "artifact://valid".to_owned()],
+        );
+
+        assert!(
+            result.is_ok(),
+            "at least one non-blank evidence ref should satisfy the contract"
+        );
     }
 
     #[test]
