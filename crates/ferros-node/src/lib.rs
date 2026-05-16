@@ -2149,12 +2149,18 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
                     )));
                 }
             };
-            if !guard.set_packet_review_verdict(packet_id, request.verdict) {
-                return Some(enable_cors(text_response(
-                    404,
-                    "Not Found",
-                    "monitor packet not found",
-                )));
+            match guard.set_packet_review_verdict(packet_id, request.verdict) {
+                Ok(true) => {}
+                Ok(false) => {
+                    return Some(enable_cors(text_response(
+                        404,
+                        "Not Found",
+                        "monitor packet not found",
+                    )));
+                }
+                Err(reason) => {
+                    return Some(enable_cors(text_response(409, "Conflict", reason)));
+                }
             }
             persist_monitor_state_best_effort(&mut guard, "packet.review_verdict persistence warning");
             return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
@@ -2499,12 +2505,18 @@ fn route_monitor_request_with_state(
                 }
             };
             let mut guard = state.lock().ok()?;
-            if !guard.set_packet_review_verdict(packet_id, request.verdict) {
-                return Some(enable_cors(text_response(
-                    404,
-                    "Not Found",
-                    "monitor packet not found",
-                )));
+            match guard.set_packet_review_verdict(packet_id, request.verdict) {
+                Ok(true) => {}
+                Ok(false) => {
+                    return Some(enable_cors(text_response(
+                        404,
+                        "Not Found",
+                        "monitor packet not found",
+                    )));
+                }
+                Err(reason) => {
+                    return Some(enable_cors(text_response(409, "Conflict", reason)));
+                }
             }
             return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
         }
@@ -4144,18 +4156,25 @@ impl MonitorState {
             .any(|packet| packet.parent_packet_id.as_deref() == Some(packet_id))
     }
 
-    fn set_packet_review_verdict(&mut self, packet_id: &str, verdict: ReviewVerdict) -> bool {
+    fn set_packet_review_verdict(
+        &mut self,
+        packet_id: &str,
+        verdict: ReviewVerdict,
+    ) -> Result<bool, String> {
         let Some(packet) = self
             .packets
             .iter_mut()
             .find(|packet| packet.id == packet_id)
         else {
-            return false;
+            return Ok(false);
+        };
+        if packet.state != PacketState::AwaitingReview {
+            return Err("review verdict can only be set while packet is awaiting_review".to_owned());
         };
         packet.review_verdict = Some(verdict);
         packet.updated_at = monitor_now();
         self.push_event("packet.review_verdict", format!("{packet_id} verdict updated"));
-        true
+        Ok(true)
     }
 
     fn create_notification(
@@ -10255,7 +10274,10 @@ mod tests {
             .unwrap();
 
         assert!(
-            state.set_packet_review_verdict("p8", ReviewVerdict::Approved),
+            matches!(
+                state.set_packet_review_verdict("p8", ReviewVerdict::Approved),
+                Ok(true)
+            ),
             "setting verdict should succeed"
         );
 
@@ -10330,6 +10352,107 @@ mod tests {
             transition_resp.status_code,
             200,
             "reviewed transition should succeed after machine-readable verdict"
+        );
+    }
+
+    #[test]
+    fn packet_review_verdict_route_rejects_in_progress_packet() {
+        let mut initial = MonitorState::default();
+        initial.packets.push(make_staged_packet("pkt-rv2"));
+        initial
+            .apply_packet_transition(
+                "pkt-rv2",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        initial
+            .apply_packet_transition(
+                "pkt-rv2",
+                PacketState::InProgress,
+                "worker",
+                "working",
+                vec![],
+            )
+            .unwrap();
+        let state = std::sync::Mutex::new(initial);
+
+        let response = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-rv2/review-verdict",
+            serde_json::to_vec(&serde_json::json!({ "verdict": "approved" })).unwrap(),
+            &state,
+        )
+        .unwrap();
+        assert_eq!(
+            response.status_code,
+            409,
+            "review verdict route must reject non-awaiting_review packets"
+        );
+    }
+
+    #[test]
+    fn packet_review_verdict_route_rejects_reviewed_packet() {
+        let mut initial = MonitorState::default();
+        initial.packets.push(make_staged_packet("pkt-rv3"));
+        initial
+            .apply_packet_transition(
+                "pkt-rv3",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        initial
+            .apply_packet_transition(
+                "pkt-rv3",
+                PacketState::InProgress,
+                "worker",
+                "working",
+                vec![],
+            )
+            .unwrap();
+        initial
+            .apply_packet_transition(
+                "pkt-rv3",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/rv3".to_owned()],
+            )
+            .unwrap();
+        assert!(
+            matches!(
+                initial.set_packet_review_verdict("pkt-rv3", ReviewVerdict::Approved),
+                Ok(true)
+            ),
+            "setting verdict in awaiting_review should succeed"
+        );
+        initial
+            .apply_packet_transition(
+                "pkt-rv3",
+                PacketState::Reviewed,
+                "reviewer",
+                "approved",
+                vec![],
+            )
+            .unwrap();
+        let state = std::sync::Mutex::new(initial);
+
+        let response = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-rv3/review-verdict",
+            serde_json::to_vec(&serde_json::json!({ "verdict": "changes_requested" })).unwrap(),
+            &state,
+        )
+        .unwrap();
+        assert_eq!(
+            response.status_code,
+            409,
+            "review verdict route must reject reviewed packets"
         );
     }
 
