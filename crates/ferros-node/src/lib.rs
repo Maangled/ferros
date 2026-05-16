@@ -60,6 +60,7 @@ const CLI_STATE_FILE: &str = "agent-center.state";
 const CLI_PROFILE_DIRECTORY: &str = ".ferros";
 const CLI_PROFILE_FILE: &str = "profile.json";
 const MONITOR_STATE_FILE: &str = "monitor-state.json";
+const MONITOR_PACKET_STORE_FILE_SUFFIX: &str = ".packets.json";
 const MONITOR_STATE_SCHEMA_VERSION: u32 = 1;
 const PROFILE_REVOKE_REASON: &str = "revoked via ferros profile revoke";
 const LOCAL_SHELL_DEFAULT_PORT: u16 = 4317;
@@ -436,22 +437,62 @@ struct MonitorOrchestratorStatus {
     detail: String,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(transparent)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct MonitorPacketStore {
     repo: InMemoryPacketRepository,
+    backing_path: Option<PathBuf>,
 }
 
-#[allow(dead_code)]
+impl Serialize for MonitorPacketStore {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.repo.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for MonitorPacketStore {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let repo = InMemoryPacketRepository::deserialize(deserializer)?;
+        Ok(Self {
+            repo,
+            backing_path: None,
+        })
+    }
+}
+
 impl MonitorPacketStore {
     fn load_or_default_from_path(path: &Path) -> Result<Self, String> {
         Ok(Self {
             repo: FilePacketRepository::load_or_default(path.to_path_buf())?.into_inner(),
+            backing_path: Some(path.to_path_buf()),
         })
     }
 
     fn persist_to_path(&self, path: &Path) -> Result<(), String> {
         FilePacketRepository::persist_snapshot(path.to_path_buf(), &self.repo)
+    }
+
+    fn persist_if_backed(&self) -> Result<(), String> {
+        match self.backing_path.as_deref() {
+            Some(path) => self.persist_to_path(path),
+            None => Ok(()),
+        }
+    }
+
+    fn enable_file_backing(&mut self, path: &Path) -> Result<(), String> {
+        let loaded = Self::load_or_default_from_path(path)?;
+        if loaded.repo.is_empty() && !self.repo.is_empty() {
+            FilePacketRepository::persist_snapshot(path.to_path_buf(), &self.repo)?;
+        } else {
+            self.repo = loaded.repo;
+        }
+        self.backing_path = Some(path.to_path_buf());
+        Ok(())
     }
 }
 
@@ -471,7 +512,8 @@ impl DerefMut for MonitorPacketStore {
 
 impl PacketRepository for MonitorPacketStore {
     fn register_packet(&mut self, packet: MonitorPacket) -> Result<(), String> {
-        self.repo.register_packet(packet)
+        self.repo.register_packet(packet)?;
+        self.persist_if_backed()
     }
 
     fn packet(&self, packet_id: &str) -> Option<&MonitorPacket> {
@@ -483,11 +525,19 @@ impl PacketRepository for MonitorPacketStore {
     }
 
     fn claim_next(&mut self, role: PacketClaimRole, at: &str) -> Result<Option<PacketClaim>, String> {
-        self.repo.claim_next(role, at)
+        let claim = self.repo.claim_next(role, at)?;
+        if claim.is_some() {
+            self.persist_if_backed()?;
+        }
+        Ok(claim)
     }
 
     fn reclaim_expired(&mut self, now: &str) -> Result<Vec<String>, String> {
-        self.repo.reclaim_expired(now)
+        let reclaimed = self.repo.reclaim_expired(now)?;
+        if !reclaimed.is_empty() {
+            self.persist_if_backed()?;
+        }
+        Ok(reclaimed)
     }
 
     fn has_child_packets(&self, packet_id: &str) -> bool {
@@ -498,7 +548,15 @@ impl PacketRepository for MonitorPacketStore {
         &mut self,
         transition: PacketTransitionRequest,
     ) -> Result<Option<PacketTransitionApplied>, PacketTransitionError> {
-        self.repo.apply_transition(transition)
+        let applied = self.repo.apply_transition(transition)?;
+        if let Some(ref applied_transition) = applied {
+            self.persist_if_backed().map_err(|message| PacketTransitionError {
+                from: applied_transition.from.clone(),
+                to: applied_transition.to.clone(),
+                message,
+            })?;
+        }
+        Ok(applied)
     }
 
     fn set_review_verdict(
@@ -507,7 +565,11 @@ impl PacketRepository for MonitorPacketStore {
         verdict: ReviewVerdict,
         at: String,
     ) -> Result<bool, String> {
-        self.repo.set_review_verdict(packet_id, verdict, at)
+        let updated = self.repo.set_review_verdict(packet_id, verdict, at)?;
+        if updated {
+            self.persist_if_backed()?;
+        }
+        Ok(updated)
     }
 
     fn set_gatekeeper_decision(
@@ -516,7 +578,11 @@ impl PacketRepository for MonitorPacketStore {
         decision: GatekeeperDecision,
         at: String,
     ) -> Result<bool, String> {
-        self.repo.set_gatekeeper_decision(packet_id, decision, at)
+        let updated = self.repo.set_gatekeeper_decision(packet_id, decision, at)?;
+        if updated {
+            self.persist_if_backed()?;
+        }
+        Ok(updated)
     }
 
     fn set_retry_policy(
@@ -526,8 +592,13 @@ impl PacketRepository for MonitorPacketStore {
         retry_budget: Option<usize>,
         at: String,
     ) -> Result<bool, String> {
-        self.repo
-            .set_retry_policy(packet_id, retryable, retry_budget, at)
+        let updated = self
+            .repo
+            .set_retry_policy(packet_id, retryable, retry_budget, at)?;
+        if updated {
+            self.persist_if_backed()?;
+        }
+        Ok(updated)
     }
 }
 
@@ -3422,7 +3493,23 @@ fn json_response<T: Serialize>(
 }
 
 fn monitor_state() -> &'static Mutex<MonitorState> {
-    MONITOR_STATE.get_or_init(|| Mutex::new(load_monitor_state().unwrap_or_default()))
+    MONITOR_STATE.get_or_init(|| {
+        let state_path = monitor_state_path();
+        let state = match load_monitor_state_from(&state_path) {
+            Some(state) => state,
+            None => {
+                let mut state = MonitorState::default();
+                if let Err(error) = state.configure_packet_store_backing(&state_path) {
+                    state.push_event(
+                        "monitor.persistence.warning",
+                        format!("packet store initialization failed: {error}"),
+                    );
+                }
+                state
+            }
+        };
+        Mutex::new(state)
+    })
 }
 
 fn load_monitor_state_from(path: &Path) -> Option<MonitorState> {
@@ -3440,11 +3527,13 @@ fn load_monitor_state_from(path: &Path) -> Option<MonitorState> {
 
     let mut state = persisted.state;
     normalize_monitor_state(&mut state);
+    if let Err(error) = state.configure_packet_store_backing(path) {
+        state.push_event(
+            "monitor.persistence.warning",
+            format!("packet store initialization failed: {error}"),
+        );
+    }
     Some(state)
-}
-
-fn load_monitor_state() -> Option<MonitorState> {
-    load_monitor_state_from(&monitor_state_path())
 }
 
 fn persist_monitor_state_to(path: &Path, state: &MonitorState) -> io::Result<()> {
@@ -3462,7 +3551,11 @@ fn persist_monitor_state_to(path: &Path, state: &MonitorState) -> io::Result<()>
         path.file_name().unwrap_or_default().to_string_lossy()
     ));
     fs::write(&tmp_path, bytes)?;
-    fs::rename(&tmp_path, path)
+    fs::rename(&tmp_path, path)?;
+    state
+        .packets
+        .persist_if_backed()
+        .map_err(|error| io::Error::new(io::ErrorKind::Other, error))
 }
 
 #[allow(dead_code)]
@@ -3874,6 +3967,11 @@ fn monitor_agent_source_tree_status(entry_count: usize) -> MonitorAgentSourceTre
 }
 
 impl MonitorState {
+    fn configure_packet_store_backing(&mut self, state_path: &Path) -> Result<(), String> {
+        let packet_store_path = monitor_packet_store_path_for_state_path(state_path);
+        self.packets.enable_file_backing(&packet_store_path)
+    }
+
     fn orchestrator_status(&self) -> MonitorOrchestratorStatus {
         match self.orchestrator_mode {
             OrchestratorMode::Disabled => MonitorOrchestratorStatus {
@@ -6465,6 +6563,14 @@ fn monitor_state_path() -> PathBuf {
         .unwrap_or_else(std::env::temp_dir)
         .join(CLI_PROFILE_DIRECTORY)
         .join(MONITOR_STATE_FILE)
+}
+
+fn monitor_packet_store_path_for_state_path(state_path: &Path) -> PathBuf {
+    let file_name = state_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(MONITOR_STATE_FILE);
+    state_path.with_file_name(format!("{file_name}{MONITOR_PACKET_STORE_FILE_SUFFIX}"))
 }
 
 pub fn default_profile_path() -> PathBuf {
@@ -12656,6 +12762,59 @@ mod tests {
         assert_eq!(loaded[0].id, "pkt-sidecar-1");
 
         cleanup_state_path(&path);
+    }
+
+    #[test]
+    fn monitor_packet_store_backed_register_persists_automatically() {
+        let path = unique_state_path("packet-store-auto-persist");
+        cleanup_state_path(&path);
+
+        let mut store = super::MonitorPacketStore::default();
+        store
+            .enable_file_backing(&path)
+            .expect("packet store backing should initialize");
+        super::PacketRepository::register_packet(&mut store, make_staged_packet("pkt-auto-1"))
+            .expect("register should auto-persist with backing enabled");
+
+        let loaded = super::MonitorPacketStore::load_or_default_from_path(&path)
+            .expect("packet store reload should succeed");
+        assert!(
+            super::PacketRepository::packet(&loaded, "pkt-auto-1").is_some(),
+            "auto-persisted packet should be present after reload"
+        );
+
+        cleanup_state_path(&path);
+    }
+
+    #[test]
+    fn load_monitor_state_uses_packet_store_sidecar_when_available() {
+        let state_path = unique_state_path("state-packet-sidecar");
+        let packet_path = super::monitor_packet_store_path_for_state_path(&state_path);
+
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("pkt-state-embedded"));
+        super::persist_monitor_state_to(&state_path, &state)
+            .expect("monitor state persist should succeed");
+
+        let mut sidecar_store = super::MonitorPacketStore::default();
+        sidecar_store.push(make_staged_packet("pkt-sidecar-preferred"));
+        sidecar_store
+            .persist_to_path(&packet_path)
+            .expect("packet sidecar persist should succeed");
+
+        let loaded = super::load_monitor_state_from(&state_path)
+            .expect("load_monitor_state_from should return a state");
+        assert!(
+            loaded.packet_by_id("pkt-sidecar-preferred").is_some(),
+            "packet sidecar should be loaded into monitor state"
+        );
+        assert!(
+            loaded.packet_by_id("pkt-state-embedded").is_none(),
+            "embedded state packets should yield to packet sidecar when present"
+        );
+
+        cleanup_state_path(&packet_path);
+        cleanup_state_path(&state_path);
     }
 
     #[test]
