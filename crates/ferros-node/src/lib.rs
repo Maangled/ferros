@@ -7,17 +7,19 @@ use std::fs;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex, OnceLock,
+};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
 use ferros_agents::{
-    Agent, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult, AgentManifest,
-    AgentName, AgentRegistry, AgentRpcAgentDetail, AgentRpcAgentSummary, AgentRpcSnapshot,
-    AgentStatus, CapabilityRequirement, DenyLogEntry, EchoAgent, GrantStateRecord,
-    InMemoryAgentRegistry, ReferenceAgentError, RegistryError, TimerAgent,
-    JSON_RPC_AGENT_NOT_FOUND,
+    Agent, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult, AgentManifest, AgentName,
+    AgentRegistry, AgentRpcAgentDetail, AgentRpcAgentSummary, AgentRpcSnapshot, AgentStatus,
+    CapabilityRequirement, DenyLogEntry, EchoAgent, GrantStateRecord, InMemoryAgentRegistry,
+    ReferenceAgentError, RegistryError, TimerAgent, JSON_RPC_AGENT_NOT_FOUND,
     JSON_RPC_AUTHORIZATION_DENIED, JSON_RPC_INVALID_PARAMS, JSON_RPC_INVALID_REQUEST,
     JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_AGENT_RUN,
     METHOD_AGENT_SNAPSHOT, METHOD_AGENT_STOP, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
@@ -27,17 +29,17 @@ use ferros_core::{
     MessageEnvelope, MessageEnvelopeError, PolicyDecision, PolicyEngine, RequesterProfileIdError,
 };
 use ferros_hub::{
-    default_local_runtime_summary, local_bridge_profile_id,
-    local_hub_relative_json_path_is_valid, local_onramp_banned_wording,
-    local_runway_evidence_is_non_evidentiary, local_runway_scope_is_local_only,
-    local_runway_text_looks_remote_like_url, LocalBridgeAgent,
+    default_local_runtime_summary, local_bridge_profile_id, local_hub_relative_json_path_is_valid,
+    local_onramp_banned_wording, local_runway_evidence_is_non_evidentiary,
+    local_runway_scope_is_local_only, local_runway_text_looks_remote_like_url, LocalBridgeAgent,
     LocalBridgeRegistrationError, LocalHubRuntimeSummary, LocalOnrampProposal,
     LOCAL_HUB_STATE_SNAPSHOT_PATH,
 };
 use ferros_orchestrator::{
-    try_transition, validate_transition_requirements, GatekeeperDecision, MonitorPacket,
-    PacketAuditEntry, PacketState, PacketTransitionApplied, PacketTransitionError,
-    ReviewVerdict,
+    try_transition, GatekeeperDecision, InMemoryPacketRepository, MonitorPacket, OrchestratorLoop,
+    PacketRepository, PacketState, PacketTransitionApplied, PacketTransitionError,
+    PacketTransitionRequest, ReviewVerdict, StubGatekeeperAgent, StubManagerAgent,
+    StubReviewerAgent, StubWorkerAgent,
 };
 use ferros_profile::{
     grant_profile_capability, init_local_profile, revoke_profile_capability, CapabilityGrant,
@@ -68,6 +70,7 @@ const MONITOR_MAX_THREAD_ENTRIES: usize = 64;
 const MONITOR_MAX_WATCHDOG_EVENTS: usize = 96;
 const WATCHDOG_STALL_THRESHOLD_SECONDS: i64 = 900;
 const WATCHDOG_MANAGER_CLOSURE_GRACE_SECONDS: i64 = 300;
+const MONITOR_MAINTENANCE_INTERVAL_MILLIS: u64 = 250;
 const LOCAL_SHELL_HTML: &str = include_str!("../../../site/agent-center-shell.html");
 const LOCAL_SHELL_ACCEPTANCE_HARNESS_HTML: &str =
     include_str!("../../../harnesses/localhost-shell-acceptance-harness.html");
@@ -289,7 +292,8 @@ fn is_completion_claim(text: &str) -> bool {
 
 /// Determine if a session is a background agent session (not Administration/FERROS Agent).
 fn is_background_agent_session(session: &MonitorSession) -> bool {
-    session.active_agent != "FERROS Agent" && !session.label.to_lowercase().contains("administration")
+    session.active_agent != "FERROS Agent"
+        && !session.label.to_lowercase().contains("administration")
 }
 
 /// Get the fixed corrective instruction for watchdog events.
@@ -414,7 +418,9 @@ fn has_recent_open_event(
         }
 
         match OffsetDateTime::parse(&event.detected_at, &Rfc3339) {
-            Ok(detected_at) => (now_secs - detected_at.unix_timestamp()).abs() <= DEDUPE_WINDOW_SECS,
+            Ok(detected_at) => {
+                (now_secs - detected_at.unix_timestamp()).abs() <= DEDUPE_WINDOW_SECS
+            }
             Err(_) => false,
         }
     })
@@ -429,7 +435,7 @@ struct MonitorStateSnapshot {
     running_loops: Vec<MonitorLoop>,
     timeline: Vec<MonitorEvent>,
     lifecycle_threads: Vec<MonitorLifecycleThread>,
-    packets: Vec<MonitorPacket>,
+    packets: InMemoryPacketRepository,
     #[serde(default)]
     watchdog_events: Vec<WatchdogEvent>,
     agent_directory: Vec<MonitorAgentDirectoryEntry>,
@@ -448,7 +454,7 @@ struct MonitorState {
     running_loops: Vec<MonitorLoop>,
     timeline: Vec<MonitorEvent>,
     lifecycle_threads: Vec<MonitorLifecycleThread>,
-    packets: Vec<MonitorPacket>,
+    packets: InMemoryPacketRepository,
     #[serde(default)]
     watchdog_events: Vec<WatchdogEvent>,
     selected_chat_id: Option<String>,
@@ -650,7 +656,7 @@ impl Default for MonitorState {
             running_loops: Vec::new(),
             timeline: Vec::new(),
             lifecycle_threads: Vec::new(),
-            packets: Vec::new(),
+            packets: InMemoryPacketRepository::default(),
             watchdog_events: Vec::new(),
             selected_chat_id: None,
             selected_lifecycle_thread_id: None,
@@ -789,8 +795,8 @@ struct LocalBridgeStandInAgent {
 impl LocalBridgeStandInAgent {
     fn new_default() -> Self {
         let bridge_agent = LocalBridgeAgent::new_default();
-        let agent_name = AgentName::new(bridge_agent.name)
-            .expect("default local bridge name should be valid");
+        let agent_name =
+            AgentName::new(bridge_agent.name).expect("default local bridge name should be valid");
         let profile_id = local_bridge_profile_id();
         let required_capabilities = bridge_agent
             .required_local_capabilities
@@ -1702,6 +1708,10 @@ fn serve_local_shell_with_store_and_paths<S: LocalProfileStore>(
     default_profile_path: &Path,
     store: &S,
 ) -> io::Result<()> {
+    let _maintenance_worker = max_connections
+        .is_none()
+        .then(MonitorMaintenanceWorker::spawn);
+
     for (handled_connections, incoming) in listener.incoming().enumerate() {
         let mut stream = incoming?;
 
@@ -1725,6 +1735,49 @@ fn serve_local_shell_with_store_and_paths<S: LocalProfileStore>(
     }
 
     Ok(())
+}
+
+struct MonitorMaintenanceWorker {
+    shutdown: Arc<AtomicBool>,
+    handle: Option<std::thread::JoinHandle<()>>,
+}
+
+impl MonitorMaintenanceWorker {
+    fn spawn() -> Self {
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let worker_shutdown = Arc::clone(&shutdown);
+        let handle = std::thread::spawn(move || {
+            while !worker_shutdown.load(Ordering::Relaxed) {
+                let state = monitor_state();
+                if let Ok(mut guard) = state.lock() {
+                    if run_monitor_maintenance(&mut guard) {
+                        persist_monitor_state_best_effort(
+                            &mut guard,
+                            "background.monitor.maintenance",
+                        );
+                    }
+                }
+
+                std::thread::sleep(std::time::Duration::from_millis(
+                    MONITOR_MAINTENANCE_INTERVAL_MILLIS,
+                ));
+            }
+        });
+
+        Self {
+            shutdown,
+            handle: Some(handle),
+        }
+    }
+}
+
+impl Drop for MonitorMaintenanceWorker {
+    fn drop(&mut self) {
+        self.shutdown.store(true, Ordering::Relaxed);
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1813,9 +1866,8 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
     if request_path == "/monitor/state" && method == "GET" {
         let state = monitor_state();
         let mut guard = state.lock().map_err(|_| ()).ok()?;
-        let stalled_events_created = guard.detect_stalled_packets();
-        let closure_events_created = guard.detect_manager_closure_contract_violations();
-        if stalled_events_created || closure_events_created {
+        let maintenance_changed = run_monitor_maintenance(&mut guard);
+        if maintenance_changed {
             persist_monitor_state_best_effort(&mut guard, "stalled.packets.detection");
         }
         let snapshot = guard.snapshot();
@@ -1831,7 +1883,11 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
     if request_path == "/monitor/lifecycle" && method == "GET" {
         let state = monitor_state();
         let guard = state.lock().map_err(|_| ()).ok()?;
-        return Some(enable_cors(json_response(200, "OK", &guard.lifecycle_threads)));
+        return Some(enable_cors(json_response(
+            200,
+            "OK",
+            &guard.lifecycle_threads,
+        )));
     }
 
     if request_path == "/monitor/agent-directory" && method == "GET" {
@@ -1927,7 +1983,11 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             };
 
             if !guard.add_lifecycle_message(thread_id, request) {
-                return Some(enable_cors(text_response(404, "Not Found", "monitor lifecycle thread not found")));
+                return Some(enable_cors(text_response(
+                    404,
+                    "Not Found",
+                    "monitor lifecycle thread not found",
+                )));
             }
 
             persist_monitor_state_best_effort(&mut guard, "lifecycle.message persistence warning");
@@ -1973,7 +2033,10 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
                 )));
             }
 
-            persist_monitor_state_best_effort(&mut guard, "notification.action persistence warning");
+            persist_monitor_state_best_effort(
+                &mut guard,
+                "notification.action persistence warning",
+            );
             return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
         }
     }
@@ -2057,7 +2120,10 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
                     return Some(enable_cors(text_response(409, "Conflict", reason)));
                 }
             }
-            persist_monitor_state_best_effort(&mut guard, "packet.review_verdict persistence warning");
+            persist_monitor_state_best_effort(
+                &mut guard,
+                "packet.review_verdict persistence warning",
+            );
             return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
         }
 
@@ -2147,9 +2213,13 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         if request.speaker.eq_ignore_ascii_case("user") {
             if let Some(active_agent) = guard.session_active_agent(session_id) {
                 if active_agent != "FERROS Agent" {
-                    return Some(enable_cors(json_response(400, "Bad Request", &serde_json::json!({
-                        "error": "human messages are only accepted for FERROS Agent sessions"
-                    }))));
+                    return Some(enable_cors(json_response(
+                        400,
+                        "Bad Request",
+                        &serde_json::json!({
+                            "error": "human messages are only accepted for FERROS Agent sessions"
+                        }),
+                    )));
                 }
             }
         }
@@ -2157,7 +2227,11 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         let message_id = match guard.add_message(session_id, request.clone()) {
             Some(message_id) => message_id,
             None => {
-                return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
+                return Some(enable_cors(text_response(
+                    404,
+                    "Not Found",
+                    "monitor session not found",
+                )));
             }
         };
 
@@ -2194,7 +2268,11 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             }
         };
         if !guard.route_session(session_id, &request.target) {
-            return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
+            return Some(enable_cors(text_response(
+                404,
+                "Not Found",
+                "monitor session not found",
+            )));
         }
         persist_monitor_state_best_effort(&mut guard, "session.route persistence warning");
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
@@ -2213,7 +2291,11 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             }
         };
         if !guard.archive_session(session_id) {
-            return Some(enable_cors(text_response(404, "Not Found", "monitor session not found")));
+            return Some(enable_cors(text_response(
+                404,
+                "Not Found",
+                "monitor session not found",
+            )));
         }
         persist_monitor_state_best_effort(&mut guard, "session.archive persistence warning");
         return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
@@ -2222,12 +2304,24 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
     if trailing == "watchdog/correct" && method == "POST" {
         let request: MonitorWatchdogCorrectRequest = match serde_json::from_slice(&body) {
             Ok(r) => r,
-            Err(e) => return Some(enable_cors(text_response(400, "Bad Request", format!("invalid watchdog correction request: {e}")))),
+            Err(e) => {
+                return Some(enable_cors(text_response(
+                    400,
+                    "Bad Request",
+                    format!("invalid watchdog correction request: {e}"),
+                )))
+            }
         };
         let state = monitor_state();
         let mut guard = match state.lock() {
             Ok(guard) => guard,
-            Err(_) => return Some(enable_cors(text_response(500, "Internal Server Error", "monitor state lock poisoned"))),
+            Err(_) => {
+                return Some(enable_cors(text_response(
+                    500,
+                    "Internal Server Error",
+                    "monitor state lock poisoned",
+                )))
+            }
         };
         return handle_watchdog_correct_route(&mut guard, session_id, &request);
     }
@@ -2294,6 +2388,13 @@ fn parse_monitor_packet_subroute(path: &str) -> Option<(&str, &str)> {
     Some((packet_id, subroute))
 }
 
+fn run_monitor_maintenance(guard: &mut MonitorState) -> bool {
+    let orchestrator_advanced = guard.run_orchestrator_tick();
+    let stalled_events_created = guard.detect_stalled_packets();
+    let closure_events_created = guard.detect_manager_closure_contract_violations();
+    orchestrator_advanced || stalled_events_created || closure_events_created
+}
+
 /// Test-only: route monitor requests against a caller-supplied `Mutex<MonitorState>` so
 /// tests can use isolated state instead of the global singleton.
 #[cfg(test)]
@@ -2303,6 +2404,12 @@ fn route_monitor_request_with_state(
     body: Vec<u8>,
     state: &std::sync::Mutex<MonitorState>,
 ) -> Option<HttpResponse> {
+    if request_path == "/monitor/state" && method == "GET" {
+        let mut guard = state.lock().ok()?;
+        let _ = run_monitor_maintenance(&mut guard);
+        return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+    }
+
     if request_path == "/monitor/sessions" && method == "POST" {
         let request: MonitorCreateSessionRequest = match serde_json::from_slice(&body) {
             Ok(r) => r,
@@ -2336,9 +2443,13 @@ fn route_monitor_request_with_state(
             if request.speaker.eq_ignore_ascii_case("user") {
                 if let Some(active_agent) = guard.session_active_agent(session_id) {
                     if active_agent != "FERROS Agent" {
-                        return Some(enable_cors(json_response(400, "Bad Request", &serde_json::json!({
-                            "error": "human messages are only accepted for FERROS Agent sessions"
-                        }))));
+                        return Some(enable_cors(json_response(
+                            400,
+                            "Bad Request",
+                            &serde_json::json!({
+                                "error": "human messages are only accepted for FERROS Agent sessions"
+                            }),
+                        )));
                     }
                 }
             }
@@ -2513,10 +2624,24 @@ fn split_request_path(path: &str) -> (&str, Option<&str>) {
 }
 
 /// Shared handler for watchdog correction injection.
-fn handle_watchdog_correct_route(guard: &mut MonitorState, session_id: &str, request: &MonitorWatchdogCorrectRequest) -> Option<HttpResponse> {
-    let event_index = match guard.watchdog_events.iter().position(|e| e.id == request.watchdog_event_id) {
+fn handle_watchdog_correct_route(
+    guard: &mut MonitorState,
+    session_id: &str,
+    request: &MonitorWatchdogCorrectRequest,
+) -> Option<HttpResponse> {
+    let event_index = match guard
+        .watchdog_events
+        .iter()
+        .position(|e| e.id == request.watchdog_event_id)
+    {
         Some(idx) => idx,
-        None => return Some(enable_cors(text_response(404, "Not Found", "watchdog event not found"))),
+        None => {
+            return Some(enable_cors(text_response(
+                404,
+                "Not Found",
+                "watchdog event not found",
+            )))
+        }
     };
     if guard.watchdog_events[event_index].session_id.as_deref() != Some(session_id) {
         return Some(enable_cors(text_response(
@@ -2527,9 +2652,15 @@ fn handle_watchdog_correct_route(guard: &mut MonitorState, session_id: &str, req
     }
     let event_status = guard.watchdog_events[event_index].correction_status.clone();
     if !matches!(event_status, WatchdogCorrectionStatus::Pending) {
-        return Some(enable_cors(text_response(409, "Conflict", "watchdog event is not pending correction")));
+        return Some(enable_cors(text_response(
+            409,
+            "Conflict",
+            "watchdog event is not pending correction",
+        )));
     }
-    let instruction = guard.watchdog_events[event_index].corrective_instruction.clone();
+    let instruction = guard.watchdog_events[event_index]
+        .corrective_instruction
+        .clone();
     let packet_id = guard.watchdog_events[event_index].packet_id.clone();
     if let Some(instr) = instruction {
         let message = MonitorMessage {
@@ -2541,15 +2672,31 @@ fn handle_watchdog_correct_route(guard: &mut MonitorState, session_id: &str, req
         };
         if let Some(sess_idx) = guard.open_chats.iter().position(|s| s.id == session_id) {
             guard.open_chats[sess_idx].messages.push(message.clone());
-            guard.watchdog_events[event_index].correction_status = WatchdogCorrectionStatus::CorrectionIssued;
-            let _ = guard.create_notification(packet_id, Some(session_id.to_owned()), None, "med", "Watchdog correction injected", "System injected a corrective instruction. Continue via packet protocol.");
+            guard.watchdog_events[event_index].correction_status =
+                WatchdogCorrectionStatus::CorrectionIssued;
+            let _ = guard.create_notification(
+                packet_id,
+                Some(session_id.to_owned()),
+                None,
+                "med",
+                "Watchdog correction injected",
+                "System injected a corrective instruction. Continue via packet protocol.",
+            );
             persist_monitor_state_best_effort(guard, "watchdog.correct persistence warning");
             return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
         } else {
-            return Some(enable_cors(text_response(404, "Not Found", "session not found")));
+            return Some(enable_cors(text_response(
+                404,
+                "Not Found",
+                "session not found",
+            )));
         }
     } else {
-        return Some(enable_cors(json_response(400, "Bad Request", &serde_json::json!({"error": "watchdog event has no corrective instruction"}))));
+        return Some(enable_cors(json_response(
+            400,
+            "Bad Request",
+            &serde_json::json!({"error": "watchdog event has no corrective instruction"}),
+        )));
     }
 }
 
@@ -2866,7 +3013,11 @@ fn text_response(
     }
 }
 
-fn json_response<T: Serialize>(status_code: u16, status_text: &'static str, payload: &T) -> HttpResponse {
+fn json_response<T: Serialize>(
+    status_code: u16,
+    status_text: &'static str,
+    payload: &T,
+) -> HttpResponse {
     match serde_json::to_string_pretty(payload) {
         Ok(body) => HttpResponse {
             status_code,
@@ -2891,9 +3042,10 @@ fn load_monitor_state_from(path: &Path) -> Option<MonitorState> {
     let persisted: PersistedMonitorState = serde_json::from_slice(&bytes).ok()?;
     if persisted.schema_version != MONITOR_STATE_SCHEMA_VERSION {
         // Back up the mismatched file so data is not silently lost.
-        let bak = path.with_file_name(
-            format!("{}.bak", path.file_name().unwrap_or_default().to_string_lossy()),
-        );
+        let bak = path.with_file_name(format!(
+            "{}.bak",
+            path.file_name().unwrap_or_default().to_string_lossy()
+        ));
         let _ = fs::copy(path, bak);
         return None;
     }
@@ -2917,9 +3069,10 @@ fn persist_monitor_state_to(path: &Path, state: &MonitorState) -> io::Result<()>
     };
     let bytes = serde_json::to_vec_pretty(&payload)
         .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-    let tmp_path = path.with_file_name(
-        format!("{}.tmp", path.file_name().unwrap_or_default().to_string_lossy()),
-    );
+    let tmp_path = path.with_file_name(format!(
+        "{}.tmp",
+        path.file_name().unwrap_or_default().to_string_lossy()
+    ));
     fs::write(&tmp_path, bytes)?;
     fs::rename(&tmp_path, path)
 }
@@ -3059,7 +3212,11 @@ fn infer_dispatch_target(operator_text: &str) -> DispatchTarget {
     DispatchTarget::Software
 }
 
-fn monitor_status_detail_for(agent: &str, state: &str, description: &str) -> (String, String, String, Option<u8>) {
+fn monitor_status_detail_for(
+    agent: &str,
+    state: &str,
+    description: &str,
+) -> (String, String, String, Option<u8>) {
     let category = monitor_category_for_agent(agent);
     match state {
         "running" => (
@@ -3069,7 +3226,9 @@ fn monitor_status_detail_for(agent: &str, state: &str, description: &str) -> (St
             Some(48),
         ),
         "waiting" => {
-            let status = if category == "administration" || agent.to_ascii_lowercase().contains("escalation") {
+            let status = if category == "administration"
+                || agent.to_ascii_lowercase().contains("escalation")
+            {
                 "attention"
             } else {
                 "escalating"
@@ -3205,7 +3364,9 @@ fn fallback_directory_entry_from_path(path: &Path) -> Option<MonitorAgentDirecto
         "architect"
     } else if display_name.to_ascii_lowercase().contains("officer") {
         "officer"
-    } else if display_name.to_ascii_lowercase().contains("core") || display_name.to_ascii_lowercase().contains("subcore") {
+    } else if display_name.to_ascii_lowercase().contains("core")
+        || display_name.to_ascii_lowercase().contains("subcore")
+    {
         "execution"
     } else {
         "agent"
@@ -3239,7 +3400,9 @@ fn load_monitor_agent_directory() -> Vec<MonitorAgentDirectoryEntry> {
                 .map(|entry| MonitorAgentDirectoryEntry {
                     id: entry.id,
                     display_name: entry.display_name,
-                    description: entry.description.unwrap_or_else(|| "No description published.".to_owned()),
+                    description: entry
+                        .description
+                        .unwrap_or_else(|| "No description published.".to_owned()),
                     family: entry.family,
                     role: entry.role.clone(),
                     lane: entry.lane.unwrap_or(entry.role),
@@ -3261,7 +3424,9 @@ fn load_monitor_agent_directory() -> Vec<MonitorAgentDirectoryEntry> {
         for entry in read_dir.flatten() {
             let path = entry.path();
             if path.extension().is_some_and(|ext| ext == "md")
-                && path.file_name().is_some_and(|name| name.to_string_lossy().ends_with(".agent.md"))
+                && path
+                    .file_name()
+                    .is_some_and(|name| name.to_string_lossy().ends_with(".agent.md"))
             {
                 if let Some(directory_entry) = fallback_directory_entry_from_path(&path) {
                     entries.push(directory_entry);
@@ -3302,7 +3467,11 @@ impl MonitorState {
             open_chats: self.open_chats.clone(),
             archived_chats: self.archived_chats.clone(),
             notifications: self.notifications.clone(),
-            running_loops: self.running_loops.iter().map(normalize_monitor_loop).collect(),
+            running_loops: self
+                .running_loops
+                .iter()
+                .map(normalize_monitor_loop)
+                .collect(),
             timeline: self.timeline.clone(),
             lifecycle_threads: lifecycle_threads.clone(),
             packets: self.packets.clone(),
@@ -3347,7 +3516,8 @@ impl MonitorState {
         };
         self.selected_lifecycle_thread_id = Some(id.clone());
         self.lifecycle_threads.insert(0, thread);
-        self.lifecycle_threads.truncate(MONITOR_MAX_LIFECYCLE_THREADS);
+        self.lifecycle_threads
+            .truncate(MONITOR_MAX_LIFECYCLE_THREADS);
         id
     }
 
@@ -3372,7 +3542,11 @@ impl MonitorState {
             next_action: next_action.map(str::to_owned),
         };
 
-        let Some(index) = self.lifecycle_threads.iter().position(|thread| thread.id == thread_id) else {
+        let Some(index) = self
+            .lifecycle_threads
+            .iter()
+            .position(|thread| thread.id == thread_id)
+        else {
             return false;
         };
 
@@ -3444,7 +3618,8 @@ impl MonitorState {
                 id: self.next_identifier("msg"),
                 speaker: "agent".to_owned(),
                 who: "FERROS Agent".to_owned(),
-                text: "Session ready. Route requests into coding, business, or architect lanes.".to_owned(),
+                text: "Session ready. Route requests into coding, business, or architect lanes."
+                    .to_owned(),
                 at: now,
             }],
         };
@@ -3465,28 +3640,36 @@ impl MonitorState {
             at: monitor_now(),
         };
 
-        let Some(index) = self.open_chats.iter().position(|session| session.id == session_id) else {
+        let Some(index) = self
+            .open_chats
+            .iter()
+            .position(|session| session.id == session_id)
+        else {
             return None;
         };
 
         let (session_label, thread_id, active_agent) = {
             let session = &mut self.open_chats[index];
             session.messages.push(message);
-            (session.label.clone(), session.thread_id.clone(), session.active_agent.clone())
+            (
+                session.label.clone(),
+                session.thread_id.clone(),
+                session.active_agent.clone(),
+            )
         };
-        
+
         // Update last_message_at on the associated loop and run watchdog detection
         if is_background_agent_session(&self.open_chats[index]) {
             let now = monitor_now();
             let loop_id = active_agent.to_ascii_lowercase().replace(' ', "-");
             let mut linked_packet_id: Option<String> = None;
-            
+
             // Find loop by agent ID and update last_message_at
             if let Some(loop_entry) = self.running_loops.iter_mut().find(|l| l.id == loop_id) {
                 loop_entry.last_message_at = Some(now.clone());
                 linked_packet_id = loop_entry.current_packet_id.clone();
             }
-            
+
             // Run watchdog detection patterns on message text
             // Only for non-watchdog messages (speaker != "watchdog")
             if speaker != "watchdog" {
@@ -3569,39 +3752,42 @@ impl MonitorState {
                             Some(message_id.as_str()),
                             now_secs,
                         ) {
-                        let event_id = self.next_identifier("wde");
-                        let event = WatchdogEvent {
-                            id: event_id,
-                            kind: WatchdogEventKind::CompletionClaimWithoutEvidence,
-                            agent_id: active_agent.clone(),
-                            session_id: Some(session_id.to_owned()),
-                            packet_id: Some(pkt_id.clone()),
-                            message_id: Some(message_id.clone()),
-                            detected_at: monitor_now(),
-                            detail: format!("Agent claimed completion without evidence: '{}'", text),
-                            corrective_instruction: None,
-                            correction_status: WatchdogCorrectionStatus::Pending,
-                        };
-                        self.watchdog_events.push(event);
-                        let _ = self.create_notification(
-                            Some(pkt_id.clone()),
-                            Some(session_id.to_owned()),
-                            None,
-                            "high",
-                            "Completion claimed without evidence",
-                            &format!("{}: completed but needs evidence check", active_agent),
-                        );
+                            let event_id = self.next_identifier("wde");
+                            let event = WatchdogEvent {
+                                id: event_id,
+                                kind: WatchdogEventKind::CompletionClaimWithoutEvidence,
+                                agent_id: active_agent.clone(),
+                                session_id: Some(session_id.to_owned()),
+                                packet_id: Some(pkt_id.clone()),
+                                message_id: Some(message_id.clone()),
+                                detected_at: monitor_now(),
+                                detail: format!(
+                                    "Agent claimed completion without evidence: '{}'",
+                                    text
+                                ),
+                                corrective_instruction: None,
+                                correction_status: WatchdogCorrectionStatus::Pending,
+                            };
+                            self.watchdog_events.push(event);
+                            let _ = self.create_notification(
+                                Some(pkt_id.clone()),
+                                Some(session_id.to_owned()),
+                                None,
+                                "high",
+                                "Completion claimed without evidence",
+                                &format!("{}: completed but needs evidence check", active_agent),
+                            );
                         }
                     }
                 }
-                
+
                 // Cap watchdog events
                 if self.watchdog_events.len() > MONITOR_MAX_WATCHDOG_EVENTS {
                     prune_watchdog_events(&mut self.watchdog_events);
                 }
             }
         }
-        
+
         if let Some(thread_id) = thread_id {
             let _ = self.append_thread_entry(
                 &thread_id,
@@ -3657,7 +3843,10 @@ impl MonitorState {
         }
 
         let lowered = dispatch_request.operator_text.to_ascii_lowercase();
-        if lowered.contains("human intervention") || lowered.contains("needs operator") || lowered.contains("escalate") {
+        if lowered.contains("human intervention")
+            || lowered.contains("needs operator")
+            || lowered.contains("escalate")
+        {
             let packet_id = self.create_packet(
                 dispatch_request.session_id.clone(),
                 Some(dispatch_request.message_id.clone()),
@@ -3768,7 +3957,10 @@ impl MonitorState {
         target: DispatchTarget,
     ) -> Option<(String, String, String)> {
         let (session_label, session_thread_id) = {
-            let session = self.open_chats.iter().find(|session| session.id == session_id)?;
+            let session = self
+                .open_chats
+                .iter()
+                .find(|session| session.id == session_id)?;
             (session.label.clone(), session.thread_id.clone())
         };
 
@@ -3848,7 +4040,11 @@ impl MonitorState {
             format!("Staged from {session_label} \u{2192} {route_label}"),
         );
 
-        if let Some(loop_entry) = self.running_loops.iter_mut().find(|l| l.agent == loop_agent) {
+        if let Some(loop_entry) = self
+            .running_loops
+            .iter_mut()
+            .find(|l| l.agent == loop_agent)
+        {
             loop_entry.current_packet_id = Some(packet_id.clone());
         }
 
@@ -3874,7 +4070,10 @@ impl MonitorState {
         target: DispatchTarget,
         backend: &dyn MonitorDispatchBackend,
         operator_text: &str,
-    ) -> (MonitorDispatchBackendResult, Option<(String, String, String)>) {
+    ) -> (
+        MonitorDispatchBackendResult,
+        Option<(String, String, String)>,
+    ) {
         // Phase 1: Stage the packet (creates packet in Staged state, no backend call yet).
         let staged = self.dispatch_session_to_manager(session_id, origin_message_id, target);
         let Some((ref packet_id, _, _)) = staged else {
@@ -3891,8 +4090,7 @@ impl MonitorState {
         };
 
         // Phase 2: Consult backend with the real packet id so it can generate a scoped ticket.
-        let backend_result =
-            backend.handle_dispatch(session_id, packet_id, &target, operator_text);
+        let backend_result = backend.handle_dispatch(session_id, packet_id, &target, operator_text);
 
         if !backend_result.accepted {
             // Transition Staged → Failed so the attempt is visible in the audit trail.
@@ -3900,7 +4098,10 @@ impl MonitorState {
                 packet_id,
                 PacketState::Failed,
                 "scaffold-backend",
-                backend_result.error.as_deref().unwrap_or("backend rejected"),
+                backend_result
+                    .error
+                    .as_deref()
+                    .unwrap_or("backend rejected"),
                 vec![],
             );
             return (backend_result, None);
@@ -3937,7 +4138,7 @@ impl MonitorState {
     ) -> String {
         let id = self.next_identifier("pkt");
         let now = monitor_now();
-        self.packets.push(MonitorPacket {
+        self.packets.register_packet(MonitorPacket {
             id: id.clone(),
             session_id,
             origin_message_id,
@@ -3995,81 +4196,82 @@ impl MonitorState {
         reason: &str,
         evidence_refs: Vec<String>,
     ) -> Result<Option<PacketTransitionApplied>, PacketTransitionError> {
-        let at = monitor_now();
-        // Phase 1: collect read-only data; immutable borrow ends with this block.
-        let (from, seq, review_verdict, gatekeeper_decision) = {
-            let Some(packet) = self.packets.iter().find(|p| p.id == packet_id) else {
-                return Ok(None);
-            };
-            (
-                packet.state.clone(),
-                packet.audit_seq + 1,
-                packet.review_verdict.clone(),
-                packet.gatekeeper_decision.clone(),
-            )
-        };
-
-        validate_transition_requirements(
-            &from,
-            to_state.clone(),
-            review_verdict.as_ref(),
-            gatekeeper_decision.as_ref(),
-            &evidence_refs,
-        )?;
-
-        // Phase 2: FSM guard — pure, no mutation.
-        let next = try_transition(&from, to_state, actor, reason, &at)?;
-        // Phase 3: mutation only after guard accepts.
-        let audit_entry = PacketAuditEntry {
-            seq,
-            from: from.clone(),
-            to: next.clone(),
+        let Some(applied) = self.packets.apply_transition(PacketTransitionRequest {
+            packet_id: packet_id.to_owned(),
+            to_state,
             actor: actor.to_owned(),
             reason: reason.to_owned(),
-            at: at.clone(),
+            at: monitor_now(),
             evidence_refs,
+        })?
+        else {
+            return Ok(None);
         };
-        let packet = self
-            .packets
-            .iter_mut()
-            .find(|p| p.id == packet_id)
-            .unwrap();
-        packet.state = next.clone();
-        packet.updated_at = at;
-        packet.audit_seq = seq;
-        packet.audit_trail.push(audit_entry);
-                if matches!(
-                    next,
-                    PacketState::Resolved
-                        | PacketState::Failed
-                        | PacketState::HumanInterventionRequired
-                        | PacketState::Cancelled
-                ) {
-                    for loop_entry in &mut self.running_loops {
-                        if loop_entry.current_packet_id.as_deref() == Some(packet_id) {
-                            loop_entry.current_packet_id = None;
-                        }
-                    }
-                }
-        let label = format!("{packet_id} -> {next}");
+
+        self.clear_running_loop_packet_if_terminal(packet_id, &applied.to);
+        let label = format!("{packet_id} -> {}", applied.to);
         self.push_event("packet.state_changed", label);
-        Ok(Some(PacketTransitionApplied {
-            packet_id: packet_id.to_owned(),
-            from,
-            to: next,
-            seq,
-        }))
+        Ok(Some(applied))
+    }
+
+    fn run_orchestrator_tick(&mut self) -> bool {
+        let orchestrator = Self::default_stub_orchestrator_loop();
+        let tick_at = monitor_now();
+        let reports = match orchestrator.tick_once(&mut self.packets, &tick_at) {
+            Ok(reports) => reports,
+            Err(error) => {
+                self.push_event(
+                    "packet.orchestrator_error",
+                    format!("stub orchestrator tick failed: {error:?}"),
+                );
+                return true;
+            }
+        };
+
+        let mut changed = false;
+        for report in reports {
+            let Some(packet_id) = report.claimed_packet_id else {
+                continue;
+            };
+            let Some(next_state) = report.advanced_to else {
+                continue;
+            };
+            changed = true;
+            self.clear_running_loop_packet_if_terminal(&packet_id, &next_state);
+            self.push_event(
+                "packet.state_changed",
+                format!("{packet_id} -> {next_state}"),
+            );
+        }
+
+        changed
+    }
+
+    fn clear_running_loop_packet_if_terminal(&mut self, packet_id: &str, state: &PacketState) {
+        if !matches!(
+            state,
+            PacketState::Resolved
+                | PacketState::Failed
+                | PacketState::HumanInterventionRequired
+                | PacketState::Cancelled
+        ) {
+            return;
+        }
+
+        for loop_entry in &mut self.running_loops {
+            if loop_entry.current_packet_id.as_deref() == Some(packet_id) {
+                loop_entry.current_packet_id = None;
+            }
+        }
     }
 
     #[allow(dead_code)]
     fn packet_by_id(&self, packet_id: &str) -> Option<&MonitorPacket> {
-        self.packets.iter().find(|p| p.id == packet_id)
+        self.packets.packet(packet_id)
     }
 
     fn packet_has_child_packets(&self, packet_id: &str) -> bool {
-        self.packets
-            .iter()
-            .any(|packet| packet.parent_packet_id.as_deref() == Some(packet_id))
+        self.packets.has_child_packets(packet_id)
     }
 
     fn set_packet_review_verdict(
@@ -4077,20 +4279,16 @@ impl MonitorState {
         packet_id: &str,
         verdict: ReviewVerdict,
     ) -> Result<bool, String> {
-        let Some(packet) = self
+        let updated = self
             .packets
-            .iter_mut()
-            .find(|packet| packet.id == packet_id)
-        else {
-            return Ok(false);
-        };
-        if packet.state != PacketState::AwaitingReview {
-            return Err("review verdict can only be set while packet is awaiting_review".to_owned());
-        };
-        packet.review_verdict = Some(verdict);
-        packet.updated_at = monitor_now();
-        self.push_event("packet.review_verdict", format!("{packet_id} verdict updated"));
-        Ok(true)
+            .set_review_verdict(packet_id, verdict, monitor_now())?;
+        if updated {
+            self.push_event(
+                "packet.review_verdict",
+                format!("{packet_id} verdict updated"),
+            );
+        }
+        Ok(updated)
     }
 
     fn set_packet_gatekeeper_decision(
@@ -4098,23 +4296,25 @@ impl MonitorState {
         packet_id: &str,
         decision: GatekeeperDecision,
     ) -> Result<bool, String> {
-        let Some(packet) = self
+        let updated = self
             .packets
-            .iter_mut()
-            .find(|packet| packet.id == packet_id)
-        else {
-            return Ok(false);
-        };
-        if packet.state != PacketState::Reviewed {
-            return Err("gatekeeper decision can only be set while packet is reviewed".to_owned());
+            .set_gatekeeper_decision(packet_id, decision, monitor_now())?;
+        if updated {
+            self.push_event(
+                "packet.gatekeeper_decision",
+                format!("{packet_id} gatekeeper decision updated"),
+            );
         }
-        packet.gatekeeper_decision = Some(decision);
-        packet.updated_at = monitor_now();
-        self.push_event(
-            "packet.gatekeeper_decision",
-            format!("{packet_id} gatekeeper decision updated"),
-        );
-        Ok(true)
+        Ok(updated)
+    }
+
+    fn default_stub_orchestrator_loop() -> OrchestratorLoop {
+        OrchestratorLoop::new(vec![
+            Box::new(StubGatekeeperAgent),
+            Box::new(StubReviewerAgent),
+            Box::new(StubWorkerAgent),
+            Box::new(StubManagerAgent),
+        ])
     }
 
     fn create_notification(
@@ -4173,7 +4373,10 @@ impl MonitorState {
             }
         }
 
-        self.push_event("notification.opened", format!("{title} acknowledged by operator"));
+        self.push_event(
+            "notification.opened",
+            format!("{title} acknowledged by operator"),
+        );
         true
     }
 
@@ -4216,10 +4419,10 @@ impl MonitorState {
                 // Parse updated_at timestamp
                 let packet_age_secs =
                     if let Ok(updated_time) = OffsetDateTime::parse(&packet.updated_at, &Rfc3339) {
-                    now_secs - updated_time.unix_timestamp()
-                } else {
-                    return None;
-                };
+                        now_secs - updated_time.unix_timestamp()
+                    } else {
+                        return None;
+                    };
 
                 if packet_age_secs <= WATCHDOG_STALL_THRESHOLD_SECONDS {
                     return None;
@@ -4231,7 +4434,7 @@ impl MonitorState {
                         && e.kind == WatchdogEventKind::PacketStalled
                         && !matches!(e.correction_status, WatchdogCorrectionStatus::Resolved)
                 });
-                
+
                 if has_stalled_event {
                     return None;
                 }
@@ -4314,7 +4517,8 @@ impl MonitorState {
                 };
 
                 let detected_at = OffsetDateTime::parse(&event.detected_at, &Rfc3339).ok()?;
-                if now_secs - detected_at.unix_timestamp() < WATCHDOG_MANAGER_CLOSURE_GRACE_SECONDS {
+                if now_secs - detected_at.unix_timestamp() < WATCHDOG_MANAGER_CLOSURE_GRACE_SECONDS
+                {
                     return None;
                 }
 
@@ -4337,7 +4541,10 @@ impl MonitorState {
                 let has_existing_next_action_event = self.watchdog_events.iter().any(|existing| {
                     existing.kind == WatchdogEventKind::ExpectedNextActionMissing
                         && existing.packet_id.as_deref() == Some(packet_id)
-                        && !matches!(existing.correction_status, WatchdogCorrectionStatus::Resolved)
+                        && !matches!(
+                            existing.correction_status,
+                            WatchdogCorrectionStatus::Resolved
+                        )
                 });
                 if has_existing_next_action_event {
                     return None;
@@ -4502,7 +4709,11 @@ impl MonitorState {
         events_created
     }
 
-    fn add_lifecycle_message(&mut self, thread_id: &str, request: MonitorLifecycleMessageRequest) -> bool {
+    fn add_lifecycle_message(
+        &mut self,
+        thread_id: &str,
+        request: MonitorLifecycleMessageRequest,
+    ) -> bool {
         self.append_thread_entry(
             thread_id,
             "lifecycle.note",
@@ -4523,7 +4734,15 @@ impl MonitorState {
             _ => DispatchTarget::Software,
         };
 
-        self.dispatch_session_via_backend(session_id, None, target, &ScaffoldMonitorDispatchBackend, "").1.is_some()
+        self.dispatch_session_via_backend(
+            session_id,
+            None,
+            target,
+            &ScaffoldMonitorDispatchBackend,
+            "",
+        )
+        .1
+        .is_some()
     }
 
     fn archive_session(&mut self, session_id: &str) -> bool {
@@ -4578,7 +4797,8 @@ impl MonitorState {
                 );
                 self.push_event(
                     "loop.started",
-                    "FERROS Agent Architect delegated to Coding and Business architects.".to_string(),
+                    "FERROS Agent Architect delegated to Coding and Business architects."
+                        .to_string(),
                 );
             }
             "coding-split" => {
@@ -4587,7 +4807,11 @@ impl MonitorState {
                     "waiting",
                     "Waiting for Core/SubCore completion packets.",
                 );
-                self.upsert_loop("Core Agent", "running", "Core lane executing routed packet.");
+                self.upsert_loop(
+                    "Core Agent",
+                    "running",
+                    "Core lane executing routed packet.",
+                );
                 self.upsert_loop(
                     "SubCore Agent",
                     "running",
@@ -4644,7 +4868,10 @@ impl MonitorState {
                     "running",
                     "Department outputs merged; business architecture loop resumed.",
                 );
-                self.push_event("loop.merged", "Department loops returned to Business Architect.".to_string());
+                self.push_event(
+                    "loop.merged",
+                    "Department loops returned to Business Architect.".to_string(),
+                );
             }
             "escalate" => {
                 self.running_loops.clear();
@@ -4659,12 +4886,17 @@ impl MonitorState {
                 );
                 let session = self.create_session(Some("Escalation -> FERROS".to_owned()));
                 let escalation_message_id = self.next_identifier("msg");
-                if let Some(open) = self.open_chats.iter_mut().find(|chat| chat.id == session.id) {
+                if let Some(open) = self
+                    .open_chats
+                    .iter_mut()
+                    .find(|chat| chat.id == session.id)
+                {
                     open.messages.push(MonitorMessage {
                         id: escalation_message_id,
                         speaker: "agent".to_owned(),
                         who: "FERROS Agent".to_owned(),
-                        text: "Escalation received. Human decision is required before continuing.".to_owned(),
+                        text: "Escalation received. Human decision is required before continuing."
+                            .to_owned(),
                         at: monitor_now(),
                     });
                 }
@@ -4674,7 +4906,8 @@ impl MonitorState {
                         "escalation.opened",
                         "agent",
                         "FERROS Agent",
-                        "Escalation received. Human decision is required before continuing.".to_owned(),
+                        "Escalation received. Human decision is required before continuing."
+                            .to_owned(),
                         Some("attention"),
                         Some("Open or explain from Administration"),
                     );
@@ -4692,7 +4925,11 @@ impl MonitorState {
             monitor_status_detail_for(agent, state, description);
         let stale_after = monitor_at_plus_seconds(if status == "running" { 300 } else { 180 });
 
-        if let Some(existing) = self.running_loops.iter_mut().find(|loop_state| loop_state.id == id) {
+        if let Some(existing) = self
+            .running_loops
+            .iter_mut()
+            .find(|loop_state| loop_state.id == id)
+        {
             let thread_id = existing.thread_id.clone();
             existing.state = state.to_owned();
             existing.category = category;
@@ -6212,19 +6449,18 @@ mod tests {
         execute_agent_read_rpc_json, execute_agent_read_rpc_with_store_and_paths,
         execute_agent_rpc_with_store_and_paths_and_runtime_loader,
         execute_local_agent_api_with_runtime_loader, execute_profile_cli_with_store,
-        infer_dispatch_target, is_completion_claim, is_background_agent_session,
+        infer_dispatch_target, is_background_agent_session, is_completion_claim,
         is_hidden_human_question, is_waiting_for_human, monitor_now, parse_http_request,
-        route_monitor_request_with_state, route_shell_request_with_store_and_paths,
-        run_demo, runtime_with_state, serve_local_shell_with_listener,
-        serve_local_shell_with_store_and_paths, AgentCliCommand, AuthorizationDenyDetail,
-        CliError, CliState, DemoError, DemoRuntime, DispatchTarget, HttpRequest, LocalAgentApi,
-        LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
+        route_monitor_request_with_state, route_shell_request_with_store_and_paths, run_demo,
+        runtime_with_state, serve_local_shell_with_listener,
+        serve_local_shell_with_store_and_paths, AgentCliCommand, AuthorizationDenyDetail, CliError,
+        CliState, DemoError, DemoRuntime, DispatchTarget, GatekeeperDecision, HttpRequest,
+        LocalAgentApi, LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
         LocalRunwaySummary, MonitorDispatchBackend, MonitorDispatchBackendResult,
-        MonitorLifecycleThread, MonitorMessageRequest, MonitorPacket, MonitorState,
-        PersistedMonitorState, PacketState, ProfileCliCommand, ReviewVerdict, GatekeeperDecision,
-        ProfileShellResponse, ScaffoldMonitorDispatchBackend, WatchdogEvent, WatchdogEventKind,
-        WatchdogCorrectionStatus, MONITOR_MAX_WATCHDOG_EVENTS,
-        DEFAULT_PROFILE_NAME,
+        MonitorLifecycleThread, MonitorMessageRequest, MonitorPacket, MonitorState, PacketState,
+        PersistedMonitorState, ProfileCliCommand, ProfileShellResponse, ReviewVerdict,
+        ScaffoldMonitorDispatchBackend, WatchdogCorrectionStatus, WatchdogEvent, WatchdogEventKind,
+        DEFAULT_PROFILE_NAME, MONITOR_MAX_WATCHDOG_EVENTS,
     };
     use ferros_agents::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
@@ -6251,7 +6487,11 @@ mod tests {
 
         assert_eq!(
             summary.started_agents,
-            vec!["echo".to_string(), "ha-local-bridge".to_string(), "timer".to_string()]
+            vec![
+                "echo".to_string(),
+                "ha-local-bridge".to_string(),
+                "timer".to_string()
+            ]
         );
         assert_eq!(summary.echo_response, "hello");
         assert_eq!(summary.timer_event, "tick-1");
@@ -6309,7 +6549,10 @@ mod tests {
         assert_eq!(agent.manifest.name.as_str(), "ha-local-bridge");
         assert_eq!(agent.manifest.version, "0.1.0");
         assert_eq!(agent.manifest.required_capabilities.len(), 1);
-        assert_eq!(agent.manifest.required_capabilities[0].capability, "bridge.observe");
+        assert_eq!(
+            agent.manifest.required_capabilities[0].capability,
+            "bridge.observe"
+        );
         assert_eq!(
             agent.manifest.required_capabilities[0].profile_id.as_str(),
             "hub-local-bridge"
@@ -6319,7 +6562,10 @@ mod tests {
 
     #[test]
     fn infer_dispatch_target_maps_keywords_to_expected_lane() {
-        assert_eq!(infer_dispatch_target("please send to business"), DispatchTarget::Business);
+        assert_eq!(
+            infer_dispatch_target("please send to business"),
+            DispatchTarget::Business
+        );
         assert_eq!(
             infer_dispatch_target("route this through coding architect"),
             DispatchTarget::CodingArchitect
@@ -6403,7 +6649,10 @@ mod tests {
         assert!(opened, "open_notification should return true");
         assert_eq!(state.notifications[0].status, "opened");
         assert_eq!(state.selected_chat_id.as_deref(), Some(session.id.as_str()));
-        assert_eq!(state.selected_lifecycle_thread_id.as_deref(), Some(thread_id.as_str()));
+        assert_eq!(
+            state.selected_lifecycle_thread_id.as_deref(),
+            Some(thread_id.as_str())
+        );
     }
 
     #[test]
@@ -6416,15 +6665,16 @@ mod tests {
     fn dispatch_creates_packet_and_lifecycle_thread() {
         let mut state = MonitorState::default();
         let session = state.create_session(Some("Admin liaison".to_owned()));
-        let origin_message_id = state.add_message(
-            &session.id,
-            super::MonitorMessageRequest {
-                speaker: "user".to_owned(),
-                who: "Human".to_owned(),
-                text: "please route this to software".to_owned(),
-            },
-        )
-        .expect("user message should be added");
+        let origin_message_id = state
+            .add_message(
+                &session.id,
+                super::MonitorMessageRequest {
+                    speaker: "user".to_owned(),
+                    who: "Human".to_owned(),
+                    text: "please route this to software".to_owned(),
+                },
+            )
+            .expect("user message should be added");
 
         let result = state.ferros_agent_handle_human_message(
             &session.id,
@@ -6439,7 +6689,10 @@ mod tests {
             result.status
         );
         assert!(result.packet_id.is_some(), "packet_id should be set");
-        assert!(result.lifecycle_thread_id.is_some(), "lifecycle_thread_id should be set");
+        assert!(
+            result.lifecycle_thread_id.is_some(),
+            "lifecycle_thread_id should be set"
+        );
 
         // Packet should appear in state
         let packet_id = result.packet_id.unwrap();
@@ -6449,7 +6702,10 @@ mod tests {
         assert_eq!(packet.state, PacketState::DispatchedToManager);
         assert_eq!(packet.session_id, session.id);
         assert_eq!(packet.origin_message_id, Some(origin_message_id.clone()));
-        assert!(packet.work_order_id.is_some(), "packet should carry work order id");
+        assert!(
+            packet.work_order_id.is_some(),
+            "packet should carry work order id"
+        );
 
         // Lifecycle thread should exist
         let thread_id = result.lifecycle_thread_id.unwrap();
@@ -6479,8 +6735,7 @@ mod tests {
             schema_version: super::MONITOR_STATE_SCHEMA_VERSION,
             state,
         };
-        let persisted =
-            serde_json::to_string_pretty(&payload).expect("should serialize");
+        let persisted = serde_json::to_string_pretty(&payload).expect("should serialize");
         let loaded: PersistedMonitorState =
             serde_json::from_str(&persisted).expect("should deserialize");
 
@@ -6501,18 +6756,30 @@ mod tests {
         );
 
         assert!(
-            matches!(result.status, super::MonitorDispatchStatus::HumanInterventionRequired),
+            matches!(
+                result.status,
+                super::MonitorDispatchStatus::HumanInterventionRequired
+            ),
             "expected HumanInterventionRequired"
         );
-        assert!(result.packet_id.is_some(), "packet_id should be set on escalation");
-        assert!(result.notification_id.is_some(), "notification_id should be set");
+        assert!(
+            result.packet_id.is_some(),
+            "packet_id should be set on escalation"
+        );
+        assert!(
+            result.notification_id.is_some(),
+            "notification_id should be set"
+        );
 
         let packet_id = result.packet_id.unwrap();
         let notification_id = result.notification_id.unwrap();
 
         let packet = state.packet_by_id(&packet_id).expect("packet should exist");
         assert_eq!(packet.state, PacketState::HumanInterventionRequired);
-        assert_eq!(packet.notification_id.as_deref(), Some(notification_id.as_str()));
+        assert_eq!(
+            packet.notification_id.as_deref(),
+            Some(notification_id.as_str())
+        );
 
         let notification = state
             .notifications
@@ -6548,10 +6815,19 @@ mod tests {
         assert_eq!(response.status_code, 200);
         let value: serde_json::Value =
             serde_json::from_slice(&response.body).expect("body should be valid JSON");
-        assert!(value["id"].as_str().map(|id| !id.is_empty()).unwrap_or(false), "session id should be set");
+        assert!(
+            value["id"]
+                .as_str()
+                .map(|id| !id.is_empty())
+                .unwrap_or(false),
+            "session id should be set"
+        );
         assert_eq!(value["activeAgent"].as_str(), Some("FERROS Agent"));
         let first_msg_id = value["messages"][0]["id"].as_str();
-        assert!(first_msg_id.map(|id| !id.is_empty()).unwrap_or(false), "first message id should be set");
+        assert!(
+            first_msg_id.map(|id| !id.is_empty()).unwrap_or(false),
+            "first message id should be set"
+        );
     }
 
     #[test]
@@ -6567,7 +6843,10 @@ mod tests {
         .expect("create session should return a response");
         let session: serde_json::Value =
             serde_json::from_slice(&create_resp.body).expect("body should be valid JSON");
-        let session_id = session["id"].as_str().expect("session id should be a string").to_owned();
+        let session_id = session["id"]
+            .as_str()
+            .expect("session id should be a string")
+            .to_owned();
 
         // Send a user message
         let msg_resp = route_monitor_request_with_state(
@@ -6594,7 +6873,10 @@ mod tests {
             .iter()
             .filter_map(|c| c["id"].as_str())
             .collect();
-        assert!(open_ids.contains(&session_id.as_str()), "session should remain open");
+        assert!(
+            open_ids.contains(&session_id.as_str()),
+            "session should remain open"
+        );
 
         let archived_ids: Vec<&str> = snapshot["archivedChats"]
             .as_array()
@@ -6602,7 +6884,10 @@ mod tests {
             .iter()
             .filter_map(|c| c["id"].as_str())
             .collect();
-        assert!(!archived_ids.contains(&session_id.as_str()), "session should not be archived");
+        assert!(
+            !archived_ids.contains(&session_id.as_str()),
+            "session should not be archived"
+        );
 
         // FERROS Agent should have replied
         let messages = snapshot["openChats"]
@@ -6611,7 +6896,9 @@ mod tests {
             .and_then(|chat| chat["messages"].as_array())
             .cloned()
             .unwrap_or_default();
-        let has_ferros_reply = messages.iter().any(|m| m["who"].as_str() == Some("FERROS Agent"));
+        let has_ferros_reply = messages
+            .iter()
+            .any(|m| m["who"].as_str() == Some("FERROS Agent"));
         assert!(has_ferros_reply, "FERROS Agent should have replied");
 
         // A packet should have been created
@@ -6668,7 +6955,10 @@ mod tests {
         )
         .expect("route should return a response");
 
-        assert_eq!(response.status_code, 400, "unknown action should be 400 Bad Request");
+        assert_eq!(
+            response.status_code, 400,
+            "unknown action should be 400 Bad Request"
+        );
     }
 
     #[test]
@@ -6682,7 +6972,10 @@ mod tests {
         )
         .expect("route should return a response");
 
-        assert_eq!(response.status_code, 404, "missing notification should be 404 Not Found");
+        assert_eq!(
+            response.status_code, 404,
+            "missing notification should be 404 Not Found"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -6694,7 +6987,12 @@ mod tests {
         use super::{DispatchTarget, MonitorDispatchBackend};
 
         let backend = ScaffoldMonitorDispatchBackend;
-        let result = backend.handle_dispatch("chat-1", "pkt-test", &DispatchTarget::Software, "build a thing");
+        let result = backend.handle_dispatch(
+            "chat-1",
+            "pkt-test",
+            &DispatchTarget::Software,
+            "build a thing",
+        );
 
         assert!(result.accepted, "scaffold backend should always accept");
         assert_eq!(result.backend, "scaffold");
@@ -6744,8 +7042,10 @@ mod tests {
             schema_version: super::MONITOR_STATE_SCHEMA_VERSION,
             state,
         };
-        let persisted = serde_json::to_string_pretty(&payload).expect("persisted snapshot should serialize");
-        let loaded: PersistedMonitorState = serde_json::from_str(&persisted).expect("persisted snapshot should deserialize");
+        let persisted =
+            serde_json::to_string_pretty(&payload).expect("persisted snapshot should serialize");
+        let loaded: PersistedMonitorState =
+            serde_json::from_str(&persisted).expect("persisted snapshot should deserialize");
 
         assert_eq!(loaded.schema_version, super::MONITOR_STATE_SCHEMA_VERSION);
         assert!(loaded
@@ -6756,7 +7056,10 @@ mod tests {
             .all(|message| !message.id.is_empty()));
         assert_eq!(loaded.state.notifications.len(), 1);
         assert_eq!(loaded.state.notifications[0].status, "opened");
-        assert_eq!(loaded.state.notifications[0].packet_id.as_deref(), Some("wo-2"));
+        assert_eq!(
+            loaded.state.notifications[0].packet_id.as_deref(),
+            Some("wo-2")
+        );
     }
 
     #[test]
@@ -8851,17 +9154,27 @@ mod tests {
         assert!(html
             .contains("Lifecycle gate blocks an unarmed or missing-grant click before write RPC"));
         assert!(html.contains("[data-protected-chrome=\"top-edge\"]"));
-        assert!(html.contains("[data-protected-chrome=\"status-rail\"][data-status-rail=\"primary\"]"));
+        assert!(
+            html.contains("[data-protected-chrome=\"status-rail\"][data-status-rail=\"primary\"]")
+        );
         assert!(html.contains("[data-protected-chrome=\"panel-header\"][data-panel-anchor=\""));
         assert!(html.contains("[data-protected-chrome=\"collapse\"][data-panel-collapse=\""));
-        assert!(html.contains("Base shell exposes stable protected-chrome shell and status markers"));
+        assert!(
+            html.contains("Base shell exposes stable protected-chrome shell and status markers")
+        );
         assert!(html.contains("Major panel headers expose stable extraction anchors"));
         assert!(html.contains("Collapse affordances expose stable extraction anchors"));
-        assert!(html.contains("Touch anchor strip exposes persistent section jumps for touch posture"));
+        assert!(
+            html.contains("Touch anchor strip exposes persistent section jumps for touch posture")
+        );
         assert!(html.contains("Eight route buttons are visible"));
         assert!(html.contains("Registry list rows expose AgentListRowCard markers with stable data-agent-name selectors"));
-        assert!(html.contains("Runway surface exposes the consent boundary through the shared onramp boundary module"));
-        assert!(html.contains("Runway surface exposes operator recovery posture through the shared recovery module"));
+        assert!(html.contains(
+            "Runway surface exposes the consent boundary through the shared onramp boundary module"
+        ));
+        assert!(html.contains(
+            "Runway surface exposes operator recovery posture through the shared recovery module"
+        ));
         assert!(html.contains("Runway checklist rows expose RunwayChecklistRowCard markers with stable data-runway-index mapping"));
         assert!(html.contains("Home-Hub route activates"));
         assert!(html.contains("Forge route activates"));
@@ -9403,7 +9716,10 @@ mod tests {
             &RejectingBackend,
             "",
         );
-        assert!(!reject_result.accepted, "backend rejection should be surfaced");
+        assert!(
+            !reject_result.accepted,
+            "backend rejection should be surfaced"
+        );
         assert_eq!(
             reject_result.error.as_deref(),
             Some("test backend rejection"),
@@ -9411,7 +9727,11 @@ mod tests {
         );
         assert!(reject_ids.is_none(), "no dispatch ids on backend rejection");
         // With the staged-first flow a packet IS created (Staged) then transitioned to Failed.
-        assert_eq!(state.packets.len(), 1, "rejected dispatch leaves a Failed packet");
+        assert_eq!(
+            state.packets.len(),
+            1,
+            "rejected dispatch leaves a Failed packet"
+        );
         assert_eq!(
             state.packets[0].state,
             PacketState::Failed,
@@ -9427,17 +9747,23 @@ mod tests {
             "",
         );
         assert!(accept_result.accepted, "scaffold backend should accept");
-        assert!(accept_ids.is_some(), "accepting backend should yield dispatch ids");
+        assert!(
+            accept_ids.is_some(),
+            "accepting backend should yield dispatch ids"
+        );
         // Two packets exist: the Failed one and the newly DispatchedToManager one.
-        assert_eq!(state.packets.len(), 2, "two packets: one Failed, one DispatchedToManager");
+        assert_eq!(
+            state.packets.len(),
+            2,
+            "two packets: one Failed, one DispatchedToManager"
+        );
         let dispatched = state
             .packets
             .iter()
             .find(|p| p.state == PacketState::DispatchedToManager)
             .expect("DispatchedToManager packet must exist after acceptance");
         assert_eq!(
-            dispatched.origin_message_id,
-            None,
+            dispatched.origin_message_id, None,
             "route path origin_message_id must be None, not Some(\"\")"
         );
     }
@@ -9447,17 +9773,14 @@ mod tests {
     #[test]
     fn scaffold_backend_returns_ticket_with_packet_scoped_external_ref() {
         let backend = ScaffoldMonitorDispatchBackend;
-        let result = backend.handle_dispatch(
-            "session-abc",
-            "pkt-42",
-            &DispatchTarget::Software,
-            "",
-        );
+        let result =
+            backend.handle_dispatch("session-abc", "pkt-42", &DispatchTarget::Software, "");
         assert!(result.accepted, "scaffold backend must always accept");
-        let ticket = result.ticket.expect("scaffold backend must return a ticket");
+        let ticket = result
+            .ticket
+            .expect("scaffold backend must return a ticket");
         assert_eq!(
-            ticket.external_ref,
-            "scaffold:pkt-42",
+            ticket.external_ref, "scaffold:pkt-42",
             "external_ref must be scaffold:{{packet_id}}"
         );
     }
@@ -9483,7 +9806,11 @@ mod tests {
         // Packet must have been transitioned Staged → DispatchedToManager.
         assert_eq!(pkt.state, PacketState::DispatchedToManager);
         // Audit trail must carry one entry for the Staged → DispatchedToManager transition.
-        assert_eq!(pkt.audit_trail.len(), 1, "one audit entry for Staged → DispatchedToManager");
+        assert_eq!(
+            pkt.audit_trail.len(),
+            1,
+            "one audit entry for Staged → DispatchedToManager"
+        );
         let entry = &pkt.audit_trail[0];
         assert_eq!(entry.from, PacketState::Staged);
         assert_eq!(entry.to, PacketState::DispatchedToManager);
@@ -9513,6 +9840,60 @@ mod tests {
     }
 
     #[test]
+    fn monitor_state_route_runs_stub_orchestrator_until_packet_resolves() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        let packet_id = {
+            let mut guard = state.lock().unwrap();
+            let session = guard.create_session(Some("Orchestrator route test".to_owned()));
+            let (result, ids) = guard.dispatch_session_via_backend(
+                &session.id,
+                None,
+                DispatchTarget::Software,
+                &ScaffoldMonitorDispatchBackend,
+                "",
+            );
+            assert!(result.accepted, "scaffold backend should accept");
+            let (packet_id, _, _) = ids.expect("dispatch must return ids");
+            assert_eq!(
+                guard.packet_by_id(&packet_id).unwrap().state,
+                PacketState::DispatchedToManager
+            );
+            packet_id
+        };
+
+        for _ in 0..4 {
+            let response =
+                route_monitor_request_with_state("GET", "/monitor/state", vec![], &state)
+                    .expect("route should return a response");
+            assert_eq!(response.status_code, 200, "monitor state should return 200");
+        }
+
+        let guard = state.lock().unwrap();
+        let packet = guard.packet_by_id(&packet_id).expect("packet should exist");
+        assert_eq!(packet.state, PacketState::Resolved);
+        assert_eq!(packet.review_verdict, Some(ReviewVerdict::Approved));
+        assert_eq!(packet.gatekeeper_decision, Some(GatekeeperDecision::Close));
+        assert_eq!(
+            packet.audit_trail.len(),
+            5,
+            "dispatch + 4 orchestrator transitions"
+        );
+        assert!(
+            guard.timeline.iter().any(|event| {
+                event.kind == "packet.state_changed" && event.text.contains(&packet_id)
+            }),
+            "timeline should include orchestrator-driven state changes"
+        );
+        assert!(
+            guard
+                .running_loops
+                .iter()
+                .all(|entry| { entry.current_packet_id.as_deref() != Some(packet_id.as_str()) }),
+            "terminal packet should be cleared from running loops"
+        );
+    }
+
+    #[test]
     fn dispatch_rejection_transitions_staged_packet_to_failed() {
         let mut state = MonitorState::default();
         let session = state.create_session(Some("Rejection test".to_owned()));
@@ -9524,8 +9905,15 @@ mod tests {
             "",
         );
         assert!(!result.accepted, "rejecting backend must not accept");
-        assert!(ids.is_none(), "rejected dispatch must not return dispatch ids");
-        assert_eq!(state.packets.len(), 1, "one packet must exist after rejection");
+        assert!(
+            ids.is_none(),
+            "rejected dispatch must not return dispatch ids"
+        );
+        assert_eq!(
+            state.packets.len(),
+            1,
+            "one packet must exist after rejection"
+        );
         assert_eq!(
             state.packets[0].state,
             PacketState::Failed,
@@ -9623,7 +10011,10 @@ mod tests {
             serde_json::to_string(state).expect("PacketState should serialize")
         }
         // Legacy wire names — must never change
-        assert_eq!(wire(&PacketState::DispatchedToManager), "\"dispatched_to_manager\"");
+        assert_eq!(
+            wire(&PacketState::DispatchedToManager),
+            "\"dispatched_to_manager\""
+        );
         assert_eq!(
             wire(&PacketState::HumanInterventionRequired),
             "\"human_intervention_required\""
@@ -9692,7 +10083,13 @@ mod tests {
     #[test]
     fn packet_transition_matrix_accepts_only_legal_edges() {
         let check = |from: &PacketState, to: PacketState| {
-            super::try_transition(from, to, "test-actor", "test reason", "2026-01-01T00:00:00Z")
+            super::try_transition(
+                from,
+                to,
+                "test-actor",
+                "test reason",
+                "2026-01-01T00:00:00Z",
+            )
         };
 
         // All 13 legal edges (12 original + Staged → Failed added in Packet 5)
@@ -9700,20 +10097,31 @@ mod tests {
         assert!(check(&PacketState::Staged, PacketState::HumanInterventionRequired).is_ok());
         assert!(check(&PacketState::Staged, PacketState::Failed).is_ok()); // Packet 5
         assert!(check(&PacketState::DispatchedToManager, PacketState::InProgress).is_ok());
-        assert!(
-            check(&PacketState::DispatchedToManager, PacketState::HumanInterventionRequired)
-                .is_ok()
-        );
+        assert!(check(
+            &PacketState::DispatchedToManager,
+            PacketState::HumanInterventionRequired
+        )
+        .is_ok());
         assert!(check(&PacketState::InProgress, PacketState::AwaitingReview).is_ok());
         assert!(check(&PacketState::InProgress, PacketState::Failed).is_ok());
-        assert!(check(&PacketState::InProgress, PacketState::HumanInterventionRequired).is_ok());
+        assert!(check(
+            &PacketState::InProgress,
+            PacketState::HumanInterventionRequired
+        )
+        .is_ok());
         assert!(check(&PacketState::AwaitingReview, PacketState::Reviewed).is_ok());
-        assert!(
-            check(&PacketState::AwaitingReview, PacketState::HumanInterventionRequired).is_ok()
-        );
+        assert!(check(
+            &PacketState::AwaitingReview,
+            PacketState::HumanInterventionRequired
+        )
+        .is_ok());
         assert!(check(&PacketState::Reviewed, PacketState::Resolved).is_ok());
         assert!(check(&PacketState::Reviewed, PacketState::Failed).is_ok());
-        assert!(check(&PacketState::Reviewed, PacketState::HumanInterventionRequired).is_ok());
+        assert!(check(
+            &PacketState::Reviewed,
+            PacketState::HumanInterventionRequired
+        )
+        .is_ok());
 
         // Terminal states must reject all outbound transitions
         assert!(check(&PacketState::Resolved, PacketState::Staged).is_err());
@@ -9826,20 +10234,17 @@ mod tests {
         state.packets.push(make_staged_packet("p2"));
 
         state
-            .apply_packet_transition(
-                "p2",
-                PacketState::DispatchedToManager,
-                "a",
-                "r",
-                vec![],
-            )
+            .apply_packet_transition("p2", PacketState::DispatchedToManager, "a", "r", vec![])
             .unwrap();
         state
             .apply_packet_transition("p2", PacketState::InProgress, "a", "r", vec![])
             .unwrap();
 
         let packet = state.packets.iter().find(|p| p.id == "p2").unwrap();
-        assert_eq!(packet.audit_seq, 2, "audit_seq should be 2 after two transitions");
+        assert_eq!(
+            packet.audit_seq, 2,
+            "audit_seq should be 2 after two transitions"
+        );
         assert_eq!(packet.audit_trail.len(), 2);
         assert_eq!(packet.audit_trail[0].seq, 1);
         assert_eq!(packet.audit_trail[1].seq, 2);
@@ -9857,11 +10262,18 @@ mod tests {
             "test reason",
             vec![],
         );
-        assert!(result.is_err(), "illegal transition must be rejected by guard");
+        assert!(
+            result.is_err(),
+            "illegal transition must be rejected by guard"
+        );
 
         // State must be unchanged — guard ran before any mutation
         let packet = state.packets.iter().find(|p| p.id == "p3").unwrap();
-        assert_eq!(packet.state, PacketState::Staged, "state must not mutate on guard rejection");
+        assert_eq!(
+            packet.state,
+            PacketState::Staged,
+            "state must not mutate on guard rejection"
+        );
         assert_eq!(packet.audit_seq, 0);
         assert!(packet.audit_trail.is_empty());
     }
@@ -9884,8 +10296,7 @@ mod tests {
 
         let packet = state.packets.iter().find(|p| p.id == "p4").unwrap();
         assert_eq!(
-            packet.audit_trail[0].evidence_refs,
-            refs,
+            packet.audit_trail[0].evidence_refs, refs,
             "evidence_refs must be stored in the audit entry"
         );
     }
@@ -9932,11 +10343,13 @@ mod tests {
             "done",
             vec![],
         );
-        assert!(result.is_err(), "awaiting_review must require packet evidence");
+        assert!(
+            result.is_err(),
+            "awaiting_review must require packet evidence"
+        );
         let err = result.err().unwrap();
         assert_eq!(
-            err.message,
-            "review-ready transition requires packet evidence",
+            err.message, "review-ready transition requires packet evidence",
             "expected worker evidence contract message"
         );
     }
@@ -9966,7 +10379,10 @@ mod tests {
             "done with proof",
             vec!["artifact://run-log/123".to_owned()],
         );
-        assert!(result.is_ok(), "awaiting_review should succeed with evidence refs");
+        assert!(
+            result.is_ok(),
+            "awaiting_review should succeed with evidence refs"
+        );
 
         let packet = state.packets.iter().find(|p| p.id == "p6").unwrap();
         assert_eq!(packet.state, PacketState::AwaitingReview);
@@ -10039,7 +10455,10 @@ mod tests {
             vec!["   ".to_owned()],
         );
 
-        assert!(result.is_err(), "whitespace-only evidence ref must be rejected");
+        assert!(
+            result.is_err(),
+            "whitespace-only evidence ref must be rejected"
+        );
     }
 
     #[test]
@@ -10071,7 +10490,11 @@ mod tests {
             PacketState::AwaitingReview,
             "worker",
             "done",
-            vec!["".to_owned(), "   ".to_owned(), "artifact://valid".to_owned()],
+            vec![
+                "".to_owned(),
+                "   ".to_owned(),
+                "artifact://valid".to_owned(),
+            ],
         );
 
         assert!(
@@ -10138,8 +10561,7 @@ mod tests {
         .expect("packet state route should respond");
 
         assert_eq!(
-            transition_response.status_code,
-            409,
+            transition_response.status_code, 409,
             "watchdog correction message must not count as packet evidence"
         );
     }
@@ -10178,11 +10600,13 @@ mod tests {
             "verdict ready",
             vec![],
         );
-        assert!(result.is_err(), "reviewed transition must require reviewer verdict");
+        assert!(
+            result.is_err(),
+            "reviewed transition must require reviewer verdict"
+        );
         let err = result.err().unwrap();
         assert_eq!(
-            err.message,
-            "reviewed transition requires reviewer verdict",
+            err.message, "reviewed transition requires reviewer verdict",
             "expected reviewer verdict contract message"
         );
     }
@@ -10229,8 +10653,15 @@ mod tests {
             "approved",
             vec![],
         );
-        assert!(result.is_ok(), "reviewed transition should succeed with verdict");
-        let packet = state.packets.iter().find(|packet| packet.id == "p8").unwrap();
+        assert!(
+            result.is_ok(),
+            "reviewed transition should succeed with verdict"
+        );
+        let packet = state
+            .packets
+            .iter()
+            .find(|packet| packet.id == "p8")
+            .unwrap();
         assert_eq!(packet.state, PacketState::Reviewed);
         assert_eq!(packet.review_verdict, Some(ReviewVerdict::Approved));
     }
@@ -10275,7 +10706,10 @@ mod tests {
             &state,
         )
         .unwrap();
-        assert_eq!(set_verdict_resp.status_code, 200, "setting verdict route should succeed");
+        assert_eq!(
+            set_verdict_resp.status_code, 200,
+            "setting verdict route should succeed"
+        );
 
         let transition_resp = super::route_monitor_request_with_state(
             "POST",
@@ -10290,8 +10724,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            transition_resp.status_code,
-            200,
+            transition_resp.status_code, 200,
             "reviewed transition should succeed after machine-readable verdict"
         );
     }
@@ -10328,8 +10761,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            response.status_code,
-            409,
+            response.status_code, 409,
             "review verdict route must reject non-awaiting_review packets"
         );
     }
@@ -10391,8 +10823,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            response.status_code,
-            409,
+            response.status_code, 409,
             "review verdict route must reject reviewed packets"
         );
     }
@@ -10437,7 +10868,10 @@ mod tests {
             "close",
             vec!["artifact://closure/p9".to_owned()],
         );
-        assert!(result.is_err(), "resolved must require gatekeeper close decision");
+        assert!(
+            result.is_err(),
+            "resolved must require gatekeeper close decision"
+        );
         let err = result.err().unwrap();
         assert_eq!(
             err.message,
@@ -10495,7 +10929,10 @@ mod tests {
             "close",
             vec!["artifact://closure/p10".to_owned()],
         );
-        assert!(result.is_err(), "resolved must require approved reviewer verdict");
+        assert!(
+            result.is_err(),
+            "resolved must require approved reviewer verdict"
+        );
         let err = result.err().unwrap();
         assert_eq!(
             err.message,
@@ -10597,8 +11034,15 @@ mod tests {
             "close",
             vec!["artifact://closure/p12".to_owned()],
         );
-        assert!(result.is_ok(), "resolved should succeed only when all closure gates pass");
-        let packet = state.packets.iter().find(|packet| packet.id == "p12").unwrap();
+        assert!(
+            result.is_ok(),
+            "resolved should succeed only when all closure gates pass"
+        );
+        let packet = state
+            .packets
+            .iter()
+            .find(|packet| packet.id == "p12")
+            .unwrap();
         assert_eq!(packet.state, PacketState::Resolved);
     }
 
@@ -10683,7 +11127,11 @@ mod tests {
         assert_eq!(response.status_code, 200);
 
         let guard = state.lock().unwrap();
-        let packet = guard.packets.iter().find(|packet| packet.id == "pkt-gk2").unwrap();
+        let packet = guard
+            .packets
+            .iter()
+            .find(|packet| packet.id == "pkt-gk2")
+            .unwrap();
         assert_eq!(packet.gatekeeper_decision, Some(GatekeeperDecision::Close));
     }
 
@@ -10895,12 +11343,22 @@ mod tests {
             &state,
         )
         .unwrap();
-        assert_eq!(response.status_code, 409, "illegal transition must return 409");
+        assert_eq!(
+            response.status_code, 409,
+            "illegal transition must return 409"
+        );
 
         let guard = state.lock().unwrap();
         let pkt = guard.packets.iter().find(|p| p.id == "pkt-r2").unwrap();
-        assert_eq!(pkt.state, PacketState::Staged, "state must not mutate on rejection");
-        assert!(pkt.audit_trail.is_empty(), "audit trail must not grow on rejection");
+        assert_eq!(
+            pkt.state,
+            PacketState::Staged,
+            "state must not mutate on rejection"
+        );
+        assert!(
+            pkt.audit_trail.is_empty(),
+            "audit trail must not grow on rejection"
+        );
     }
 
     #[test]
@@ -10996,7 +11454,10 @@ mod tests {
 
         // Call through load_monitor_state_from directly — the production path.
         let result = super::load_monitor_state_from(&path);
-        assert!(result.is_none(), "mismatched schema version should return None");
+        assert!(
+            result.is_none(),
+            "mismatched schema version should return None"
+        );
 
         let bak_path = path.with_file_name(format!(
             "{}.bak",
@@ -11029,8 +11490,8 @@ mod tests {
             &backend,
             "route to software",
         );
-        let (packet_id, _, packet_thread_id) = dispatch_ids
-            .expect("dispatch should succeed and return ids");
+        let (packet_id, _, packet_thread_id) =
+            dispatch_ids.expect("dispatch should succeed and return ids");
 
         // --- Lifecycle thread entry kind ---
         let thread = state
@@ -11086,7 +11547,7 @@ mod tests {
             events_before + 1,
             "a warning event should be appended on write failure"
         );
-        let last = state.timeline.first().unwrap();  // push_event inserts at index 0
+        let last = state.timeline.first().unwrap(); // push_event inserts at index 0
         assert_eq!(
             last.kind, "monitor.persistence.warning",
             "event kind should be monitor.persistence.warning, got {}",
@@ -11118,19 +11579,23 @@ mod tests {
             None,
             "normalize test packet".to_owned(),
         );
-        let ntf_id = state.create_notification(
-            None,
-            None,
-            None,
-            "low",
-            "normalize test",
-            "summary",
-        );
+        let ntf_id =
+            state.create_notification(None, None, None, "low", "normalize test", "summary");
 
         // Blank out IDs to simulate legacy snapshots loaded without IDs.
         state.open_chats[0].messages[0].id = String::new();
-        state.packets.iter_mut().find(|p| p.id == pkt_id).unwrap().id = String::new();
-        state.notifications.iter_mut().find(|n| n.id == ntf_id).unwrap().id = String::new();
+        state
+            .packets
+            .iter_mut()
+            .find(|p| p.id == pkt_id)
+            .unwrap()
+            .id = String::new();
+        state
+            .notifications
+            .iter_mut()
+            .find(|n| n.id == ntf_id)
+            .unwrap()
+            .id = String::new();
 
         let next_id_before = state.next_id;
         super::normalize_monitor_state(&mut state);
@@ -11144,15 +11609,26 @@ mod tests {
 
         let msg_id = &state.open_chats[0].messages[0].id;
         assert!(!msg_id.is_empty(), "message id should be filled");
-        assert!(msg_id.starts_with("msg-"), "message id should use msg- prefix, got {msg_id}");
+        assert!(
+            msg_id.starts_with("msg-"),
+            "message id should use msg- prefix, got {msg_id}"
+        );
 
         let pkt = &state.packets[0];
         assert!(!pkt.id.is_empty(), "packet id should be filled");
-        assert!(pkt.id.starts_with("pkt-"), "packet id should use pkt- prefix, got {}", pkt.id);
+        assert!(
+            pkt.id.starts_with("pkt-"),
+            "packet id should use pkt- prefix, got {}",
+            pkt.id
+        );
 
         let ntf = &state.notifications[0];
         assert!(!ntf.id.is_empty(), "notification id should be filled");
-        assert!(ntf.id.starts_with("ntf-"), "notification id should use ntf- prefix, got {}", ntf.id);
+        assert!(
+            ntf.id.starts_with("ntf-"),
+            "notification id should use ntf- prefix, got {}",
+            ntf.id
+        );
 
         // All three assigned IDs must be unique.
         let ids = [msg_id.as_str(), pkt.id.as_str(), ntf.id.as_str()];
@@ -11218,7 +11694,10 @@ mod tests {
         )
         .expect("should return a response");
 
-        assert_eq!(response.status_code, 400, "expected 400 for non-FERROS session");
+        assert_eq!(
+            response.status_code, 400,
+            "expected 400 for non-FERROS session"
+        );
         let value: serde_json::Value =
             serde_json::from_slice(&response.body).expect("body should be JSON");
         assert_eq!(
@@ -11292,9 +11771,7 @@ mod tests {
             "Please route this to the coding team",
         );
         let packet_id = result.packet_id.expect("packet_id should be set");
-        let packet = state
-            .packet_by_id(&packet_id)
-            .expect("packet should exist");
+        let packet = state.packet_by_id(&packet_id).expect("packet should exist");
         assert_eq!(
             packet.origin_message_id,
             Some(msg_id),
@@ -11313,8 +11790,7 @@ mod tests {
             .first()
             .expect("a packet should have been created");
         assert_eq!(
-            packet.origin_message_id,
-            None,
+            packet.origin_message_id, None,
             "origin_message_id from /route should be None, not Some(\"\")"
         );
         let json = serde_json::to_string(packet).unwrap();
@@ -11440,10 +11916,14 @@ mod tests {
 
         // Background agent sessions should be classified as background
         // (need to manually set active_agent since it's not changed by routing)
-        if let Some(background_chat) = state.open_chats.iter_mut().find(|c| c.id == background_session.id) {
+        if let Some(background_chat) = state
+            .open_chats
+            .iter_mut()
+            .find(|c| c.id == background_session.id)
+        {
             background_chat.active_agent = "Software Architect".to_owned();
         }
-        
+
         let background_chat = state
             .open_chats
             .iter()
@@ -11456,12 +11936,12 @@ mod tests {
     fn watchdog_event_created_on_hidden_human_question() {
         let mut state = MonitorState::default();
         let session = state.create_session(Some("Watchdog test".to_owned()));
-        
+
         // Manually set active_agent to a background agent for testing
         if let Some(chat) = state.open_chats.iter_mut().find(|c| c.id == session.id) {
             chat.active_agent = "Software Architect".to_owned();
         }
-        
+
         let _ = state.add_message(
             &session.id,
             MonitorMessageRequest {
@@ -11484,12 +11964,12 @@ mod tests {
     fn watchdog_event_created_on_waiting_for_human() {
         let mut state = MonitorState::default();
         let session = state.create_session(Some("Watchdog test".to_owned()));
-        
+
         // Manually set active_agent to a background agent for testing
         if let Some(chat) = state.open_chats.iter_mut().find(|c| c.id == session.id) {
             chat.active_agent = "Software Architect".to_owned();
         }
-        
+
         let _ = state.add_message(
             &session.id,
             MonitorMessageRequest {
@@ -11519,14 +11999,18 @@ mod tests {
         // Create a background session and route it
         let bg_session = state.create_session(Some("background test".to_owned()));
         state.route_session(&bg_session.id, "software");
-        
+
         // Manually set active_agent to a background agent for testing
         if let Some(chat) = state.open_chats.iter_mut().find(|c| c.id == bg_session.id) {
             chat.active_agent = "Software Architect".to_owned();
         }
-        
+
         // Set the current_packet_id on the running loop so watchdog can link events
-        if let Some(loop_entry) = state.running_loops.iter_mut().find(|l| l.id == "software-architect") {
+        if let Some(loop_entry) = state
+            .running_loops
+            .iter_mut()
+            .find(|l| l.id == "software-architect")
+        {
             loop_entry.current_packet_id = Some(packet_id.clone());
         }
 
@@ -11545,7 +12029,10 @@ mod tests {
             "Watchdog event should be created"
         );
         let event = state.watchdog_events.first().unwrap();
-        assert_eq!(event.kind, WatchdogEventKind::CompletionClaimWithoutEvidence);
+        assert_eq!(
+            event.kind,
+            WatchdogEventKind::CompletionClaimWithoutEvidence
+        );
     }
 
     #[test]
@@ -11592,7 +12079,10 @@ mod tests {
 
         // Count watchdog events (should be 0 because watchdog messages don't trigger detection)
         let wde_count = state.watchdog_events.len();
-        assert_eq!(wde_count, 0, "Watchdog should not trigger on watchdog messages");
+        assert_eq!(
+            wde_count, 0,
+            "Watchdog should not trigger on watchdog messages"
+        );
     }
 
     #[test]
@@ -11634,12 +12124,12 @@ mod tests {
 
         // Create a packet via routing
         state.route_session(&session.id, "software");
-        
+
         // Get the packet and transition it to InProgress, then set an old timestamp
         if let Some(packet) = state.packets.first() {
             let packet_id = packet.id.clone();
             let _ = packet; // Drop borrow
-            
+
             let _ = state.apply_packet_transition(
                 &packet_id,
                 PacketState::InProgress,
@@ -11647,7 +12137,7 @@ mod tests {
                 "transition to InProgress",
                 vec![],
             );
-            
+
             // Now set an old timestamp
             if let Some(p) = state.packets.iter_mut().find(|pkt| pkt.id == packet_id) {
                 p.updated_at = "2020-01-01T00:00:00Z".to_owned();
@@ -11672,7 +12162,7 @@ mod tests {
 
         // Create a packet via routing
         state.route_session(&session.id, "software");
-        
+
         // Get the packet and manually set an old timestamp
         if let Some(packet) = state.packets.first_mut() {
             packet.updated_at = "2020-01-01T00:00:00Z".to_owned();
@@ -11719,10 +12209,10 @@ mod tests {
         state.route_session(&session1.id, "software");
         state.route_session(&session2.id, "software");
         state.route_session(&session3.id, "software");
-        
+
         // Collect packet IDs before transitioning
         let packet_ids: Vec<String> = state.packets.iter().map(|p| p.id.clone()).collect();
-        
+
         // Transition packets to non-active states
         if packet_ids.len() > 0 {
             let _ = state.apply_packet_transition(
@@ -11790,8 +12280,7 @@ mod tests {
         .expect("should return a response");
 
         assert_eq!(
-            response.status_code,
-            409,
+            response.status_code, 409,
             "mismatched session/event correction should be rejected"
         );
 
@@ -11813,15 +12302,11 @@ mod tests {
             .map(|s| s.messages.len())
             .unwrap_or(0);
         assert_eq!(
-            current_count_b,
-            message_count_b,
+            current_count_b, message_count_b,
             "no corrective message should be injected into mismatched session"
         );
         assert!(
-            guard
-                .open_chats
-                .iter()
-                .any(|s| s.id == session_a),
+            guard.open_chats.iter().any(|s| s.id == session_a),
             "source session should still be present"
         );
     }
@@ -11848,22 +12333,26 @@ mod tests {
                 vec![],
             )
             .expect("transition should be valid");
-        assert!(transitioned.is_some(), "packet should transition to in_progress");
+        assert!(
+            transitioned.is_some(),
+            "packet should transition to in_progress"
+        );
 
-        if let Some(packet) = state.packets.iter_mut().find(|packet| packet.id == packet_id) {
+        if let Some(packet) = state
+            .packets
+            .iter_mut()
+            .find(|packet| packet.id == packet_id)
+        {
             packet.updated_at = "2020-01-01T00:00:00Z".to_owned();
         }
 
         let changed = state.detect_manager_closure_contract_violations();
         assert!(changed, "contract monitor should report created events");
         assert!(
-            state
-                .watchdog_events
-                .iter()
-                .any(|event| {
-                    event.kind == WatchdogEventKind::ExpectedNextActionMissing
-                        && event.packet_id.as_deref() == Some(packet_id.as_str())
-                }),
+            state.watchdog_events.iter().any(|event| {
+                event.kind == WatchdogEventKind::ExpectedNextActionMissing
+                    && event.packet_id.as_deref() == Some(packet_id.as_str())
+            }),
             "ExpectedNextActionMissing should be created for stale in-progress manager packets"
         );
     }
@@ -11890,7 +12379,10 @@ mod tests {
                 vec![],
             )
             .expect("transition should be valid");
-        assert!(transitioned.is_some(), "packet should transition to in_progress");
+        assert!(
+            transitioned.is_some(),
+            "packet should transition to in_progress"
+        );
 
         if let Some(parent) = state
             .packets
@@ -11914,13 +12406,10 @@ mod tests {
 
         let _ = state.detect_manager_closure_contract_violations();
         assert!(
-            !state
-                .watchdog_events
-                .iter()
-                .any(|event| {
-                    event.kind == WatchdogEventKind::ExpectedNextActionMissing
-                        && event.packet_id.as_deref() == Some(parent_packet_id.as_str())
-                }),
+            !state.watchdog_events.iter().any(|event| {
+                event.kind == WatchdogEventKind::ExpectedNextActionMissing
+                    && event.packet_id.as_deref() == Some(parent_packet_id.as_str())
+            }),
             "real parent-linked child packet should satisfy manager closure"
         );
     }
@@ -11947,7 +12436,10 @@ mod tests {
                 vec![],
             )
             .expect("transition should be valid");
-        assert!(transitioned.is_some(), "packet should transition to in_progress");
+        assert!(
+            transitioned.is_some(),
+            "packet should transition to in_progress"
+        );
 
         if let Some(parent) = state
             .packets
@@ -11972,13 +12464,10 @@ mod tests {
         let changed = state.detect_manager_closure_contract_violations();
         assert!(changed, "contract monitor should report created events");
         assert!(
-            state
-                .watchdog_events
-                .iter()
-                .any(|event| {
-                    event.kind == WatchdogEventKind::ExpectedNextActionMissing
-                        && event.packet_id.as_deref() == Some(parent_packet_id.as_str())
-                }),
+            state.watchdog_events.iter().any(|event| {
+                event.kind == WatchdogEventKind::ExpectedNextActionMissing
+                    && event.packet_id.as_deref() == Some(parent_packet_id.as_str())
+            }),
             "unrelated same-session packet must not satisfy manager child-packet closure"
         );
     }
@@ -12000,22 +12489,24 @@ mod tests {
             "worker packet".to_owned(),
         );
 
-        if let Some(packet) = state.packets.iter_mut().find(|packet| packet.id == packet_id) {
+        if let Some(packet) = state
+            .packets
+            .iter_mut()
+            .find(|packet| packet.id == packet_id)
+        {
             packet.updated_at = "2020-01-01T00:00:00Z".to_owned();
         }
 
         let _ = state.detect_manager_closure_contract_violations();
         assert!(
-            !state
-                .watchdog_events
-                .iter()
-                .any(|event| {
-                    event.packet_id.as_deref() == Some(packet_id.as_str())
-                        && matches!(
-                            event.kind,
-                            WatchdogEventKind::ExpectedNextActionMissing | WatchdogEventKind::TransitionMissing
-                        )
-                }),
+            !state.watchdog_events.iter().any(|event| {
+                event.packet_id.as_deref() == Some(packet_id.as_str())
+                    && matches!(
+                        event.kind,
+                        WatchdogEventKind::ExpectedNextActionMissing
+                            | WatchdogEventKind::TransitionMissing
+                    )
+            }),
             "non-manager packets must not trigger manager closure watchdog events"
         );
     }
@@ -12033,20 +12524,21 @@ mod tests {
             .id
             .clone();
 
-        if let Some(packet) = state.packets.iter_mut().find(|packet| packet.id == packet_id) {
+        if let Some(packet) = state
+            .packets
+            .iter_mut()
+            .find(|packet| packet.id == packet_id)
+        {
             packet.updated_at = "2020-01-01T00:00:00Z".to_owned();
         }
 
         let changed = state.detect_manager_closure_contract_violations();
         assert!(changed, "contract monitor should report created events");
         assert!(
-            state
-                .watchdog_events
-                .iter()
-                .any(|event| {
-                    event.kind == WatchdogEventKind::TransitionMissing
-                        && event.packet_id.as_deref() == Some(packet_id.as_str())
-                }),
+            state.watchdog_events.iter().any(|event| {
+                event.kind == WatchdogEventKind::TransitionMissing
+                    && event.packet_id.as_deref() == Some(packet_id.as_str())
+            }),
             "TransitionMissing should be created for stale dispatched packets"
         );
     }

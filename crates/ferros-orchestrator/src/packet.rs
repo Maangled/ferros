@@ -1,4 +1,6 @@
 use std::fmt;
+use std::ops::{Index, IndexMut};
+use std::slice::{Iter, IterMut};
 
 use serde::{Deserialize, Serialize};
 
@@ -96,15 +98,27 @@ pub fn try_transition(
             | (PacketState::Staged, PacketState::HumanInterventionRequired)
             | (PacketState::Staged, PacketState::Failed)
             | (PacketState::DispatchedToManager, PacketState::InProgress)
-            | (PacketState::DispatchedToManager, PacketState::HumanInterventionRequired)
+            | (
+                PacketState::DispatchedToManager,
+                PacketState::HumanInterventionRequired
+            )
             | (PacketState::InProgress, PacketState::AwaitingReview)
             | (PacketState::InProgress, PacketState::Failed)
-            | (PacketState::InProgress, PacketState::HumanInterventionRequired)
+            | (
+                PacketState::InProgress,
+                PacketState::HumanInterventionRequired
+            )
             | (PacketState::AwaitingReview, PacketState::Reviewed)
-            | (PacketState::AwaitingReview, PacketState::HumanInterventionRequired)
+            | (
+                PacketState::AwaitingReview,
+                PacketState::HumanInterventionRequired
+            )
             | (PacketState::Reviewed, PacketState::Resolved)
             | (PacketState::Reviewed, PacketState::Failed)
-            | (PacketState::Reviewed, PacketState::HumanInterventionRequired)
+            | (
+                PacketState::Reviewed,
+                PacketState::HumanInterventionRequired
+            )
     );
     if legal {
         Ok(to)
@@ -118,7 +132,9 @@ pub fn try_transition(
 }
 
 pub fn has_non_empty_evidence_refs(evidence_refs: &[String]) -> bool {
-    evidence_refs.iter().any(|reference| !reference.trim().is_empty())
+    evidence_refs
+        .iter()
+        .any(|reference| !reference.trim().is_empty())
 }
 
 pub fn validate_transition_requirements(
@@ -176,8 +192,7 @@ pub fn validate_transition_requirements(
             return Err(PacketTransitionError {
                 from: from.clone(),
                 to,
-                message: "failed transition from reviewed requires gatekeeper decision"
-                    .to_owned(),
+                message: "failed transition from reviewed requires gatekeeper decision".to_owned(),
             });
         }
     }
@@ -245,12 +260,315 @@ pub struct MonitorPacket {
     pub audit_trail: Vec<PacketAuditEntry>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PacketTransitionRequest {
+    pub packet_id: String,
+    pub to_state: PacketState,
+    pub actor: String,
+    pub reason: String,
+    pub at: String,
+    pub evidence_refs: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PacketClaimRole {
+    Manager,
+    Worker,
+    Reviewer,
+    Gatekeeper,
+    Recovery,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PacketClaim {
+    pub packet_id: String,
+    pub role: PacketClaimRole,
+    pub state: PacketState,
+}
+
+fn is_manager_role(manager: &str) -> bool {
+    matches!(
+        manager,
+        "Software Architect"
+            | "Business Agent"
+            | "FERROS Agent Architect Agent"
+            | "Coding Agent Architect"
+            | "Business Agent Architect"
+    )
+}
+
+fn packet_is_claimable_by_role(packet: &MonitorPacket, role: PacketClaimRole) -> bool {
+    match role {
+        PacketClaimRole::Manager => {
+            packet.state == PacketState::DispatchedToManager && is_manager_role(&packet.manager)
+        }
+        PacketClaimRole::Worker => packet.state == PacketState::InProgress,
+        PacketClaimRole::Reviewer => packet.state == PacketState::AwaitingReview,
+        PacketClaimRole::Gatekeeper => packet.state == PacketState::Reviewed,
+        PacketClaimRole::Recovery => packet.state == PacketState::Failed,
+    }
+}
+
+pub trait PacketRepository {
+    fn register_packet(&mut self, packet: MonitorPacket);
+    fn packet(&self, packet_id: &str) -> Option<&MonitorPacket>;
+    fn claim_next(&self, role: PacketClaimRole) -> Option<PacketClaim>;
+    fn has_child_packets(&self, packet_id: &str) -> bool;
+    fn apply_transition(
+        &mut self,
+        transition: PacketTransitionRequest,
+    ) -> Result<Option<PacketTransitionApplied>, PacketTransitionError>;
+    fn set_review_verdict(
+        &mut self,
+        packet_id: &str,
+        verdict: ReviewVerdict,
+        at: String,
+    ) -> Result<bool, String>;
+    fn set_gatekeeper_decision(
+        &mut self,
+        packet_id: &str,
+        decision: GatekeeperDecision,
+        at: String,
+    ) -> Result<bool, String>;
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(transparent)]
+pub struct InMemoryPacketRepository {
+    packets: Vec<MonitorPacket>,
+}
+
+impl InMemoryPacketRepository {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn iter(&self) -> Iter<'_, MonitorPacket> {
+        self.packets.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut<'_, MonitorPacket> {
+        self.packets.iter_mut()
+    }
+
+    pub fn first(&self) -> Option<&MonitorPacket> {
+        self.packets.first()
+    }
+
+    pub fn first_mut(&mut self) -> Option<&mut MonitorPacket> {
+        self.packets.first_mut()
+    }
+
+    pub fn push(&mut self, packet: MonitorPacket) {
+        self.register_packet(packet);
+    }
+
+    pub fn len(&self) -> usize {
+        self.packets.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.packets.is_empty()
+    }
+}
+
+impl Index<usize> for InMemoryPacketRepository {
+    type Output = MonitorPacket;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.packets[index]
+    }
+}
+
+impl IndexMut<usize> for InMemoryPacketRepository {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.packets[index]
+    }
+}
+
+impl<'a> IntoIterator for &'a InMemoryPacketRepository {
+    type Item = &'a MonitorPacket;
+    type IntoIter = Iter<'a, MonitorPacket>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a mut InMemoryPacketRepository {
+    type Item = &'a mut MonitorPacket;
+    type IntoIter = IterMut<'a, MonitorPacket>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
+}
+
+impl PacketRepository for InMemoryPacketRepository {
+    fn register_packet(&mut self, packet: MonitorPacket) {
+        self.packets.push(packet);
+    }
+
+    fn packet(&self, packet_id: &str) -> Option<&MonitorPacket> {
+        self.packets.iter().find(|packet| packet.id == packet_id)
+    }
+
+    fn claim_next(&self, role: PacketClaimRole) -> Option<PacketClaim> {
+        self.packets
+            .iter()
+            .find(|packet| packet_is_claimable_by_role(packet, role))
+            .map(|packet| PacketClaim {
+                packet_id: packet.id.clone(),
+                role,
+                state: packet.state.clone(),
+            })
+    }
+
+    fn has_child_packets(&self, packet_id: &str) -> bool {
+        self.packets
+            .iter()
+            .any(|packet| packet.parent_packet_id.as_deref() == Some(packet_id))
+    }
+
+    fn apply_transition(
+        &mut self,
+        transition: PacketTransitionRequest,
+    ) -> Result<Option<PacketTransitionApplied>, PacketTransitionError> {
+        let PacketTransitionRequest {
+            packet_id,
+            to_state,
+            actor,
+            reason,
+            at,
+            evidence_refs,
+        } = transition;
+
+        let (from, seq, review_verdict, gatekeeper_decision) = {
+            let Some(packet) = self.packet(&packet_id) else {
+                return Ok(None);
+            };
+            (
+                packet.state.clone(),
+                packet.audit_seq + 1,
+                packet.review_verdict.clone(),
+                packet.gatekeeper_decision.clone(),
+            )
+        };
+
+        validate_transition_requirements(
+            &from,
+            to_state.clone(),
+            review_verdict.as_ref(),
+            gatekeeper_decision.as_ref(),
+            &evidence_refs,
+        )?;
+
+        let next = try_transition(&from, to_state, &actor, &reason, &at)?;
+        let audit_entry = PacketAuditEntry {
+            seq,
+            from: from.clone(),
+            to: next.clone(),
+            actor,
+            reason,
+            at: at.clone(),
+            evidence_refs,
+        };
+        let packet = self
+            .packets
+            .iter_mut()
+            .find(|packet| packet.id == packet_id)
+            .unwrap();
+        packet.state = next.clone();
+        packet.updated_at = at;
+        packet.audit_seq = seq;
+        packet.audit_trail.push(audit_entry);
+
+        Ok(Some(PacketTransitionApplied {
+            packet_id,
+            from,
+            to: next,
+            seq,
+        }))
+    }
+
+    fn set_review_verdict(
+        &mut self,
+        packet_id: &str,
+        verdict: ReviewVerdict,
+        at: String,
+    ) -> Result<bool, String> {
+        let Some(packet) = self
+            .packets
+            .iter_mut()
+            .find(|packet| packet.id == packet_id)
+        else {
+            return Ok(false);
+        };
+        if packet.state != PacketState::AwaitingReview {
+            return Err(
+                "review verdict can only be set while packet is awaiting_review".to_owned(),
+            );
+        }
+        packet.review_verdict = Some(verdict);
+        packet.updated_at = at;
+        Ok(true)
+    }
+
+    fn set_gatekeeper_decision(
+        &mut self,
+        packet_id: &str,
+        decision: GatekeeperDecision,
+        at: String,
+    ) -> Result<bool, String> {
+        let Some(packet) = self
+            .packets
+            .iter_mut()
+            .find(|packet| packet.id == packet_id)
+        else {
+            return Ok(false);
+        };
+        if packet.state != PacketState::Reviewed {
+            return Err("gatekeeper decision can only be set while packet is reviewed".to_owned());
+        }
+        packet.gatekeeper_decision = Some(decision);
+        packet.updated_at = at;
+        Ok(true)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        validate_transition_requirements, try_transition, GatekeeperDecision, PacketState,
-        ReviewVerdict,
+        try_transition, validate_transition_requirements, GatekeeperDecision,
+        InMemoryPacketRepository, MonitorPacket, PacketClaimRole, PacketRepository, PacketState,
+        PacketTransitionRequest, ReviewVerdict,
     };
+
+    fn make_packet(id: &str, manager: &str, state: PacketState) -> MonitorPacket {
+        MonitorPacket {
+            id: id.to_owned(),
+            session_id: "test-session".to_owned(),
+            origin_message_id: None,
+            parent_packet_id: None,
+            work_order_id: None,
+            manager: manager.to_owned(),
+            state,
+            review_verdict: None,
+            gatekeeper_decision: None,
+            lifecycle_thread_id: None,
+            notification_id: None,
+            created_at: "2026-01-01T00:00:00Z".to_owned(),
+            updated_at: "2026-01-01T00:00:00Z".to_owned(),
+            summary: "test packet".to_owned(),
+            last_error: None,
+            audit_seq: 0,
+            audit_trail: vec![],
+        }
+    }
+
+    fn make_staged_packet(id: &str) -> MonitorPacket {
+        make_packet(id, "test-manager", PacketState::Staged)
+    }
 
     #[test]
     fn packet_state_serializes_current_wire_names() {
@@ -258,7 +576,10 @@ mod tests {
             serde_json::to_string(state).expect("PacketState should serialize")
         }
 
-        assert_eq!(wire(&PacketState::DispatchedToManager), "\"dispatched_to_manager\"");
+        assert_eq!(
+            wire(&PacketState::DispatchedToManager),
+            "\"dispatched_to_manager\""
+        );
         assert_eq!(
             wire(&PacketState::HumanInterventionRequired),
             "\"human_intervention_required\""
@@ -296,27 +617,44 @@ mod tests {
     #[test]
     fn packet_transition_matrix_accepts_only_legal_edges() {
         let check = |from: &PacketState, to: PacketState| {
-            try_transition(from, to, "test-actor", "test reason", "2026-01-01T00:00:00Z")
+            try_transition(
+                from,
+                to,
+                "test-actor",
+                "test reason",
+                "2026-01-01T00:00:00Z",
+            )
         };
 
         assert!(check(&PacketState::Staged, PacketState::DispatchedToManager).is_ok());
         assert!(check(&PacketState::Staged, PacketState::HumanInterventionRequired).is_ok());
         assert!(check(&PacketState::Staged, PacketState::Failed).is_ok());
         assert!(check(&PacketState::DispatchedToManager, PacketState::InProgress).is_ok());
-        assert!(
-            check(&PacketState::DispatchedToManager, PacketState::HumanInterventionRequired)
-                .is_ok()
-        );
+        assert!(check(
+            &PacketState::DispatchedToManager,
+            PacketState::HumanInterventionRequired
+        )
+        .is_ok());
         assert!(check(&PacketState::InProgress, PacketState::AwaitingReview).is_ok());
         assert!(check(&PacketState::InProgress, PacketState::Failed).is_ok());
-        assert!(check(&PacketState::InProgress, PacketState::HumanInterventionRequired).is_ok());
+        assert!(check(
+            &PacketState::InProgress,
+            PacketState::HumanInterventionRequired
+        )
+        .is_ok());
         assert!(check(&PacketState::AwaitingReview, PacketState::Reviewed).is_ok());
-        assert!(
-            check(&PacketState::AwaitingReview, PacketState::HumanInterventionRequired).is_ok()
-        );
+        assert!(check(
+            &PacketState::AwaitingReview,
+            PacketState::HumanInterventionRequired
+        )
+        .is_ok());
         assert!(check(&PacketState::Reviewed, PacketState::Resolved).is_ok());
         assert!(check(&PacketState::Reviewed, PacketState::Failed).is_ok());
-        assert!(check(&PacketState::Reviewed, PacketState::HumanInterventionRequired).is_ok());
+        assert!(check(
+            &PacketState::Reviewed,
+            PacketState::HumanInterventionRequired
+        )
+        .is_ok());
 
         assert!(check(&PacketState::Resolved, PacketState::Staged).is_err());
         assert!(check(&PacketState::Failed, PacketState::Staged).is_err());
@@ -348,5 +686,119 @@ mod tests {
         );
 
         assert!(result.is_ok(), "resolved should accept full contract");
+    }
+
+    #[test]
+    fn in_memory_repository_apply_transition_updates_state_and_audit_trail() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_staged_packet("repo-p1"));
+
+        let result = repo.apply_transition(PacketTransitionRequest {
+            packet_id: "repo-p1".to_owned(),
+            to_state: PacketState::DispatchedToManager,
+            actor: "test-actor".to_owned(),
+            reason: "test reason".to_owned(),
+            at: "2026-01-01T00:00:01Z".to_owned(),
+            evidence_refs: vec![],
+        });
+
+        assert!(result.is_ok(), "valid transition must succeed");
+        let applied = result.unwrap().expect("packet should exist");
+        assert_eq!(applied.from, PacketState::Staged);
+        assert_eq!(applied.to, PacketState::DispatchedToManager);
+        assert_eq!(applied.seq, 1);
+
+        let packet = repo.packet("repo-p1").unwrap();
+        assert_eq!(packet.state, PacketState::DispatchedToManager);
+        assert_eq!(packet.audit_seq, 1);
+        assert_eq!(packet.audit_trail.len(), 1);
+    }
+
+    #[test]
+    fn in_memory_repository_rejects_review_verdict_outside_awaiting_review() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_staged_packet("repo-p2"));
+
+        let result = repo.set_review_verdict(
+            "repo-p2",
+            ReviewVerdict::Approved,
+            "2026-01-01T00:00:01Z".to_owned(),
+        );
+
+        assert!(result.is_err(), "verdict should require awaiting_review");
+    }
+
+    #[test]
+    fn claim_next_manager_returns_first_dispatched_manager_packet() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_packet(
+            "not-manager",
+            "test-manager",
+            PacketState::DispatchedToManager,
+        ));
+        repo.register_packet(make_packet(
+            "manager-1",
+            "Software Architect",
+            PacketState::DispatchedToManager,
+        ));
+        repo.register_packet(make_packet(
+            "manager-2",
+            "Business Agent Architect",
+            PacketState::DispatchedToManager,
+        ));
+
+        let claim = repo
+            .claim_next(PacketClaimRole::Manager)
+            .expect("manager claim should exist");
+
+        assert_eq!(claim.packet_id, "manager-1");
+        assert_eq!(claim.role, PacketClaimRole::Manager);
+        assert_eq!(claim.state, PacketState::DispatchedToManager);
+    }
+
+    #[test]
+    fn claim_next_routes_other_roles_by_packet_state() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_packet("worker-1", "worker", PacketState::InProgress));
+        repo.register_packet(make_packet(
+            "reviewer-1",
+            "reviewer",
+            PacketState::AwaitingReview,
+        ));
+        repo.register_packet(make_packet(
+            "gatekeeper-1",
+            "gatekeeper",
+            PacketState::Reviewed,
+        ));
+        repo.register_packet(make_packet("recovery-1", "recovery", PacketState::Failed));
+
+        let worker = repo
+            .claim_next(PacketClaimRole::Worker)
+            .expect("worker claim should exist");
+        let reviewer = repo
+            .claim_next(PacketClaimRole::Reviewer)
+            .expect("reviewer claim should exist");
+        let gatekeeper = repo
+            .claim_next(PacketClaimRole::Gatekeeper)
+            .expect("gatekeeper claim should exist");
+        let recovery = repo
+            .claim_next(PacketClaimRole::Recovery)
+            .expect("recovery claim should exist");
+
+        assert_eq!(worker.packet_id, "worker-1");
+        assert_eq!(reviewer.packet_id, "reviewer-1");
+        assert_eq!(gatekeeper.packet_id, "gatekeeper-1");
+        assert_eq!(recovery.packet_id, "recovery-1");
+    }
+
+    #[test]
+    fn claim_next_returns_none_when_no_packet_matches_role() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_staged_packet("repo-p3"));
+
+        assert!(repo.claim_next(PacketClaimRole::Worker).is_none());
+        assert!(repo.claim_next(PacketClaimRole::Reviewer).is_none());
+        assert!(repo.claim_next(PacketClaimRole::Gatekeeper).is_none());
+        assert!(repo.claim_next(PacketClaimRole::Recovery).is_none());
     }
 }
