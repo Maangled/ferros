@@ -4216,6 +4216,30 @@ impl MonitorState {
             }
         }
 
+        if from == PacketState::Reviewed && to_state == PacketState::Failed {
+            if !matches!(
+                gatekeeper_decision,
+                Some(GatekeeperDecision::KeepOpen) | Some(GatekeeperDecision::EscalateHuman)
+            ) {
+                return Err(PacketTransitionError {
+                    from,
+                    to: to_state,
+                    message: "failed transition from reviewed requires gatekeeper decision".to_owned(),
+                });
+            }
+        }
+
+        if from == PacketState::Reviewed
+            && to_state == PacketState::HumanInterventionRequired
+            && gatekeeper_decision != Some(GatekeeperDecision::EscalateHuman)
+        {
+            return Err(PacketTransitionError {
+                from,
+                to: to_state,
+                message: "human intervention transition from reviewed requires escalate_human gatekeeper decision".to_owned(),
+            });
+        }
+
         // Phase 2: FSM guard — pure, no mutation.
         let next = try_transition(&from, to_state, actor, reason, &at)?;
         // Phase 3: mutation only after guard accepts.
@@ -10884,6 +10908,159 @@ mod tests {
         let guard = state.lock().unwrap();
         let packet = guard.packets.iter().find(|packet| packet.id == "pkt-gk2").unwrap();
         assert_eq!(packet.gatekeeper_decision, Some(GatekeeperDecision::Close));
+    }
+
+    #[test]
+    fn apply_packet_transition_rejects_failed_from_reviewed_without_gatekeeper_decision() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p13"));
+        state
+            .apply_packet_transition(
+                "p13",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p13", PacketState::InProgress, "worker", "working", vec![])
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p13",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/p13".to_owned()],
+            )
+            .unwrap();
+        assert!(matches!(
+            state.set_packet_review_verdict("p13", ReviewVerdict::Approved),
+            Ok(true)
+        ));
+        state
+            .apply_packet_transition("p13", PacketState::Reviewed, "reviewer", "approved", vec![])
+            .unwrap();
+
+        let result = state.apply_packet_transition(
+            "p13",
+            PacketState::Failed,
+            "gatekeeper",
+            "cannot close",
+            vec![],
+        );
+        assert!(result.is_err());
+        let err = result.err().unwrap();
+        assert_eq!(
+            err.message,
+            "failed transition from reviewed requires gatekeeper decision"
+        );
+    }
+
+    #[test]
+    fn apply_packet_transition_allows_failed_from_reviewed_with_non_close_gatekeeper_decision() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p14"));
+        state
+            .apply_packet_transition(
+                "p14",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p14", PacketState::InProgress, "worker", "working", vec![])
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p14",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/p14".to_owned()],
+            )
+            .unwrap();
+        assert!(matches!(
+            state.set_packet_review_verdict("p14", ReviewVerdict::Approved),
+            Ok(true)
+        ));
+        state
+            .apply_packet_transition("p14", PacketState::Reviewed, "reviewer", "approved", vec![])
+            .unwrap();
+        assert!(matches!(
+            state.set_packet_gatekeeper_decision("p14", GatekeeperDecision::KeepOpen),
+            Ok(true)
+        ));
+
+        let result = state.apply_packet_transition(
+            "p14",
+            PacketState::Failed,
+            "gatekeeper",
+            "cannot close",
+            vec![],
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn apply_packet_transition_requires_escalate_human_decision_for_reviewed_to_human_intervention()
+    {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p15"));
+        state
+            .apply_packet_transition(
+                "p15",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p15", PacketState::InProgress, "worker", "working", vec![])
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p15",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/p15".to_owned()],
+            )
+            .unwrap();
+        assert!(matches!(
+            state.set_packet_review_verdict("p15", ReviewVerdict::Approved),
+            Ok(true)
+        ));
+        state
+            .apply_packet_transition("p15", PacketState::Reviewed, "reviewer", "approved", vec![])
+            .unwrap();
+
+        let reject = state.apply_packet_transition(
+            "p15",
+            PacketState::HumanInterventionRequired,
+            "gatekeeper",
+            "needs operator",
+            vec![],
+        );
+        assert!(reject.is_err());
+
+        assert!(matches!(
+            state.set_packet_gatekeeper_decision("p15", GatekeeperDecision::EscalateHuman),
+            Ok(true)
+        ));
+
+        let allow = state.apply_packet_transition(
+            "p15",
+            PacketState::HumanInterventionRequired,
+            "gatekeeper",
+            "needs operator",
+            vec![],
+        );
+        assert!(allow.is_ok());
     }
 
     // ── Packet 4b tests ───────────────────────────────────────────────────────
