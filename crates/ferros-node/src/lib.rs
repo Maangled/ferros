@@ -3990,6 +3990,17 @@ impl MonitorState {
             };
             (packet.state.clone(), packet.audit_seq + 1)
         };
+
+        // Packet 3 worker evidence contract:
+        // AwaitingReview is review-ready and must have packet evidence.
+        if to_state == PacketState::AwaitingReview && evidence_refs.is_empty() {
+            return Err(PacketTransitionError {
+                from,
+                to: to_state,
+                message: "review-ready transition requires packet evidence".to_owned(),
+            });
+        }
+
         // Phase 2: FSM guard — pure, no mutation.
         let next = try_transition(&from, to_state, actor, reason, &at)?;
         // Phase 3: mutation only after guard accepts.
@@ -9830,6 +9841,135 @@ mod tests {
         assert!(
             result.unwrap().is_none(),
             "missing packet must return Ok(None)"
+        );
+    }
+
+    #[test]
+    fn apply_packet_transition_rejects_awaiting_review_without_evidence() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p5"));
+
+        state
+            .apply_packet_transition(
+                "p5",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p5", PacketState::InProgress, "worker", "working", vec![])
+            .unwrap();
+
+        let result = state.apply_packet_transition(
+            "p5",
+            PacketState::AwaitingReview,
+            "worker",
+            "done",
+            vec![],
+        );
+        assert!(result.is_err(), "awaiting_review must require packet evidence");
+        let err = result.err().unwrap();
+        assert_eq!(
+            err.message,
+            "review-ready transition requires packet evidence",
+            "expected worker evidence contract message"
+        );
+    }
+
+    #[test]
+    fn apply_packet_transition_allows_awaiting_review_with_transition_evidence() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p6"));
+
+        state
+            .apply_packet_transition(
+                "p6",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p6", PacketState::InProgress, "worker", "working", vec![])
+            .unwrap();
+
+        let result = state.apply_packet_transition(
+            "p6",
+            PacketState::AwaitingReview,
+            "worker",
+            "done with proof",
+            vec!["artifact://run-log/123".to_owned()],
+        );
+        assert!(result.is_ok(), "awaiting_review should succeed with evidence refs");
+
+        let packet = state.packets.iter().find(|p| p.id == "p6").unwrap();
+        assert_eq!(packet.state, PacketState::AwaitingReview);
+    }
+
+    #[test]
+    fn watchdog_correction_does_not_satisfy_worker_evidence_contract() {
+        let state = make_state();
+        let (session_id, packet_id) = {
+            let mut guard = state.lock().unwrap();
+            let session = guard.create_session(Some("packet3-watchdog".to_owned()));
+            assert!(guard.route_session(&session.id, "software"));
+            let packet_id = guard.packets.first().unwrap().id.clone();
+
+            guard
+                .apply_packet_transition(
+                    &packet_id,
+                    PacketState::InProgress,
+                    "worker",
+                    "working",
+                    vec![],
+                )
+                .unwrap();
+
+            guard.watchdog_events.push(WatchdogEvent {
+                id: "wde-p3".to_owned(),
+                kind: WatchdogEventKind::WaitingForHuman,
+                agent_id: "Software Architect".to_owned(),
+                session_id: Some(session.id.clone()),
+                packet_id: Some(packet_id.clone()),
+                message_id: None,
+                detected_at: monitor_now(),
+                detail: "waiting".to_owned(),
+                corrective_instruction: Some(super::get_fixed_corrective_instruction()),
+                correction_status: WatchdogCorrectionStatus::Pending,
+            });
+
+            (session.id, packet_id)
+        };
+
+        let correction_response = route_monitor_request_with_state(
+            "POST",
+            &format!("/monitor/sessions/{session_id}/watchdog/correct"),
+            body(serde_json::json!({ "watchdogEventId": "wde-p3" })),
+            &state,
+        )
+        .expect("watchdog correction route should respond");
+        assert_eq!(correction_response.status_code, 200);
+
+        let transition_response = route_monitor_request_with_state(
+            "POST",
+            &format!("/monitor/packets/{packet_id}/state"),
+            body(serde_json::json!({
+                "toState": "awaiting_review",
+                "actor": "worker",
+                "reason": "done",
+                "evidenceRefs": []
+            })),
+            &state,
+        )
+        .expect("packet state route should respond");
+
+        assert_eq!(
+            transition_response.status_code,
+            409,
+            "watchdog correction message must not count as packet evidence"
         );
     }
 
