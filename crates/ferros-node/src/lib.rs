@@ -269,6 +269,14 @@ enum ReviewVerdict {
     EscalateHuman,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+enum GatekeeperDecision {
+    Close,
+    KeepOpen,
+    EscalateHuman,
+}
+
 impl fmt::Display for PacketState {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -562,6 +570,8 @@ struct MonitorPacket {
     state: PacketState,
     #[serde(default)]
     review_verdict: Option<ReviewVerdict>,
+    #[serde(default)]
+    gatekeeper_decision: Option<GatekeeperDecision>,
     lifecycle_thread_id: Option<String>,
     notification_id: Option<String>,
     created_at: String,
@@ -665,6 +675,12 @@ struct MonitorPacketStateRequest {
 #[serde(rename_all = "camelCase")]
 struct MonitorPacketReviewVerdictRequest {
     verdict: ReviewVerdict,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorPacketGatekeeperDecisionRequest {
+    decision: GatekeeperDecision,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -2127,6 +2143,49 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
     }
 
     if let Some((packet_id, trailing)) = parse_monitor_packet_subroute(request_path) {
+        if trailing == "gatekeeper-decision" && method == "POST" {
+            let request: MonitorPacketGatekeeperDecisionRequest =
+                match serde_json::from_slice(&body) {
+                    Ok(parsed) => parsed,
+                    Err(error) => {
+                        return Some(enable_cors(text_response(
+                            400,
+                            "Bad Request",
+                            format!("invalid packet gatekeeper decision request: {error}"),
+                        )));
+                    }
+                };
+            let state = monitor_state();
+            let mut guard = match state.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    return Some(enable_cors(text_response(
+                        500,
+                        "Internal Server Error",
+                        "monitor state lock poisoned",
+                    )));
+                }
+            };
+            match guard.set_packet_gatekeeper_decision(packet_id, request.decision) {
+                Ok(true) => {}
+                Ok(false) => {
+                    return Some(enable_cors(text_response(
+                        404,
+                        "Not Found",
+                        "monitor packet not found",
+                    )));
+                }
+                Err(reason) => {
+                    return Some(enable_cors(text_response(409, "Conflict", reason)));
+                }
+            }
+            persist_monitor_state_best_effort(
+                &mut guard,
+                "packet.gatekeeper_decision persistence warning",
+            );
+            return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+        }
+
         if trailing == "review-verdict" && method == "POST" {
             let request: MonitorPacketReviewVerdictRequest = match serde_json::from_slice(&body) {
                 Ok(parsed) => parsed,
@@ -2493,6 +2552,35 @@ fn route_monitor_request_with_state(
     }
 
     if let Some((packet_id, trailing)) = parse_monitor_packet_subroute(request_path) {
+        if trailing == "gatekeeper-decision" && method == "POST" {
+            let request: MonitorPacketGatekeeperDecisionRequest =
+                match serde_json::from_slice(&body) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        return Some(enable_cors(text_response(
+                            400,
+                            "Bad Request",
+                            format!("invalid packet gatekeeper decision request: {e}"),
+                        )));
+                    }
+                };
+            let mut guard = state.lock().ok()?;
+            match guard.set_packet_gatekeeper_decision(packet_id, request.decision) {
+                Ok(true) => {}
+                Ok(false) => {
+                    return Some(enable_cors(text_response(
+                        404,
+                        "Not Found",
+                        "monitor packet not found",
+                    )));
+                }
+                Err(reason) => {
+                    return Some(enable_cors(text_response(409, "Conflict", reason)));
+                }
+            }
+            return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+        }
+
         if trailing == "review-verdict" && method == "POST" {
             let request: MonitorPacketReviewVerdictRequest = match serde_json::from_slice(&body) {
                 Ok(r) => r,
@@ -4022,6 +4110,7 @@ impl MonitorState {
             manager,
             state,
             review_verdict: None,
+            gatekeeper_decision: None,
             lifecycle_thread_id,
             notification_id,
             created_at: now.clone(),
@@ -4072,14 +4161,15 @@ impl MonitorState {
     ) -> Result<Option<PacketTransitionApplied>, PacketTransitionError> {
         let at = monitor_now();
         // Phase 1: collect read-only data; immutable borrow ends with this block.
-        let (from, seq, has_review_verdict) = {
+        let (from, seq, review_verdict, gatekeeper_decision) = {
             let Some(packet) = self.packets.iter().find(|p| p.id == packet_id) else {
                 return Ok(None);
             };
             (
                 packet.state.clone(),
                 packet.audit_seq + 1,
-                packet.review_verdict.is_some(),
+                packet.review_verdict.clone(),
+                packet.gatekeeper_decision.clone(),
             )
         };
 
@@ -4093,12 +4183,37 @@ impl MonitorState {
             });
         }
 
-        if to_state == PacketState::Reviewed && !has_review_verdict {
+        if to_state == PacketState::Reviewed && review_verdict.is_none() {
             return Err(PacketTransitionError {
                 from,
                 to: to_state,
                 message: "reviewed transition requires reviewer verdict".to_owned(),
             });
+        }
+
+        // Packet 5 gatekeeper closure contract.
+        if to_state == PacketState::Resolved {
+            if !has_non_empty_evidence_refs(&evidence_refs) {
+                return Err(PacketTransitionError {
+                    from,
+                    to: to_state,
+                    message: "resolved transition requires packet evidence".to_owned(),
+                });
+            }
+            if review_verdict != Some(ReviewVerdict::Approved) {
+                return Err(PacketTransitionError {
+                    from,
+                    to: to_state,
+                    message: "resolved transition requires approved reviewer verdict".to_owned(),
+                });
+            }
+            if gatekeeper_decision != Some(GatekeeperDecision::Close) {
+                return Err(PacketTransitionError {
+                    from,
+                    to: to_state,
+                    message: "resolved transition requires gatekeeper close decision".to_owned(),
+                });
+            }
         }
 
         // Phase 2: FSM guard — pure, no mutation.
@@ -4174,6 +4289,30 @@ impl MonitorState {
         packet.review_verdict = Some(verdict);
         packet.updated_at = monitor_now();
         self.push_event("packet.review_verdict", format!("{packet_id} verdict updated"));
+        Ok(true)
+    }
+
+    fn set_packet_gatekeeper_decision(
+        &mut self,
+        packet_id: &str,
+        decision: GatekeeperDecision,
+    ) -> Result<bool, String> {
+        let Some(packet) = self
+            .packets
+            .iter_mut()
+            .find(|packet| packet.id == packet_id)
+        else {
+            return Ok(false);
+        };
+        if packet.state != PacketState::Reviewed {
+            return Err("gatekeeper decision can only be set while packet is reviewed".to_owned());
+        }
+        packet.gatekeeper_decision = Some(decision);
+        packet.updated_at = monitor_now();
+        self.push_event(
+            "packet.gatekeeper_decision",
+            format!("{packet_id} gatekeeper decision updated"),
+        );
         Ok(true)
     }
 
@@ -6281,7 +6420,7 @@ mod tests {
         LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
         LocalRunwaySummary, MonitorDispatchBackend, MonitorDispatchBackendResult,
         MonitorLifecycleThread, MonitorMessageRequest, MonitorPacket, MonitorState,
-        PersistedMonitorState, PacketState, ProfileCliCommand, ReviewVerdict,
+        PersistedMonitorState, PacketState, ProfileCliCommand, ReviewVerdict, GatekeeperDecision,
         ProfileShellResponse, ScaffoldMonitorDispatchBackend, WatchdogEvent, WatchdogEventKind,
         WatchdogCorrectionStatus, MONITOR_MAX_WATCHDOG_EVENTS,
         DEFAULT_PROFILE_NAME,
@@ -9838,6 +9977,7 @@ mod tests {
             manager: "test-manager".to_owned(),
             state: PacketState::Staged,
             review_verdict: None,
+            gatekeeper_decision: None,
             lifecycle_thread_id: None,
             notification_id: None,
             created_at: "2026-01-01T00:00:00Z".to_owned(),
@@ -10454,6 +10594,296 @@ mod tests {
             409,
             "review verdict route must reject reviewed packets"
         );
+    }
+
+    #[test]
+    fn apply_packet_transition_rejects_resolved_without_gatekeeper_close_decision() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p9"));
+        state
+            .apply_packet_transition(
+                "p9",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p9", PacketState::InProgress, "worker", "working", vec![])
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p9",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/p9".to_owned()],
+            )
+            .unwrap();
+        assert!(matches!(
+            state.set_packet_review_verdict("p9", ReviewVerdict::Approved),
+            Ok(true)
+        ));
+        state
+            .apply_packet_transition("p9", PacketState::Reviewed, "reviewer", "approved", vec![])
+            .unwrap();
+
+        let result = state.apply_packet_transition(
+            "p9",
+            PacketState::Resolved,
+            "gatekeeper",
+            "close",
+            vec!["artifact://closure/p9".to_owned()],
+        );
+        assert!(result.is_err(), "resolved must require gatekeeper close decision");
+        let err = result.err().unwrap();
+        assert_eq!(
+            err.message,
+            "resolved transition requires gatekeeper close decision"
+        );
+    }
+
+    #[test]
+    fn apply_packet_transition_rejects_resolved_without_approved_reviewer_verdict() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p10"));
+        state
+            .apply_packet_transition(
+                "p10",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p10", PacketState::InProgress, "worker", "working", vec![])
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p10",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/p10".to_owned()],
+            )
+            .unwrap();
+        assert!(matches!(
+            state.set_packet_review_verdict("p10", ReviewVerdict::ChangesRequested),
+            Ok(true)
+        ));
+        state
+            .apply_packet_transition(
+                "p10",
+                PacketState::Reviewed,
+                "reviewer",
+                "changes requested",
+                vec![],
+            )
+            .unwrap();
+        assert!(matches!(
+            state.set_packet_gatekeeper_decision("p10", GatekeeperDecision::Close),
+            Ok(true)
+        ));
+
+        let result = state.apply_packet_transition(
+            "p10",
+            PacketState::Resolved,
+            "gatekeeper",
+            "close",
+            vec!["artifact://closure/p10".to_owned()],
+        );
+        assert!(result.is_err(), "resolved must require approved reviewer verdict");
+        let err = result.err().unwrap();
+        assert_eq!(
+            err.message,
+            "resolved transition requires approved reviewer verdict"
+        );
+    }
+
+    #[test]
+    fn apply_packet_transition_rejects_resolved_without_non_blank_evidence() {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p11"));
+        state
+            .apply_packet_transition(
+                "p11",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p11", PacketState::InProgress, "worker", "working", vec![])
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p11",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/p11".to_owned()],
+            )
+            .unwrap();
+        assert!(matches!(
+            state.set_packet_review_verdict("p11", ReviewVerdict::Approved),
+            Ok(true)
+        ));
+        state
+            .apply_packet_transition("p11", PacketState::Reviewed, "reviewer", "approved", vec![])
+            .unwrap();
+        assert!(matches!(
+            state.set_packet_gatekeeper_decision("p11", GatekeeperDecision::Close),
+            Ok(true)
+        ));
+
+        let result = state.apply_packet_transition(
+            "p11",
+            PacketState::Resolved,
+            "gatekeeper",
+            "close",
+            vec!["   ".to_owned()],
+        );
+        assert!(result.is_err(), "resolved must require non-blank evidence");
+        let err = result.err().unwrap();
+        assert_eq!(err.message, "resolved transition requires packet evidence");
+    }
+
+    #[test]
+    fn apply_packet_transition_allows_resolved_with_approved_verdict_gatekeeper_close_and_evidence()
+    {
+        let mut state = MonitorState::default();
+        state.packets.push(make_staged_packet("p12"));
+        state
+            .apply_packet_transition(
+                "p12",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        state
+            .apply_packet_transition("p12", PacketState::InProgress, "worker", "working", vec![])
+            .unwrap();
+        state
+            .apply_packet_transition(
+                "p12",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/p12".to_owned()],
+            )
+            .unwrap();
+        assert!(matches!(
+            state.set_packet_review_verdict("p12", ReviewVerdict::Approved),
+            Ok(true)
+        ));
+        state
+            .apply_packet_transition("p12", PacketState::Reviewed, "reviewer", "approved", vec![])
+            .unwrap();
+        assert!(matches!(
+            state.set_packet_gatekeeper_decision("p12", GatekeeperDecision::Close),
+            Ok(true)
+        ));
+
+        let result = state.apply_packet_transition(
+            "p12",
+            PacketState::Resolved,
+            "gatekeeper",
+            "close",
+            vec!["artifact://closure/p12".to_owned()],
+        );
+        assert!(result.is_ok(), "resolved should succeed only when all closure gates pass");
+        let packet = state.packets.iter().find(|packet| packet.id == "p12").unwrap();
+        assert_eq!(packet.state, PacketState::Resolved);
+    }
+
+    #[test]
+    fn packet_gatekeeper_decision_route_rejects_non_reviewed_packet() {
+        let mut initial = MonitorState::default();
+        initial.packets.push(make_staged_packet("pkt-gk1"));
+        initial
+            .apply_packet_transition(
+                "pkt-gk1",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        let state = std::sync::Mutex::new(initial);
+
+        let response = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-gk1/gatekeeper-decision",
+            serde_json::to_vec(&serde_json::json!({ "decision": "close" })).unwrap(),
+            &state,
+        )
+        .unwrap();
+        assert_eq!(response.status_code, 409);
+    }
+
+    #[test]
+    fn packet_gatekeeper_decision_route_sets_decision_for_reviewed_packet() {
+        let mut initial = MonitorState::default();
+        initial.packets.push(make_staged_packet("pkt-gk2"));
+        initial
+            .apply_packet_transition(
+                "pkt-gk2",
+                PacketState::DispatchedToManager,
+                "worker",
+                "dispatch",
+                vec![],
+            )
+            .unwrap();
+        initial
+            .apply_packet_transition(
+                "pkt-gk2",
+                PacketState::InProgress,
+                "worker",
+                "working",
+                vec![],
+            )
+            .unwrap();
+        initial
+            .apply_packet_transition(
+                "pkt-gk2",
+                PacketState::AwaitingReview,
+                "worker",
+                "ready",
+                vec!["artifact://proof/gk2".to_owned()],
+            )
+            .unwrap();
+        assert!(matches!(
+            initial.set_packet_review_verdict("pkt-gk2", ReviewVerdict::Approved),
+            Ok(true)
+        ));
+        initial
+            .apply_packet_transition(
+                "pkt-gk2",
+                PacketState::Reviewed,
+                "reviewer",
+                "approved",
+                vec![],
+            )
+            .unwrap();
+        let state = std::sync::Mutex::new(initial);
+
+        let response = super::route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/pkt-gk2/gatekeeper-decision",
+            serde_json::to_vec(&serde_json::json!({ "decision": "close" })).unwrap(),
+            &state,
+        )
+        .unwrap();
+        assert_eq!(response.status_code, 200);
+
+        let guard = state.lock().unwrap();
+        let packet = guard.packets.iter().find(|packet| packet.id == "pkt-gk2").unwrap();
+        assert_eq!(packet.gatekeeper_decision, Some(GatekeeperDecision::Close));
     }
 
     // ── Packet 4b tests ───────────────────────────────────────────────────────
