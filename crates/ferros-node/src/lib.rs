@@ -62,6 +62,7 @@ const MONITOR_MAX_LIFECYCLE_THREADS: usize = 96;
 const MONITOR_MAX_THREAD_ENTRIES: usize = 64;
 const MONITOR_MAX_WATCHDOG_EVENTS: usize = 96;
 const WATCHDOG_STALL_THRESHOLD_SECONDS: i64 = 900;
+const WATCHDOG_MANAGER_CLOSURE_GRACE_SECONDS: i64 = 300;
 const LOCAL_SHELL_HTML: &str = include_str!("../../../site/agent-center-shell.html");
 const LOCAL_SHELL_ACCEPTANCE_HARNESS_HTML: &str =
     include_str!("../../../harnesses/localhost-shell-acceptance-harness.html");
@@ -390,6 +391,21 @@ fn is_background_agent_session(session: &MonitorSession) -> bool {
 /// Get the fixed corrective instruction for watchdog events.
 fn get_fixed_corrective_instruction() -> String {
     "Questions cannot be answered in this background chat. Continue through the packet protocol. If human input is required, transition the packet to HumanInterventionRequired with reason and evidence. Otherwise continue the current packet using the available context.".to_owned()
+}
+
+/// Contract reminder used for manager closure enforcement (Packet 2).
+fn get_manager_closure_instruction() -> String {
+    "Manager closure contract: create child packets, or transition the packet honestly to a valid terminal/escalation state via apply_packet_transition. If blocked on missing context, transition to HumanInterventionRequired with reason and evidence.".to_owned()
+}
+
+fn is_terminal_or_escalated_packet_state(state: &PacketState) -> bool {
+    matches!(
+        state,
+        PacketState::Resolved
+            | PacketState::Failed
+            | PacketState::Cancelled
+            | PacketState::HumanInterventionRequired
+    )
 }
 
 /// Prune watchdog events to stay within cap, preferring to keep unresolved events.
@@ -1914,7 +1930,8 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         let state = monitor_state();
         let mut guard = state.lock().map_err(|_| ()).ok()?;
         let stalled_events_created = guard.detect_stalled_packets();
-        if stalled_events_created {
+        let closure_events_created = guard.detect_manager_closure_contract_violations();
+        if stalled_events_created || closure_events_created {
             persist_monitor_state_best_effort(&mut guard, "stalled.packets.detection");
         }
         let snapshot = guard.snapshot();
@@ -4169,6 +4186,158 @@ impl MonitorState {
         }
 
         // Cap watchdog events
+        if self.watchdog_events.len() > MONITOR_MAX_WATCHDOG_EVENTS {
+            prune_watchdog_events(&mut self.watchdog_events);
+        }
+
+        events_created
+    }
+
+    /// Packet 2 manager-closure contract monitor.
+    ///
+    /// Enforces that manager packets do not stop at chat-level completion claims:
+    /// they must either create child packets, transition to a terminal/escalation
+    /// packet state, or explicitly escalate to HumanInterventionRequired.
+    fn detect_manager_closure_contract_violations(&mut self) -> bool {
+        let now_secs = OffsetDateTime::now_utc().unix_timestamp();
+        let mut events_created = false;
+
+        // 1) Completion claims without a valid next action produce ExpectedNextActionMissing.
+        // Collect candidate completion claims first to avoid borrow conflicts during mutation.
+        let completion_claims: Vec<(String, Option<String>, String)> = self
+            .watchdog_events
+            .iter()
+            .filter_map(|event| {
+                if event.kind != WatchdogEventKind::CompletionClaimWithoutEvidence {
+                    return None;
+                }
+                if matches!(event.correction_status, WatchdogCorrectionStatus::Resolved) {
+                    return None;
+                }
+
+                let Some(packet_id) = event.packet_id.as_deref() else {
+                    return None;
+                };
+
+                let detected_at = OffsetDateTime::parse(&event.detected_at, &Rfc3339).ok()?;
+                if now_secs - detected_at.unix_timestamp() < WATCHDOG_MANAGER_CLOSURE_GRACE_SECONDS {
+                    return None;
+                }
+
+                let Some(packet) = self.packets.iter().find(|packet| packet.id == packet_id) else {
+                    return None;
+                };
+
+                // A terminal/escalated packet satisfies closure.
+                if is_terminal_or_escalated_packet_state(&packet.state) {
+                    return None;
+                }
+
+                // Creating later packets in the same session counts as manager next action.
+                let has_child_packet = self.packets.iter().any(|candidate| {
+                    candidate.id != packet.id
+                        && candidate.session_id == packet.session_id
+                        && candidate.created_at > packet.created_at
+                });
+                if has_child_packet {
+                    return None;
+                }
+
+                let has_existing_next_action_event = self.watchdog_events.iter().any(|existing| {
+                    existing.kind == WatchdogEventKind::ExpectedNextActionMissing
+                        && existing.packet_id.as_deref() == Some(packet_id)
+                        && !matches!(existing.correction_status, WatchdogCorrectionStatus::Resolved)
+                });
+                if has_existing_next_action_event {
+                    return None;
+                }
+
+                Some((
+                    packet.id.clone(),
+                    event.session_id.clone(),
+                    packet.manager.clone(),
+                ))
+            })
+            .collect();
+
+        for (packet_id, session_id, manager) in completion_claims {
+            let event = WatchdogEvent {
+                id: self.next_identifier("wde"),
+                kind: WatchdogEventKind::ExpectedNextActionMissing,
+                agent_id: manager,
+                session_id: session_id.clone(),
+                packet_id: Some(packet_id.clone()),
+                message_id: None,
+                detected_at: monitor_now(),
+                detail: "Manager completion claim has no packet closure action. Create child packets or transition packet state honestly via apply_packet_transition.".to_owned(),
+                corrective_instruction: Some(get_manager_closure_instruction()),
+                correction_status: WatchdogCorrectionStatus::Pending,
+            };
+            self.watchdog_events.push(event);
+            let _ = self.create_notification(
+                Some(packet_id),
+                session_id,
+                None,
+                "high",
+                "Manager closure action missing",
+                "Completion claim requires child packets or terminal/escalation transition.",
+            );
+            events_created = true;
+        }
+
+        // 2) Packets left in DispatchedToManager for too long produce TransitionMissing.
+        let missing_transition_packets: Vec<(String, String, Option<String>)> = self
+            .packets
+            .iter()
+            .filter_map(|packet| {
+                if packet.state != PacketState::DispatchedToManager {
+                    return None;
+                }
+                let updated_time = OffsetDateTime::parse(&packet.updated_at, &Rfc3339).ok()?;
+                if now_secs - updated_time.unix_timestamp() <= WATCHDOG_STALL_THRESHOLD_SECONDS {
+                    return None;
+                }
+                let has_existing_transition_missing = self.watchdog_events.iter().any(|event| {
+                    event.kind == WatchdogEventKind::TransitionMissing
+                        && event.packet_id.as_deref() == Some(packet.id.as_str())
+                        && !matches!(event.correction_status, WatchdogCorrectionStatus::Resolved)
+                });
+                if has_existing_transition_missing {
+                    return None;
+                }
+                Some((
+                    packet.id.clone(),
+                    packet.manager.clone(),
+                    Some(packet.session_id.clone()),
+                ))
+            })
+            .collect();
+
+        for (packet_id, manager, session_id) in missing_transition_packets {
+            let event = WatchdogEvent {
+                id: self.next_identifier("wde"),
+                kind: WatchdogEventKind::TransitionMissing,
+                agent_id: manager,
+                session_id: session_id.clone(),
+                packet_id: Some(packet_id.clone()),
+                message_id: None,
+                detected_at: monitor_now(),
+                detail: "Manager packet remains in dispatched_to_manager without a valid packet transition.".to_owned(),
+                corrective_instruction: Some(get_manager_closure_instruction()),
+                correction_status: WatchdogCorrectionStatus::Pending,
+            };
+            self.watchdog_events.push(event);
+            let _ = self.create_notification(
+                Some(packet_id),
+                session_id,
+                None,
+                "high",
+                "Manager transition missing",
+                "Packet is still dispatched_to_manager and needs an explicit next action.",
+            );
+            events_created = true;
+        }
+
         if self.watchdog_events.len() > MONITOR_MAX_WATCHDOG_EVENTS {
             prune_watchdog_events(&mut self.watchdog_events);
         }
@@ -10559,6 +10728,126 @@ mod tests {
                 .iter()
                 .any(|s| s.id == session_a),
             "source session should still be present"
+        );
+    }
+
+    #[test]
+    fn manager_closure_contract_flags_missing_next_action_after_completion_claim() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("packet2-contract".to_owned()));
+        assert!(state.route_session(&session.id, "software"));
+
+        let packet = state
+            .packets
+            .first()
+            .expect("packet should exist after route")
+            .clone();
+
+        state.watchdog_events.push(WatchdogEvent {
+            id: "wde-claim-old".to_owned(),
+            kind: WatchdogEventKind::CompletionClaimWithoutEvidence,
+            agent_id: packet.manager.clone(),
+            session_id: Some(session.id.clone()),
+            packet_id: Some(packet.id.clone()),
+            message_id: Some("msg-claim".to_owned()),
+            detected_at: "2020-01-01T00:00:00Z".to_owned(),
+            detail: "manager claimed completion".to_owned(),
+            corrective_instruction: None,
+            correction_status: WatchdogCorrectionStatus::Pending,
+        });
+
+        let changed = state.detect_manager_closure_contract_violations();
+        assert!(changed, "contract monitor should report created events");
+        assert!(
+            state
+                .watchdog_events
+                .iter()
+                .any(|event| {
+                    event.kind == WatchdogEventKind::ExpectedNextActionMissing
+                        && event.packet_id.as_deref() == Some(packet.id.as_str())
+                }),
+            "ExpectedNextActionMissing should be created for stale completion claim without closure"
+        );
+    }
+
+    #[test]
+    fn manager_closure_contract_allows_human_intervention_transition() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("packet2-escalation".to_owned()));
+        assert!(state.route_session(&session.id, "software"));
+
+        let packet_id = state
+            .packets
+            .first()
+            .expect("packet should exist after route")
+            .id
+            .clone();
+
+        let transitioned = state
+            .apply_packet_transition(
+                &packet_id,
+                PacketState::HumanInterventionRequired,
+                "manager",
+                "needs operator context",
+                vec!["ctx:missing-input".to_owned()],
+            )
+            .expect("transition should be valid");
+        assert!(transitioned.is_some(), "packet should transition");
+
+        state.watchdog_events.push(WatchdogEvent {
+            id: "wde-claim-old-2".to_owned(),
+            kind: WatchdogEventKind::CompletionClaimWithoutEvidence,
+            agent_id: "Software Architect".to_owned(),
+            session_id: Some(session.id.clone()),
+            packet_id: Some(packet_id.clone()),
+            message_id: Some("msg-claim-2".to_owned()),
+            detected_at: "2020-01-01T00:00:00Z".to_owned(),
+            detail: "manager claimed completion".to_owned(),
+            corrective_instruction: None,
+            correction_status: WatchdogCorrectionStatus::Pending,
+        });
+
+        let _ = state.detect_manager_closure_contract_violations();
+        assert!(
+            !state
+                .watchdog_events
+                .iter()
+                .any(|event| {
+                    event.kind == WatchdogEventKind::ExpectedNextActionMissing
+                        && event.packet_id.as_deref() == Some(packet_id.as_str())
+                }),
+            "HumanInterventionRequired satisfies closure contract and must not trigger ExpectedNextActionMissing"
+        );
+    }
+
+    #[test]
+    fn manager_closure_contract_flags_dispatched_packets_missing_transition() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("packet2-transition-missing".to_owned()));
+        assert!(state.route_session(&session.id, "software"));
+
+        let packet_id = state
+            .packets
+            .first()
+            .expect("packet should exist after route")
+            .id
+            .clone();
+
+        if let Some(packet) = state.packets.iter_mut().find(|packet| packet.id == packet_id) {
+            packet.updated_at = "2020-01-01T00:00:00Z".to_owned();
+        }
+
+        let changed = state.detect_manager_closure_contract_violations();
+        assert!(changed, "contract monitor should report created events");
+        assert!(
+            state
+                .watchdog_events
+                .iter()
+                .any(|event| {
+                    event.kind == WatchdogEventKind::TransitionMissing
+                        && event.packet_id.as_deref() == Some(packet_id.as_str())
+                }),
+            "TransitionMissing should be created for stale dispatched packets"
         );
     }
 }
