@@ -34,6 +34,11 @@ use ferros_hub::{
     LocalBridgeRegistrationError, LocalHubRuntimeSummary, LocalOnrampProposal,
     LOCAL_HUB_STATE_SNAPSHOT_PATH,
 };
+use ferros_orchestrator::{
+    try_transition, validate_transition_requirements, GatekeeperDecision, MonitorPacket,
+    PacketAuditEntry, PacketState, PacketTransitionApplied, PacketTransitionError,
+    ReviewVerdict,
+};
 use ferros_profile::{
     grant_profile_capability, init_local_profile, revoke_profile_capability, CapabilityGrant,
     FileSystemProfileStore, LocalProfileStore, ProfileId, ProfileIdError, ProfileStoreError,
@@ -247,122 +252,6 @@ struct MonitorAgentSourceTreeStatus {
     entry_count: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-enum PacketState {
-    Staged,
-    DispatchedToManager,
-    InProgress,
-    AwaitingReview,
-    Reviewed,
-    Resolved,
-    Failed,
-    HumanInterventionRequired,
-    Cancelled,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-enum ReviewVerdict {
-    Approved,
-    ChangesRequested,
-    EscalateHuman,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-enum GatekeeperDecision {
-    Close,
-    KeepOpen,
-    EscalateHuman,
-}
-
-impl fmt::Display for PacketState {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            PacketState::Staged => formatter.write_str("staged"),
-            PacketState::DispatchedToManager => formatter.write_str("dispatched_to_manager"),
-            PacketState::InProgress => formatter.write_str("in_progress"),
-            PacketState::AwaitingReview => formatter.write_str("awaiting_review"),
-            PacketState::Reviewed => formatter.write_str("reviewed"),
-            PacketState::Resolved => formatter.write_str("resolved"),
-            PacketState::Failed => formatter.write_str("failed"),
-            PacketState::HumanInterventionRequired => {
-                formatter.write_str("human_intervention_required")
-            }
-            PacketState::Cancelled => formatter.write_str("cancelled"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct PacketTransitionError {
-    from: PacketState,
-    to: PacketState,
-    message: String,
-}
-
-impl fmt::Display for PacketTransitionError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            formatter,
-            "cannot transition {} \u{2192} {}: {}",
-            self.from, self.to, self.message
-        )
-    }
-}
-
-/// Pure FSM guard. Validates `actor` and `reason` are non-empty, then
-/// checks the legal transition matrix. Returns the next state on success.
-/// `at` is an audit timestamp carried by the caller; not validated here.
-fn try_transition(
-    from: &PacketState,
-    to: PacketState,
-    actor: &str,
-    reason: &str,
-    _at: &str,
-) -> Result<PacketState, PacketTransitionError> {
-    if actor.is_empty() {
-        return Err(PacketTransitionError {
-            from: from.clone(),
-            to,
-            message: "actor must not be empty".to_owned(),
-        });
-    }
-    if reason.is_empty() {
-        return Err(PacketTransitionError {
-            from: from.clone(),
-            to,
-            message: "reason must not be empty".to_owned(),
-        });
-    }
-    let legal = matches!(
-        (from, &to),
-        (PacketState::Staged, PacketState::DispatchedToManager)
-            | (PacketState::Staged, PacketState::HumanInterventionRequired)
-            | (PacketState::Staged, PacketState::Failed)
-            | (PacketState::DispatchedToManager, PacketState::InProgress)
-            | (PacketState::DispatchedToManager, PacketState::HumanInterventionRequired)
-            | (PacketState::InProgress, PacketState::AwaitingReview)
-            | (PacketState::InProgress, PacketState::Failed)
-            | (PacketState::InProgress, PacketState::HumanInterventionRequired)
-            | (PacketState::AwaitingReview, PacketState::Reviewed)
-            | (PacketState::AwaitingReview, PacketState::HumanInterventionRequired)
-            | (PacketState::Reviewed, PacketState::Resolved)
-            | (PacketState::Reviewed, PacketState::Failed)
-            | (PacketState::Reviewed, PacketState::HumanInterventionRequired)
-    );
-    if legal {
-        Ok(to)
-    } else {
-        Err(PacketTransitionError {
-            from: from.clone(),
-            to,
-            message: "no legal edge from this state".to_owned(),
-        })
-    }
-}
-
 /// Detect if text contains hidden human-question patterns.
 /// Narrow heuristics: "should i", "can you confirm", "please advise", "need your input".
 /// Does not trigger on bare question marks or documentation-style questions.
@@ -432,10 +321,6 @@ fn is_manager_role(manager: &str) -> bool {
             | "Coding Agent Architect"
             | "Business Agent Architect"
     )
-}
-
-fn has_non_empty_evidence_refs(evidence_refs: &[String]) -> bool {
-    evidence_refs.iter().any(|reference| !reference.trim().is_empty())
 }
 
 /// Prune watchdog events to stay within cap, preferring to keep unresolved events.
@@ -533,55 +418,6 @@ fn has_recent_open_event(
             Err(_) => false,
         }
     })
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-struct PacketAuditEntry {
-    seq: usize,
-    from: PacketState,
-    to: PacketState,
-    actor: String,
-    reason: String,
-    at: String,
-    #[serde(default)]
-    evidence_refs: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct PacketTransitionApplied {
-    packet_id: String,
-    from: PacketState,
-    to: PacketState,
-    seq: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-struct MonitorPacket {
-    id: String,
-    session_id: String,
-    #[serde(default)]
-    origin_message_id: Option<String>,
-    #[serde(default)]
-    parent_packet_id: Option<String>,
-    work_order_id: Option<String>,
-    manager: String,
-    state: PacketState,
-    #[serde(default)]
-    review_verdict: Option<ReviewVerdict>,
-    #[serde(default)]
-    gatekeeper_decision: Option<GatekeeperDecision>,
-    lifecycle_thread_id: Option<String>,
-    notification_id: Option<String>,
-    created_at: String,
-    updated_at: String,
-    summary: String,
-    last_error: Option<String>,
-    #[serde(default)]
-    audit_seq: usize,
-    #[serde(default)]
-    audit_trail: Vec<PacketAuditEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -4173,72 +4009,13 @@ impl MonitorState {
             )
         };
 
-        // Packet 3 worker evidence contract:
-        // AwaitingReview is review-ready and must have packet evidence.
-        if to_state == PacketState::AwaitingReview && !has_non_empty_evidence_refs(&evidence_refs) {
-            return Err(PacketTransitionError {
-                from,
-                to: to_state,
-                message: "review-ready transition requires packet evidence".to_owned(),
-            });
-        }
-
-        if to_state == PacketState::Reviewed && review_verdict.is_none() {
-            return Err(PacketTransitionError {
-                from,
-                to: to_state,
-                message: "reviewed transition requires reviewer verdict".to_owned(),
-            });
-        }
-
-        // Packet 5 gatekeeper closure contract.
-        if to_state == PacketState::Resolved {
-            if !has_non_empty_evidence_refs(&evidence_refs) {
-                return Err(PacketTransitionError {
-                    from,
-                    to: to_state,
-                    message: "resolved transition requires packet evidence".to_owned(),
-                });
-            }
-            if review_verdict != Some(ReviewVerdict::Approved) {
-                return Err(PacketTransitionError {
-                    from,
-                    to: to_state,
-                    message: "resolved transition requires approved reviewer verdict".to_owned(),
-                });
-            }
-            if gatekeeper_decision != Some(GatekeeperDecision::Close) {
-                return Err(PacketTransitionError {
-                    from,
-                    to: to_state,
-                    message: "resolved transition requires gatekeeper close decision".to_owned(),
-                });
-            }
-        }
-
-        if from == PacketState::Reviewed && to_state == PacketState::Failed {
-            if !matches!(
-                gatekeeper_decision,
-                Some(GatekeeperDecision::KeepOpen) | Some(GatekeeperDecision::EscalateHuman)
-            ) {
-                return Err(PacketTransitionError {
-                    from,
-                    to: to_state,
-                    message: "failed transition from reviewed requires gatekeeper decision".to_owned(),
-                });
-            }
-        }
-
-        if from == PacketState::Reviewed
-            && to_state == PacketState::HumanInterventionRequired
-            && gatekeeper_decision != Some(GatekeeperDecision::EscalateHuman)
-        {
-            return Err(PacketTransitionError {
-                from,
-                to: to_state,
-                message: "human intervention transition from reviewed requires escalate_human gatekeeper decision".to_owned(),
-            });
-        }
+        validate_transition_requirements(
+            &from,
+            to_state.clone(),
+            review_verdict.as_ref(),
+            gatekeeper_decision.as_ref(),
+            &evidence_refs,
+        )?;
 
         // Phase 2: FSM guard — pure, no mutation.
         let next = try_transition(&from, to_state, actor, reason, &at)?;

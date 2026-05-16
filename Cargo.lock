@@ -226,11 +226,20 @@ dependencies = [
  "ferros-agents",
  "ferros-core",
  "ferros-hub",
+ "ferros-orchestrator",
  "ferros-profile",
  "ferros-runtime",
  "serde",
  "serde_json",
  "time",
+]
+
+[[package]]
+name = "ferros-orchestrator"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

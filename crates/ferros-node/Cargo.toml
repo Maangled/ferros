@@ -9,6 +9,7 @@ publish = false
 ferros-agents = { path = "../ferros-agents" }
 ferros-core = { path = "../ferros-core" }
 ferros-hub = { path = "../ferros-hub" }
+ferros-orchestrator = { path = "../ferros-orchestrator" }
 ferros-profile = { path = "../ferros-profile" }
 ferros-runtime = { path = "../ferros-runtime" }
 serde = { version = "1", features = ["derive"] }
