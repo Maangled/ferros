@@ -167,12 +167,47 @@ impl RoleAgent for StubRecoveryAgent {
     fn tick(
         &self,
         repo: &mut dyn PacketRepository,
-        _at: &str,
+        at: &str,
     ) -> Result<TickReport, RoleAgentError> {
         let Some(claim) = repo.claim_next(self.role()) else {
             return Ok(TickReport::idle(self.role()));
         };
-        Ok(TickReport::claimed(self.role(), claim.packet_id))
+        let packet_id = claim.packet_id;
+        let packet = repo.packet(&packet_id).ok_or_else(|| {
+            RoleAgentError::Repository("claimed packet missing from repository".to_owned())
+        })?;
+        let (next_state, reason) = if packet.can_retry() {
+            (
+                PacketState::DispatchedToManager,
+                format!(
+                    "recovery requeued retryable packet (attempt {} of {})",
+                    packet.retry_count + 1,
+                    packet.retry_budget
+                ),
+            )
+        } else if packet.last_failure_retryable {
+            (
+                PacketState::HumanInterventionRequired,
+                format!(
+                    "recovery exhausted retry budget after {} attempts",
+                    packet.retry_count
+                ),
+            )
+        } else {
+            (
+                PacketState::HumanInterventionRequired,
+                "recovery escalated non-retryable failure".to_owned(),
+            )
+        };
+        repo.apply_transition(PacketTransitionRequest {
+            packet_id: packet_id.clone(),
+            to_state: next_state.clone(),
+            actor: "stub-recovery-agent".to_owned(),
+            reason,
+            at: at.to_owned(),
+            evidence_refs: vec![],
+        })?;
+        Ok(TickReport::advanced(self.role(), packet_id, next_state))
     }
 }
 
@@ -254,6 +289,9 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_owned(),
             summary: "test packet".to_owned(),
             last_error: None,
+            retry_count: 0,
+            retry_budget: 0,
+            last_failure_retryable: false,
             audit_seq: 0,
             audit_trail: vec![],
         }
@@ -311,20 +349,45 @@ mod tests {
     }
 
     #[test]
-    fn stub_recovery_agent_claims_failed_packet_without_transition() {
+    fn stub_recovery_agent_requeues_retryable_failed_packet() {
         let mut repo = InMemoryPacketRepository::default();
-        repo.register_packet(make_packet(
-            "failed-1",
-            "Software Architect",
-            PacketState::Failed,
-        ));
+        let mut packet = make_packet("failed-1", "Software Architect", PacketState::Failed);
+        packet.retry_budget = 2;
+        packet.last_failure_retryable = true;
+        repo.register_packet(packet);
 
         let report = StubRecoveryAgent
             .tick(&mut repo, "2026-01-01T00:00:01Z")
             .unwrap();
 
         assert_eq!(report.claimed_packet_id.as_deref(), Some("failed-1"));
-        assert!(report.advanced_to.is_none());
-        assert_eq!(repo.packet("failed-1").unwrap().state, PacketState::Failed);
+        assert_eq!(report.advanced_to, Some(PacketState::DispatchedToManager));
+        let packet = repo.packet("failed-1").unwrap();
+        assert_eq!(packet.state, PacketState::DispatchedToManager);
+        assert_eq!(packet.retry_count, 1);
+    }
+
+    #[test]
+    fn stub_recovery_agent_escalates_failed_packet_when_budget_is_exhausted() {
+        let mut repo = InMemoryPacketRepository::default();
+        let mut packet = make_packet("failed-2", "Software Architect", PacketState::Failed);
+        packet.retry_budget = 1;
+        packet.retry_count = 1;
+        packet.last_failure_retryable = true;
+        repo.register_packet(packet);
+
+        let report = StubRecoveryAgent
+            .tick(&mut repo, "2026-01-01T00:00:01Z")
+            .unwrap();
+
+        assert_eq!(report.claimed_packet_id.as_deref(), Some("failed-2"));
+        assert_eq!(
+            report.advanced_to,
+            Some(PacketState::HumanInterventionRequired)
+        );
+        assert_eq!(
+            repo.packet("failed-2").unwrap().state,
+            PacketState::HumanInterventionRequired
+        );
     }
 }

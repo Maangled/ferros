@@ -83,6 +83,9 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_owned(),
             summary: "test packet".to_owned(),
             last_error: None,
+            retry_count: 0,
+            retry_budget: 0,
+            last_failure_retryable: false,
             audit_seq: 0,
             audit_trail: vec![],
         }

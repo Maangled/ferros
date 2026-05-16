@@ -119,6 +119,8 @@ pub fn try_transition(
                 PacketState::Reviewed,
                 PacketState::HumanInterventionRequired
             )
+            | (PacketState::Failed, PacketState::DispatchedToManager)
+            | (PacketState::Failed, PacketState::HumanInterventionRequired)
     );
     if legal {
         Ok(to)
@@ -255,9 +257,21 @@ pub struct MonitorPacket {
     pub summary: String,
     pub last_error: Option<String>,
     #[serde(default)]
+    pub retry_count: usize,
+    #[serde(default)]
+    pub retry_budget: usize,
+    #[serde(default)]
+    pub last_failure_retryable: bool,
+    #[serde(default)]
     pub audit_seq: usize,
     #[serde(default)]
     pub audit_trail: Vec<PacketAuditEntry>,
+}
+
+impl MonitorPacket {
+    pub fn can_retry(&self) -> bool {
+        self.last_failure_retryable && self.retry_count < self.retry_budget
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -328,6 +342,13 @@ pub trait PacketRepository {
         &mut self,
         packet_id: &str,
         decision: GatekeeperDecision,
+        at: String,
+    ) -> Result<bool, String>;
+    fn set_retry_policy(
+        &mut self,
+        packet_id: &str,
+        retryable: Option<bool>,
+        retry_budget: Option<usize>,
         at: String,
     ) -> Result<bool, String>;
 }
@@ -480,6 +501,15 @@ impl PacketRepository for InMemoryPacketRepository {
             .unwrap();
         packet.state = next.clone();
         packet.updated_at = at;
+        if next == PacketState::Failed {
+            packet.last_error = Some(audit_entry.reason.clone());
+        }
+        if from == PacketState::Failed && next == PacketState::DispatchedToManager {
+            packet.retry_count += 1;
+            packet.last_error = None;
+            packet.review_verdict = None;
+            packet.gatekeeper_decision = None;
+        }
         packet.audit_seq = seq;
         packet.audit_trail.push(audit_entry);
 
@@ -534,6 +564,31 @@ impl PacketRepository for InMemoryPacketRepository {
         packet.updated_at = at;
         Ok(true)
     }
+
+    fn set_retry_policy(
+        &mut self,
+        packet_id: &str,
+        retryable: Option<bool>,
+        retry_budget: Option<usize>,
+        at: String,
+    ) -> Result<bool, String> {
+        let Some(packet) = self
+            .packets
+            .iter_mut()
+            .find(|packet| packet.id == packet_id)
+        else {
+            return Ok(false);
+        };
+
+        if let Some(retryable) = retryable {
+            packet.last_failure_retryable = retryable;
+        }
+        if let Some(retry_budget) = retry_budget {
+            packet.retry_budget = retry_budget;
+        }
+        packet.updated_at = at;
+        Ok(true)
+    }
 }
 
 #[cfg(test)]
@@ -561,6 +616,9 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_owned(),
             summary: "test packet".to_owned(),
             last_error: None,
+            retry_count: 0,
+            retry_budget: 0,
+            last_failure_retryable: false,
             audit_seq: 0,
             audit_trail: vec![],
         }
@@ -655,6 +713,8 @@ mod tests {
             PacketState::HumanInterventionRequired
         )
         .is_ok());
+        assert!(check(&PacketState::Failed, PacketState::DispatchedToManager).is_ok());
+        assert!(check(&PacketState::Failed, PacketState::HumanInterventionRequired).is_ok());
 
         assert!(check(&PacketState::Resolved, PacketState::Staged).is_err());
         assert!(check(&PacketState::Failed, PacketState::Staged).is_err());
@@ -726,6 +786,60 @@ mod tests {
         );
 
         assert!(result.is_err(), "verdict should require awaiting_review");
+    }
+
+    #[test]
+    fn in_memory_repository_requeues_failed_packet_and_increments_retry_count() {
+        let mut repo = InMemoryPacketRepository::default();
+        let mut packet = make_packet("failed-p1", "Software Architect", PacketState::Failed);
+        packet.retry_budget = 2;
+        packet.last_failure_retryable = true;
+        packet.review_verdict = Some(ReviewVerdict::Approved);
+        packet.gatekeeper_decision = Some(GatekeeperDecision::KeepOpen);
+        packet.last_error = Some("transient failure".to_owned());
+        repo.register_packet(packet);
+
+        let result = repo.apply_transition(PacketTransitionRequest {
+            packet_id: "failed-p1".to_owned(),
+            to_state: PacketState::DispatchedToManager,
+            actor: "stub-recovery-agent".to_owned(),
+            reason: "recovery requeued retryable packet".to_owned(),
+            at: "2026-01-01T00:00:01Z".to_owned(),
+            evidence_refs: vec![],
+        });
+
+        assert!(result.is_ok(), "requeue transition must succeed");
+        let packet = repo.packet("failed-p1").unwrap();
+        assert_eq!(packet.state, PacketState::DispatchedToManager);
+        assert_eq!(packet.retry_count, 1);
+        assert_eq!(packet.retry_budget, 2);
+        assert!(packet.last_error.is_none());
+        assert!(packet.review_verdict.is_none());
+        assert!(packet.gatekeeper_decision.is_none());
+    }
+
+    #[test]
+    fn in_memory_repository_sets_retry_policy_fields() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_packet(
+            "failed-p2",
+            "Software Architect",
+            PacketState::Failed,
+        ));
+
+        let updated = repo
+            .set_retry_policy(
+                "failed-p2",
+                Some(true),
+                Some(3),
+                "2026-01-01T00:00:01Z".to_owned(),
+            )
+            .unwrap();
+
+        assert!(updated, "retry policy update should succeed");
+        let packet = repo.packet("failed-p2").unwrap();
+        assert!(packet.last_failure_retryable);
+        assert_eq!(packet.retry_budget, 3);
     }
 
     #[test]

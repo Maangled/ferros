@@ -864,10 +864,10 @@
         id: 'administration',
         buttonLabel: 'Administration',
         buttonSummaryHtml: 'Live monitor lifecycle threads, open chats, loop heat, and directory visibility from <code>/monitor/state</code>.',
-        centerSubtitle: 'Administration route reads the live monitor state so packet lifecycle chats, open operator-visible sessions, loop health, and source-tree directory visibility surface inside the shell.',
-        toolsCopy: 'Administration route reads the local-only /monitor/state surface. It does not transmit monitor writes here; it promotes lifecycle threads and directory facts into the existing shell slots.',
-        auditTitle: 'Monitor observation only',
-        auditCopy: 'Administration uses the same local monitor state that powers the operator monitor. It is display-focused here: no work-order enforcement or remote control claims are implied by this read surface.',
+        centerSubtitle: 'Administration route reads the live monitor state and exposes bounded local-only orchestrator mode and tick controls for the current shell process.',
+        toolsCopy: 'Administration route reads the local-only /monitor/state surface and may send explicit /orchestrator/mode, /orchestrator/tick, and failed-packet retry-policy writes. Packet verdict, review, and gatekeeper writes remain outside this shell lane.',
+        auditTitle: 'Bounded orchestrator control',
+        auditCopy: 'Administration uses the same local monitor state that powers the operator monitor. Mode changes, single ticks, and failed-packet retry policy changes stay localhost-only and explicit here; broader packet mutation and remote control claims are still out of scope for this shell.',
         statusLabel: 'administration',
       }),
       Object.freeze({
@@ -923,6 +923,16 @@
         profile: null,
         error: '',
         errorDetail: null,
+      },
+      orchestratorControl: {
+        busy: false,
+        status: 'idle',
+        message: '',
+      },
+      packetRecoveryControl: {
+        busy: false,
+        status: 'idle',
+        message: '',
       },
     };
 
@@ -1004,6 +1014,21 @@
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
+      }
+
+      return response.json();
+    }
+
+    async function postOrchestratorAction(path, payload) {
+      const response = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload || {}),
+      });
+
+      if (!response.ok) {
+        const message = (await response.text()).trim();
+        throw new Error(message || `HTTP ${response.status}`);
       }
 
       return response.json();
@@ -1155,10 +1180,7 @@
         state.selectedRunwayIndex = state.runway && state.runway.checklist && state.runway.checklist[state.selectedRunwayIndex ?? -1]
           ? state.selectedRunwayIndex
           : (state.runway && state.runway.checklist && state.runway.checklist.length > 0 ? 0 : null);
-        const lifecycleThreads = (state.monitor && state.monitor.lifecycleThreads) || [];
-        state.selectedMonitorThreadId = lifecycleThreads.some((thread) => thread.id === state.selectedMonitorThreadId)
-          ? state.selectedMonitorThreadId
-          : (lifecycleThreads[0] ? lifecycleThreads[0].id : null);
+        reconcileSelectedMonitorThread();
         state.errors = 0;
 
         reconcileSelectedAgent();
@@ -1264,6 +1286,109 @@
       return threads.find((thread) => thread.id === state.selectedMonitorThreadId) || null;
     }
 
+    function selectedMonitorPacket() {
+      if (!state.monitor) {
+        return null;
+      }
+
+      const packets = state.monitor.packets || [];
+      const thread = selectedMonitorThread();
+      if (!thread) {
+        return null;
+      }
+
+      const byThread = packets.find((packet) => packet.lifecycleThreadId === thread.id);
+      if (byThread) {
+        return byThread;
+      }
+
+      const runningLoops = state.monitor.runningLoops || [];
+      const loopEntry = runningLoops.find((entry) => entry.threadId === thread.id && entry.currentPacketId);
+      if (!loopEntry) {
+        return null;
+      }
+
+      return packets.find((packet) => packet.id === loopEntry.currentPacketId) || null;
+    }
+
+    function reconcileSelectedMonitorThread() {
+      const lifecycleThreads = (state.monitor && state.monitor.lifecycleThreads) || [];
+      state.selectedMonitorThreadId = lifecycleThreads.some((thread) => thread.id === state.selectedMonitorThreadId)
+        ? state.selectedMonitorThreadId
+        : (lifecycleThreads[0] ? lifecycleThreads[0].id : null);
+    }
+
+    async function setOrchestratorMode(mode) {
+      state.orchestratorControl.busy = true;
+      state.orchestratorControl.status = 'busy';
+      state.orchestratorControl.message = `Setting orchestrator mode to ${mode}.`;
+      render();
+
+      try {
+        state.monitor = await postOrchestratorAction('/orchestrator/mode', { mode });
+        reconcileSelectedMonitorThread();
+        state.orchestratorControl.busy = false;
+        state.orchestratorControl.status = 'ready';
+        state.orchestratorControl.message = `Orchestrator mode set to ${state.monitor.orchestratorMode || mode}.`;
+        render();
+      } catch (error) {
+        state.orchestratorControl.busy = false;
+        state.orchestratorControl.status = 'error';
+        state.orchestratorControl.message = error instanceof Error ? error.message : String(error);
+        render();
+      }
+    }
+
+    async function tickOrchestrator() {
+      state.orchestratorControl.busy = true;
+      state.orchestratorControl.status = 'busy';
+      state.orchestratorControl.message = 'Running one orchestrator tick.';
+      render();
+
+      try {
+        state.monitor = await postOrchestratorAction('/orchestrator/tick');
+        reconcileSelectedMonitorThread();
+        state.orchestratorControl.busy = false;
+        state.orchestratorControl.status = 'ready';
+        state.orchestratorControl.message = `Tick completed in ${state.monitor.orchestratorMode || 'disabled'} mode.`;
+        render();
+      } catch (error) {
+        state.orchestratorControl.busy = false;
+        state.orchestratorControl.status = 'error';
+        state.orchestratorControl.message = error instanceof Error ? error.message : String(error);
+        render();
+      }
+    }
+
+    async function setPacketRetryPolicy(packetId, retryable, retryBudget) {
+      state.packetRecoveryControl.busy = true;
+      state.packetRecoveryControl.status = 'busy';
+      state.packetRecoveryControl.message = retryable
+        ? `Updating retry policy for ${packetId}.`
+        : `Disabling retries for ${packetId}.`;
+      render();
+
+      try {
+        const payload = { retryable };
+        if (typeof retryBudget === 'number') {
+          payload.retryBudget = retryBudget;
+        }
+        state.monitor = await postOrchestratorAction(`/monitor/packets/${encodeURIComponent(packetId)}/retry-policy`, payload);
+        reconcileSelectedMonitorThread();
+        state.packetRecoveryControl.busy = false;
+        state.packetRecoveryControl.status = 'ready';
+        state.packetRecoveryControl.message = retryable
+          ? `Retry policy updated for ${packetId}.`
+          : `Recovery will escalate ${packetId} on the next pass.`;
+        render();
+      } catch (error) {
+        state.packetRecoveryControl.busy = false;
+        state.packetRecoveryControl.status = 'error';
+        state.packetRecoveryControl.message = error instanceof Error ? error.message : String(error);
+        render();
+      }
+    }
+
     function administrationSurfaceHtml() {
       if (!state.monitor) {
         return emptyNote('Monitor unavailable', 'The shell could not read /monitor/state yet.');
@@ -1275,8 +1400,39 @@
       const watchdogEvents = state.monitor.watchdogEvents || [];
       const agentDirectory = state.monitor.agentDirectory || [];
       const sourceTree = state.monitor.agentSourceTree || null;
+      const currentMode = state.monitor.orchestratorMode || 'disabled';
+      const orchestratorStatus = state.monitor.orchestratorStatus || null;
+      const canTick = orchestratorStatus ? orchestratorStatus.canTick === true : currentMode === 'stub';
+      const controlState = state.orchestratorControl.busy
+        ? 'busy'
+        : (state.orchestratorControl.status === 'error' ? 'error' : 'ready');
+      const controlMessage = state.orchestratorControl.message
+        || (orchestratorStatus && orchestratorStatus.detail)
+        || 'Orchestrator control is ready.';
+      const modeButtons = ['disabled', 'stub', 'live'].map((mode) => `
+        <button
+          class="${mode === currentMode ? 'is-active ' : ''}orchestrator-mode-button"
+          data-orchestrator-mode="${mode}"
+          type="button"
+          ${state.orchestratorControl.busy ? 'disabled' : ''}
+        >${escapeHtml(mode)}</button>`).join('');
+      const controlCard = `
+        <div class="note-card">
+          <div class="shell-note-title">Orchestrator control</div>
+          <p class="shell-note-copy">Local-only mode selection and explicit ticking for the current shell process. GET <code>/monitor/state</code> remains read-only.</p>
+          <div class="lifecycle-actions">
+            ${modeButtons}
+            <button data-orchestrator-tick type="button" ${(state.orchestratorControl.busy || !canTick) ? 'disabled' : ''}>Tick now</button>
+          </div>
+          <div class="lifecycle-state" data-state="${escapeHtml(controlState)}">${escapeHtml(controlMessage)}</div>
+        </div>`;
 
       const summaryCards = `
+        <article class="metric-card">
+          <div class="metric-label">Orchestrator mode</div>
+          <div class="metric-value">${escapeHtml(currentMode)}</div>
+          <div class="metric-copy">Explicit local mode boundary from <code>/orchestrator/mode</code>.</div>
+        </article>
         <article class="metric-card">
           <div class="metric-label">Open chats</div>
           <div class="metric-value">${escapeHtml(openChats.length)}</div>
@@ -1335,8 +1491,10 @@
       }).join('') || emptyNote('No watchdog events', 'Watchdog monitors for hidden human questions, stalled packets, and completion claims.');
 
       return `
+        ${controlCard}
         <div class="metrics-grid">${summaryCards}</div>
         <div class="module-badge-rail">
+          <span class="module-badge">mode <span class="module-badge-label">${escapeHtml(currentMode)}</span></span>
           <span class="module-badge">open chats <span class="module-badge-label">${escapeHtml(openChats.length)}</span></span>
           <span class="module-badge">threads <span class="module-badge-label">${escapeHtml(lifecycleThreads.length)}</span></span>
           <span class="module-badge">loops <span class="module-badge-label">${escapeHtml(runningLoops.length)}</span></span>
@@ -1453,6 +1611,42 @@
           setStatusSelection(thread ? `monitor:${thread.title}` : 'monitor:none');
           renderInspector();
           render();
+        });
+      });
+
+      document.querySelectorAll('[data-orchestrator-mode]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          state.route = 'administration';
+          setStatusSelection(`orchestrator:${button.dataset.orchestratorMode}`);
+          await setOrchestratorMode(button.dataset.orchestratorMode);
+        });
+      });
+
+      document.querySelectorAll('[data-orchestrator-tick]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          state.route = 'administration';
+          setStatusSelection('orchestrator:tick');
+          await tickOrchestrator();
+        });
+      });
+
+      document.querySelectorAll('[data-packet-retry-policy]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          state.route = 'administration';
+          const packet = selectedMonitorPacket();
+          const packetId = button.dataset.packetId || (packet && packet.id);
+          if (!packet || !packetId) {
+            return;
+          }
+
+          setStatusSelection(`packet:${packetId}`);
+          if (button.dataset.packetRetryPolicy === 'disable') {
+            await setPacketRetryPolicy(packetId, false);
+            return;
+          }
+
+          const increment = button.dataset.packetRetryPolicy === 'two-more' ? 2 : 1;
+          await setPacketRetryPolicy(packetId, true, (packet.retryCount || 0) + increment);
         });
       });
     }
@@ -2626,9 +2820,39 @@
       if (state.route === 'administration' && state.monitor) {
         const monitor = state.monitor;
         const thread = selectedMonitorThread();
+        const packet = selectedMonitorPacket();
         const sourceTree = monitor.agentSourceTree || null;
         if (thread) {
           const lastEntry = thread.entries && thread.entries.length > 0 ? thread.entries[thread.entries.length - 1] : null;
+          const retryState = state.packetRecoveryControl.busy
+            ? 'busy'
+            : (state.packetRecoveryControl.status === 'error' ? 'error' : 'ready');
+          const retryMessage = state.packetRecoveryControl.message || (packet
+            ? (packet.state === 'failed'
+              ? 'Failed packets can be marked retryable or forced to escalate before the next recovery tick.'
+              : 'Retry policy controls are only available while the selected packet is failed.')
+            : 'No packet is linked to the selected thread yet.');
+          const retryControls = packet && packet.state === 'failed'
+            ? `
+              <div class="lifecycle-actions">
+                <button data-packet-retry-policy="one-more" data-packet-id="${escapeHtml(packet.id)}" type="button" ${state.packetRecoveryControl.busy ? 'disabled' : ''}>Allow 1 more retry</button>
+                <button data-packet-retry-policy="two-more" data-packet-id="${escapeHtml(packet.id)}" type="button" ${state.packetRecoveryControl.busy ? 'disabled' : ''}>Allow 2 more retries</button>
+                <button data-packet-retry-policy="disable" data-packet-id="${escapeHtml(packet.id)}" type="button" ${state.packetRecoveryControl.busy ? 'disabled' : ''}>Escalate next recovery</button>
+              </div>`
+            : '';
+          const packetDetails = packet
+            ? `
+              <div class="detail-pair"><div class="detail-key">Packet</div><div class="detail-value">${escapeHtml(packet.id)}</div></div>
+              <div class="detail-pair"><div class="detail-key">Packet state</div><div class="detail-value">${escapeHtml(packet.state)}</div></div>
+              <div class="detail-pair"><div class="detail-key">Retry policy</div><div class="detail-value">${escapeHtml(packet.lastFailureRetryable ? 'retryable' : 'escalate')}</div></div>
+              <div class="detail-pair"><div class="detail-key">Retry count</div><div class="detail-value">${escapeHtml(`${packet.retryCount || 0}`)}</div></div>
+              <div class="detail-pair"><div class="detail-key">Retry budget</div><div class="detail-value">${escapeHtml(`${packet.retryBudget || 0}`)}</div></div>
+              <div class="detail-pair"><div class="detail-key">Last error</div><div class="detail-value">${escapeHtml(packet.lastError || 'none')}</div></div>
+              ${retryControls}
+              <div class="lifecycle-state" data-state="${escapeHtml(retryState)}">${escapeHtml(retryMessage)}</div>`
+            : `
+              <div class="detail-pair"><div class="detail-key">Packet</div><div class="detail-value">none linked to this thread</div></div>
+              <div class="lifecycle-state" data-state="${escapeHtml(retryState)}">${escapeHtml(retryMessage)}</div>`;
           inspector.innerHTML = `
             <div class="detail-pair"><div class="detail-key">Thread</div><div class="detail-value">${escapeHtml(thread.title)}</div></div>
             <div class="detail-pair"><div class="detail-key">Kind</div><div class="detail-value">${escapeHtml(thread.kind)}</div></div>
@@ -2638,7 +2862,8 @@
             <div class="detail-pair"><div class="detail-key">Work order</div><div class="detail-value">${escapeHtml(thread.workOrderId || 'none')}</div></div>
             <div class="detail-pair"><div class="detail-key">Escalation</div><div class="detail-value">${escapeHtml(thread.escalationId || 'none')}</div></div>
             <div class="detail-pair"><div class="detail-key">Latest entry</div><div class="detail-value">${escapeHtml(lastEntry ? `${lastEntry.who}: ${lastEntry.text}` : 'No entries')}</div></div>
-            <div class="detail-pair"><div class="detail-key">Directory sync</div><div class="detail-value">${escapeHtml(sourceTree ? `${sourceTree.syncState} (${sourceTree.entryCount} rows)` : 'unknown')}</div></div>`;
+            <div class="detail-pair"><div class="detail-key">Directory sync</div><div class="detail-value">${escapeHtml(sourceTree ? `${sourceTree.syncState} (${sourceTree.entryCount} rows)` : 'unknown')}</div></div>
+            ${packetDetails}`;
           return;
         }
 

@@ -69,6 +69,7 @@ const MONITOR_MAX_THREAD_ENTRIES: usize = 64;
 const MONITOR_MAX_WATCHDOG_EVENTS: usize = 96;
 const WATCHDOG_STALL_THRESHOLD_SECONDS: i64 = 900;
 const WATCHDOG_MANAGER_CLOSURE_GRACE_SECONDS: i64 = 300;
+const ORCHESTRATOR_MODE_WARNING_INTERVAL_SECONDS: i64 = 300;
 const MONITOR_MAINTENANCE_INTERVAL_MILLIS: u64 = 250;
 const LOCAL_SHELL_HTML: &str = include_str!("../../../site/agent-center-shell.html");
 const LOCAL_SHELL_ACCEPTANCE_HARNESS_HTML: &str =
@@ -427,6 +428,14 @@ fn has_recent_open_event(
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+struct MonitorOrchestratorStatus {
+    can_tick: bool,
+    background_tick_enabled: bool,
+    detail: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 struct MonitorStateSnapshot {
     open_chats: Vec<MonitorSession>,
     archived_chats: Vec<MonitorArchivedSession>,
@@ -439,6 +448,7 @@ struct MonitorStateSnapshot {
     watchdog_events: Vec<WatchdogEvent>,
     #[serde(default)]
     orchestrator_mode: OrchestratorMode,
+    orchestrator_status: MonitorOrchestratorStatus,
     agent_directory: Vec<MonitorAgentDirectoryEntry>,
     agent_source_tree: MonitorAgentSourceTreeStatus,
     selected_chat_id: Option<String>,
@@ -520,6 +530,18 @@ struct MonitorPacketStateRequest {
     reason: String,
     #[serde(default)]
     evidence_refs: Vec<String>,
+    #[serde(default)]
+    retryable: Option<bool>,
+    #[serde(default)]
+    retry_budget: Option<usize>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorPacketRetryPolicyRequest {
+    retryable: bool,
+    #[serde(default)]
+    retry_budget: Option<usize>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -539,6 +561,12 @@ struct MonitorPacketGatekeeperDecisionRequest {
 struct MonitorWatchdogCorrectRequest {
     #[allow(dead_code)]
     watchdog_event_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorOrchestratorModeRequest {
+    mode: OrchestratorMode,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -1877,6 +1905,24 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
         return Some(enable_cors(text_response(200, "OK", "")));
     }
 
+    if request_path == "/orchestrator/mode" && method == "POST" {
+        let request: MonitorOrchestratorModeRequest = match serde_json::from_slice(&body) {
+            Ok(parsed) => parsed,
+            Err(error) => {
+                return Some(enable_cors(text_response(
+                    400,
+                    "Bad Request",
+                    format!("invalid orchestrator mode payload: {error}"),
+                )));
+            }
+        };
+        let state = monitor_state();
+        let mut guard = state.lock().map_err(|_| ()).ok()?;
+        guard.orchestrator_mode = request.mode;
+        persist_monitor_state_best_effort(&mut guard, "orchestrator.mode persistence warning");
+        return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+    }
+
     if request_path == "/orchestrator/tick" && method == "POST" {
         let state = monitor_state();
         let mut guard = state.lock().map_err(|_| ()).ok()?;
@@ -2079,6 +2125,53 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
     }
 
     if let Some((packet_id, trailing)) = parse_monitor_packet_subroute(request_path) {
+        if trailing == "retry-policy" && method == "POST" {
+            let request: MonitorPacketRetryPolicyRequest = match serde_json::from_slice(&body) {
+                Ok(parsed) => parsed,
+                Err(error) => {
+                    return Some(enable_cors(text_response(
+                        400,
+                        "Bad Request",
+                        format!("invalid packet retry policy request: {error}"),
+                    )));
+                }
+            };
+            let state = monitor_state();
+            let mut guard = match state.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    return Some(enable_cors(text_response(
+                        500,
+                        "Internal Server Error",
+                        "monitor state lock poisoned",
+                    )));
+                }
+            };
+            match guard.set_packet_retry_policy(
+                packet_id,
+                Some(request.retryable),
+                request.retry_budget,
+            ) {
+                Ok(true) => {
+                    persist_monitor_state_best_effort(
+                        &mut guard,
+                        "packet.retry_policy persistence warning",
+                    );
+                    return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+                }
+                Ok(false) => {
+                    return Some(enable_cors(text_response(
+                        404,
+                        "Not Found",
+                        "monitor packet not found",
+                    )));
+                }
+                Err(reason) => {
+                    return Some(enable_cors(text_response(409, "Conflict", reason)));
+                }
+            }
+        }
+
         if trailing == "gatekeeper-decision" && method == "POST" {
             let request: MonitorPacketGatekeeperDecisionRequest =
                 match serde_json::from_slice(&body) {
@@ -2175,6 +2268,14 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
                     )));
                 }
             };
+            let MonitorPacketStateRequest {
+                to_state,
+                actor,
+                reason,
+                evidence_refs,
+                retryable,
+                retry_budget,
+            } = request;
             let state = monitor_state();
             let mut guard = match state.lock() {
                 Ok(guard) => guard,
@@ -2188,12 +2289,43 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
             };
             match guard.apply_packet_transition(
                 packet_id,
-                request.to_state,
-                &request.actor,
-                &request.reason,
-                request.evidence_refs,
+                to_state.clone(),
+                &actor,
+                &reason,
+                evidence_refs,
             ) {
                 Ok(Some(_)) => {
+                    if to_state == PacketState::Failed
+                        && (retryable.is_some() || retry_budget.is_some())
+                    {
+                        match guard.packets.set_retry_policy(
+                            packet_id,
+                            retryable,
+                            retry_budget,
+                            monitor_now(),
+                        ) {
+                            Ok(true) => {
+                                guard.push_event(
+                                    "packet.retry_policy_updated",
+                                    format!("{packet_id} retry policy updated"),
+                                );
+                            }
+                            Ok(false) => {
+                                return Some(enable_cors(text_response(
+                                    404,
+                                    "Not Found",
+                                    "monitor packet not found",
+                                )));
+                            }
+                            Err(reason) => {
+                                return Some(enable_cors(text_response(
+                                    409,
+                                    "Conflict",
+                                    reason,
+                                )));
+                            }
+                        }
+                    }
                     persist_monitor_state_best_effort(
                         &mut guard,
                         "packet.state persistence warning",
@@ -2426,7 +2558,13 @@ fn parse_monitor_packet_subroute(path: &str) -> Option<(&str, &str)> {
 }
 
 fn run_monitor_maintenance(guard: &mut MonitorState) -> bool {
-    let orchestrator_advanced = guard.run_orchestrator_tick().unwrap_or(false);
+    let orchestrator_advanced = match guard.run_orchestrator_tick() {
+        Ok(changed) => changed,
+        Err(OrchestratorTickError::Disabled) => false,
+        Err(OrchestratorTickError::LiveModeUnsupported) => {
+            guard.note_live_mode_background_warning()
+        }
+    };
     let stalled_events_created = guard.detect_stalled_packets();
     let closure_events_created = guard.detect_manager_closure_contract_violations();
     orchestrator_advanced || stalled_events_created || closure_events_created
@@ -2441,6 +2579,22 @@ fn route_monitor_request_with_state(
     body: Vec<u8>,
     state: &std::sync::Mutex<MonitorState>,
 ) -> Option<HttpResponse> {
+    if request_path == "/orchestrator/mode" && method == "POST" {
+        let request: MonitorOrchestratorModeRequest = match serde_json::from_slice(&body) {
+            Ok(r) => r,
+            Err(e) => {
+                return Some(enable_cors(text_response(
+                    400,
+                    "Bad Request",
+                    format!("invalid orchestrator mode payload: {e}"),
+                )));
+            }
+        };
+        let mut guard = state.lock().ok()?;
+        guard.orchestrator_mode = request.mode;
+        return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+    }
+
     if request_path == "/orchestrator/tick" && method == "POST" {
         let mut guard = state.lock().ok()?;
         match guard.run_orchestrator_tick() {
@@ -2558,6 +2712,39 @@ fn route_monitor_request_with_state(
     }
 
     if let Some((packet_id, trailing)) = parse_monitor_packet_subroute(request_path) {
+        if trailing == "retry-policy" && method == "POST" {
+            let request: MonitorPacketRetryPolicyRequest = match serde_json::from_slice(&body) {
+                Ok(r) => r,
+                Err(e) => {
+                    return Some(enable_cors(text_response(
+                        400,
+                        "Bad Request",
+                        format!("invalid packet retry policy request: {e}"),
+                    )));
+                }
+            };
+            let mut guard = state.lock().ok()?;
+            match guard.set_packet_retry_policy(
+                packet_id,
+                Some(request.retryable),
+                request.retry_budget,
+            ) {
+                Ok(true) => {
+                    return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+                }
+                Ok(false) => {
+                    return Some(enable_cors(text_response(
+                        404,
+                        "Not Found",
+                        "monitor packet not found",
+                    )));
+                }
+                Err(reason) => {
+                    return Some(enable_cors(text_response(409, "Conflict", reason)));
+                }
+            }
+        }
+
         if trailing == "gatekeeper-decision" && method == "POST" {
             let request: MonitorPacketGatekeeperDecisionRequest =
                 match serde_json::from_slice(&body) {
@@ -2626,15 +2813,54 @@ fn route_monitor_request_with_state(
                     )));
                 }
             };
+            let MonitorPacketStateRequest {
+                to_state,
+                actor,
+                reason,
+                evidence_refs,
+                retryable,
+                retry_budget,
+            } = request;
             let mut guard = state.lock().ok()?;
             match guard.apply_packet_transition(
                 packet_id,
-                request.to_state,
-                &request.actor,
-                &request.reason,
-                request.evidence_refs,
+                to_state.clone(),
+                &actor,
+                &reason,
+                evidence_refs,
             ) {
                 Ok(Some(_)) => {
+                    if to_state == PacketState::Failed
+                        && (retryable.is_some() || retry_budget.is_some())
+                    {
+                        match guard.packets.set_retry_policy(
+                            packet_id,
+                            retryable,
+                            retry_budget,
+                            monitor_now(),
+                        ) {
+                            Ok(true) => {
+                                guard.push_event(
+                                    "packet.retry_policy_updated",
+                                    format!("{packet_id} retry policy updated"),
+                                );
+                            }
+                            Ok(false) => {
+                                return Some(enable_cors(text_response(
+                                    404,
+                                    "Not Found",
+                                    "monitor packet not found",
+                                )));
+                            }
+                            Err(reason) => {
+                                return Some(enable_cors(text_response(
+                                    409,
+                                    "Conflict",
+                                    reason,
+                                )));
+                            }
+                        }
+                    }
                     return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
                 }
                 Ok(None) => {
@@ -3519,6 +3745,26 @@ fn monitor_agent_source_tree_status(entry_count: usize) -> MonitorAgentSourceTre
 }
 
 impl MonitorState {
+    fn orchestrator_status(&self) -> MonitorOrchestratorStatus {
+        match self.orchestrator_mode {
+            OrchestratorMode::Disabled => MonitorOrchestratorStatus {
+                can_tick: false,
+                background_tick_enabled: false,
+                detail: "Mode is disabled. Switch to stub to advance packets in the local shell.".to_owned(),
+            },
+            OrchestratorMode::Stub => MonitorOrchestratorStatus {
+                can_tick: true,
+                background_tick_enabled: true,
+                detail: "Stub mode is active. Explicit and background ticks can advance synthetic packet state locally.".to_owned(),
+            },
+            OrchestratorMode::Live => MonitorOrchestratorStatus {
+                can_tick: false,
+                background_tick_enabled: false,
+                detail: "Live mode is configured, but live orchestrator execution is not implemented yet.".to_owned(),
+            },
+        }
+    }
+
     fn snapshot(&self) -> MonitorStateSnapshot {
         let lifecycle_threads = self.lifecycle_threads.clone();
         let agent_directory = load_monitor_agent_directory();
@@ -3536,6 +3782,7 @@ impl MonitorState {
             packets: self.packets.clone(),
             watchdog_events: self.watchdog_events.clone(),
             orchestrator_mode: self.orchestrator_mode,
+            orchestrator_status: self.orchestrator_status(),
             agent_directory: agent_directory.clone(),
             agent_source_tree: monitor_agent_source_tree_status(agent_directory.len()),
             selected_chat_id: self.selected_chat_id.clone(),
@@ -4214,6 +4461,9 @@ impl MonitorState {
             updated_at: now,
             summary,
             last_error: None,
+            retry_count: 0,
+            retry_budget: 0,
+            last_failure_retryable: false,
             audit_seq: 0,
             audit_trail: vec![],
         });
@@ -4311,6 +4561,30 @@ impl MonitorState {
         Ok(changed)
     }
 
+    fn note_live_mode_background_warning(&mut self) -> bool {
+        let kind = "packet.orchestrator_mode_warning";
+        let text = format!(
+            "[{}] background maintenance skipped tick because live orchestrator mode is not implemented",
+            self.orchestrator_mode
+        );
+        let now = OffsetDateTime::now_utc().unix_timestamp();
+        let has_recent_warning = self.timeline.iter().any(|event| {
+            if event.kind != kind || event.text != text {
+                return false;
+            }
+
+            OffsetDateTime::parse(&event.at, &Rfc3339)
+                .map(|at| now - at.unix_timestamp() < ORCHESTRATOR_MODE_WARNING_INTERVAL_SECONDS)
+                .unwrap_or(false)
+        });
+        if has_recent_warning {
+            return false;
+        }
+
+        self.push_event(kind, text);
+        true
+    }
+
     fn clear_running_loop_packet_if_terminal(&mut self, packet_id: &str, state: &PacketState) {
         if !matches!(
             state,
@@ -4367,6 +4641,31 @@ impl MonitorState {
             self.push_event(
                 "packet.gatekeeper_decision",
                 format!("{packet_id} gatekeeper decision updated"),
+            );
+        }
+        Ok(updated)
+    }
+
+    fn set_packet_retry_policy(
+        &mut self,
+        packet_id: &str,
+        retryable: Option<bool>,
+        retry_budget: Option<usize>,
+    ) -> Result<bool, String> {
+        let Some(packet) = self.packet_by_id(packet_id) else {
+            return Ok(false);
+        };
+        if packet.state != PacketState::Failed {
+            return Err("retry policy can only be updated while packet is failed".to_owned());
+        }
+
+        let updated = self
+            .packets
+            .set_retry_policy(packet_id, retryable, retry_budget, monitor_now())?;
+        if updated {
+            self.push_event(
+                "packet.retry_policy_updated",
+                format!("{packet_id} retry policy updated"),
             );
         }
         Ok(updated)
@@ -6506,15 +6805,16 @@ mod tests {
         execute_local_agent_api_with_runtime_loader, execute_profile_cli_with_store,
         infer_dispatch_target, is_background_agent_session, is_completion_claim,
         is_hidden_human_question, is_waiting_for_human, monitor_now, parse_http_request,
-        route_monitor_request_with_state, route_shell_request_with_store_and_paths, run_demo,
+        route_monitor_request_with_state, route_shell_request_with_store_and_paths,
+        run_demo, run_monitor_maintenance,
         runtime_with_state, serve_local_shell_with_listener,
         serve_local_shell_with_store_and_paths, AgentCliCommand, AuthorizationDenyDetail, CliError,
         CliState, DemoError, DemoRuntime, DispatchTarget, GatekeeperDecision, HttpRequest,
         LocalAgentApi, LocalAgentApiCommand, LocalAgentApiResponse, LocalRunwayChecklistStatus,
         LocalRunwaySummary, MonitorDispatchBackend, MonitorDispatchBackendResult,
-        MonitorLifecycleThread, MonitorMessageRequest, MonitorPacket, MonitorState, PacketState,
-        OrchestratorMode, PersistedMonitorState, ProfileCliCommand, ProfileShellResponse,
-        ReviewVerdict,
+        MonitorLifecycleThread, MonitorMessageRequest, MonitorPacket, MonitorState,
+        OrchestratorMode, PacketRepository, PacketState, PersistedMonitorState,
+        ProfileCliCommand, ProfileShellResponse, ReviewVerdict,
         ScaffoldMonitorDispatchBackend, WatchdogCorrectionStatus, WatchdogEvent, WatchdogEventKind,
         DEFAULT_PROFILE_NAME, MONITOR_MAX_WATCHDOG_EVENTS,
     };
@@ -6755,7 +7055,7 @@ mod tests {
         let packet = state.packet_by_id(&packet_id);
         assert!(packet.is_some(), "packet should be registered in state");
         let packet = packet.unwrap();
-        assert_eq!(packet.state, PacketState::DispatchedToManager);
+        assert_eq!(packet.state, PacketState::Staged);
         assert_eq!(packet.session_id, session.id);
         assert_eq!(packet.origin_message_id, Some(origin_message_id.clone()));
         assert!(
@@ -8787,7 +9087,14 @@ mod tests {
         assert!(html.contains("FERROS Local Shell"));
         assert!(html.contains("/rpc"));
         assert!(html.contains("/profile"));
+        assert!(html.contains("/orchestrator/mode"));
+        assert!(html.contains("/orchestrator/tick"));
+        assert!(html.contains("orchestratorStatus"));
+        assert!(html.contains("/retry-policy"));
         assert!(html.contains("data-profile-action=\"show\""));
+        assert!(html.contains("orchestrator-mode-button"));
+        assert!(html.contains("data-orchestrator-tick"));
+        assert!(html.contains("data-packet-retry-policy"));
         assert!(html.contains("lifecycle-submit-button"));
         assert!(html.contains("lifecycle-arm-checkbox"));
         assert!(html.contains("data-module=\"LifecycleControlCard\""));
@@ -9896,11 +10203,10 @@ mod tests {
     }
 
     #[test]
-    fn monitor_state_get_is_read_only_and_tick_route_advances_stub_packets() {
+    fn orchestrator_mode_route_enables_stub_tick_from_fresh_state() {
         let state = std::sync::Mutex::new(MonitorState::default());
         let packet_id = {
             let mut guard = state.lock().unwrap();
-            guard.orchestrator_mode = OrchestratorMode::Stub;
             let session = guard.create_session(Some("Orchestrator route test".to_owned()));
             let (result, ids) = guard.dispatch_session_via_backend(
                 &session.id,
@@ -9918,11 +10224,33 @@ mod tests {
             packet_id
         };
 
+        let mode_response = route_monitor_request_with_state(
+            "POST",
+            "/orchestrator/mode",
+            body(serde_json::json!({ "mode": "stub" })),
+            &state,
+        )
+        .expect("mode route should return a response");
+        assert_eq!(mode_response.status_code, 200, "mode route should return 200");
+        let snapshot: serde_json::Value =
+            serde_json::from_slice(&mode_response.body).expect("body should be valid JSON");
+        assert_eq!(snapshot["orchestratorMode"].as_str(), Some("stub"));
+        assert_eq!(snapshot["orchestratorStatus"]["canTick"].as_bool(), Some(true));
+        assert_eq!(
+            snapshot["orchestratorStatus"]["backgroundTickEnabled"].as_bool(),
+            Some(true)
+        );
+        assert!(snapshot["orchestratorStatus"]["detail"]
+            .as_str()
+            .expect("status detail should be a string")
+            .contains("Stub mode is active"));
+
         let get_response = route_monitor_request_with_state("GET", "/monitor/state", vec![], &state)
             .expect("route should return a response");
         assert_eq!(get_response.status_code, 200, "monitor state should return 200");
         {
             let guard = state.lock().unwrap();
+            assert_eq!(guard.orchestrator_mode, OrchestratorMode::Stub);
             assert_eq!(
                 guard.packet_by_id(&packet_id).unwrap().state,
                 PacketState::DispatchedToManager,
@@ -9989,6 +10317,206 @@ mod tests {
             guard.packet_by_id(&packet_id).unwrap().state,
             PacketState::DispatchedToManager
         );
+    }
+
+    #[test]
+    fn orchestrator_mode_route_reports_live_tick_as_unavailable() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+
+        let response = route_monitor_request_with_state(
+            "POST",
+            "/orchestrator/mode",
+            body(serde_json::json!({ "mode": "live" })),
+            &state,
+        )
+        .expect("mode route should return a response");
+
+        assert_eq!(response.status_code, 200);
+        let snapshot: serde_json::Value =
+            serde_json::from_slice(&response.body).expect("body should be valid JSON");
+        assert_eq!(snapshot["orchestratorMode"].as_str(), Some("live"));
+        assert_eq!(snapshot["orchestratorStatus"]["canTick"].as_bool(), Some(false));
+        assert_eq!(
+            snapshot["orchestratorStatus"]["backgroundTickEnabled"].as_bool(),
+            Some(false)
+        );
+        assert!(snapshot["orchestratorStatus"]["detail"]
+            .as_str()
+            .expect("status detail should be a string")
+            .contains("not implemented"));
+    }
+
+    #[test]
+    fn orchestrator_tick_route_rejects_live_mode() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        {
+            let mut guard = state.lock().unwrap();
+            guard.orchestrator_mode = OrchestratorMode::Live;
+        }
+
+        let response = route_monitor_request_with_state("POST", "/orchestrator/tick", vec![], &state)
+            .expect("route should return a response");
+
+        assert_eq!(response.status_code, 501);
+        assert!(String::from_utf8(response.body)
+            .expect("body should be valid UTF-8")
+            .contains("live orchestrator mode is not implemented"));
+    }
+
+    #[test]
+    fn live_mode_background_maintenance_emits_one_rate_limited_warning() {
+        let mut state = MonitorState::default();
+        state.orchestrator_mode = OrchestratorMode::Live;
+
+        assert!(run_monitor_maintenance(&mut state));
+        assert_eq!(
+            state
+                .timeline
+                .iter()
+                .filter(|event| event.kind == "packet.orchestrator_mode_warning")
+                .count(),
+            1
+        );
+        assert!(state.timeline[0]
+            .text
+            .contains("live orchestrator mode is not implemented"));
+
+        assert!(!run_monitor_maintenance(&mut state));
+        assert_eq!(
+            state
+                .timeline
+                .iter()
+                .filter(|event| event.kind == "packet.orchestrator_mode_warning")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn packet_state_route_applies_retry_policy_to_failed_packet() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        {
+            let mut guard = state.lock().unwrap();
+            guard.packets.register_packet(make_staged_packet("failed-policy-1"));
+        }
+
+        let response = route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/failed-policy-1/state",
+            body(serde_json::json!({
+                "toState": "failed",
+                "actor": "worker",
+                "reason": "transient worker failure",
+                "retryable": true,
+                "retryBudget": 2
+            })),
+            &state,
+        )
+        .expect("route should return a response");
+
+        assert_eq!(response.status_code, 200);
+        let guard = state.lock().unwrap();
+        let packet = guard.packet_by_id("failed-policy-1").unwrap();
+        assert_eq!(packet.state, PacketState::Failed);
+        assert_eq!(packet.last_error.as_deref(), Some("transient worker failure"));
+        assert!(packet.last_failure_retryable);
+        assert_eq!(packet.retry_budget, 2);
+    }
+
+    #[test]
+    fn packet_retry_policy_route_updates_existing_failed_packet() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        {
+            let mut guard = state.lock().unwrap();
+            let mut packet = make_staged_packet("failed-policy-2");
+            packet.state = PacketState::Failed;
+            packet.last_error = Some("existing failure".to_owned());
+            guard.packets.register_packet(packet);
+        }
+
+        let response = route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/failed-policy-2/retry-policy",
+            body(serde_json::json!({
+                "retryable": true,
+                "retryBudget": 3
+            })),
+            &state,
+        )
+        .expect("route should return a response");
+
+        assert_eq!(response.status_code, 200);
+        let guard = state.lock().unwrap();
+        let packet = guard.packet_by_id("failed-policy-2").unwrap();
+        assert_eq!(packet.state, PacketState::Failed);
+        assert!(packet.last_failure_retryable);
+        assert_eq!(packet.retry_budget, 3);
+        assert!(guard.timeline.iter().any(|event| {
+            event.kind == "packet.retry_policy_updated"
+                && event.text.contains("failed-policy-2")
+        }));
+    }
+
+    #[test]
+    fn packet_retry_policy_route_rejects_non_failed_packet() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        {
+            let mut guard = state.lock().unwrap();
+            guard.packets.register_packet(make_staged_packet("failed-policy-3"));
+        }
+
+        let response = route_monitor_request_with_state(
+            "POST",
+            "/monitor/packets/failed-policy-3/retry-policy",
+            body(serde_json::json!({
+                "retryable": true,
+                "retryBudget": 1
+            })),
+            &state,
+        )
+        .expect("route should return a response");
+
+        assert_eq!(response.status_code, 409);
+        assert!(
+            String::from_utf8(response.body)
+                .expect("body should be valid UTF-8")
+                .contains("retry policy can only be updated while packet is failed")
+        );
+
+        let guard = state.lock().unwrap();
+        let packet = guard.packet_by_id("failed-policy-3").unwrap();
+        assert_eq!(packet.state, PacketState::Staged);
+        assert!(!packet.last_failure_retryable);
+        assert_eq!(packet.retry_budget, 0);
+        assert!(guard.timeline.iter().all(|event| {
+            !(event.kind == "packet.retry_policy_updated"
+                && event.text.contains("failed-policy-3"))
+        }));
+    }
+
+    #[test]
+    fn orchestrator_tick_route_requeues_retryable_failed_packet() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        {
+            let mut guard = state.lock().unwrap();
+            guard.orchestrator_mode = OrchestratorMode::Stub;
+            let mut packet = make_staged_packet("failed-retry-1");
+            packet.state = PacketState::Failed;
+            packet.last_error = Some("retryable failure".to_owned());
+            packet.retry_budget = 1;
+            packet.last_failure_retryable = true;
+            guard.packets.register_packet(packet);
+        }
+
+        let response = route_monitor_request_with_state("POST", "/orchestrator/tick", vec![], &state)
+            .expect("route should return a response");
+
+        assert_eq!(response.status_code, 200);
+        let guard = state.lock().unwrap();
+        let packet = guard.packet_by_id("failed-retry-1").unwrap();
+        assert_eq!(packet.state, PacketState::DispatchedToManager);
+        assert_eq!(packet.retry_count, 1);
+        assert!(packet.last_error.is_none());
     }
 
     #[test]
@@ -10291,6 +10819,9 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_owned(),
             summary: "test packet".to_owned(),
             last_error: None,
+            retry_count: 0,
+            retry_budget: 0,
+            last_failure_retryable: false,
             audit_seq: 0,
             audit_trail: vec![],
         }
