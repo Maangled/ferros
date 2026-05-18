@@ -52,8 +52,22 @@ export interface PacketLifecycleContract {
   stop: PacketLifecycleStopContract;
 }
 
+export interface PacketExecutionContext {
+  source_kind: string;
+  packet_id: string;
+  session_id: string;
+  manager_agent_id: string;
+  session_label?: string;
+  lifecycle_thread_id?: string;
+  lifecycle_thread_title?: string;
+  origin_message_id?: string;
+  origin_message_text?: string;
+}
+
 export interface PacketMetadata {
   lifecycle_contract?: PacketLifecycleContract;
+  execution_context?: PacketExecutionContext;
+  monitor_context?: PacketExecutionContext;
   [key: string]: any;
 }
 
@@ -135,6 +149,8 @@ export interface ValidationResult {
   warnings?: string[];
 }
 
+export type SessionReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
+
 /**
  * Options for coordinator handoff
  */
@@ -144,7 +160,25 @@ export interface CoordinatorOptions {
   log_level?: 'debug' | 'info' | 'warn' | 'error';
   capture_events?: boolean;
   sdk_client?: any;
+  session_model?: string;
+  session_reasoning_effort?: SessionReasoningEffort;
 }
+
+export interface FetchResponseLike {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  text(): Promise<string>;
+}
+
+export type FetchLike = (
+  url: string,
+  init: {
+    method: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }
+) => Promise<FetchResponseLike>;
 
 /**
  * Session manager options
@@ -152,6 +186,10 @@ export interface CoordinatorOptions {
 export interface SessionManagerOptions {
   sdk_client?: any;
   permission_handler?: (agent: string, request: any) => Promise<{ approved: boolean }>;
+  orchestrator_base_url?: string;
+  fetch_impl?: FetchLike;
+  session_model?: string;
+  session_reasoning_effort?: SessionReasoningEffort;
 }
 
 /**

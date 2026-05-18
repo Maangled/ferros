@@ -85,6 +85,8 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_owned(),
             summary: "test packet".to_owned(),
             last_error: None,
+            last_lifecycle_outcome: None,
+            last_lifecycle_errors: vec![],
             registration_idempotency_key: None,
             retry_count: 0,
             retry_budget: 0,

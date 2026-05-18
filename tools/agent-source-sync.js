@@ -11,7 +11,7 @@ const mirrorRoot = path.join(repoRoot, '.github', 'agents');
 
 const SOURCE_LAYOUT = Object.freeze({
   'ferros-agent.agent.md': 'ferros/ferros-agent.agent.md',
-  'ferros-agent-architect.agent.md': 'ferros/architects/ferros-agent-architect.agent.md',
+  'ferros-agent-architect.agent.md': 'agent_architect/ferros-agent-architect.agent.md',
   'ferros-prompt-architect.agent.md': 'ferros/architects/ferros-prompt-architect.agent.md',
   'ferros-orchestration-architect.agent.md': 'ferros/architects/ferros-orchestration-architect.agent.md',
   'ferros-documentation-architect.agent.md': 'ferros/architects/ferros-documentation-architect.agent.md',

@@ -6,13 +6,15 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
+    "handoff": "ts-node src/handoff-cli.ts",
+    "subprocess-runtime": "ts-node src/subprocess-runtime-cli.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src --ext .ts",
     "harness": "ts-node harness/integration-harness.ts"
   },
   "dependencies": {
-    "@github/copilot-sdk": "^0.1.0"
+    "@github/copilot-sdk": "^1.0.0-beta.4"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",

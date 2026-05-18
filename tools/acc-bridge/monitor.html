@@ -33,6 +33,10 @@
       --accent-red: #f87171;
       --radius: 14px;
       --radius-small: 10px;
+      --frame-outer-width: 5px;
+      --frame-middle-width: 4px;
+      --frame-placeholder-width: 4px;
+      --conversation-stack-max-height: 424px;
       --shadow: 0 16px 44px rgba(0, 0, 0, 0.4);
       --font-ui: "Aptos", "Trebuchet MS", "Segoe UI", sans-serif;
       --font-mono: "Cascadia Code", "Consolas", monospace;
@@ -44,29 +48,63 @@
       padding: 0;
     }
 
+    [hidden] {
+      display: none !important;
+    }
+
+    html,
     body {
-      min-height: 100vh;
+      height: 100%;
+    }
+
+    body {
+      height: 100vh;
       color: var(--text);
       font-family: var(--font-ui);
       background:
         radial-gradient(circle at 0% 0%, rgba(45, 212, 191, 0.12), transparent 32%),
         radial-gradient(circle at 100% 0%, rgba(74, 144, 217, 0.12), transparent 34%),
         linear-gradient(180deg, #09111a 0%, #0b121d 48%, #0a0d14 100%);
+      position: relative;
+      isolation: isolate;
       padding: 14px;
+      overflow: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::before {
+      background:
+        radial-gradient(circle at 6% 16%, rgba(45, 212, 191, 0.24) 0, rgba(45, 212, 191, 0.06) 7%, transparent 18%),
+        radial-gradient(circle at 94% 16%, rgba(192, 132, 252, 0.24) 0, rgba(192, 132, 252, 0.06) 7%, transparent 18%),
+        radial-gradient(ellipse 72% 12% at 50% 7%, rgba(125, 211, 252, 0.18), transparent 72%),
+        radial-gradient(ellipse 66% 12% at 50% 95%, rgba(251, 146, 60, 0.12), transparent 72%);
+      opacity: 0.92;
+    }
+
+    body::after {
+      background:
+        radial-gradient(ellipse 42% 62% at -6% 50%, rgba(56, 189, 248, 0.2) 0, rgba(56, 189, 248, 0.08) 30%, rgba(56, 189, 248, 0) 58%),
+        radial-gradient(ellipse 42% 62% at 106% 50%, rgba(168, 85, 247, 0.18) 0, rgba(168, 85, 247, 0.08) 30%, rgba(168, 85, 247, 0) 58%);
+      filter: blur(6px);
+      opacity: 0.9;
     }
 
     .shell {
-      width: min(1600px, 100%);
+      width: min(1840px, 100%);
+      height: calc(100vh - 28px);
       margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 14px;
-    }
-
-    @media (max-width: 1200px) {
-      .shell {
-        grid-template-columns: 1fr;
-      }
+      position: relative;
+      z-index: 1;
+      display: block;
+      overflow: visible;
     }
 
     .panel {
@@ -78,14 +116,862 @@
       min-width: 0;
     }
 
+    .mars-stage {
+      position: relative;
+      min-height: 0;
+      height: 100%;
+      overflow: visible;
+      padding: 104px 72px 128px;
+    }
+
+    .mars-stage::before,
+    .mars-stage::after {
+      content: '';
+      position: absolute;
+      top: 84px;
+      bottom: 34px;
+      width: min(34vw, 430px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.9;
+    }
+
+    .mars-stage::before {
+      left: -140px;
+      background:
+        radial-gradient(ellipse 95% 70% at 0% 50%, rgba(56, 189, 248, 0.22) 0, rgba(56, 189, 248, 0.1) 30%, rgba(56, 189, 248, 0) 64%),
+        radial-gradient(ellipse 92% 72% at 12% 50%, transparent 56%, rgba(103, 232, 249, 0.42) 59%, transparent 61%),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0) 72%);
+      filter: blur(3px);
+    }
+
+    .mars-stage::after {
+      right: -140px;
+      background:
+        radial-gradient(ellipse 95% 70% at 100% 50%, rgba(192, 132, 252, 0.2) 0, rgba(192, 132, 252, 0.08) 30%, rgba(192, 132, 252, 0) 64%),
+        radial-gradient(ellipse 92% 72% at 88% 50%, transparent 56%, rgba(196, 181, 253, 0.4) 59%, transparent 61%),
+        linear-gradient(270deg, rgba(192, 132, 252, 0.14), rgba(192, 132, 252, 0) 72%);
+      filter: blur(3px);
+    }
+
+    .mars-panel {
+      min-height: 0;
+      height: 100%;
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      border: var(--frame-outer-width) solid rgba(120, 168, 210, 0.2);
+      border-radius: 22px;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03), 0 28px 62px rgba(0, 0, 0, 0.36);
+    }
+
+    .mars-panel > .panel-body {
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .hud-center-beacon {
+      position: absolute;
+      z-index: 52;
+      top: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 208px;
+      min-height: 40px;
+      padding: 0;
+      border: none;
+      background: none;
+      appearance: none;
+      overflow: visible;
+      white-space: normal;
+      cursor: default;
+      transition: width 200ms ease, min-height 200ms ease;
+    }
+
+    .hud-center-beacon:hover,
+    .hud-center-beacon:focus-visible {
+      z-index: 86;
+      width: 340px;
+      min-height: 148px;
+    }
+
+    .hud-center-beacon-shell {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: inherit;
+      border: var(--frame-placeholder-width) dashed rgba(120, 168, 210, 0.38);
+      border-radius: 14px;
+      background: rgba(8, 12, 20, 0.46);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28), 0 0 22px rgba(74, 144, 217, 0.08);
+      overflow: hidden;
+    }
+
+    .hud-center-beacon-collapsed,
+    .hud-center-beacon-expanded {
+      position: absolute;
+      inset: 0;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .hud-center-beacon-collapsed {
+      display: grid;
+      place-items: center;
+      padding: 0 10px;
+      color: #dbeafe;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .hud-center-beacon-expanded {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      padding: 12px 14px;
+      opacity: 0;
+      transform: translateY(8px);
+      text-align: left;
+    }
+
+    .hud-center-beacon:hover .hud-center-beacon-collapsed,
+    .hud-center-beacon:focus-visible .hud-center-beacon-collapsed {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    .hud-center-beacon:hover .hud-center-beacon-expanded,
+    .hud-center-beacon:focus-visible .hud-center-beacon-expanded {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hud-center-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .hud-center-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 2px dashed rgba(120, 168, 210, 0.3);
+      color: #cbd5f5;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .corner-hud-card {
+      position: absolute;
+      z-index: 46;
+      width: 56px;
+      height: 56px;
+      padding: 0;
+      border: none;
+      background: none;
+      appearance: none;
+      overflow: visible;
+      cursor: default;
+      transition: width 190ms ease, height 190ms ease;
+    }
+
+    .corner-hud-card:hover,
+    .corner-hud-card:hover:not(:disabled),
+    .corner-hud-card:focus-visible {
+      z-index: 90;
+      width: 132px;
+      height: 186px;
+      border: none;
+      background: none;
+    }
+
+    .corner-hud-card-top-left {
+      top: 6px;
+      left: 10px;
+    }
+
+    .corner-hud-card-top-right {
+      top: 6px;
+      right: 10px;
+    }
+
+    .corner-hud-card-bottom-left {
+      bottom: 10px;
+      left: 10px;
+    }
+
+    .corner-hud-card-bottom-right {
+      bottom: 10px;
+      right: 10px;
+    }
+
+    .corner-card-shell {
+      display: block;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      clip-path: polygon(18% 0, 100% 0, 100% 82%, 82% 100%, 0 100%, 0 18%);
+      border: var(--frame-placeholder-width) dashed rgba(120, 168, 210, 0.34);
+      background: linear-gradient(180deg, rgba(16, 24, 38, 0.92), rgba(10, 16, 26, 0.8));
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.26), 0 0 22px rgba(74, 144, 217, 0.08);
+      transition: box-shadow 180ms ease, background 180ms ease;
+    }
+
+    .corner-hud-card:hover .corner-card-shell,
+    .corner-hud-card:focus-visible .corner-card-shell {
+      box-shadow: 0 18px 34px rgba(0, 0, 0, 0.34), 0 0 24px rgba(120, 168, 210, 0.16);
+      background: linear-gradient(180deg, rgba(20, 31, 49, 0.96), rgba(11, 18, 29, 0.86));
+    }
+
+    .corner-hud-card-nav .corner-card-shell {
+      background: radial-gradient(circle at 50% 16%, rgba(74, 144, 217, 0.26), rgba(16, 24, 38, 0.96) 72%);
+      border-color: rgba(74, 144, 217, 0.44);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.26), 0 0 22px rgba(74, 144, 217, 0.12);
+    }
+
+    .corner-hud-card-profile .corner-card-shell,
+    .corner-hud-card-backpack .corner-card-shell {
+      background: radial-gradient(circle at 50% 16%, rgba(245, 158, 11, 0.22), rgba(16, 24, 38, 0.96) 72%);
+      border-color: rgba(245, 158, 11, 0.4);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.26), 0 0 22px rgba(245, 158, 11, 0.1);
+    }
+
+    .corner-hud-card-deck .corner-card-shell {
+      background: radial-gradient(circle at 50% 16%, rgba(45, 212, 191, 0.24), rgba(16, 24, 38, 0.96) 72%);
+      border-color: rgba(45, 212, 191, 0.42);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.26), 0 0 22px rgba(45, 212, 191, 0.1);
+    }
+
+    .corner-hud-card-assistant .corner-card-shell {
+      background: radial-gradient(circle at 50% 16%, rgba(99, 102, 241, 0.2), rgba(16, 24, 38, 0.96) 72%);
+      border-color: rgba(129, 140, 248, 0.4);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.26), 0 0 22px rgba(129, 140, 248, 0.1);
+    }
+
+    .corner-card-collapsed,
+    .corner-card-expanded {
+      position: absolute;
+      inset: 0;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .corner-card-collapsed {
+      display: grid;
+      place-items: center;
+      padding: 8px;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .corner-card-expanded {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      padding: 12px;
+      opacity: 0;
+      transform: translateY(10px);
+      text-align: left;
+    }
+
+    .corner-hud-card:hover .corner-card-collapsed,
+    .corner-hud-card:focus-visible .corner-card-collapsed {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    .corner-hud-card:hover .corner-card-expanded,
+    .corner-hud-card:focus-visible .corner-card-expanded {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .corner-card-kicker {
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .corner-card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .corner-card-meta {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .corner-card-icon {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.24);
+      background: rgba(10, 16, 26, 0.54);
+      font-size: 18px;
+    }
+
+    .nav-wheel {
+      display: block;
+      position: relative;
+      width: 84px;
+      height: 84px;
+      margin: 0 auto;
+      border-radius: 999px;
+      box-shadow: inset 0 0 0 1px rgba(74, 144, 217, 0.28);
+      background: radial-gradient(circle at 50% 50%, rgba(74, 144, 217, 0.18), rgba(10, 16, 26, 0.14) 72%);
+    }
+
+    .nav-wheel::before {
+      content: '';
+      position: absolute;
+      inset: 14px;
+      border-radius: 999px;
+      border: 1px dashed rgba(120, 168, 210, 0.24);
+    }
+
+    .nav-wheel-center {
+      position: absolute;
+      inset: 28px;
+      border-radius: 999px;
+      background: rgba(18, 31, 51, 0.9);
+      box-shadow: inset 0 0 0 1px rgba(74, 144, 217, 0.28);
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+    }
+
+    .nav-wheel-node {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #bfdbfe;
+      box-shadow: 0 0 10px rgba(74, 144, 217, 0.45);
+    }
+
+    .nav-wheel-node-top {
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .nav-wheel-node-right {
+      top: 50%;
+      right: 8px;
+      transform: translateY(-50%);
+    }
+
+    .nav-wheel-node-bottom {
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .nav-wheel-node-left {
+      top: 50%;
+      left: 8px;
+      transform: translateY(-50%);
+    }
+
+    .profile-card-art,
+    .assistant-card-art {
+      display: grid;
+      min-height: 92px;
+      border-radius: 14px;
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.24);
+      background: linear-gradient(180deg, rgba(11, 18, 29, 0.88), rgba(18, 31, 51, 0.7));
+      justify-items: center;
+      align-content: center;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .profile-badge,
+    .assistant-avatar {
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.28);
+      background: radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.12), rgba(12, 20, 32, 0.94));
+      display: grid;
+      place-items: center;
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .assistant-avatar {
+      border-radius: 999px;
+      font-size: 16px;
+    }
+
+    .profile-card-line,
+    .assistant-card-line {
+      width: 68%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(120, 168, 210, 0.18);
+    }
+
+    .stack-icon {
+      display: block;
+      position: relative;
+      width: 42px;
+      height: 36px;
+    }
+
+    .stack-icon.large {
+      width: 66px;
+      height: 58px;
+      margin: 0 auto;
+    }
+
+    .stack-card {
+      position: absolute;
+      width: 24px;
+      height: 34px;
+      border-radius: 10px;
+      clip-path: polygon(16% 0, 100% 0, 100% 84%, 84% 100%, 0 100%, 0 16%);
+      background: linear-gradient(180deg, rgba(20, 32, 51, 0.94), rgba(9, 14, 24, 0.94));
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.24);
+    }
+
+    .stack-icon.large .stack-card {
+      width: 38px;
+      height: 52px;
+      border-radius: 14px;
+    }
+
+    .stack-card-back-a {
+      left: 0;
+      top: 8px;
+      opacity: 0.58;
+    }
+
+    .stack-card-back-b {
+      left: 7px;
+      top: 4px;
+      opacity: 0.78;
+    }
+
+    .stack-card-top {
+      left: 14px;
+      top: 0;
+      display: grid;
+      place-items: center;
+    }
+
+    .stack-icon.large .stack-card-top {
+      left: 22px;
+    }
+
+    .corner-script-mark {
+      font-family: "Palatino Linotype", Georgia, serif;
+      font-style: italic;
+      font-size: 24px;
+      color: #e0f2fe;
+      text-shadow: 0 0 12px rgba(45, 212, 191, 0.18);
+    }
+
+    .stack-icon.large .corner-script-mark {
+      font-size: 34px;
+    }
+
+    .face-card-mini {
+      width: 30px;
+      height: 40px;
+      border-radius: 10px;
+      clip-path: polygon(16% 0, 100% 0, 100% 84%, 84% 100%, 0 100%, 0 16%);
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.94));
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.24);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #f8fafc;
+    }
+
+    .quick-action-bar {
+      position: absolute;
+      left: 72px;
+      right: 72px;
+      bottom: 10px;
+      z-index: 26;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      align-items: end;
+      gap: 16px;
+    }
+
+    .quick-action-card {
+      min-height: 0;
+      max-height: 56px;
+      align-self: end;
+      border-radius: 18px;
+      border: var(--frame-outer-width) dashed rgba(120, 168, 210, 0.42);
+      background: linear-gradient(180deg, rgba(14, 22, 35, 0.74), rgba(10, 16, 26, 0.54));
+      backdrop-filter: blur(12px);
+      padding: 12px 14px;
+      display: grid;
+      justify-items: start;
+      gap: 10px;
+      text-align: left;
+      color: var(--text);
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+      overflow: hidden;
+      cursor: default;
+      transition: max-height 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+    }
+
+    .quick-action-card:hover,
+    .quick-action-card:focus-visible {
+      max-height: 132px;
+      border-color: rgba(45, 212, 191, 0.44);
+      box-shadow: 0 18px 36px rgba(0, 0, 0, 0.32), 0 0 28px rgba(45, 212, 191, 0.08);
+      background: linear-gradient(180deg, rgba(18, 29, 44, 0.86), rgba(10, 16, 26, 0.72));
+    }
+
+    .quick-action-label {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .quick-action-energy {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(45, 212, 191, 0.34);
+      background: rgba(18, 31, 51, 0.74);
+      color: #99f6e4;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .quick-action-note {
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--muted);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .quick-action-card:hover .quick-action-energy,
+    .quick-action-card:hover .quick-action-note,
+    .quick-action-card:focus-visible .quick-action-energy,
+    .quick-action-card:focus-visible .quick-action-note {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .edge-hotbar {
+      position: absolute;
+      top: 92px;
+      right: 0;
+      bottom: 74px;
+      z-index: 34;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      gap: 0;
+      width: 58px;
+      padding: 0;
+      border: none;
+      background: none;
+      backdrop-filter: none;
+      box-shadow: none;
+    }
+
+    .edge-hotbar-button {
+      width: 58px;
+      height: 58px;
+      padding: 0;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(20, 32, 51, 0.62);
+      border: 1px solid rgba(120, 168, 210, 0.26);
+      color: #dbeafe;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 11px;
+      font-weight: 700;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+
+    .edge-hotbar-button:hover:not(:disabled) {
+      border-color: rgba(45, 212, 191, 0.54);
+      background: rgba(18, 30, 46, 0.78);
+      transform: translateX(-1px);
+    }
+
+    .edge-hotbar-button.active {
+      border-color: rgba(45, 212, 191, 0.74);
+      background: rgba(45, 212, 191, 0.18);
+      color: #d1fae5;
+      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.22), 0 0 20px rgba(45, 212, 191, 0.16);
+    }
+
+    .surface-drawer {
+      position: absolute;
+      top: 74px;
+      right: 66px;
+      z-index: 35;
+      width: min(540px, calc(100% - 120px));
+      max-height: calc(100% - 162px);
+      opacity: 0;
+      transform: translateX(18px);
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    .surface-drawer.open {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+
+    .surface-panel {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      max-height: inherit;
+      overflow: hidden;
+      border-radius: 22px;
+      border: 1px solid rgba(120, 168, 210, 0.24);
+      background: linear-gradient(180deg, rgba(16, 24, 38, 0.92), rgba(10, 16, 26, 0.88));
+      backdrop-filter: blur(18px);
+      box-shadow: 0 24px 54px rgba(0, 0, 0, 0.4);
+    }
+
+    .surface-panel-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(120, 168, 210, 0.18);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .surface-panel-body {
+      padding: 14px 16px 16px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .surface-section {
+      display: grid;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .surface-scroll-region {
+      max-height: calc(min(78vh, 920px) - 154px);
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .surface-section .lifecycle-shell {
+      min-height: 0;
+    }
+
+    @media (max-width: 900px) {
+      body {
+        overflow: auto;
+      }
+
+      body::before,
+      body::after {
+        display: none;
+      }
+
+      .shell {
+        height: auto;
+        overflow: visible;
+      }
+
+      .mars-stage {
+        padding: 0;
+        height: auto;
+        overflow: visible;
+      }
+
+      .corner-hud-card,
+      .hud-center-beacon {
+        display: none;
+      }
+
+      .status-bar {
+        position: static;
+        width: 100%;
+        max-height: none;
+        margin-bottom: 14px;
+        transform: none;
+      }
+
+      .status-bar .panel-body {
+        padding: 12px 14px;
+      }
+
+      .status-row,
+      .status-bar:hover .status-row,
+      .status-bar:focus-within .status-row {
+        grid-template-columns: 1fr;
+      }
+
+      .status-meta,
+      .status-stat-grid,
+      .status-actions .btn-row {
+        opacity: 1;
+        width: auto;
+        max-height: none;
+        pointer-events: auto;
+        transform: none;
+      }
+
+      .utility-dock,
+      .edge-hotbar {
+        position: static;
+        margin-top: 14px;
+        flex-direction: row;
+        justify-content: center;
+        width: fit-content;
+        max-width: 100%;
+      }
+
+      .utility-drawer {
+        position: static;
+        width: 100%;
+        max-height: none;
+        margin-top: 14px;
+      }
+
+      .surface-drawer {
+        position: static;
+        width: 100%;
+        max-height: none;
+        margin-top: 14px;
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+        display: none;
+      }
+
+      .surface-drawer.open {
+        display: block;
+      }
+
+      .surface-panel {
+        max-height: none;
+      }
+
+      .utility-drawer .panel {
+        max-height: none;
+      }
+
+      .quick-action-bar {
+        position: static;
+        left: auto;
+        right: auto;
+        margin-top: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+
+      .quick-action-card {
+        max-height: 132px;
+        transform: none;
+      }
+
+      .quick-action-energy,
+      .quick-action-note {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
     .panel-header {
-      padding: 13px 16px;
+      padding: 16px 20px;
       border-bottom: 1px solid rgba(120, 168, 210, 0.2);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
       flex-wrap: wrap;
+    }
+
+    .mars-panel > .panel-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+    }
+
+    .mars-panel-spacer {
+      min-height: 1px;
+    }
+
+    .mars-panel-heading {
+      min-width: 0;
+      justify-self: center;
+    }
+
+    .mars-panel-heading .label {
+      justify-content: center;
+      font-size: 9px;
+      letter-spacing: 0.18em;
+    }
+
+    .mars-panel-heading .title {
+      margin-top: 0;
+      color: #f8fbff;
+      font-family: "Palatino Linotype", Georgia, serif;
+      font-size: 34px;
+      font-style: italic;
+      font-weight: 700;
+      line-height: 1.05;
+      text-shadow: 0 0 16px rgba(219, 234, 254, 0.16), 0 0 28px rgba(96, 165, 250, 0.14);
+      text-wrap: balance;
+    }
+
+    .mars-panel-actions {
+      justify-self: end;
+    }
+
+    .mars-accent {
+      color: inherit;
+      display: inline-block;
+      font-size: 2em;
+      font-style: normal;
+      font-weight: 900;
+      line-height: 0.7;
+      margin-right: -0.04em;
+      text-shadow: 0 0 20px rgba(219, 234, 254, 0.22), 0 0 30px rgba(96, 165, 250, 0.18);
     }
 
     .label {
@@ -110,15 +996,77 @@
     }
 
     .status-bar {
-      margin-bottom: 14px;
-      background: linear-gradient(90deg, rgba(45, 212, 191, 0.08), rgba(74, 144, 217, 0.08));
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      z-index: 58;
+      width: min(520px, calc(100% - 260px));
+      max-height: 48px;
+      margin-bottom: 0;
+      overflow: hidden;
+      transform: translateX(-50%);
+      border: var(--frame-outer-width) solid rgba(120, 168, 210, 0.18);
+      border-radius: 28px;
+      background: linear-gradient(105deg, rgba(45, 212, 191, 0.08), rgba(74, 144, 217, 0.08) 52%, rgba(248, 113, 113, 0.08));
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03), 0 18px 42px rgba(0, 0, 0, 0.28);
+      transition: width 220ms ease, max-height 220ms ease, box-shadow 220ms ease, background 220ms ease;
+    }
+
+    .status-bar:hover,
+    .status-bar:focus-within {
+      width: min(1240px, calc(100% - 220px));
+      max-height: 176px;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 28px 58px rgba(0, 0, 0, 0.32);
+    }
+
+    .status-bar .panel-body {
+      padding: 6px 10px;
     }
 
     .status-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: stretch;
+      gap: 8px;
+      transition: gap 180ms ease;
+    }
+
+    .status-bar:hover .status-row,
+    .status-bar:focus-within .status-row {
+      grid-template-columns: minmax(260px, 1.15fr) minmax(0, 2fr) auto;
+      gap: 14px;
+    }
+
+    .status-hero {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
       align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+      min-height: 30px;
+      padding: 5px 10px;
+      border-radius: 16px;
+      background: rgba(12, 19, 30, 0.78);
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.1);
+    }
+
+    .status-hero-copy {
+      min-width: 0;
+    }
+
+    .status-kicker {
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+      display: none;
+    }
+
+    .status-bar:hover .status-kicker,
+    .status-bar:focus-within .status-kicker {
+      display: block;
     }
 
     .status-indicator {
@@ -149,14 +1097,166 @@
 
     .status-text {
       font-size: 14px;
-      flex: 1;
-      min-width: 200px;
+      font-weight: 800;
+      line-height: 1.1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .status-bar:hover .status-text,
+    .status-bar:focus-within .status-text {
+      font-size: 18px;
+      line-height: 1.15;
+      white-space: normal;
+    }
+
+    .status-meta {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      opacity: 0;
+      max-height: 0;
+      overflow: hidden;
+      transform: translateY(-4px);
+      transition: opacity 180ms ease, max-height 180ms ease, transform 180ms ease;
+    }
+
+    .status-stat-grid {
+      min-width: 0;
+      display: none;
+      grid-template-columns: repeat(5, minmax(100px, 1fr));
+      gap: 10px;
+      width: 0;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+      transition: opacity 180ms ease, width 180ms ease;
+    }
+
+    .status-bar:hover .status-stat-grid,
+    .status-bar:focus-within .status-stat-grid {
+      display: grid;
+      width: auto;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .status-stat-card {
+      min-width: 0;
+      padding: 11px 12px;
+      border-radius: 18px;
+      border: 3px solid rgba(120, 168, 210, 0.16);
+      background: linear-gradient(180deg, rgba(12, 19, 30, 0.82), rgba(8, 13, 22, 0.72));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+
+    .status-stat-card.placeholder-stat-card {
+      border-width: var(--frame-placeholder-width);
+      border-style: dashed;
+      border-color: rgba(248, 113, 113, 0.38);
+    }
+
+    .status-stat-label {
+      display: block;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .status-stat-value {
+      display: block;
+      margin-top: 7px;
+      font-size: 20px;
+      font-weight: 800;
+      color: #f8fbff;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .status-stat-meta {
+      display: block;
+      margin-top: 6px;
+      color: var(--dim);
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .status-actions {
+      min-width: auto;
+      display: grid;
+      justify-items: end;
+      align-content: center;
+      gap: 6px;
+    }
+
+    .status-actions .btn-row {
+      opacity: 0;
+      max-height: 0;
+      overflow: hidden;
+      pointer-events: none;
+      transform: translateY(-4px);
+      transition: opacity 180ms ease, max-height 180ms ease, transform 180ms ease;
+    }
+
+    .status-bar:hover .status-actions .btn-row,
+    .status-bar:focus-within .status-actions .btn-row {
+      opacity: 1;
+      max-height: 48px;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .status-bar:hover .status-meta,
+    .status-bar:focus-within .status-meta {
+      opacity: 1;
+      max-height: 42px;
+      transform: translateY(0);
     }
 
     .timestamp {
-      color: var(--dim);
+      color: #dbeafe;
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 10px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 168, 210, 0.22);
+      background: rgba(15, 24, 38, 0.78);
+    }
+
+    @media (max-width: 1260px) {
+      .status-bar {
+        width: min(100%, calc(100% - 40px));
+      }
+
+      .status-row {
+        grid-template-columns: 1fr;
+      }
+
+      .status-actions {
+        justify-items: start;
+      }
+
+      .status-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      }
+
+      .mars-panel > .panel-header {
+        grid-template-columns: 1fr;
+      }
+
+      .mars-panel-spacer {
+        display: none;
+      }
+
+      .mars-panel-actions {
+        justify-self: center;
+      }
     }
 
     .btn-row {
@@ -207,33 +1307,141 @@
     .split {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 14px;
+      height: 100%;
+      min-height: 0;
+      align-items: stretch;
     }
 
     @media (max-width: 900px) {
       .split {
         grid-template-columns: 1fr;
+        grid-auto-rows: minmax(420px, 1fr);
+      }
+
+      .chat-board-panel,
+      .arena-panel {
+        min-height: min(60vh, 520px);
       }
     }
 
     .subpanel {
       background: rgba(9, 14, 24, 0.65);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px;
+      border: var(--frame-middle-width) solid rgba(120, 168, 210, 0.18);
+      border-radius: 16px;
+      padding: 12px;
+      min-height: 0;
+      display: grid;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+
+    .chat-board-panel {
+      position: relative;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .chat-board-panel .conversation-toolbar {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      z-index: 5;
+      grid-row: 1;
+      min-height: 42px;
+      margin-bottom: 0;
+      pointer-events: none;
+    }
+
+    .chat-board-panel .session-card-strip,
+    .chat-board-panel .chat-messages {
+      grid-row: 2;
+      padding-top: 56px;
+    }
+
+    .chat-board-panel .chat-controls {
+      grid-row: 3;
+    }
+
+    .chat-board-panel .conversation-toolbar .subheader {
+      justify-content: center;
+      padding-left: 52px;
+    }
+
+    .chat-board-panel .session-back-arrow {
+      pointer-events: auto;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 6;
+    }
+
+    .arena-panel {
+      grid-template-rows: auto auto auto minmax(0, 1fr);
     }
 
     .subheader {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--muted);
-      letter-spacing: 0.08em;
+      font-size: 13px;
+      font-weight: 800;
+      color: #dce9fb;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    .subheader::after {
+      content: '';
+      flex: 1;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(248, 113, 113, 0.42), rgba(74, 144, 217, 0));
+      opacity: 0.85;
+    }
+
+    .conversation-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .conversation-toolbar .subheader {
+      margin-bottom: 0;
+      flex: 1;
+    }
+
+    .session-back-arrow {
+      min-width: 42px;
+      min-height: 42px;
+      padding: 0;
+      border-radius: 12px;
+      font-size: 24px;
+      line-height: 1;
+      font-family: var(--font-ui);
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #d9e7fb;
+      background: rgba(17, 27, 44, 0.96);
+      border-color: rgba(96, 165, 250, 0.34);
+    }
+
+    .session-back-arrow:hover:not(:disabled) {
+      border-color: rgba(45, 212, 191, 0.62);
+      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.18);
+    }
+
+    .session-back-arrow:disabled {
+      opacity: 0.38;
     }
 
     .chat-messages {
-      height: 280px;
+      height: 100%;
+      min-height: 0;
       overflow-y: auto;
       border-radius: 10px;
       border: 1px solid rgba(120, 168, 210, 0.2);
@@ -276,7 +1484,7 @@
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 8px;
-      margin-top: 10px;
+      margin-top: 12px;
     }
 
     textarea {
@@ -297,8 +1505,18 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 280px;
       overflow-y: auto;
+    }
+
+    .loop-list {
+      min-height: 0;
+      height: 100%;
+      padding-right: 4px;
+    }
+
+    .archive-list,
+    .timeline-list {
+      max-height: 280px;
     }
 
     .loop-card,
@@ -311,10 +1529,75 @@
       font-size: 12px;
     }
 
+    .session-card-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px;
+      margin-bottom: 0;
+      min-height: 0;
+      height: 100%;
+      max-height: none;
+      overflow-y: auto;
+      align-content: start;
+      padding-right: 4px;
+    }
+
+    .session-card {
+      width: 100%;
+      background: rgba(8, 12, 20, 0.86);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px;
+      font-size: 12px;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+    }
+
+    .session-card:hover {
+      border-color: rgba(96, 165, 250, 0.55);
+      transform: translateY(-1px);
+    }
+
+    .session-card.selected {
+      border-color: rgba(45, 212, 191, 0.7);
+      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.35);
+    }
+
+    .session-card-direction {
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .session-card-preview {
+      margin-top: 6px;
+      line-height: 1.45;
+    }
+
+    .session-card.is-return {
+      border-color: rgba(96, 165, 250, 0.34);
+      background: linear-gradient(180deg, rgba(9, 15, 25, 0.94), rgba(8, 12, 20, 0.92));
+    }
+
+    .session-card.new-response {
+      border-color: rgba(45, 212, 191, 0.72);
+      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.26), 0 0 18px rgba(45, 212, 191, 0.16);
+      animation: session-card-pulse 2.2s ease-in-out infinite;
+    }
+
+    .session-card.new-response .session-card-direction {
+      color: #99f6e4;
+    }
+
     .loop-control-grid {
       position: relative;
       display: block;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       min-height: 126px;
       overflow: hidden;
       padding: 0 22px 4px;
@@ -495,6 +1778,33 @@
       text-shadow: 0 0 10px rgba(248, 113, 113, 0.95), 0 0 22px rgba(248, 113, 113, 0.45);
     }
 
+    .loop-control-card.notification-glow-low .lane-icon,
+    .agent-play-card.notification-glow-low .agent-card-icon.notification-hit {
+      text-shadow: 0 0 12px rgba(45, 212, 191, 0.95), 0 0 28px rgba(45, 212, 191, 0.48);
+    }
+
+    .loop-control-card.notification-glow-medium .lane-icon,
+    .agent-play-card.notification-glow-medium .agent-card-icon.notification-hit {
+      text-shadow: 0 0 12px rgba(245, 158, 11, 0.96), 0 0 28px rgba(245, 158, 11, 0.5);
+    }
+
+    .loop-control-card.notification-glow-high .lane-icon,
+    .agent-play-card.notification-glow-high .agent-card-icon.notification-hit {
+      text-shadow: 0 0 14px rgba(248, 113, 113, 0.98), 0 0 32px rgba(248, 113, 113, 0.56);
+    }
+
+    .loop-control-card.notification-glow-low.is-centered {
+      box-shadow: 0 0 0 1px rgba(232, 237, 245, 0.18), 0 0 24px rgba(45, 212, 191, 0.24);
+    }
+
+    .loop-control-card.notification-glow-medium.is-centered {
+      box-shadow: 0 0 0 1px rgba(232, 237, 245, 0.18), 0 0 24px rgba(245, 158, 11, 0.28);
+    }
+
+    .loop-control-card.notification-glow-high.is-centered {
+      box-shadow: 0 0 0 1px rgba(232, 237, 245, 0.18), 0 0 24px rgba(248, 113, 113, 0.3);
+    }
+
     .lane-sub,
     .lane-meta {
       display: none;
@@ -576,6 +1886,18 @@
       border-radius: 8px;
     }
 
+    .agent-play-card.notification-glow-low {
+      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.24), 0 0 20px rgba(45, 212, 191, 0.12);
+    }
+
+    .agent-play-card.notification-glow-medium {
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.24), 0 0 20px rgba(245, 158, 11, 0.14);
+    }
+
+    .agent-play-card.notification-glow-high {
+      box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.24), 0 0 20px rgba(248, 113, 113, 0.15);
+    }
+
     .agent-play-card .loop-card-inner {
       min-height: 236px;
     }
@@ -647,6 +1969,43 @@
       line-height: 1.4;
     }
 
+    .agent-card-notice {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      align-self: flex-start;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 168, 210, 0.28);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: rgba(9, 14, 24, 0.78);
+      color: var(--muted);
+    }
+
+    .agent-card-notice::before {
+      content: '●';
+      font-size: 8px;
+      line-height: 1;
+    }
+
+    .agent-card-notice.notification-glow-low {
+      border-color: rgba(45, 212, 191, 0.46);
+      color: #99f6e4;
+    }
+
+    .agent-card-notice.notification-glow-medium {
+      border-color: rgba(245, 158, 11, 0.5);
+      color: #fde68a;
+    }
+
+    .agent-card-notice.notification-glow-high {
+      border-color: rgba(248, 113, 113, 0.5);
+      color: #fecaca;
+    }
+
     .flip-note {
       margin-top: auto;
       color: var(--dim);
@@ -655,6 +2014,13 @@
       writing-mode: vertical-rl;
       align-self: flex-end;
       opacity: 0.72;
+    }
+
+    .notification-card .flip-note {
+      writing-mode: horizontal-tb;
+      align-self: flex-start;
+      color: #bfdbfe;
+      opacity: 0.92;
     }
 
     .agent-card-back .agent-card-description {
@@ -671,6 +2037,15 @@
       50% { filter: brightness(1.35); transform: translateY(-1px); }
     }
 
+    @keyframes session-card-pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.26), 0 0 18px rgba(45, 212, 191, 0.16);
+      }
+      50% {
+        box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3), 0 0 26px rgba(96, 165, 250, 0.2);
+      }
+    }
+
     .loop-head,
     .archive-head {
       display: flex;
@@ -678,6 +2053,25 @@
       align-items: center;
       gap: 8px;
       margin-bottom: 6px;
+    }
+
+    .session-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .session-card-title {
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .session-card-meta {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
     }
 
     .pill {
@@ -936,6 +2330,19 @@
       margin-bottom: 4px;
     }
 
+    .thread-title-centered {
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    .thread-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
     .directory-group-title {
       color: #c7d2fe;
       font-family: var(--font-mono);
@@ -1018,33 +2425,81 @@
     }
 
     .utility-dock {
+      position: absolute;
+      top: 92px;
+      left: 0;
+      bottom: 74px;
+      z-index: 34;
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 14px;
+      flex-direction: column;
+      justify-content: space-evenly;
+      gap: 0;
+      width: 58px;
+      padding: 0;
+      border: none;
+      background: none;
+      backdrop-filter: none;
+      box-shadow: none;
     }
 
     .utility-button {
+      width: 58px;
+      height: 58px;
+      padding: 0;
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      justify-content: center;
       border-radius: 999px;
-      padding: 8px 12px;
+      background: rgba(20, 32, 51, 0.62);
+      border: 1px solid rgba(120, 168, 210, 0.26);
+      color: #dbeafe;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 11px;
+      font-weight: 700;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+
+    .utility-button:hover:not(:disabled) {
+      border-color: rgba(248, 113, 113, 0.56);
+      background: rgba(32, 22, 38, 0.8);
+      transform: translateX(1px);
     }
 
     .utility-button.active {
-      border-color: rgba(45, 212, 191, 0.65);
-      background: rgba(45, 212, 191, 0.16);
-      color: #d1fae5;
+      border-color: rgba(248, 113, 113, 0.74);
+      background: rgba(248, 113, 113, 0.14);
+      color: #fee2e2;
+      box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.18), 0 0 20px rgba(248, 113, 113, 0.12);
     }
 
     .utility-drawer {
+      position: absolute;
+      top: 74px;
+      left: 66px;
+      z-index: 35;
+      width: min(420px, calc(100% - 280px));
+      max-height: calc(100% - 162px);
       display: none;
-      margin-top: 14px;
     }
 
     .utility-drawer.open {
       display: block;
+    }
+
+    .utility-drawer .panel {
+      max-height: inherit;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      border-radius: 22px;
+      border: 1px solid rgba(120, 168, 210, 0.24);
+      background: linear-gradient(180deg, rgba(16, 24, 38, 0.92), rgba(10, 16, 26, 0.88));
+      backdrop-filter: blur(18px);
+    }
+
+    .utility-drawer .panel-body {
+      overflow-y: auto;
+      min-height: 0;
     }
 
     .utility-sections {
@@ -1069,6 +2524,38 @@
       gap: 10px;
     }
 
+    .tool-summary-card {
+      border-radius: 14px;
+      border: 1px solid rgba(120, 168, 210, 0.22);
+      background: rgba(8, 12, 20, 0.76);
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .tool-summary-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .tool-summary-preview {
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .tool-placeholder-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .tool-section-caption {
+      display: block;
+      margin-bottom: 8px;
+    }
+
     .status-dot.stalled {
       background: #fb7185;
       box-shadow: 0 0 10px rgba(251, 113, 133, 0.8);
@@ -1082,13 +2569,46 @@
 </head>
 <body>
   <div class="shell">
-    <div>
-      <div class="panel status-bar">
-        <div class="panel-body">
-          <div class="error-banner" id="errorBanner"></div>
-          <div class="status-row">
+    <div class="panel status-bar">
+      <div class="panel-body">
+        <div class="error-banner" id="errorBanner"></div>
+        <div class="status-row">
+          <div class="status-hero">
             <span class="status-indicator unknown" id="statusIndicator"></span>
-            <span class="status-text" id="statusText">Loading status...</span>
+            <div class="status-hero-copy">
+              <div class="status-kicker">Operator Overview</div>
+              <div class="status-text" id="statusText">Loading status...</div>
+              <div class="status-meta" id="statusMeta">Syncing live monitor telemetry.</div>
+            </div>
+          </div>
+          <div class="status-stat-grid">
+            <div class="status-stat-card">
+              <span class="status-stat-label">Agents Live</span>
+              <strong class="status-stat-value" id="statusAgentMetric">0</strong>
+              <span class="status-stat-meta">runtime roster</span>
+            </div>
+            <div class="status-stat-card">
+              <span class="status-stat-label">Chat Board</span>
+              <strong class="status-stat-value" id="statusChatMetric">0</strong>
+              <span class="status-stat-meta">open sessions</span>
+            </div>
+            <div class="status-stat-card">
+              <span class="status-stat-label">Runway</span>
+              <strong class="status-stat-value" id="statusCheckpointMetric">0/0</strong>
+              <span class="status-stat-meta">checkpoint span</span>
+            </div>
+            <div class="status-stat-card">
+              <span class="status-stat-label">Policy Denies</span>
+              <strong class="status-stat-value" id="statusDenyMetric">0</strong>
+              <span class="status-stat-meta">capability log</span>
+            </div>
+            <div class="status-stat-card placeholder-stat-card">
+              <span class="status-stat-label">Credits Left</span>
+              <strong class="status-stat-value" id="statusCreditsMetric">1.2k est</strong>
+              <span class="status-stat-meta">placeholder ledger</span>
+            </div>
+          </div>
+          <div class="status-actions">
             <span class="timestamp" id="timestamp"></span>
             <div class="btn-row">
               <button id="refreshBtn">Refresh</button>
@@ -1097,35 +2617,75 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="panel">
+    <div class="mars-stage">
+      <button type="button" class="corner-hud-card corner-hud-card-top-left corner-hud-card-nav" aria-label="Navigation wheel placeholder" title="Navigation wheel placeholder">
+        <span class="corner-card-shell">
+          <span class="corner-card-collapsed">
+            <span class="corner-card-icon">🌐</span>
+          </span>
+          <span class="corner-card-expanded">
+            <span class="corner-card-kicker">Navigation</span>
+            <span class="nav-wheel">
+              <span class="nav-wheel-center">🌐</span>
+              <span class="nav-wheel-node nav-wheel-node-top"></span>
+              <span class="nav-wheel-node nav-wheel-node-right"></span>
+              <span class="nav-wheel-node nav-wheel-node-bottom"></span>
+              <span class="nav-wheel-node nav-wheel-node-left"></span>
+            </span>
+            <span class="corner-card-title">Route Wheel</span>
+            <span class="corner-card-meta">World-facing navigation placeholder for aggregated destinations and kit routing.</span>
+          </span>
+        </span>
+      </button>
+
+      <button type="button" class="hud-center-beacon" aria-label="FERROS Agent Dispatch controls" title="FERROS Agent Dispatch controls">
+        <span class="hud-center-beacon-shell">
+          <span class="hud-center-beacon-collapsed">FERROS AGENT DISPATCH</span>
+          <span class="hud-center-beacon-expanded">
+            <span class="corner-card-kicker">MARS FAD</span>
+            <span class="corner-card-title">FERROS Agent Dispatch</span>
+            <span class="corner-card-meta">Window settings and monitor-specific overlays will live here without pushing the center board out of the way.</span>
+            <span class="hud-center-pill-row">
+              <span class="hud-center-pill">Window tone</span>
+              <span class="hud-center-pill">HUD density</span>
+              <span class="hud-center-pill">Overlay mode</span>
+            </span>
+          </span>
+        </span>
+      </button>
+
+      <button type="button" class="corner-hud-card corner-hud-card-top-right corner-hud-card-backpack" aria-label="Backpack and kits placeholder" title="Backpack and kits placeholder">
+        <span class="corner-card-shell">
+          <span class="corner-card-collapsed">
+            <span class="corner-card-icon">BK</span>
+          </span>
+          <span class="corner-card-expanded">
+            <span class="corner-card-kicker">Backpack</span>
+            <span class="profile-card-art">
+              <span class="profile-badge">KIT</span>
+              <span class="profile-card-line"></span>
+              <span class="profile-card-line"></span>
+            </span>
+            <span class="corner-card-title">Backpack / Kits</span>
+            <span class="corner-card-meta">Loadout, kit swapping, and carried tools will expand from this top-right corner card.</span>
+          </span>
+        </span>
+      </button>
+
+      <div class="panel mars-panel">
         <div class="panel-header">
-          <div>
-            <div class="label">Ferros Agent Dispatch</div>
-            <div class="title">Mediated Administration Runtime Spiral</div>
+          <div class="mars-panel-spacer" aria-hidden="true"></div>
+          <div class="mars-panel-heading">
+            <div class="title"><span class="mars-accent">M</span>ediated <span class="mars-accent">A</span>dministration <span class="mars-accent">R</span>untime <span class="mars-accent">S</span>piral</div>
           </div>
-          <div class="pill" id="openChatCount">0 open chats</div>
+          <div class="mars-panel-actions"><div class="pill" id="openChatCount">0 open conversations</div></div>
         </div>
         <div class="panel-body">
           <div class="split">
-            <div class="subpanel">
-              <div class="subheader">Open Conversation</div>
-              <div class="btn-row" style="margin-bottom: 8px;">
-                <button id="newFerrosChatBtn">New FERROS Agent Chat</button>
-                <select id="chatSelector"></select>
-                <button id="archiveChatBtn">Archive</button>
-              </div>
-              <div class="chat-messages" id="chatMessages"></div>
-              <div class="chat-controls">
-                <textarea id="chatInput" placeholder="Write to FERROS Agent..."></textarea>
-                <div class="btn-row" style="align-self: end;">
-                  <button id="sendChatBtn">Send</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="subpanel">
-              <div class="subheader">Running Loops</div>
+            <div class="subpanel arena-panel">
+              <div class="subheader">Agent Arena</div>
               <div class="loop-control-grid">
                 <button id="laneAgentArchitectBtn" class="loop-control-card status-idle">
                   <div class="lane-title"><span class="word word-a">Agent</span><span class="word word-b">Architect</span></div>
@@ -1156,151 +2716,257 @@
               <div class="category-view-title" id="categoryViewTitle">Administration</div>
               <div class="loop-list" id="loopList"></div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <div class="panel" style="margin-top: 14px;">
-        <div class="panel-header">
-          <div>
-            <div class="label">Packet Lifecycle</div>
-            <div class="title">Lifecycle Chat</div>
-          </div>
-          <span class="utility-pill" id="sourceTreeStatus">sync unknown</span>
-        </div>
-        <div class="panel-body lifecycle-shell">
-          <div class="lifecycle-thread-list" id="lifecycleThreadList"></div>
-          <div class="lifecycle-thread-view">
-            <div class="lifecycle-thread-header" id="lifecycleThreadHeader">
-              <div class="thread-title">No lifecycle thread selected</div>
-              <div class="thread-meta">Select a packet, work order, escalation, or loop thread.</div>
-            </div>
-            <div class="lifecycle-messages" id="lifecycleMessages"></div>
-            <div class="chat-controls">
-              <textarea id="lifecycleInput" placeholder="Add operator note to selected lifecycle thread..."></textarea>
-              <div class="btn-row" style="align-self: end;">
-                <button id="sendLifecycleBtn">Add Note</button>
+            <div class="subpanel chat-board-panel">
+              <div class="conversation-toolbar">
+                <button id="sessionBackBtn" class="session-back-arrow" aria-label="Toggle open conversations">←</button>
+                <div class="subheader">Chat Board</div>
+              </div>
+              <div class="session-card-strip" id="sessionCardStrip"></div>
+              <div class="chat-messages" id="chatMessages"></div>
+              <div class="chat-controls" id="chatControls">
+                <textarea id="chatInput" placeholder="Write to FERROS Agent..."></textarea>
+                <div class="btn-row" style="align-self: end;">
+                  <button id="sendChatBtn">Send</button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="utility-dock">
-        <button id="utilityArchiveBtn" class="utility-button">🗄️ Archive</button>
-        <button id="utilityDenyBtn" class="utility-button">⛔ Deny</button>
-        <button id="utilityConsoleBtn" class="utility-button">⌘ Console</button>
-        <button id="utilityQuickActionsBtn" class="utility-button">⚡ Quick Actions</button>
+      <div class="utility-dock" aria-label="MARS tools">
+        <button id="utilityArchiveBtn" class="utility-button" aria-label="Archive selected chat" title="Archive selected chat">AR</button>
+        <button id="utilityApproveBtn" class="utility-button" aria-label="Approve selected chat" title="Approve selected chat">AP</button>
+        <button id="utilityDenyBtn" class="utility-button" aria-label="Deny selected chat" title="Deny selected chat">DN</button>
+        <button id="utilityConsoleBtn" class="utility-button" aria-label="Open console for selected chat" title="Console">⌘</button>
       </div>
 
-      <div class="panel utility-drawer" id="utilityDrawer">
-        <div class="panel-header">
-          <div>
-            <div class="label">Operator Utility</div>
-            <div class="title" id="utilityDrawerTitle">Drawer</div>
-          </div>
-          <button id="utilityDrawerCloseBtn">Close</button>
-        </div>
-        <div class="panel-body utility-sections">
-          <div class="utility-section" data-drawer="archive" hidden>
-            <div class="drawer-head">
-              <strong>Archived Conversations</strong>
-              <span class="minor">Completed or parked packet chats</span>
+      <div class="utility-drawer" id="utilityDrawer">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="label">Tool Confirmation</div>
+              <div class="title" id="utilityDrawerTitle">Tool</div>
             </div>
-            <div class="archive-list" id="archiveList"></div>
+            <button id="utilityDrawerCloseBtn">Close</button>
           </div>
+          <div class="panel-body utility-sections">
+            <div class="utility-section" data-drawer="archive" hidden>
+              <div class="drawer-head">
+                <strong>Archive Conversation</strong>
+                <span class="minor">Power tool scoped to the open MARS chat</span>
+              </div>
+              <div class="tool-summary-card" id="archiveConfirmCard"></div>
+              <div class="btn-row" style="margin-top: 10px; margin-bottom: 12px;">
+                <button id="archiveConfirmBtn">Confirm Archive</button>
+              </div>
+              <span class="minor tool-section-caption">Recent archive trail</span>
+              <div class="archive-list" id="archiveList"></div>
+            </div>
 
-          <div class="utility-section" data-drawer="deny" hidden>
-            <div class="drawer-head">
-              <strong>Deny Log</strong>
-              <button id="clearDenyViewBtn">Clear View</button>
+            <div class="utility-section" data-drawer="approve" hidden>
+              <div class="drawer-head">
+                <strong>Approve Conversation</strong>
+                <span class="minor">Reserved for bounded operator approvals</span>
+              </div>
+              <div class="tool-summary-card" id="approveConfirmCard"></div>
+              <div class="tool-placeholder-note">Placeholder only. This future action will emit a bounded operator approval for the active MARS conversation.</div>
             </div>
-            <div class="drawer-grid">
-              <div id="denyLogContainer">
-                <div class="minor">Loading deny log...</div>
+
+            <div class="utility-section" data-drawer="deny" hidden>
+              <div class="drawer-head">
+                <strong>Deny / Reject</strong>
+                <button id="clearDenyViewBtn">Clear Log View</button>
+              </div>
+              <div class="tool-summary-card" id="denyConfirmCard"></div>
+              <div class="tool-placeholder-note">Placeholder only. Manual deny wiring is pending; the current deny log stays visible below as context.</div>
+              <div class="drawer-grid">
+                <div id="denyLogContainer">
+                  <div class="minor">Loading deny log...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="utility-section" data-drawer="console" hidden>
+              <div class="drawer-head">
+                <strong>Raw Console</strong>
+                <span class="minor">Direct JSON-RPC probe scoped by the selected chat</span>
+              </div>
+              <div class="tool-summary-card" id="consoleConfirmCard"></div>
+              <textarea id="rpcInput">{"jsonrpc":"2.0","id":"manual-1","method":"agent.list","params":{}}</textarea>
+              <div class="btn-row" style="margin-top: 8px; margin-bottom: 8px;">
+                <button id="rpcSendBtn">Send RPC</button>
+              </div>
+              <div class="outbox" id="rpcOutput"></div>
+            </div>
+
+            <div class="utility-section" data-drawer="quick-actions" hidden>
+              <div class="drawer-head">
+                <strong>Quick Actions</strong>
+                <span class="minor">Profile and local shell shortcuts</span>
+              </div>
+              <div class="btn-row" style="margin-bottom: 8px;">
+                <button id="profileInitBtn">Init Profile</button>
+                <button id="profileShowBtn">Show Profile</button>
+              </div>
+              <div class="outbox" id="profileOutput"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="edge-hotbar" aria-label="MARS side surfaces">
+        <button id="surfaceLifecycleBtn" class="edge-hotbar-button" aria-label="Open lifecycle chat" title="Lifecycle Chat">LC</button>
+        <button id="surfaceDirectoryBtn" class="edge-hotbar-button" aria-label="Open agent directory" title="Agent Directory">AD</button>
+        <button id="surfaceServicesBtn" class="edge-hotbar-button" aria-label="Open running services" title="Running Services">SV</button>
+        <button id="surfaceRunwayBtn" class="edge-hotbar-button" aria-label="Open runway mindmap" title="Runway Mindmap">RW</button>
+      </div>
+
+      <div class="surface-drawer" id="surfaceDrawer">
+        <div class="surface-panel">
+          <div class="surface-panel-header">
+            <div>
+              <div class="label" id="surfaceDrawerLabel">Surface</div>
+              <div class="title" id="surfaceDrawerTitle">Panel</div>
+            </div>
+            <button id="surfaceDrawerCloseBtn">Close</button>
+          </div>
+          <div class="surface-panel-body">
+            <div class="surface-section" data-surface="lifecycle" hidden>
+              <div class="drawer-head">
+                <span class="minor">Packet, loop, and operator thread activity</span>
+                <span class="utility-pill" id="sourceTreeStatus">sync unknown</span>
+              </div>
+              <div class="lifecycle-shell">
+                <div class="lifecycle-thread-list" id="lifecycleThreadList"></div>
+                <div class="lifecycle-thread-view">
+                  <div class="lifecycle-thread-header" id="lifecycleThreadHeader">
+                    <div class="thread-title">No lifecycle thread selected</div>
+                    <div class="thread-meta">Select a packet, work order, escalation, or loop thread.</div>
+                  </div>
+                  <div class="lifecycle-messages" id="lifecycleMessages"></div>
+                  <div class="chat-controls">
+                    <textarea id="lifecycleInput" placeholder="Add operator note to selected lifecycle thread..."></textarea>
+                    <div class="btn-row" style="align-self: end;">
+                      <button id="sendLifecycleBtn">Add Note</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="surface-section" data-surface="directory" hidden>
+              <div class="drawer-head">
+                <strong>Agent Directory</strong>
+                <span class="minor">Definitions mirrored from manifest and source tree</span>
+              </div>
+              <div class="directory-tree" id="agentDirectoryTree">
+                <div class="minor">Loading agent directory...</div>
+              </div>
+            </div>
+
+            <div class="surface-section" data-surface="services" hidden>
+              <div class="drawer-head">
+                <strong>Running Services</strong>
+                <span class="minor">Live runtime service status and controls</span>
+              </div>
+              <div class="surface-scroll-region">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Version</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="agentRoster">
+                    <tr>
+                      <td colspan="4" class="minor">Loading...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="surface-section" data-surface="runway" hidden>
+              <div class="drawer-head">
+                <strong>Runway Mindmap</strong>
+                <span class="minor">Checkpoint state and checklist focus</span>
+              </div>
+              <div class="surface-scroll-region">
+                <div id="runwayMindmap">
+                  <div class="minor">Loading mindmap...</div>
+                </div>
               </div>
             </div>
           </div>
-
-          <div class="utility-section" data-drawer="console" hidden>
-            <div class="drawer-head">
-              <strong>Raw Console</strong>
-              <span class="minor">Direct JSON-RPC probe</span>
-            </div>
-            <textarea id="rpcInput">{"jsonrpc":"2.0","id":"manual-1","method":"agent.list","params":{}}</textarea>
-            <div class="btn-row" style="margin-top: 8px; margin-bottom: 8px;">
-              <button id="rpcSendBtn">Send RPC</button>
-            </div>
-            <div class="outbox" id="rpcOutput"></div>
-          </div>
-
-          <div class="utility-section" data-drawer="quick-actions" hidden>
-            <div class="drawer-head">
-              <strong>Quick Actions</strong>
-              <span class="minor">Profile and local shell shortcuts</span>
-            </div>
-            <div class="btn-row" style="margin-bottom: 8px;">
-              <button id="profileInitBtn">Init Profile</button>
-              <button id="profileShowBtn">Show Profile</button>
-            </div>
-            <div class="outbox" id="profileOutput"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-right">
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="label">Definitions</div>
-            <div class="title">Agent Directory</div>
-          </div>
-        </div>
-        <div class="panel-body">
-          <div class="directory-tree" id="agentDirectoryTree">
-            <div class="minor">Loading agent directory...</div>
-          </div>
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="label">Live Runtime</div>
-            <div class="title">Running Services</div>
-          </div>
-        </div>
-        <div class="panel-body">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Version</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="agentRoster">
-              <tr>
-                <td colspan="4" class="minor">Loading...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <div class="quick-action-bar" aria-label="Quick action deck placeholders">
+        <button type="button" class="quick-action-card" aria-disabled="true" title="Placeholder quick action card">
+          <span class="quick-action-label">Coding Card</span>
+          <span class="quick-action-energy">56 energy</span>
+          <span class="quick-action-note">Drag-to-play placeholder for loop budget and premium-token limits.</span>
+        </button>
+        <button type="button" class="quick-action-card" aria-disabled="true" title="Placeholder quick action card">
+          <span class="quick-action-label">Research Card</span>
+          <span class="quick-action-energy">34 energy</span>
+          <span class="quick-action-note">Reserved for evidence collection, search depth, and model attention budget.</span>
+        </button>
+        <button type="button" class="quick-action-card" aria-disabled="true" title="Placeholder quick action card">
+          <span class="quick-action-label">Operator Card</span>
+          <span class="quick-action-energy">21 energy</span>
+          <span class="quick-action-note">Future manual intervention card for escalation, review, and human gates.</span>
+        </button>
+        <button type="button" class="quick-action-card" aria-disabled="true" title="Placeholder quick action card">
+          <span class="quick-action-label">Business Card</span>
+          <span class="quick-action-energy">13 energy</span>
+          <span class="quick-action-note">Placeholder for commercial, ops, and planning cards you pull from the deck.</span>
+        </button>
       </div>
 
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="label">Runway</div>
-            <div class="title">Mindmap</div>
-          </div>
-        </div>
-        <div class="panel-body" id="runwayMindmap">
-          <div class="minor">Loading mindmap...</div>
-        </div>
-      </div>
+      <button type="button" class="corner-hud-card corner-hud-card-bottom-left corner-hud-card-deck" aria-label="FERROS deck placeholder" title="FERROS deck placeholder">
+        <span class="corner-card-shell">
+          <span class="corner-card-collapsed">
+            <span class="stack-icon">
+              <span class="stack-card stack-card-back-a"></span>
+              <span class="stack-card stack-card-back-b"></span>
+              <span class="stack-card stack-card-top"><span class="corner-script-mark">F</span></span>
+            </span>
+          </span>
+          <span class="corner-card-expanded">
+            <span class="corner-card-kicker">Draw Pile</span>
+            <span class="stack-icon large">
+              <span class="stack-card stack-card-back-a"></span>
+              <span class="stack-card stack-card-back-b"></span>
+              <span class="stack-card stack-card-top"><span class="corner-script-mark">F</span></span>
+            </span>
+            <span class="corner-card-title">FERROS Deck</span>
+            <span class="corner-card-meta">Stacked card backs mark the draw pile. The Ferros sigil sits on the top card instead of a text label.</span>
+          </span>
+        </span>
+      </button>
+
+      <button type="button" class="corner-hud-card corner-hud-card-bottom-right corner-hud-card-assistant" aria-label="Assistant card placeholder" title="Assistant card placeholder">
+        <span class="corner-card-shell">
+          <span class="corner-card-collapsed">
+            <span class="face-card-mini">AE</span>
+          </span>
+          <span class="corner-card-expanded">
+            <span class="corner-card-kicker">Assistant</span>
+            <span class="assistant-card-art">
+              <span class="assistant-avatar">AE</span>
+              <span class="assistant-card-line"></span>
+              <span class="assistant-card-line"></span>
+            </span>
+            <span class="corner-card-title">Albert Einstein</span>
+            <span class="corner-card-meta">Single face-up support card placeholder for the personal assistant and discard-side companion view.</span>
+          </span>
+        </span>
+      </button>
     </div>
   </div>
 
@@ -1322,18 +2988,25 @@
       runningLoops: [],
       timeline: [],
       lifecycleThreads: [],
+      packets: [],
       agentDirectory: [],
       agentSourceTree: null,
       runwaySummary: null,
       denyEntries: [],
       selectedChatId: null,
+      selectedMarsConversationCardId: null,
+      lastViewedMarsConversationCardId: null,
+      viewedMarsResponseFingerprints: {},
       selectedLifecycleThreadId: null,
+      selectedLifecycleCardId: null,
       nextId: 1,
       flippedLoopIds: {},
       selectedCategory: null,
       centeredCategory: null,
+      surfaceDrawer: null,
       utilityDrawer: null,
       autoFollowAttention: true,
+      showSessionCards: false,
     };
 
     async function fetchMonitorState() {
@@ -1344,16 +3017,38 @@
       sessionStore.runningLoops = response.runningLoops || [];
       sessionStore.timeline = response.timeline || [];
       sessionStore.lifecycleThreads = response.lifecycleThreads || [];
+      sessionStore.packets = normalizePacketSnapshot(response.packets);
       sessionStore.agentDirectory = response.agentDirectory || [];
       sessionStore.agentSourceTree = response.agentSourceTree || null;
-      sessionStore.selectedChatId = response.selectedChatId || sessionStore.openChats[0]?.id || null;
-      sessionStore.selectedLifecycleThreadId = response.selectedLifecycleThreadId || sessionStore.selectedLifecycleThreadId || sessionStore.lifecycleThreads[0]?.id || null;
+      const marsChats = marsOpenConversationChats();
+      const preferredChatId = response.selectedChatId || sessionStore.selectedChatId;
+      sessionStore.selectedChatId = sessionStore.openChats.some((chat) => chat.id === preferredChatId)
+        ? preferredChatId
+        : (marsChats[0]?.id || sessionStore.openChats[0]?.id || null);
+      const marsCards = marsConversationCards();
+      const preferredMarsCard = marsCards.find((card) => card.id === sessionStore.selectedMarsConversationCardId)
+        || marsCards.find((card) => card.chatId === sessionStore.selectedChatId)
+        || marsCards.find((card) => card.id === sessionStore.lastViewedMarsConversationCardId)
+        || marsCards[0]
+        || null;
+      sessionStore.selectedMarsConversationCardId = preferredMarsCard?.id || null;
+      if (!sessionStore.lastViewedMarsConversationCardId && preferredMarsCard) {
+        sessionStore.lastViewedMarsConversationCardId = preferredMarsCard.id;
+      }
+      if (!sessionStore.selectedChatId) {
+        sessionStore.showSessionCards = true;
+      }
+      const preferredThreadId = response.selectedLifecycleThreadId || sessionStore.selectedLifecycleThreadId;
+      sessionStore.selectedLifecycleThreadId = sessionStore.lifecycleThreads.some((thread) => thread.id === preferredThreadId)
+        ? preferredThreadId
+        : (sessionStore.lifecycleThreads[0]?.id || null);
       sessionStore.nextId = response.nextId || 1;
       renderChats();
       renderLoops();
       renderLifecycleShell();
       renderArchive();
       renderAgentDirectory();
+      renderSurfaceDrawer();
       renderUtilityDrawer();
       updateFlowMap();
     }
@@ -1369,16 +3064,22 @@
       errorBanner: document.getElementById('errorBanner'),
       statusIndicator: document.getElementById('statusIndicator'),
       statusText: document.getElementById('statusText'),
+      statusMeta: document.getElementById('statusMeta'),
+      statusAgentMetric: document.getElementById('statusAgentMetric'),
+      statusChatMetric: document.getElementById('statusChatMetric'),
+      statusCheckpointMetric: document.getElementById('statusCheckpointMetric'),
+      statusDenyMetric: document.getElementById('statusDenyMetric'),
+      statusCreditsMetric: document.getElementById('statusCreditsMetric'),
       timestamp: document.getElementById('timestamp'),
       refreshBtn: document.getElementById('refreshBtn'),
       autoToggleBtn: document.getElementById('autoToggleBtn'),
       openChatCount: document.getElementById('openChatCount'),
-      newFerrosChatBtn: document.getElementById('newFerrosChatBtn'),
-      chatSelector: document.getElementById('chatSelector'),
+      sessionBackBtn: document.getElementById('sessionBackBtn'),
+      sessionCardStrip: document.getElementById('sessionCardStrip'),
       chatMessages: document.getElementById('chatMessages'),
+      chatControls: document.getElementById('chatControls'),
       chatInput: document.getElementById('chatInput'),
       sendChatBtn: document.getElementById('sendChatBtn'),
-      archiveChatBtn: document.getElementById('archiveChatBtn'),
       laneAgentArchitectBtn: document.getElementById('laneAgentArchitectBtn'),
       laneSoftwareArchitectBtn: document.getElementById('laneSoftwareArchitectBtn'),
       laneBusinessManagerBtn: document.getElementById('laneBusinessManagerBtn'),
@@ -1390,6 +3091,14 @@
       laneOperatorBacklogCount: document.getElementById('laneOperatorBacklogCount'),
       categoryViewTitle: document.getElementById('categoryViewTitle'),
       loopList: document.getElementById('loopList'),
+      surfaceLifecycleBtn: document.getElementById('surfaceLifecycleBtn'),
+      surfaceDirectoryBtn: document.getElementById('surfaceDirectoryBtn'),
+      surfaceServicesBtn: document.getElementById('surfaceServicesBtn'),
+      surfaceRunwayBtn: document.getElementById('surfaceRunwayBtn'),
+      surfaceDrawer: document.getElementById('surfaceDrawer'),
+      surfaceDrawerLabel: document.getElementById('surfaceDrawerLabel'),
+      surfaceDrawerTitle: document.getElementById('surfaceDrawerTitle'),
+      surfaceDrawerCloseBtn: document.getElementById('surfaceDrawerCloseBtn'),
       lifecycleThreadList: document.getElementById('lifecycleThreadList'),
       lifecycleThreadHeader: document.getElementById('lifecycleThreadHeader'),
       lifecycleMessages: document.getElementById('lifecycleMessages'),
@@ -1398,12 +3107,17 @@
       sourceTreeStatus: document.getElementById('sourceTreeStatus'),
       archiveList: document.getElementById('archiveList'),
       utilityArchiveBtn: document.getElementById('utilityArchiveBtn'),
+      utilityApproveBtn: document.getElementById('utilityApproveBtn'),
       utilityDenyBtn: document.getElementById('utilityDenyBtn'),
       utilityConsoleBtn: document.getElementById('utilityConsoleBtn'),
-      utilityQuickActionsBtn: document.getElementById('utilityQuickActionsBtn'),
       utilityDrawer: document.getElementById('utilityDrawer'),
       utilityDrawerTitle: document.getElementById('utilityDrawerTitle'),
       utilityDrawerCloseBtn: document.getElementById('utilityDrawerCloseBtn'),
+      archiveConfirmCard: document.getElementById('archiveConfirmCard'),
+      archiveConfirmBtn: document.getElementById('archiveConfirmBtn'),
+      approveConfirmCard: document.getElementById('approveConfirmCard'),
+      denyConfirmCard: document.getElementById('denyConfirmCard'),
+      consoleConfirmCard: document.getElementById('consoleConfirmCard'),
       agentDirectoryTree: document.getElementById('agentDirectoryTree'),
       agentRoster: document.getElementById('agentRoster'),
       runwayMindmap: document.getElementById('runwayMindmap'),
@@ -1437,8 +3151,17 @@
 
     const SOFTWARE_QUEUE_NAMES = ['Software Architect', 'Coding Agent'];
 
-    const categoryCardDefinitions = {
+    const fallbackCategoryCardDefinitions = {
       architect: [
+        {
+          id: 'architect-agent-architect',
+          name: 'Agent Architect',
+          subtitle: 'Top-level architect moderator',
+          icon: '🤖',
+          sourceNames: ['FERROS Agent Architect Agent'],
+          description: 'Coordinates the architect lane before splitting into coding and business architect work.',
+          detail: 'Broad target: architect routing. Current detail path: agent request -> FERROS Agent Architect -> coding/business architect split -> moderation back into the monitor.',
+        },
         {
           id: 'architect-software-agent-architect',
           name: 'Software Agent Architect',
@@ -1489,6 +3212,15 @@
       ],
       business: [
         {
+          id: 'business-manager',
+          name: 'Business Manager',
+          subtitle: 'Business routing moderator',
+          icon: '💼',
+          sourceNames: ['Business Agent'],
+          description: 'Routes business packets into Operations, Sales, Finance, and HR, then merges the result back for review.',
+          detail: 'Broad target: business execution. Current detail path: business direction -> department work orders -> merged manager report -> operator escalation when required.',
+        },
+        {
           id: 'business-operations',
           name: 'Operations',
           subtitle: 'Operating process lane',
@@ -1537,6 +3269,529 @@
         },
       ],
     };
+
+    function titleCase(value) {
+      return String(value || '')
+        .split(/[_\s-]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+    }
+
+    function registryCardPriority(entry) {
+      const priorityById = {
+        'ferros-agent': -100,
+        'ferros-agent-architect': -95,
+        'ferros-software-architect': -92,
+        'ferros-business-agent': -90,
+        'ferros-core': -85,
+        'ferros-subcore': -84,
+      };
+      if (priorityById[entry.id] !== undefined) {
+        return priorityById[entry.id];
+      }
+
+      const roleWeight = {
+        agent: 0,
+        architect: 1,
+        execution: 2,
+        incubation: 3,
+        officer: 4,
+      };
+      return roleWeight[entry.role] ?? 10;
+    }
+
+    function registryCardSubtitle(entry) {
+      const roleLabel = titleCase(entry.role);
+      const laneLabel = titleCase(entry.lane);
+      if (entry.childAgents?.length > 0) {
+        return `${roleLabel} lane • ${entry.childAgents.length} child agent${entry.childAgents.length === 1 ? '' : 's'}`;
+      }
+      return `${roleLabel} lane • ${entry.tools?.length || 0} tool${(entry.tools?.length || 0) === 1 ? '' : 's'}`;
+    }
+
+    function registryCardDetail(entry) {
+      const details = [entry.description || 'No description available.'];
+      details.push(`source ${entry.sourcePath}`);
+      if (entry.childAgents?.length > 0) {
+        details.push(`children ${entry.childAgents.join(', ')}`);
+      } else {
+        details.push(`tools ${(entry.tools || []).join(', ') || 'none'}`);
+      }
+      return details.join(' • ');
+    }
+
+    function directoryEntryCategoryKey(entry) {
+      return Object.prototype.hasOwnProperty.call(categoryLabels, entry.family)
+        ? entry.family
+        : 'administration';
+    }
+
+    function registryCategoryCardDefinitions() {
+      if (!Array.isArray(sessionStore.agentDirectory) || sessionStore.agentDirectory.length === 0) {
+        return fallbackCategoryCardDefinitions;
+      }
+
+      const grouped = {
+        architect: [],
+        software: [],
+        business: [],
+        administration: [],
+      };
+
+      [...sessionStore.agentDirectory]
+        .sort((left, right) => {
+          const priorityDelta = registryCardPriority(left) - registryCardPriority(right);
+          if (priorityDelta !== 0) {
+            return priorityDelta;
+          }
+          return left.displayName.localeCompare(right.displayName);
+        })
+        .forEach((entry) => {
+          const categoryKey = directoryEntryCategoryKey(entry);
+          grouped[categoryKey].push({
+            id: entry.id,
+            name: entry.displayName,
+            subtitle: registryCardSubtitle(entry),
+            icon: iconForAgentName(entry.displayName),
+            sourceNames: [entry.displayName],
+            description: entry.description || 'No description available.',
+            detail: registryCardDetail(entry),
+          });
+        });
+
+      Object.keys(grouped).forEach((categoryKey) => {
+        if (grouped[categoryKey].length === 0) {
+          grouped[categoryKey] = fallbackCategoryCardDefinitions[categoryKey] || [];
+        }
+      });
+
+      return grouped;
+    }
+
+    function normalizePacketSnapshot(packets) {
+      return Array.isArray(packets) ? packets : [];
+    }
+
+    function normalizeChatSpeaker(message) {
+      return String(message?.speaker || '').toLowerCase();
+    }
+
+    function isHumanChatMessage(message) {
+      const speaker = normalizeChatSpeaker(message);
+      const who = String(message?.who || '').toLowerCase();
+      return speaker === 'user' || who === 'human' || who === 'operator' || who === 'user';
+    }
+
+    function isFerrosChatMessage(message) {
+      return normalizeAgentName(message?.who || '') === 'FERROS Agent';
+    }
+
+    function latestHumanMessage(chat) {
+      if (!chat?.messages) {
+        return null;
+      }
+      for (let index = chat.messages.length - 1; index >= 0; index -= 1) {
+        const message = chat.messages[index];
+        if (isHumanChatMessage(message)) {
+          return { message, index };
+        }
+      }
+      return null;
+    }
+
+    function latestFerrosReply(chat) {
+      const latestHuman = latestHumanMessage(chat);
+      if (!latestHuman) {
+        return null;
+      }
+      for (let index = chat.messages.length - 1; index > latestHuman.index; index -= 1) {
+        const message = chat.messages[index];
+        if (isFerrosChatMessage(message)) {
+          return message;
+        }
+      }
+      return null;
+    }
+
+    function messageFingerprint(message) {
+      if (!message) {
+        return null;
+      }
+      return String(message.id || `${message.at || 'pending'}:${message.who || ''}:${message.text || ''}`);
+    }
+
+    function marsOpenConversationChats() {
+      return sessionStore.openChats.filter((chat) => chat.messages.some((message) => isHumanChatMessage(message)));
+    }
+
+    function ferrosTraceSuffixForSession(sessionId) {
+      const label = findChatById(sessionId)?.label || '';
+      const numbered = label.match(/#(\d+)/);
+      return numbered ? ` #${numbered[1]}` : '';
+    }
+
+    function marsConversationCards() {
+      const cards = [];
+
+      for (const chat of marsOpenConversationChats()) {
+        const latestHuman = latestHumanMessage(chat);
+        const ferrosReply = latestFerrosReply(chat);
+        const traceSuffix = ferrosTraceSuffixForSession(chat.id);
+        const humanMessage = latestHuman?.message || null;
+
+        if (humanMessage) {
+          cards.push({
+            id: `${chat.id}:request`,
+            chatId: chat.id,
+            threadId: chat.threadId || null,
+            lifecycleCardId: chat.threadId ? `${chat.threadId}:downstream` : null,
+            title: `User → FERROS${traceSuffix}`,
+            directionLabel: 'Request',
+            who: humanMessage.who || 'Human',
+            preview: humanMessage.text || 'User request pending display.',
+            updatedAt: humanMessage.at || chat.createdAt,
+            activeAgent: chat.activeAgent || 'FERROS Agent',
+            isReturn: false,
+            isNew: false,
+          });
+        }
+
+        if (ferrosReply) {
+          cards.push({
+            id: `${chat.id}:response`,
+            chatId: chat.id,
+            threadId: chat.threadId || null,
+            lifecycleCardId: null,
+            title: `FERROS → User${traceSuffix}`,
+            directionLabel: 'Return',
+            who: ferrosReply.who || 'FERROS Agent',
+            preview: ferrosReply.text || 'FERROS returned a result.',
+            updatedAt: ferrosReply.at || chat.updatedAt || chat.createdAt,
+            activeAgent: ferrosReply.who || chat.activeAgent || 'FERROS Agent',
+            isReturn: true,
+            isNew: sessionStore.viewedMarsResponseFingerprints[chat.id] !== messageFingerprint(ferrosReply),
+          });
+        }
+      }
+
+      return cards.sort((left, right) => {
+        const leftUpdated = new Date(left.updatedAt || 0).getTime() || 0;
+        const rightUpdated = new Date(right.updatedAt || 0).getTime() || 0;
+        if (leftUpdated !== rightUpdated) {
+          return rightUpdated - leftUpdated;
+        }
+        if (left.isReturn !== right.isReturn) {
+          return left.isReturn ? -1 : 1;
+        }
+        return left.title.localeCompare(right.title);
+      });
+    }
+
+    function findChatById(sessionId) {
+      if (!sessionId) {
+        return null;
+      }
+      return sessionStore.openChats.find((chat) => chat.id === sessionId)
+        || sessionStore.archivedChats.find((chat) => chat.id === sessionId)
+        || null;
+    }
+
+    function humanRequiredNotification(notification) {
+      if (!notification || notification.status === 'resolved') {
+        return false;
+      }
+
+      const packet = getPacketById(notification.packetId);
+      if (packet?.state === 'human_intervention_required') {
+        return true;
+      }
+
+      const severity = String(notification.severity || '').toLowerCase();
+      const title = String(notification.title || '').toLowerCase();
+      const summary = String(notification.summary || '').toLowerCase();
+      if (severity === 'high') {
+        return true;
+      }
+
+      return title.includes('operator')
+        || title.includes('human intervention')
+        || title.includes('watchdog')
+        || title.includes('manager transition')
+        || title.includes('manager next action')
+        || summary.includes('operator')
+        || summary.includes('human intervention')
+        || summary.includes('watchdog')
+        || summary.includes('manager transition')
+        || summary.includes('manager next action')
+        || summary.includes('user input');
+    }
+
+    function activeNotifications() {
+      return sessionStore.notifications.filter((notification) => humanRequiredNotification(notification));
+    }
+
+    function getPacketById(packetId) {
+      if (!packetId) {
+        return null;
+      }
+      return sessionStore.packets.find((packet) => packet.id === packetId) || null;
+    }
+
+    function getPacketByLifecycleThreadId(threadId) {
+      if (!threadId) {
+        return null;
+      }
+      return sessionStore.packets.find((packet) => packet.lifecycleThreadId === threadId) || null;
+    }
+
+    function getLifecycleThreadById(threadId) {
+      if (!threadId) {
+        return null;
+      }
+      return sessionStore.lifecycleThreads.find((thread) => thread.id === threadId) || null;
+    }
+
+    function categoryForAgentName(agentName) {
+      const normalized = normalizeAgentName(agentName);
+      if (['FERROS Agent Architect Agent', 'Coding Agent Architect', 'Business Agent Architect'].includes(normalized)) {
+        return 'architect';
+      }
+      if (['Software Architect', 'Core Agent', 'SubCore Agent'].includes(normalized)) {
+        return 'software';
+      }
+      if (['Business Agent', 'Operations Department', 'Sales Department', 'Finance Department', 'HR Department'].includes(normalized)) {
+        return 'business';
+      }
+      return 'administration';
+    }
+
+    function iconForAgentName(agentName) {
+      const normalized = normalizeAgentName(agentName);
+      const iconMap = {
+        'FERROS Agent': '🛡️',
+        'FERROS Agent Architect Agent': '🤖',
+        'Coding Agent Architect': '🤖',
+        'Business Agent Architect': '👨🏻‍💼',
+        'Software Architect': '💻',
+        'Core Agent': '🧰',
+        'SubCore Agent': '⚙️',
+        'Business Agent': '💼',
+        'Operations Department': '📄',
+        'Sales Department': '💼',
+        'Finance Department': '💰',
+        'HR Department': '👥',
+      };
+      return iconMap[normalized] || '🔔';
+    }
+
+    function notificationSeverityWeight(severity) {
+      const normalized = String(severity || '').toLowerCase();
+      if (normalized === 'high') {
+        return 3;
+      }
+      if (normalized === 'medium') {
+        return 2;
+      }
+      return 1;
+    }
+
+    function notificationGlowClass(notifications) {
+      if (!notifications || notifications.length === 0) {
+        return '';
+      }
+
+      const strongest = notifications.reduce((highest, notification) => {
+        const weight = notificationSeverityWeight(notification.severity);
+        return weight > highest ? weight : highest;
+      }, 0);
+
+      if (strongest >= 3) {
+        return 'notification-glow-high';
+      }
+      if (strongest === 2) {
+        return 'notification-glow-medium';
+      }
+      return 'notification-glow-low';
+    }
+
+    function applyNotificationGlow(element, notifications) {
+      if (!element) {
+        return;
+      }
+      element.classList.remove('notification-glow-low', 'notification-glow-medium', 'notification-glow-high');
+      const glowClass = notificationGlowClass(notifications);
+      if (glowClass) {
+        element.classList.add(glowClass);
+      }
+    }
+
+    function resolveNotificationSource(notification) {
+      const packet = getPacketById(notification?.packetId);
+      const thread = getLifecycleThreadById(notification?.lifecycleThreadId)
+        || getLifecycleThreadById(packet?.lifecycleThreadId);
+      const agentName = normalizeAgentName(thread?.targetAgentId || thread?.ownerAgent || packet?.manager || 'FERROS Agent');
+      return {
+        agentName,
+        categoryKey: categoryForAgentName(agentName),
+        icon: iconForAgentName(agentName),
+        packet,
+        thread,
+      };
+    }
+
+    function notificationsForCategory(categoryKey) {
+      return activeNotifications().filter((notification) => resolveNotificationSource(notification).categoryKey === categoryKey);
+    }
+
+    function notificationsForDefinition(definition) {
+      const sourceNames = new Set((definition.sourceNames || []).map((name) => normalizeAgentName(name)));
+      if (sourceNames.size === 0) {
+        return definition.notification ? [definition.notification] : [];
+      }
+      return activeNotifications().filter((notification) => {
+        if (definition.notification && notification.id === definition.notification.id) {
+          return true;
+        }
+        const source = resolveNotificationSource(notification);
+        return sourceNames.has(source.agentName);
+      });
+    }
+
+    function preferredThreadIdForLoop(loop) {
+      return loop?.threadId || getPacketById(loop?.currentPacketId)?.lifecycleThreadId || null;
+    }
+
+    function findRelatedOpenChatsForLoop(loop) {
+      if (!loop) {
+        return [];
+      }
+
+      const sessionIds = new Set();
+      const pushSession = (sessionId) => {
+        if (sessionId && sessionStore.openChats.some((chat) => chat.id === sessionId)) {
+          sessionIds.add(sessionId);
+        }
+      };
+
+      pushSession(getPacketById(loop.currentPacketId)?.sessionId);
+      pushSession(getPacketByLifecycleThreadId(loop.threadId)?.sessionId);
+
+      const normalizedAgent = normalizeAgentName(loop.agent || '');
+      for (const chat of sessionStore.openChats) {
+        if (normalizeAgentName(chat.activeAgent) === normalizedAgent) {
+          sessionIds.add(chat.id);
+        }
+      }
+
+      return sessionStore.openChats.filter((chat) => sessionIds.has(chat.id));
+    }
+
+    function rememberViewedMarsResponse(sessionId) {
+      const reply = latestFerrosReply(findChatById(sessionId));
+      const fingerprint = messageFingerprint(reply);
+      if (fingerprint) {
+        sessionStore.viewedMarsResponseFingerprints[sessionId] = fingerprint;
+      }
+    }
+
+    function focusMarsConversationCard(cardId) {
+      const card = marsConversationCards().find((candidate) => candidate.id === cardId);
+      if (!card) {
+        return false;
+      }
+
+      sessionStore.selectedMarsConversationCardId = card.id;
+      sessionStore.lastViewedMarsConversationCardId = card.id;
+      rememberViewedMarsResponse(card.chatId);
+      focusChatContext(card.chatId, card.threadId || null, card.lifecycleCardId || null);
+      return true;
+    }
+
+    function toggleMarsConversationView() {
+      if (sessionStore.showSessionCards) {
+        const cards = marsConversationCards();
+        const target = cards.find((card) => card.id === sessionStore.lastViewedMarsConversationCardId)
+          || cards[0]
+          || null;
+        if (!target) {
+          renderChats();
+          return;
+        }
+        focusMarsConversationCard(target.id);
+        return;
+      }
+
+      sessionStore.showSessionCards = true;
+      renderChats();
+    }
+
+    function focusChatContext(sessionId, lifecycleThreadId, lifecycleCardId = null) {
+      if (!sessionId) {
+        return;
+      }
+      sessionStore.showSessionCards = false;
+      sessionStore.selectedChatId = sessionId;
+      const selected = sessionStore.openChats.find((chat) => chat.id === sessionId) || null;
+      const selectedMarsCard = marsConversationCards().find((card) => card.id === sessionStore.selectedMarsConversationCardId)
+        || marsConversationCards().find((card) => card.chatId === sessionId)
+        || null;
+      if (selectedMarsCard) {
+        sessionStore.selectedMarsConversationCardId = selectedMarsCard.id;
+        sessionStore.lastViewedMarsConversationCardId = selectedMarsCard.id;
+        rememberViewedMarsResponse(sessionId);
+      }
+      const latestLifecycleCard = latestLifecycleCardForSession(sessionId);
+      sessionStore.selectedLifecycleCardId = lifecycleCardId
+        || selectedMarsCard?.lifecycleCardId
+        || latestLifecycleCard?.id
+        || sessionStore.selectedLifecycleCardId;
+      sessionStore.selectedLifecycleThreadId = lifecycleThreadId
+        || selectedMarsCard?.threadId
+        || latestLifecycleCard?.threadId
+        || selected?.threadId
+        || sessionStore.selectedLifecycleThreadId;
+      renderChats();
+      renderLifecycleShell();
+    }
+
+    function latestPacketForSession(sessionId) {
+      if (!sessionId) {
+        return null;
+      }
+      for (let index = sessionStore.packets.length - 1; index >= 0; index -= 1) {
+        const packet = sessionStore.packets[index];
+        if (packet.sessionId === sessionId) {
+          return packet;
+        }
+      }
+      return null;
+    }
+
+    function focusLatestPacketContextForSession(sessionId) {
+      const packet = latestPacketForSession(sessionId);
+      if (!packet) {
+        return false;
+      }
+
+      const packetCategory = categoryForAgentName(packet.manager);
+      sessionStore.selectedCategory = packetCategory;
+      sessionStore.centeredCategory = packetCategory;
+      sessionStore.selectedLifecycleThreadId = packet.lifecycleThreadId || sessionStore.selectedLifecycleThreadId;
+      renderLoops();
+      renderLifecycleShell();
+      return Boolean(packet.lifecycleThreadId);
+    }
+
+    function statusForNotificationCard(notification) {
+      if (notification.severity === 'high') {
+        return 'attention';
+      }
+      if (notification.severity === 'medium') {
+        return 'escalating';
+      }
+      return 'idle';
+    }
 
     function showError(message) {
       elements.errorBanner.textContent = message;
@@ -1642,7 +3897,9 @@
     }
 
     function updateFlowMap() {
-      elements.openChatCount.textContent = `${sessionStore.openChats.length} open chats`;
+      const openConversationCount = marsOpenConversationChats().length;
+      elements.openChatCount.textContent = `${openConversationCount} open conversations`;
+      elements.statusChatMetric.textContent = String(openConversationCount);
     }
 
     function normalizeLoopStatus(status) {
@@ -1654,6 +3911,26 @@
         return 'attention';
       }
       return 'idle';
+    }
+
+    function summarizeDefinitionSet(definitions) {
+      const summary = {
+        running: 0,
+        escalating: 0,
+        attention: 0,
+        stalled: 0,
+        stopped: 0,
+        total: definitions.length,
+      };
+
+      for (const definition of definitions) {
+        const status = relatedLifecycleStatus(definition.sourceNames || []);
+        if (summary[status] !== undefined) {
+          summary[status] += 1;
+        }
+      }
+
+      return summary;
     }
 
     function summarizeLoopSet(names) {
@@ -2029,29 +4306,33 @@
     }
 
     function renderLoopControlCards() {
+      const operatorBacklogItems = getOperatorBacklogItems();
+      const unresolvedNotifications = activeNotifications();
+      const categoryCardDefinitions = registryCategoryCardDefinitions();
+      const administrationSummary = summarizeDefinitionSet(categoryCardDefinitions.administration);
       const summaries = {
-        architect: summarizeLoopSet(['FERROS Agent Architect Agent', 'Coding Agent Architect', 'Business Agent Architect']),
-        software: summarizeLoopSet(['Software Architect', 'Core Agent', 'SubCore Agent']),
-        business: summarizeLoopSet(['Business Agent', 'Business Agent Architect', 'Operations Department', 'Sales Department', 'Finance Department', 'HR Department']),
+        architect: summarizeDefinitionSet(categoryCardDefinitions.architect),
+        software: summarizeDefinitionSet(categoryCardDefinitions.software),
+        business: summarizeDefinitionSet(categoryCardDefinitions.business),
         administration: {
-          running: 0,
-          escalating: getOperatorBacklogItems().filter((item) => item.status === 'escalating').length,
-          attention: getOperatorBacklogItems().filter((item) => item.status === 'attention').length + sessionStore.openChats.length,
-          stalled: getOperatorBacklogItems().filter((item) => item.status === 'stalled').length,
-          stopped: getOperatorBacklogItems().filter((item) => item.status === 'stopped').length,
-          total: getOperatorBacklogItems().length + sessionStore.openChats.length,
+          ...administrationSummary,
+          escalating: administrationSummary.escalating + operatorBacklogItems.filter((item) => item.status === 'escalating').length,
+          attention: administrationSummary.attention + operatorBacklogItems.filter((item) => item.status === 'attention').length + unresolvedNotifications.length,
+          stalled: operatorBacklogItems.filter((item) => item.status === 'stalled').length,
+          stopped: operatorBacklogItems.filter((item) => item.status === 'stopped').length,
+          total: administrationSummary.total + operatorBacklogItems.length + unresolvedNotifications.length,
         },
       };
 
       const rankedKeys = Object.entries(summaries)
         .sort((left, right) => scoreCategorySummary(right[1]) - scoreCategorySummary(left[1]))
         .map(([key]) => key);
-      const hottestCategory = rankedKeys[0] || sessionStore.selectedCategory || 'administration';
-      const hottestScore = scoreCategorySummary(summaries[hottestCategory] || { running: 0, escalating: 0, attention: 0, stalled: 0, stopped: 0 });
-      sessionStore.centeredCategory = hottestScore > 0
-        ? hottestCategory
-        : (sessionStore.selectedCategory || hottestCategory);
-      if (!sessionStore.selectedCategory) {
+      const hottestCategory = rankedKeys[0] || sessionStore.centeredCategory || sessionStore.selectedCategory || 'administration';
+      const preferredCenteredCategory = sessionStore.centeredCategory || sessionStore.selectedCategory || hottestCategory;
+      sessionStore.centeredCategory = rankedKeys.includes(preferredCenteredCategory)
+        ? preferredCenteredCategory
+        : hottestCategory;
+      if (!sessionStore.selectedCategory || !rankedKeys.includes(sessionStore.selectedCategory)) {
         sessionStore.selectedCategory = sessionStore.centeredCategory;
       }
 
@@ -2059,8 +4340,12 @@
       applyControlCardStatus('software', elements.laneSoftwareArchitectBtn, summaries.software, elements.laneSoftwareArchitectMeta, 'software');
       applyControlCardStatus('business', elements.laneBusinessManagerBtn, summaries.business, elements.laneBusinessManagerMeta, 'business');
       applyControlCardStatus('administration', elements.laneOperatorBacklogBtn, summaries.administration, elements.laneOperatorBacklogMeta, 'administration');
+      applyNotificationGlow(elements.laneAgentArchitectBtn, notificationsForCategory('architect'));
+      applyNotificationGlow(elements.laneSoftwareArchitectBtn, notificationsForCategory('software'));
+      applyNotificationGlow(elements.laneBusinessManagerBtn, notificationsForCategory('business'));
+      applyNotificationGlow(elements.laneOperatorBacklogBtn, unresolvedNotifications);
       elements.laneOperatorBacklogCount.textContent = `[${summaries.administration.attention + summaries.administration.stalled + summaries.administration.stopped}]`;
-      elements.laneOperatorBacklogMeta.textContent = `${summaries.administration.total} operator-visible issue(s) • hottest ${summarizeAttentionHotness(summaries.administration)}`;
+      elements.laneOperatorBacklogMeta.textContent = `${unresolvedNotifications.length} notification(s) • ${operatorBacklogItems.length} backlog issue(s)`;
       elements.categoryViewTitle.textContent = categoryLabels[sessionStore.selectedCategory] || categoryLabels[sessionStore.centeredCategory] || 'Administration';
       lastRankedKeys = rankedKeys;
       if (!carouselDragActive) {
@@ -2070,6 +4355,7 @@
 
     function setSelectedCategory(categoryKey) {
       sessionStore.selectedCategory = categoryKey;
+      sessionStore.centeredCategory = categoryKey;
       renderLoops();
     }
 
@@ -2098,27 +4384,60 @@
 
     function renderAgentPlayCard(definition) {
       const loop = definition.loop || findLoopBySourceNames(definition.sourceNames || []);
-      const status = definition.status || statusForLoop(loop);
-      const description = loop?.statusDetail || loop?.description || definition.description;
-      const detail = loop
-        ? `${loop.statusReason || status}: ${loop.statusDetail || loop.description}`
-        : (definition.detail || description);
-      const flipped = Boolean(sessionStore.flippedLoopIds[definition.id]);
-      const progress = loop?.progress ?? progressForStatus(status);
+      const linkedNotifications = definition.notification ? [definition.notification] : notificationsForDefinition(definition);
+      const latestNotification = linkedNotifications[0] || null;
+      const baseStatus = definition.status || statusForLoop(loop);
+      const derivedLifecycleStatus = definition.notification ? baseStatus : relatedLifecycleStatus(definition.sourceNames || []);
+      const status = definition.notification
+        ? baseStatus
+        : (derivedLifecycleStatus !== 'idle' ? derivedLifecycleStatus : (!definition.status && baseStatus === 'idle' && linkedNotifications.length > 0 ? 'attention' : baseStatus));
+      const description = latestNotification?.summary || loop?.statusDetail || loop?.description || definition.description;
+      const detailParts = [];
+      if (latestNotification && !definition.notification) {
+        detailParts.push(`${latestNotification.title}: ${latestNotification.summary}`);
+      }
+      if (definition.notification) {
+        detailParts.push(definition.detail || description);
+      } else if (loop) {
+        detailParts.push(`${loop.statusReason || status}: ${loop.statusDetail || loop.description}`);
+      } else if (definition.detail || description) {
+        detailParts.push(definition.detail || description);
+      }
+      const detail = detailParts.join(' • ');
+      const flipped = definition.notification ? false : Boolean(sessionStore.flippedLoopIds[definition.id]);
+      const progress = definition.notification ? 100 : (loop?.progress ?? progressForStatus(status));
       const actionTargetId = definition.loop?.id || loop?.id || definition.id;
+      const relatedChats = findRelatedOpenChatsForLoop(definition.loop || loop);
+      const sessionButtonLabel = relatedChats.length > 1 ? 'View Sessions' : 'View Session';
+      const glowClass = notificationGlowClass(linkedNotifications);
+      const noticeMarkup = linkedNotifications.length > 0
+        ? `<div class="agent-card-notice ${glowClass}">${linkedNotifications.length} alert${linkedNotifications.length === 1 ? '' : 's'} waiting</div>`
+        : '';
+      const isFerrosAdminCard = definition.id === 'admin-ferros-agent';
+      const adminMeta = `open chats ${sessionStore.openChats.length} • active alerts ${activeNotifications().length}`;
       let actionMarkup = '';
+      let frontActionMarkup = '';
 
       if (definition.notification) {
+        frontActionMarkup = `
+          <div class="loop-actions">
+            <button data-notification-action="resolve" data-notification-id="${escapeHtml(definition.notification.id)}">Resolve</button>
+          </div>
+        `;
+      } else if (isFerrosAdminCard) {
         actionMarkup = `
           <div class="loop-actions">
-            <button data-notification-action="open" data-notification-id="${escapeHtml(definition.notification.id)}">Open</button>
-            <button data-notification-action="opened" data-notification-id="${escapeHtml(definition.notification.id)}">Mark Opened</button>
-            <button data-notification-action="resolve" data-notification-id="${escapeHtml(definition.notification.id)}">Resolve</button>
+            <button data-ferros-action="new-chat">New FERROS Chat</button>
+            <button data-ferros-action="latest-chat">Latest Chat</button>
+            <button data-ferros-action="status-update">Status Update</button>
+            <button data-ferros-action="software-test">Software Test</button>
+            <button data-ferros-action="operator-alert-test">Alert Test</button>
           </div>
         `;
       } else if (definition.loop?.sourceLoopId) {
         actionMarkup = `
           <div class="loop-actions">
+            <button data-loop-action="view-session" data-loop-id="${escapeHtml(actionTargetId)}">${escapeHtml(sessionButtonLabel)}</button>
             <button data-loop-action="open" data-loop-id="${escapeHtml(actionTargetId)}">Open</button>
             <button data-loop-action="explain" data-loop-id="${escapeHtml(actionTargetId)}">Explain</button>
           </div>
@@ -2126,25 +4445,30 @@
       } else if (loop) {
         actionMarkup = `
           <div class="loop-actions">
+            <button data-loop-action="view-session" data-loop-id="${escapeHtml(actionTargetId)}">${escapeHtml(sessionButtonLabel)}</button>
             <button data-loop-action="stop-chat" data-loop-id="${escapeHtml(actionTargetId)}">Stop</button>
             <button data-loop-action="chat" data-loop-id="${escapeHtml(actionTargetId)}">Ask FERROS</button>
           </div>
         `;
       }
 
+      const flipNote = definition.notification ? 'click to open attention chat' : 'click to flip';
+
       return `
-        <div class="loop-card agent-play-card status-${escapeHtml(status)} ${flipped ? 'flipped' : ''}" data-loop-id="${escapeHtml(definition.id)}">
+        <div class="loop-card agent-play-card ${definition.notification ? 'notification-card' : ''} status-${escapeHtml(status)} ${escapeHtml(glowClass)} ${flipped ? 'flipped' : ''}" data-loop-id="${escapeHtml(definition.id)}"${definition.notification ? ` data-card-behavior="notification" data-notification-id="${escapeHtml(definition.notification.id)}"` : ''}>
           <div class="loop-card-inner">
             <div class="loop-face front agent-card-front">
               <div class="agent-card-topline">
-                <span class="agent-card-icon">${escapeHtml(definition.icon || '◆')}</span>
+                <span class="agent-card-icon ${glowClass ? 'notification-hit' : ''}">${escapeHtml(definition.icon || '◆')}</span>
                 <span class="status-dot ${escapeHtml(status)}"></span>
               </div>
               <div class="agent-card-name">${escapeHtml(definition.name)}</div>
               <div class="agent-card-subtitle">${escapeHtml(definition.subtitle)}</div>
+              ${noticeMarkup}
               <div class="progress-shell"><div class="progress-fill" style="width: ${progress}%;"></div></div>
               <div class="agent-card-description">${escapeHtml(description)}</div>
-              <div class="flip-note">click to flip</div>
+              ${frontActionMarkup}
+              <div class="flip-note">${flipNote}</div>
             </div>
             <div class="loop-face back agent-card-back">
               <div class="agent-card-topline">
@@ -2152,7 +4476,7 @@
                 <span class="pill ${status === 'attention' ? 'waiting' : status}">${escapeHtml(status)}</span>
               </div>
               <div class="agent-card-description">${escapeHtml(detail)}</div>
-              <div class="minor">${escapeHtml(loop?.workOrderId || definition.loop?.threadId || 'no packet id yet')}</div>
+              <div class="minor">${escapeHtml(isFerrosAdminCard ? adminMeta : (loop?.workOrderId || definition.loop?.threadId || 'no packet id yet'))}</div>
               ${actionMarkup}
             </div>
           </div>
@@ -2161,18 +4485,21 @@
     }
 
     function renderCategoryDeck(categoryKey) {
+      const categoryCardDefinitions = registryCategoryCardDefinitions();
       const definitions = [...(categoryCardDefinitions[categoryKey] || [])];
 
       if (categoryKey === 'administration') {
-        for (const notification of sessionStore.notifications.filter((item) => item.status !== 'resolved')) {
+        for (const notification of activeNotifications().slice().reverse()) {
+          const source = resolveNotificationSource(notification);
           definitions.unshift({
             id: notification.id,
-            name: notification.title,
-            subtitle: `Notification • ${notification.severity}`,
-            icon: notification.status === 'resolved' ? '✅' : '🔔',
+            name: source.agentName,
+            subtitle: `${notification.title} • ${notification.severity}`,
+            icon: source.icon,
             description: notification.summary,
-            detail: `packet ${notification.packetId || 'n/a'} • action ${notification.action} • status ${notification.status}`,
-            status: notification.status === 'opened' ? 'waiting' : 'attention',
+            detail: `${notification.title} • packet ${notification.packetId || source.packet?.id || 'n/a'} • action ${notification.action} • status ${notification.status}`,
+            status: statusForNotificationCard(notification),
+            sourceNames: [source.agentName],
             notification,
           });
         }
@@ -2198,21 +4525,84 @@
       return `<div class="agent-card-grid">${definitions.map((definition) => renderAgentPlayCard(definition)).join('')}</div>`;
     }
 
-    async function openFerrosChat(label, openingMessage) {
+    async function openFerrosChat(label, openingMessage, speaker = 'user', who = 'Operator') {
       const chat = await postMonitor('/monitor/sessions', { label });
+      const priorPacketCount = sessionStore.packets.length;
       if (openingMessage) {
         await postMonitor(`/monitor/sessions/${chat.id}/messages`, {
-          speaker: 'user',
-          who: 'Operator',
+          speaker,
+          who,
           text: openingMessage,
         });
       }
       await fetchMonitorState();
+      sessionStore.showSessionCards = false;
       sessionStore.selectedChatId = chat.id;
-      const selectedChat = getSelectedChat();
-      sessionStore.selectedLifecycleThreadId = selectedChat?.threadId || sessionStore.selectedLifecycleThreadId;
+      const focusedPacket = openingMessage && sessionStore.packets.length > priorPacketCount
+        ? focusLatestPacketContextForSession(chat.id)
+        : false;
+      if (!focusedPacket) {
+        const selectedChat = getSelectedChat();
+        sessionStore.selectedLifecycleThreadId = selectedChat?.threadId || sessionStore.selectedLifecycleThreadId;
+        renderLoops();
+        renderLifecycleShell();
+      }
       renderChats();
-      renderLifecycleShell();
+      if (!focusedPacket) {
+        renderLifecycleShell();
+      }
+    }
+
+    function monitorStatusSummaryText() {
+      const loopSummary = sessionStore.runningLoops
+        .slice(0, 4)
+        .map((loop) => `${loop.agent}: ${loop.status || loop.state}`)
+        .join(' • ') || 'no active loops';
+      const notificationSummary = activeNotifications()
+        .slice(0, 4)
+        .map((notification) => `${resolveNotificationSource(notification).agentName}: ${notification.title}`)
+        .join(' • ') || 'no unresolved notifications';
+
+      return `Monitor status update. Open chats: ${sessionStore.openChats.length}. Active loops: ${loopSummary}. Administration notifications: ${notificationSummary}.`;
+    }
+
+    async function runFerrosAdminAction(action) {
+      if (action === 'new-chat') {
+        await openFerrosChat('User -> FERROS', null);
+        return;
+      }
+
+      if (action === 'latest-chat') {
+        const latestChat = sessionStore.openChats[sessionStore.openChats.length - 1] || null;
+        if (latestChat) {
+          focusChatContext(latestChat.id, latestChat.threadId || null);
+          return;
+        }
+        await openFerrosChat('User -> FERROS', null);
+        return;
+      }
+
+      if (action === 'status-update') {
+        await openFerrosChat(
+          'FERROS Status -> Operator',
+          monitorStatusSummaryText(),
+          'system',
+          'Monitor'
+        );
+        return;
+      }
+
+      if (action === 'software-test') {
+        await openFerrosChat('Software Test -> FERROS', 'please route to software');
+        return;
+      }
+
+      if (action === 'operator-alert-test') {
+        await openFerrosChat(
+          'Operator Alert Test -> FERROS',
+          'needs operator attention; escalate this monitor notification test'
+        );
+      }
     }
 
     async function runLoopAction(action, loopId) {
@@ -2220,6 +4610,25 @@
       const backlog = getOperatorBacklogItems().find((item) => item.id === loopId);
       const target = loop || backlog;
       if (!target) {
+        return;
+      }
+
+      if (action === 'view-session') {
+        const relatedChats = findRelatedOpenChatsForLoop(target);
+        const preferredThreadId = preferredThreadIdForLoop(target);
+        if (relatedChats.length > 0) {
+          focusChatContext(relatedChats[0].id, preferredThreadId);
+          return;
+        }
+
+        await openFerrosChat(
+          `${target.agent} -> FERROS`,
+          `Operator requested the current running or stalled session for ${target.agent}. Summarize the active packets, current blockers, and what needs attention.`
+        );
+        if (preferredThreadId) {
+          sessionStore.selectedLifecycleThreadId = preferredThreadId;
+          renderLifecycleShell();
+        }
         return;
       }
 
@@ -2253,24 +4662,89 @@
       await fetchMonitorState();
       renderLoops();
       renderChats();
+      renderLifecycleShell();
+    }
+
+    async function openNotificationContext(notificationId) {
+      const notification = sessionStore.notifications.find((item) => item.id === notificationId);
+      await runNotificationAction('open', notificationId);
+
+      const refreshedNotification = sessionStore.notifications.find((item) => item.id === notificationId) || notification;
+      if (refreshedNotification) {
+        const source = resolveNotificationSource(refreshedNotification);
+        const expectedSessionId = refreshedNotification.sessionId || source.packet?.sessionId || null;
+        const preferredThreadId = refreshedNotification.lifecycleThreadId || source.thread?.id || source.packet?.lifecycleThreadId || null;
+
+        if (expectedSessionId && sessionStore.openChats.some((chat) => chat.id === expectedSessionId)) {
+          focusChatContext(expectedSessionId, preferredThreadId);
+          return;
+        }
+
+        await openFerrosChat(
+          `${source.agentName} -> FERROS`,
+          `Operator attention: ${refreshedNotification.title}. ${refreshedNotification.summary}`
+        );
+
+        if (preferredThreadId) {
+          sessionStore.selectedLifecycleThreadId = preferredThreadId;
+          renderLifecycleShell();
+        }
+      }
     }
 
     function renderChats() {
-      const selected = getSelectedChat();
-      elements.chatSelector.innerHTML = sessionStore.openChats
-        .map((chat) => `<option value="${chat.id}">${escapeHtml(chat.label)} (${escapeHtml(chat.activeAgent)})</option>`)
-        .join('');
-
-      if (sessionStore.selectedChatId) {
-        elements.chatSelector.value = sessionStore.selectedChatId;
+      const cards = marsConversationCards();
+      if ((!sessionStore.selectedChatId || !findChatById(sessionStore.selectedChatId)) && cards[0]) {
+        sessionStore.selectedChatId = cards[0].chatId;
       }
 
-      if (!selected) {
-        elements.chatMessages.innerHTML = '<div class="minor">No open chat. Use Administration and the New FERROS Agent Chat button.</div>';
+      const selectedCard = cards.find((card) => card.id === sessionStore.selectedMarsConversationCardId)
+        || cards.find((card) => card.chatId === sessionStore.selectedChatId)
+        || cards.find((card) => card.id === sessionStore.lastViewedMarsConversationCardId)
+        || cards[0]
+        || null;
+      if (selectedCard) {
+        sessionStore.selectedMarsConversationCardId = selectedCard.id;
+      }
+
+      const selected = getSelectedChat();
+      elements.sessionCardStrip.innerHTML = cards.length === 0
+        ? '<div class="minor">No user-facing conversations are open in MARS yet.</div>'
+        : cards
+          .map((card) => {
+            const isSelected = card.id === sessionStore.selectedMarsConversationCardId && card.chatId === sessionStore.selectedChatId;
+            return `
+              <button class="session-card ${isSelected ? 'selected' : ''} ${card.isReturn ? 'is-return' : ''} ${card.isNew ? 'new-response' : ''}" data-session-id="${escapeHtml(card.chatId)}" data-thread-id="${escapeHtml(card.threadId || '')}" data-conversation-card-id="${escapeHtml(card.id)}" data-lifecycle-card-id="${escapeHtml(card.lifecycleCardId || '')}">
+                <div class="session-card-head">
+                  <div>
+                    <div class="session-card-direction">${escapeHtml(card.directionLabel)}</div>
+                    <div class="session-card-title">${escapeHtml(card.title)}</div>
+                  </div>
+                  <span class="pill running">${escapeHtml(card.activeAgent || 'FERROS Agent')}</span>
+                </div>
+                <div class="session-card-meta">${escapeHtml(card.who || 'FERROS Agent')} • ${escapeHtml(card.updatedAt || 'pending')}</div>
+                <div class="session-card-preview">${escapeHtml(card.preview || 'Open this session to inspect the latest exchange.')}</div>
+              </button>
+            `;
+          })
+          .join('');
+
+      const showCards = sessionStore.showSessionCards || !selected;
+      elements.sessionCardStrip.hidden = !showCards;
+      elements.sessionBackBtn.disabled = cards.length === 0 && !selected;
+      elements.chatMessages.hidden = showCards;
+      elements.chatControls.hidden = showCards;
+      renderUtilityDrawer();
+
+      if (showCards) {
+        elements.chatMessages.innerHTML = '';
         return;
       }
 
-      sessionStore.selectedLifecycleThreadId = selected.threadId || sessionStore.selectedLifecycleThreadId;
+      if (!selected) {
+        elements.chatMessages.innerHTML = '<div class="minor">No open chat. Select a user-facing conversation from MARS or start one from Administration.</div>';
+        return;
+      }
 
       elements.chatMessages.innerHTML = selected.messages
         .map((message) => `
@@ -2289,49 +4763,467 @@
     }
 
     function getSelectedLifecycleThread() {
-      return sessionStore.lifecycleThreads.find((thread) => thread.id === sessionStore.selectedLifecycleThreadId) || null;
+      return visibleLifecycleThreads().find((thread) => thread.id === sessionStore.selectedLifecycleThreadId) || null;
+    }
+
+    function formatLifecycleTimestamp(timestamp) {
+      if (!timestamp) {
+        return 'unknown time';
+      }
+
+      const parsed = new Date(timestamp);
+      if (Number.isNaN(parsed.getTime())) {
+        return timestamp;
+      }
+
+      return parsed.toLocaleString([], {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      });
+    }
+
+    function lifecycleDisplayAgentName(name) {
+      const normalized = normalizeAgentName(name || '');
+      const displayByAgent = {
+        'FERROS Agent': 'FERROS',
+        'Business Agent': 'Business Manager',
+        'Core Agent': 'Core Programmer',
+        'SubCore Agent': 'SubCore Programmer',
+      };
+      return displayByAgent[normalized] || normalized || name || 'Unknown Agent';
+    }
+
+    function ferrosTraceLabelForSession(sessionId) {
+      const chat = findChatById(sessionId);
+      const label = chat?.label || '';
+      const numbered = label.match(/#(\d+)/);
+      if (numbered) {
+        return `FERROS #${numbered[1]}`;
+      }
+      return 'FERROS';
+    }
+
+    function packetForLifecycleThread(thread) {
+      return getPacketByLifecycleThreadId(thread?.id) || null;
+    }
+
+    function chatForLifecycleThread(thread) {
+      return sessionStore.openChats.find((session) => session.threadId === thread?.id) || null;
+    }
+
+    function isOperatorLifecycleChat(chat) {
+      const label = String(chat?.label || '');
+      return /^User (->|x) FERROS #\d+$/.test(label)
+        || /^Escalation (->|x) FERROS$/.test(label);
+    }
+
+    function visibleLifecycleThreads() {
+      const archivedSessionIds = new Set(sessionStore.archivedChats.map((chat) => chat.id));
+      return sessionStore.lifecycleThreads.filter((thread) => {
+        if (thread.kind === 'loop') {
+          return false;
+        }
+
+        const packet = packetForLifecycleThread(thread);
+        if (packet) {
+          return !archivedSessionIds.has(packet.sessionId);
+        }
+
+        const chat = chatForLifecycleThread(thread);
+        return Boolean(chat && isOperatorLifecycleChat(chat));
+      });
+    }
+
+    function lifecycleSessionTraceNumber(sessionId) {
+      const label = findChatById(sessionId)?.label || '';
+      const numbered = label.match(/#(\d+)/);
+      return numbered ? Number.parseInt(numbered[1], 10) : null;
+    }
+
+    function lifecyclePacketDepth(packet) {
+      let depth = 1;
+      let cursor = packet;
+      while (cursor?.parentPacketId) {
+        const parent = sessionStore.packets.find((candidate) => candidate.id === cursor.parentPacketId);
+        if (!parent) {
+          break;
+        }
+        depth += 1;
+        cursor = parent;
+      }
+      return depth;
+    }
+
+    function lifecycleThreadCards(thread) {
+      const packet = packetForLifecycleThread(thread);
+      const sessionId = packet?.sessionId || chatForLifecycleThread(thread)?.id || null;
+      const traceNumber = sessionId ? lifecycleSessionTraceNumber(sessionId) : null;
+      const cards = [];
+
+      if (thread.kind === 'chat') {
+        const chat = chatForLifecycleThread(thread);
+        if (!chat || !isOperatorLifecycleChat(chat) || !sessionId) {
+          return cards;
+        }
+
+        const traceLabel = ferrosTraceLabelForSession(sessionId);
+        const userIndex = chat.messages.findIndex((message) => String(message.speaker || '').toLowerCase() === 'user');
+        const userMessage = userIndex >= 0 ? chat.messages[userIndex] : null;
+        const ferrosReply = userIndex >= 0
+          ? [...chat.messages.slice(userIndex + 1)].reverse().find((message) => String(message.who || '') === 'FERROS Agent')
+          : null;
+
+        cards.push({
+          id: `${thread.id}:downstream`,
+          threadId: thread.id,
+          thread,
+          label: `User ⬇️ ${traceLabel}`,
+          metaTitle: userMessage?.text || `${traceLabel} awaiting user request.`,
+          kind: thread.kind,
+          status: thread.status,
+          externalId: traceLabel,
+          updatedAt: userMessage?.at || thread.createdAt,
+          stageOrder: 0,
+          depth: 0,
+          traceNumber,
+        });
+
+        if (ferrosReply) {
+          cards.push({
+            id: `${thread.id}:upstream`,
+            threadId: thread.id,
+            thread,
+            label: `${traceLabel} ⬆️ User`,
+            metaTitle: ferrosReply.text,
+            kind: thread.kind,
+            status: thread.status,
+            externalId: traceLabel,
+            updatedAt: ferrosReply.at || thread.updatedAt,
+            stageOrder: 1,
+            depth: 0,
+            traceNumber,
+          });
+        }
+
+        return cards;
+      }
+
+      if (thread.kind === 'packet' && packet && thread.sourceAgentId && thread.targetAgentId) {
+        const sourceNormalized = normalizeAgentName(thread.sourceAgentId);
+        const targetNormalized = normalizeAgentName(thread.targetAgentId);
+        const source = sourceNormalized === 'FERROS Agent'
+          ? ferrosTraceLabelForSession(packet.sessionId)
+          : lifecycleDisplayAgentName(thread.sourceAgentId);
+        const target = targetNormalized === 'FERROS Agent'
+          ? ferrosTraceLabelForSession(packet.sessionId)
+          : lifecycleDisplayAgentName(thread.targetAgentId);
+        const downstreamEntry = thread.entries.find((entry) => ['packet.sent', 'packet.handoff', 'packet.child_dispatched'].includes(entry.kind))
+          || thread.entries[0]
+          || null;
+        const upstreamEntry = [...thread.entries].reverse().find((entry) => ['packet.report', 'packet.returned', 'packet.relayed', 'packet.closed'].includes(entry.kind))
+          || null;
+        const depth = lifecyclePacketDepth(packet);
+
+        cards.push({
+          id: `${thread.id}:downstream`,
+          threadId: thread.id,
+          thread,
+          label: `${source} ⬇️ ${target}`,
+          metaTitle: thread.title,
+          kind: thread.kind,
+          status: thread.status,
+          externalId: thread.workOrderId || thread.escalationId || thread.targetAgentId || 'no external id',
+          updatedAt: downstreamEntry?.at || thread.createdAt,
+          stageOrder: 0,
+          depth,
+          traceNumber,
+        });
+
+        if (upstreamEntry) {
+          cards.push({
+            id: `${thread.id}:upstream`,
+            threadId: thread.id,
+            thread,
+            label: `${target} ⬆️ ${source}`,
+            metaTitle: upstreamEntry.text,
+            kind: thread.kind,
+            status: thread.status,
+            externalId: thread.workOrderId || thread.escalationId || thread.targetAgentId || 'no external id',
+            updatedAt: upstreamEntry.at || thread.updatedAt,
+            stageOrder: 1,
+            depth,
+            traceNumber,
+          });
+        }
+      }
+
+      return cards;
+    }
+
+    function compareLifecycleCards(left, right) {
+      const leftTrace = Number.isFinite(left.traceNumber) ? left.traceNumber : null;
+      const rightTrace = Number.isFinite(right.traceNumber) ? right.traceNumber : null;
+      if (leftTrace !== null && rightTrace !== null && leftTrace !== rightTrace) {
+        return rightTrace - leftTrace;
+      }
+
+      const leftUpdated = new Date(left.updatedAt || left.thread.updatedAt || 0).getTime() || 0;
+      const rightUpdated = new Date(right.updatedAt || right.thread.updatedAt || 0).getTime() || 0;
+      if ((leftTrace === null || rightTrace === null) && leftUpdated !== rightUpdated) {
+        return rightUpdated - leftUpdated;
+      }
+
+      if (left.stageOrder !== right.stageOrder) {
+        return left.stageOrder - right.stageOrder;
+      }
+      if (left.stageOrder === 0 && left.depth !== right.depth) {
+        return left.depth - right.depth;
+      }
+      if (left.stageOrder === 1 && left.depth !== right.depth) {
+        return right.depth - left.depth;
+      }
+      if (leftUpdated !== rightUpdated) {
+        return left.stageOrder === 0 ? leftUpdated - rightUpdated : rightUpdated - leftUpdated;
+      }
+      return left.label.localeCompare(right.label);
+    }
+
+    function visibleLifecycleCards() {
+      return visibleLifecycleThreads()
+        .flatMap((thread) => lifecycleThreadCards(thread))
+        .sort(compareLifecycleCards);
+    }
+
+    function latestVisibleLifecycleCard(visibleCards) {
+      if (visibleCards.length === 0) {
+        return null;
+      }
+
+      const leadingTrace = Number.isFinite(visibleCards[0].traceNumber)
+        ? visibleCards[0].traceNumber
+        : null;
+      if (leadingTrace === null) {
+        return visibleCards[0];
+      }
+
+      const cardsForLatestTrace = visibleCards.filter((card) => card.traceNumber === leadingTrace);
+      return cardsForLatestTrace[cardsForLatestTrace.length - 1] || visibleCards[0];
+    }
+
+    function lifecycleSessionIdForCard(card) {
+      if (!card) {
+        return null;
+      }
+      return packetForLifecycleThread(card.thread)?.sessionId || chatForLifecycleThread(card.thread)?.id || null;
+    }
+
+    function latestLifecycleCardForSession(sessionId) {
+      if (!sessionId) {
+        return null;
+      }
+      const cards = visibleLifecycleCards().filter((card) => lifecycleSessionIdForCard(card) === sessionId);
+      return cards[cards.length - 1] || null;
+    }
+
+    function scrollSelectedLifecycleCardIntoView(preferBottom = false) {
+      const selectedCard = elements.lifecycleThreadList.querySelector('.lifecycle-thread-item.selected');
+      if (selectedCard) {
+        const container = elements.lifecycleThreadList;
+        const cardTop = selectedCard.offsetTop;
+        const cardBottom = cardTop + selectedCard.offsetHeight;
+        const viewTop = container.scrollTop;
+        const viewBottom = viewTop + container.clientHeight;
+
+        if (preferBottom) {
+          container.scrollTop = Math.max(0, cardBottom - container.clientHeight);
+          return;
+        }
+
+        if (cardTop < viewTop) {
+          container.scrollTop = cardTop;
+        } else if (cardBottom > viewBottom) {
+          container.scrollTop = Math.max(0, cardBottom - container.clientHeight);
+        }
+        return;
+      }
+
+      elements.lifecycleThreadList.scrollTop = elements.lifecycleThreadList.scrollHeight;
+    }
+
+    function lifecycleThreadDirection(thread) {
+      if (thread.kind !== 'packet') {
+        return 'neutral';
+      }
+      const source = normalizeAgentName(thread.sourceAgentId || '');
+      if (source === 'FERROS Agent') {
+        return 'neutral';
+      }
+      return thread.entries.some((entry) => entry.kind === 'packet.report' || entry.kind === 'packet.returned')
+        ? 'upstream'
+        : 'downstream';
+    }
+
+    function lifecycleThreadVisualStatus(thread) {
+      const packet = packetForLifecycleThread(thread);
+      if (packet?.state === 'human_intervention_required') {
+        return 'attention';
+      }
+      if (['reported', 'awaiting_review', 'reviewed'].includes(String(thread.status || '').toLowerCase())
+        || ['awaiting_review', 'reviewed'].includes(String(packet?.state || '').toLowerCase())) {
+        return 'escalating';
+      }
+      if (['running', 'dispatched_to_manager', 'in_progress'].includes(String(thread.status || '').toLowerCase())
+        || ['dispatched_to_manager', 'in_progress'].includes(String(packet?.state || '').toLowerCase())) {
+        return 'running';
+      }
+      return 'idle';
+    }
+
+    function relatedLifecycleStatus(sourceNames) {
+      const normalizedNames = new Set((sourceNames || []).map((name) => normalizeAgentName(name)));
+      if (normalizedNames.size === 0) {
+        return 'idle';
+      }
+
+      let hasEscalating = false;
+      let hasRunning = false;
+      for (const thread of visibleLifecycleThreads()) {
+        const source = normalizeAgentName(thread.sourceAgentId || '');
+        const target = normalizeAgentName(thread.targetAgentId || thread.ownerAgent || '');
+        if (!normalizedNames.has(source) && !normalizedNames.has(target)) {
+          continue;
+        }
+        const status = lifecycleThreadVisualStatus(thread);
+        if (status === 'attention') {
+          return 'attention';
+        }
+        if (status === 'escalating') {
+          hasEscalating = true;
+        } else if (status === 'running') {
+          hasRunning = true;
+        }
+      }
+
+      if (hasEscalating) {
+        return 'escalating';
+      }
+      if (hasRunning) {
+        return 'running';
+      }
+      return 'idle';
+    }
+
+    function lifecycleThreadSessionLabel(thread) {
+      const packet = packetForLifecycleThread(thread);
+      if (thread.kind === 'chat') {
+        return thread.title.replace(/\s*->\s*/g, ' x ');
+      }
+
+      if (thread.kind === 'packet' && thread.sourceAgentId && thread.targetAgentId) {
+        const sourceNormalized = normalizeAgentName(thread.sourceAgentId);
+        const targetNormalized = normalizeAgentName(thread.targetAgentId);
+        if (sourceNormalized === 'FERROS Agent' || targetNormalized === 'FERROS Agent') {
+          const counterparty = sourceNormalized === 'FERROS Agent'
+            ? lifecycleDisplayAgentName(thread.targetAgentId)
+            : lifecycleDisplayAgentName(thread.sourceAgentId);
+          return `${ferrosTraceLabelForSession(packet?.sessionId)} x ${counterparty}`;
+        }
+
+        const source = lifecycleDisplayAgentName(thread.sourceAgentId);
+        const target = lifecycleDisplayAgentName(thread.targetAgentId);
+        const direction = lifecycleThreadDirection(thread);
+        if (direction === 'downstream') {
+          return `${source} ⬇️ ${target}`;
+        }
+        if (direction === 'upstream') {
+          return `${target} ⬆️ ${source}`;
+        }
+        return `${source} x ${target}`;
+      }
+
+      return thread.title;
+    }
+
+    function lifecycleThreadPlainLanguageSubtitle(thread) {
+      const packet = packetForLifecycleThread(thread);
+      if (thread.kind === 'packet' && thread.sourceAgentId && thread.targetAgentId) {
+        const sourceNormalized = normalizeAgentName(thread.sourceAgentId);
+        const targetNormalized = normalizeAgentName(thread.targetAgentId);
+        const source = sourceNormalized === 'FERROS Agent'
+          ? ferrosTraceLabelForSession(packet?.sessionId)
+          : lifecycleDisplayAgentName(thread.sourceAgentId);
+        const target = targetNormalized === 'FERROS Agent'
+          ? ferrosTraceLabelForSession(packet?.sessionId)
+          : lifecycleDisplayAgentName(thread.targetAgentId);
+        const workOrder = thread.workOrderId ? ` packet ${thread.workOrderId}` : ' this packet';
+        const direction = lifecycleThreadDirection(thread);
+        if (sourceNormalized === 'FERROS Agent' || targetNormalized === 'FERROS Agent') {
+          const other = sourceNormalized === 'FERROS Agent' ? target : source;
+          return `${ferrosTraceLabelForSession(packet?.sessionId)} exchanged${workOrder} with ${other} at ${formatLifecycleTimestamp(thread.createdAt)}.`;
+        }
+        if (direction === 'upstream') {
+          return `${target} returned${workOrder} to ${source} at ${formatLifecycleTimestamp(thread.createdAt)}.`;
+        }
+        return `${source} dispatched${workOrder} to ${target} at ${formatLifecycleTimestamp(thread.createdAt)}.`;
+      }
+
+      if (thread.kind === 'chat') {
+        return `${thread.title.replace(/\s*->\s*/g, ' x ')} opened at ${formatLifecycleTimestamp(thread.createdAt)}.`;
+      }
+
+      return `${lifecycleDisplayAgentName(thread.ownerAgent)} opened this ${thread.kind} thread at ${formatLifecycleTimestamp(thread.createdAt)}.`;
     }
 
     function renderLifecycleShell() {
+      const visibleCards = visibleLifecycleCards();
+      const hadSelectedCard = Boolean(sessionStore.selectedLifecycleCardId);
       const sourceTree = sessionStore.agentSourceTree;
       const syncState = sourceTree?.syncState || 'unknown';
       elements.sourceTreeStatus.className = `sync-pill ${escapeHtml(syncState)}`;
       elements.sourceTreeStatus.textContent = `${syncState} • ${sourceTree?.entryCount || 0} agents`;
 
-      if (sessionStore.lifecycleThreads.length === 0) {
+      if (visibleCards.length === 0) {
         elements.lifecycleThreadList.innerHTML = '<div class="minor">No lifecycle threads yet.</div>';
         elements.lifecycleThreadHeader.innerHTML = '<div class="thread-title">No lifecycle thread selected</div><div class="thread-meta">Route a chat or trigger a loop transition to create one.</div>';
         elements.lifecycleMessages.innerHTML = '<div class="minor">No packet lifecycle yet.</div>';
         return;
       }
 
-      if (!getSelectedLifecycleThread()) {
-        sessionStore.selectedLifecycleThreadId = sessionStore.lifecycleThreads[0]?.id || null;
-      }
+      const selectedThreadCards = sessionStore.selectedLifecycleThreadId
+        ? visibleCards.filter((card) => card.threadId === sessionStore.selectedLifecycleThreadId)
+        : [];
+      let selectedCard = visibleCards.find((card) => card.id === sessionStore.selectedLifecycleCardId)
+        || selectedThreadCards[selectedThreadCards.length - 1]
+        || latestVisibleLifecycleCard(visibleCards)
+        || null;
+      sessionStore.selectedLifecycleCardId = selectedCard?.id || null;
+      sessionStore.selectedLifecycleThreadId = selectedCard?.threadId || null;
 
-      elements.lifecycleThreadList.innerHTML = sessionStore.lifecycleThreads
-        .map((thread) => {
-          const selected = thread.id === sessionStore.selectedLifecycleThreadId;
+      elements.lifecycleThreadList.innerHTML = visibleCards
+        .map((card) => {
+          const selected = card.id === sessionStore.selectedLifecycleCardId;
           return `
-            <button class="lifecycle-thread-item ${selected ? 'selected' : ''}" data-thread-id="${escapeHtml(thread.id)}">
-              <div class="thread-title">${escapeHtml(thread.title)}</div>
-              <div class="thread-meta">${escapeHtml(thread.kind)} • ${escapeHtml(thread.status)} • ${escapeHtml(thread.ownerAgent)}</div>
-              <div class="thread-meta">${escapeHtml(thread.workOrderId || thread.escalationId || thread.targetAgentId || 'no external id')} • ${escapeHtml(thread.updatedAt)}</div>
+            <button class="lifecycle-thread-item ${selected ? 'selected' : ''}" data-thread-id="${escapeHtml(card.threadId)}" data-card-id="${escapeHtml(card.id)}">
+              <div class="thread-title">${escapeHtml(card.label)}</div>
+              <div class="thread-meta">${escapeHtml(card.metaTitle)}</div>
+              <div class="thread-meta">${escapeHtml(card.kind)} • ${escapeHtml(card.status)} • ${escapeHtml(card.externalId)}</div>
+              <div class="thread-meta">updated ${escapeHtml(formatLifecycleTimestamp(card.updatedAt))}</div>
             </button>
           `;
         })
         .join('');
 
-      const selectedThread = getSelectedLifecycleThread();
+      const selectedThread = selectedCard?.thread || getSelectedLifecycleThread();
       if (!selectedThread) {
         elements.lifecycleMessages.innerHTML = '<div class="minor">No lifecycle thread selected.</div>';
         return;
       }
 
       elements.lifecycleThreadHeader.innerHTML = `
-        <div class="thread-title">${escapeHtml(selectedThread.title)}</div>
-        <div class="thread-meta">${escapeHtml(selectedThread.kind)} • ${escapeHtml(selectedThread.status)} • owner ${escapeHtml(selectedThread.ownerAgent)}</div>
-        <div class="thread-meta">source ${escapeHtml(selectedThread.sourceAgentId || 'n/a')} -> target ${escapeHtml(selectedThread.targetAgentId || 'n/a')} • created ${escapeHtml(selectedThread.createdAt)}</div>
+        <div class="thread-title thread-title-centered">${escapeHtml(selectedThread.title)}</div>
+        <div class="thread-subtitle">${escapeHtml(lifecycleThreadPlainLanguageSubtitle(selectedThread))}</div>
+        <div class="thread-meta" style="text-align: center;">${escapeHtml(selectedThread.kind)} • ${escapeHtml(selectedThread.status)} • owner ${escapeHtml(selectedThread.ownerAgent)}</div>
+        <div class="thread-meta" style="text-align: center;">source ${escapeHtml(lifecycleDisplayAgentName(selectedThread.sourceAgentId || 'n/a'))} -> target ${escapeHtml(lifecycleDisplayAgentName(selectedThread.targetAgentId || 'n/a'))} • updated ${escapeHtml(formatLifecycleTimestamp(selectedThread.updatedAt))}</div>
       `;
 
       elements.lifecycleMessages.innerHTML = selectedThread.entries
@@ -2343,6 +5235,7 @@
           </div>
         `)
         .join('');
+      scrollSelectedLifecycleCardIntoView(!hadSelectedCard);
       elements.lifecycleMessages.scrollTop = elements.lifecycleMessages.scrollHeight;
     }
 
@@ -2435,31 +5328,134 @@
       `;
     }
 
+    function renderSurfaceDrawer() {
+      const surfaceKey = sessionStore.surfaceDrawer;
+      const sections = elements.surfaceDrawer.querySelectorAll('.surface-section');
+      sections.forEach((section) => {
+        section.hidden = section.dataset.surface !== surfaceKey;
+      });
+      elements.surfaceDrawer.classList.toggle('open', Boolean(surfaceKey));
+
+      const descriptor = {
+        lifecycle: { label: 'Packet Lifecycle', title: 'Lifecycle Chat' },
+        directory: { label: 'Definitions', title: 'Agent Directory' },
+        services: { label: 'Live Runtime', title: 'Running Services' },
+        runway: { label: 'Runway', title: 'Mindmap' },
+      }[surfaceKey] || { label: 'Surface', title: 'Panel' };
+
+      elements.surfaceDrawerLabel.textContent = descriptor.label;
+      elements.surfaceDrawerTitle.textContent = descriptor.title;
+
+      [
+        ['surfaceLifecycleBtn', 'lifecycle'],
+        ['surfaceDirectoryBtn', 'directory'],
+        ['surfaceServicesBtn', 'services'],
+        ['surfaceRunwayBtn', 'runway'],
+      ].forEach(([elementKey, key]) => {
+        elements[elementKey].classList.toggle('active', surfaceKey === key);
+      });
+    }
+
+    function toggleSurfaceDrawer(surfaceKey) {
+      sessionStore.surfaceDrawer = sessionStore.surfaceDrawer === surfaceKey ? null : surfaceKey;
+      renderSurfaceDrawer();
+    }
+
+    function activeMarsChat() {
+      const chat = getSelectedChat();
+      if (!chat || sessionStore.showSessionCards) {
+        return null;
+      }
+      return chat;
+    }
+
+    function latestChatMessage(chat) {
+      if (!chat?.messages?.length) {
+        return null;
+      }
+      return chat.messages[chat.messages.length - 1] || null;
+    }
+
+    function renderToolSummaryCard(actionKey, chat) {
+      if (!chat) {
+        return '<div class="minor">Open a MARS chat to use this tool.</div>';
+      }
+
+      const latestMessage = latestChatMessage(chat);
+      const actionCopy = {
+        archive: {
+          title: 'Archive the current conversation',
+          detail: 'This removes the conversation from open MARS sessions and places it in the archive trail.',
+        },
+        approve: {
+          title: 'Approve the current conversation',
+          detail: 'Future manual approvals will emit a bounded operator approval packet tied to this chat and loop context.',
+        },
+        deny: {
+          title: 'Deny the current conversation',
+          detail: 'Future manual denials will emit a bounded rejection tied to the selected chat before it re-enters routing.',
+        },
+        console: {
+          title: 'Open the raw console for this context',
+          detail: 'The console remains low-level, but this popup keeps the selected MARS chat visible while you inspect the runtime seam.',
+        },
+      }[actionKey] || {
+        title: 'Selected conversation',
+        detail: 'Tool context placeholder.',
+      };
+
+      return `
+        <div class="tool-summary-title">${escapeHtml(actionCopy.title)}</div>
+        <div class="thread-meta">${escapeHtml(chat.label || 'Untitled chat')} • ${escapeHtml(chat.activeAgent || 'FERROS Agent')} • ${escapeHtml(chat.id || 'chat-n/a')}</div>
+        <div class="tool-summary-preview">${escapeHtml(latestMessage?.text || 'No messages yet in this conversation.')}</div>
+        <div class="thread-meta">${escapeHtml(latestMessage?.who || 'No speaker yet')} • ${escapeHtml(latestMessage?.at || 'pending')} • ${escapeHtml(actionCopy.detail)}</div>
+      `;
+    }
+
     function renderUtilityDrawer() {
-      const drawerKey = sessionStore.utilityDrawer;
+      const chatScopedTools = ['archive', 'approve', 'deny', 'console'];
+      let drawerKey = sessionStore.utilityDrawer;
+      const activeChat = activeMarsChat();
+      if (drawerKey && chatScopedTools.includes(drawerKey) && !activeChat) {
+        drawerKey = null;
+        sessionStore.utilityDrawer = null;
+      }
+
       const sections = elements.utilityDrawer.querySelectorAll('.utility-section');
       sections.forEach((section) => {
         section.hidden = section.dataset.drawer !== drawerKey;
       });
       elements.utilityDrawer.classList.toggle('open', Boolean(drawerKey));
       elements.utilityDrawerTitle.textContent = {
-        archive: 'Archive',
-        deny: 'Deny Log',
-        console: 'Raw Console',
+        archive: 'Archive Tool',
+        approve: 'Approve Tool',
+        deny: 'Deny Tool',
+        console: 'Console Tool',
         'quick-actions': 'Quick Actions',
-      }[drawerKey] || 'Drawer';
+      }[drawerKey] || 'Tool';
+
+      elements.archiveConfirmCard.innerHTML = renderToolSummaryCard('archive', activeChat);
+      elements.approveConfirmCard.innerHTML = renderToolSummaryCard('approve', activeChat);
+      elements.denyConfirmCard.innerHTML = renderToolSummaryCard('deny', activeChat);
+      elements.consoleConfirmCard.innerHTML = renderToolSummaryCard('console', activeChat);
+      elements.archiveConfirmBtn.disabled = !activeChat;
+      elements.archiveConfirmBtn.textContent = activeChat ? 'Confirm Archive' : 'Open a Chat First';
 
       [
         ['utilityArchiveBtn', 'archive'],
+        ['utilityApproveBtn', 'approve'],
         ['utilityDenyBtn', 'deny'],
         ['utilityConsoleBtn', 'console'],
-        ['utilityQuickActionsBtn', 'quick-actions'],
       ].forEach(([elementKey, key]) => {
+        elements[elementKey].disabled = !activeChat;
         elements[elementKey].classList.toggle('active', drawerKey === key);
       });
     }
 
     function toggleUtilityDrawer(drawerKey) {
+      if (['archive', 'approve', 'deny', 'console'].includes(drawerKey) && !activeMarsChat()) {
+        return;
+      }
       sessionStore.utilityDrawer = sessionStore.utilityDrawer === drawerKey ? null : drawerKey;
       renderUtilityDrawer();
     }
@@ -2609,13 +5605,22 @@
           .split('-')
           .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
           .join(' ');
-        elements.statusText.textContent = `Local runway: ${runwayStateLabel} checkpoint ${data.checkpointPosition} of ${data.checkpointTotal} • Reference runtime: ${data.agentCount} shell agents • Policy deny log: ${data.denyCount} capability denials`;
-        elements.timestamp.textContent = nowLabel();
+        elements.statusText.textContent = `Runway ${runwayStateLabel}`;
+        elements.statusMeta.textContent = `Checkpoint ${data.checkpointPosition} of ${data.checkpointTotal} is driving the current operator view.`;
+        elements.statusAgentMetric.textContent = String(data.agentCount || 0);
+        elements.statusCheckpointMetric.textContent = `${data.checkpointPosition || 0}/${data.checkpointTotal || 0}`;
+        elements.statusDenyMetric.textContent = String(data.denyCount || 0);
+        elements.timestamp.textContent = `Synced ${nowLabel()}`;
         renderRunwayMindmap();
       } catch {
         sessionStore.runwaySummary = null;
         elements.statusIndicator.className = 'status-indicator unknown';
-        elements.statusText.textContent = 'Unable to load status';
+        elements.statusText.textContent = 'Unable to load operator overview';
+        elements.statusMeta.textContent = 'Live runway telemetry is unavailable right now.';
+        elements.statusAgentMetric.textContent = '—';
+        elements.statusCheckpointMetric.textContent = '—';
+        elements.statusDenyMetric.textContent = '—';
+        elements.timestamp.textContent = 'Sync unavailable';
         renderRunwayMindmap();
       }
     }
@@ -2705,36 +5710,24 @@
       }
     });
 
-    elements.archiveChatBtn.addEventListener('click', async () => {
-      const chat = getSelectedChat();
-      if (!chat) {
-        showError('No open chat selected.');
+    elements.sessionBackBtn.addEventListener('click', () => {
+      toggleMarsConversationView();
+    });
+
+    elements.sessionCardStrip.addEventListener('click', (event) => {
+      const card = event.target.closest('[data-session-id]');
+      if (!card) {
         return;
       }
-      try {
-        await postMonitor(`/monitor/sessions/${chat.id}/archive`, {});
-        sessionStore.utilityDrawer = 'archive';
-        await fetchMonitorState();
-        renderUtilityDrawer();
-      } catch (error) {
-        showError(`Failed to archive chat: ${error.message}`);
+      const conversationCardId = card.getAttribute('data-conversation-card-id');
+      if (conversationCardId) {
+        focusMarsConversationCard(conversationCardId);
+        return;
       }
-    });
-
-    elements.chatSelector.addEventListener('change', () => {
-      sessionStore.selectedChatId = elements.chatSelector.value;
-      const selected = getSelectedChat();
-      sessionStore.selectedLifecycleThreadId = selected?.threadId || sessionStore.selectedLifecycleThreadId;
-      renderChats();
-      renderLifecycleShell();
-    });
-
-    elements.newFerrosChatBtn.addEventListener('click', async () => {
-      try {
-        await openFerrosChat('User -> FERROS', null);
-      } catch (error) {
-        showError(`Failed to create FERROS chat: ${error.message}`);
-      }
+      const sessionId = card.getAttribute('data-session-id');
+      const threadId = card.getAttribute('data-thread-id') || null;
+      const lifecycleCardId = card.getAttribute('data-lifecycle-card-id') || null;
+      focusChatContext(sessionId, threadId, lifecycleCardId);
     });
 
     elements.sendChatBtn.addEventListener('click', async () => {
@@ -2744,10 +5737,11 @@
       }
       const chat = getSelectedChat();
       if (!chat) {
-        showError('No open chat selected. Use New FERROS Agent Chat from Administration.');
+        showError('No open chat selected. Select a MARS conversation or start one from Administration.');
         return;
       }
       try {
+        const priorPacketCount = sessionStore.packets.filter((packet) => packet.sessionId === chat.id).length;
         await postMonitor(`/monitor/sessions/${chat.id}/messages`, {
           speaker: 'user',
           who: 'Human',
@@ -2755,7 +5749,14 @@
         });
         elements.chatInput.value = '';
         await fetchMonitorState();
-        renderLifecycleShell();
+        const nextPacketCount = sessionStore.packets.filter((packet) => packet.sessionId === chat.id).length;
+        if (nextPacketCount > priorPacketCount) {
+          focusLatestPacketContextForSession(chat.id);
+        } else {
+          renderLoops();
+          renderLifecycleShell();
+        }
+        renderChats();
       } catch (error) {
         showError(`Failed to append message: ${error.message}`);
       }
@@ -2767,6 +5768,7 @@
         return;
       }
       sessionStore.selectedLifecycleThreadId = button.getAttribute('data-thread-id');
+      sessionStore.selectedLifecycleCardId = button.getAttribute('data-card-id');
       renderLifecycleShell();
     });
 
@@ -2821,6 +5823,18 @@
         return;
       }
 
+      const ferrosActionButton = event.target.closest('button[data-ferros-action]');
+      if (ferrosActionButton) {
+        const action = ferrosActionButton.getAttribute('data-ferros-action');
+        try {
+          await runFerrosAdminAction(action);
+          await updateAll();
+        } catch (error) {
+          showError(`FERROS action failed: ${error.message}`);
+        }
+        return;
+      }
+
       const actionButton = event.target.closest('button[data-loop-action]');
       if (actionButton) {
         const action = actionButton.getAttribute('data-loop-action');
@@ -2838,6 +5852,20 @@
       if (!card) {
         return;
       }
+
+      if (card.getAttribute('data-card-behavior') === 'notification') {
+        const notificationId = card.getAttribute('data-notification-id');
+        if (!notificationId) {
+          return;
+        }
+        try {
+          await openNotificationContext(notificationId);
+        } catch (error) {
+          showError(`Notification open failed: ${error.message}`);
+        }
+        return;
+      }
+
       const loopId = card.getAttribute('data-loop-id');
       if (!loopId) {
         return;
@@ -2850,6 +5878,31 @@
       toggleUtilityDrawer('archive');
     });
 
+    elements.utilityApproveBtn.addEventListener('click', () => {
+      toggleUtilityDrawer('approve');
+    });
+
+    elements.surfaceLifecycleBtn.addEventListener('click', () => {
+      toggleSurfaceDrawer('lifecycle');
+    });
+
+    elements.surfaceDirectoryBtn.addEventListener('click', () => {
+      toggleSurfaceDrawer('directory');
+    });
+
+    elements.surfaceServicesBtn.addEventListener('click', () => {
+      toggleSurfaceDrawer('services');
+    });
+
+    elements.surfaceRunwayBtn.addEventListener('click', () => {
+      toggleSurfaceDrawer('runway');
+    });
+
+    elements.surfaceDrawerCloseBtn.addEventListener('click', () => {
+      sessionStore.surfaceDrawer = null;
+      renderSurfaceDrawer();
+    });
+
     elements.utilityDenyBtn.addEventListener('click', () => {
       toggleUtilityDrawer('deny');
     });
@@ -2858,8 +5911,19 @@
       toggleUtilityDrawer('console');
     });
 
-    elements.utilityQuickActionsBtn.addEventListener('click', () => {
-      toggleUtilityDrawer('quick-actions');
+    elements.archiveConfirmBtn.addEventListener('click', async () => {
+      const chat = activeMarsChat();
+      if (!chat) {
+        showError('Open a MARS chat before using archive.');
+        return;
+      }
+      try {
+        await postMonitor(`/monitor/sessions/${chat.id}/archive`, {});
+        sessionStore.utilityDrawer = null;
+        await fetchMonitorState();
+      } catch (error) {
+        showError(`Failed to archive chat: ${error.message}`);
+      }
     });
 
     elements.utilityDrawerCloseBtn.addEventListener('click', () => {

@@ -8,8 +8,11 @@ pub use loop_runner::{OrchestratorLoop, OrchestratorMode};
 pub use packet::{
     has_non_empty_evidence_refs, try_transition, validate_transition_requirements,
     FilePacketRepository, GatekeeperDecision, InMemoryPacketRepository, MonitorPacket,
-    PacketAuditEntry, PacketClaim, PacketClaimRole, PacketRepository, PacketState,
-    PacketTransitionApplied, PacketTransitionError, PacketTransitionRequest, ReviewVerdict,
+    PacketAuditEntry, PacketAuditKind, PacketClaim, PacketClaimRole,
+    PacketEnqueueRequest, PacketEnqueueResult, PacketEvidenceAppendRequest,
+    PacketEvidenceAppendResult, PacketLifecycleOutcome, PacketRepository,
+    PacketRepositorySnapshot, PacketState, PacketTransitionApplied, PacketTransitionError,
+    PacketTransitionRequest, ReviewVerdict,
 };
 pub use role::{
     RoleAgent, RoleAgentError, StubGatekeeperAgent, StubManagerAgent, StubRecoveryAgent,

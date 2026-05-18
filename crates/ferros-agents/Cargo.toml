@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 ferros-core = { path = "../ferros-core" }
+ferros-orchestrator = { path = "../ferros-orchestrator" }
 ferros-profile = { path = "../ferros-profile" }
 serde = { version = "1", features = ["derive"] }
 

@@ -8,22 +8,26 @@ use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
+use std::process::{Child, Command, Output, Stdio};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex, OnceLock,
 };
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
 use ferros_agents::{
-    Agent, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult, AgentManifest, AgentName,
-    AgentRegistry, AgentRpcAgentDetail, AgentRpcAgentSummary, AgentRpcSnapshot, AgentStatus,
-    CapabilityRequirement, DenyLogEntry, EchoAgent, GrantStateRecord, InMemoryAgentRegistry,
-    ReferenceAgentError, RegistryError, TimerAgent, JSON_RPC_AGENT_NOT_FOUND,
-    JSON_RPC_AUTHORIZATION_DENIED, JSON_RPC_INVALID_PARAMS, JSON_RPC_INVALID_REQUEST,
-    JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_AGENT_RUN,
-    METHOD_AGENT_SNAPSHOT, METHOD_AGENT_STOP, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
+    Agent, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult, AgentManifest,
+    AgentName, AgentRegistry, AgentRpcAgentDetail, AgentRpcAgentSummary, AgentRpcSnapshot,
+    AgentRuntime, AgentStatus, CapabilityRequirement, DenyLogEntry, EchoAgent,
+    GrantStateRecord, InMemoryAgentRegistry, InProcessWorkerDriver, PacketExecutableAgent,
+    PacketExecutionDisposition, PacketExecutionLifecycleOutcome, PacketExecutionReport,
+    PacketExecutionRequest, ReferenceAgentError, RegistryError, TimerAgent, WorkerDriver,
+    JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_AUTHORIZATION_DENIED, JSON_RPC_INVALID_PARAMS,
+    JSON_RPC_INVALID_REQUEST, JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE,
+    METHOD_AGENT_LIST, METHOD_AGENT_RUN, METHOD_AGENT_SNAPSHOT, METHOD_AGENT_STOP,
+    METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
 };
 use ferros_core::{
     Capability, CapabilityError, CapabilityGrantView, CapabilityRequest, DenyByDefaultPolicy,
@@ -38,9 +42,10 @@ use ferros_hub::{
 };
 use ferros_orchestrator::{
     try_transition, FilePacketRepository, GatekeeperDecision, InMemoryPacketRepository,
-    MonitorPacket, OrchestratorLoop, OrchestratorMode, PacketClaim, PacketClaimRole,
-    PacketRepository, PacketState, PacketTransitionApplied, PacketTransitionError,
-    PacketTransitionRequest, ReviewVerdict,
+    MonitorPacket, OrchestratorLoop, OrchestratorMode, PacketAuditKind, PacketClaim,
+    PacketClaimRole, PacketEnqueueRequest, PacketEvidenceAppendRequest,
+    PacketLifecycleOutcome, PacketRepository, PacketRepositorySnapshot, PacketState,
+    PacketTransitionApplied, PacketTransitionError, PacketTransitionRequest, ReviewVerdict,
 };
 use ferros_profile::{
     grant_profile_capability, init_local_profile, revoke_profile_capability, CapabilityGrant,
@@ -83,6 +88,12 @@ static MONITOR_STATE: OnceLock<Mutex<MonitorState>> = OnceLock::new();
 const MONITOR_AGENT_MANIFEST_PATH: &str = "agents/manifest.json";
 const MONITOR_AGENT_SOURCE_ROOT: &str = "agents/source";
 const MONITOR_AGENT_MIRROR_ROOT: &str = ".github/agents";
+
+fn monitor_repo_relative_path(relative_path: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(relative_path)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -246,6 +257,24 @@ struct MonitorAgentDirectoryEntry {
     user_invocable: bool,
     tools: Vec<String>,
     child_agents: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    runtime: Option<AgentRuntime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    command: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    args: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    env: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    plan_template: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    route_target_stream: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    route_target_family: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    lifecycle_target_agent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    selection_tokens: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -434,6 +463,7 @@ fn has_recent_open_event(
 struct MonitorOrchestratorStatus {
     can_tick: bool,
     background_tick_enabled: bool,
+    paused: bool,
     detail: String,
 }
 
@@ -514,6 +544,32 @@ impl PacketRepository for MonitorPacketStore {
     fn register_packet(&mut self, packet: MonitorPacket) -> Result<(), String> {
         self.repo.register_packet(packet)?;
         self.persist_if_backed()
+    }
+
+    fn enqueue(
+        &mut self,
+        request: PacketEnqueueRequest,
+    ) -> Result<ferros_orchestrator::PacketEnqueueResult, String> {
+        let result = self.repo.enqueue(request)?;
+        if result.created {
+            self.persist_if_backed()?;
+        }
+        Ok(result)
+    }
+
+    fn append_evidence(
+        &mut self,
+        request: PacketEvidenceAppendRequest,
+    ) -> Result<Option<ferros_orchestrator::PacketEvidenceAppendResult>, String> {
+        let result = self.repo.append_evidence(request)?;
+        if result.as_ref().is_some_and(|result| result.appended) {
+            self.persist_if_backed()?;
+        }
+        Ok(result)
+    }
+
+    fn snapshot(&self) -> PacketRepositorySnapshot {
+        self.repo.snapshot()
     }
 
     fn packet(&self, packet_id: &str) -> Option<&MonitorPacket> {
@@ -616,6 +672,8 @@ struct MonitorStateSnapshot {
     watchdog_events: Vec<WatchdogEvent>,
     #[serde(default)]
     orchestrator_mode: OrchestratorMode,
+    #[serde(default)]
+    orchestrator_paused: bool,
     orchestrator_status: MonitorOrchestratorStatus,
     agent_directory: Vec<MonitorAgentDirectoryEntry>,
     agent_source_tree: MonitorAgentSourceTreeStatus,
@@ -638,6 +696,8 @@ struct MonitorState {
     watchdog_events: Vec<WatchdogEvent>,
     #[serde(default)]
     orchestrator_mode: OrchestratorMode,
+    #[serde(default)]
+    orchestrator_paused: bool,
     selected_chat_id: Option<String>,
     selected_lifecycle_thread_id: Option<String>,
     next_id: usize,
@@ -739,6 +799,67 @@ struct MonitorOrchestratorModeRequest {
     mode: OrchestratorMode,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorOrchestratorPauseRequest {
+    #[serde(default)]
+    force: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorOrchestratorPacketRequest {
+    session_id: String,
+    manager: String,
+    summary: String,
+    #[serde(default)]
+    state: Option<PacketState>,
+    #[serde(default)]
+    origin_message_id: Option<String>,
+    #[serde(default)]
+    parent_packet_id: Option<String>,
+    #[serde(default)]
+    work_order_id: Option<String>,
+    #[serde(default)]
+    lifecycle_thread_id: Option<String>,
+    #[serde(default)]
+    notification_id: Option<String>,
+    #[serde(default)]
+    idempotency_key: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorOrchestratorPacketResponse {
+    packet_id: String,
+    created: bool,
+    packet: MonitorPacket,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorOrchestratorQueueResponse {
+    packets: Vec<MonitorPacket>,
+    paused: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorOrchestratorAgentStatus {
+    role: PacketClaimRole,
+    enabled: bool,
+    mode: OrchestratorMode,
+    paused: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorOrchestratorPauseResponse {
+    paused: bool,
+    force: bool,
+    escalated_packet_ids: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 enum MonitorDispatchStatus {
@@ -765,7 +886,7 @@ struct MonitorDispatchResult {
     manager: Option<String>,
     lifecycle_thread_id: Option<String>,
     notification_id: Option<String>,
-    /// Backend that accepted the dispatch: "scaffold" | "runtime.bus" | "coordinator.sdk"
+    /// Backend that accepted the dispatch: "scaffold" | "runtime.bus" | "coordinator.sdk" | "runtime.subprocess"
     backend: Option<String>,
     status: MonitorDispatchStatus,
 }
@@ -791,18 +912,1411 @@ struct MonitorDispatchBackendResult {
     error: Option<String>,
     /// Ticket issued by the backend when accepted. `None` on rejection.
     ticket: Option<BackendTicket>,
+    /// Optional execution report produced by driver-backed backends.
+    report: Option<PacketExecutionReport>,
 }
 
-/// Interface for dispatch backends. The scaffold implementation is the only concrete
-/// backend today. Future implementations will call runtime bus or coordinator SDK.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MonitorDispatchRuntimeTarget {
+    id: String,
+    display_name: String,
+    runtime: AgentRuntime,
+    command: Option<String>,
+    args: Vec<String>,
+    env: BTreeMap<String, String>,
+    plan_template: Option<String>,
+    route_target_stream: Option<String>,
+    route_target_family: Option<String>,
+    lifecycle_target_agent_id: Option<String>,
+    selection_tokens: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MonitorDispatchRuntimePlan {
+    targets: Vec<MonitorDispatchRuntimeTarget>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MonitorDispatchPacketContext {
+    session_label: Option<String>,
+    origin_message_id: Option<String>,
+    origin_message_text: Option<String>,
+    lifecycle_thread: Option<MonitorLifecycleThread>,
+}
+
+impl MonitorDispatchRuntimePlan {
+    fn evidence_refs(&self) -> Vec<String> {
+        self.targets
+            .iter()
+            .map(|target| {
+                format!(
+                    "runtime-plan:{}:{}",
+                    monitor_dispatch_runtime_label(&target.runtime),
+                    target.id
+                )
+            })
+            .collect()
+    }
+
+    fn summary_suffix(&self) -> Option<String> {
+        (!self.targets.is_empty()).then(|| {
+            self.targets
+                .iter()
+                .map(|target| {
+                    format!(
+                        "{} ({})",
+                        target.display_name,
+                        monitor_dispatch_runtime_label(&target.runtime)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SoftwareExecutionTarget {
+    Core,
+    Subcore,
+}
+
+impl SoftwareExecutionTarget {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Core => "core",
+            Self::Subcore => "subcore",
+        }
+    }
+
+    fn runtime_target_id(self) -> &'static str {
+        match self {
+            Self::Core => "ferros-core",
+            Self::Subcore => "ferros-subcore",
+        }
+    }
+}
+
+fn monitor_text_contains_token(text: &str, token: &str) -> bool {
+    text.split(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_')
+        .filter(|part| !part.is_empty())
+        .any(|part| part.eq_ignore_ascii_case(token))
+}
+
+fn software_request_prefers_subcore(text: &str) -> bool {
+    let normalized = text.to_ascii_lowercase();
+
+    monitor_text_contains_token(text, "incubation")
+        || normalized.contains("adr-025")
+        || normalized.contains("adr 025")
+        || normalized.contains("adr025")
+        || normalized.contains("x86_64")
+        || normalized.contains("x86-64")
+        || normalized.contains("x86 64")
+        || normalized.contains("runtime seam")
+}
+
+fn infer_software_execution_target(
+    operator_text: &str,
+    runtime_plan: Option<&MonitorDispatchRuntimePlan>,
+) -> Option<SoftwareExecutionTarget> {
+    let mentions_core = monitor_text_contains_token(operator_text, "core");
+    let mentions_subcore = monitor_text_contains_token(operator_text, "subcore");
+
+    match (mentions_core, mentions_subcore) {
+        (true, false) => Some(SoftwareExecutionTarget::Core),
+        (false, true) => Some(SoftwareExecutionTarget::Subcore),
+        (false, false) => {
+            let runtime_plan = runtime_plan?;
+            if runtime_plan.targets.len() == 1 {
+                return runtime_plan.targets.first().and_then(|target| match target.id.as_str() {
+                    "ferros-core" => Some(SoftwareExecutionTarget::Core),
+                    "ferros-subcore" => Some(SoftwareExecutionTarget::Subcore),
+                    _ => None,
+                });
+            }
+
+            if software_request_prefers_subcore(operator_text)
+                && runtime_target_for_execution_target(runtime_plan, SoftwareExecutionTarget::Subcore)
+                    .is_some()
+            {
+                return Some(SoftwareExecutionTarget::Subcore);
+            }
+
+            if runtime_target_for_execution_target(runtime_plan, SoftwareExecutionTarget::Core).is_some() {
+                return Some(SoftwareExecutionTarget::Core);
+            }
+
+            if runtime_target_for_execution_target(runtime_plan, SoftwareExecutionTarget::Subcore)
+                .is_some()
+            {
+                return Some(SoftwareExecutionTarget::Subcore);
+            }
+
+            None
+        }
+        (true, true) => None,
+    }
+}
+
+fn runtime_target_for_execution_target<'a>(
+    runtime_plan: &'a MonitorDispatchRuntimePlan,
+    execution_target: SoftwareExecutionTarget,
+) -> Option<&'a MonitorDispatchRuntimeTarget> {
+    runtime_plan
+        .targets
+        .iter()
+        .find(|target| target.id == execution_target.runtime_target_id())
+}
+
+fn is_primary_execution_runtime_target(runtime_target: &MonitorDispatchRuntimeTarget) -> bool {
+    matches!(runtime_target.id.as_str(), "ferros-core" | "ferros-subcore")
+}
+
+fn specialist_runtime_target_for_operator_text<'a>(
+    runtime_plan: &'a MonitorDispatchRuntimePlan,
+    operator_text: &str,
+) -> Option<&'a MonitorDispatchRuntimeTarget> {
+    let matches = runtime_plan
+        .targets
+        .iter()
+        .filter(|target| !is_primary_execution_runtime_target(target))
+        .filter(|target| !target.selection_tokens.is_empty())
+        .filter(|target| {
+            target
+                .selection_tokens
+                .iter()
+                .any(|token| monitor_text_contains_token(operator_text, token))
+        })
+        .collect::<Vec<_>>();
+
+    if matches.len() == 1 {
+        Some(matches[0])
+    } else {
+        None
+    }
+}
+
+fn resolve_software_runtime_target<'a>(
+    operator_text: &str,
+    runtime_plan: &'a MonitorDispatchRuntimePlan,
+) -> Option<(SoftwareExecutionTarget, &'a MonitorDispatchRuntimeTarget)> {
+    let execution_target = infer_software_execution_target(operator_text, Some(runtime_plan))?;
+
+    if let Some(runtime_target) = specialist_runtime_target_for_operator_text(runtime_plan, operator_text)
+    {
+        return Some((execution_target, runtime_target));
+    }
+
+    runtime_target_for_execution_target(runtime_plan, execution_target)
+        .map(|runtime_target| (execution_target, runtime_target))
+}
+
+fn coordinator_sdk_dispatch_enabled() -> bool {
+    std::env::var("FERROS_ENABLE_COORDINATOR_SDK_DISPATCH")
+        .ok()
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
+        .unwrap_or(false)
+}
+
+fn runtime_target_supports_command_dispatch(
+    runtime_target: &MonitorDispatchRuntimeTarget,
+    coordinator_sdk_enabled: bool,
+) -> bool {
+    if runtime_target.command.is_none() {
+        return false;
+    }
+
+    match runtime_target.runtime {
+        AgentRuntime::CoordinatorSdk => coordinator_sdk_enabled,
+        AgentRuntime::Subprocess => true,
+        AgentRuntime::InProcess => false,
+    }
+}
+
+fn command_runtime_backend_label(runtime: &AgentRuntime) -> &'static str {
+    match runtime {
+        AgentRuntime::CoordinatorSdk => "coordinator.sdk",
+        AgentRuntime::Subprocess => "runtime.subprocess",
+        AgentRuntime::InProcess => "runtime.in_process",
+    }
+}
+
+fn command_runtime_ticket_prefix(runtime: &AgentRuntime) -> &'static str {
+    match runtime {
+        AgentRuntime::CoordinatorSdk => "coordinator-sdk",
+        AgentRuntime::Subprocess => "subprocess",
+        AgentRuntime::InProcess => "runtime",
+    }
+}
+
+fn command_runtime_evidence_prefix(runtime: &AgentRuntime) -> &'static str {
+    match runtime {
+        AgentRuntime::CoordinatorSdk => "coordinator",
+        AgentRuntime::Subprocess => "subprocess",
+        AgentRuntime::InProcess => "runtime",
+    }
+}
+
+fn command_runtime_message_label(runtime: &AgentRuntime) -> &'static str {
+    match runtime {
+        AgentRuntime::CoordinatorSdk => "coordinator SDK",
+        AgentRuntime::Subprocess => "subprocess runtime",
+        AgentRuntime::InProcess => "runtime",
+    }
+}
+
+fn should_use_command_runtime_dispatch_backend(
+    target: &DispatchTarget,
+    runtime_plan: Option<&MonitorDispatchRuntimePlan>,
+    operator_text: &str,
+    coordinator_sdk_enabled: bool,
+) -> bool {
+    if *target != DispatchTarget::Software {
+        return false;
+    }
+
+    let runtime_plan = match runtime_plan {
+        Some(runtime_plan) => runtime_plan,
+        None => return false,
+    };
+
+    resolve_software_runtime_target(operator_text, runtime_plan)
+        .map(|(_, runtime_target)| runtime_target)
+        .is_some_and(|runtime_target| {
+            runtime_target_supports_command_dispatch(runtime_target, coordinator_sdk_enabled)
+        })
+}
+
+fn monitor_dispatch_runtime_label(runtime: &AgentRuntime) -> &'static str {
+    match runtime {
+        AgentRuntime::InProcess => "in_process",
+        AgentRuntime::Subprocess => "subprocess",
+        AgentRuntime::CoordinatorSdk => "coordinator_sdk",
+    }
+}
+
+fn software_dispatch_runtime_plan() -> Option<MonitorDispatchRuntimePlan> {
+    let directory = load_monitor_agent_directory();
+    let software_architect = directory
+        .iter()
+        .find(|entry| entry.id == "ferros-software-architect")?;
+
+    let targets = software_architect
+        .child_agents
+        .iter()
+        .filter_map(|display_name| {
+            directory
+                .iter()
+                .find(|entry| entry.display_name == *display_name)
+                .and_then(|entry| {
+                    entry.runtime.clone().map(|runtime| MonitorDispatchRuntimeTarget {
+                        id: entry.id.clone(),
+                        display_name: entry.display_name.clone(),
+                        runtime,
+                        command: entry.command.clone(),
+                        args: entry.args.clone(),
+                        env: entry.env.clone(),
+                        plan_template: entry.plan_template.clone(),
+                        route_target_stream: entry.route_target_stream.clone(),
+                        route_target_family: entry.route_target_family.clone(),
+                        lifecycle_target_agent_id: entry.lifecycle_target_agent_id.clone(),
+                        selection_tokens: entry.selection_tokens.clone(),
+                    })
+                })
+        })
+        .collect::<Vec<_>>();
+
+    (!targets.is_empty()).then_some(MonitorDispatchRuntimePlan { targets })
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CommandRuntimePacket {
+    route_token: CommandRuntimeRouteToken,
+    payload: String,
+    prompt: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    signature: Option<String>,
+    issued_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ttl_ms: Option<u64>,
+    metadata: CommandRuntimePacketMetadata,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CommandRuntimeRouteToken {
+    token_version: &'static str,
+    issued_by: &'static str,
+    target_stream: Option<String>,
+    target_family: Option<String>,
+    run_id: String,
+    parent_run_id: String,
+    recursion_depth: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    run_profile: Option<String>,
+    issued_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expiry_cycle: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    posture: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    track: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CommandRuntimePacketMetadata {
+    lifecycle_contract: CommandRuntimeLifecycleContract,
+    execution_context: Option<CommandRuntimeExecutionContext>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CommandRuntimeExecutionContext {
+    source_kind: &'static str,
+    packet_id: String,
+    session_id: String,
+    manager_agent_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    session_label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lifecycle_thread_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lifecycle_thread_title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    origin_message_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    origin_message_text: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CommandRuntimeLifecycleContract {
+    cycle_id: String,
+    work_order_id: String,
+    source_agent_id: String,
+    target_agent_id: String,
+    owner_agent_id: String,
+    escalation_id: String,
+    escalation_target_agent_id: String,
+    escalation_reason_code: String,
+    stop: CommandRuntimeStopContract,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CommandRuntimeStopContract {
+    allowed_terminal_states: Vec<String>,
+    stopped_reason_required: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CommandRuntimeLaunchFailure {
+    summary: String,
+    evidence_refs: Vec<String>,
+    disposition: PacketExecutionDisposition,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CommandRuntimeResultDetails {
+    #[serde(default)]
+    errors: Vec<String>,
+    #[serde(default)]
+    warnings: Vec<String>,
+    #[serde(default)]
+    lifecycle_outcome: Option<PacketExecutionLifecycleOutcome>,
+    #[serde(default)]
+    lifecycle_errors: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CommandRuntimeDispatchResult {
+    #[serde(default)]
+    classification: Option<String>,
+    #[serde(default)]
+    parent_run_id: Option<String>,
+    #[serde(default)]
+    response: Option<String>,
+    #[serde(default)]
+    lifecycle_outcome: Option<PacketExecutionLifecycleOutcome>,
+    #[serde(default)]
+    lifecycle_errors: Vec<String>,
+    #[serde(default)]
+    error: Option<String>,
+    #[serde(default)]
+    failed_checks: Vec<String>,
+    #[serde(default)]
+    details: Option<CommandRuntimeResultDetails>,
+}
+
+fn monitor_packet_date_stamp(packet: &MonitorPacket) -> String {
+    packet
+        .created_at
+        .get(0..10)
+        .unwrap_or("1970-01-01")
+        .replace('-', "")
+}
+
+fn monitor_packet_counter(packet: &MonitorPacket) -> usize {
+    packet
+        .work_order_id
+        .as_deref()
+        .or(packet.origin_message_id.as_deref())
+        .or(Some(packet.id.as_str()))
+        .map(|value| value.chars().filter(|ch| ch.is_ascii_digit()).collect::<String>())
+        .and_then(|digits| digits.parse::<usize>().ok())
+        .filter(|counter| *counter > 0)
+        .unwrap_or(1)
+}
+
+fn coordinator_parent_run_id(
+    packet: &MonitorPacket,
+    dispatch_context: Option<&MonitorDispatchPacketContext>,
+) -> String {
+    if let Some(origin_message_id) = dispatch_context
+        .and_then(|context| context.origin_message_id.as_deref())
+        .filter(|message_id| !message_id.trim().is_empty())
+    {
+        return format!("monitor:{}:{}", packet.session_id, origin_message_id);
+    }
+
+    if let Some(thread_id) = dispatch_context
+        .and_then(|context| context.lifecycle_thread.as_ref())
+        .map(|thread| thread.id.as_str())
+        .or(packet.lifecycle_thread_id.as_deref())
+    {
+        return format!("monitor-thread:{thread_id}");
+    }
+
+    format!("monitor-packet:{}", packet.id)
+}
+
+fn command_runtime_route_subject(
+    runtime_target: &MonitorDispatchRuntimeTarget,
+    execution_target: SoftwareExecutionTarget,
+) -> String {
+    runtime_target
+        .lifecycle_target_agent_id
+        .clone()
+        .or_else(|| runtime_target.route_target_stream.clone())
+        .or_else(|| runtime_target.route_target_family.clone())
+        .unwrap_or_else(|| execution_target.as_str().to_owned())
+}
+
+fn command_runtime_run_label(route_subject: &str) -> String {
+    let mut label = route_subject
+        .chars()
+        .map(|ch| if ch.is_ascii_alphanumeric() { ch.to_ascii_lowercase() } else { '_' })
+        .collect::<String>();
+
+    while label.contains("__") {
+        label = label.replace("__", "_");
+    }
+
+    label.trim_matches('_').to_owned()
+}
+
+fn build_command_runtime_packet(
+    packet: &MonitorPacket,
+    operator_text: &str,
+    execution_target: SoftwareExecutionTarget,
+    runtime_target: &MonitorDispatchRuntimeTarget,
+    dispatch_context: Option<&MonitorDispatchPacketContext>,
+) -> CommandRuntimePacket {
+    let issued_at = if packet.created_at.trim().is_empty() {
+        monitor_now()
+    } else {
+        packet.created_at.clone()
+    };
+    let date_stamp = monitor_packet_date_stamp(packet);
+    let counter = monitor_packet_counter(packet);
+    let lifecycle_thread = dispatch_context.and_then(|context| context.lifecycle_thread.as_ref());
+    let route_subject = command_runtime_route_subject(runtime_target, execution_target);
+    let run_label = command_runtime_run_label(&route_subject);
+    let work_order_id = lifecycle_thread
+        .and_then(|thread| thread.work_order_id.clone())
+        .or_else(|| packet.work_order_id.clone())
+        .unwrap_or_else(|| format!("WO-{}-{counter}", run_label.to_ascii_uppercase()));
+    let cycle_id = lifecycle_thread
+        .map(|thread| thread.id.clone())
+        .or_else(|| packet.lifecycle_thread_id.clone())
+        .unwrap_or_else(|| format!("cycle-{run_label}-{}", packet.id));
+    let source_request_text = dispatch_context
+        .and_then(|context| context.origin_message_text.as_deref())
+        .filter(|text| !text.trim().is_empty())
+        .unwrap_or(operator_text.trim());
+    let source_agent_id = lifecycle_thread
+        .and_then(|thread| thread.source_agent_id.clone())
+        .unwrap_or_else(|| packet.manager.clone());
+    let owner_agent_id = lifecycle_thread
+        .map(|thread| thread.owner_agent.clone())
+        .unwrap_or_else(|| packet.manager.clone());
+    let escalation_id = lifecycle_thread
+        .and_then(|thread| thread.escalation_id.clone())
+        .unwrap_or_else(|| format!("ESC-{}-{}", run_label.to_ascii_uppercase(), packet.id));
+    let escalation_target_agent_id = lifecycle_thread
+        .and_then(|thread| thread.source_agent_id.clone())
+        .unwrap_or_else(|| "FERROS Agent".to_owned());
+    let route_target_stream = runtime_target
+        .route_target_stream
+        .clone()
+        .or_else(|| runtime_target.route_target_family.is_none().then(|| execution_target.as_str().to_owned()));
+    let route_target_family = runtime_target.route_target_family.clone();
+    let lifecycle_target_agent_id = runtime_target
+        .lifecycle_target_agent_id
+        .clone()
+        .or_else(|| route_target_stream.clone())
+        .unwrap_or_else(|| execution_target.as_str().to_owned());
+
+    CommandRuntimePacket {
+        route_token: CommandRuntimeRouteToken {
+            token_version: "v2",
+            issued_by: "FERROS Coding Agent",
+            target_stream: route_target_stream,
+            target_family: route_target_family,
+            run_id: format!("FRS-{run_label}-{date_stamp}-C1-W{counter}"),
+            parent_run_id: coordinator_parent_run_id(packet, dispatch_context),
+            recursion_depth: 1,
+            run_profile: runtime_target.plan_template.clone(),
+            issued_at: issued_at.clone(),
+            expiry_cycle: Some("C1".to_owned()),
+            posture: Some("interactive".to_owned()),
+            track: Some("code".to_owned()),
+        },
+        payload: format!(
+            "Monitor packet {} for {}: {} | source request: {}",
+            packet.id, runtime_target.display_name, packet.summary, source_request_text
+        ),
+        prompt: format!(
+            "{}
+
+Monitor packet id: {}
+Manager: {}
+Work order: {}
+Source request: {}
+Operator text: {}",
+            packet.summary,
+            packet.id,
+            packet.manager,
+            work_order_id,
+            source_request_text,
+            operator_text.trim()
+        ),
+        signature: None,
+        issued_at,
+        ttl_ms: Some(300_000),
+        metadata: CommandRuntimePacketMetadata {
+            lifecycle_contract: CommandRuntimeLifecycleContract {
+                cycle_id,
+                work_order_id,
+                source_agent_id,
+                target_agent_id: lifecycle_target_agent_id,
+                owner_agent_id,
+                escalation_id,
+                escalation_target_agent_id,
+                escalation_reason_code: "execution-lane-blocked".to_owned(),
+                stop: CommandRuntimeStopContract {
+                    allowed_terminal_states: vec![
+                        "report".to_owned(),
+                        "work_order".to_owned(),
+                        "escalation".to_owned(),
+                        "stopped".to_owned(),
+                    ],
+                    stopped_reason_required: true,
+                },
+            },
+            execution_context: Some(CommandRuntimeExecutionContext {
+                source_kind: "monitor",
+                packet_id: packet.id.clone(),
+                session_id: packet.session_id.clone(),
+                manager_agent_id: packet.manager.clone(),
+                session_label: dispatch_context.and_then(|context| context.session_label.clone()),
+                lifecycle_thread_id: lifecycle_thread.map(|thread| thread.id.clone()),
+                lifecycle_thread_title: lifecycle_thread.map(|thread| thread.title.clone()),
+                origin_message_id: dispatch_context.and_then(|context| context.origin_message_id.clone()),
+                origin_message_text: dispatch_context.and_then(|context| context.origin_message_text.clone()),
+            }),
+        },
+    }
+}
+
+trait CommandRuntimeLauncher: Send + Sync {
+    fn launch(
+        &self,
+        runtime_target: &MonitorDispatchRuntimeTarget,
+        packet: &CommandRuntimePacket,
+    ) -> Result<String, CommandRuntimeLaunchFailure>;
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CommandRuntimeProcessLauncher;
+
+impl CommandRuntimeLauncher for CommandRuntimeProcessLauncher {
+    fn launch(
+        &self,
+        runtime_target: &MonitorDispatchRuntimeTarget,
+        packet: &CommandRuntimePacket,
+    ) -> Result<String, CommandRuntimeLaunchFailure> {
+        let command = runtime_target
+            .command
+            .as_deref()
+            .ok_or_else(|| CommandRuntimeLaunchFailure {
+                summary: "command runtime target is missing a command".to_owned(),
+                evidence_refs: vec!["command-runtime-launch:missing-command".to_owned()],
+                disposition: PacketExecutionDisposition::PermanentFailure,
+            })?;
+        let packet_json = serde_json::to_string(packet)
+            .map_err(|error| CommandRuntimeLaunchFailure {
+                summary: format!("failed to serialize command runtime packet: {error}"),
+                evidence_refs: vec!["command-runtime-launch:serialize-packet".to_owned()],
+                disposition: PacketExecutionDisposition::PermanentFailure,
+            })?;
+        let timeout = command_runtime_process_timeout(runtime_target)?;
+
+        let mut child = Command::new(command)
+            .args(&runtime_target.args)
+            .envs(runtime_target.env.iter())
+            .current_dir(monitor_repo_relative_path("."))
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|error| CommandRuntimeLaunchFailure {
+                summary: format!("failed to start command runtime process: {error}"),
+                evidence_refs: vec![match error.kind() {
+                    io::ErrorKind::NotFound => "command-runtime-launch:command-not-found".to_owned(),
+                    _ => "command-runtime-launch:spawn-failed".to_owned(),
+                }],
+                disposition: if error.kind() == io::ErrorKind::NotFound {
+                    PacketExecutionDisposition::PermanentFailure
+                } else {
+                    PacketExecutionDisposition::RetryableFailure
+                },
+            })?;
+
+        if let Some(stdin) = child.stdin.as_mut() {
+            stdin
+                .write_all(packet_json.as_bytes())
+                .map_err(|error| CommandRuntimeLaunchFailure {
+                    summary: format!("failed to write command runtime packet to stdin: {error}"),
+                    evidence_refs: vec!["command-runtime-launch:stdin-write-failed".to_owned()],
+                    disposition: PacketExecutionDisposition::RetryableFailure,
+                })?;
+        }
+
+            // Explicit EOF prevents child runtimes from waiting forever on stdin.
+            drop(child.stdin.take());
+
+            let output = wait_for_command_runtime_output(child, timeout)?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+            return Err(CommandRuntimeLaunchFailure {
+                summary: if stderr.is_empty() {
+                    format!("command runtime process exited with status {}", output.status)
+                } else {
+                    stderr
+                },
+                evidence_refs: vec!["command-runtime-launch:non-zero-exit".to_owned()],
+                disposition: PacketExecutionDisposition::PermanentFailure,
+            });
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+    }
+}
+
+fn command_runtime_process_timeout(
+    runtime_target: &MonitorDispatchRuntimeTarget,
+) -> Result<Option<Duration>, CommandRuntimeLaunchFailure> {
+    let Some(raw_timeout_ms) = runtime_target
+        .env
+        .get("FERROS_COMMAND_RUNTIME_TIMEOUT_MS")
+        .or_else(|| runtime_target.env.get("FERROS_COORDINATOR_TIMEOUT_MS"))
+    else {
+        return Ok(None);
+    };
+
+    let timeout_ms = raw_timeout_ms
+        .trim()
+        .parse::<u64>()
+        .map_err(|error| CommandRuntimeLaunchFailure {
+            summary: format!(
+                "invalid command runtime timeout '{}': {error}",
+                raw_timeout_ms
+            ),
+            evidence_refs: vec!["command-runtime-launch:invalid-timeout".to_owned()],
+            disposition: PacketExecutionDisposition::PermanentFailure,
+        })?;
+
+    if timeout_ms == 0 {
+        Ok(None)
+    } else {
+        Ok(Some(Duration::from_millis(timeout_ms)))
+    }
+}
+
+fn wait_for_command_runtime_output(
+    mut child: Child,
+    timeout: Option<Duration>,
+) -> Result<Output, CommandRuntimeLaunchFailure> {
+    let Some(timeout) = timeout else {
+        return child.wait_with_output().map_err(|error| CommandRuntimeLaunchFailure {
+            summary: format!("failed to wait for command runtime process: {error}"),
+            evidence_refs: vec!["command-runtime-launch:wait-failed".to_owned()],
+            disposition: PacketExecutionDisposition::RetryableFailure,
+        });
+    };
+
+    let started_at = Instant::now();
+    loop {
+        match child.try_wait().map_err(|error| CommandRuntimeLaunchFailure {
+            summary: format!("failed to poll command runtime process: {error}"),
+            evidence_refs: vec!["command-runtime-launch:wait-failed".to_owned()],
+            disposition: PacketExecutionDisposition::RetryableFailure,
+        })? {
+            Some(_) => {
+                return child.wait_with_output().map_err(|error| CommandRuntimeLaunchFailure {
+                    summary: format!("failed to wait for command runtime process: {error}"),
+                    evidence_refs: vec!["command-runtime-launch:wait-failed".to_owned()],
+                    disposition: PacketExecutionDisposition::RetryableFailure,
+                });
+            }
+            None if started_at.elapsed() >= timeout => {
+                if let Err(error) = child.kill() {
+                    if error.kind() != io::ErrorKind::InvalidInput {
+                        return Err(CommandRuntimeLaunchFailure {
+                            summary: format!(
+                                "failed to kill timed out command runtime process: {error}"
+                            ),
+                            evidence_refs: vec![
+                                "command-runtime-launch:kill-after-timeout-failed".to_owned(),
+                            ],
+                            disposition: PacketExecutionDisposition::RetryableFailure,
+                        });
+                    }
+                }
+
+                let output = child.wait_with_output().map_err(|error| CommandRuntimeLaunchFailure {
+                    summary: format!("failed to reap timed out command runtime process: {error}"),
+                    evidence_refs: vec!["command-runtime-launch:wait-failed".to_owned()],
+                    disposition: PacketExecutionDisposition::RetryableFailure,
+                })?;
+                let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+
+                return Err(CommandRuntimeLaunchFailure {
+                    summary: if stderr.is_empty() {
+                        format!(
+                            "command runtime process timed out after {} ms",
+                            timeout.as_millis()
+                        )
+                    } else {
+                        format!(
+                            "command runtime process timed out after {} ms: {}",
+                            timeout.as_millis(),
+                            stderr
+                        )
+                    },
+                    evidence_refs: vec!["command-runtime-launch:timeout".to_owned()],
+                    disposition: PacketExecutionDisposition::RetryableFailure,
+                });
+            }
+            None => std::thread::sleep(Duration::from_millis(10)),
+        }
+    }
+}
+
+fn parse_command_runtime_result(output: &str) -> Result<CommandRuntimeDispatchResult, String> {
+    serde_json::from_str(output)
+        .map_err(|error| format!("failed to parse command runtime result JSON: {error}"))
+}
+
+fn command_runtime_result_lifecycle_outcome(
+    result: &CommandRuntimeDispatchResult,
+) -> Option<PacketExecutionLifecycleOutcome> {
+    result
+        .lifecycle_outcome
+        .clone()
+        .or_else(|| result.details.as_ref().and_then(|details| details.lifecycle_outcome.clone()))
+}
+
+fn command_runtime_result_lifecycle_errors(result: &CommandRuntimeDispatchResult) -> Vec<String> {
+    let mut errors = Vec::new();
+
+    for error in &result.lifecycle_errors {
+        if !errors.iter().any(|existing| existing == error) {
+            errors.push(error.clone());
+        }
+    }
+
+    if let Some(details) = result.details.as_ref() {
+        for error in &details.lifecycle_errors {
+            if !errors.iter().any(|existing| existing == error) {
+                errors.push(error.clone());
+            }
+        }
+    }
+
+    errors
+}
+
+fn command_runtime_result_diagnostics(result: &CommandRuntimeDispatchResult) -> Vec<String> {
+    let mut diagnostics = Vec::new();
+
+    if !result.failed_checks.is_empty() {
+        diagnostics.push(format!("failed checks: {}", result.failed_checks.join(", ")));
+    }
+    diagnostics.extend(result.lifecycle_errors.iter().cloned());
+
+    if let Some(details) = result.details.as_ref() {
+        diagnostics.extend(details.errors.iter().cloned());
+        diagnostics.extend(
+            details
+                .warnings
+                .iter()
+                .map(|warning| format!("warning: {warning}")),
+        );
+        diagnostics.extend(details.lifecycle_errors.iter().cloned());
+        if let Some(outcome) = details.lifecycle_outcome.as_ref() {
+            diagnostics.push(format!(
+                "lifecycle outcome: {} - {}",
+                outcome.kind, outcome.summary
+            ));
+        }
+    }
+
+    diagnostics
+}
+
+fn command_runtime_base_evidence(
+    runtime_plan: &MonitorDispatchRuntimePlan,
+    runtime_target: &MonitorDispatchRuntimeTarget,
+) -> Vec<String> {
+    let mut evidence_refs = runtime_plan.evidence_refs();
+    evidence_refs.push(format!("selected-runtime-target:{}", runtime_target.id));
+    evidence_refs
+}
+
+fn append_command_runtime_outcome_evidence(
+    evidence_refs: &mut Vec<String>,
+    evidence_prefix: &str,
+    outcome: &PacketExecutionLifecycleOutcome,
+) {
+    evidence_refs.push(format!("{evidence_prefix}-outcome-kind:{}", outcome.kind));
+    if let Some(work_order_id) = outcome.work_order_id.as_ref() {
+        evidence_refs.push(format!("{evidence_prefix}-work-order:{work_order_id}"));
+    }
+    if let Some(escalation_id) = outcome.escalation_id.as_ref() {
+        evidence_refs.push(format!("{evidence_prefix}-escalation-id:{escalation_id}"));
+    }
+    if let Some(target_agent_id) = outcome.target_agent_id.as_ref() {
+        evidence_refs.push(format!("{evidence_prefix}-target-agent:{target_agent_id}"));
+    }
+    if let Some(stop_reason) = outcome.stop_reason.as_ref() {
+        evidence_refs.push(format!(
+            "{evidence_prefix}-stop-reason:{}",
+            command_runtime_run_label(stop_reason)
+        ));
+    }
+}
+
+fn append_command_runtime_result_evidence(
+    evidence_refs: &mut Vec<String>,
+    evidence_prefix: &str,
+    result: &CommandRuntimeDispatchResult,
+) {
+    if let Some(classification) = result.classification.as_ref() {
+        evidence_refs.push(format!("{evidence_prefix}-classification:{classification}"));
+    }
+    if let Some(parent_run_id) = result.parent_run_id.as_ref() {
+        evidence_refs.push(format!("{evidence_prefix}-parent-run:{parent_run_id}"));
+    }
+    for failed_check in &result.failed_checks {
+        evidence_refs.push(format!("{evidence_prefix}-failed-check:{failed_check}"));
+    }
+    for lifecycle_error in command_runtime_result_lifecycle_errors(result) {
+        evidence_refs.push(format!(
+            "{evidence_prefix}-lifecycle-error:{}",
+            command_runtime_run_label(&lifecycle_error)
+        ));
+    }
+    if let Some(outcome) = command_runtime_result_lifecycle_outcome(result).as_ref() {
+        append_command_runtime_outcome_evidence(evidence_refs, evidence_prefix, outcome);
+    }
+}
+
+fn command_runtime_execution_report(
+    packet_id: &str,
+    summary: String,
+    evidence_refs: Vec<String>,
+    disposition: PacketExecutionDisposition,
+    lifecycle_outcome: Option<PacketExecutionLifecycleOutcome>,
+    lifecycle_errors: Vec<String>,
+) -> PacketExecutionReport {
+    PacketExecutionReport {
+        packet_id: packet_id.to_owned(),
+        summary,
+        evidence_refs,
+        disposition,
+        lifecycle_outcome,
+        lifecycle_errors,
+    }
+}
+
+fn dispatch_failure_retry_policy(
+    report: Option<&PacketExecutionReport>,
+) -> Option<(bool, usize)> {
+    match report?.disposition {
+        PacketExecutionDisposition::RetryableFailure => Some((true, 1)),
+        PacketExecutionDisposition::PermanentFailure => Some((false, 0)),
+        PacketExecutionDisposition::Completed => None,
+    }
+}
+
+fn packet_lifecycle_outcome_from_execution(
+    outcome: &PacketExecutionLifecycleOutcome,
+) -> PacketLifecycleOutcome {
+    PacketLifecycleOutcome {
+        kind: outcome.kind.clone(),
+        summary: outcome.summary.clone(),
+        work_order_id: outcome.work_order_id.clone(),
+        escalation_id: outcome.escalation_id.clone(),
+        target_agent_id: outcome.target_agent_id.clone(),
+        stop_reason: outcome.stop_reason.clone(),
+    }
+}
+
+fn packet_lifecycle_outcome_event_text(packet_id: &str, outcome: &PacketExecutionLifecycleOutcome) -> String {
+    let mut text = format!("{packet_id} {}: {}", outcome.kind, outcome.summary);
+    if let Some(target_agent_id) = outcome.target_agent_id.as_ref() {
+        text.push_str(&format!(" [target:{target_agent_id}]"));
+    }
+    if let Some(stop_reason) = outcome.stop_reason.as_ref() {
+        text.push_str(&format!(" [stop:{stop_reason}]"));
+    }
+    text
+}
+
+fn packet_lifecycle_notification_details(
+    report: &PacketExecutionReport,
+) -> Option<(&'static str, &'static str, String)> {
+    if !report.lifecycle_errors.is_empty() {
+        let summary = report
+            .lifecycle_outcome
+            .as_ref()
+            .map(|outcome| format!("{} [{}]", outcome.summary, report.lifecycle_errors.join(" | ")))
+            .unwrap_or_else(|| report.lifecycle_errors.join(" | "));
+        return Some(("high", "Packet lifecycle errors recorded", summary));
+    }
+
+    let outcome = report.lifecycle_outcome.as_ref()?;
+    let mut summary = outcome.summary.clone();
+    if let Some(stop_reason) = outcome.stop_reason.as_ref() {
+        summary.push_str(&format!(" ({stop_reason})"));
+    }
+
+    let (severity, title) = if report.disposition == PacketExecutionDisposition::Completed {
+        ("low", "Packet lifecycle outcome recorded")
+    } else {
+        ("medium", "Packet lifecycle outcome requires review")
+    };
+
+    Some((severity, title, summary))
+}
+
+fn resolved_loop_completion_notification_summary(agent: &str, packet_id: &str) -> String {
+    format!("{agent} completed background packet {packet_id}")
+}
+
+fn resolved_loop_completion_description(packet_id: &str) -> String {
+    format!("Completed packet {packet_id}. Await next dispatch.")
+}
+
+const CHILD_DISPATCH_PREPARED_OUTCOME_KIND: &str = "child_dispatch_prepared";
+
+fn packet_has_recorded_execution_evidence(packet: &MonitorPacket) -> bool {
+    packet.audit_trail.iter().any(|entry| {
+        entry.kind == PacketAuditKind::EvidenceAppend
+            && entry.actor == "scaffold-worker-driver"
+            && !entry.evidence_refs.is_empty()
+    })
+}
+
+fn prepared_child_dispatch_target_agent_id(packet: &MonitorPacket) -> Option<&str> {
+    packet
+        .last_lifecycle_outcome
+        .as_ref()
+        .filter(|outcome| outcome.kind == CHILD_DISPATCH_PREPARED_OUTCOME_KIND)
+        .and_then(|outcome| outcome.target_agent_id.as_deref())
+}
+
+fn monitor_agent_display_name(agent_id: &str) -> String {
+    load_monitor_agent_directory()
+        .into_iter()
+        .find(|entry| entry.id == agent_id)
+        .map(|entry| entry.display_name)
+        .unwrap_or_else(|| agent_id.to_owned())
+}
+
+struct CommandRuntimeMonitorDispatchBackend<L> {
+    launcher: L,
+}
+
+impl<L> CommandRuntimeMonitorDispatchBackend<L> {
+    fn new(launcher: L) -> Self {
+        Self { launcher }
+    }
+}
+
+impl<L> MonitorDispatchBackend for CommandRuntimeMonitorDispatchBackend<L>
+where
+    L: CommandRuntimeLauncher,
+{
+    fn handle_dispatch(
+        &self,
+        packet: &MonitorPacket,
+        target: &DispatchTarget,
+        runtime_plan: Option<&MonitorDispatchRuntimePlan>,
+        dispatch_context: Option<&MonitorDispatchPacketContext>,
+        operator_text: &str,
+    ) -> MonitorDispatchBackendResult {
+        if *target != DispatchTarget::Software {
+            return MonitorDispatchBackendResult {
+                accepted: false,
+                backend: "runtime.command".to_owned(),
+                message: String::new(),
+                error: Some("command runtime dispatch is only supported for software targets".to_owned()),
+                ticket: None,
+                report: None,
+            };
+        }
+
+        let Some(runtime_plan) = runtime_plan else {
+            return MonitorDispatchBackendResult {
+                accepted: false,
+                backend: "runtime.command".to_owned(),
+                message: String::new(),
+                error: Some("software dispatch is missing runtime plan metadata".to_owned()),
+                ticket: None,
+                report: None,
+            };
+        };
+
+        let Some((execution_target, runtime_target)) =
+            resolve_software_runtime_target(operator_text, runtime_plan)
+        else {
+            return MonitorDispatchBackendResult {
+                accepted: false,
+                backend: "runtime.command".to_owned(),
+                message: String::new(),
+                error: Some("software dispatch could not resolve a command runtime execution target".to_owned()),
+                ticket: None,
+                report: None,
+            };
+        };
+
+        if !runtime_target_supports_command_dispatch(runtime_target, true) {
+            return MonitorDispatchBackendResult {
+                accepted: false,
+                backend: command_runtime_backend_label(&runtime_target.runtime).to_owned(),
+                message: String::new(),
+                error: Some("runtime plan target is not launchable through the command runtime backend".to_owned()),
+                ticket: None,
+                report: None,
+            };
+        }
+
+        let backend_label = command_runtime_backend_label(&runtime_target.runtime);
+        let ticket_prefix = command_runtime_ticket_prefix(&runtime_target.runtime);
+        let evidence_prefix = command_runtime_evidence_prefix(&runtime_target.runtime);
+        let message_label = command_runtime_message_label(&runtime_target.runtime);
+
+        let handoff_packet = build_command_runtime_packet(
+            packet,
+            operator_text,
+            execution_target,
+            runtime_target,
+            dispatch_context,
+        );
+        let output = match self.launcher.launch(runtime_target, &handoff_packet) {
+            Ok(output) => output,
+            Err(failure) => {
+                let mut evidence_refs = command_runtime_base_evidence(runtime_plan, runtime_target);
+                evidence_refs.extend(failure.evidence_refs.clone());
+                let summary = failure.summary.clone();
+                return MonitorDispatchBackendResult {
+                    accepted: false,
+                    backend: backend_label.to_owned(),
+                    message: String::new(),
+                    error: Some(summary.clone()),
+                    ticket: None,
+                    report: Some(command_runtime_execution_report(
+                        &packet.id,
+                        summary,
+                        evidence_refs,
+                        failure.disposition,
+                        None,
+                        Vec::new(),
+                    )),
+                };
+            }
+        };
+        let handoff_result = match parse_command_runtime_result(&output) {
+            Ok(handoff_result) => handoff_result,
+            Err(error) => {
+                let mut evidence_refs = command_runtime_base_evidence(runtime_plan, runtime_target);
+                evidence_refs.push(format!("{evidence_prefix}-invalid-json"));
+                return MonitorDispatchBackendResult {
+                    accepted: false,
+                    backend: backend_label.to_owned(),
+                    message: String::new(),
+                    error: Some(error.clone()),
+                    ticket: None,
+                    report: Some(command_runtime_execution_report(
+                        &packet.id,
+                        error,
+                        evidence_refs,
+                        PacketExecutionDisposition::PermanentFailure,
+                        None,
+                        Vec::new(),
+                    )),
+                };
+            }
+        };
+
+        if let Some(error) = handoff_result.error.clone() {
+            let lifecycle_outcome = command_runtime_result_lifecycle_outcome(&handoff_result);
+            let lifecycle_errors = command_runtime_result_lifecycle_errors(&handoff_result);
+            let mut evidence_refs = command_runtime_base_evidence(runtime_plan, runtime_target);
+            append_command_runtime_result_evidence(&mut evidence_refs, evidence_prefix, &handoff_result);
+            let diagnostics = command_runtime_result_diagnostics(&handoff_result);
+            let detail_suffix = if diagnostics.is_empty() {
+                String::new()
+            } else {
+                format!(" [{}]", diagnostics.join(" | "))
+            };
+            return MonitorDispatchBackendResult {
+                accepted: false,
+                backend: backend_label.to_owned(),
+                message: String::new(),
+                error: Some(format!("{error}{detail_suffix}")),
+                ticket: None,
+                report: Some(command_runtime_execution_report(
+                    &packet.id,
+                    error,
+                    evidence_refs,
+                    PacketExecutionDisposition::PermanentFailure,
+                    lifecycle_outcome,
+                    lifecycle_errors,
+                )),
+            };
+        }
+
+        let lifecycle_errors = command_runtime_result_lifecycle_errors(&handoff_result);
+        if !lifecycle_errors.is_empty() {
+            let lifecycle_outcome = command_runtime_result_lifecycle_outcome(&handoff_result);
+            let mut evidence_refs = command_runtime_base_evidence(runtime_plan, runtime_target);
+            append_command_runtime_result_evidence(&mut evidence_refs, evidence_prefix, &handoff_result);
+            let summary = "command runtime returned lifecycle errors".to_owned();
+            return MonitorDispatchBackendResult {
+                accepted: false,
+                backend: backend_label.to_owned(),
+                message: String::new(),
+                error: Some(format!(
+                    "command runtime returned lifecycle errors [{}]",
+                    lifecycle_errors.join(" | ")
+                )),
+                ticket: None,
+                report: Some(command_runtime_execution_report(
+                    &packet.id,
+                    summary,
+                    evidence_refs,
+                    PacketExecutionDisposition::PermanentFailure,
+                    lifecycle_outcome,
+                    lifecycle_errors,
+                )),
+            };
+        }
+
+        let ticket_ref = format!("{ticket_prefix}:{}:{}", execution_target.as_str(), packet.id);
+        let lifecycle_outcome = command_runtime_result_lifecycle_outcome(&handoff_result);
+        let mut evidence_refs = command_runtime_base_evidence(runtime_plan, runtime_target);
+        evidence_refs.push(ticket_ref.clone());
+        append_command_runtime_result_evidence(&mut evidence_refs, evidence_prefix, &handoff_result);
+        let summary = lifecycle_outcome
+            .as_ref()
+            .map(|outcome| outcome.summary.clone())
+            .or(handoff_result.response.clone())
+            .unwrap_or_else(|| {
+                format!(
+                    "command runtime handoff completed for {}",
+                    runtime_target.display_name
+                )
+            });
+
+        MonitorDispatchBackendResult {
+            accepted: true,
+            backend: backend_label.to_owned(),
+            message: format!(
+                "Packet {} staged and handed off to {} via {}.",
+                packet.id, runtime_target.display_name, message_label
+            ),
+            error: None,
+            ticket: Some(BackendTicket {
+                external_ref: ticket_ref,
+            }),
+            report: Some(command_runtime_execution_report(
+                &packet.id,
+                summary,
+                evidence_refs,
+                PacketExecutionDisposition::Completed,
+                lifecycle_outcome,
+                lifecycle_errors,
+            )),
+        }
+    }
+}
+
+/// Interface for dispatch backends. The scaffold implementation and command-backed
+/// runtime implementation are the concrete backends today.
 trait MonitorDispatchBackend: Send + Sync {
     fn handle_dispatch(
         &self,
-        session_id: &str,
-        packet_id: &str,
+        packet: &MonitorPacket,
         target: &DispatchTarget,
+        runtime_plan: Option<&MonitorDispatchRuntimePlan>,
+        dispatch_context: Option<&MonitorDispatchPacketContext>,
         operator_text: &str,
     ) -> MonitorDispatchBackendResult;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ScaffoldPacketExecutionError {
+    NotRunning,
+}
+
+impl fmt::Display for ScaffoldPacketExecutionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotRunning => write!(f, "scaffold packet executor must be running"),
+        }
+    }
+}
+
+impl std::error::Error for ScaffoldPacketExecutionError {}
+
+#[derive(Debug, Clone)]
+struct ScaffoldPacketExecutableAgent {
+    id: AgentName,
+    capabilities: Vec<CapabilityRequirement>,
+    status: AgentStatus,
+    runtime_plan: Option<MonitorDispatchRuntimePlan>,
+}
+
+impl ScaffoldPacketExecutableAgent {
+    fn new(runtime_plan: Option<MonitorDispatchRuntimePlan>) -> Self {
+        Self {
+            id: AgentName::new("scaffold-worker").expect("scaffold worker name should be valid"),
+            capabilities: vec![CapabilityRequirement::new(
+                ProfileId::new(DEFAULT_PROFILE_ID).expect("default profile id should parse"),
+                "runtime.dispatch",
+            )],
+            status: AgentStatus::Registered,
+            runtime_plan,
+        }
+    }
+}
+
+impl Agent for ScaffoldPacketExecutableAgent {
+    type Error = ScaffoldPacketExecutionError;
+
+    fn id(&self) -> &AgentName {
+        &self.id
+    }
+
+    fn capabilities(&self) -> &[CapabilityRequirement] {
+        &self.capabilities
+    }
+
+    fn start(&mut self) -> Result<(), Self::Error> {
+        self.status = AgentStatus::Running;
+        Ok(())
+    }
+
+    fn stop(&mut self) -> Result<(), Self::Error> {
+        self.status = AgentStatus::Stopped;
+        Ok(())
+    }
+
+    fn status(&self) -> AgentStatus {
+        self.status
+    }
+}
+
+impl PacketExecutableAgent for ScaffoldPacketExecutableAgent {
+    fn execute_packet(
+        &mut self,
+        request: &PacketExecutionRequest,
+    ) -> Result<PacketExecutionReport, Self::Error> {
+        if self.status != AgentStatus::Running {
+            return Err(ScaffoldPacketExecutionError::NotRunning);
+        }
+
+        let mut evidence_refs = vec![format!("scaffold-exec:{}", request.packet.id)];
+        let summary = if let Some(runtime_plan) = self.runtime_plan.as_ref() {
+            evidence_refs.extend(runtime_plan.evidence_refs());
+            if let Some(target_summary) = runtime_plan.summary_suffix() {
+                format!(
+                    "scaffold prepared {} for {} with runtime plan {}",
+                    request.packet.id, request.packet.manager, target_summary
+                )
+            } else {
+                format!("scaffold prepared {} for {}", request.packet.id, request.packet.manager)
+            }
+        } else {
+            format!("scaffold prepared {} for {}", request.packet.id, request.packet.manager)
+        };
+
+        let lifecycle_outcome = self.runtime_plan.as_ref().and_then(|runtime_plan| {
+            if runtime_plan.targets.len() != 1 {
+                return None;
+            }
+
+            let target = runtime_plan.targets.first()?;
+            Some(PacketExecutionLifecycleOutcome {
+                kind: CHILD_DISPATCH_PREPARED_OUTCOME_KIND.to_owned(),
+                summary: format!(
+                    "{} prepared child dispatch to {}",
+                    request.packet.manager, target.display_name
+                ),
+                work_order_id: request.packet.work_order_id.clone(),
+                escalation_id: None,
+                target_agent_id: target
+                    .lifecycle_target_agent_id
+                    .clone()
+                    .or_else(|| Some(target.id.clone())),
+                stop_reason: Some("child-dispatch-prepared".to_owned()),
+            })
+        });
+
+        Ok(PacketExecutionReport {
+            packet_id: request.packet.id.clone(),
+            summary,
+            evidence_refs,
+            disposition: PacketExecutionDisposition::Completed,
+            lifecycle_outcome,
+            lifecycle_errors: Vec::new(),
+        })
+    }
 }
 
 /// Scaffold backend: accepts all dispatches without calling any external runtime.
@@ -812,34 +2326,100 @@ struct ScaffoldMonitorDispatchBackend;
 impl MonitorDispatchBackend for ScaffoldMonitorDispatchBackend {
     fn handle_dispatch(
         &self,
-        _session_id: &str,
-        packet_id: &str,
-        _target: &DispatchTarget,
-        _operator_text: &str,
+        packet: &MonitorPacket,
+        target: &DispatchTarget,
+        runtime_plan: Option<&MonitorDispatchRuntimePlan>,
+        _dispatch_context: Option<&MonitorDispatchPacketContext>,
+        operator_text: &str,
     ) -> MonitorDispatchBackendResult {
+        let selected_runtime_plan = if *target == DispatchTarget::Software {
+            runtime_plan
+                .and_then(|runtime_plan| {
+                    resolve_software_runtime_target(operator_text, runtime_plan).map(
+                        |(_, runtime_target)| MonitorDispatchRuntimePlan {
+                            targets: vec![runtime_target.clone()],
+                        },
+                    )
+                })
+                .or_else(|| runtime_plan.cloned())
+        } else {
+            None
+        };
+
+        let report = if *target == DispatchTarget::Software {
+            let mut driver = InProcessWorkerDriver::new(ScaffoldPacketExecutableAgent::new(
+                selected_runtime_plan.clone(),
+            ));
+            if let Err(error) = driver.agent_mut().start() {
+                return MonitorDispatchBackendResult {
+                    accepted: false,
+                    backend: "scaffold".to_owned(),
+                    message: String::new(),
+                    error: Some(error.to_string()),
+                    ticket: None,
+                    report: None,
+                };
+            }
+            match driver.execute(PacketExecutionRequest {
+                packet: packet.clone(),
+            }) {
+                Ok(report) => Some(report),
+                Err(error) => {
+                    return MonitorDispatchBackendResult {
+                        accepted: false,
+                        backend: "scaffold".to_owned(),
+                        message: String::new(),
+                        error: Some(error.to_string()),
+                        ticket: None,
+                        report: None,
+                    };
+                }
+            }
+        } else {
+            None
+        };
+
         MonitorDispatchBackendResult {
             accepted: true,
             backend: "scaffold".to_owned(),
-            message: format!(
-                "Packet {packet_id} staged and accepted by scaffold. \
-                 Live manager execution is not connected."
-            ),
+            message: if report.is_some() {
+                selected_runtime_plan
+                    .as_ref()
+                    .and_then(MonitorDispatchRuntimePlan::summary_suffix)
+                    .map(|target_summary| {
+                        format!(
+                            "Packet {} staged and accepted by scaffold. \
+                             Recorded execution evidence will advance on the manager loop via {}.",
+                            packet.id, target_summary
+                        )
+                    })
+                    .unwrap_or_else(|| {
+                        format!(
+                            "Packet {} staged and accepted by scaffold. \
+                             Recorded execution evidence will advance on the manager loop.",
+                            packet.id
+                        )
+                    })
+            } else {
+                format!("Packet {} staged and accepted by scaffold.", packet.id)
+            },
             error: None,
             ticket: Some(BackendTicket {
-                external_ref: format!("scaffold:{packet_id}"),
+                external_ref: format!("scaffold:{}", packet.id),
             }),
+            report,
         }
     }
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 struct AgentSourceTreeManifest {
     entries: Vec<AgentSourceTreeManifestEntry>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 struct AgentSourceTreeManifestEntry {
     id: String,
     display_name: String,
@@ -852,6 +2432,15 @@ struct AgentSourceTreeManifestEntry {
     user_invocable: Option<bool>,
     tools: Option<Vec<String>>,
     child_agents: Option<Vec<String>>,
+    runtime: Option<AgentRuntime>,
+    command: Option<String>,
+    args: Option<Vec<String>>,
+    env: Option<BTreeMap<String, String>>,
+    plan_template: Option<String>,
+    route_target_stream: Option<String>,
+    route_target_family: Option<String>,
+    lifecycle_target_agent_id: Option<String>,
+    selection_tokens: Option<Vec<String>>,
 }
 
 impl Default for MonitorState {
@@ -866,6 +2455,7 @@ impl Default for MonitorState {
             packets: MonitorPacketStore::default(),
             watchdog_events: Vec::new(),
             orchestrator_mode: OrchestratorMode::Disabled,
+            orchestrator_paused: false,
             selected_chat_id: None,
             selected_lifecycle_thread_id: None,
             next_id: 0,
@@ -1080,6 +2670,15 @@ pub enum AgentCliCommand {
     Run { name: String },
     Stop { name: String },
     Logs { name: Option<String> },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OrchestratorCliCommand {
+    Status,
+    Pause { force: bool },
+    Resume,
+    Inspect { packet_id: String },
+    Requeue { packet_id: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1853,6 +3452,132 @@ pub fn execute_profile_cli(command: ProfileCliCommand) -> Result<Vec<String>, Cl
     execute_profile_cli_with_store(command, &FileSystemProfileStore)
 }
 
+pub fn execute_orchestrator_cli(command: OrchestratorCliCommand) -> Result<Vec<String>, CliError> {
+    execute_orchestrator_cli_with_state_path(command, &monitor_state_path())
+}
+
+fn load_or_default_monitor_state_for_cli(state_path: &Path) -> Result<MonitorState, CliError> {
+    if let Some(state) = load_monitor_state_from(state_path) {
+        return Ok(state);
+    }
+
+    let mut state = MonitorState::default();
+    state
+        .configure_packet_store_backing(state_path)
+        .map_err(CliError::InvalidState)?;
+    Ok(state)
+}
+
+fn execute_orchestrator_cli_with_state_path(
+    command: OrchestratorCliCommand,
+    state_path: &Path,
+) -> Result<Vec<String>, CliError> {
+    match command {
+        OrchestratorCliCommand::Status => {
+            let state = load_or_default_monitor_state_for_cli(state_path)?;
+            let status = state.orchestrator_status();
+            let queue_depth = state.orchestrator_queue_snapshot().packets.len();
+            let packet_count = state.packets.snapshot().len();
+
+            Ok(vec![
+                format!("mode: {}", state.orchestrator_mode),
+                format!("paused: {}", state.orchestrator_paused),
+                format!("can_tick: {}", status.can_tick),
+                format!(
+                    "background_tick_enabled: {}",
+                    status.background_tick_enabled
+                ),
+                format!("queue_depth: {queue_depth}"),
+                format!("packet_count: {packet_count}"),
+                format!("watchdog_events: {}", state.watchdog_events.len()),
+                format!("detail: {}", status.detail),
+            ])
+        }
+        OrchestratorCliCommand::Pause { force } => {
+            let mut state = load_or_default_monitor_state_for_cli(state_path)?;
+            let response = state.set_orchestrator_paused(force);
+            persist_monitor_state_to(state_path, &state)?;
+
+            Ok(vec![
+                format!("paused: {}", response.paused),
+                format!("force: {}", response.force),
+                format!(
+                    "escalated_packets: {}",
+                    if response.escalated_packet_ids.is_empty() {
+                        "none".to_owned()
+                    } else {
+                        response.escalated_packet_ids.join(",")
+                    }
+                ),
+            ])
+        }
+        OrchestratorCliCommand::Resume => {
+            let mut state = load_or_default_monitor_state_for_cli(state_path)?;
+            state.resume_orchestrator();
+            persist_monitor_state_to(state_path, &state)?;
+            let status = state.orchestrator_status();
+
+            Ok(vec![
+                format!("mode: {}", state.orchestrator_mode),
+                format!("paused: {}", state.orchestrator_paused),
+                format!("can_tick: {}", status.can_tick),
+            ])
+        }
+        OrchestratorCliCommand::Inspect { packet_id } => {
+            let state = load_or_default_monitor_state_for_cli(state_path)?;
+            let packet = state.packet_by_id(&packet_id).ok_or_else(|| {
+                CliError::InvalidState(format!("monitor packet not found: {packet_id}"))
+            })?;
+            let rendered = serde_json::to_string_pretty(packet).map_err(|error| {
+                CliError::InvalidState(format!(
+                    "failed to serialize monitor packet {packet_id}: {error}"
+                ))
+            })?;
+            Ok(rendered.lines().map(str::to_owned).collect())
+        }
+        OrchestratorCliCommand::Requeue { packet_id } => {
+            let mut state = load_or_default_monitor_state_for_cli(state_path)?;
+            let packet_state = state
+                .packet_by_id(&packet_id)
+                .map(|packet| packet.state.clone())
+                .ok_or_else(|| {
+                    CliError::InvalidState(format!("monitor packet not found: {packet_id}"))
+                })?;
+
+            if packet_state != PacketState::Failed {
+                return Err(CliError::InvalidState(format!(
+                    "packet {packet_id} is {packet_state} and cannot be requeued"
+                )));
+            }
+
+            let applied = state
+                .apply_packet_transition_with_idempotency(
+                    &packet_id,
+                    PacketState::DispatchedToManager,
+                    "orchestrator-cli",
+                    "requeued via ferros orchestrator requeue",
+                    Some(format!("orchestrator-cli-requeue:{packet_id}")),
+                    vec![],
+                )
+                .map_err(|error| CliError::InvalidState(error.to_string()))?
+                .ok_or_else(|| {
+                    CliError::InvalidState(format!("monitor packet not found: {packet_id}"))
+                })?;
+            persist_monitor_state_to(state_path, &state)?;
+
+            let packet = state.packet_by_id(&packet_id).ok_or_else(|| {
+                CliError::InvalidState(format!("monitor packet not found: {packet_id}"))
+            })?;
+
+            Ok(vec![
+                format!("packet: {}", applied.packet_id),
+                format!("state: {}", packet.state),
+                format!("retry_count: {}", packet.retry_count),
+            ])
+        }
+    }
+}
+
 pub fn execute_agent_read_rpc(
     request: AgentJsonRpcRequest,
 ) -> Result<AgentJsonRpcResponse, CliError> {
@@ -1993,6 +3718,7 @@ struct HttpRequest {
     method: String,
     path: String,
     body: Vec<u8>,
+    idempotency_key: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2028,9 +3754,12 @@ fn route_shell_request_with_store_and_paths<S: LocalProfileStore>(
     }
     let (request_path, request_query) = split_request_path(&request.path);
 
-    if let Some(response) =
-        route_monitor_request(request.method.as_str(), request_path, request.body.clone())
-    {
+    if let Some(response) = route_monitor_request_with_idempotency_key(
+        request.method.as_str(),
+        request_path,
+        request.body.clone(),
+        request.idempotency_key.as_deref(),
+    ) {
         return response;
     }
 
@@ -2066,13 +3795,91 @@ fn enable_cors(response: HttpResponse) -> HttpResponse {
     response
 }
 
+#[cfg(test)]
 fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Option<HttpResponse> {
+    route_monitor_request_with_idempotency_key(method, request_path, body, None)
+}
+
+fn merge_idempotency_key(
+    request_idempotency_key: Option<&str>,
+    body_idempotency_key: Option<String>,
+) -> Option<String> {
+    request_idempotency_key
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .or(body_idempotency_key)
+}
+
+fn route_monitor_request_with_idempotency_key(
+    method: &str,
+    request_path: &str,
+    body: Vec<u8>,
+    request_idempotency_key: Option<&str>,
+) -> Option<HttpResponse> {
     if request_path.starts_with("/monitor") && method == "OPTIONS" {
         return Some(enable_cors(text_response(200, "OK", "")));
     }
 
     if request_path.starts_with("/orchestrator") && method == "OPTIONS" {
         return Some(enable_cors(text_response(200, "OK", "")));
+    }
+
+    if request_path == "/orchestrator/queue" && method == "GET" {
+        let state = monitor_state();
+        let guard = state.lock().map_err(|_| ()).ok()?;
+        let queue = guard.orchestrator_queue_snapshot();
+        return Some(enable_cors(json_response(200, "OK", &queue)));
+    }
+
+    if request_path == "/orchestrator/agents" && method == "GET" {
+        let state = monitor_state();
+        let guard = state.lock().map_err(|_| ()).ok()?;
+        let agents = guard.orchestrator_agents_snapshot();
+        return Some(enable_cors(json_response(200, "OK", &agents)));
+    }
+
+    if request_path == "/orchestrator/packets" && method == "POST" {
+        let mut request: MonitorOrchestratorPacketRequest = match serde_json::from_slice(&body) {
+            Ok(parsed) => parsed,
+            Err(error) => {
+                return Some(enable_cors(text_response(
+                    400,
+                    "Bad Request",
+                    format!("invalid orchestrator packet payload: {error}"),
+                )));
+            }
+        };
+        request.idempotency_key =
+            merge_idempotency_key(request_idempotency_key, request.idempotency_key);
+        let state = monitor_state();
+        let mut guard = state.lock().map_err(|_| ()).ok()?;
+        let response = match guard.upsert_orchestrator_packet(request) {
+            Ok(response) => response,
+            Err(error) => {
+                return Some(enable_cors(text_response(409, "Conflict", error)));
+            }
+        };
+        persist_monitor_state_best_effort(&mut guard, "orchestrator.packets persistence warning");
+        return Some(enable_cors(json_response(200, "OK", &response)));
+    }
+
+    if request_path == "/orchestrator/pause" && method == "POST" {
+        let request: MonitorOrchestratorPauseRequest =
+            serde_json::from_slice(&body).unwrap_or(MonitorOrchestratorPauseRequest { force: false });
+        let state = monitor_state();
+        let mut guard = state.lock().map_err(|_| ()).ok()?;
+        let response = guard.set_orchestrator_paused(request.force);
+        persist_monitor_state_best_effort(&mut guard, "orchestrator.pause persistence warning");
+        return Some(enable_cors(json_response(200, "OK", &response)));
+    }
+
+    if request_path == "/orchestrator/resume" && method == "POST" {
+        let state = monitor_state();
+        let mut guard = state.lock().map_err(|_| ()).ok()?;
+        guard.resume_orchestrator();
+        persist_monitor_state_best_effort(&mut guard, "orchestrator.resume persistence warning");
+        return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
     }
 
     if request_path == "/orchestrator/mode" && method == "POST" {
@@ -2447,6 +4254,8 @@ fn route_monitor_request(method: &str, request_path: &str, body: Vec<u8>) -> Opt
                 retryable,
                 retry_budget,
             } = request;
+            let idempotency_key =
+                merge_idempotency_key(request_idempotency_key, idempotency_key);
             let state = monitor_state();
             let mut guard = match state.lock() {
                 Ok(guard) => guard,
@@ -2751,6 +4560,72 @@ fn route_monitor_request_with_state(
     body: Vec<u8>,
     state: &std::sync::Mutex<MonitorState>,
 ) -> Option<HttpResponse> {
+    route_monitor_request_with_state_and_idempotency_key(
+        method,
+        request_path,
+        body,
+        state,
+        None,
+    )
+}
+
+#[cfg(test)]
+fn route_monitor_request_with_state_and_idempotency_key(
+    method: &str,
+    request_path: &str,
+    body: Vec<u8>,
+    state: &std::sync::Mutex<MonitorState>,
+    request_idempotency_key: Option<&str>,
+) -> Option<HttpResponse> {
+    if request_path == "/orchestrator/queue" && method == "GET" {
+        let guard = state.lock().ok()?;
+        let queue = guard.orchestrator_queue_snapshot();
+        return Some(enable_cors(json_response(200, "OK", &queue)));
+    }
+
+    if request_path == "/orchestrator/agents" && method == "GET" {
+        let guard = state.lock().ok()?;
+        let agents = guard.orchestrator_agents_snapshot();
+        return Some(enable_cors(json_response(200, "OK", &agents)));
+    }
+
+    if request_path == "/orchestrator/packets" && method == "POST" {
+        let mut request: MonitorOrchestratorPacketRequest = match serde_json::from_slice(&body) {
+            Ok(parsed) => parsed,
+            Err(error) => {
+                return Some(enable_cors(text_response(
+                    400,
+                    "Bad Request",
+                    format!("invalid orchestrator packet payload: {error}"),
+                )));
+            }
+        };
+        request.idempotency_key =
+            merge_idempotency_key(request_idempotency_key, request.idempotency_key);
+        let mut guard = state.lock().ok()?;
+        let response = match guard.upsert_orchestrator_packet(request) {
+            Ok(response) => response,
+            Err(error) => {
+                return Some(enable_cors(text_response(409, "Conflict", error)));
+            }
+        };
+        return Some(enable_cors(json_response(200, "OK", &response)));
+    }
+
+    if request_path == "/orchestrator/pause" && method == "POST" {
+        let request: MonitorOrchestratorPauseRequest =
+            serde_json::from_slice(&body).unwrap_or(MonitorOrchestratorPauseRequest { force: false });
+        let mut guard = state.lock().ok()?;
+        let response = guard.set_orchestrator_paused(request.force);
+        return Some(enable_cors(json_response(200, "OK", &response)));
+    }
+
+    if request_path == "/orchestrator/resume" && method == "POST" {
+        let mut guard = state.lock().ok()?;
+        guard.resume_orchestrator();
+        return Some(enable_cors(json_response(200, "OK", &guard.snapshot())));
+    }
+
     if request_path == "/orchestrator/mode" && method == "POST" {
         let request: MonitorOrchestratorModeRequest = match serde_json::from_slice(&body) {
             Ok(r) => r,
@@ -2994,6 +4869,8 @@ fn route_monitor_request_with_state(
                 retryable,
                 retry_budget,
             } = request;
+            let idempotency_key =
+                merge_idempotency_key(request_idempotency_key, idempotency_key);
             let mut guard = state.lock().ok()?;
             match guard.apply_packet_transition_with_idempotency(
                 packet_id,
@@ -3411,6 +5288,19 @@ fn parse_http_request(bytes: &[u8]) -> io::Result<HttpRequest> {
         method: method.to_owned(),
         path: path.to_owned(),
         body: bytes[header_end + 4..].to_vec(),
+        idempotency_key: http_header_value(header_text, "Idempotency-Key"),
+    })
+}
+
+fn http_header_value(header_text: &str, header_name: &str) -> Option<String> {
+    header_text.lines().find_map(|line| {
+        let (name, value) = line.split_once(':')?;
+        if !name.trim().eq_ignore_ascii_case(header_name) {
+            return None;
+        }
+
+        let value = value.trim();
+        (!value.is_empty()).then(|| value.to_owned())
     })
 }
 
@@ -3450,7 +5340,7 @@ fn write_http_response(stream: &mut TcpStream, response: HttpResponse) -> io::Re
 
     header.push_str("\r\nAccess-Control-Allow-Origin: *");
     header.push_str("\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS");
-    header.push_str("\r\nAccess-Control-Allow-Headers: Content-Type");
+    header.push_str("\r\nAccess-Control-Allow-Headers: Content-Type, Idempotency-Key");
 
     header.push_str("\r\n\r\n");
 
@@ -3612,10 +5502,40 @@ fn normalize_monitor_state(state: &mut MonitorState) {
         }
     }
 
+    let notification_ids: BTreeMap<String, ()> = state
+        .notifications
+        .iter()
+        .map(|notification| (notification.id.clone(), ()))
+        .collect();
+    let mut latest_notification_id_by_packet = BTreeMap::new();
+    for notification in &state.notifications {
+        let Some(packet_id) = notification
+            .packet_id
+            .as_ref()
+            .filter(|packet_id| !packet_id.is_empty())
+        else {
+            continue;
+        };
+        latest_notification_id_by_packet
+            .entry(packet_id.clone())
+            .or_insert_with(|| notification.id.clone());
+    }
+
     for packet in state.packets.iter_mut() {
         if packet.origin_message_id.as_deref() == Some("") {
             packet.origin_message_id = None;
         }
+
+        if packet.notification_id.as_deref() == Some("") {
+            packet.notification_id = None;
+        }
+
+        packet.notification_id = packet
+            .notification_id
+            .as_deref()
+            .filter(|notification_id| notification_ids.contains_key(*notification_id))
+            .map(str::to_owned)
+            .or_else(|| latest_notification_id_by_packet.get(&packet.id).cloned());
     }
 }
 
@@ -3894,11 +5814,20 @@ fn fallback_directory_entry_from_path(path: &Path) -> Option<MonitorAgentDirecto
             .unwrap_or(false),
         tools: parse_frontmatter_list(frontmatter.get("tools")),
         child_agents: parse_frontmatter_list(frontmatter.get("agents")),
+        runtime: None,
+        command: None,
+        args: Vec::new(),
+        env: BTreeMap::new(),
+        plan_template: None,
+        route_target_stream: None,
+        route_target_family: None,
+        lifecycle_target_agent_id: None,
+        selection_tokens: Vec::new(),
     })
 }
 
 fn load_monitor_agent_directory() -> Vec<MonitorAgentDirectoryEntry> {
-    let manifest_path = Path::new(MONITOR_AGENT_MANIFEST_PATH);
+    let manifest_path = monitor_repo_relative_path(MONITOR_AGENT_MANIFEST_PATH);
     if let Ok(content) = fs::read_to_string(manifest_path) {
         if let Ok(manifest) = serde_json::from_str::<AgentSourceTreeManifest>(&content) {
             let mut entries = manifest
@@ -3919,6 +5848,15 @@ fn load_monitor_agent_directory() -> Vec<MonitorAgentDirectoryEntry> {
                     user_invocable: entry.user_invocable.unwrap_or(false),
                     tools: entry.tools.unwrap_or_default(),
                     child_agents: entry.child_agents.unwrap_or_default(),
+                    runtime: entry.runtime,
+                    command: entry.command,
+                    args: entry.args.unwrap_or_default(),
+                    env: entry.env.unwrap_or_default(),
+                    plan_template: entry.plan_template,
+                    route_target_stream: entry.route_target_stream,
+                    route_target_family: entry.route_target_family,
+                    lifecycle_target_agent_id: entry.lifecycle_target_agent_id,
+                    selection_tokens: entry.selection_tokens.unwrap_or_default(),
                 })
                 .collect::<Vec<_>>();
             entries.sort_by(|left, right| left.display_name.cmp(&right.display_name));
@@ -3927,7 +5865,7 @@ fn load_monitor_agent_directory() -> Vec<MonitorAgentDirectoryEntry> {
     }
 
     let mut entries = Vec::new();
-    if let Ok(read_dir) = fs::read_dir(MONITOR_AGENT_MIRROR_ROOT) {
+    if let Ok(read_dir) = fs::read_dir(monitor_repo_relative_path(MONITOR_AGENT_MIRROR_ROOT)) {
         for entry in read_dir.flatten() {
             let path = entry.path();
             if path.extension().is_some_and(|ext| ext == "md")
@@ -3946,9 +5884,9 @@ fn load_monitor_agent_directory() -> Vec<MonitorAgentDirectoryEntry> {
 }
 
 fn monitor_agent_source_tree_status(entry_count: usize) -> MonitorAgentSourceTreeStatus {
-    let source_root = Path::new(MONITOR_AGENT_SOURCE_ROOT);
-    let mirror_root = Path::new(MONITOR_AGENT_MIRROR_ROOT);
-    let manifest_path = Path::new(MONITOR_AGENT_MANIFEST_PATH);
+    let source_root = monitor_repo_relative_path(MONITOR_AGENT_SOURCE_ROOT);
+    let mirror_root = monitor_repo_relative_path(MONITOR_AGENT_MIRROR_ROOT);
+    let manifest_path = monitor_repo_relative_path(MONITOR_AGENT_MANIFEST_PATH);
     let sync_state = if manifest_path.exists() && source_root.exists() {
         "mirrored"
     } else if mirror_root.exists() {
@@ -3958,9 +5896,9 @@ fn monitor_agent_source_tree_status(entry_count: usize) -> MonitorAgentSourceTre
     };
 
     MonitorAgentSourceTreeStatus {
-        manifest_path: manifest_path.display().to_string(),
-        canonical_root: source_root.display().to_string(),
-        mirror_root: mirror_root.display().to_string(),
+        manifest_path: MONITOR_AGENT_MANIFEST_PATH.to_owned(),
+        canonical_root: MONITOR_AGENT_SOURCE_ROOT.to_owned(),
+        mirror_root: MONITOR_AGENT_MIRROR_ROOT.to_owned(),
         sync_state: sync_state.to_owned(),
         entry_count,
     }
@@ -3969,7 +5907,9 @@ fn monitor_agent_source_tree_status(entry_count: usize) -> MonitorAgentSourceTre
 impl MonitorState {
     fn configure_packet_store_backing(&mut self, state_path: &Path) -> Result<(), String> {
         let packet_store_path = monitor_packet_store_path_for_state_path(state_path);
-        self.packets.enable_file_backing(&packet_store_path)
+        self.packets.enable_file_backing(&packet_store_path)?;
+        normalize_monitor_state(self);
+        Ok(())
     }
 
     fn orchestrator_status(&self) -> MonitorOrchestratorStatus {
@@ -3977,16 +5917,23 @@ impl MonitorState {
             OrchestratorMode::Disabled => MonitorOrchestratorStatus {
                 can_tick: false,
                 background_tick_enabled: false,
+                paused: self.orchestrator_paused,
                 detail: "Mode is disabled. Switch to stub to advance packets in the local shell.".to_owned(),
             },
             OrchestratorMode::Stub => MonitorOrchestratorStatus {
-                can_tick: true,
-                background_tick_enabled: true,
-                detail: "Stub mode is active. Explicit and background ticks can advance synthetic packet state locally.".to_owned(),
+                can_tick: !self.orchestrator_paused,
+                background_tick_enabled: !self.orchestrator_paused,
+                paused: self.orchestrator_paused,
+                detail: if self.orchestrator_paused {
+                    "Stub mode is paused. Resume orchestrator claiming to continue packet advancement.".to_owned()
+                } else {
+                    "Stub mode is active. Explicit and background ticks can advance synthetic packet state locally.".to_owned()
+                },
             },
             OrchestratorMode::Live => MonitorOrchestratorStatus {
                 can_tick: false,
                 background_tick_enabled: false,
+                paused: self.orchestrator_paused,
                 detail: "Live mode is configured, but live orchestrator execution is not implemented yet.".to_owned(),
             },
         }
@@ -4009,6 +5956,7 @@ impl MonitorState {
             packets: self.packets.clone(),
             watchdog_events: self.watchdog_events.clone(),
             orchestrator_mode: self.orchestrator_mode,
+            orchestrator_paused: self.orchestrator_paused,
             orchestrator_status: self.orchestrator_status(),
             agent_directory: agent_directory.clone(),
             agent_source_tree: monitor_agent_source_tree_status(agent_directory.len()),
@@ -4019,6 +5967,139 @@ impl MonitorState {
                 .or_else(|| lifecycle_threads.first().map(|thread| thread.id.clone())),
             next_id: self.next_id,
         }
+    }
+
+    fn orchestrator_agents_snapshot(&self) -> Vec<MonitorOrchestratorAgentStatus> {
+        [
+            PacketClaimRole::Recovery,
+            PacketClaimRole::Gatekeeper,
+            PacketClaimRole::Reviewer,
+            PacketClaimRole::Worker,
+            PacketClaimRole::Manager,
+        ]
+        .into_iter()
+        .map(|role| MonitorOrchestratorAgentStatus {
+            role,
+            enabled: self.orchestrator_mode == OrchestratorMode::Stub && !self.orchestrator_paused,
+            mode: self.orchestrator_mode,
+            paused: self.orchestrator_paused,
+        })
+        .collect()
+    }
+
+    fn orchestrator_queue_snapshot(&self) -> MonitorOrchestratorQueueResponse {
+        let packets = self
+            .packets
+            .snapshot()
+            .packets
+            .into_iter()
+            .filter(|packet| {
+                !matches!(
+                    packet.state,
+                    PacketState::Resolved | PacketState::Cancelled | PacketState::HumanInterventionRequired
+                )
+            })
+            .collect();
+        MonitorOrchestratorQueueResponse {
+            packets,
+            paused: self.orchestrator_paused,
+        }
+    }
+
+    fn upsert_orchestrator_packet(
+        &mut self,
+        request: MonitorOrchestratorPacketRequest,
+    ) -> Result<MonitorOrchestratorPacketResponse, String> {
+        let enqueue_result = self.enqueue_packet(
+            request.session_id,
+            request.origin_message_id,
+            request.parent_packet_id,
+            request.work_order_id,
+            request.manager,
+            request.state.unwrap_or(PacketState::Staged),
+            request.lifecycle_thread_id,
+            request.notification_id,
+            request.summary,
+            request.idempotency_key,
+        );
+        let packet_id = enqueue_result.packet_id.clone();
+
+        let packet = self
+            .packet_by_id(&packet_id)
+            .cloned()
+            .ok_or_else(|| "orchestrator packet lookup failed after enqueue".to_owned())?;
+
+        Ok(MonitorOrchestratorPacketResponse {
+            packet_id,
+            created: enqueue_result.created,
+            packet,
+        })
+    }
+
+    fn set_orchestrator_paused(&mut self, force: bool) -> MonitorOrchestratorPauseResponse {
+        self.orchestrator_paused = true;
+        let mut escalated_packet_ids = Vec::new();
+
+        if force {
+            let leased_packet_ids = self
+                .packets
+                .iter()
+                .filter(|packet| {
+                    packet.lease_role.is_some()
+                        && !matches!(
+                            packet.state,
+                            PacketState::Resolved
+                                | PacketState::Cancelled
+                                | PacketState::HumanInterventionRequired
+                        )
+                })
+                .map(|packet| packet.id.clone())
+                .collect::<Vec<_>>();
+
+            for packet_id in leased_packet_ids {
+                if self
+                    .apply_packet_transition_with_idempotency(
+                        &packet_id,
+                        PacketState::HumanInterventionRequired,
+                        "orchestrator.pause.force",
+                        "forced pause escalated leased work to human intervention",
+                        Some(format!("orchestrator.pause.force:{packet_id}")),
+                        vec![],
+                    )
+                    .ok()
+                    .flatten()
+                    .is_some()
+                {
+                    escalated_packet_ids.push(packet_id);
+                }
+            }
+        }
+
+        self.push_event(
+            "orchestrator.paused",
+            if force {
+                format!(
+                    "orchestrator paused with force; escalated {} packet(s)",
+                    escalated_packet_ids.len()
+                )
+            } else {
+                "orchestrator paused (drain mode)".to_owned()
+            },
+        );
+
+        MonitorOrchestratorPauseResponse {
+            paused: self.orchestrator_paused,
+            force,
+            escalated_packet_ids,
+        }
+    }
+
+    fn resume_orchestrator(&mut self) {
+        self.orchestrator_paused = false;
+        self.push_event(
+            "orchestrator.resumed",
+            "orchestrator resumed claim processing".to_owned(),
+        );
     }
 
     fn create_lifecycle_thread(
@@ -4426,14 +6507,36 @@ impl MonitorState {
         }
 
         let target = infer_dispatch_target(&dispatch_request.operator_text);
+        let runtime_plan = match target {
+            DispatchTarget::Software => software_dispatch_runtime_plan(),
+            _ => None,
+        };
 
-        let (backend_result, dispatch_ids) = self.dispatch_session_via_backend(
-            &dispatch_request.session_id,
-            Some(dispatch_request.message_id.clone()),
-            target,
-            &ScaffoldMonitorDispatchBackend,
+        let scaffold_backend = ScaffoldMonitorDispatchBackend;
+        let command_runtime_backend =
+            CommandRuntimeMonitorDispatchBackend::new(CommandRuntimeProcessLauncher);
+        let (backend_result, dispatch_ids) = if should_use_command_runtime_dispatch_backend(
+            &target,
+            runtime_plan.as_ref(),
             &dispatch_request.operator_text,
-        );
+            coordinator_sdk_dispatch_enabled(),
+        ) {
+            self.dispatch_session_via_backend(
+                &dispatch_request.session_id,
+                Some(dispatch_request.message_id.clone()),
+                target,
+                &command_runtime_backend,
+                &dispatch_request.operator_text,
+            )
+        } else {
+            self.dispatch_session_via_backend(
+                &dispatch_request.session_id,
+                Some(dispatch_request.message_id.clone()),
+                target,
+                &scaffold_backend,
+                &dispatch_request.operator_text,
+            )
+        };
 
         if !backend_result.accepted {
             return MonitorDispatchResult {
@@ -4461,10 +6564,18 @@ impl MonitorState {
             };
         };
 
-        let ferros_reply = format!(
-            "Packet {packet_id} staged and accepted by scaffold for {manager}. \
-             Live manager execution is not connected; this liaison chat will stay open for updates."
-        );
+        let ferros_reply = if backend_result.message.is_empty() {
+            format!(
+                "Packet {packet_id} staged and accepted by {} for {manager}. \
+                 This liaison chat will stay open for updates.",
+                backend_result.backend
+            )
+        } else {
+            format!(
+                "{} This liaison chat will stay open for updates.",
+                backend_result.message
+            )
+        };
         let _ = self.add_message(
             &dispatch_request.session_id,
             MonitorMessageRequest {
@@ -4588,6 +6699,35 @@ impl MonitorState {
         Some((packet_id, route_label.to_owned(), packet_thread_id))
     }
 
+    fn dispatch_packet_context(&self, packet: &MonitorPacket) -> MonitorDispatchPacketContext {
+        let session = self
+            .open_chats
+            .iter()
+            .find(|session| session.id == packet.session_id);
+        let origin_message_text = packet.origin_message_id.as_deref().and_then(|message_id| {
+            session.and_then(|session| {
+                session
+                    .messages
+                    .iter()
+                    .find(|message| message.id == message_id)
+                    .map(|message| message.text.clone())
+            })
+        });
+        let lifecycle_thread = packet.lifecycle_thread_id.as_deref().and_then(|thread_id| {
+            self.lifecycle_threads
+                .iter()
+                .find(|thread| thread.id == thread_id)
+                .cloned()
+        });
+
+        MonitorDispatchPacketContext {
+            session_label: session.map(|session| session.label.clone()),
+            origin_message_id: packet.origin_message_id.clone(),
+            origin_message_text,
+            lifecycle_thread,
+        }
+    }
+
     /// Stage a packet, consult the backend with the real packet id, then apply an FSM transition.
     /// Returns `(backend_result, dispatch_ids)` where `dispatch_ids` is `None` if the session is
     /// unavailable or when a new dispatch attempt is rejected by the backend.
@@ -4643,6 +6783,7 @@ impl MonitorState {
                         None
                     },
                     ticket: None,
+                    report: None,
                 },
                 Some((packet_id, route_label, lifecycle_thread_id)),
             );
@@ -4663,13 +6804,29 @@ impl MonitorState {
                     message: String::new(),
                     error: Some("session not available for dispatch".to_owned()),
                     ticket: None,
+                    report: None,
                 },
                 None,
             );
         };
 
         // Phase 2: Consult backend with the real packet id so it can generate a scoped ticket.
-        let backend_result = backend.handle_dispatch(session_id, packet_id, &target, operator_text);
+        let packet = self
+            .packet_by_id(packet_id)
+            .cloned()
+            .expect("staged packet should exist before backend dispatch");
+        let dispatch_context = self.dispatch_packet_context(&packet);
+        let runtime_plan = match target {
+            DispatchTarget::Software => software_dispatch_runtime_plan(),
+            _ => None,
+        };
+        let backend_result = backend.handle_dispatch(
+            &packet,
+            &target,
+            runtime_plan.as_ref(),
+            Some(&dispatch_context),
+            operator_text,
+        );
 
         if !backend_result.accepted {
             // Transition Staged → Failed so the attempt is visible in the audit trail.
@@ -4680,9 +6837,35 @@ impl MonitorState {
                 backend_result
                     .error
                     .as_deref()
+                    .or_else(|| backend_result.report.as_ref().map(|report| report.summary.as_str()))
                     .unwrap_or("backend rejected"),
                 vec![],
             );
+
+            if let Some((retryable, retry_budget)) =
+                dispatch_failure_retry_policy(backend_result.report.as_ref())
+            {
+                let _ = self.set_packet_retry_policy(
+                    packet_id,
+                    Some(retryable),
+                    Some(retry_budget),
+                );
+            }
+
+            if let Some(report) = backend_result.report.as_ref() {
+                let _ = self.set_packet_execution_diagnostics(packet_id, report);
+                if !report.evidence_refs.is_empty() {
+                    let _ = self.packets.append_evidence(PacketEvidenceAppendRequest {
+                        packet_id: packet_id.clone(),
+                        actor: "scaffold-worker-driver".to_owned(),
+                        reason: report.summary.clone(),
+                        at: monitor_now(),
+                        idempotency_key: Some(format!("dispatch.execution.failure:{packet_id}")),
+                        evidence_refs: report.evidence_refs.clone(),
+                    });
+                }
+            }
+
             return (backend_result, None);
         }
 
@@ -4700,6 +6883,20 @@ impl MonitorState {
             evidence,
         );
 
+        if let Some(report) = backend_result.report.as_ref() {
+            let _ = self.set_packet_execution_diagnostics(packet_id, report);
+            if !report.evidence_refs.is_empty() {
+                let _ = self.packets.append_evidence(PacketEvidenceAppendRequest {
+                    packet_id: packet_id.clone(),
+                    actor: "scaffold-worker-driver".to_owned(),
+                    reason: report.summary.clone(),
+                    at: monitor_now(),
+                    idempotency_key: Some(format!("dispatch.execution:{packet_id}")),
+                    evidence_refs: report.evidence_refs.clone(),
+                });
+            }
+        }
+
         (backend_result, staged)
     }
 
@@ -4716,44 +6913,61 @@ impl MonitorState {
         summary: String,
         registration_idempotency_key: Option<String>,
     ) -> String {
-        if let Some(existing_packet) = registration_idempotency_key
-            .as_deref()
-            .and_then(|key| self.packets.packet_by_registration_idempotency_key(key))
-        {
-            return existing_packet.id.clone();
-        }
+        self.enqueue_packet(
+            session_id,
+            origin_message_id,
+            parent_packet_id,
+            work_order_id,
+            manager,
+            state,
+            lifecycle_thread_id,
+            notification_id,
+            summary,
+            registration_idempotency_key,
+        )
+        .packet_id
+    }
 
+    fn enqueue_packet(
+        &mut self,
+        session_id: String,
+        origin_message_id: Option<String>,
+        parent_packet_id: Option<String>,
+        work_order_id: Option<String>,
+        manager: String,
+        state: PacketState,
+        lifecycle_thread_id: Option<String>,
+        notification_id: Option<String>,
+        summary: String,
+        registration_idempotency_key: Option<String>,
+    ) -> ferros_orchestrator::PacketEnqueueResult {
         let id = self.next_identifier("pkt");
         let now = monitor_now();
-        self.packets
-            .register_packet(MonitorPacket {
-                id: id.clone(),
+        let enqueue_result = self
+            .packets
+            .enqueue(PacketEnqueueRequest {
+                packet_id: id.clone(),
                 session_id,
                 origin_message_id,
                 parent_packet_id,
                 work_order_id,
                 manager,
                 state,
-                review_verdict: None,
-                gatekeeper_decision: None,
                 lifecycle_thread_id,
                 notification_id,
                 created_at: now.clone(),
                 updated_at: now,
                 summary,
-                last_error: None,
                 registration_idempotency_key,
-                retry_count: 0,
-                retry_budget: 0,
-                last_failure_retryable: false,
-                lease_role: None,
-                lease_expires_at: None,
-                audit_seq: 0,
-                audit_trail: vec![],
             })
-            .expect("packet registration should succeed");
-        self.push_event("packet.registered", format!("Packet {id} registered"));
-        id
+            .expect("packet enqueue should succeed");
+        if enqueue_result.created {
+            self.push_event(
+                "packet.registered",
+                format!("Packet {} registered", enqueue_result.packet_id),
+            );
+        }
+        enqueue_result
     }
 
     #[allow(dead_code)]
@@ -4824,12 +7038,188 @@ impl MonitorState {
         };
 
         self.clear_running_loop_packet_if_terminal(packet_id, &applied.to);
+        self.return_resolved_root_packet_to_user(packet_id, &applied.to);
         let label = format!("{packet_id} -> {}", applied.to);
         self.push_event("packet.state_changed", label);
         Ok(Some(applied))
     }
 
+    fn materialize_prepared_child_dispatch(&mut self, packet_id: &str) -> Result<bool, String> {
+        let Some(parent_packet) = self.packet_by_id(packet_id).cloned() else {
+            return Ok(false);
+        };
+        if parent_packet.manager != "Software Architect" || self.packet_has_child_packets(packet_id) {
+            return Ok(false);
+        }
+
+        let Some(target_agent_id) = prepared_child_dispatch_target_agent_id(&parent_packet) else {
+            return Ok(false);
+        };
+
+        let Some(parent_thread_id) = parent_packet.lifecycle_thread_id.clone() else {
+            return Ok(false);
+        };
+
+        let source_agent = self
+            .lifecycle_threads
+            .iter()
+            .find(|thread| thread.id == parent_thread_id)
+            .and_then(|thread| thread.source_agent_id.clone())
+            .unwrap_or_else(|| "FERROS Agent".to_owned());
+        let target_display_name = monitor_agent_display_name(target_agent_id);
+        let parent_work_order_id = parent_packet
+            .work_order_id
+            .clone()
+            .unwrap_or_else(|| packet_id.to_owned());
+        let child_work_order_id = self.next_identifier("wo");
+
+        let _ = self.append_thread_entry(
+            &parent_thread_id,
+            "packet.handoff",
+            "agent",
+            &parent_packet.manager,
+            format!(
+                "Received {parent_work_order_id} from {source_agent}. Dispatching child packet {child_work_order_id} to {target_display_name}."
+            ),
+            Some("running"),
+            Some("Await child lane report"),
+        );
+
+        let child_entry = self.create_lifecycle_entry(
+            "packet.child_dispatched",
+            "agent",
+            &parent_packet.manager,
+            format!(
+                "{} opened child packet {} for {} from parent work order {}.",
+                parent_packet.manager, child_work_order_id, target_display_name, parent_work_order_id
+            ),
+            Some("running"),
+            Some("Await child lane response"),
+        );
+        let child_thread_id = self.create_lifecycle_thread(
+            format!("{target_display_name} packet {child_work_order_id}"),
+            "packet",
+            &target_display_name,
+            "running",
+            Some(parent_packet.manager.clone()),
+            Some(target_display_name.clone()),
+            Some(child_work_order_id.clone()),
+            None,
+            child_entry,
+        );
+        let child_packet_id = self.create_packet(
+            parent_packet.session_id.clone(),
+            parent_packet.origin_message_id.clone(),
+            Some(parent_packet.id.clone()),
+            Some(child_work_order_id.clone()),
+            target_display_name.clone(),
+            PacketState::Resolved,
+            Some(child_thread_id.clone()),
+            None,
+            format!(
+                "Child dispatch from {} to {} for parent {}",
+                parent_packet.manager, target_display_name, parent_work_order_id
+            ),
+            Some(format!("child-dispatch:{packet_id}:{target_agent_id}")),
+        );
+
+        self.upsert_loop(
+            &target_display_name,
+            "running",
+            &format!(
+                "Executing child packet {child_work_order_id} from {}.",
+                parent_packet.manager
+            ),
+        );
+        if let Some(loop_entry) = self
+            .running_loops
+            .iter_mut()
+            .find(|loop_state| loop_state.agent == target_display_name)
+        {
+            loop_entry.current_packet_id = Some(child_packet_id.clone());
+            loop_entry.source_agent_id = Some(parent_packet.manager.clone());
+            loop_entry.target_agent_id = Some(target_display_name.clone());
+            loop_entry.work_order_id = Some(child_work_order_id.clone());
+        }
+
+        let _ = self.append_thread_entry(
+            &child_thread_id,
+            "packet.report",
+            "agent",
+            &target_display_name,
+            format!(
+                "{target_display_name} completed child packet {child_work_order_id} and returned a report to {}.",
+                parent_packet.manager
+            ),
+            Some("reported"),
+            Some("Merge result into parent packet"),
+        );
+        self.upsert_loop(
+            &target_display_name,
+            "idle",
+            &format!("Completed child packet {child_work_order_id}. Await next dispatch."),
+        );
+        if let Some(loop_entry) = self
+            .running_loops
+            .iter_mut()
+            .find(|loop_state| loop_state.agent == target_display_name)
+        {
+            loop_entry.current_packet_id = None;
+        }
+
+        let ferros_update = format!(
+            "{} reports {} completed child packet {} for {}.",
+            parent_packet.manager, target_display_name, child_work_order_id, parent_work_order_id
+        );
+        let _ = self.append_thread_entry(
+            &parent_thread_id,
+            "packet.returned",
+            "agent",
+            &parent_packet.manager,
+            format!(
+                "{target_display_name} returned child packet {child_work_order_id}. Relaying completion back to FERROS Agent."
+            ),
+            Some("awaiting_review"),
+            Some("FERROS liaison can notify the user"),
+        );
+        let _ = self.add_message(
+            &parent_packet.session_id,
+            MonitorMessageRequest {
+                speaker: "agent".to_owned(),
+                who: "FERROS Agent".to_owned(),
+                text: ferros_update.clone(),
+            },
+        );
+        let _ = self.append_thread_entry(
+            &parent_thread_id,
+            "packet.relayed",
+            "agent",
+            "FERROS Agent",
+            ferros_update,
+            Some("awaiting_review"),
+            Some("Await next dispatch or closure"),
+        );
+
+        self.apply_packet_transition(
+            packet_id,
+            PacketState::AwaitingReview,
+            "software-architect",
+            &format!(
+                "merged {} child packet {} and returned to FERROS Agent",
+                target_display_name, child_work_order_id
+            ),
+            vec![format!("child-packet:{child_packet_id}")],
+        )
+        .map_err(|error| error.to_string())?;
+
+        Ok(true)
+    }
+
     fn run_orchestrator_tick(&mut self) -> Result<bool, OrchestratorTickError> {
+        if self.orchestrator_paused {
+            return Ok(false);
+        }
+
         let orchestrator = match self.orchestrator_mode {
             OrchestratorMode::Disabled => return Err(OrchestratorTickError::Disabled),
             OrchestratorMode::Stub => OrchestratorLoop::stub(),
@@ -4857,10 +7247,57 @@ impl MonitorState {
             };
             changed = true;
             self.clear_running_loop_packet_if_terminal(&packet_id, &next_state);
+            self.return_resolved_root_packet_to_user(&packet_id, &next_state);
             self.push_event(
                 "packet.state_changed",
                 format!("[{}] {packet_id} -> {next_state}", self.orchestrator_mode),
             );
+
+            if next_state == PacketState::InProgress {
+                match self.materialize_prepared_child_dispatch(&packet_id) {
+                    Ok(true) => continue,
+                    Ok(false) => {}
+                    Err(error) => {
+                        self.push_event(
+                            "packet.orchestrator_error",
+                            format!(
+                                "[{}] {packet_id} could not materialize prepared child dispatch: {error}",
+                                self.orchestrator_mode
+                            ),
+                        );
+                    }
+                }
+
+                let should_promote = self
+                    .packet_by_id(&packet_id)
+                    .map(|packet| {
+                        packet.manager == "Software Architect"
+                            && packet_has_recorded_execution_evidence(packet)
+                    })
+                    .unwrap_or(false);
+
+                if should_promote {
+                    match self.apply_packet_transition(
+                        &packet_id,
+                        PacketState::AwaitingReview,
+                        "scaffold-manager-execution",
+                        "manager consumed recorded execution report",
+                        vec![],
+                    ) {
+                        Ok(Some(_)) => {}
+                        Ok(None) => {}
+                        Err(error) => {
+                            self.push_event(
+                                "packet.orchestrator_error",
+                                format!(
+                                    "[{}] {packet_id} could not advance recorded execution result: {error}",
+                                    self.orchestrator_mode
+                                ),
+                            );
+                        }
+                    }
+                }
+            }
         }
 
         Ok(changed)
@@ -4901,10 +7338,145 @@ impl MonitorState {
             return;
         }
 
+        let packet_context = if matches!(state, PacketState::Resolved) {
+            self.packet_by_id(packet_id).map(|packet| {
+                (
+                    packet.id.clone(),
+                    Some(packet.session_id.clone()),
+                    packet.lifecycle_thread_id.clone(),
+                )
+            })
+        } else {
+            None
+        };
+        let mut completion_notifications = Vec::new();
+
         for loop_entry in &mut self.running_loops {
             if loop_entry.current_packet_id.as_deref() == Some(packet_id) {
                 loop_entry.current_packet_id = None;
+
+                if matches!(state, PacketState::Resolved) {
+                    let description = resolved_loop_completion_description(packet_id);
+                    let (status, status_reason, status_detail, progress) =
+                        monitor_status_detail_for(&loop_entry.agent, "idle", &description);
+
+                    loop_entry.state = "idle".to_owned();
+                    loop_entry.status = status.clone();
+                    loop_entry.status_reason = status_reason;
+                    loop_entry.status_detail = status_detail;
+                    loop_entry.description = description;
+                    loop_entry.progress = progress;
+                    loop_entry.stale_after = None;
+                    loop_entry.updated_at = monitor_now();
+
+                    completion_notifications.push((
+                        loop_entry.agent.clone(),
+                        loop_entry.thread_id.clone(),
+                        status,
+                    ));
+                }
             }
+        }
+
+        let mut latest_notification_id = None;
+        if let Some((packet_id, session_id, lifecycle_thread_id)) = packet_context {
+            for (agent, thread_id, status) in completion_notifications {
+                let summary = resolved_loop_completion_notification_summary(&agent, &packet_id);
+                if let Some(thread_id) = thread_id {
+                    let _ = self.append_thread_entry(
+                        &thread_id,
+                        "loop.completed",
+                        "system",
+                        "Monitor",
+                        summary.clone(),
+                        Some(&status),
+                        Some("Await next dispatch"),
+                    );
+                }
+
+                latest_notification_id = Some(self.create_notification(
+                    Some(packet_id.clone()),
+                    session_id.clone(),
+                    lifecycle_thread_id.clone(),
+                    "low",
+                    "Background loop completed",
+                    &summary,
+                ));
+                self.push_event("loop.completed", summary);
+            }
+        }
+
+        if let Some(notification_id) = latest_notification_id {
+            if let Some(packet) = self.packets.iter_mut().find(|packet| packet.id == packet_id) {
+                packet.notification_id = Some(notification_id);
+            }
+            let _ = self.packets.persist_if_backed();
+        }
+    }
+
+    fn return_resolved_root_packet_to_user(&mut self, packet_id: &str, state: &PacketState) {
+        if !matches!(state, PacketState::Resolved) {
+            return;
+        }
+
+        let Some(packet) = self.packet_by_id(packet_id).cloned() else {
+            return;
+        };
+        if packet.parent_packet_id.is_some() {
+            return;
+        }
+
+        let work_order_id = packet
+            .work_order_id
+            .clone()
+            .unwrap_or_else(|| packet.id.clone());
+        let completion_detail = self
+            .packets
+            .iter()
+            .find(|candidate| candidate.parent_packet_id.as_deref() == Some(packet.id.as_str()))
+            .map(|child| {
+                let child_work_order_id = child
+                    .work_order_id
+                    .clone()
+                    .unwrap_or_else(|| child.id.clone());
+                format!(
+                    "{} completed the request after {} finished child packet {}.",
+                    packet.manager, child.manager, child_work_order_id
+                )
+            })
+            .unwrap_or_else(|| format!("{} completed the request.", packet.manager));
+        let closure_text = format!(
+            "Work order {work_order_id} is closed. {completion_detail} FERROS is returning the result to you."
+        );
+
+        if let Some(session) = self
+            .open_chats
+            .iter_mut()
+            .find(|session| session.id == packet.session_id)
+        {
+            session.active_agent = "FERROS Agent".to_owned();
+            self.selected_chat_id = Some(session.id.clone());
+        }
+
+        let _ = self.add_message(
+            &packet.session_id,
+            MonitorMessageRequest {
+                speaker: "agent".to_owned(),
+                who: "FERROS Agent".to_owned(),
+                text: closure_text.clone(),
+            },
+        );
+
+        if let Some(thread_id) = packet.lifecycle_thread_id.as_deref() {
+            let _ = self.append_thread_entry(
+                thread_id,
+                "packet.closed",
+                "agent",
+                "FERROS Agent",
+                closure_text,
+                Some("resolved"),
+                Some("Await operator follow-up"),
+            );
         }
     }
 
@@ -4974,6 +7546,55 @@ impl MonitorState {
             );
         }
         Ok(updated)
+    }
+
+    fn set_packet_execution_diagnostics(
+        &mut self,
+        packet_id: &str,
+        report: &PacketExecutionReport,
+    ) -> Result<bool, String> {
+        let Some(packet) = self.packets.iter_mut().find(|packet| packet.id == packet_id) else {
+            return Ok(false);
+        };
+
+        let session_id = Some(packet.session_id.clone());
+        let lifecycle_thread_id = packet.lifecycle_thread_id.clone();
+        packet.last_lifecycle_outcome = report
+            .lifecycle_outcome
+            .as_ref()
+            .map(packet_lifecycle_outcome_from_execution);
+        packet.last_lifecycle_errors = report.lifecycle_errors.clone();
+        packet.updated_at = monitor_now();
+        self.packets.persist_if_backed()?;
+
+        if let Some(outcome) = report.lifecycle_outcome.as_ref() {
+            self.push_event(
+                "packet.lifecycle_outcome",
+                packet_lifecycle_outcome_event_text(packet_id, outcome),
+            );
+        }
+        if !report.lifecycle_errors.is_empty() {
+            self.push_event(
+                "packet.lifecycle_errors",
+                format!("{packet_id}: {}", report.lifecycle_errors.join(" | ")),
+            );
+        }
+
+        if let Some((severity, title, summary)) = packet_lifecycle_notification_details(report) {
+            let notification_id = self.create_notification(
+                Some(packet_id.to_owned()),
+                session_id,
+                lifecycle_thread_id,
+                severity,
+                title,
+                &summary,
+            );
+            if let Some(packet) = self.packets.iter_mut().find(|packet| packet.id == packet_id) {
+                packet.notification_id = Some(notification_id);
+            }
+            self.packets.persist_if_backed()?;
+        }
+        Ok(true)
     }
 
     fn create_notification(
@@ -7110,6 +9731,7 @@ pub fn run_demo() -> Result<DemoSummary, DemoError> {
 
 #[cfg(test)]
 mod tests {
+    use ferros_orchestrator::{PacketClaimRole, PacketRepository};
     use super::{
         build_local_runway_summary_with_store_and_hub_summary_loader, default_profile_path,
         execute_agent_cli_with_runtime_loader, execute_agent_cli_with_state_path,
@@ -7133,15 +9755,46 @@ mod tests {
     };
     use ferros_agents::{
         AgentJsonRpcParams, AgentJsonRpcRequest, AgentJsonRpcResponse, AgentJsonRpcResult,
-        AgentStatus, EchoAgent, JSON_RPC_AGENT_NOT_FOUND, JSON_RPC_AUTHORIZATION_DENIED,
-        JSON_RPC_INVALID_PARAMS, JSON_RPC_INVALID_REQUEST, JSON_RPC_METHOD_NOT_FOUND,
-        METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_AGENT_RUN, METHOD_AGENT_SNAPSHOT,
-        METHOD_AGENT_STOP, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
+        AgentRuntime, AgentStatus, EchoAgent, PacketExecutionDisposition,
+        PacketExecutionLifecycleOutcome, PacketExecutionReport, JSON_RPC_AGENT_NOT_FOUND,
+        JSON_RPC_AUTHORIZATION_DENIED, JSON_RPC_INVALID_PARAMS, JSON_RPC_INVALID_REQUEST,
+        JSON_RPC_METHOD_NOT_FOUND, METHOD_AGENT_DESCRIBE, METHOD_AGENT_LIST, METHOD_AGENT_RUN,
+        METHOD_AGENT_SNAPSHOT, METHOD_AGENT_STOP, METHOD_DENY_LOG_LIST, METHOD_GRANT_LIST,
     };
     use ferros_hub::{
         default_local_runtime_summary, LocalBridgeRegistrationError, LocalHubRuntimeSummary,
         LOCAL_HUB_STATE_SNAPSHOT_PATH, SIMULATED_LOCAL_BRIDGE_ARTIFACT_PATH,
     };
+
+    fn make_packet(id: &str, manager: &str, state: PacketState) -> MonitorPacket {
+        MonitorPacket {
+            id: id.to_owned(),
+            session_id: "test-session".to_owned(),
+            origin_message_id: None,
+            parent_packet_id: None,
+            work_order_id: None,
+            manager: manager.to_owned(),
+            state,
+            review_verdict: None,
+            gatekeeper_decision: None,
+            lifecycle_thread_id: None,
+            notification_id: None,
+            created_at: "2026-01-01T00:00:00Z".to_owned(),
+            updated_at: "2026-01-01T00:00:00Z".to_owned(),
+            summary: "test packet".to_owned(),
+            last_error: None,
+            last_lifecycle_outcome: None,
+            last_lifecycle_errors: vec![],
+            registration_idempotency_key: None,
+            retry_count: 0,
+            retry_budget: 0,
+            last_failure_retryable: false,
+            lease_role: None,
+            lease_expires_at: None,
+            audit_seq: 0,
+            audit_trail: vec![],
+        }
+    }
     use ferros_profile::{CapabilityGrant, FileSystemProfileStore, ProfileDocument, ProfileId};
     use std::fs;
     use std::io::{Read, Write};
@@ -7246,6 +9899,107 @@ mod tests {
         assert_eq!(
             infer_dispatch_target("general software work order"),
             DispatchTarget::Software
+        );
+    }
+
+    #[test]
+    fn command_runtime_dispatch_selection_defaults_general_work_to_core() {
+        let runtime_plan = super::software_dispatch_runtime_plan()
+            .expect("software runtime plan should be available");
+        let subprocess_runtime_plan = single_command_runtime_plan(
+            AgentRuntime::Subprocess,
+            super::SoftwareExecutionTarget::Core,
+        );
+
+        assert_eq!(
+            super::infer_software_execution_target("general software work order", Some(&runtime_plan)),
+            Some(super::SoftwareExecutionTarget::Core)
+        );
+        assert_eq!(
+            super::infer_software_execution_target("route this through core", Some(&runtime_plan)),
+            Some(super::SoftwareExecutionTarget::Core)
+        );
+        assert_eq!(
+            super::infer_software_execution_target("route this through subcore", Some(&runtime_plan)),
+            Some(super::SoftwareExecutionTarget::Subcore)
+        );
+        assert!(
+            super::infer_software_execution_target(
+                "continue the ADR-025 x86_64 runtime seam",
+                Some(&runtime_plan),
+            ) == Some(super::SoftwareExecutionTarget::Subcore),
+            "ADR-025 x86_64 incubation work should favor SubCore"
+        );
+        assert!(
+            super::should_use_command_runtime_dispatch_backend(
+                &DispatchTarget::Software,
+                Some(&runtime_plan),
+                "general software work order",
+                true,
+            ),
+            "general software work should default to the Core coordinator lane"
+        );
+        assert!(
+            super::should_use_command_runtime_dispatch_backend(
+                &DispatchTarget::Software,
+                Some(&runtime_plan),
+                "route this through subcore",
+                true,
+            ),
+            "explicit subcore work should be eligible for coordinator SDK dispatch"
+        );
+        assert!(
+            super::should_use_command_runtime_dispatch_backend(
+                &DispatchTarget::Software,
+                Some(&runtime_plan),
+                "continue the ADR-025 x86_64 runtime seam",
+                true,
+            ),
+            "ADR-025 x86_64 incubation work should be eligible for SubCore coordinator dispatch"
+        );
+        assert!(
+            !super::should_use_command_runtime_dispatch_backend(
+                &DispatchTarget::Software,
+                Some(&runtime_plan),
+                "route this through core and subcore",
+                true,
+            ),
+            "conflicting explicit targets should still be rejected"
+        );
+        assert!(
+            !super::should_use_command_runtime_dispatch_backend(
+                &DispatchTarget::Software,
+                Some(&runtime_plan),
+                "route this through subcore",
+                false,
+            ),
+            "coordinator SDK dispatch must remain gated when disabled"
+        );
+        assert!(
+            super::should_use_command_runtime_dispatch_backend(
+                &DispatchTarget::Software,
+                Some(&subprocess_runtime_plan),
+                "general software work order",
+                false,
+            ),
+            "subprocess runtime targets should remain launchable without the coordinator SDK gate"
+        );
+
+        let (continuity_lane, continuity_target) = super::resolve_software_runtime_target(
+            "use the continuity agent to normalize the baton",
+            &runtime_plan,
+        )
+        .expect("continuity specialist should resolve from the checked-in runtime plan");
+        assert_eq!(continuity_lane, super::SoftwareExecutionTarget::Core);
+        assert_eq!(continuity_target.id, "ferros-coding-continuity");
+        assert!(
+            super::should_use_command_runtime_dispatch_backend(
+                &DispatchTarget::Software,
+                Some(&runtime_plan),
+                "use the continuity agent to normalize the baton",
+                false,
+            ),
+            "checked-in subprocess specialists should be dispatchable without the coordinator SDK gate"
         );
     }
 
@@ -7643,6 +10397,78 @@ mod tests {
     }
 
     #[test]
+    fn route_notification_open_after_reload_focuses_lifecycle_dispatch_context() {
+        let state_path = unique_state_path("route-notification-open-reload");
+        cleanup_state_path(&state_path);
+
+        let loaded = {
+            let mut state = MonitorState::default();
+            state
+                .configure_packet_store_backing(&state_path)
+                .expect("packet backing should configure");
+            let session = state.create_session(Some("Reloaded lifecycle alert".to_owned()));
+
+            let (result, ids) = state.dispatch_session_via_backend(
+                &session.id,
+                None,
+                DispatchTarget::Software,
+                &LifecycleRejectingBackend,
+                "route this through continuity",
+            );
+
+            assert!(!result.accepted);
+            assert!(ids.is_none());
+            super::persist_monitor_state_to(&state_path, &state)
+                .expect("monitor state should persist");
+
+            let mut loaded = super::load_monitor_state_from(&state_path)
+                .expect("persisted state should reload");
+            loaded.selected_chat_id = None;
+            loaded.selected_lifecycle_thread_id = None;
+            loaded
+        };
+
+        let expected_packet = loaded
+            .packets
+            .iter()
+            .find(|packet| packet.manager == "Software Architect")
+            .expect("reloaded state should contain the failed packet")
+            .clone();
+        let notification_id = loaded
+            .notifications
+            .iter()
+            .find(|notification| notification.packet_id.as_deref() == Some(expected_packet.id.as_str()))
+            .expect("reloaded state should retain the lifecycle notification")
+            .id
+            .clone();
+        let state = std::sync::Mutex::new(loaded);
+
+        let response = route_monitor_request_with_state(
+            "POST",
+            &format!("/monitor/notifications/{notification_id}/open"),
+            vec![],
+            &state,
+        )
+        .expect("notification open route should return a response");
+
+        assert_eq!(response.status_code, 200);
+        let snapshot: serde_json::Value =
+            serde_json::from_slice(&response.body).expect("body should be valid JSON");
+        assert_eq!(
+            snapshot["selectedChatId"].as_str(),
+            Some(expected_packet.session_id.as_str()),
+            "reloaded lifecycle notification should focus the linked session"
+        );
+        assert_eq!(
+            snapshot["selectedLifecycleThreadId"].as_str(),
+            expected_packet.lifecycle_thread_id.as_deref(),
+            "reloaded lifecycle notification should focus the linked lifecycle thread"
+        );
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
     fn route_notification_unknown_action_returns_400() {
         let state = make_state();
         let response = route_monitor_request_with_state(
@@ -7685,10 +10511,12 @@ mod tests {
         use super::{DispatchTarget, MonitorDispatchBackend};
 
         let backend = ScaffoldMonitorDispatchBackend;
+        let runtime_plan = super::software_dispatch_runtime_plan();
         let result = backend.handle_dispatch(
-            "chat-1",
-            "pkt-test",
+            &make_packet("pkt-test", "Software Architect", PacketState::Staged),
             &DispatchTarget::Software,
+            runtime_plan.as_ref(),
+            None,
             "build a thing",
         );
 
@@ -7920,6 +10748,134 @@ mod tests {
             logs,
             vec!["started:echo".to_string(), "stopped:echo".to_string()]
         );
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn orchestrator_cli_status_reports_mode_pause_and_queue_depth() {
+        let state_path = unique_state_path("orchestrator-cli-status");
+        let mut state = MonitorState::default();
+        state.orchestrator_mode = OrchestratorMode::Stub;
+        state.orchestrator_paused = true;
+        state
+            .configure_packet_store_backing(&state_path)
+            .expect("packet backing should configure");
+        state
+            .packets
+            .register_packet(make_packet(
+                "cli-status-1",
+                "Software Architect",
+                PacketState::DispatchedToManager,
+            ))
+            .expect("packet registration should succeed");
+        super::persist_monitor_state_to(&state_path, &state)
+            .expect("monitor state should persist");
+
+        let lines = super::execute_orchestrator_cli_with_state_path(
+            super::OrchestratorCliCommand::Status,
+            &state_path,
+        )
+        .expect("status should succeed");
+
+        assert!(lines.iter().any(|line| line == "mode: stub"));
+        assert!(lines.iter().any(|line| line == "paused: true"));
+        assert!(lines.iter().any(|line| line == "queue_depth: 1"));
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn orchestrator_cli_pause_and_resume_persist_state() {
+        let state_path = unique_state_path("orchestrator-cli-pause-resume");
+        let mut state = MonitorState::default();
+        state.orchestrator_mode = OrchestratorMode::Stub;
+        state
+            .configure_packet_store_backing(&state_path)
+            .expect("packet backing should configure");
+        super::persist_monitor_state_to(&state_path, &state)
+            .expect("monitor state should persist");
+
+        let pause_lines = super::execute_orchestrator_cli_with_state_path(
+            super::OrchestratorCliCommand::Pause { force: false },
+            &state_path,
+        )
+        .expect("pause should succeed");
+        assert!(pause_lines.iter().any(|line| line == "paused: true"));
+
+        let paused_state = super::load_monitor_state_from(&state_path)
+            .expect("paused state should load");
+        assert!(paused_state.orchestrator_paused);
+
+        let resume_lines = super::execute_orchestrator_cli_with_state_path(
+            super::OrchestratorCliCommand::Resume,
+            &state_path,
+        )
+        .expect("resume should succeed");
+        assert!(resume_lines.iter().any(|line| line == "paused: false"));
+
+        let resumed_state = super::load_monitor_state_from(&state_path)
+            .expect("resumed state should load");
+        assert!(!resumed_state.orchestrator_paused);
+
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn orchestrator_cli_inspect_and_requeue_failed_packet() {
+        let state_path = unique_state_path("orchestrator-cli-requeue");
+        let mut state = MonitorState::default();
+        state
+            .configure_packet_store_backing(&state_path)
+            .expect("packet backing should configure");
+        let mut packet = make_packet(
+            "cli-requeue-1",
+            "Software Architect",
+            PacketState::Failed,
+        );
+        packet.last_error = Some("transient failure".to_owned());
+        packet.last_failure_retryable = true;
+        packet.retry_budget = 2;
+        state
+            .packets
+            .register_packet(packet)
+            .expect("packet registration should succeed");
+        super::persist_monitor_state_to(&state_path, &state)
+            .expect("monitor state should persist");
+
+        let inspect_lines = super::execute_orchestrator_cli_with_state_path(
+            super::OrchestratorCliCommand::Inspect {
+                packet_id: "cli-requeue-1".to_owned(),
+            },
+            &state_path,
+        )
+        .expect("inspect should succeed");
+        assert!(inspect_lines
+            .iter()
+            .any(|line| line.contains("\"id\": \"cli-requeue-1\"")));
+
+        let requeue_lines = super::execute_orchestrator_cli_with_state_path(
+            super::OrchestratorCliCommand::Requeue {
+                packet_id: "cli-requeue-1".to_owned(),
+            },
+            &state_path,
+        )
+        .expect("requeue should succeed");
+        assert!(requeue_lines
+            .iter()
+            .any(|line| line == "state: dispatched_to_manager"));
+        assert!(requeue_lines
+            .iter()
+            .any(|line| line == "retry_count: 1"));
+
+        let reloaded = super::load_monitor_state_from(&state_path)
+            .expect("requeued state should load");
+        let packet = reloaded
+            .packet_by_id("cli-requeue-1")
+            .expect("packet should exist");
+        assert_eq!(packet.state, PacketState::DispatchedToManager);
+        assert_eq!(packet.retry_count, 1);
+        assert!(packet.last_error.is_none());
 
         cleanup_state_path(&state_path);
     }
@@ -8177,6 +11133,7 @@ mod tests {
                     profile_path.display()
                 ),
                 body: Vec::new(),
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -8321,6 +11278,7 @@ mod tests {
                     profile_path.display()
                 ),
                 body: Vec::new(),
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -9417,6 +12375,7 @@ mod tests {
                 method: "GET".to_owned(),
                 path: "/".to_owned(),
                 body: Vec::new(),
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -9522,6 +12481,7 @@ mod tests {
                 method: "POST".to_owned(),
                 path: "/rpc".to_owned(),
                 body: request_body,
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -9576,6 +12536,7 @@ mod tests {
                     profile_path.display()
                 ),
                 body: Vec::new(),
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -9631,6 +12592,7 @@ mod tests {
                 method: "POST".to_owned(),
                 path: "/profile".to_owned(),
                 body: init_body,
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -9667,6 +12629,7 @@ mod tests {
                 method: "POST".to_owned(),
                 path: "/profile".to_owned(),
                 body: show_body,
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -9721,6 +12684,7 @@ mod tests {
                 method: "POST".to_owned(),
                 path: "/profile".to_owned(),
                 body: export_body,
+                idempotency_key: None,
             },
             &state_path,
             &source_path,
@@ -9751,6 +12715,7 @@ mod tests {
                 method: "POST".to_owned(),
                 path: "/profile".to_owned(),
                 body: import_body,
+                idempotency_key: None,
             },
             &state_path,
             &source_path,
@@ -9800,6 +12765,7 @@ mod tests {
                 method: "POST".to_owned(),
                 path: "/profile".to_owned(),
                 body: request_body,
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -9844,6 +12810,7 @@ mod tests {
                 method: "GET".to_owned(),
                 path: "/harnesses/localhost-shell-acceptance.html".to_owned(),
                 body: Vec::new(),
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -9900,6 +12867,7 @@ mod tests {
                 method: "GET".to_owned(),
                 path: "/harnesses/localhost-shell-acceptance.html".to_owned(),
                 body: Vec::new(),
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -9911,6 +12879,7 @@ mod tests {
                 method: "GET".to_owned(),
                 path: "/harnesses/localhost-shell-acceptance-harness.html".to_owned(),
                 body: Vec::new(),
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -10214,6 +13183,7 @@ mod tests {
                 method: "GET".to_owned(),
                 path: "/missing".to_owned(),
                 body: Vec::new(),
+                idempotency_key: None,
             },
             &state_path,
             &profile_path,
@@ -10238,6 +13208,18 @@ mod tests {
             request.path,
             "/runway-summary.json?profilePath=%2Ftmp%2Fprofile.json"
         );
+    }
+
+    #[test]
+    fn parse_http_request_extracts_idempotency_key_header() {
+        let request = parse_http_request(
+            b"POST /orchestrator/packets HTTP/1.1\r\nHost: localhost\r\nIdempotency-Key: header-key-parse\r\n\r\n{}",
+        )
+        .expect("request should parse");
+
+        assert_eq!(request.method, "POST");
+        assert_eq!(request.path, "/orchestrator/packets");
+        assert_eq!(request.idempotency_key.as_deref(), Some("header-key-parse"));
     }
 
     #[test]
@@ -10340,6 +13322,7 @@ mod tests {
 
     fn cleanup_state_path(path: &Path) {
         let _ = fs::remove_file(path);
+        let _ = fs::remove_file(super::monitor_packet_store_path_for_state_path(path));
     }
 
     fn cleanup_parent_dir(path: &Path) {
@@ -10387,12 +13370,80 @@ mod tests {
 
     struct RejectingBackend;
 
+    struct LifecycleRejectingBackend;
+
+    struct LifecycleAcceptingBackend;
+
+    struct StubCommandRuntimeLauncher {
+        output: Result<String, super::CommandRuntimeLaunchFailure>,
+    }
+
+    fn sample_packet_execution_lifecycle_outcome(
+        kind: &str,
+        summary: &str,
+        stop_reason: &str,
+    ) -> PacketExecutionLifecycleOutcome {
+        PacketExecutionLifecycleOutcome {
+            kind: kind.to_owned(),
+            summary: summary.to_owned(),
+            work_order_id: Some("wo-123".to_owned()),
+            escalation_id: Some("esc-456".to_owned()),
+            target_agent_id: Some("ferros-coding-continuity".to_owned()),
+            stop_reason: Some(stop_reason.to_owned()),
+        }
+    }
+
+    impl super::CommandRuntimeLauncher for StubCommandRuntimeLauncher {
+        fn launch(
+            &self,
+            _runtime_target: &super::MonitorDispatchRuntimeTarget,
+            _packet: &super::CommandRuntimePacket,
+        ) -> Result<String, super::CommandRuntimeLaunchFailure> {
+            self.output.clone()
+        }
+    }
+
+    fn single_command_runtime_plan(
+        runtime: AgentRuntime,
+        execution_target: super::SoftwareExecutionTarget,
+    ) -> super::MonitorDispatchRuntimePlan {
+        let (id, display_name, plan_template) = match execution_target {
+            super::SoftwareExecutionTarget::Core => (
+                "ferros-core",
+                "FERROS Core Agent",
+                "core-runtime",
+            ),
+            super::SoftwareExecutionTarget::Subcore => (
+                "ferros-subcore",
+                "FERROS SubCore Agent",
+                "subcore-runtime",
+            ),
+        };
+
+        super::MonitorDispatchRuntimePlan {
+            targets: vec![super::MonitorDispatchRuntimeTarget {
+                id: id.to_owned(),
+                display_name: display_name.to_owned(),
+                runtime,
+                command: Some("ferros-runtime-worker".to_owned()),
+                args: vec!["--handoff".to_owned()],
+                env: std::collections::BTreeMap::new(),
+                plan_template: Some(plan_template.to_owned()),
+                route_target_stream: None,
+                route_target_family: None,
+                lifecycle_target_agent_id: None,
+                selection_tokens: Vec::new(),
+            }],
+        }
+    }
+
     impl MonitorDispatchBackend for RejectingBackend {
         fn handle_dispatch(
             &self,
-            _session_id: &str,
-            _packet_id: &str,
+            packet: &MonitorPacket,
             _target: &DispatchTarget,
+            _runtime_plan: Option<&super::MonitorDispatchRuntimePlan>,
+            _dispatch_context: Option<&super::MonitorDispatchPacketContext>,
             _operator_text: &str,
         ) -> MonitorDispatchBackendResult {
             MonitorDispatchBackendResult {
@@ -10401,6 +13452,81 @@ mod tests {
                 message: String::new(),
                 error: Some("test backend rejection".to_owned()),
                 ticket: None,
+                report: Some(PacketExecutionReport {
+                    packet_id: packet.id.clone(),
+                    summary: "test backend rejection".to_owned(),
+                    evidence_refs: vec![format!("rejecting://{}", packet.id)],
+                    disposition: PacketExecutionDisposition::PermanentFailure,
+                    lifecycle_outcome: None,
+                    lifecycle_errors: Vec::new(),
+                }),
+            }
+        }
+    }
+
+    impl MonitorDispatchBackend for LifecycleRejectingBackend {
+        fn handle_dispatch(
+            &self,
+            packet: &MonitorPacket,
+            _target: &DispatchTarget,
+            _runtime_plan: Option<&super::MonitorDispatchRuntimePlan>,
+            _dispatch_context: Option<&super::MonitorDispatchPacketContext>,
+            _operator_text: &str,
+        ) -> MonitorDispatchBackendResult {
+            MonitorDispatchBackendResult {
+                accepted: false,
+                backend: "lifecycle-rejecting".to_owned(),
+                message: String::new(),
+                error: Some("continuity relay requires human intervention".to_owned()),
+                ticket: None,
+                report: Some(PacketExecutionReport {
+                    packet_id: packet.id.clone(),
+                    summary: "continuity relay requires human intervention".to_owned(),
+                    evidence_refs: vec![format!("lifecycle-rejecting://{}", packet.id)],
+                    disposition: PacketExecutionDisposition::PermanentFailure,
+                    lifecycle_outcome: Some(sample_packet_execution_lifecycle_outcome(
+                        "handoff_blocked",
+                        "continuity relay blocked pending baton repair",
+                        "missing-baton",
+                    )),
+                    lifecycle_errors: vec![
+                        "missing baton packet".to_owned(),
+                        "operator approval required".to_owned(),
+                    ],
+                }),
+            }
+        }
+    }
+
+    impl MonitorDispatchBackend for LifecycleAcceptingBackend {
+        fn handle_dispatch(
+            &self,
+            packet: &MonitorPacket,
+            _target: &DispatchTarget,
+            _runtime_plan: Option<&super::MonitorDispatchRuntimePlan>,
+            _dispatch_context: Option<&super::MonitorDispatchPacketContext>,
+            _operator_text: &str,
+        ) -> MonitorDispatchBackendResult {
+            MonitorDispatchBackendResult {
+                accepted: true,
+                backend: "lifecycle-accepting".to_owned(),
+                message: "accepted with lifecycle outcome".to_owned(),
+                error: None,
+                ticket: Some(super::BackendTicket {
+                    external_ref: format!("lifecycle-accepting://{}", packet.id),
+                }),
+                report: Some(PacketExecutionReport {
+                    packet_id: packet.id.clone(),
+                    summary: "continuity baton accepted".to_owned(),
+                    evidence_refs: vec![format!("lifecycle-accepting://{}", packet.id)],
+                    disposition: PacketExecutionDisposition::Completed,
+                    lifecycle_outcome: Some(sample_packet_execution_lifecycle_outcome(
+                        "continuity_handoff",
+                        "continuity baton accepted",
+                        "baton-normalized",
+                    )),
+                    lifecycle_errors: Vec::new(),
+                }),
             }
         }
     }
@@ -10478,8 +13604,14 @@ mod tests {
     #[test]
     fn scaffold_backend_returns_ticket_with_packet_scoped_external_ref() {
         let backend = ScaffoldMonitorDispatchBackend;
-        let result =
-            backend.handle_dispatch("session-abc", "pkt-42", &DispatchTarget::Software, "");
+        let runtime_plan = super::software_dispatch_runtime_plan();
+        let result = backend.handle_dispatch(
+            &make_packet("pkt-42", "Software Architect", PacketState::Staged),
+            &DispatchTarget::Software,
+            runtime_plan.as_ref(),
+            None,
+            "",
+        );
         assert!(result.accepted, "scaffold backend must always accept");
         let ticket = result
             .ticket
@@ -10488,6 +13620,775 @@ mod tests {
             ticket.external_ref, "scaffold:pkt-42",
             "external_ref must be scaffold:{{packet_id}}"
         );
+        let report = result
+            .report
+            .expect("software scaffold backend should emit a packet execution report");
+        assert_eq!(report.packet_id, "pkt-42");
+        assert_eq!(report.disposition, PacketExecutionDisposition::Completed);
+        assert!(
+            report.evidence_refs.contains(&"scaffold-exec:pkt-42".to_owned()),
+            "execution report must retain scaffold evidence ref"
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"runtime-plan:coordinator_sdk:ferros-core".to_owned()),
+            "execution report should surface core runtime plan evidence"
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"runtime-plan:coordinator_sdk:ferros-subcore".to_owned()),
+            "execution report should surface subcore runtime plan evidence"
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"runtime-plan:subprocess:ferros-coding-continuity".to_owned()),
+            "execution report should surface continuity subprocess runtime plan evidence"
+        );
+    }
+
+    #[test]
+    fn software_dispatch_runtime_plan_surfaces_manifest_execution_targets() {
+        let runtime_plan = super::software_dispatch_runtime_plan()
+            .expect("software runtime plan should be derivable from manifest metadata");
+
+        let core = runtime_plan
+            .targets
+            .iter()
+            .find(|target| target.id == "ferros-core")
+            .expect("software runtime plan should include ferros-core target");
+        assert_eq!(core.runtime, AgentRuntime::CoordinatorSdk);
+        assert_eq!(core.command.as_deref(), Some("npm"));
+        assert_eq!(
+            core.args,
+            vec![
+                "--prefix".to_owned(),
+                "coordinator".to_owned(),
+                "run".to_owned(),
+                "handoff".to_owned(),
+                "--".to_owned(),
+                "--target".to_owned(),
+                "core".to_owned(),
+            ]
+        );
+        assert_eq!(
+            core.env.get("FERROS_COORDINATOR_LOG_LEVEL").map(String::as_str),
+            Some("error")
+        );
+        assert_eq!(
+            core.env
+                .get("FERROS_COORDINATOR_CAPTURE_EVENTS")
+                .map(String::as_str),
+            Some("false")
+        );
+        assert_eq!(
+            core.env
+                .get("FERROS_COMMAND_RUNTIME_TIMEOUT_MS")
+                .map(String::as_str),
+            Some("30000")
+        );
+        assert_eq!(core.plan_template.as_deref(), Some("core-runtime"));
+
+        let subcore = runtime_plan
+            .targets
+            .iter()
+            .find(|target| target.id == "ferros-subcore")
+            .expect("software runtime plan should include ferros-subcore target");
+        assert_eq!(subcore.runtime, AgentRuntime::CoordinatorSdk);
+        assert_eq!(subcore.command.as_deref(), Some("npm"));
+        assert_eq!(
+            subcore.args,
+            vec![
+                "--prefix".to_owned(),
+                "coordinator".to_owned(),
+                "run".to_owned(),
+                "handoff".to_owned(),
+                "--".to_owned(),
+                "--target".to_owned(),
+                "subcore".to_owned(),
+            ]
+        );
+        assert_eq!(
+            subcore.env.get("FERROS_COORDINATOR_LOG_LEVEL").map(String::as_str),
+            Some("error")
+        );
+        assert_eq!(
+            subcore
+                .env
+                .get("FERROS_COORDINATOR_CAPTURE_EVENTS")
+                .map(String::as_str),
+            Some("false")
+        );
+        assert_eq!(
+            subcore
+                .env
+                .get("FERROS_COMMAND_RUNTIME_TIMEOUT_MS")
+                .map(String::as_str),
+            Some("30000")
+        );
+        assert_eq!(subcore.plan_template.as_deref(), Some("subcore-runtime"));
+
+        let continuity = runtime_plan
+            .targets
+            .iter()
+            .find(|target| target.id == "ferros-coding-continuity")
+            .expect("software runtime plan should include ferros-coding-continuity target");
+        assert_eq!(continuity.runtime, AgentRuntime::Subprocess);
+        assert_eq!(continuity.command.as_deref(), Some("npm"));
+        assert_eq!(
+            continuity.args,
+            vec![
+                "--prefix".to_owned(),
+                "coordinator".to_owned(),
+                "run".to_owned(),
+                "subprocess-runtime".to_owned(),
+                "--".to_owned(),
+                "--agent".to_owned(),
+                "ferros-coding-continuity".to_owned(),
+            ]
+        );
+        assert_eq!(
+            continuity
+                .env
+                .get("FERROS_COMMAND_RUNTIME_TIMEOUT_MS")
+                .map(String::as_str),
+            Some("30000")
+        );
+        assert_eq!(continuity.plan_template.as_deref(), Some("continuity-runtime"));
+        assert_eq!(continuity.selection_tokens, vec!["continuity".to_owned(), "baton".to_owned()]);
+        assert_eq!(continuity.route_target_stream, None);
+        assert_eq!(continuity.route_target_family.as_deref(), Some("coding"));
+        assert_eq!(
+            continuity.lifecycle_target_agent_id.as_deref(),
+            Some("ferros-coding-continuity")
+        );
+    }
+
+    #[test]
+    fn coordinator_handoff_packet_builder_uses_monitor_packet_context() {
+        let runtime_plan = super::software_dispatch_runtime_plan()
+            .expect("software runtime plan should be derivable from manifest metadata");
+        let subcore_target = runtime_plan
+            .targets
+            .iter()
+            .find(|target| target.id == "ferros-subcore")
+            .expect("runtime plan should include subcore target");
+        let mut packet = make_packet("pkt-77", "Software Architect", PacketState::Staged);
+        packet.work_order_id = Some("wo-77".to_owned());
+        packet.lifecycle_thread_id = Some("thread-77".to_owned());
+        let dispatch_context = super::MonitorDispatchPacketContext {
+            session_label: Some("Software handoff session".to_owned()),
+            origin_message_id: Some("msg-77".to_owned()),
+            origin_message_text: Some("continue the ADR-025 seam".to_owned()),
+            lifecycle_thread: Some(MonitorLifecycleThread {
+                id: "thread-77".to_owned(),
+                title: "Software Architect packet wo-77".to_owned(),
+                kind: "packet".to_owned(),
+                status: "dispatched_to_manager".to_owned(),
+                owner_agent: "Software Architect".to_owned(),
+                source_agent_id: Some("FERROS Agent".to_owned()),
+                target_agent_id: Some("Software Architect".to_owned()),
+                work_order_id: Some("wo-77".to_owned()),
+                escalation_id: Some("esc-77".to_owned()),
+                created_at: "2026-01-01T00:00:00Z".to_owned(),
+                updated_at: "2026-01-01T00:00:00Z".to_owned(),
+                entries: vec![],
+            }),
+        };
+
+        let handoff_packet = super::build_command_runtime_packet(
+            &packet,
+            "route this through subcore",
+            super::SoftwareExecutionTarget::Subcore,
+            subcore_target,
+            Some(&dispatch_context),
+        );
+
+        assert_eq!(handoff_packet.route_token.target_stream.as_deref(), Some("subcore"));
+        assert_eq!(
+            handoff_packet.route_token.run_profile.as_deref(),
+            Some("subcore-runtime")
+        );
+        assert!(handoff_packet.route_token.run_id.starts_with("FRS-subcore-"));
+        assert!(
+            handoff_packet.route_token.parent_run_id == "monitor:test-session:msg-77",
+            "parent run id should preserve monitor message lineage"
+        );
+        assert_eq!(
+            handoff_packet.metadata.lifecycle_contract.work_order_id,
+            "wo-77"
+        );
+        assert_eq!(
+            handoff_packet.metadata.lifecycle_contract.cycle_id,
+            "thread-77"
+        );
+        assert_eq!(
+            handoff_packet.metadata.lifecycle_contract.source_agent_id,
+            "FERROS Agent"
+        );
+        assert_eq!(
+            handoff_packet.metadata.lifecycle_contract.owner_agent_id,
+            "Software Architect"
+        );
+        assert_eq!(
+            handoff_packet.metadata.lifecycle_contract.escalation_id,
+            "esc-77"
+        );
+        assert_eq!(
+            handoff_packet.metadata.lifecycle_contract.target_agent_id,
+            "subcore"
+        );
+        let execution_context = handoff_packet
+            .metadata
+            .execution_context
+            .as_ref()
+            .expect("execution lineage should be embedded in command runtime metadata");
+        assert_eq!(execution_context.source_kind, "monitor");
+        assert_eq!(execution_context.manager_agent_id, "Software Architect");
+        assert_eq!(execution_context.session_label.as_deref(), Some("Software handoff session"));
+        assert_eq!(execution_context.lifecycle_thread_id.as_deref(), Some("thread-77"));
+        assert_eq!(execution_context.origin_message_id.as_deref(), Some("msg-77"));
+        assert_eq!(
+            execution_context.origin_message_text.as_deref(),
+            Some("continue the ADR-025 seam")
+        );
+        assert!(
+            handoff_packet.prompt.contains("Source request: continue the ADR-025 seam"),
+            "origin message text should be preserved in the coordinator prompt"
+        );
+        assert!(
+            handoff_packet.prompt.contains("route this through subcore"),
+            "operator text should be preserved in the synthesized coordinator prompt"
+        );
+    }
+
+    #[test]
+    fn command_runtime_packet_builder_uses_specialist_route_metadata() {
+        let runtime_plan = super::software_dispatch_runtime_plan()
+            .expect("software runtime plan should be derivable from manifest metadata");
+        let continuity_target = runtime_plan
+            .targets
+            .iter()
+            .find(|target| target.id == "ferros-coding-continuity")
+            .expect("runtime plan should include continuity target");
+        let packet = make_packet("pkt-cty", "Software Architect", PacketState::Staged);
+
+        let handoff_packet = super::build_command_runtime_packet(
+            &packet,
+            "use the continuity agent to normalize the baton",
+            super::SoftwareExecutionTarget::Core,
+            continuity_target,
+            None,
+        );
+
+        assert_eq!(handoff_packet.route_token.target_stream, None);
+        assert_eq!(
+            handoff_packet.route_token.target_family.as_deref(),
+            Some("coding")
+        );
+        assert!(
+            handoff_packet
+                .route_token
+                .run_id
+                .starts_with("FRS-ferros_coding_continuity-"),
+            "specialist runtime packets should derive their run id from registry metadata"
+        );
+        assert_eq!(
+            handoff_packet.metadata.lifecycle_contract.target_agent_id,
+            "ferros-coding-continuity"
+        );
+    }
+
+    #[test]
+    fn dispatch_packet_context_reads_session_message_and_thread_lineage() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Lineage session".to_owned()));
+        let origin_message_id = state
+            .add_message(
+                &session.id,
+                MonitorMessageRequest {
+                    speaker: "user".to_owned(),
+                    who: "Human".to_owned(),
+                    text: "please route this through core".to_owned(),
+                },
+            )
+            .expect("message should be recorded");
+        let (packet_id, _, thread_id) = state
+            .dispatch_session_to_manager(
+                &session.id,
+                Some(origin_message_id.clone()),
+                DispatchTarget::Software,
+                None,
+            )
+            .expect("dispatch should stage a packet");
+        let packet = state
+            .packet_by_id(&packet_id)
+            .cloned()
+            .expect("staged packet should be present");
+
+        let context = state.dispatch_packet_context(&packet);
+
+        assert_eq!(context.session_label.as_deref(), Some("Lineage session"));
+        assert_eq!(context.origin_message_id.as_deref(), Some(origin_message_id.as_str()));
+        assert_eq!(
+            context.origin_message_text.as_deref(),
+            Some("please route this through core")
+        );
+        assert_eq!(
+            context
+                .lifecycle_thread
+                .as_ref()
+                .map(|thread| thread.id.as_str()),
+            Some(thread_id.as_str())
+        );
+        assert_eq!(
+            context
+                .lifecycle_thread
+                .as_ref()
+                .and_then(|thread| thread.work_order_id.as_deref()),
+            packet.work_order_id.as_deref()
+        );
+    }
+
+    #[test]
+    fn coordinator_sdk_backend_returns_ticket_and_report_for_explicit_subcore_target() {
+        use super::{DispatchTarget, MonitorDispatchBackend};
+
+        let runtime_plan = super::software_dispatch_runtime_plan()
+            .expect("software runtime plan should be derivable from manifest metadata");
+        let backend = super::CommandRuntimeMonitorDispatchBackend::new(StubCommandRuntimeLauncher {
+            output: Ok(
+                serde_json::json!({
+                    "classification": "execution-return-subcore",
+                    "parentRunId": "FRS-software-20260101-C1-W77",
+                    "response": "subcore complete",
+                    "lifecycleOutcome": {
+                        "kind": "report",
+                        "summary": "subcore lane completed"
+                    }
+                })
+                .to_string(),
+            ),
+        });
+
+        let result = backend.handle_dispatch(
+            &make_packet("pkt-77", "Software Architect", PacketState::Staged),
+            &DispatchTarget::Software,
+            Some(&runtime_plan),
+            None,
+            "route this through subcore",
+        );
+
+        assert!(result.accepted, "coordinator backend should accept explicit subcore work");
+        assert_eq!(result.backend, "coordinator.sdk");
+        assert_eq!(
+            result.ticket.as_ref().map(|ticket| ticket.external_ref.as_str()),
+            Some("coordinator-sdk:subcore:pkt-77")
+        );
+        let report = result
+            .report
+            .expect("coordinator backend should return an execution report");
+        assert_eq!(report.packet_id, "pkt-77");
+        assert_eq!(report.summary, "subcore lane completed");
+        assert_eq!(report.disposition, PacketExecutionDisposition::Completed);
+        assert!(report.lifecycle_errors.is_empty());
+        assert_eq!(
+            report.lifecycle_outcome.as_ref().map(|outcome| outcome.kind.as_str()),
+            Some("report")
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"coordinator-classification:execution-return-subcore".to_owned())
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"coordinator-parent-run:FRS-software-20260101-C1-W77".to_owned())
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"coordinator-outcome-kind:report".to_owned())
+        );
+    }
+
+    #[test]
+    fn command_runtime_backend_surfaces_lifecycle_contract_error_details() {
+        use super::{DispatchTarget, MonitorDispatchBackend};
+
+        let runtime_plan = super::software_dispatch_runtime_plan()
+            .expect("software runtime plan should be derivable from manifest metadata");
+        let backend = super::CommandRuntimeMonitorDispatchBackend::new(StubCommandRuntimeLauncher {
+            output: Ok(
+                serde_json::json!({
+                    "error": "Lifecycle stop contract failed",
+                    "failedChecks": ["execution_lifecycle_contract"],
+                    "details": {
+                        "errors": [
+                            "Lifecycle outcome 'denied' is not allowed by the packet stop contract"
+                        ],
+                        "lifecycleOutcome": {
+                            "kind": "denied",
+                            "summary": "policy blocked"
+                        },
+                        "lifecycleErrors": [
+                            "Denied outcome is outside the declared stop contract"
+                        ]
+                    }
+                })
+                .to_string(),
+            ),
+        });
+
+        let result = backend.handle_dispatch(
+            &make_packet("pkt-err-1", "Software Architect", PacketState::Staged),
+            &DispatchTarget::Software,
+            Some(&runtime_plan),
+            None,
+            "route this through core",
+        );
+
+        assert!(!result.accepted);
+        let error = result.error.expect("backend should surface coordinator error details");
+        assert!(error.contains("Lifecycle stop contract failed"));
+        assert!(error.contains("execution_lifecycle_contract"));
+        assert!(error.contains("Lifecycle outcome 'denied' is not allowed by the packet stop contract"));
+        assert!(error.contains("Denied outcome is outside the declared stop contract"));
+        assert!(error.contains("lifecycle outcome: denied - policy blocked"));
+        let report = result
+            .report
+            .expect("backend should return a structured failure report");
+        assert_eq!(report.disposition, PacketExecutionDisposition::PermanentFailure);
+        assert_eq!(
+            report.lifecycle_outcome.as_ref().map(|outcome| outcome.kind.as_str()),
+            Some("denied")
+        );
+        assert_eq!(
+            report.lifecycle_errors,
+            vec!["Denied outcome is outside the declared stop contract".to_owned()]
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"coordinator-failed-check:execution_lifecycle_contract".to_owned())
+        );
+    }
+
+    #[test]
+    fn command_runtime_backend_returns_retryable_failure_report_for_launcher_error() {
+        use super::{DispatchTarget, MonitorDispatchBackend};
+
+        let runtime_plan = super::software_dispatch_runtime_plan()
+            .expect("software runtime plan should be derivable from manifest metadata");
+        let backend = super::CommandRuntimeMonitorDispatchBackend::new(StubCommandRuntimeLauncher {
+            output: Err(super::CommandRuntimeLaunchFailure {
+                summary: "failed to start command runtime process: resource temporarily unavailable"
+                    .to_owned(),
+                evidence_refs: vec!["command-runtime-launch:spawn-failed".to_owned()],
+                disposition: PacketExecutionDisposition::RetryableFailure,
+            }),
+        });
+
+        let result = backend.handle_dispatch(
+            &make_packet("pkt-launch-1", "Software Architect", PacketState::Staged),
+            &DispatchTarget::Software,
+            Some(&runtime_plan),
+            None,
+            "route this through core",
+        );
+
+        assert!(!result.accepted);
+        assert_eq!(result.backend, "coordinator.sdk");
+        assert_eq!(
+            result.error.as_deref(),
+            Some("failed to start command runtime process: resource temporarily unavailable")
+        );
+        let report = result
+            .report
+            .expect("launcher failure should return a structured failure report");
+        assert_eq!(report.disposition, PacketExecutionDisposition::RetryableFailure);
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"command-runtime-launch:spawn-failed".to_owned())
+        );
+    }
+
+    #[test]
+    fn command_runtime_process_launcher_times_out_long_running_process() {
+        use super::CommandRuntimeLauncher;
+
+        let runtime_target = super::MonitorDispatchRuntimeTarget {
+            id: "timeout-test".to_owned(),
+            display_name: "Timeout Test Runtime".to_owned(),
+            runtime: AgentRuntime::Subprocess,
+            command: Some("sh".to_owned()),
+            args: vec![
+                "-c".to_owned(),
+                "cat >/dev/null; sleep 1; printf '{\"classification\":\"late\",\"parentRunId\":\"timeout-parent\",\"response\":\"late\"}'"
+                    .to_owned(),
+            ],
+            env: std::collections::BTreeMap::from([(
+                "FERROS_COMMAND_RUNTIME_TIMEOUT_MS".to_owned(),
+                "10".to_owned(),
+            )]),
+            plan_template: Some("timeout-runtime".to_owned()),
+            route_target_stream: Some("core".to_owned()),
+            route_target_family: None,
+            lifecycle_target_agent_id: Some("ferros-core".to_owned()),
+            selection_tokens: Vec::new(),
+        };
+        let packet = super::build_command_runtime_packet(
+            &make_packet("pkt-timeout-1", "Software Architect", PacketState::Staged),
+            "route this through core",
+            super::SoftwareExecutionTarget::Core,
+            &runtime_target,
+            None,
+        );
+
+        let error = super::CommandRuntimeProcessLauncher
+            .launch(&runtime_target, &packet)
+            .expect_err("launcher should time out long-running command runtime processes");
+
+        assert_eq!(error.disposition, PacketExecutionDisposition::RetryableFailure);
+        assert!(error.summary.contains("timed out after"));
+        assert!(
+            error
+                .evidence_refs
+                .contains(&"command-runtime-launch:timeout".to_owned())
+        );
+    }
+
+    #[test]
+    fn coordinator_sdk_backend_defaults_general_software_work_to_core() {
+        use super::{DispatchTarget, MonitorDispatchBackend};
+
+        let runtime_plan = super::software_dispatch_runtime_plan()
+            .expect("software runtime plan should be derivable from manifest metadata");
+        let backend = super::CommandRuntimeMonitorDispatchBackend::new(StubCommandRuntimeLauncher {
+            output: Ok(
+                serde_json::json!({
+                    "classification": "execution-return-core",
+                    "parentRunId": "monitor:test-session:msg-88",
+                    "response": "core complete",
+                    "lifecycleOutcome": {
+                        "kind": "report",
+                        "summary": "core lane completed"
+                    }
+                })
+                .to_string(),
+            ),
+        });
+
+        let result = backend.handle_dispatch(
+            &make_packet("pkt-88", "Software Architect", PacketState::Staged),
+            &DispatchTarget::Software,
+            Some(&runtime_plan),
+            None,
+            "general software work order",
+        );
+
+        assert!(result.accepted, "coordinator backend should accept general software work");
+        assert_eq!(result.backend, "coordinator.sdk");
+        assert_eq!(
+            result.ticket.as_ref().map(|ticket| ticket.external_ref.as_str()),
+            Some("coordinator-sdk:core:pkt-88")
+        );
+        let report = result
+            .report
+            .expect("coordinator backend should return an execution report");
+        assert_eq!(report.packet_id, "pkt-88");
+        assert_eq!(report.summary, "core lane completed");
+        assert_eq!(report.disposition, PacketExecutionDisposition::Completed);
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"coordinator-classification:execution-return-core".to_owned())
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"coordinator-parent-run:monitor:test-session:msg-88".to_owned())
+        );
+    }
+
+    #[test]
+    fn subprocess_runtime_backend_returns_ticket_and_report_for_general_core_work() {
+        use super::{DispatchTarget, MonitorDispatchBackend};
+
+        let runtime_plan = single_command_runtime_plan(
+            AgentRuntime::Subprocess,
+            super::SoftwareExecutionTarget::Core,
+        );
+        let backend = super::CommandRuntimeMonitorDispatchBackend::new(StubCommandRuntimeLauncher {
+            output: Ok(
+                serde_json::json!({
+                    "classification": "execution-return-core",
+                    "parentRunId": "monitor:test-session:msg-99",
+                    "response": "subprocess core complete",
+                    "lifecycleOutcome": {
+                        "kind": "report",
+                        "summary": "subprocess core lane completed"
+                    }
+                })
+                .to_string(),
+            ),
+        });
+
+        let result = backend.handle_dispatch(
+            &make_packet("pkt-99", "Software Architect", PacketState::Staged),
+            &DispatchTarget::Software,
+            Some(&runtime_plan),
+            None,
+            "general software work order",
+        );
+
+        assert!(result.accepted, "subprocess backend should accept general software work");
+        assert_eq!(result.backend, "runtime.subprocess");
+        assert_eq!(
+            result.ticket.as_ref().map(|ticket| ticket.external_ref.as_str()),
+            Some("subprocess:core:pkt-99")
+        );
+        let report = result
+            .report
+            .expect("subprocess backend should return an execution report");
+        assert_eq!(report.packet_id, "pkt-99");
+        assert_eq!(report.summary, "subprocess core lane completed");
+        assert_eq!(report.disposition, PacketExecutionDisposition::Completed);
+        assert!(report.lifecycle_errors.is_empty());
+        assert_eq!(
+            report.lifecycle_outcome.as_ref().map(|outcome| outcome.kind.as_str()),
+            Some("report")
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"runtime-plan:subprocess:ferros-core".to_owned())
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"subprocess-classification:execution-return-core".to_owned())
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"subprocess-parent-run:monitor:test-session:msg-99".to_owned())
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"subprocess-outcome-kind:report".to_owned())
+        );
+    }
+
+    #[test]
+    fn subprocess_runtime_backend_selects_checked_in_continuity_target() {
+        use super::{DispatchTarget, MonitorDispatchBackend};
+
+        let runtime_plan = super::software_dispatch_runtime_plan()
+            .expect("software runtime plan should be derivable from manifest metadata");
+        let backend = super::CommandRuntimeMonitorDispatchBackend::new(StubCommandRuntimeLauncher {
+            output: Ok(
+                serde_json::json!({
+                    "classification": "subprocess-continuity",
+                    "parentRunId": "monitor:test-session:msg-101",
+                    "response": "continuity subprocess complete",
+                    "lifecycleOutcome": {
+                        "kind": "report",
+                        "summary": "continuity baton normalized"
+                    }
+                })
+                .to_string(),
+            ),
+        });
+
+        let result = backend.handle_dispatch(
+            &make_packet("pkt-101", "Software Architect", PacketState::Staged),
+            &DispatchTarget::Software,
+            Some(&runtime_plan),
+            None,
+            "use the continuity agent to normalize the baton",
+        );
+
+        assert!(
+            result.accepted,
+            "checked-in continuity subprocess target should be dispatchable"
+        );
+        assert_eq!(result.backend, "runtime.subprocess");
+        assert_eq!(
+            result.ticket.as_ref().map(|ticket| ticket.external_ref.as_str()),
+            Some("subprocess:core:pkt-101")
+        );
+        assert!(
+            result.message.contains("FERROS Coding Continuity Agent"),
+            "backend message should name the selected specialist runtime target"
+        );
+        let report = result
+            .report
+            .expect("continuity subprocess backend should return an execution report");
+        assert_eq!(report.packet_id, "pkt-101");
+        assert_eq!(report.summary, "continuity baton normalized");
+        assert_eq!(report.disposition, PacketExecutionDisposition::Completed);
+        assert!(report.lifecycle_errors.is_empty());
+        assert_eq!(
+            report
+                .lifecycle_outcome
+                .as_ref()
+                .map(|outcome| outcome.summary.as_str()),
+            Some("continuity baton normalized")
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"runtime-plan:subprocess:ferros-coding-continuity".to_owned())
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"selected-runtime-target:ferros-coding-continuity".to_owned())
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"subprocess-classification:subprocess-continuity".to_owned())
+        );
+        assert!(
+            report
+                .evidence_refs
+                .contains(&"subprocess-parent-run:monitor:test-session:msg-101".to_owned())
+        );
+    }
+
+    #[test]
+    fn specialist_runtime_selection_requires_explicit_selection_tokens() {
+        let mut runtime_plan =
+            single_command_runtime_plan(AgentRuntime::Subprocess, super::SoftwareExecutionTarget::Core);
+        runtime_plan.targets.push(super::MonitorDispatchRuntimeTarget {
+            id: "ferros-baton-normalizer".to_owned(),
+            display_name: "FERROS Baton Normalizer Agent".to_owned(),
+            runtime: AgentRuntime::Subprocess,
+            command: Some("npm".to_owned()),
+            args: vec!["run".to_owned(), "subprocess-runtime".to_owned()],
+            env: std::collections::BTreeMap::new(),
+            plan_template: Some("baton-normalizer-runtime".to_owned()),
+            route_target_stream: None,
+            route_target_family: Some("coding".to_owned()),
+            lifecycle_target_agent_id: Some("ferros-baton-normalizer".to_owned()),
+            selection_tokens: Vec::new(),
+        });
+
+        let (lane, target) = super::resolve_software_runtime_target(
+            "route this through the baton normalizer runtime",
+            &runtime_plan,
+        )
+        .expect("primary runtime target should still resolve");
+
+        assert_eq!(lane, super::SoftwareExecutionTarget::Core);
+        assert_eq!(target.id, "ferros-core");
     }
 
     #[test]
@@ -10510,16 +14411,203 @@ mod tests {
             .expect("packet must exist after dispatch");
         // Packet must have been transitioned Staged → DispatchedToManager.
         assert_eq!(pkt.state, PacketState::DispatchedToManager);
-        // Audit trail must carry one entry for the Staged → DispatchedToManager transition.
+        // Audit trail carries the transition plus an appended execution-evidence entry.
         assert_eq!(
             pkt.audit_trail.len(),
-            1,
-            "one audit entry for Staged → DispatchedToManager"
+            2,
+            "transition plus execution evidence append should both be recorded"
         );
         let entry = &pkt.audit_trail[0];
         assert_eq!(entry.from, PacketState::Staged);
         assert_eq!(entry.to, PacketState::DispatchedToManager);
         assert_eq!(entry.actor, "scaffold-backend");
+    }
+
+    #[test]
+    fn first_software_manager_tick_creates_child_packet_and_relays_back_to_ferros() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        let session_id = {
+            let response = route_monitor_request_with_state(
+                "POST",
+                "/monitor/sessions",
+                body(serde_json::json!({})),
+                &state,
+            )
+            .expect("create session should return a response");
+            let session: serde_json::Value =
+                serde_json::from_slice(&response.body).expect("body should be valid JSON");
+            session["id"]
+                .as_str()
+                .expect("session id should be a string")
+                .to_owned()
+        };
+
+        let parent_packet_id = {
+            let response = route_monitor_request_with_state(
+                "POST",
+                &format!("/monitor/sessions/{session_id}/messages"),
+                body(serde_json::json!({
+                    "speaker": "user",
+                    "who": "Operator",
+                    "text": "please route to core"
+                })),
+                &state,
+            )
+            .expect("send message should return a response");
+            assert_eq!(response.status_code, 200);
+
+            let mut guard = state.lock().unwrap();
+            guard.orchestrator_mode = OrchestratorMode::Stub;
+            let parent = guard
+                .packets
+                .iter()
+                .find(|packet| packet.session_id == session_id && packet.manager == "Software Architect")
+                .expect("software dispatch should create a parent packet");
+
+            assert_eq!(
+                parent
+                    .last_lifecycle_outcome
+                    .as_ref()
+                    .map(|outcome| outcome.kind.as_str()),
+                Some(super::CHILD_DISPATCH_PREPARED_OUTCOME_KIND)
+            );
+            assert_eq!(
+                parent
+                    .last_lifecycle_outcome
+                    .as_ref()
+                    .and_then(|outcome| outcome.target_agent_id.as_deref()),
+                Some("ferros-core")
+            );
+
+            parent.id.clone()
+        };
+
+        let tick_response =
+            route_monitor_request_with_state("POST", "/orchestrator/tick", vec![], &state)
+                .expect("tick route should return a response");
+        assert_eq!(tick_response.status_code, 200);
+
+        let guard = state.lock().unwrap();
+        let parent = guard
+            .packet_by_id(&parent_packet_id)
+            .expect("parent packet should exist after tick");
+        assert_eq!(parent.state, PacketState::AwaitingReview);
+
+        let child = guard
+            .packets
+            .iter()
+            .find(|packet| packet.parent_packet_id.as_deref() == Some(parent_packet_id.as_str()))
+            .expect("first manager tick should create a child packet");
+        let child_packet_id = child.id.clone();
+        let child_work_order_id = child
+            .work_order_id
+            .clone()
+            .expect("child packet should have a work order id");
+        assert_eq!(child.manager, "FERROS Core Agent");
+        assert_eq!(child.state, PacketState::Resolved);
+
+        let parent_thread = guard
+            .lifecycle_threads
+            .iter()
+            .find(|thread| thread.id == parent.lifecycle_thread_id.clone().unwrap_or_default())
+            .expect("parent lifecycle thread should exist");
+        assert!(parent_thread.entries.iter().any(|entry| {
+            entry.who == "Software Architect" && entry.text.contains("Dispatching child packet")
+        }));
+        assert!(parent_thread.entries.iter().any(|entry| {
+            entry.who == "Software Architect" && entry.text.contains("Relaying completion back to FERROS Agent")
+        }));
+        assert!(parent_thread.entries.iter().any(|entry| {
+            entry.who == "FERROS Agent" && entry.text.contains("FERROS Core Agent completed child packet")
+        }));
+
+        let child_thread = guard
+            .lifecycle_threads
+            .iter()
+            .find(|thread| thread.id == child.lifecycle_thread_id.clone().unwrap_or_default())
+            .expect("child lifecycle thread should exist");
+        assert_eq!(child_thread.source_agent_id.as_deref(), Some("Software Architect"));
+        assert_eq!(child_thread.target_agent_id.as_deref(), Some("FERROS Core Agent"));
+        assert!(child_thread.entries.iter().any(|entry| {
+            entry.who == "FERROS Core Agent"
+                && entry.text.contains("returned a report to Software Architect")
+        }));
+
+        let session = guard
+            .open_chats
+            .iter()
+            .find(|session| session.id == session_id)
+            .expect("session should stay open");
+        assert!(session.messages.iter().any(|message| {
+            message.who == "FERROS Agent"
+                && message.text.contains("FERROS Core Agent completed child packet")
+        }));
+
+        drop(guard);
+
+        {
+            let mut guard = state.lock().unwrap();
+            assert!(matches!(
+                guard.set_packet_review_verdict(&parent_packet_id, ReviewVerdict::Approved),
+                Ok(true)
+            ));
+            guard
+                .apply_packet_transition(
+                    &parent_packet_id,
+                    PacketState::Reviewed,
+                    "stub-reviewer-agent",
+                    "reviewer approved packet",
+                    vec![],
+                )
+                .expect("review transition should succeed");
+            assert!(matches!(
+                guard.set_packet_gatekeeper_decision(&parent_packet_id, GatekeeperDecision::Close),
+                Ok(true)
+            ));
+            guard
+                .apply_packet_transition(
+                    &parent_packet_id,
+                    PacketState::Resolved,
+                    "stub-gatekeeper-agent",
+                    "gatekeeper closed packet",
+                    vec![
+                        format!("artifact://closure/{parent_packet_id}"),
+                        format!("child-packet:{child_packet_id}"),
+                    ],
+                )
+                .expect("resolved transition should succeed");
+        }
+
+        let guard = state.lock().unwrap();
+        let parent = guard
+            .packet_by_id(&parent_packet_id)
+            .expect("parent packet should remain available after closure");
+        assert_eq!(parent.state, PacketState::Resolved);
+
+        let parent_thread = guard
+            .lifecycle_threads
+            .iter()
+            .find(|thread| thread.id == parent.lifecycle_thread_id.clone().unwrap_or_default())
+            .expect("parent lifecycle thread should still exist");
+        assert!(parent_thread.entries.iter().any(|entry| {
+            entry.who == "FERROS Agent"
+                && entry.kind == "packet.closed"
+                && entry.text.contains("FERROS is returning the result to you")
+        }));
+
+        let session = guard
+            .open_chats
+            .iter()
+            .find(|session| session.id == session_id)
+            .expect("session should stay open after closure");
+        assert_eq!(session.active_agent, "FERROS Agent");
+        assert!(session.messages.iter().any(|message| {
+            message.who == "FERROS Agent"
+                && message.text.contains("Work order")
+                && message.text.contains(child_work_order_id.as_str())
+                && message.text.contains("returning the result to you")
+        }));
+        assert_eq!(guard.selected_chat_id.as_deref(), Some(session_id.as_str()));
     }
 
     #[test]
@@ -10552,6 +14640,180 @@ mod tests {
     }
 
     #[test]
+    fn failed_dispatch_persists_execution_report_evidence() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Reject evidence".to_owned()));
+
+        let (result, ids) = state.dispatch_session_via_backend(
+            &session.id,
+            None,
+            DispatchTarget::Software,
+            &RejectingBackend,
+            "route to software",
+        );
+
+        assert!(!result.accepted);
+        assert!(ids.is_none());
+        let packet = state
+            .packets
+            .iter()
+            .find(|packet| packet.manager == "Software Architect")
+            .expect("failed dispatch should still leave a packet record");
+        assert_eq!(packet.state, PacketState::Failed);
+        assert_eq!(packet.audit_trail.len(), 2);
+        assert_eq!(packet.audit_trail[1].actor, "scaffold-worker-driver");
+        assert!(
+            packet.audit_trail[1]
+                .evidence_refs
+                .contains(&format!("rejecting://{}", packet.id))
+        );
+    }
+
+    #[test]
+    fn failed_dispatch_surfaces_lifecycle_diagnostics_in_monitor_state() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        let packet_id = {
+            let mut guard = state.lock().unwrap();
+            let session = guard.create_session(Some("Lifecycle reject".to_owned()));
+            let (result, ids) = guard.dispatch_session_via_backend(
+                &session.id,
+                None,
+                DispatchTarget::Software,
+                &LifecycleRejectingBackend,
+                "route this through continuity",
+            );
+
+            assert!(!result.accepted);
+            assert!(ids.is_none());
+            let packet = guard
+                .packets
+                .first()
+                .expect("failed dispatch should stage one packet");
+            assert_eq!(packet.state, PacketState::Failed);
+            assert_eq!(
+                packet
+                    .last_lifecycle_outcome
+                    .as_ref()
+                    .map(|outcome| outcome.kind.as_str()),
+                Some("handoff_blocked")
+            );
+            assert_eq!(
+                packet
+                    .last_lifecycle_outcome
+                    .as_ref()
+                    .and_then(|outcome| outcome.target_agent_id.as_deref()),
+                Some("ferros-coding-continuity")
+            );
+            assert_eq!(
+                packet.last_lifecycle_errors,
+                vec![
+                    "missing baton packet".to_owned(),
+                    "operator approval required".to_owned(),
+                ]
+            );
+            assert!(guard.timeline.iter().any(|event| {
+                event.kind == "packet.lifecycle_outcome"
+                    && event.text.contains("handoff_blocked")
+                    && event.text.contains(packet.id.as_str())
+            }));
+            assert!(guard.timeline.iter().any(|event| {
+                event.kind == "packet.lifecycle_errors"
+                    && event.text.contains("missing baton packet")
+                    && event.text.contains(packet.id.as_str())
+            }));
+            assert_eq!(guard.notifications[0].severity, "high");
+            assert_eq!(guard.notifications[0].title, "Packet lifecycle errors recorded");
+            assert!(guard.notifications[0]
+                .summary
+                .contains("continuity relay blocked pending baton repair"));
+            assert_eq!(packet.notification_id.as_deref(), Some(guard.notifications[0].id.as_str()));
+            packet.id.clone()
+        };
+
+        let response = route_monitor_request_with_state("GET", "/monitor/state", vec![], &state)
+            .expect("monitor state route should return a response");
+
+        assert_eq!(response.status_code, 200);
+        let snapshot: serde_json::Value =
+            serde_json::from_slice(&response.body).expect("response body should be valid JSON");
+        let packet = snapshot["packets"]
+            .as_array()
+            .expect("packets should serialize as an array")
+            .iter()
+            .find(|packet| packet["id"].as_str() == Some(packet_id.as_str()))
+            .expect("monitor state should include the failed packet");
+        assert_eq!(
+            packet["lastLifecycleOutcome"]["summary"].as_str(),
+            Some("continuity relay blocked pending baton repair")
+        );
+        assert_eq!(
+            packet["lastLifecycleOutcome"]["targetAgentId"].as_str(),
+            Some("ferros-coding-continuity")
+        );
+        assert_eq!(
+            packet["lastLifecycleErrors"]
+                .as_array()
+                .expect("lastLifecycleErrors should be an array")
+                .len(),
+            2
+        );
+    }
+
+    #[test]
+    fn accepted_dispatch_persists_lifecycle_outcome_on_packet() {
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Lifecycle accept".to_owned()));
+
+        let (result, ids) = state.dispatch_session_via_backend(
+            &session.id,
+            None,
+            DispatchTarget::Software,
+            &LifecycleAcceptingBackend,
+            "route this through continuity",
+        );
+
+        assert!(result.accepted);
+        let (packet_id, _, _) = ids.expect("accepted dispatch should return dispatch ids");
+        let packet = state
+            .packet_by_id(&packet_id)
+            .expect("accepted dispatch should persist a packet");
+        assert_eq!(packet.state, PacketState::DispatchedToManager);
+        assert_eq!(
+            packet
+                .last_lifecycle_outcome
+                .as_ref()
+                .map(|outcome| outcome.summary.as_str()),
+            Some("continuity baton accepted")
+        );
+        assert_eq!(
+            packet
+                .last_lifecycle_outcome
+                .as_ref()
+                .and_then(|outcome| outcome.stop_reason.as_deref()),
+            Some("baton-normalized")
+        );
+        assert!(packet.last_lifecycle_errors.is_empty());
+        assert!(state.timeline.iter().any(|event| {
+            event.kind == "packet.lifecycle_outcome"
+                && event.text.contains("continuity_handoff")
+                && event.text.contains(packet_id.as_str())
+        }));
+        assert!(state
+            .timeline
+            .iter()
+            .all(|event| event.kind != "packet.lifecycle_errors"));
+        assert_eq!(state.notifications[0].severity, "low");
+        assert_eq!(state.notifications[0].title, "Packet lifecycle outcome recorded");
+        assert!(state.notifications[0]
+            .summary
+            .contains("continuity baton accepted"));
+        assert_eq!(
+            packet.notification_id.as_deref(),
+            Some(state.notifications[0].id.as_str())
+        );
+    }
+
+    #[test]
     fn dispatch_via_scaffold_records_ticket_as_evidence_in_audit_trail() {
         let mut state = MonitorState::default();
         let session = state.create_session(Some("Ticket evidence test".to_owned()));
@@ -10570,6 +14832,22 @@ mod tests {
             entry.evidence_refs.contains(&expected_ref),
             "ticket external_ref must be recorded as evidence; got {:?}",
             entry.evidence_refs
+        );
+        assert_eq!(pkt.audit_trail[1].actor, "scaffold-worker-driver");
+        assert!(
+            pkt.audit_trail[1]
+                .evidence_refs
+                .contains(&format!("scaffold-exec:{packet_id}"))
+        );
+        assert!(
+            pkt.audit_trail[1]
+                .evidence_refs
+                .contains(&"runtime-plan:coordinator_sdk:ferros-core".to_owned())
+        );
+        assert!(
+            pkt.audit_trail[1]
+                .evidence_refs
+                .contains(&"runtime-plan:coordinator_sdk:ferros-subcore".to_owned())
         );
     }
 
@@ -10642,9 +14920,23 @@ mod tests {
         assert_eq!(packet.review_verdict, Some(ReviewVerdict::Approved));
         assert_eq!(packet.gatekeeper_decision, Some(GatekeeperDecision::Close));
         assert_eq!(
-            packet.audit_trail.len(),
+            packet
+                .audit_trail
+                .iter()
+                .filter(|entry| entry.kind == ferros_orchestrator::PacketAuditKind::Transition)
+                .count(),
             5,
             "dispatch + 4 orchestrator transitions"
+        );
+        assert!(
+            packet.audit_trail.iter().any(|entry| {
+                entry.kind == ferros_orchestrator::PacketAuditKind::EvidenceAppend
+                    && entry
+                        .evidence_refs
+                        .iter()
+                        .any(|reference| reference == &format!("scaffold-exec:{packet_id}"))
+            }),
+            "dispatch should retain scaffold execution evidence in the audit trail"
         );
         assert!(
             guard.timeline.iter().any(|event| {
@@ -10735,6 +15027,270 @@ mod tests {
     }
 
     #[test]
+    fn orchestrator_packets_route_is_idempotent_by_key() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+
+        let first = route_monitor_request_with_state(
+            "POST",
+            "/orchestrator/packets",
+            body(serde_json::json!({
+                "sessionId": "chat-idem-1",
+                "manager": "Software Architect",
+                "summary": "queued by route test",
+                "idempotencyKey": "pkt-key-1"
+            })),
+            &state,
+        )
+        .expect("route should return a response");
+        assert_eq!(first.status_code, 200);
+        let first_body: serde_json::Value =
+            serde_json::from_slice(&first.body).expect("body should be valid JSON");
+        assert_eq!(first_body["created"].as_bool(), Some(true));
+
+        let second = route_monitor_request_with_state(
+            "POST",
+            "/orchestrator/packets",
+            body(serde_json::json!({
+                "sessionId": "chat-idem-2",
+                "manager": "Software Architect",
+                "summary": "duplicate key should reuse packet",
+                "idempotencyKey": "pkt-key-1"
+            })),
+            &state,
+        )
+        .expect("route should return a response");
+        assert_eq!(second.status_code, 200);
+        let second_body: serde_json::Value =
+            serde_json::from_slice(&second.body).expect("body should be valid JSON");
+
+        assert_eq!(second_body["created"].as_bool(), Some(false));
+        assert_eq!(first_body["packetId"], second_body["packetId"]);
+
+        let guard = state.lock().unwrap();
+        assert_eq!(guard.packets.len(), 1, "duplicate enqueue should not create a second packet");
+    }
+
+    #[test]
+    fn orchestrator_packets_route_prefers_header_idempotency_key() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+
+        let first = super::route_monitor_request_with_state_and_idempotency_key(
+            "POST",
+            "/orchestrator/packets",
+            body(serde_json::json!({
+                "sessionId": "chat-header-1",
+                "manager": "Software Architect",
+                "summary": "queued by route test",
+                "idempotencyKey": "body-key-1"
+            })),
+            &state,
+            Some("header-key-1"),
+        )
+        .expect("route should return a response");
+        assert_eq!(first.status_code, 200);
+        let first_body: serde_json::Value =
+            serde_json::from_slice(&first.body).expect("body should be valid JSON");
+        assert_eq!(first_body["created"].as_bool(), Some(true));
+
+        let second = super::route_monitor_request_with_state_and_idempotency_key(
+            "POST",
+            "/orchestrator/packets",
+            body(serde_json::json!({
+                "sessionId": "chat-header-2",
+                "manager": "Software Architect",
+                "summary": "header key should win over body key",
+                "idempotencyKey": "body-key-2"
+            })),
+            &state,
+            Some("header-key-1"),
+        )
+        .expect("route should return a response");
+        assert_eq!(second.status_code, 200);
+        let second_body: serde_json::Value =
+            serde_json::from_slice(&second.body).expect("body should be valid JSON");
+
+        assert_eq!(second_body["created"].as_bool(), Some(false));
+        assert_eq!(first_body["packetId"], second_body["packetId"]);
+
+        let guard = state.lock().unwrap();
+        let packet = guard
+            .packet_by_id(first_body["packetId"].as_str().expect("packet id should be present"))
+            .expect("packet should exist");
+        assert_eq!(packet.registration_idempotency_key.as_deref(), Some("header-key-1"));
+        assert_eq!(guard.packets.len(), 1, "header key should drive dedupe");
+    }
+
+    #[test]
+    fn orchestrator_queue_and_agents_routes_return_snapshots() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        {
+            let mut guard = state.lock().unwrap();
+            guard
+                .packets
+                .register_packet(make_packet(
+                    "q-active-1",
+                    "Software Architect",
+                    PacketState::DispatchedToManager,
+                ))
+                .expect("packet registration should succeed");
+            guard
+                .packets
+                .register_packet(make_packet(
+                    "q-resolved-1",
+                    "Software Architect",
+                    PacketState::Resolved,
+                ))
+                .expect("packet registration should succeed");
+        }
+
+        let queue_response = route_monitor_request_with_state(
+            "GET",
+            "/orchestrator/queue",
+            vec![],
+            &state,
+        )
+        .expect("route should return a response");
+        assert_eq!(queue_response.status_code, 200);
+        let queue_json: serde_json::Value =
+            serde_json::from_slice(&queue_response.body).expect("queue body should be valid JSON");
+        assert_eq!(queue_json["paused"].as_bool(), Some(false));
+        let queue_packets = queue_json["packets"]
+            .as_array()
+            .cloned()
+            .expect("packets should be an array");
+        assert_eq!(queue_packets.len(), 1, "resolved packet should be filtered out of queue snapshot");
+
+        let agents_response = route_monitor_request_with_state(
+            "GET",
+            "/orchestrator/agents",
+            vec![],
+            &state,
+        )
+        .expect("route should return a response");
+        assert_eq!(agents_response.status_code, 200);
+        let agents_json: serde_json::Value =
+            serde_json::from_slice(&agents_response.body).expect("agents body should be valid JSON");
+        assert_eq!(
+            agents_json.as_array().map(|items| items.len()),
+            Some(5),
+            "agent snapshot should include all five role agents"
+        );
+    }
+
+    #[test]
+    fn orchestrator_pause_and_resume_routes_toggle_tick_processing() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        let packet_id = {
+            let mut guard = state.lock().unwrap();
+            let session = guard.create_session(Some("Pause and resume route test".to_owned()));
+            let (result, ids) = guard.dispatch_session_via_backend(
+                &session.id,
+                None,
+                DispatchTarget::Software,
+                &ScaffoldMonitorDispatchBackend,
+                "",
+            );
+            assert!(result.accepted, "dispatch should succeed");
+            let (packet_id, _, _) = ids.expect("dispatch must return ids");
+            guard.orchestrator_mode = OrchestratorMode::Stub;
+            packet_id
+        };
+
+        let pause_response = route_monitor_request_with_state(
+            "POST",
+            "/orchestrator/pause",
+            body(serde_json::json!({ "force": false })),
+            &state,
+        )
+        .expect("pause route should return a response");
+        assert_eq!(pause_response.status_code, 200);
+
+        let tick_while_paused = route_monitor_request_with_state(
+            "POST",
+            "/orchestrator/tick",
+            vec![],
+            &state,
+        )
+        .expect("tick route should return a response");
+        assert_eq!(tick_while_paused.status_code, 200);
+
+        {
+            let guard = state.lock().unwrap();
+            assert_eq!(guard.packet_by_id(&packet_id).unwrap().state, PacketState::DispatchedToManager);
+            assert!(guard.orchestrator_paused);
+        }
+
+        let resume_response = route_monitor_request_with_state(
+            "POST",
+            "/orchestrator/resume",
+            vec![],
+            &state,
+        )
+        .expect("resume route should return a response");
+        assert_eq!(resume_response.status_code, 200);
+
+        let tick_after_resume = route_monitor_request_with_state(
+            "POST",
+            "/orchestrator/tick",
+            vec![],
+            &state,
+        )
+        .expect("tick route should return a response");
+        assert_eq!(tick_after_resume.status_code, 200);
+
+        let guard = state.lock().unwrap();
+        assert_eq!(
+            guard.packet_by_id(&packet_id).unwrap().state,
+            PacketState::AwaitingReview,
+            "software packets with recorded execution evidence should be review-ready after the first manager tick"
+        );
+        assert!(!guard.orchestrator_paused);
+    }
+
+    #[test]
+    fn orchestrator_force_pause_escalates_leased_packets() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        {
+            let mut guard = state.lock().unwrap();
+            guard
+                .packets
+                .register_packet(make_packet(
+                    "lease-1",
+                    "Software Architect",
+                    PacketState::DispatchedToManager,
+                ))
+                .expect("packet registration should succeed");
+            let claim = guard
+                .packets
+                .claim_next(PacketClaimRole::Manager, "2026-01-01T00:00:00Z")
+                .expect("claim should succeed");
+            assert!(claim.is_some(), "packet should be claimable by manager");
+        }
+
+        let pause_response = route_monitor_request_with_state(
+            "POST",
+            "/orchestrator/pause",
+            body(serde_json::json!({ "force": true })),
+            &state,
+        )
+        .expect("pause route should return a response");
+        assert_eq!(pause_response.status_code, 200);
+
+        let body_json: serde_json::Value =
+            serde_json::from_slice(&pause_response.body).expect("body should be valid JSON");
+        assert_eq!(body_json["paused"].as_bool(), Some(true));
+        assert_eq!(body_json["force"].as_bool(), Some(true));
+        assert_eq!(
+            body_json["escalatedPacketIds"].as_array().map(|items| items.len()),
+            Some(1)
+        );
+
+        let guard = state.lock().unwrap();
+        let packet = guard.packet_by_id("lease-1").expect("packet should exist");
+        assert_eq!(packet.state, PacketState::HumanInterventionRequired);
+    }
+
+    #[test]
     fn live_mode_background_maintenance_emits_one_rate_limited_warning() {
         let mut state = MonitorState::default();
         state.orchestrator_mode = OrchestratorMode::Live;
@@ -10760,6 +15316,97 @@ mod tests {
                 .filter(|event| event.kind == "packet.orchestrator_mode_warning")
                 .count(),
             1
+        );
+    }
+
+    #[test]
+    fn background_maintenance_resolved_loop_creates_completion_notification() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        let (session_id, packet_id, packet_thread_id) = {
+            let mut guard = state.lock().unwrap();
+            let session = guard.create_session(Some("Background completion route test".to_owned()));
+            let (result, ids) = guard.dispatch_session_via_backend(
+                &session.id,
+                None,
+                DispatchTarget::Software,
+                &ScaffoldMonitorDispatchBackend,
+                "",
+            );
+            assert!(result.accepted, "dispatch should succeed");
+            guard.orchestrator_mode = OrchestratorMode::Stub;
+            let (packet_id, _, packet_thread_id) = ids.expect("dispatch must return ids");
+            (session.id, packet_id, packet_thread_id)
+        };
+
+        let mut observed_progress = false;
+        for _ in 0..4 {
+            let mut guard = state.lock().unwrap();
+            if !run_monitor_maintenance(&mut guard) {
+                break;
+            }
+            observed_progress = true;
+        }
+        assert!(
+            observed_progress,
+            "background maintenance should make progress until the packet resolves"
+        );
+
+        let notification_id = {
+            let guard = state.lock().unwrap();
+            let packet = guard.packet_by_id(&packet_id).expect("packet should exist");
+            assert_eq!(packet.state, PacketState::Resolved);
+            assert_eq!(packet.notification_id.as_deref(), guard.notifications.first().map(|n| n.id.as_str()));
+
+            let loop_entry = guard
+                .running_loops
+                .iter()
+                .find(|entry| entry.agent == "Software Architect")
+                .expect("software architect loop should remain tracked");
+            assert_eq!(loop_entry.current_packet_id, None);
+            assert_eq!(loop_entry.status, "idle");
+            assert!(
+                loop_entry.description.contains(&packet_id),
+                "loop description should record completed packet"
+            );
+
+            let notification = guard
+                .notifications
+                .iter()
+                .find(|notification| notification.packet_id.as_deref() == Some(packet_id.as_str()))
+                .expect("resolved loop should create a completion notification");
+            assert_eq!(notification.title, "Background loop completed");
+            assert_eq!(notification.session_id.as_deref(), Some(session_id.as_str()));
+            assert_eq!(notification.lifecycle_thread_id.as_deref(), Some(packet_thread_id.as_str()));
+            assert_eq!(notification.severity, "low");
+            assert!(
+                notification.summary.contains("Software Architect completed background packet"),
+                "notification summary should describe the completed loop"
+            );
+            assert!(
+                guard.timeline.iter().any(|event| {
+                    event.kind == "loop.completed"
+                        && event.text.contains("Software Architect completed background packet")
+                }),
+                "timeline should record loop completion"
+            );
+            notification.id.clone()
+        };
+
+        let response = route_monitor_request_with_state(
+            "POST",
+            &format!("/monitor/notifications/{notification_id}/open"),
+            vec![],
+            &state,
+        )
+        .expect("notification open route should return a response");
+        assert_eq!(response.status_code, 200);
+
+        let snapshot: serde_json::Value =
+            serde_json::from_slice(&response.body).expect("body should be valid JSON");
+        assert_eq!(snapshot["selectedChatId"].as_str(), Some(session_id.as_str()));
+        assert_eq!(
+            snapshot["selectedLifecycleThreadId"].as_str(),
+            Some(packet_thread_id.as_str())
         );
     }
 
@@ -10928,6 +15575,63 @@ mod tests {
             PacketState::Failed,
             "rejected packet must be in Failed state"
         );
+        assert!(!state.packets[0].last_failure_retryable);
+        assert_eq!(state.packets[0].retry_budget, 0);
+    }
+
+    #[test]
+    fn retryable_dispatch_failure_sets_retry_policy_and_tick_requeues_packet() {
+        let state = std::sync::Mutex::new(MonitorState::default());
+        let packet_id = {
+            let mut guard = state.lock().unwrap();
+            let session = guard.create_session(Some("Retryable dispatch failure".to_owned()));
+            let backend = super::CommandRuntimeMonitorDispatchBackend::new(StubCommandRuntimeLauncher {
+                output: Err(super::CommandRuntimeLaunchFailure {
+                    summary: "failed to start command runtime process: resource temporarily unavailable"
+                        .to_owned(),
+                    evidence_refs: vec!["command-runtime-launch:spawn-failed".to_owned()],
+                    disposition: PacketExecutionDisposition::RetryableFailure,
+                }),
+            });
+
+            let (result, ids) = guard.dispatch_session_via_backend(
+                &session.id,
+                None,
+                DispatchTarget::Software,
+                &backend,
+                "route this through core",
+            );
+
+            assert!(!result.accepted);
+            assert!(ids.is_none());
+            let packet_id = {
+                let packet = guard
+                    .packets
+                    .first()
+                    .expect("failed dispatch should stage one packet");
+                assert_eq!(packet.state, PacketState::Failed);
+                assert!(packet.last_failure_retryable);
+                assert_eq!(packet.retry_budget, 1);
+                packet.id.clone()
+            };
+            guard.orchestrator_mode = OrchestratorMode::Stub;
+            packet_id
+        };
+
+        let response = route_monitor_request_with_state("POST", "/orchestrator/tick", vec![], &state)
+            .expect("route should return a response");
+
+        assert_eq!(response.status_code, 200);
+        let guard = state.lock().unwrap();
+        let packet = guard.packet_by_id(&packet_id).unwrap();
+        assert!(
+            matches!(packet.state, PacketState::DispatchedToManager | PacketState::InProgress),
+            "stub orchestrator may requeue into DispatchedToManager and let the manager claim it in the same tick"
+        );
+        assert_eq!(packet.retry_count, 1);
+        assert!(packet.last_error.is_none());
+        assert!(packet.last_lifecycle_outcome.is_none());
+        assert!(packet.last_lifecycle_errors.is_empty());
     }
 
     #[test]
@@ -11202,6 +15906,8 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_owned(),
             summary: "test packet".to_owned(),
             last_error: None,
+            last_lifecycle_outcome: None,
+            last_lifecycle_errors: vec![],
             registration_idempotency_key: None,
             retry_count: 0,
             retry_budget: 0,
@@ -12388,6 +17094,56 @@ mod tests {
     }
 
     #[test]
+    fn packet_state_route_prefers_header_idempotency_key() {
+        let mut initial = MonitorState::default();
+        initial.packets.push(make_staged_packet("pkt-r1-header-idem"));
+        let state = std::sync::Mutex::new(initial);
+
+        let first = super::route_monitor_request_with_state_and_idempotency_key(
+            "POST",
+            "/monitor/packets/pkt-r1-header-idem/state",
+            body(serde_json::json!({
+                "toState": "dispatched_to_manager",
+                "actor": "route-actor",
+                "reason": "route reason",
+                "idempotencyKey": "body-transition-1",
+            })),
+            &state,
+            Some("header-transition-1"),
+        )
+        .expect("route should return a response");
+        assert_eq!(first.status_code, 200);
+
+        let second = super::route_monitor_request_with_state_and_idempotency_key(
+            "POST",
+            "/monitor/packets/pkt-r1-header-idem/state",
+            body(serde_json::json!({
+                "toState": "dispatched_to_manager",
+                "actor": "route-actor",
+                "reason": "route reason",
+                "idempotencyKey": "body-transition-2",
+            })),
+            &state,
+            Some("header-transition-1"),
+        )
+        .expect("route should return a response");
+        assert_eq!(second.status_code, 200);
+
+        let guard = state.lock().unwrap();
+        let pkt = guard
+            .packets
+            .iter()
+            .find(|packet| packet.id == "pkt-r1-header-idem")
+            .expect("packet should exist");
+        assert_eq!(pkt.state, PacketState::DispatchedToManager);
+        assert_eq!(pkt.audit_trail.len(), 1, "header key should dedupe transition replay");
+        assert_eq!(
+            pkt.audit_trail[0].idempotency_key.as_deref(),
+            Some("header-transition-1")
+        );
+    }
+
+    #[test]
     fn packet_state_route_rejects_illegal_transition_without_mutation() {
         let mut initial = MonitorState::default();
         initial.packets.push(make_staged_packet("pkt-r2"));
@@ -12740,7 +17496,17 @@ mod tests {
         let path = unique_state_path("packet-store-roundtrip");
 
         let mut store = super::MonitorPacketStore::default();
-        store.push(make_staged_packet("pkt-sidecar-1"));
+        let mut packet = make_staged_packet("pkt-sidecar-1");
+        packet.last_lifecycle_outcome = Some(super::PacketLifecycleOutcome {
+            kind: "continuity_handoff".to_owned(),
+            summary: "continuity baton accepted".to_owned(),
+            work_order_id: Some("wo-123".to_owned()),
+            escalation_id: Some("esc-456".to_owned()),
+            target_agent_id: Some("ferros-coding-continuity".to_owned()),
+            stop_reason: Some("baton-normalized".to_owned()),
+        });
+        packet.last_lifecycle_errors = vec!["operator note".to_owned()];
+        store.push(packet);
 
         store
             .persist_to_path(&path)
@@ -12760,6 +17526,14 @@ mod tests {
             .expect("packet store load should succeed");
         assert_eq!(loaded.len(), 1, "round-tripped packet store should retain packet count");
         assert_eq!(loaded[0].id, "pkt-sidecar-1");
+        assert_eq!(
+            loaded[0]
+                .last_lifecycle_outcome
+                .as_ref()
+                .map(|outcome| outcome.summary.as_str()),
+            Some("continuity baton accepted")
+        );
+        assert_eq!(loaded[0].last_lifecycle_errors, vec!["operator note".to_owned()]);
 
         cleanup_state_path(&path);
     }
@@ -12814,6 +17588,114 @@ mod tests {
         );
 
         cleanup_state_path(&packet_path);
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn load_monitor_state_relinks_sidecar_packet_notification_after_notification_id_normalization() {
+        let state_path = unique_state_path("state-packet-sidecar-notification-link");
+        let packet_path = super::monitor_packet_store_path_for_state_path(&state_path);
+
+        let mut state = MonitorState::default();
+        let session = state.create_session(Some("Persisted lifecycle alert".to_owned()));
+        let notification_id = state.create_notification(
+            Some("pkt-sidecar-lifecycle".to_owned()),
+            Some(session.id.clone()),
+            None,
+            "high",
+            "Packet lifecycle errors recorded",
+            "continuity relay blocked pending baton repair",
+        );
+        state.notifications[0].id = String::new();
+        super::persist_monitor_state_to(&state_path, &state)
+            .expect("monitor state persist should succeed");
+
+        let mut sidecar_store = super::MonitorPacketStore::default();
+        let mut packet = make_staged_packet("pkt-sidecar-lifecycle");
+        packet.session_id = session.id;
+        packet.notification_id = Some(notification_id);
+        sidecar_store.push(packet);
+        sidecar_store
+            .persist_to_path(&packet_path)
+            .expect("packet sidecar persist should succeed");
+
+        let loaded = super::load_monitor_state_from(&state_path)
+            .expect("load_monitor_state_from should return a state");
+        let loaded_packet = loaded
+            .packet_by_id("pkt-sidecar-lifecycle")
+            .expect("packet sidecar should be loaded into monitor state");
+        let loaded_notification = loaded
+            .notifications
+            .iter()
+            .find(|notification| notification.packet_id.as_deref() == Some("pkt-sidecar-lifecycle"))
+            .expect("normalized notification should still be present after reload");
+
+        assert_eq!(
+            loaded_packet.notification_id.as_deref(),
+            Some(loaded_notification.id.as_str()),
+            "sidecar packet should relink to the normalized notification id after reload"
+        );
+
+        cleanup_state_path(&packet_path);
+        cleanup_state_path(&state_path);
+    }
+
+    #[test]
+    fn load_monitor_state_preserves_lifecycle_dispatch_packet_notification_links() {
+        let state_path = unique_state_path("state-lifecycle-dispatch-reload");
+        cleanup_state_path(&state_path);
+
+        let mut state = MonitorState::default();
+        state
+            .configure_packet_store_backing(&state_path)
+            .expect("packet backing should configure");
+        let session = state.create_session(Some("Persisted lifecycle dispatch".to_owned()));
+
+        let (result, ids) = state.dispatch_session_via_backend(
+            &session.id,
+            None,
+            DispatchTarget::Software,
+            &LifecycleRejectingBackend,
+            "route this through continuity",
+        );
+
+        assert!(!result.accepted);
+        assert!(ids.is_none());
+        super::persist_monitor_state_to(&state_path, &state)
+            .expect("monitor state persist should succeed");
+
+        let loaded = super::load_monitor_state_from(&state_path)
+            .expect("load_monitor_state_from should return a state");
+        let packet = loaded
+            .packets
+            .iter()
+            .find(|packet| packet.manager == "Software Architect")
+            .expect("failed lifecycle dispatch should leave a persisted packet");
+        let notification = loaded
+            .notifications
+            .iter()
+            .find(|notification| notification.packet_id.as_deref() == Some(packet.id.as_str()))
+            .expect("lifecycle-created notification should reload with packet id linkage");
+
+        assert_eq!(packet.state, PacketState::Failed);
+        assert_eq!(
+            packet
+                .last_lifecycle_outcome
+                .as_ref()
+                .map(|outcome| outcome.kind.as_str()),
+            Some("handoff_blocked")
+        );
+        assert_eq!(
+            packet.last_lifecycle_errors,
+            vec![
+                "missing baton packet".to_owned(),
+                "operator approval required".to_owned(),
+            ]
+        );
+        assert_eq!(packet.notification_id.as_deref(), Some(notification.id.as_str()));
+        assert_eq!(notification.title, "Packet lifecycle errors recorded");
+        assert_eq!(notification.severity, "high");
+
         cleanup_state_path(&state_path);
     }
 
@@ -13744,6 +18626,119 @@ mod tests {
                     && event.packet_id.as_deref() == Some(packet_id.as_str())
             }),
             "TransitionMissing should be created for stale dispatched packets"
+        );
+    }
+
+    #[test]
+    fn load_monitor_agent_directory_surfaces_runtime_metadata_from_manifest_json() {
+        let directory = super::load_monitor_agent_directory();
+
+        let core = directory
+            .iter()
+            .find(|entry| entry.id == "ferros-core")
+            .expect("core agent manifest entry should exist");
+        assert_eq!(core.runtime, Some(AgentRuntime::CoordinatorSdk));
+        assert_eq!(core.command.as_deref(), Some("npm"));
+        assert_eq!(
+            core.args,
+            vec![
+                "--prefix".to_owned(),
+                "coordinator".to_owned(),
+                "run".to_owned(),
+                "handoff".to_owned(),
+                "--".to_owned(),
+                "--target".to_owned(),
+                "core".to_owned(),
+            ]
+        );
+        assert_eq!(
+            core.env.get("FERROS_COORDINATOR_LOG_LEVEL").map(String::as_str),
+            Some("error")
+        );
+        assert_eq!(
+            core.env
+                .get("FERROS_COORDINATOR_CAPTURE_EVENTS")
+                .map(String::as_str),
+            Some("false")
+        );
+        assert_eq!(
+            core.env
+                .get("FERROS_COMMAND_RUNTIME_TIMEOUT_MS")
+                .map(String::as_str),
+            Some("30000")
+        );
+        assert_eq!(core.plan_template.as_deref(), Some("core-runtime"));
+
+        let subcore = directory
+            .iter()
+            .find(|entry| entry.id == "ferros-subcore")
+            .expect("subcore agent manifest entry should exist");
+        assert_eq!(subcore.runtime, Some(AgentRuntime::CoordinatorSdk));
+        assert_eq!(subcore.command.as_deref(), Some("npm"));
+        assert_eq!(
+            subcore.args,
+            vec![
+                "--prefix".to_owned(),
+                "coordinator".to_owned(),
+                "run".to_owned(),
+                "handoff".to_owned(),
+                "--".to_owned(),
+                "--target".to_owned(),
+                "subcore".to_owned(),
+            ]
+        );
+        assert_eq!(
+            subcore.env.get("FERROS_COORDINATOR_LOG_LEVEL").map(String::as_str),
+            Some("error")
+        );
+        assert_eq!(
+            subcore
+                .env
+                .get("FERROS_COORDINATOR_CAPTURE_EVENTS")
+                .map(String::as_str),
+            Some("false")
+        );
+        assert_eq!(
+            subcore
+                .env
+                .get("FERROS_COMMAND_RUNTIME_TIMEOUT_MS")
+                .map(String::as_str),
+            Some("30000")
+        );
+        assert_eq!(subcore.plan_template.as_deref(), Some("subcore-runtime"));
+
+        let continuity = directory
+            .iter()
+            .find(|entry| entry.id == "ferros-coding-continuity")
+            .expect("continuity agent manifest entry should exist");
+        assert_eq!(continuity.runtime, Some(AgentRuntime::Subprocess));
+        assert_eq!(continuity.command.as_deref(), Some("npm"));
+        assert_eq!(
+            continuity.args,
+            vec![
+                "--prefix".to_owned(),
+                "coordinator".to_owned(),
+                "run".to_owned(),
+                "subprocess-runtime".to_owned(),
+                "--".to_owned(),
+                "--agent".to_owned(),
+                "ferros-coding-continuity".to_owned(),
+            ]
+        );
+        assert_eq!(
+            continuity
+                .env
+                .get("FERROS_COMMAND_RUNTIME_TIMEOUT_MS")
+                .map(String::as_str),
+            Some("30000")
+        );
+        assert_eq!(continuity.plan_template.as_deref(), Some("continuity-runtime"));
+        assert_eq!(continuity.selection_tokens, vec!["continuity".to_owned(), "baton".to_owned()]);
+        assert_eq!(continuity.route_target_stream, None);
+        assert_eq!(continuity.route_target_family.as_deref(), Some("coding"));
+        assert_eq!(
+            continuity.lifecycle_target_agent_id.as_deref(),
+            Some("ferros-coding-continuity")
         );
     }
 }

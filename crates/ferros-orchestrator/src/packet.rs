@@ -143,14 +143,17 @@ pub fn has_non_empty_evidence_refs(evidence_refs: &[String]) -> bool {
         .any(|reference| !reference.trim().is_empty())
 }
 
-pub fn validate_transition_requirements(
+fn validate_transition_requirements_with_packet_evidence(
     from: &PacketState,
     to: PacketState,
     review_verdict: Option<&ReviewVerdict>,
     gatekeeper_decision: Option<&GatekeeperDecision>,
+    packet_has_evidence: bool,
     evidence_refs: &[String],
 ) -> Result<(), PacketTransitionError> {
-    if to == PacketState::AwaitingReview && !has_non_empty_evidence_refs(evidence_refs) {
+    let has_evidence = packet_has_evidence || has_non_empty_evidence_refs(evidence_refs);
+
+    if to == PacketState::AwaitingReview && !has_evidence {
         return Err(PacketTransitionError {
             from: from.clone(),
             to,
@@ -167,7 +170,7 @@ pub fn validate_transition_requirements(
     }
 
     if to == PacketState::Resolved {
-        if !has_non_empty_evidence_refs(evidence_refs) {
+        if !has_evidence {
             return Err(PacketTransitionError {
                 from: from.clone(),
                 to,
@@ -217,9 +220,36 @@ pub fn validate_transition_requirements(
     Ok(())
 }
 
+pub fn validate_transition_requirements(
+    from: &PacketState,
+    to: PacketState,
+    review_verdict: Option<&ReviewVerdict>,
+    gatekeeper_decision: Option<&GatekeeperDecision>,
+    evidence_refs: &[String],
+) -> Result<(), PacketTransitionError> {
+    validate_transition_requirements_with_packet_evidence(
+        from,
+        to,
+        review_verdict,
+        gatekeeper_decision,
+        false,
+        evidence_refs,
+    )
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PacketAuditKind {
+    #[default]
+    Transition,
+    EvidenceAppend,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PacketAuditEntry {
+    #[serde(default)]
+    pub kind: PacketAuditKind,
     pub seq: usize,
     pub from: PacketState,
     pub to: PacketState,
@@ -230,6 +260,21 @@ pub struct PacketAuditEntry {
     pub idempotency_key: Option<String>,
     #[serde(default)]
     pub evidence_refs: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PacketLifecycleOutcome {
+    pub kind: String,
+    pub summary: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub work_order_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub escalation_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_agent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -262,6 +307,10 @@ pub struct MonitorPacket {
     pub updated_at: String,
     pub summary: String,
     pub last_error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_lifecycle_outcome: Option<PacketLifecycleOutcome>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub last_lifecycle_errors: Vec<String>,
     #[serde(default)]
     pub registration_idempotency_key: Option<String>,
     #[serde(default)]
@@ -286,6 +335,51 @@ impl MonitorPacket {
     }
 }
 
+fn packet_has_non_empty_evidence(packet: &MonitorPacket) -> bool {
+    packet
+        .audit_trail
+        .iter()
+        .any(|entry| has_non_empty_evidence_refs(&entry.evidence_refs))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PacketEnqueueRequest {
+    pub packet_id: String,
+    pub session_id: String,
+    pub origin_message_id: Option<String>,
+    pub parent_packet_id: Option<String>,
+    pub work_order_id: Option<String>,
+    pub manager: String,
+    pub state: PacketState,
+    pub lifecycle_thread_id: Option<String>,
+    pub notification_id: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub summary: String,
+    pub registration_idempotency_key: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PacketEnqueueResult {
+    pub packet_id: String,
+    pub created: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PacketRepositorySnapshot {
+    pub packets: Vec<MonitorPacket>,
+}
+
+impl PacketRepositorySnapshot {
+    pub fn len(&self) -> usize {
+        self.packets.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.packets.is_empty()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PacketTransitionRequest {
     pub packet_id: String,
@@ -295,6 +389,23 @@ pub struct PacketTransitionRequest {
     pub at: String,
     pub idempotency_key: Option<String>,
     pub evidence_refs: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PacketEvidenceAppendRequest {
+    pub packet_id: String,
+    pub actor: String,
+    pub reason: String,
+    pub at: String,
+    pub idempotency_key: Option<String>,
+    pub evidence_refs: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PacketEvidenceAppendResult {
+    pub packet_id: String,
+    pub seq: usize,
+    pub appended: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -382,8 +493,89 @@ fn normalize_idempotency_key(idempotency_key: Option<String>) -> Result<Option<S
     Ok(Some(trimmed.to_owned()))
 }
 
+fn validate_enqueue_request(request: &PacketEnqueueRequest) -> Result<(), String> {
+    if request.packet_id.trim().is_empty() {
+        return Err("packet id must not be empty".to_owned());
+    }
+    if request.session_id.trim().is_empty() {
+        return Err("session id must not be empty".to_owned());
+    }
+    if request.manager.trim().is_empty() {
+        return Err("manager must not be empty".to_owned());
+    }
+    if request.summary.trim().is_empty() {
+        return Err("summary must not be empty".to_owned());
+    }
+
+    parse_rfc3339(&request.created_at)?;
+    parse_rfc3339(&request.updated_at)?;
+
+    Ok(())
+}
+
+fn validate_append_evidence_request(request: &PacketEvidenceAppendRequest) -> Result<(), String> {
+    if request.packet_id.trim().is_empty() {
+        return Err("packet id must not be empty".to_owned());
+    }
+    if request.actor.trim().is_empty() {
+        return Err("actor must not be empty".to_owned());
+    }
+    if request.reason.trim().is_empty() {
+        return Err("reason must not be empty".to_owned());
+    }
+    if !has_non_empty_evidence_refs(&request.evidence_refs) {
+        return Err("evidence append requires at least one non-empty evidence ref".to_owned());
+    }
+
+    parse_rfc3339(&request.at)?;
+
+    Ok(())
+}
+
+fn packet_from_enqueue_request(
+    request: PacketEnqueueRequest,
+) -> Result<MonitorPacket, String> {
+    validate_enqueue_request(&request)?;
+
+    Ok(MonitorPacket {
+        id: request.packet_id,
+        session_id: request.session_id,
+        origin_message_id: request.origin_message_id,
+        parent_packet_id: request.parent_packet_id,
+        work_order_id: request.work_order_id,
+        manager: request.manager,
+        state: request.state,
+        review_verdict: None,
+        gatekeeper_decision: None,
+        lifecycle_thread_id: request.lifecycle_thread_id,
+        notification_id: request.notification_id,
+        created_at: request.created_at,
+        updated_at: request.updated_at,
+        summary: request.summary,
+        last_error: None,
+        last_lifecycle_outcome: None,
+        last_lifecycle_errors: vec![],
+        registration_idempotency_key: normalize_idempotency_key(
+            request.registration_idempotency_key,
+        )?,
+        retry_count: 0,
+        retry_budget: 0,
+        last_failure_retryable: false,
+        lease_role: None,
+        lease_expires_at: None,
+        audit_seq: 0,
+        audit_trail: vec![],
+    })
+}
+
 pub trait PacketRepository {
     fn register_packet(&mut self, packet: MonitorPacket) -> Result<(), String>;
+    fn enqueue(&mut self, request: PacketEnqueueRequest) -> Result<PacketEnqueueResult, String>;
+    fn append_evidence(
+        &mut self,
+        request: PacketEvidenceAppendRequest,
+    ) -> Result<Option<PacketEvidenceAppendResult>, String>;
+    fn snapshot(&self) -> PacketRepositorySnapshot;
     fn packet(&self, packet_id: &str) -> Option<&MonitorPacket>;
     fn packet_by_registration_idempotency_key(&self, key: &str) -> Option<&MonitorPacket>;
     fn claim_next(
@@ -467,6 +659,28 @@ impl InMemoryPacketRepository {
         Ok(())
     }
 
+    fn enqueue_inner(
+        &mut self,
+        request: PacketEnqueueRequest,
+    ) -> Result<PacketEnqueueResult, String> {
+        let packet = packet_from_enqueue_request(request)?;
+        let packet_id = packet.id.clone();
+        if let Some(key) = packet.registration_idempotency_key.as_deref() {
+            if let Some(existing_packet) = self.packet_by_registration_idempotency_key(key) {
+                return Ok(PacketEnqueueResult {
+                    packet_id: existing_packet.id.clone(),
+                    created: false,
+                });
+            }
+        }
+
+        self.packets.push(packet);
+        Ok(PacketEnqueueResult {
+            packet_id,
+            created: true,
+        })
+    }
+
     fn packet_by_registration_idempotency_key(&self, key: &str) -> Option<&MonitorPacket> {
         self.packets.iter().find(|packet| {
             packet.registration_idempotency_key.as_deref() == Some(key)
@@ -478,13 +692,83 @@ impl InMemoryPacketRepository {
         key: &str,
     ) -> Option<PacketTransitionApplied> {
         packet.audit_trail.iter().find_map(|entry| {
-            (entry.idempotency_key.as_deref() == Some(key)).then(|| PacketTransitionApplied {
+            (entry.kind == PacketAuditKind::Transition
+                && entry.idempotency_key.as_deref() == Some(key))
+            .then(|| PacketTransitionApplied {
                 packet_id: packet.id.clone(),
                 from: entry.from.clone(),
                 to: entry.to.clone(),
                 seq: entry.seq,
             })
         })
+    }
+
+    fn appended_evidence_by_idempotency_key(
+        packet: &MonitorPacket,
+        key: &str,
+    ) -> Option<PacketEvidenceAppendResult> {
+        packet.audit_trail.iter().find_map(|entry| {
+            (entry.kind == PacketAuditKind::EvidenceAppend
+                && entry.idempotency_key.as_deref() == Some(key))
+            .then(|| PacketEvidenceAppendResult {
+                packet_id: packet.id.clone(),
+                seq: entry.seq,
+                appended: false,
+            })
+        })
+    }
+
+    fn append_evidence_inner(
+        &mut self,
+        request: PacketEvidenceAppendRequest,
+    ) -> Result<Option<PacketEvidenceAppendResult>, String> {
+        let Some(packet) = self.packet(&request.packet_id) else {
+            return Ok(None);
+        };
+
+        validate_append_evidence_request(&request)?;
+        let idempotency_key = normalize_idempotency_key(request.idempotency_key.clone())?;
+        if let Some(key) = idempotency_key.as_deref() {
+            if let Some(existing) = Self::appended_evidence_by_idempotency_key(packet, key) {
+                return Ok(Some(existing));
+            }
+        }
+
+        let seq = packet.audit_seq + 1;
+        let state = packet.state.clone();
+        let PacketEvidenceAppendRequest {
+            packet_id,
+            actor,
+            reason,
+            at,
+            idempotency_key: _,
+            evidence_refs,
+        } = request;
+        let audit_entry = PacketAuditEntry {
+            kind: PacketAuditKind::EvidenceAppend,
+            seq,
+            from: state.clone(),
+            to: state,
+            actor,
+            reason,
+            at: at.clone(),
+            idempotency_key,
+            evidence_refs,
+        };
+        let packet = self
+            .packets
+            .iter_mut()
+            .find(|packet| packet.id == packet_id)
+            .expect("packet should still exist during evidence append");
+        packet.audit_seq = seq;
+        packet.updated_at = at;
+        packet.audit_trail.push(audit_entry);
+
+        Ok(Some(PacketEvidenceAppendResult {
+            packet_id: packet.id.clone(),
+            seq,
+            appended: true,
+        }))
     }
 
     pub fn len(&self) -> usize {
@@ -531,6 +815,23 @@ impl<'a> IntoIterator for &'a mut InMemoryPacketRepository {
 impl PacketRepository for InMemoryPacketRepository {
     fn register_packet(&mut self, packet: MonitorPacket) -> Result<(), String> {
         self.register_packet_inner(packet)
+    }
+
+    fn enqueue(&mut self, request: PacketEnqueueRequest) -> Result<PacketEnqueueResult, String> {
+        self.enqueue_inner(request)
+    }
+
+    fn append_evidence(
+        &mut self,
+        request: PacketEvidenceAppendRequest,
+    ) -> Result<Option<PacketEvidenceAppendResult>, String> {
+        self.append_evidence_inner(request)
+    }
+
+    fn snapshot(&self) -> PacketRepositorySnapshot {
+        PacketRepositorySnapshot {
+            packets: self.packets.clone(),
+        }
     }
 
     fn packet(&self, packet_id: &str) -> Option<&MonitorPacket> {
@@ -608,7 +909,7 @@ impl PacketRepository for InMemoryPacketRepository {
             evidence_refs,
         } = transition;
 
-        let (from, seq, review_verdict, gatekeeper_decision) = {
+        let (from, seq, review_verdict, gatekeeper_decision, packet_has_evidence) = {
             let Some(packet) = self.packet(&packet_id) else {
                 return Ok(None);
             };
@@ -617,6 +918,7 @@ impl PacketRepository for InMemoryPacketRepository {
                 packet.audit_seq + 1,
                 packet.review_verdict.clone(),
                 packet.gatekeeper_decision.clone(),
+                packet_has_non_empty_evidence(packet),
             )
         };
 
@@ -637,16 +939,18 @@ impl PacketRepository for InMemoryPacketRepository {
             }
         }
 
-        validate_transition_requirements(
+        validate_transition_requirements_with_packet_evidence(
             &from,
             to_state.clone(),
             review_verdict.as_ref(),
             gatekeeper_decision.as_ref(),
+            packet_has_evidence,
             &evidence_refs,
         )?;
 
         let next = try_transition(&from, to_state, &actor, &reason, &at)?;
         let audit_entry = PacketAuditEntry {
+            kind: PacketAuditKind::Transition,
             seq,
             from: from.clone(),
             to: next.clone(),
@@ -671,6 +975,9 @@ impl PacketRepository for InMemoryPacketRepository {
         if from == PacketState::Failed && next == PacketState::DispatchedToManager {
             packet.retry_count += 1;
             packet.last_error = None;
+            packet.last_lifecycle_outcome = None;
+            packet.last_lifecycle_errors.clear();
+            packet.notification_id = None;
             packet.review_verdict = None;
             packet.gatekeeper_decision = None;
         }
@@ -867,6 +1174,29 @@ impl PacketRepository for FilePacketRepository {
         self.persist()
     }
 
+    fn enqueue(&mut self, request: PacketEnqueueRequest) -> Result<PacketEnqueueResult, String> {
+        let result = self.packets.enqueue(request)?;
+        if result.created {
+            self.persist()?;
+        }
+        Ok(result)
+    }
+
+    fn append_evidence(
+        &mut self,
+        request: PacketEvidenceAppendRequest,
+    ) -> Result<Option<PacketEvidenceAppendResult>, String> {
+        let result = self.packets.append_evidence(request)?;
+        if result.as_ref().is_some_and(|result| result.appended) {
+            self.persist()?;
+        }
+        Ok(result)
+    }
+
+    fn snapshot(&self) -> PacketRepositorySnapshot {
+        self.packets.snapshot()
+    }
+
     fn packet(&self, packet_id: &str) -> Option<&MonitorPacket> {
         self.packets.packet(packet_id)
     }
@@ -965,9 +1295,10 @@ mod tests {
 
     use super::{
         try_transition, validate_transition_requirements, FilePacketRepository,
-        GatekeeperDecision, InMemoryPacketRepository, MonitorPacket, PacketClaimRole,
-        PacketRepository, PacketState, PacketTransitionRequest, PersistedPacketRepository,
-        ReviewVerdict, PACKET_REPOSITORY_SCHEMA_VERSION,
+        GatekeeperDecision, InMemoryPacketRepository, MonitorPacket, PacketAuditKind,
+        PacketClaimRole, PacketEnqueueRequest, PacketEvidenceAppendRequest,
+        PacketLifecycleOutcome, PacketRepository, PacketState, PacketTransitionRequest,
+        PersistedPacketRepository, ReviewVerdict, PACKET_REPOSITORY_SCHEMA_VERSION,
     };
 
     fn unique_temp_repo_path(test_name: &str) -> PathBuf {
@@ -1004,6 +1335,8 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_owned(),
             summary: "test packet".to_owned(),
             last_error: None,
+            last_lifecycle_outcome: None,
+            last_lifecycle_errors: vec![],
             registration_idempotency_key: None,
             retry_count: 0,
             retry_budget: 0,
@@ -1165,6 +1498,172 @@ mod tests {
         assert_eq!(packet.state, PacketState::DispatchedToManager);
         assert_eq!(packet.audit_seq, 1);
         assert_eq!(packet.audit_trail.len(), 1);
+        assert_eq!(packet.audit_trail[0].kind, PacketAuditKind::Transition);
+    }
+
+    #[test]
+    fn in_memory_repository_append_evidence_records_audit_entry_without_state_change() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_packet(
+            "evidence-p1",
+            "Software Architect",
+            PacketState::InProgress,
+        ))
+        .expect("packet registration should succeed");
+
+        let result = repo
+            .append_evidence(PacketEvidenceAppendRequest {
+                packet_id: "evidence-p1".to_owned(),
+                actor: "test-actor".to_owned(),
+                reason: "attach worker artifact".to_owned(),
+                at: "2026-01-01T00:00:01Z".to_owned(),
+                idempotency_key: None,
+                evidence_refs: vec!["evidence://packet-1".to_owned()],
+            })
+            .expect("evidence append should succeed")
+            .expect("packet should exist");
+
+        assert!(result.appended);
+        assert_eq!(result.seq, 1);
+        let packet = repo.packet("evidence-p1").unwrap();
+        assert_eq!(packet.state, PacketState::InProgress);
+        assert_eq!(packet.updated_at, "2026-01-01T00:00:01Z");
+        assert_eq!(packet.audit_seq, 1);
+        assert_eq!(packet.audit_trail.len(), 1);
+        assert_eq!(packet.audit_trail[0].kind, PacketAuditKind::EvidenceAppend);
+        assert_eq!(packet.audit_trail[0].from, PacketState::InProgress);
+        assert_eq!(packet.audit_trail[0].to, PacketState::InProgress);
+        assert_eq!(
+            packet.audit_trail[0].evidence_refs,
+            vec!["evidence://packet-1".to_owned()]
+        );
+    }
+
+    #[test]
+    fn in_memory_repository_dedupes_evidence_append_by_idempotency_key() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_packet(
+            "evidence-p2",
+            "Software Architect",
+            PacketState::InProgress,
+        ))
+        .expect("packet registration should succeed");
+
+        let first = repo
+            .append_evidence(PacketEvidenceAppendRequest {
+                packet_id: "evidence-p2".to_owned(),
+                actor: "test-actor".to_owned(),
+                reason: "attach first artifact".to_owned(),
+                at: "2026-01-01T00:00:01Z".to_owned(),
+                idempotency_key: Some("append-evidence-1".to_owned()),
+                evidence_refs: vec!["evidence://packet-2-a".to_owned()],
+            })
+            .expect("first evidence append should succeed")
+            .expect("packet should exist");
+        let second = repo
+            .append_evidence(PacketEvidenceAppendRequest {
+                packet_id: "evidence-p2".to_owned(),
+                actor: "test-actor".to_owned(),
+                reason: "attach duplicate artifact".to_owned(),
+                at: "2026-01-01T00:00:02Z".to_owned(),
+                idempotency_key: Some("append-evidence-1".to_owned()),
+                evidence_refs: vec!["evidence://packet-2-b".to_owned()],
+            })
+            .expect("duplicate evidence append should succeed")
+            .expect("packet should exist");
+
+        assert!(first.appended);
+        assert!(!second.appended);
+        assert_eq!(first.seq, 1);
+        assert_eq!(second.seq, 1);
+        let packet = repo.packet("evidence-p2").unwrap();
+        assert_eq!(packet.audit_trail.len(), 1);
+        assert_eq!(packet.updated_at, "2026-01-01T00:00:01Z");
+        assert_eq!(
+            packet.audit_trail[0].idempotency_key.as_deref(),
+            Some("append-evidence-1")
+        );
+    }
+
+    #[test]
+    fn in_memory_repository_allows_awaiting_review_with_previously_appended_evidence() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_packet(
+            "evidence-p3",
+            "Software Architect",
+            PacketState::InProgress,
+        ))
+        .expect("packet registration should succeed");
+        repo.append_evidence(PacketEvidenceAppendRequest {
+            packet_id: "evidence-p3".to_owned(),
+            actor: "worker-agent".to_owned(),
+            reason: "attach worker output".to_owned(),
+            at: "2026-01-01T00:00:01Z".to_owned(),
+            idempotency_key: None,
+            evidence_refs: vec!["evidence://packet-3".to_owned()],
+        })
+        .expect("evidence append should succeed")
+        .expect("packet should exist");
+
+        let applied = repo
+            .apply_transition(PacketTransitionRequest {
+                packet_id: "evidence-p3".to_owned(),
+                to_state: PacketState::AwaitingReview,
+                actor: "worker-agent".to_owned(),
+                reason: "worker submitted for review".to_owned(),
+                at: "2026-01-01T00:00:02Z".to_owned(),
+                idempotency_key: None,
+                evidence_refs: vec![],
+            })
+            .expect("transition should succeed")
+            .expect("packet should exist");
+
+        assert_eq!(applied.to, PacketState::AwaitingReview);
+        let packet = repo.packet("evidence-p3").unwrap();
+        assert_eq!(packet.state, PacketState::AwaitingReview);
+        assert_eq!(packet.audit_trail.len(), 2);
+    }
+
+    #[test]
+    fn in_memory_repository_allows_resolved_with_previously_appended_evidence() {
+        let mut repo = InMemoryPacketRepository::default();
+        let mut packet = make_packet(
+            "evidence-p4",
+            "Software Architect",
+            PacketState::Reviewed,
+        );
+        packet.review_verdict = Some(ReviewVerdict::Approved);
+        packet.gatekeeper_decision = Some(GatekeeperDecision::Close);
+        repo.register_packet(packet)
+            .expect("packet registration should succeed");
+        repo.append_evidence(PacketEvidenceAppendRequest {
+            packet_id: "evidence-p4".to_owned(),
+            actor: "reviewer-agent".to_owned(),
+            reason: "attach final evidence".to_owned(),
+            at: "2026-01-01T00:00:01Z".to_owned(),
+            idempotency_key: None,
+            evidence_refs: vec!["evidence://packet-4".to_owned()],
+        })
+        .expect("evidence append should succeed")
+        .expect("packet should exist");
+
+        let applied = repo
+            .apply_transition(PacketTransitionRequest {
+                packet_id: "evidence-p4".to_owned(),
+                to_state: PacketState::Resolved,
+                actor: "gatekeeper-agent".to_owned(),
+                reason: "close packet".to_owned(),
+                at: "2026-01-01T00:00:02Z".to_owned(),
+                idempotency_key: None,
+                evidence_refs: vec![],
+            })
+            .expect("transition should succeed")
+            .expect("packet should exist");
+
+        assert_eq!(applied.to, PacketState::Resolved);
+        let packet = repo.packet("evidence-p4").unwrap();
+        assert_eq!(packet.state, PacketState::Resolved);
+        assert_eq!(packet.audit_trail.len(), 2);
     }
 
     #[test]
@@ -1191,6 +1690,19 @@ mod tests {
         packet.review_verdict = Some(ReviewVerdict::Approved);
         packet.gatekeeper_decision = Some(GatekeeperDecision::KeepOpen);
         packet.last_error = Some("transient failure".to_owned());
+        packet.last_lifecycle_outcome = Some(PacketLifecycleOutcome {
+            kind: "handoff_blocked".to_owned(),
+            summary: "handoff blocked pending escalation".to_owned(),
+            work_order_id: Some("wo-123".to_owned()),
+            escalation_id: Some("esc-123".to_owned()),
+            target_agent_id: Some("ferros-coding-continuity".to_owned()),
+            stop_reason: Some("missing-baton".to_owned()),
+        });
+        packet.last_lifecycle_errors = vec![
+            "missing baton packet".to_owned(),
+            "operator approval required".to_owned(),
+        ];
+        packet.notification_id = Some("ntf-123".to_owned());
         repo.register_packet(packet)
             .expect("packet registration should succeed");
 
@@ -1210,6 +1722,9 @@ mod tests {
         assert_eq!(packet.retry_count, 1);
         assert_eq!(packet.retry_budget, 2);
         assert!(packet.last_error.is_none());
+        assert!(packet.last_lifecycle_outcome.is_none());
+        assert!(packet.last_lifecycle_errors.is_empty());
+        assert!(packet.notification_id.is_none());
         assert!(packet.review_verdict.is_none());
         assert!(packet.gatekeeper_decision.is_none());
     }
@@ -1255,6 +1770,78 @@ mod tests {
         assert_eq!(repo.len(), 1);
         assert!(repo.packet("idem-p1").is_some());
         assert!(repo.packet("idem-p2").is_none());
+    }
+
+    #[test]
+    fn in_memory_repository_enqueue_creates_packet_and_dedupes_by_idempotency_key() {
+        let mut repo = InMemoryPacketRepository::default();
+
+        let first = repo
+            .enqueue(PacketEnqueueRequest {
+                packet_id: "enq-p1".to_owned(),
+                session_id: "session-1".to_owned(),
+                origin_message_id: None,
+                parent_packet_id: None,
+                work_order_id: Some("wo-1".to_owned()),
+                manager: "Software Architect".to_owned(),
+                state: PacketState::Staged,
+                lifecycle_thread_id: None,
+                notification_id: None,
+                created_at: "2026-01-01T00:00:00Z".to_owned(),
+                updated_at: "2026-01-01T00:00:00Z".to_owned(),
+                summary: "enqueue packet".to_owned(),
+                registration_idempotency_key: Some("enqueue-key-1".to_owned()),
+            })
+            .expect("first enqueue should succeed");
+        let second = repo
+            .enqueue(PacketEnqueueRequest {
+                packet_id: "enq-p2".to_owned(),
+                session_id: "session-2".to_owned(),
+                origin_message_id: None,
+                parent_packet_id: None,
+                work_order_id: Some("wo-2".to_owned()),
+                manager: "Software Architect".to_owned(),
+                state: PacketState::Staged,
+                lifecycle_thread_id: None,
+                notification_id: None,
+                created_at: "2026-01-01T00:00:01Z".to_owned(),
+                updated_at: "2026-01-01T00:00:01Z".to_owned(),
+                summary: "duplicate enqueue packet".to_owned(),
+                registration_idempotency_key: Some("enqueue-key-1".to_owned()),
+            })
+            .expect("second enqueue should succeed");
+
+        assert!(first.created);
+        assert!(!second.created);
+        assert_eq!(first.packet_id, "enq-p1");
+        assert_eq!(second.packet_id, "enq-p1");
+        assert_eq!(repo.snapshot().len(), 1);
+        assert_eq!(
+            repo.packet("enq-p1")
+                .expect("packet should exist")
+                .registration_idempotency_key
+                .as_deref(),
+            Some("enqueue-key-1")
+        );
+    }
+
+    #[test]
+    fn repository_snapshot_returns_cloned_packets() {
+        let mut repo = InMemoryPacketRepository::default();
+        repo.register_packet(make_staged_packet("snapshot-p1"))
+            .expect("packet registration should succeed");
+        repo.register_packet(make_packet(
+            "snapshot-p2",
+            "Software Architect",
+            PacketState::DispatchedToManager,
+        ))
+        .expect("packet registration should succeed");
+
+        let snapshot = repo.snapshot();
+
+        assert_eq!(snapshot.len(), 2);
+        assert_eq!(snapshot.packets[0].id, "snapshot-p1");
+        assert_eq!(snapshot.packets[1].id, "snapshot-p2");
     }
 
     #[test]
@@ -1668,6 +2255,64 @@ mod tests {
         assert_eq!(first, second);
         let packet = repo.packet("file-p4").unwrap();
         assert_eq!(packet.audit_trail.len(), 1);
+
+        cleanup_repo_path(&path);
+    }
+
+    #[test]
+    fn file_packet_repository_persists_evidence_append_idempotency_across_reload() {
+        let path = unique_temp_repo_path("append-evidence-reload");
+
+        let mut repo = FilePacketRepository::load_or_default_at(
+            path.clone(),
+            "2026-01-01T00:00:00Z",
+        )
+        .expect("file repository should load");
+        PacketRepository::register_packet(
+            &mut repo,
+            make_packet(
+                "file-evidence-p1",
+                "Software Architect",
+                PacketState::InProgress,
+            ),
+        )
+        .expect("packet registration should persist");
+        let first = repo
+            .append_evidence(PacketEvidenceAppendRequest {
+                packet_id: "file-evidence-p1".to_owned(),
+                actor: "test-actor".to_owned(),
+                reason: "persist evidence".to_owned(),
+                at: "2026-01-01T00:00:01Z".to_owned(),
+                idempotency_key: Some("append-evidence-file-1".to_owned()),
+                evidence_refs: vec!["evidence://file-p1".to_owned()],
+            })
+            .expect("evidence append should succeed")
+            .expect("packet should exist");
+        drop(repo);
+
+        let mut repo = FilePacketRepository::load_or_default_at(path.clone(), "2026-01-01T00:00:02Z")
+            .expect("file repository should reload");
+        let second = repo
+            .append_evidence(PacketEvidenceAppendRequest {
+                packet_id: "file-evidence-p1".to_owned(),
+                actor: "test-actor".to_owned(),
+                reason: "persist evidence".to_owned(),
+                at: "2026-01-01T00:00:02Z".to_owned(),
+                idempotency_key: Some("append-evidence-file-1".to_owned()),
+                evidence_refs: vec!["evidence://file-p1-duplicate".to_owned()],
+            })
+            .expect("duplicate evidence append should succeed")
+            .expect("packet should exist");
+
+        assert_eq!(first.seq, second.seq);
+        assert!(!second.appended);
+        let packet = repo.packet("file-evidence-p1").unwrap();
+        assert_eq!(packet.audit_trail.len(), 1);
+        assert_eq!(packet.audit_trail[0].kind, PacketAuditKind::EvidenceAppend);
+        assert_eq!(
+            packet.audit_trail[0].evidence_refs,
+            vec!["evidence://file-p1".to_owned()]
+        );
 
         cleanup_repo_path(&path);
     }

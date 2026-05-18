@@ -1,8 +1,8 @@
 use std::{env, path::PathBuf};
 
 use ferros_node::{
-    default_profile_path, execute_agent_cli, execute_profile_cli, run_demo, AgentCliCommand,
-    CliError, ProfileCliCommand,
+    default_profile_path, execute_agent_cli, execute_orchestrator_cli, execute_profile_cli,
+    run_demo, AgentCliCommand, CliError, OrchestratorCliCommand, ProfileCliCommand,
 };
 
 fn main() {
@@ -36,6 +36,7 @@ fn run(args: Vec<String>) -> Result<Vec<String>, CliError> {
             })
             .map_err(CliError::from),
         "agent" => execute_agent_cli(parse_agent_command(&args)?),
+        "orchestrator" => execute_orchestrator_cli(parse_orchestrator_command(&args)?),
         "profile" => execute_profile_cli(parse_profile_command(&args)?),
         _ => Err(usage()),
     }
@@ -97,6 +98,28 @@ fn parse_profile_command(args: &[String]) -> Result<ProfileCliCommand, CliError>
     }
 }
 
+fn parse_orchestrator_command(args: &[String]) -> Result<OrchestratorCliCommand, CliError> {
+    let Some(verb) = args.get(1).map(String::as_str) else {
+        return Err(usage());
+    };
+
+    Ok(match verb {
+        "status" if args.len() == 2 => OrchestratorCliCommand::Status,
+        "pause" if args.len() == 2 => OrchestratorCliCommand::Pause { force: false },
+        "pause" if args.len() == 3 && args[2] == "--force" => {
+            OrchestratorCliCommand::Pause { force: true }
+        }
+        "resume" if args.len() == 2 => OrchestratorCliCommand::Resume,
+        "inspect" if args.len() == 3 => OrchestratorCliCommand::Inspect {
+            packet_id: args[2].clone(),
+        },
+        "requeue" if args.len() == 3 => OrchestratorCliCommand::Requeue {
+            packet_id: args[2].clone(),
+        },
+        _ => return Err(usage()),
+    })
+}
+
 fn parse_required_value(args: &[String], index: usize) -> Result<&str, CliError> {
     args.get(index).map(String::as_str).ok_or_else(usage)
 }
@@ -115,7 +138,7 @@ fn parse_optional_profile_path(args: &[String], index: usize) -> Result<PathBuf,
 
 fn usage() -> CliError {
     CliError::Usage(
-        "usage: ferros demo\n       ferros agent list | describe <name> | run <name> | stop <name> | logs [name]\n       ferros profile init [path]\n       ferros profile show [path]\n       ferros profile export <bundle-path> [path]\n       ferros profile import <bundle-path> [path]\n       ferros profile grant <capability> [path]\n       ferros profile revoke <capability> [path]",
+        "usage: ferros demo\n       ferros agent list | describe <name> | run <name> | stop <name> | logs [name]\n       ferros orchestrator status | pause [--force] | resume | inspect <packet-id> | requeue <packet-id>\n       ferros profile init [path]\n       ferros profile show [path]\n       ferros profile export <bundle-path> [path]\n       ferros profile import <bundle-path> [path]\n       ferros profile grant <capability> [path]\n       ferros profile revoke <capability> [path]",
     )
 }
 
@@ -128,7 +151,7 @@ fn exit_code(error: &CliError) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::run;
+    use super::{parse_orchestrator_command, run};
     use std::{
         fs,
         path::PathBuf,
@@ -171,6 +194,47 @@ mod tests {
         assert!(lines.iter().any(|line| line.starts_with("echo: ")));
         assert!(lines.iter().any(|line| line.starts_with("timer: ")));
         assert!(lines.iter().any(|line| line == "denied: 1"));
+    }
+
+    #[test]
+    fn parse_orchestrator_command_accepts_force_pause() {
+        let command = parse_orchestrator_command(&[
+            "orchestrator".to_string(),
+            "pause".to_string(),
+            "--force".to_string(),
+        ])
+        .expect("pause command should parse");
+
+        assert_eq!(command, super::OrchestratorCliCommand::Pause { force: true });
+    }
+
+    #[test]
+    fn parse_orchestrator_command_accepts_inspect_and_requeue() {
+        let inspect = parse_orchestrator_command(&[
+            "orchestrator".to_string(),
+            "inspect".to_string(),
+            "pkt-1".to_string(),
+        ])
+        .expect("inspect command should parse");
+        assert_eq!(
+            inspect,
+            super::OrchestratorCliCommand::Inspect {
+                packet_id: "pkt-1".to_string()
+            }
+        );
+
+        let requeue = parse_orchestrator_command(&[
+            "orchestrator".to_string(),
+            "requeue".to_string(),
+            "pkt-2".to_string(),
+        ])
+        .expect("requeue command should parse");
+        assert_eq!(
+            requeue,
+            super::OrchestratorCliCommand::Requeue {
+                packet_id: "pkt-2".to_string()
+            }
+        );
     }
 
     fn unique_profile_path(test_name: &str) -> PathBuf {

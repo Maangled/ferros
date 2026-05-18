@@ -1,0 +1,3432 @@
+{
+  "openChats": [
+    {
+      "id": "chat-1",
+      "label": "packet3-watchdog",
+      "activeAgent": "FERROS Agent",
+      "threadId": "thr-3",
+      "createdAt": "2026-05-16T01:35:48.13191208Z",
+      "messages": [
+        {
+          "id": "msg-4",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Session ready. Route requests into coding, business, or architect lanes.",
+          "at": "2026-05-16T01:35:48.13191208Z"
+        },
+        {
+          "id": "msg-18",
+          "speaker": "watchdog",
+          "who": "FERROS Watchdog",
+          "text": "Questions cannot be answered in this background chat. Continue through the packet protocol. If human input is required, transition the packet to HumanInterventionRequired with reason and evidence. Otherwise continue the current packet using the available context.",
+          "at": "2026-05-16T01:35:48.132018366Z"
+        }
+      ]
+    },
+    {
+      "id": "chat-27",
+      "label": "User -> FERROS #27",
+      "activeAgent": "FERROS Agent",
+      "threadId": "thr-29",
+      "createdAt": "2026-05-16T23:54:26.24171363Z",
+      "messages": [
+        {
+          "id": "msg-30",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Session ready. Route requests into coding, business, or architect lanes.",
+          "at": "2026-05-16T23:54:26.24171363Z"
+        },
+        {
+          "id": "msg-32",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to software",
+          "at": "2026-05-16T23:54:29.86712859Z"
+        },
+        {
+          "id": "msg-44",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-41 staged and accepted by scaffold. Live manager execution is not connected. This liaison chat will stay open for updates.",
+          "at": "2026-05-16T23:54:29.867741275Z"
+        },
+        {
+          "id": "msg-47",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to software",
+          "at": "2026-05-16T23:54:33.612897874Z"
+        },
+        {
+          "id": "msg-59",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-56 staged and accepted by scaffold. Live manager execution is not connected. This liaison chat will stay open for updates.",
+          "at": "2026-05-16T23:54:33.613438249Z"
+        }
+      ]
+    },
+    {
+      "id": "chat-69",
+      "label": "Software Architect -> FERROS",
+      "activeAgent": "FERROS Agent",
+      "threadId": "thr-71",
+      "createdAt": "2026-05-17T00:07:11.372640409Z",
+      "messages": [
+        {
+          "id": "msg-72",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Session ready. Route requests into coding, business, or architect lanes.",
+          "at": "2026-05-17T00:07:11.372640409Z"
+        },
+        {
+          "id": "msg-74",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "Operator requested the current running or stalled session for Software Architect. Summarize the active packets, current blockers, and what needs attention.",
+          "at": "2026-05-17T00:07:11.391329738Z"
+        },
+        {
+          "id": "msg-86",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-83 staged and accepted by scaffold. Live manager execution is not connected. This liaison chat will stay open for updates.",
+          "at": "2026-05-17T00:07:11.393919751Z"
+        }
+      ]
+    },
+    {
+      "id": "chat-98",
+      "label": "User -> FERROS #98",
+      "activeAgent": "FERROS Agent",
+      "threadId": "thr-100",
+      "createdAt": "2026-05-17T01:00:17.239105806Z",
+      "messages": [
+        {
+          "id": "msg-101",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Session ready. Route requests into coding, business, or architect lanes.",
+          "at": "2026-05-17T01:00:17.239105806Z"
+        },
+        {
+          "id": "msg-103",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to software",
+          "at": "2026-05-17T01:00:17.332401414Z"
+        },
+        {
+          "id": "msg-115",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-112 staged and accepted by scaffold. Recorded execution evidence will advance on the manager loop. This liaison chat will stay open for updates.",
+          "at": "2026-05-17T01:00:17.333018538Z"
+        }
+      ]
+    },
+    {
+      "id": "chat-141",
+      "label": "User -> FERROS #141",
+      "activeAgent": "FERROS Agent",
+      "threadId": "thr-143",
+      "createdAt": "2026-05-17T01:00:43.097022213Z",
+      "messages": [
+        {
+          "id": "msg-144",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Session ready. Route requests into coding, business, or architect lanes.",
+          "at": "2026-05-17T01:00:43.097022213Z"
+        },
+        {
+          "id": "msg-146",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to software",
+          "at": "2026-05-17T01:00:43.192046689Z"
+        },
+        {
+          "id": "msg-158",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-155 staged and accepted by scaffold. Recorded execution evidence will advance on the manager loop. This liaison chat will stay open for updates.",
+          "at": "2026-05-17T01:00:43.192769995Z"
+        }
+      ]
+    },
+    {
+      "id": "chat-169",
+      "label": "User -> FERROS #169",
+      "activeAgent": "FERROS Agent",
+      "threadId": "thr-171",
+      "createdAt": "2026-05-17T01:00:57.421915128Z",
+      "messages": [
+        {
+          "id": "msg-172",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Session ready. Route requests into coding, business, or architect lanes.",
+          "at": "2026-05-17T01:00:57.421915128Z"
+        },
+        {
+          "id": "msg-174",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to software",
+          "at": "2026-05-17T01:00:57.513319369Z"
+        },
+        {
+          "id": "msg-186",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-183 staged and accepted by scaffold. Recorded execution evidence will advance on the manager loop. This liaison chat will stay open for updates.",
+          "at": "2026-05-17T01:00:57.514110201Z"
+        }
+      ]
+    },
+    {
+      "id": "chat-197",
+      "label": "User -> FERROS #197",
+      "activeAgent": "FERROS Agent",
+      "threadId": "thr-199",
+      "createdAt": "2026-05-17T02:17:04.769264204Z",
+      "messages": [
+        {
+          "id": "msg-200",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Session ready. Route requests into coding, business, or architect lanes.",
+          "at": "2026-05-17T02:17:04.769264204Z"
+        },
+        {
+          "id": "msg-202",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to core",
+          "at": "2026-05-17T02:17:04.868051154Z"
+        },
+        {
+          "id": "msg-217",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-211 staged and accepted by scaffold. Recorded execution evidence will advance on the manager loop via FERROS Core Agent (coordinator_sdk). This liaison chat will stay open for updates.",
+          "at": "2026-05-17T02:17:04.868999776Z"
+        },
+        {
+          "id": "msg-233",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Software Architect reports FERROS Core Agent completed child packet wo-221 for wo-205.",
+          "at": "2026-05-17T02:17:04.874735524Z"
+        }
+      ]
+    }
+  ],
+  "archivedChats": [],
+  "notifications": [
+    {
+      "id": "ntf-240",
+      "packetId": "pkt-211",
+      "sessionId": "chat-197",
+      "lifecycleThreadId": "thr-208",
+      "severity": "low",
+      "title": "Background loop completed",
+      "summary": "Software Architect completed background packet pkt-211",
+      "action": "open_ferros_chat",
+      "createdAt": "2026-05-17T02:17:05.358521757Z",
+      "status": "opened"
+    },
+    {
+      "id": "ntf-215",
+      "packetId": "pkt-211",
+      "sessionId": "chat-197",
+      "lifecycleThreadId": "thr-208",
+      "severity": "low",
+      "title": "Packet lifecycle outcome recorded",
+      "summary": "Software Architect prepared child dispatch to FERROS Core Agent (child-dispatch-prepared)",
+      "action": "open_ferros_chat",
+      "createdAt": "2026-05-17T02:17:04.868762868Z",
+      "status": "unread"
+    },
+    {
+      "id": "ntf-193",
+      "packetId": "pkt-183",
+      "sessionId": "chat-169",
+      "lifecycleThreadId": "thr-180",
+      "severity": "low",
+      "title": "Background loop completed",
+      "summary": "Software Architect completed background packet pkt-183",
+      "action": "open_ferros_chat",
+      "createdAt": "2026-05-17T01:00:57.530105165Z",
+      "status": "unread"
+    },
+    {
+      "id": "ntf-165",
+      "packetId": "pkt-155",
+      "sessionId": "chat-141",
+      "lifecycleThreadId": "thr-152",
+      "severity": "low",
+      "title": "Background loop completed",
+      "summary": "Software Architect completed background packet pkt-155",
+      "action": "open_ferros_chat",
+      "createdAt": "2026-05-17T01:00:43.50199607Z",
+      "status": "unread"
+    },
+    {
+      "id": "ntf-137",
+      "packetId": "pkt-112",
+      "sessionId": "chat-98",
+      "lifecycleThreadId": "thr-109",
+      "severity": "low",
+      "title": "Background loop completed",
+      "summary": "Software Architect completed background packet pkt-112",
+      "action": "open_ferros_chat",
+      "createdAt": "2026-05-17T01:00:18.231741978Z",
+      "status": "unread"
+    },
+    {
+      "id": "ntf-96",
+      "packetId": "pkt-83",
+      "sessionId": "chat-69",
+      "lifecycleThreadId": null,
+      "severity": "high",
+      "title": "Manager transition missing",
+      "summary": "Packet is still dispatched_to_manager and needs an explicit next action.",
+      "action": "open_ferros_chat",
+      "createdAt": "2026-05-17T00:22:12.101631356Z",
+      "status": "unread"
+    },
+    {
+      "id": "ntf-93",
+      "packetId": "pkt-56",
+      "sessionId": "chat-27",
+      "lifecycleThreadId": null,
+      "severity": "high",
+      "title": "Manager transition missing",
+      "summary": "Packet is still dispatched_to_manager and needs an explicit next action.",
+      "action": "open_ferros_chat",
+      "createdAt": "2026-05-17T00:09:34.200766365Z",
+      "status": "unread"
+    },
+    {
+      "id": "ntf-90",
+      "packetId": "pkt-41",
+      "sessionId": "chat-27",
+      "lifecycleThreadId": null,
+      "severity": "high",
+      "title": "Manager transition missing",
+      "summary": "Packet is still dispatched_to_manager and needs an explicit next action.",
+      "action": "open_ferros_chat",
+      "createdAt": "2026-05-17T00:09:30.197096061Z",
+      "status": "unread"
+    },
+    {
+      "id": "ntf-25",
+      "packetId": "pkt-14",
+      "sessionId": "chat-1",
+      "lifecycleThreadId": null,
+      "severity": "high",
+      "title": "Manager next action missing",
+      "summary": "In-progress manager packet must create child packets or transition to terminal/escalation state.",
+      "action": "open_ferros_chat",
+      "createdAt": "2026-05-16T23:53:57.709789479Z",
+      "status": "opened"
+    },
+    {
+      "id": "ntf-22",
+      "packetId": "pkt-14",
+      "sessionId": null,
+      "lifecycleThreadId": "thr-9",
+      "severity": "high",
+      "title": "Packet stalled",
+      "summary": "Packet pkt-14 stalled in InProgress state for 80289 seconds",
+      "action": "open_ferros_chat",
+      "createdAt": "2026-05-16T23:53:57.709782654Z",
+      "status": "resolved"
+    },
+    {
+      "id": "ntf-19",
+      "packetId": "pkt-14",
+      "sessionId": "chat-1",
+      "lifecycleThreadId": null,
+      "severity": "med",
+      "title": "Watchdog correction injected",
+      "summary": "System injected a corrective instruction. Continue via packet protocol.",
+      "action": "open_ferros_chat",
+      "createdAt": "2026-05-16T01:35:48.132028424Z",
+      "status": "opened"
+    }
+  ],
+  "runningLoops": [
+    {
+      "id": "software-architect",
+      "agent": "Software Architect",
+      "state": "idle",
+      "category": "software",
+      "status": "idle",
+      "statusReason": "no-active-cycle",
+      "statusDetail": "Completed packet pkt-211. Await next dispatch.",
+      "description": "Completed packet pkt-211. Await next dispatch.",
+      "startedAt": "2026-05-16T01:35:48.131946783Z",
+      "updatedAt": "2026-05-17T02:17:05.358501956Z",
+      "staleAfter": null,
+      "progress": 10,
+      "threadId": "thr-12",
+      "workOrderId": "wo-10",
+      "escalationId": null,
+      "sourceAgentId": "FERROS Monitor",
+      "targetAgentId": "Software Architect",
+      "currentPacketId": null,
+      "lastMessageAt": null
+    },
+    {
+      "id": "ferros-core-agent",
+      "agent": "FERROS Core Agent",
+      "state": "idle",
+      "category": "software",
+      "status": "stalled",
+      "statusReason": "stale-timeout",
+      "statusDetail": "No lifecycle update since 2026-05-17T02:17:04.874730786Z",
+      "description": "Completed child packet wo-221. Await next dispatch.",
+      "startedAt": "2026-05-17T02:17:04.874724643Z",
+      "updatedAt": "2026-05-17T02:17:04.874730786Z",
+      "staleAfter": "2026-05-17T02:20:04.874731688Z",
+      "progress": 76,
+      "threadId": "thr-229",
+      "workOrderId": "wo-221",
+      "escalationId": null,
+      "sourceAgentId": "Software Architect",
+      "targetAgentId": "FERROS Core Agent",
+      "currentPacketId": null,
+      "lastMessageAt": null
+    }
+  ],
+  "timeline": [
+    {
+      "id": "evt-245",
+      "kind": "notification.opened",
+      "text": "Watchdog correction injected acknowledged by operator",
+      "at": "2026-05-17T02:45:33.04811374Z"
+    },
+    {
+      "id": "evt-244",
+      "kind": "notification.opened",
+      "text": "Background loop completed acknowledged by operator",
+      "at": "2026-05-17T02:44:55.830130113Z"
+    },
+    {
+      "id": "evt-243",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-211 -> resolved",
+      "at": "2026-05-17T02:17:05.359149115Z"
+    },
+    {
+      "id": "evt-242",
+      "kind": "loop.completed",
+      "text": "Software Architect completed background packet pkt-211",
+      "at": "2026-05-17T02:17:05.358531721Z"
+    },
+    {
+      "id": "evt-241",
+      "kind": "notification.created",
+      "text": "Background loop completed: Software Architect completed background packet pkt-211",
+      "at": "2026-05-17T02:17:05.358527346Z"
+    },
+    {
+      "id": "evt-238",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-211 -> reviewed",
+      "at": "2026-05-17T02:17:05.103862071Z"
+    },
+    {
+      "id": "evt-237",
+      "kind": "packet.state_changed",
+      "text": "pkt-211 -> awaiting_review",
+      "at": "2026-05-17T02:17:04.874858055Z"
+    },
+    {
+      "id": "evt-235",
+      "kind": "chat.message.added",
+      "text": "Message msg-233 appended in User -> FERROS #197",
+      "at": "2026-05-17T02:17:04.874742219Z"
+    },
+    {
+      "id": "evt-226",
+      "kind": "packet.registered",
+      "text": "Packet pkt-225 registered",
+      "at": "2026-05-17T02:17:04.874722938Z"
+    },
+    {
+      "id": "evt-220",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-211 -> in_progress",
+      "at": "2026-05-17T02:17:04.874470224Z"
+    },
+    {
+      "id": "evt-219",
+      "kind": "chat.message.added",
+      "text": "Message msg-217 appended in User -> FERROS #197",
+      "at": "2026-05-17T02:17:04.869002563Z"
+    },
+    {
+      "id": "evt-216",
+      "kind": "notification.created",
+      "text": "Packet lifecycle outcome recorded: Software Architect prepared child dispatch to FERROS Core Agent (child-dispatch-prepared)",
+      "at": "2026-05-17T02:17:04.868764209Z"
+    },
+    {
+      "id": "evt-214",
+      "kind": "packet.lifecycle_outcome",
+      "text": "pkt-211 child_dispatch_prepared: Software Architect prepared child dispatch to FERROS Core Agent [target:ferros-core] [stop:child-dispatch-prepared]",
+      "at": "2026-05-17T02:17:04.868760474Z"
+    },
+    {
+      "id": "evt-213",
+      "kind": "packet.state_changed",
+      "text": "pkt-211 -> dispatched_to_manager",
+      "at": "2026-05-17T02:17:04.868610771Z"
+    },
+    {
+      "id": "evt-212",
+      "kind": "packet.registered",
+      "text": "Packet pkt-211 registered",
+      "at": "2026-05-17T02:17:04.868367616Z"
+    },
+    {
+      "id": "evt-210",
+      "kind": "packet.sent",
+      "text": "User -> FERROS #197 -> Software Architect",
+      "at": "2026-05-17T02:17:04.868193335Z"
+    },
+    {
+      "id": "evt-204",
+      "kind": "chat.message.added",
+      "text": "Message msg-202 appended in User -> FERROS #197",
+      "at": "2026-05-17T02:17:04.868058719Z"
+    },
+    {
+      "id": "evt-201",
+      "kind": "open-chat",
+      "text": "Opened User -> FERROS #197",
+      "at": "2026-05-17T02:17:04.769271581Z"
+    },
+    {
+      "id": "evt-196",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-183 -> resolved",
+      "at": "2026-05-17T01:00:57.530220339Z"
+    },
+    {
+      "id": "evt-195",
+      "kind": "loop.completed",
+      "text": "Software Architect completed background packet pkt-183",
+      "at": "2026-05-17T01:00:57.53010865Z"
+    },
+    {
+      "id": "evt-194",
+      "kind": "notification.created",
+      "text": "Background loop completed: Software Architect completed background packet pkt-183",
+      "at": "2026-05-17T01:00:57.530107508Z"
+    },
+    {
+      "id": "evt-191",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-183 -> reviewed",
+      "at": "2026-05-17T01:00:57.524736886Z"
+    },
+    {
+      "id": "evt-190",
+      "kind": "packet.state_changed",
+      "text": "pkt-183 -> awaiting_review",
+      "at": "2026-05-17T01:00:57.51953132Z"
+    },
+    {
+      "id": "evt-189",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-183 -> in_progress",
+      "at": "2026-05-17T01:00:57.519420652Z"
+    },
+    {
+      "id": "evt-188",
+      "kind": "chat.message.added",
+      "text": "Message msg-186 appended in User -> FERROS #169",
+      "at": "2026-05-17T01:00:57.51411294Z"
+    },
+    {
+      "id": "evt-185",
+      "kind": "packet.state_changed",
+      "text": "pkt-183 -> dispatched_to_manager",
+      "at": "2026-05-17T01:00:57.513884693Z"
+    },
+    {
+      "id": "evt-184",
+      "kind": "packet.registered",
+      "text": "Packet pkt-183 registered",
+      "at": "2026-05-17T01:00:57.513672545Z"
+    },
+    {
+      "id": "evt-182",
+      "kind": "packet.sent",
+      "text": "User -> FERROS #169 -> Software Architect",
+      "at": "2026-05-17T01:00:57.513497571Z"
+    },
+    {
+      "id": "evt-176",
+      "kind": "chat.message.added",
+      "text": "Message msg-174 appended in User -> FERROS #169",
+      "at": "2026-05-17T01:00:57.513325926Z"
+    },
+    {
+      "id": "evt-173",
+      "kind": "open-chat",
+      "text": "Opened User -> FERROS #169",
+      "at": "2026-05-17T01:00:57.421924078Z"
+    },
+    {
+      "id": "evt-168",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-155 -> resolved",
+      "at": "2026-05-17T01:00:43.502551568Z"
+    },
+    {
+      "id": "evt-167",
+      "kind": "loop.completed",
+      "text": "Software Architect completed background packet pkt-155",
+      "at": "2026-05-17T01:00:43.502006705Z"
+    },
+    {
+      "id": "evt-166",
+      "kind": "notification.created",
+      "text": "Background loop completed: Software Architect completed background packet pkt-155",
+      "at": "2026-05-17T01:00:43.502003115Z"
+    },
+    {
+      "id": "evt-163",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-155 -> reviewed",
+      "at": "2026-05-17T01:00:43.249433636Z"
+    },
+    {
+      "id": "evt-162",
+      "kind": "packet.state_changed",
+      "text": "pkt-155 -> awaiting_review",
+      "at": "2026-05-17T01:00:43.198220558Z"
+    },
+    {
+      "id": "evt-161",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-155 -> in_progress",
+      "at": "2026-05-17T01:00:43.198117068Z"
+    },
+    {
+      "id": "evt-160",
+      "kind": "chat.message.added",
+      "text": "Message msg-158 appended in User -> FERROS #141",
+      "at": "2026-05-17T01:00:43.192772495Z"
+    },
+    {
+      "id": "evt-157",
+      "kind": "packet.state_changed",
+      "text": "pkt-155 -> dispatched_to_manager",
+      "at": "2026-05-17T01:00:43.19255482Z"
+    },
+    {
+      "id": "evt-156",
+      "kind": "packet.registered",
+      "text": "Packet pkt-155 registered",
+      "at": "2026-05-17T01:00:43.192349766Z"
+    },
+    {
+      "id": "evt-154",
+      "kind": "packet.sent",
+      "text": "User -> FERROS #141 -> Software Architect",
+      "at": "2026-05-17T01:00:43.192187191Z"
+    },
+    {
+      "id": "evt-148",
+      "kind": "chat.message.added",
+      "text": "Message msg-146 appended in User -> FERROS #141",
+      "at": "2026-05-17T01:00:43.192054347Z"
+    },
+    {
+      "id": "evt-145",
+      "kind": "open-chat",
+      "text": "Opened User -> FERROS #141",
+      "at": "2026-05-17T01:00:43.097071178Z"
+    },
+    {
+      "id": "evt-140",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-112 -> resolved",
+      "at": "2026-05-17T01:00:18.232247182Z"
+    },
+    {
+      "id": "evt-139",
+      "kind": "loop.completed",
+      "text": "Software Architect completed background packet pkt-112",
+      "at": "2026-05-17T01:00:18.231750625Z"
+    },
+    {
+      "id": "evt-138",
+      "kind": "notification.created",
+      "text": "Background loop completed: Software Architect completed background packet pkt-112",
+      "at": "2026-05-17T01:00:18.231747429Z"
+    },
+    {
+      "id": "evt-135",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-112 -> reviewed",
+      "at": "2026-05-17T01:00:17.978160509Z"
+    },
+    {
+      "id": "evt-134",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-83 -> resolved",
+      "at": "2026-05-17T01:00:17.978152854Z"
+    },
+    {
+      "id": "evt-133",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-83 -> reviewed",
+      "at": "2026-05-17T01:00:17.723228975Z"
+    },
+    {
+      "id": "evt-132",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-56 -> resolved",
+      "at": "2026-05-17T01:00:17.723221412Z"
+    },
+    {
+      "id": "evt-131",
+      "kind": "packet.state_changed",
+      "text": "pkt-112 -> awaiting_review",
+      "at": "2026-05-17T01:00:17.469672984Z"
+    },
+    {
+      "id": "evt-130",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-112 -> in_progress",
+      "at": "2026-05-17T01:00:17.469572078Z"
+    },
+    {
+      "id": "evt-129",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-56 -> reviewed",
+      "at": "2026-05-17T01:00:17.469571313Z"
+    },
+    {
+      "id": "evt-128",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-41 -> resolved",
+      "at": "2026-05-17T01:00:17.46956935Z"
+    },
+    {
+      "id": "evt-127",
+      "kind": "packet.state_changed",
+      "text": "pkt-83 -> awaiting_review",
+      "at": "2026-05-17T01:00:17.349491428Z"
+    },
+    {
+      "id": "evt-126",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-83 -> in_progress",
+      "at": "2026-05-17T01:00:17.349410357Z"
+    },
+    {
+      "id": "evt-125",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-41 -> reviewed",
+      "at": "2026-05-17T01:00:17.349409767Z"
+    },
+    {
+      "id": "evt-124",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-14 -> resolved",
+      "at": "2026-05-17T01:00:17.349408075Z"
+    },
+    {
+      "id": "evt-123",
+      "kind": "packet.state_changed",
+      "text": "pkt-56 -> awaiting_review",
+      "at": "2026-05-17T01:00:17.343764623Z"
+    },
+    {
+      "id": "evt-122",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-56 -> in_progress",
+      "at": "2026-05-17T01:00:17.34368675Z"
+    },
+    {
+      "id": "evt-121",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-14 -> reviewed",
+      "at": "2026-05-17T01:00:17.343685131Z"
+    },
+    {
+      "id": "evt-120",
+      "kind": "packet.state_changed",
+      "text": "pkt-41 -> awaiting_review",
+      "at": "2026-05-17T01:00:17.338351598Z"
+    },
+    {
+      "id": "evt-119",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-41 -> in_progress",
+      "at": "2026-05-17T01:00:17.338275029Z"
+    },
+    {
+      "id": "evt-118",
+      "kind": "packet.state_changed",
+      "text": "[stub] pkt-14 -> awaiting_review",
+      "at": "2026-05-17T01:00:17.338273132Z"
+    },
+    {
+      "id": "evt-117",
+      "kind": "chat.message.added",
+      "text": "Message msg-115 appended in User -> FERROS #98",
+      "at": "2026-05-17T01:00:17.333021055Z"
+    },
+    {
+      "id": "evt-114",
+      "kind": "packet.state_changed",
+      "text": "pkt-112 -> dispatched_to_manager",
+      "at": "2026-05-17T01:00:17.332856804Z"
+    },
+    {
+      "id": "evt-113",
+      "kind": "packet.registered",
+      "text": "Packet pkt-112 registered",
+      "at": "2026-05-17T01:00:17.332680848Z"
+    },
+    {
+      "id": "evt-111",
+      "kind": "packet.sent",
+      "text": "User -> FERROS #98 -> Software Architect",
+      "at": "2026-05-17T01:00:17.332537567Z"
+    },
+    {
+      "id": "evt-105",
+      "kind": "chat.message.added",
+      "text": "Message msg-103 appended in User -> FERROS #98",
+      "at": "2026-05-17T01:00:17.332408608Z"
+    },
+    {
+      "id": "evt-102",
+      "kind": "open-chat",
+      "text": "Opened User -> FERROS #98",
+      "at": "2026-05-17T01:00:17.239120995Z"
+    },
+    {
+      "id": "evt-97",
+      "kind": "notification.created",
+      "text": "Manager transition missing: Packet is still dispatched_to_manager and needs an explicit next action.",
+      "at": "2026-05-17T00:22:12.101636797Z"
+    },
+    {
+      "id": "evt-94",
+      "kind": "notification.created",
+      "text": "Manager transition missing: Packet is still dispatched_to_manager and needs an explicit next action.",
+      "at": "2026-05-17T00:09:34.200773888Z"
+    },
+    {
+      "id": "evt-91",
+      "kind": "notification.created",
+      "text": "Manager transition missing: Packet is still dispatched_to_manager and needs an explicit next action.",
+      "at": "2026-05-17T00:09:30.19710322Z"
+    },
+    {
+      "id": "evt-88",
+      "kind": "chat.message.added",
+      "text": "Message msg-86 appended in Software Architect -> FERROS",
+      "at": "2026-05-17T00:07:11.393932209Z"
+    },
+    {
+      "id": "evt-85",
+      "kind": "packet.state_changed",
+      "text": "pkt-83 -> dispatched_to_manager",
+      "at": "2026-05-17T00:07:11.393174636Z"
+    },
+    {
+      "id": "evt-84",
+      "kind": "packet.registered",
+      "text": "Packet pkt-83 registered",
+      "at": "2026-05-17T00:07:11.392325351Z"
+    },
+    {
+      "id": "evt-82",
+      "kind": "packet.sent",
+      "text": "Software Architect -> FERROS -> Software Architect",
+      "at": "2026-05-17T00:07:11.391893866Z"
+    },
+    {
+      "id": "evt-76",
+      "kind": "chat.message.added",
+      "text": "Message msg-74 appended in Software Architect -> FERROS",
+      "at": "2026-05-17T00:07:11.391349801Z"
+    },
+    {
+      "id": "evt-73",
+      "kind": "open-chat",
+      "text": "Opened Software Architect -> FERROS",
+      "at": "2026-05-17T00:07:11.372674132Z"
+    },
+    {
+      "id": "evt-68",
+      "kind": "notification.updated",
+      "text": "Packet stalled -> resolved",
+      "at": "2026-05-17T00:07:03.456338826Z"
+    },
+    {
+      "id": "evt-67",
+      "kind": "notification.opened",
+      "text": "Manager next action missing acknowledged by operator",
+      "at": "2026-05-17T00:07:01.564417053Z"
+    },
+    {
+      "id": "evt-66",
+      "kind": "notification.opened",
+      "text": "Manager next action missing acknowledged by operator",
+      "at": "2026-05-17T00:07:00.633643027Z"
+    },
+    {
+      "id": "evt-65",
+      "kind": "notification.opened",
+      "text": "Watchdog correction injected acknowledged by operator",
+      "at": "2026-05-17T00:06:59.730675459Z"
+    },
+    {
+      "id": "evt-64",
+      "kind": "notification.opened",
+      "text": "Watchdog correction injected acknowledged by operator",
+      "at": "2026-05-17T00:06:58.8073976Z"
+    },
+    {
+      "id": "evt-63",
+      "kind": "notification.opened",
+      "text": "Packet stalled acknowledged by operator",
+      "at": "2026-05-17T00:06:53.459192551Z"
+    },
+    {
+      "id": "evt-62",
+      "kind": "notification.opened",
+      "text": "Packet stalled acknowledged by operator",
+      "at": "2026-05-17T00:06:39.070142463Z"
+    },
+    {
+      "id": "evt-61",
+      "kind": "chat.message.added",
+      "text": "Message msg-59 appended in User -> FERROS #27",
+      "at": "2026-05-16T23:54:33.613441103Z"
+    },
+    {
+      "id": "evt-58",
+      "kind": "packet.state_changed",
+      "text": "pkt-56 -> dispatched_to_manager",
+      "at": "2026-05-16T23:54:33.613299635Z"
+    },
+    {
+      "id": "evt-57",
+      "kind": "packet.registered",
+      "text": "Packet pkt-56 registered",
+      "at": "2026-05-16T23:54:33.613132495Z"
+    },
+    {
+      "id": "evt-55",
+      "kind": "packet.sent",
+      "text": "User -> FERROS #27 -> Software Architect",
+      "at": "2026-05-16T23:54:33.613013937Z"
+    },
+    {
+      "id": "evt-49",
+      "kind": "chat.message.added",
+      "text": "Message msg-47 appended in User -> FERROS #27",
+      "at": "2026-05-16T23:54:33.612905998Z"
+    },
+    {
+      "id": "evt-46",
+      "kind": "chat.message.added",
+      "text": "Message msg-44 appended in User -> FERROS #27",
+      "at": "2026-05-16T23:54:29.867744004Z"
+    },
+    {
+      "id": "evt-43",
+      "kind": "packet.state_changed",
+      "text": "pkt-41 -> dispatched_to_manager",
+      "at": "2026-05-16T23:54:29.867570104Z"
+    },
+    {
+      "id": "evt-42",
+      "kind": "packet.registered",
+      "text": "Packet pkt-41 registered",
+      "at": "2026-05-16T23:54:29.867401207Z"
+    },
+    {
+      "id": "evt-40",
+      "kind": "packet.sent",
+      "text": "User -> FERROS #27 -> Software Architect",
+      "at": "2026-05-16T23:54:29.867260485Z"
+    },
+    {
+      "id": "evt-34",
+      "kind": "chat.message.added",
+      "text": "Message msg-32 appended in User -> FERROS #27",
+      "at": "2026-05-16T23:54:29.867135597Z"
+    },
+    {
+      "id": "evt-31",
+      "kind": "open-chat",
+      "text": "Opened User -> FERROS #27",
+      "at": "2026-05-16T23:54:26.24172271Z"
+    },
+    {
+      "id": "evt-26",
+      "kind": "notification.created",
+      "text": "Manager next action missing: In-progress manager packet must create child packets or transition to terminal/escalation state.",
+      "at": "2026-05-16T23:53:57.709790306Z"
+    },
+    {
+      "id": "evt-23",
+      "kind": "notification.created",
+      "text": "Packet stalled: Packet pkt-14 stalled in InProgress state for 80289 seconds",
+      "at": "2026-05-16T23:53:57.709784214Z"
+    },
+    {
+      "id": "evt-20",
+      "kind": "notification.created",
+      "text": "Watchdog correction injected: System injected a corrective instruction. Continue via packet protocol.",
+      "at": "2026-05-16T01:35:48.132032763Z"
+    },
+    {
+      "id": "evt-17",
+      "kind": "packet.state_changed",
+      "text": "pkt-14 -> in_progress",
+      "at": "2026-05-16T01:35:48.131997849Z"
+    },
+    {
+      "id": "evt-16",
+      "kind": "packet.state_changed",
+      "text": "pkt-14 -> dispatched_to_manager",
+      "at": "2026-05-16T01:35:48.13198932Z"
+    },
+    {
+      "id": "evt-15",
+      "kind": "packet.registered",
+      "text": "Packet pkt-14 registered",
+      "at": "2026-05-16T01:35:48.131979746Z"
+    },
+    {
+      "id": "evt-13",
+      "kind": "packet.sent",
+      "text": "packet3-watchdog -> Software Architect",
+      "at": "2026-05-16T01:35:48.131971823Z"
+    },
+    {
+      "id": "evt-5",
+      "kind": "open-chat",
+      "text": "Opened packet3-watchdog",
+      "at": "2026-05-16T01:35:48.131929124Z"
+    }
+  ],
+  "lifecycleThreads": [
+    {
+      "id": "thr-229",
+      "title": "FERROS Core Agent",
+      "kind": "loop",
+      "status": "idle",
+      "ownerAgent": "FERROS Core Agent",
+      "sourceAgentId": "software",
+      "targetAgentId": "FERROS Core Agent",
+      "workOrderId": "wo-227",
+      "escalationId": null,
+      "createdAt": "2026-05-17T02:17:04.874727478Z",
+      "updatedAt": "2026-05-17T02:17:04.874732747Z",
+      "entries": [
+        {
+          "id": "lfe-228",
+          "kind": "loop.created",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "FERROS Core Agent: Executing child packet wo-221 from Software Architect.",
+          "at": "2026-05-17T02:17:04.874727478Z",
+          "status": "running",
+          "nextAction": "Await report, merge, or escalation"
+        },
+        {
+          "id": "lfe-231",
+          "kind": "loop.status",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "FERROS Core Agent: Completed child packet wo-221. Await next dispatch.",
+          "at": "2026-05-17T02:17:04.874732747Z",
+          "status": "idle",
+          "nextAction": "Await report, merge, or escalation"
+        }
+      ]
+    },
+    {
+      "id": "thr-224",
+      "title": "FERROS Core Agent packet wo-221",
+      "kind": "packet",
+      "status": "reported",
+      "ownerAgent": "FERROS Core Agent",
+      "sourceAgentId": "Software Architect",
+      "targetAgentId": "FERROS Core Agent",
+      "workOrderId": "wo-221",
+      "escalationId": null,
+      "createdAt": "2026-05-17T02:17:04.874568789Z",
+      "updatedAt": "2026-05-17T02:17:04.87472961Z",
+      "entries": [
+        {
+          "id": "lfe-223",
+          "kind": "packet.child_dispatched",
+          "speaker": "agent",
+          "who": "Software Architect",
+          "text": "Software Architect opened child packet wo-221 for FERROS Core Agent from parent work order wo-205.",
+          "at": "2026-05-17T02:17:04.874568789Z",
+          "status": "running",
+          "nextAction": "Await child lane response"
+        },
+        {
+          "id": "lfe-230",
+          "kind": "packet.report",
+          "speaker": "agent",
+          "who": "FERROS Core Agent",
+          "text": "FERROS Core Agent completed child packet wo-221 and returned a report to Software Architect.",
+          "at": "2026-05-17T02:17:04.87472961Z",
+          "status": "reported",
+          "nextAction": "Merge result into parent packet"
+        }
+      ]
+    },
+    {
+      "id": "thr-208",
+      "title": "Software Architect packet wo-205",
+      "kind": "packet",
+      "status": "awaiting_review",
+      "ownerAgent": "Software Architect",
+      "sourceAgentId": "FERROS Agent",
+      "targetAgentId": "Software Architect",
+      "workOrderId": "wo-205",
+      "escalationId": null,
+      "createdAt": "2026-05-17T02:17:04.868186217Z",
+      "updatedAt": "2026-05-17T02:17:04.874743368Z",
+      "entries": [
+        {
+          "id": "lfe-207",
+          "kind": "packet.created",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Staged wo-205 for Software Architect from User -> FERROS #197",
+          "at": "2026-05-17T02:17:04.868186217Z",
+          "status": "dispatched_to_manager",
+          "nextAction": "Await manager-level lifecycle updates"
+        },
+        {
+          "id": "lfe-222",
+          "kind": "packet.handoff",
+          "speaker": "agent",
+          "who": "Software Architect",
+          "text": "Received wo-205 from FERROS Agent. Dispatching child packet wo-221 to FERROS Core Agent.",
+          "at": "2026-05-17T02:17:04.874567007Z",
+          "status": "running",
+          "nextAction": "Await child lane report"
+        },
+        {
+          "id": "lfe-232",
+          "kind": "packet.returned",
+          "speaker": "agent",
+          "who": "Software Architect",
+          "text": "FERROS Core Agent returned child packet wo-221. Relaying completion back to FERROS Agent.",
+          "at": "2026-05-17T02:17:04.874734267Z",
+          "status": "awaiting_review",
+          "nextAction": "FERROS liaison can notify the user"
+        },
+        {
+          "id": "lfe-236",
+          "kind": "packet.relayed",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Software Architect reports FERROS Core Agent completed child packet wo-221 for wo-205.",
+          "at": "2026-05-17T02:17:04.874743368Z",
+          "status": "awaiting_review",
+          "nextAction": "Await next dispatch or closure"
+        }
+      ]
+    },
+    {
+      "id": "thr-199",
+      "title": "User -> FERROS #197",
+      "kind": "chat",
+      "status": "running",
+      "ownerAgent": "FERROS Agent",
+      "sourceAgentId": "operator",
+      "targetAgentId": "FERROS Agent",
+      "workOrderId": null,
+      "escalationId": null,
+      "createdAt": "2026-05-17T02:17:04.769268053Z",
+      "updatedAt": "2026-05-17T02:17:04.87473648Z",
+      "entries": [
+        {
+          "id": "lfe-198",
+          "kind": "chat.opened",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Lifecycle chat opened for User -> FERROS #197",
+          "at": "2026-05-17T02:17:04.769268053Z",
+          "status": "running",
+          "nextAction": "Await operator message or route request"
+        },
+        {
+          "id": "lfe-203",
+          "kind": "chat.message",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to core",
+          "at": "2026-05-17T02:17:04.868055978Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        },
+        {
+          "id": "lfe-206",
+          "kind": "packet.sent",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Dispatched to Software Architect as work order wo-205",
+          "at": "2026-05-17T02:17:04.868184844Z",
+          "status": "work_order_emitted",
+          "nextAction": "Follow downstream packet lifecycle thread"
+        },
+        {
+          "id": "lfe-218",
+          "kind": "chat.message",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-211 staged and accepted by scaffold. Recorded execution evidence will advance on the manager loop via FERROS Core Agent (coordinator_sdk). This liaison chat will stay open for updates.",
+          "at": "2026-05-17T02:17:04.869001215Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        },
+        {
+          "id": "lfe-234",
+          "kind": "chat.message",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Software Architect reports FERROS Core Agent completed child packet wo-221 for wo-205.",
+          "at": "2026-05-17T02:17:04.87473648Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        }
+      ]
+    },
+    {
+      "id": "thr-180",
+      "title": "Software Architect packet wo-177",
+      "kind": "packet",
+      "status": "dispatched_to_manager",
+      "ownerAgent": "Software Architect",
+      "sourceAgentId": "FERROS Agent",
+      "targetAgentId": "Software Architect",
+      "workOrderId": "wo-177",
+      "escalationId": null,
+      "createdAt": "2026-05-17T01:00:57.513457411Z",
+      "updatedAt": "2026-05-17T01:00:57.513457411Z",
+      "entries": [
+        {
+          "id": "lfe-179",
+          "kind": "packet.created",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Staged wo-177 for Software Architect from User -> FERROS #169",
+          "at": "2026-05-17T01:00:57.513457411Z",
+          "status": "dispatched_to_manager",
+          "nextAction": "Await manager-level lifecycle updates"
+        }
+      ]
+    },
+    {
+      "id": "thr-171",
+      "title": "User -> FERROS #169",
+      "kind": "chat",
+      "status": "running",
+      "ownerAgent": "FERROS Agent",
+      "sourceAgentId": "operator",
+      "targetAgentId": "FERROS Agent",
+      "workOrderId": null,
+      "escalationId": null,
+      "createdAt": "2026-05-17T01:00:57.421918708Z",
+      "updatedAt": "2026-05-17T01:00:57.51411164Z",
+      "entries": [
+        {
+          "id": "lfe-170",
+          "kind": "chat.opened",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Lifecycle chat opened for User -> FERROS #169",
+          "at": "2026-05-17T01:00:57.421918708Z",
+          "status": "running",
+          "nextAction": "Await operator message or route request"
+        },
+        {
+          "id": "lfe-175",
+          "kind": "chat.message",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to software",
+          "at": "2026-05-17T01:00:57.513323211Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        },
+        {
+          "id": "lfe-178",
+          "kind": "packet.sent",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Dispatched to Software Architect as work order wo-177",
+          "at": "2026-05-17T01:00:57.513456047Z",
+          "status": "work_order_emitted",
+          "nextAction": "Follow downstream packet lifecycle thread"
+        },
+        {
+          "id": "lfe-187",
+          "kind": "chat.message",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-183 staged and accepted by scaffold. Recorded execution evidence will advance on the manager loop. This liaison chat will stay open for updates.",
+          "at": "2026-05-17T01:00:57.51411164Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        }
+      ]
+    },
+    {
+      "id": "thr-152",
+      "title": "Software Architect packet wo-149",
+      "kind": "packet",
+      "status": "dispatched_to_manager",
+      "ownerAgent": "Software Architect",
+      "sourceAgentId": "FERROS Agent",
+      "targetAgentId": "Software Architect",
+      "workOrderId": "wo-149",
+      "escalationId": null,
+      "createdAt": "2026-05-17T01:00:43.192179459Z",
+      "updatedAt": "2026-05-17T01:00:43.192179459Z",
+      "entries": [
+        {
+          "id": "lfe-151",
+          "kind": "packet.created",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Staged wo-149 for Software Architect from User -> FERROS #141",
+          "at": "2026-05-17T01:00:43.192179459Z",
+          "status": "dispatched_to_manager",
+          "nextAction": "Await manager-level lifecycle updates"
+        }
+      ]
+    },
+    {
+      "id": "thr-143",
+      "title": "User -> FERROS #141",
+      "kind": "chat",
+      "status": "running",
+      "ownerAgent": "FERROS Agent",
+      "sourceAgentId": "operator",
+      "targetAgentId": "FERROS Agent",
+      "workOrderId": null,
+      "escalationId": null,
+      "createdAt": "2026-05-17T01:00:43.097027463Z",
+      "updatedAt": "2026-05-17T01:00:43.192771367Z",
+      "entries": [
+        {
+          "id": "lfe-142",
+          "kind": "chat.opened",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Lifecycle chat opened for User -> FERROS #141",
+          "at": "2026-05-17T01:00:43.097027463Z",
+          "status": "running",
+          "nextAction": "Await operator message or route request"
+        },
+        {
+          "id": "lfe-147",
+          "kind": "chat.message",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to software",
+          "at": "2026-05-17T01:00:43.192051759Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        },
+        {
+          "id": "lfe-150",
+          "kind": "packet.sent",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Dispatched to Software Architect as work order wo-149",
+          "at": "2026-05-17T01:00:43.192177997Z",
+          "status": "work_order_emitted",
+          "nextAction": "Follow downstream packet lifecycle thread"
+        },
+        {
+          "id": "lfe-159",
+          "kind": "chat.message",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-155 staged and accepted by scaffold. Recorded execution evidence will advance on the manager loop. This liaison chat will stay open for updates.",
+          "at": "2026-05-17T01:00:43.192771367Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        }
+      ]
+    },
+    {
+      "id": "thr-109",
+      "title": "Software Architect packet wo-106",
+      "kind": "packet",
+      "status": "dispatched_to_manager",
+      "ownerAgent": "Software Architect",
+      "sourceAgentId": "FERROS Agent",
+      "targetAgentId": "Software Architect",
+      "workOrderId": "wo-106",
+      "escalationId": null,
+      "createdAt": "2026-05-17T01:00:17.332529625Z",
+      "updatedAt": "2026-05-17T01:00:17.332529625Z",
+      "entries": [
+        {
+          "id": "lfe-108",
+          "kind": "packet.created",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Staged wo-106 for Software Architect from User -> FERROS #98",
+          "at": "2026-05-17T01:00:17.332529625Z",
+          "status": "dispatched_to_manager",
+          "nextAction": "Await manager-level lifecycle updates"
+        }
+      ]
+    },
+    {
+      "id": "thr-100",
+      "title": "User -> FERROS #98",
+      "kind": "chat",
+      "status": "running",
+      "ownerAgent": "FERROS Agent",
+      "sourceAgentId": "operator",
+      "targetAgentId": "FERROS Agent",
+      "workOrderId": null,
+      "escalationId": null,
+      "createdAt": "2026-05-17T01:00:17.239111444Z",
+      "updatedAt": "2026-05-17T01:00:17.333019927Z",
+      "entries": [
+        {
+          "id": "lfe-99",
+          "kind": "chat.opened",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Lifecycle chat opened for User -> FERROS #98",
+          "at": "2026-05-17T01:00:17.239111444Z",
+          "status": "running",
+          "nextAction": "Await operator message or route request"
+        },
+        {
+          "id": "lfe-104",
+          "kind": "chat.message",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to software",
+          "at": "2026-05-17T01:00:17.332406086Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        },
+        {
+          "id": "lfe-107",
+          "kind": "packet.sent",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Dispatched to Software Architect as work order wo-106",
+          "at": "2026-05-17T01:00:17.332528093Z",
+          "status": "work_order_emitted",
+          "nextAction": "Follow downstream packet lifecycle thread"
+        },
+        {
+          "id": "lfe-116",
+          "kind": "chat.message",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-112 staged and accepted by scaffold. Recorded execution evidence will advance on the manager loop. This liaison chat will stay open for updates.",
+          "at": "2026-05-17T01:00:17.333019927Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        }
+      ]
+    },
+    {
+      "id": "thr-80",
+      "title": "Software Architect packet wo-77",
+      "kind": "packet",
+      "status": "dispatched_to_manager",
+      "ownerAgent": "Software Architect",
+      "sourceAgentId": "FERROS Agent",
+      "targetAgentId": "Software Architect",
+      "workOrderId": "wo-77",
+      "escalationId": null,
+      "createdAt": "2026-05-17T00:07:11.391862182Z",
+      "updatedAt": "2026-05-17T00:07:11.391862182Z",
+      "entries": [
+        {
+          "id": "lfe-79",
+          "kind": "packet.created",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Staged wo-77 for Software Architect from Software Architect -> FERROS",
+          "at": "2026-05-17T00:07:11.391862182Z",
+          "status": "dispatched_to_manager",
+          "nextAction": "Await manager-level lifecycle updates"
+        }
+      ]
+    },
+    {
+      "id": "thr-71",
+      "title": "Software Architect -> FERROS",
+      "kind": "chat",
+      "status": "running",
+      "ownerAgent": "FERROS Agent",
+      "sourceAgentId": "operator",
+      "targetAgentId": "FERROS Agent",
+      "workOrderId": null,
+      "escalationId": null,
+      "createdAt": "2026-05-17T00:07:11.372653708Z",
+      "updatedAt": "2026-05-17T00:07:11.393926537Z",
+      "entries": [
+        {
+          "id": "lfe-70",
+          "kind": "chat.opened",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Lifecycle chat opened for Software Architect -> FERROS",
+          "at": "2026-05-17T00:07:11.372653708Z",
+          "status": "running",
+          "nextAction": "Await operator message or route request"
+        },
+        {
+          "id": "lfe-75",
+          "kind": "chat.message",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "Operator requested the current running or stalled session for Software Architect. Summarize the active packets, current blockers, and what needs attention.",
+          "at": "2026-05-17T00:07:11.39134197Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        },
+        {
+          "id": "lfe-78",
+          "kind": "packet.sent",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Dispatched to Software Architect as work order wo-77",
+          "at": "2026-05-17T00:07:11.391851534Z",
+          "status": "work_order_emitted",
+          "nextAction": "Follow downstream packet lifecycle thread"
+        },
+        {
+          "id": "lfe-87",
+          "kind": "chat.message",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-83 staged and accepted by scaffold. Live manager execution is not connected. This liaison chat will stay open for updates.",
+          "at": "2026-05-17T00:07:11.393926537Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        }
+      ]
+    },
+    {
+      "id": "thr-53",
+      "title": "Software Architect packet wo-50",
+      "kind": "packet",
+      "status": "dispatched_to_manager",
+      "ownerAgent": "Software Architect",
+      "sourceAgentId": "FERROS Agent",
+      "targetAgentId": "Software Architect",
+      "workOrderId": "wo-50",
+      "escalationId": null,
+      "createdAt": "2026-05-16T23:54:33.613007645Z",
+      "updatedAt": "2026-05-16T23:54:33.613007645Z",
+      "entries": [
+        {
+          "id": "lfe-52",
+          "kind": "packet.created",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Staged wo-50 for Software Architect from User -> FERROS #27",
+          "at": "2026-05-16T23:54:33.613007645Z",
+          "status": "dispatched_to_manager",
+          "nextAction": "Await manager-level lifecycle updates"
+        }
+      ]
+    },
+    {
+      "id": "thr-38",
+      "title": "Software Architect packet wo-35",
+      "kind": "packet",
+      "status": "dispatched_to_manager",
+      "ownerAgent": "Software Architect",
+      "sourceAgentId": "FERROS Agent",
+      "targetAgentId": "Software Architect",
+      "workOrderId": "wo-35",
+      "escalationId": null,
+      "createdAt": "2026-05-16T23:54:29.867252864Z",
+      "updatedAt": "2026-05-16T23:54:29.867252864Z",
+      "entries": [
+        {
+          "id": "lfe-37",
+          "kind": "packet.created",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Staged wo-35 for Software Architect from User -> FERROS #27",
+          "at": "2026-05-16T23:54:29.867252864Z",
+          "status": "dispatched_to_manager",
+          "nextAction": "Await manager-level lifecycle updates"
+        }
+      ]
+    },
+    {
+      "id": "thr-29",
+      "title": "User -> FERROS #27",
+      "kind": "chat",
+      "status": "running",
+      "ownerAgent": "FERROS Agent",
+      "sourceAgentId": "operator",
+      "targetAgentId": "FERROS Agent",
+      "workOrderId": null,
+      "escalationId": null,
+      "createdAt": "2026-05-16T23:54:26.241719016Z",
+      "updatedAt": "2026-05-16T23:54:33.613439944Z",
+      "entries": [
+        {
+          "id": "lfe-28",
+          "kind": "chat.opened",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Lifecycle chat opened for User -> FERROS #27",
+          "at": "2026-05-16T23:54:26.241719016Z",
+          "status": "running",
+          "nextAction": "Await operator message or route request"
+        },
+        {
+          "id": "lfe-33",
+          "kind": "chat.message",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to software",
+          "at": "2026-05-16T23:54:29.867133524Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        },
+        {
+          "id": "lfe-36",
+          "kind": "packet.sent",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Dispatched to Software Architect as work order wo-35",
+          "at": "2026-05-16T23:54:29.867251317Z",
+          "status": "work_order_emitted",
+          "nextAction": "Follow downstream packet lifecycle thread"
+        },
+        {
+          "id": "lfe-45",
+          "kind": "chat.message",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-41 staged and accepted by scaffold. Live manager execution is not connected. This liaison chat will stay open for updates.",
+          "at": "2026-05-16T23:54:29.867742507Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        },
+        {
+          "id": "lfe-48",
+          "kind": "chat.message",
+          "speaker": "user",
+          "who": "Operator",
+          "text": "please route to software",
+          "at": "2026-05-16T23:54:33.612901545Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        },
+        {
+          "id": "lfe-51",
+          "kind": "packet.sent",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Dispatched to Software Architect as work order wo-50",
+          "at": "2026-05-16T23:54:33.613006218Z",
+          "status": "work_order_emitted",
+          "nextAction": "Follow downstream packet lifecycle thread"
+        },
+        {
+          "id": "lfe-60",
+          "kind": "chat.message",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Packet pkt-56 staged and accepted by scaffold. Live manager execution is not connected. This liaison chat will stay open for updates.",
+          "at": "2026-05-16T23:54:33.613439944Z",
+          "status": "running",
+          "nextAction": "Await route or reply"
+        }
+      ]
+    },
+    {
+      "id": "thr-12",
+      "title": "Software Architect",
+      "kind": "loop",
+      "status": "idle",
+      "ownerAgent": "Software Architect",
+      "sourceAgentId": "software",
+      "targetAgentId": "Software Architect",
+      "workOrderId": "wo-10",
+      "escalationId": null,
+      "createdAt": "2026-05-16T01:35:48.131964776Z",
+      "updatedAt": "2026-05-17T02:17:05.358513488Z",
+      "entries": [
+        {
+          "id": "lfe-11",
+          "kind": "loop.created",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect: Executing software work order and preparing Core/SubCore branch packets.",
+          "at": "2026-05-16T01:35:48.131964776Z",
+          "status": "running",
+          "nextAction": "Await report, merge, or escalation"
+        },
+        {
+          "id": "lfe-39",
+          "kind": "loop.status",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect: Executing software work order and preparing Core/SubCore branch packets.",
+          "at": "2026-05-16T23:54:29.867259137Z",
+          "status": "running",
+          "nextAction": "Await report, merge, or escalation"
+        },
+        {
+          "id": "lfe-54",
+          "kind": "loop.status",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect: Executing software work order and preparing Core/SubCore branch packets.",
+          "at": "2026-05-16T23:54:33.6130127Z",
+          "status": "running",
+          "nextAction": "Await report, merge, or escalation"
+        },
+        {
+          "id": "lfe-81",
+          "kind": "loop.status",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect: Executing software work order and preparing Core/SubCore branch packets.",
+          "at": "2026-05-17T00:07:11.39188806Z",
+          "status": "running",
+          "nextAction": "Await report, merge, or escalation"
+        },
+        {
+          "id": "lfe-110",
+          "kind": "loop.status",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect: Executing software work order and preparing Core/SubCore branch packets.",
+          "at": "2026-05-17T01:00:17.332535129Z",
+          "status": "running",
+          "nextAction": "Await report, merge, or escalation"
+        },
+        {
+          "id": "lfe-136",
+          "kind": "loop.completed",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect completed background packet pkt-112",
+          "at": "2026-05-17T01:00:18.231734615Z",
+          "status": "idle",
+          "nextAction": "Await next dispatch"
+        },
+        {
+          "id": "lfe-153",
+          "kind": "loop.status",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect: Executing software work order and preparing Core/SubCore branch packets.",
+          "at": "2026-05-17T01:00:43.192185365Z",
+          "status": "running",
+          "nextAction": "Await report, merge, or escalation"
+        },
+        {
+          "id": "lfe-164",
+          "kind": "loop.completed",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect completed background packet pkt-155",
+          "at": "2026-05-17T01:00:43.501989023Z",
+          "status": "idle",
+          "nextAction": "Await next dispatch"
+        },
+        {
+          "id": "lfe-181",
+          "kind": "loop.status",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect: Executing software work order and preparing Core/SubCore branch packets.",
+          "at": "2026-05-17T01:00:57.513463371Z",
+          "status": "running",
+          "nextAction": "Await report, merge, or escalation"
+        },
+        {
+          "id": "lfe-192",
+          "kind": "loop.completed",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect completed background packet pkt-183",
+          "at": "2026-05-17T01:00:57.530103584Z",
+          "status": "idle",
+          "nextAction": "Await next dispatch"
+        },
+        {
+          "id": "lfe-209",
+          "kind": "loop.status",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect: Executing software work order and preparing Core/SubCore branch packets.",
+          "at": "2026-05-17T02:17:04.868192018Z",
+          "status": "running",
+          "nextAction": "Await report, merge, or escalation"
+        },
+        {
+          "id": "lfe-239",
+          "kind": "loop.completed",
+          "speaker": "system",
+          "who": "Monitor",
+          "text": "Software Architect completed background packet pkt-211",
+          "at": "2026-05-17T02:17:05.358513488Z",
+          "status": "idle",
+          "nextAction": "Await next dispatch"
+        }
+      ]
+    },
+    {
+      "id": "thr-9",
+      "title": "Software Architect packet wo-6",
+      "kind": "packet",
+      "status": "dispatched_to_manager",
+      "ownerAgent": "Software Architect",
+      "sourceAgentId": "FERROS Agent",
+      "targetAgentId": "Software Architect",
+      "workOrderId": "wo-6",
+      "escalationId": null,
+      "createdAt": "2026-05-16T01:35:48.131940134Z",
+      "updatedAt": "2026-05-16T01:35:48.131940134Z",
+      "entries": [
+        {
+          "id": "lfe-8",
+          "kind": "packet.created",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Staged wo-6 for Software Architect from packet3-watchdog",
+          "at": "2026-05-16T01:35:48.131940134Z",
+          "status": "dispatched_to_manager",
+          "nextAction": "Await manager-level lifecycle updates"
+        }
+      ]
+    },
+    {
+      "id": "thr-3",
+      "title": "packet3-watchdog",
+      "kind": "chat",
+      "status": "work_order_emitted",
+      "ownerAgent": "FERROS Agent",
+      "sourceAgentId": "operator",
+      "targetAgentId": "FERROS Agent",
+      "workOrderId": null,
+      "escalationId": null,
+      "createdAt": "2026-05-16T01:35:48.131919133Z",
+      "updatedAt": "2026-05-16T01:35:48.131934651Z",
+      "entries": [
+        {
+          "id": "lfe-2",
+          "kind": "chat.opened",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Lifecycle chat opened for packet3-watchdog",
+          "at": "2026-05-16T01:35:48.131919133Z",
+          "status": "running",
+          "nextAction": "Await operator message or route request"
+        },
+        {
+          "id": "lfe-7",
+          "kind": "packet.sent",
+          "speaker": "agent",
+          "who": "FERROS Agent",
+          "text": "Dispatched to Software Architect as work order wo-6",
+          "at": "2026-05-16T01:35:48.131934651Z",
+          "status": "work_order_emitted",
+          "nextAction": "Follow downstream packet lifecycle thread"
+        }
+      ]
+    }
+  ],
+  "packets": [
+    {
+      "id": "pkt-14",
+      "sessionId": "chat-1",
+      "originMessageId": null,
+      "parentPacketId": null,
+      "workOrderId": "wo-6",
+      "manager": "Software Architect",
+      "state": "resolved",
+      "reviewVerdict": "approved",
+      "gatekeeperDecision": "close",
+      "lifecycleThreadId": "thr-9",
+      "notificationId": "ntf-19",
+      "createdAt": "2026-05-16T01:35:48.131975981Z",
+      "updatedAt": "2026-05-17T01:00:17.34872178Z",
+      "summary": "Staged from packet3-watchdog → Software Architect",
+      "lastError": null,
+      "registrationIdempotencyKey": null,
+      "retryCount": 0,
+      "retryBudget": 0,
+      "lastFailureRetryable": false,
+      "leaseRole": null,
+      "leaseExpiresAt": null,
+      "auditSeq": 5,
+      "auditTrail": [
+        {
+          "kind": "transition",
+          "seq": 1,
+          "from": "staged",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-backend",
+          "reason": "accepted by scaffold backend",
+          "at": "2026-05-16T01:35:48.131984342Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-14"
+          ]
+        },
+        {
+          "kind": "transition",
+          "seq": 2,
+          "from": "dispatched_to_manager",
+          "to": "in_progress",
+          "actor": "worker",
+          "reason": "working",
+          "at": "2026-05-16T01:35:48.131993739Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 3,
+          "from": "in_progress",
+          "to": "awaiting_review",
+          "actor": "stub-worker-agent",
+          "reason": "worker completed packet",
+          "at": "2026-05-17T01:00:17.337933572Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "evidence://pkt-14"
+          ]
+        },
+        {
+          "kind": "transition",
+          "seq": 4,
+          "from": "awaiting_review",
+          "to": "reviewed",
+          "actor": "stub-reviewer-agent",
+          "reason": "reviewer approved packet",
+          "at": "2026-05-17T01:00:17.343254793Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 5,
+          "from": "reviewed",
+          "to": "resolved",
+          "actor": "stub-gatekeeper-agent",
+          "reason": "gatekeeper closed packet",
+          "at": "2026-05-17T01:00:17.34872178Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-14",
+            "evidence://pkt-14"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pkt-41",
+      "sessionId": "chat-27",
+      "originMessageId": "msg-32",
+      "parentPacketId": null,
+      "workOrderId": "wo-35",
+      "manager": "Software Architect",
+      "state": "resolved",
+      "reviewVerdict": "approved",
+      "gatekeeperDecision": "close",
+      "lifecycleThreadId": "thr-38",
+      "notificationId": "ntf-90",
+      "createdAt": "2026-05-16T23:54:29.867261343Z",
+      "updatedAt": "2026-05-17T01:00:17.468792399Z",
+      "summary": "Staged from User -> FERROS #27 → Software Architect",
+      "lastError": null,
+      "registrationIdempotencyKey": "dispatch:chat-27:msg-32:software",
+      "retryCount": 0,
+      "retryBudget": 0,
+      "lastFailureRetryable": false,
+      "leaseRole": null,
+      "leaseExpiresAt": null,
+      "auditSeq": 6,
+      "auditTrail": [
+        {
+          "kind": "transition",
+          "seq": 1,
+          "from": "staged",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-backend",
+          "reason": "accepted by scaffold backend",
+          "at": "2026-05-16T23:54:29.867499957Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-41"
+          ]
+        },
+        {
+          "kind": "evidence_append",
+          "seq": 2,
+          "from": "dispatched_to_manager",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-worker-driver",
+          "reason": "scaffold prepared pkt-41 for Software Architect with runtime plan FERROS Coding Continuity Agent (subprocess), FERROS Core Agent (coordinator_sdk), FERROS SubCore Agent (coordinator_sdk)",
+          "at": "2026-05-16T23:54:29.867677321Z",
+          "idempotencyKey": "dispatch.execution:pkt-41",
+          "evidenceRefs": [
+            "scaffold-exec:pkt-41",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        },
+        {
+          "kind": "transition",
+          "seq": 3,
+          "from": "dispatched_to_manager",
+          "to": "in_progress",
+          "actor": "stub-manager-agent",
+          "reason": "manager claimed packet",
+          "at": "2026-05-17T01:00:17.337933572Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 4,
+          "from": "in_progress",
+          "to": "awaiting_review",
+          "actor": "scaffold-manager-execution",
+          "reason": "manager consumed recorded execution report",
+          "at": "2026-05-17T01:00:17.338275765Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 5,
+          "from": "awaiting_review",
+          "to": "reviewed",
+          "actor": "stub-reviewer-agent",
+          "reason": "reviewer approved packet",
+          "at": "2026-05-17T01:00:17.34872178Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 6,
+          "from": "reviewed",
+          "to": "resolved",
+          "actor": "stub-gatekeeper-agent",
+          "reason": "gatekeeper closed packet",
+          "at": "2026-05-17T01:00:17.468792399Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-41",
+            "scaffold-exec:pkt-41",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pkt-56",
+      "sessionId": "chat-27",
+      "originMessageId": "msg-47",
+      "parentPacketId": null,
+      "workOrderId": "wo-50",
+      "manager": "Software Architect",
+      "state": "resolved",
+      "reviewVerdict": "approved",
+      "gatekeeperDecision": "close",
+      "lifecycleThreadId": "thr-53",
+      "notificationId": "ntf-93",
+      "createdAt": "2026-05-16T23:54:33.613014743Z",
+      "updatedAt": "2026-05-17T01:00:17.720137087Z",
+      "summary": "Staged from User -> FERROS #27 → Software Architect",
+      "lastError": null,
+      "registrationIdempotencyKey": "dispatch:chat-27:msg-47:software",
+      "retryCount": 0,
+      "retryBudget": 0,
+      "lastFailureRetryable": false,
+      "leaseRole": null,
+      "leaseExpiresAt": null,
+      "auditSeq": 6,
+      "auditTrail": [
+        {
+          "kind": "transition",
+          "seq": 1,
+          "from": "staged",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-backend",
+          "reason": "accepted by scaffold backend",
+          "at": "2026-05-16T23:54:33.613221862Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-56"
+          ]
+        },
+        {
+          "kind": "evidence_append",
+          "seq": 2,
+          "from": "dispatched_to_manager",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-worker-driver",
+          "reason": "scaffold prepared pkt-56 for Software Architect with runtime plan FERROS Coding Continuity Agent (subprocess), FERROS Core Agent (coordinator_sdk), FERROS SubCore Agent (coordinator_sdk)",
+          "at": "2026-05-16T23:54:33.613367899Z",
+          "idempotencyKey": "dispatch.execution:pkt-56",
+          "evidenceRefs": [
+            "scaffold-exec:pkt-56",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        },
+        {
+          "kind": "transition",
+          "seq": 3,
+          "from": "dispatched_to_manager",
+          "to": "in_progress",
+          "actor": "stub-manager-agent",
+          "reason": "manager claimed packet",
+          "at": "2026-05-17T01:00:17.343254793Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 4,
+          "from": "in_progress",
+          "to": "awaiting_review",
+          "actor": "scaffold-manager-execution",
+          "reason": "manager consumed recorded execution report",
+          "at": "2026-05-17T01:00:17.343687641Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 5,
+          "from": "awaiting_review",
+          "to": "reviewed",
+          "actor": "stub-reviewer-agent",
+          "reason": "reviewer approved packet",
+          "at": "2026-05-17T01:00:17.468792399Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 6,
+          "from": "reviewed",
+          "to": "resolved",
+          "actor": "stub-gatekeeper-agent",
+          "reason": "gatekeeper closed packet",
+          "at": "2026-05-17T01:00:17.720137087Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-56",
+            "scaffold-exec:pkt-56",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pkt-83",
+      "sessionId": "chat-69",
+      "originMessageId": "msg-74",
+      "parentPacketId": null,
+      "workOrderId": "wo-77",
+      "manager": "Software Architect",
+      "state": "resolved",
+      "reviewVerdict": "approved",
+      "gatekeeperDecision": "close",
+      "lifecycleThreadId": "thr-80",
+      "notificationId": "ntf-96",
+      "createdAt": "2026-05-17T00:07:11.391898662Z",
+      "updatedAt": "2026-05-17T01:00:17.975005744Z",
+      "summary": "Staged from Software Architect -> FERROS → Software Architect",
+      "lastError": null,
+      "registrationIdempotencyKey": "dispatch:chat-69:msg-74:software",
+      "retryCount": 0,
+      "retryBudget": 0,
+      "lastFailureRetryable": false,
+      "leaseRole": null,
+      "leaseExpiresAt": null,
+      "auditSeq": 6,
+      "auditTrail": [
+        {
+          "kind": "transition",
+          "seq": 1,
+          "from": "staged",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-backend",
+          "reason": "accepted by scaffold backend",
+          "at": "2026-05-17T00:07:11.392787677Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-83"
+          ]
+        },
+        {
+          "kind": "evidence_append",
+          "seq": 2,
+          "from": "dispatched_to_manager",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-worker-driver",
+          "reason": "scaffold prepared pkt-83 for Software Architect with runtime plan FERROS Coding Continuity Agent (subprocess), FERROS Core Agent (coordinator_sdk), FERROS SubCore Agent (coordinator_sdk)",
+          "at": "2026-05-17T00:07:11.393524706Z",
+          "idempotencyKey": "dispatch.execution:pkt-83",
+          "evidenceRefs": [
+            "scaffold-exec:pkt-83",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        },
+        {
+          "kind": "transition",
+          "seq": 3,
+          "from": "dispatched_to_manager",
+          "to": "in_progress",
+          "actor": "stub-manager-agent",
+          "reason": "manager claimed packet",
+          "at": "2026-05-17T01:00:17.34872178Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 4,
+          "from": "in_progress",
+          "to": "awaiting_review",
+          "actor": "scaffold-manager-execution",
+          "reason": "manager consumed recorded execution report",
+          "at": "2026-05-17T01:00:17.349411073Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 5,
+          "from": "awaiting_review",
+          "to": "reviewed",
+          "actor": "stub-reviewer-agent",
+          "reason": "reviewer approved packet",
+          "at": "2026-05-17T01:00:17.720137087Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 6,
+          "from": "reviewed",
+          "to": "resolved",
+          "actor": "stub-gatekeeper-agent",
+          "reason": "gatekeeper closed packet",
+          "at": "2026-05-17T01:00:17.975005744Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-83",
+            "scaffold-exec:pkt-83",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pkt-112",
+      "sessionId": "chat-98",
+      "originMessageId": "msg-103",
+      "parentPacketId": null,
+      "workOrderId": "wo-106",
+      "manager": "Software Architect",
+      "state": "resolved",
+      "reviewVerdict": "approved",
+      "gatekeeperDecision": "close",
+      "lifecycleThreadId": "thr-109",
+      "notificationId": "ntf-137",
+      "createdAt": "2026-05-17T01:00:17.332538587Z",
+      "updatedAt": "2026-05-17T01:00:18.229878915Z",
+      "summary": "Staged from User -> FERROS #98 → Software Architect",
+      "lastError": null,
+      "registrationIdempotencyKey": "dispatch:chat-98:msg-103:software",
+      "retryCount": 0,
+      "retryBudget": 0,
+      "lastFailureRetryable": false,
+      "leaseRole": null,
+      "leaseExpiresAt": null,
+      "auditSeq": 6,
+      "auditTrail": [
+        {
+          "kind": "transition",
+          "seq": 1,
+          "from": "staged",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-backend",
+          "reason": "accepted by scaffold backend",
+          "at": "2026-05-17T01:00:17.332770356Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-112"
+          ]
+        },
+        {
+          "kind": "evidence_append",
+          "seq": 2,
+          "from": "dispatched_to_manager",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-worker-driver",
+          "reason": "scaffold prepared pkt-112 for Software Architect with runtime plan FERROS Coding Continuity Agent (subprocess), FERROS Core Agent (coordinator_sdk), FERROS SubCore Agent (coordinator_sdk)",
+          "at": "2026-05-17T01:00:17.33293658Z",
+          "idempotencyKey": "dispatch.execution:pkt-112",
+          "evidenceRefs": [
+            "scaffold-exec:pkt-112",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        },
+        {
+          "kind": "transition",
+          "seq": 3,
+          "from": "dispatched_to_manager",
+          "to": "in_progress",
+          "actor": "stub-manager-agent",
+          "reason": "manager claimed packet",
+          "at": "2026-05-17T01:00:17.468792399Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 4,
+          "from": "in_progress",
+          "to": "awaiting_review",
+          "actor": "scaffold-manager-execution",
+          "reason": "manager consumed recorded execution report",
+          "at": "2026-05-17T01:00:17.469573135Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 5,
+          "from": "awaiting_review",
+          "to": "reviewed",
+          "actor": "stub-reviewer-agent",
+          "reason": "reviewer approved packet",
+          "at": "2026-05-17T01:00:17.975005744Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 6,
+          "from": "reviewed",
+          "to": "resolved",
+          "actor": "stub-gatekeeper-agent",
+          "reason": "gatekeeper closed packet",
+          "at": "2026-05-17T01:00:18.229878915Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-112",
+            "scaffold-exec:pkt-112",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pkt-155",
+      "sessionId": "chat-141",
+      "originMessageId": "msg-146",
+      "parentPacketId": null,
+      "workOrderId": "wo-149",
+      "manager": "Software Architect",
+      "state": "resolved",
+      "reviewVerdict": "approved",
+      "gatekeeperDecision": "close",
+      "lifecycleThreadId": "thr-152",
+      "notificationId": "ntf-165",
+      "createdAt": "2026-05-17T01:00:43.192189518Z",
+      "updatedAt": "2026-05-17T01:00:43.499966239Z",
+      "summary": "Staged from User -> FERROS #141 → Software Architect",
+      "lastError": null,
+      "registrationIdempotencyKey": "dispatch:chat-141:msg-146:software",
+      "retryCount": 0,
+      "retryBudget": 0,
+      "lastFailureRetryable": false,
+      "leaseRole": null,
+      "leaseExpiresAt": null,
+      "auditSeq": 6,
+      "auditTrail": [
+        {
+          "kind": "transition",
+          "seq": 1,
+          "from": "staged",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-backend",
+          "reason": "accepted by scaffold backend",
+          "at": "2026-05-17T01:00:43.192444839Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-155"
+          ]
+        },
+        {
+          "kind": "evidence_append",
+          "seq": 2,
+          "from": "dispatched_to_manager",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-worker-driver",
+          "reason": "scaffold prepared pkt-155 for Software Architect with runtime plan FERROS Coding Continuity Agent (subprocess), FERROS Core Agent (coordinator_sdk), FERROS SubCore Agent (coordinator_sdk)",
+          "at": "2026-05-17T01:00:43.192666402Z",
+          "idempotencyKey": "dispatch.execution:pkt-155",
+          "evidenceRefs": [
+            "scaffold-exec:pkt-155",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        },
+        {
+          "kind": "transition",
+          "seq": 3,
+          "from": "dispatched_to_manager",
+          "to": "in_progress",
+          "actor": "stub-manager-agent",
+          "reason": "manager claimed packet",
+          "at": "2026-05-17T01:00:43.19786831Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 4,
+          "from": "in_progress",
+          "to": "awaiting_review",
+          "actor": "scaffold-manager-execution",
+          "reason": "manager consumed recorded execution report",
+          "at": "2026-05-17T01:00:43.198118988Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 5,
+          "from": "awaiting_review",
+          "to": "reviewed",
+          "actor": "stub-reviewer-agent",
+          "reason": "reviewer approved packet",
+          "at": "2026-05-17T01:00:43.248989283Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 6,
+          "from": "reviewed",
+          "to": "resolved",
+          "actor": "stub-gatekeeper-agent",
+          "reason": "gatekeeper closed packet",
+          "at": "2026-05-17T01:00:43.499966239Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-155",
+            "scaffold-exec:pkt-155",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pkt-183",
+      "sessionId": "chat-169",
+      "originMessageId": "msg-174",
+      "parentPacketId": null,
+      "workOrderId": "wo-177",
+      "manager": "Software Architect",
+      "state": "resolved",
+      "reviewVerdict": "approved",
+      "gatekeeperDecision": "close",
+      "lifecycleThreadId": "thr-180",
+      "notificationId": "ntf-193",
+      "createdAt": "2026-05-17T01:00:57.513498734Z",
+      "updatedAt": "2026-05-17T01:00:57.529738485Z",
+      "summary": "Staged from User -> FERROS #169 → Software Architect",
+      "lastError": null,
+      "registrationIdempotencyKey": "dispatch:chat-169:msg-174:software",
+      "retryCount": 0,
+      "retryBudget": 0,
+      "lastFailureRetryable": false,
+      "leaseRole": null,
+      "leaseExpiresAt": null,
+      "auditSeq": 6,
+      "auditTrail": [
+        {
+          "kind": "transition",
+          "seq": 1,
+          "from": "staged",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-backend",
+          "reason": "accepted by scaffold backend",
+          "at": "2026-05-17T01:00:57.513767644Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-183"
+          ]
+        },
+        {
+          "kind": "evidence_append",
+          "seq": 2,
+          "from": "dispatched_to_manager",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-worker-driver",
+          "reason": "scaffold prepared pkt-183 for Software Architect with runtime plan FERROS Coding Continuity Agent (subprocess), FERROS Core Agent (coordinator_sdk), FERROS SubCore Agent (coordinator_sdk)",
+          "at": "2026-05-17T01:00:57.513995847Z",
+          "idempotencyKey": "dispatch.execution:pkt-183",
+          "evidenceRefs": [
+            "scaffold-exec:pkt-183",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        },
+        {
+          "kind": "transition",
+          "seq": 3,
+          "from": "dispatched_to_manager",
+          "to": "in_progress",
+          "actor": "stub-manager-agent",
+          "reason": "manager claimed packet",
+          "at": "2026-05-17T01:00:57.519169638Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 4,
+          "from": "in_progress",
+          "to": "awaiting_review",
+          "actor": "scaffold-manager-execution",
+          "reason": "manager consumed recorded execution report",
+          "at": "2026-05-17T01:00:57.519423022Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 5,
+          "from": "awaiting_review",
+          "to": "reviewed",
+          "actor": "stub-reviewer-agent",
+          "reason": "reviewer approved packet",
+          "at": "2026-05-17T01:00:57.524336329Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 6,
+          "from": "reviewed",
+          "to": "resolved",
+          "actor": "stub-gatekeeper-agent",
+          "reason": "gatekeeper closed packet",
+          "at": "2026-05-17T01:00:57.529738485Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-183",
+            "scaffold-exec:pkt-183",
+            "runtime-plan:subprocess:ferros-coding-continuity",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "runtime-plan:coordinator_sdk:ferros-subcore"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pkt-211",
+      "sessionId": "chat-197",
+      "originMessageId": "msg-202",
+      "parentPacketId": null,
+      "workOrderId": "wo-205",
+      "manager": "Software Architect",
+      "state": "resolved",
+      "reviewVerdict": "approved",
+      "gatekeeperDecision": "close",
+      "lifecycleThreadId": "thr-208",
+      "notificationId": "ntf-240",
+      "createdAt": "2026-05-17T02:17:04.868194569Z",
+      "updatedAt": "2026-05-17T02:17:05.356383332Z",
+      "summary": "Staged from User -> FERROS #197 → Software Architect",
+      "lastError": null,
+      "lastLifecycleOutcome": {
+        "kind": "child_dispatch_prepared",
+        "summary": "Software Architect prepared child dispatch to FERROS Core Agent",
+        "workOrderId": "wo-205",
+        "targetAgentId": "ferros-core",
+        "stopReason": "child-dispatch-prepared"
+      },
+      "registrationIdempotencyKey": "dispatch:chat-197:msg-202:software",
+      "retryCount": 0,
+      "retryBudget": 0,
+      "lastFailureRetryable": false,
+      "leaseRole": null,
+      "leaseExpiresAt": null,
+      "auditSeq": 6,
+      "auditTrail": [
+        {
+          "kind": "transition",
+          "seq": 1,
+          "from": "staged",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-backend",
+          "reason": "accepted by scaffold backend",
+          "at": "2026-05-17T02:17:04.868477115Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-211"
+          ]
+        },
+        {
+          "kind": "evidence_append",
+          "seq": 2,
+          "from": "dispatched_to_manager",
+          "to": "dispatched_to_manager",
+          "actor": "scaffold-worker-driver",
+          "reason": "scaffold prepared pkt-211 for Software Architect with runtime plan FERROS Core Agent (coordinator_sdk)",
+          "at": "2026-05-17T02:17:04.868878546Z",
+          "idempotencyKey": "dispatch.execution:pkt-211",
+          "evidenceRefs": [
+            "scaffold-exec:pkt-211",
+            "runtime-plan:coordinator_sdk:ferros-core"
+          ]
+        },
+        {
+          "kind": "transition",
+          "seq": 3,
+          "from": "dispatched_to_manager",
+          "to": "in_progress",
+          "actor": "stub-manager-agent",
+          "reason": "manager claimed packet",
+          "at": "2026-05-17T02:17:04.874189445Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 4,
+          "from": "in_progress",
+          "to": "awaiting_review",
+          "actor": "software-architect",
+          "reason": "merged FERROS Core Agent child packet wo-221 and returned to FERROS Agent",
+          "at": "2026-05-17T02:17:04.874744349Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "child-packet:pkt-225"
+          ]
+        },
+        {
+          "kind": "transition",
+          "seq": 5,
+          "from": "awaiting_review",
+          "to": "reviewed",
+          "actor": "stub-reviewer-agent",
+          "reason": "reviewer approved packet",
+          "at": "2026-05-17T02:17:05.101854146Z",
+          "idempotencyKey": null,
+          "evidenceRefs": []
+        },
+        {
+          "kind": "transition",
+          "seq": 6,
+          "from": "reviewed",
+          "to": "resolved",
+          "actor": "stub-gatekeeper-agent",
+          "reason": "gatekeeper closed packet",
+          "at": "2026-05-17T02:17:05.356383332Z",
+          "idempotencyKey": null,
+          "evidenceRefs": [
+            "scaffold:pkt-211",
+            "scaffold-exec:pkt-211",
+            "runtime-plan:coordinator_sdk:ferros-core",
+            "child-packet:pkt-225"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pkt-225",
+      "sessionId": "chat-197",
+      "originMessageId": "msg-202",
+      "parentPacketId": "pkt-211",
+      "workOrderId": "wo-221",
+      "manager": "FERROS Core Agent",
+      "state": "resolved",
+      "reviewVerdict": null,
+      "gatekeeperDecision": null,
+      "lifecycleThreadId": "thr-224",
+      "notificationId": null,
+      "createdAt": "2026-05-17T02:17:04.874572598Z",
+      "updatedAt": "2026-05-17T02:17:04.874572598Z",
+      "summary": "Child dispatch from Software Architect to FERROS Core Agent for parent wo-205",
+      "lastError": null,
+      "registrationIdempotencyKey": "child-dispatch:pkt-211:ferros-core",
+      "retryCount": 0,
+      "retryBudget": 0,
+      "lastFailureRetryable": false,
+      "leaseRole": null,
+      "leaseExpiresAt": null,
+      "auditSeq": 0,
+      "auditTrail": []
+    }
+  ],
+  "watchdogEvents": [
+    {
+      "id": "wde-p3",
+      "kind": "waiting_for_human",
+      "agentId": "Software Architect",
+      "sessionId": "chat-1",
+      "packetId": "pkt-14",
+      "messageId": null,
+      "detectedAt": "2026-05-16T01:35:48.13200146Z",
+      "detail": "waiting",
+      "correctiveInstruction": "Questions cannot be answered in this background chat. Continue through the packet protocol. If human input is required, transition the packet to HumanInterventionRequired with reason and evidence. Otherwise continue the current packet using the available context.",
+      "correctionStatus": "correction_issued"
+    },
+    {
+      "id": "wde-21",
+      "kind": "packet_stalled",
+      "agentId": "Software Architect",
+      "sessionId": null,
+      "packetId": "pkt-14",
+      "messageId": null,
+      "detectedAt": "2026-05-16T23:53:57.709779968Z",
+      "detail": "Packet pkt-14 stalled in InProgress state for 80289 seconds",
+      "correctiveInstruction": null,
+      "correctionStatus": "pending"
+    },
+    {
+      "id": "wde-24",
+      "kind": "expected_next_action_missing",
+      "agentId": "Software Architect",
+      "sessionId": "chat-1",
+      "packetId": "pkt-14",
+      "messageId": null,
+      "detectedAt": "2026-05-16T23:53:57.709788545Z",
+      "detail": "Manager packet is in_progress without child packets or terminal/escalation transition.",
+      "correctiveInstruction": "Manager closure contract: create child packets, or transition the packet honestly to a valid terminal/escalation state via apply_packet_transition. If blocked on missing context, transition to HumanInterventionRequired with reason and evidence.",
+      "correctionStatus": "pending"
+    },
+    {
+      "id": "wde-89",
+      "kind": "transition_missing",
+      "agentId": "Software Architect",
+      "sessionId": "chat-27",
+      "packetId": "pkt-41",
+      "messageId": null,
+      "detectedAt": "2026-05-17T00:09:30.197084439Z",
+      "detail": "Manager packet remains in dispatched_to_manager without a valid packet transition.",
+      "correctiveInstruction": "Manager closure contract: create child packets, or transition the packet honestly to a valid terminal/escalation state via apply_packet_transition. If blocked on missing context, transition to HumanInterventionRequired with reason and evidence.",
+      "correctionStatus": "pending"
+    },
+    {
+      "id": "wde-92",
+      "kind": "transition_missing",
+      "agentId": "Software Architect",
+      "sessionId": "chat-27",
+      "packetId": "pkt-56",
+      "messageId": null,
+      "detectedAt": "2026-05-17T00:09:34.200703567Z",
+      "detail": "Manager packet remains in dispatched_to_manager without a valid packet transition.",
+      "correctiveInstruction": "Manager closure contract: create child packets, or transition the packet honestly to a valid terminal/escalation state via apply_packet_transition. If blocked on missing context, transition to HumanInterventionRequired with reason and evidence.",
+      "correctionStatus": "pending"
+    },
+    {
+      "id": "wde-95",
+      "kind": "transition_missing",
+      "agentId": "Software Architect",
+      "sessionId": "chat-69",
+      "packetId": "pkt-83",
+      "messageId": null,
+      "detectedAt": "2026-05-17T00:22:12.101619849Z",
+      "detail": "Manager packet remains in dispatched_to_manager without a valid packet transition.",
+      "correctiveInstruction": "Manager closure contract: create child packets, or transition the packet honestly to a valid terminal/escalation state via apply_packet_transition. If blocked on missing context, transition to HumanInterventionRequired with reason and evidence.",
+      "correctionStatus": "pending"
+    }
+  ],
+  "orchestratorMode": "stub",
+  "orchestratorPaused": false,
+  "orchestratorStatus": {
+    "canTick": true,
+    "backgroundTickEnabled": true,
+    "paused": false,
+    "detail": "Stub mode is active. Explicit and background ticks can advance synthetic packet state locally."
+  },
+  "agentDirectory": [
+    {
+      "id": "ferros-agent",
+      "displayName": "FERROS Agent",
+      "description": "Top-level FERROS coordinator. Routes across coding and business domains, applies user steering, and executes internal handoffs through coordinator/SDK with operator-visible progress.",
+      "family": "administration",
+      "role": "agent",
+      "lane": "agent",
+      "sourcePath": "agents/source/ferros/ferros-agent.agent.md",
+      "mirrorPath": ".github/agents/ferros-agent.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": true,
+      "tools": [
+        "agent",
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": [
+        "FERROS Prompt Architect Agent",
+        "FERROS Orchestration Architect Agent",
+        "FERROS Agent Architect Agent",
+        "Software Architect",
+        "FERROS Business Agent",
+        "FERROS Coding Agent Architect",
+        "FERROS Business Agent Architect",
+        "FERROS Documentation Architect Agent",
+        "FERROS Backup Officer Agent",
+        "FERROS Audit Recovery Officer Agent"
+      ]
+    },
+    {
+      "id": "ferros-agent-architect",
+      "displayName": "FERROS Agent Architect Agent",
+      "description": "Top-level architect coordinator. Governs architecture routing across FERROS Coding Agent Architect and FERROS Business Agent Architect.",
+      "family": "architect",
+      "role": "architect",
+      "lane": "architect",
+      "sourcePath": "agents/source/ferros/architects/ferros-agent-architect.agent.md",
+      "mirrorPath": ".github/agents/ferros-agent-architect.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": [
+        "FERROS Coding Agent Architect",
+        "FERROS Business Agent Architect",
+        "FERROS Documentation Architect Agent",
+        "FERROS Audit Recovery Officer Agent",
+        "FERROS Backup Officer Agent"
+      ]
+    },
+    {
+      "id": "ferros-audit-recovery-officer",
+      "displayName": "FERROS Audit Recovery Officer Agent",
+      "description": "Audit-first safety officer for incident triage, containment, and recovery planning.",
+      "family": "administration",
+      "role": "officer",
+      "lane": "officer",
+      "sourcePath": "agents/source/ferros/officers/ferros-audit-recovery-officer.agent.md",
+      "mirrorPath": ".github/agents/ferros-audit-recovery-officer.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": [
+        "FERROS Backup Officer Agent"
+      ]
+    },
+    {
+      "id": "ferros-backup-officer",
+      "displayName": "FERROS Backup Officer Agent",
+      "description": "Continuity and rollback safety officer for FERROS operational changes.",
+      "family": "administration",
+      "role": "officer",
+      "lane": "officer",
+      "sourcePath": "agents/source/ferros/officers/ferros-backup-officer.agent.md",
+      "mirrorPath": ".github/agents/ferros-backup-officer.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": []
+    },
+    {
+      "id": "ferros-business-agent",
+      "displayName": "FERROS Business Agent",
+      "description": "Domain owner for non-coding business execution. Routes company and specialist packets with bounded authority, evidence labels, and protected-action controls.",
+      "family": "business",
+      "role": "agent",
+      "lane": "agent",
+      "sourcePath": "agents/source/business/ferros-business-agent.agent.md",
+      "mirrorPath": ".github/agents/ferros-business-agent.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": [
+        "FERROS Business Agent Architect",
+        "FERROS Audit Recovery Officer Agent",
+        "FERROS Backup Officer Agent"
+      ]
+    },
+    {
+      "id": "ferros-business-agent-architect",
+      "displayName": "FERROS Business Agent Architect",
+      "description": "Designs and maintains the business-agent proliferation system, including operating-company spines, business templates, registries, protected-action rules, and lifecycle governance.",
+      "family": "business",
+      "role": "architect",
+      "lane": "architect",
+      "sourcePath": "agents/source/business/architects/ferros-business-agent-architect.agent.md",
+      "mirrorPath": ".github/agents/ferros-business-agent-architect.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": [
+        "FERROS Prompt Architect Agent",
+        "FERROS Audit Recovery Officer Agent",
+        "FERROS Backup Officer Agent"
+      ]
+    },
+    {
+      "id": "ferros-coding-agent-architect",
+      "displayName": "FERROS Coding Agent Architect",
+      "description": "Designs and maintains the coding-agent proliferation system, including coding registries, templates, route rules, evidence standards, and lifecycle promotion logic.",
+      "family": "software",
+      "role": "architect",
+      "lane": "architect",
+      "sourcePath": "agents/source/coding/architects/ferros-coding-agent-architect.agent.md",
+      "mirrorPath": ".github/agents/ferros-coding-agent-architect.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "vscode/extensions",
+        "vscode/askQuestions",
+        "vscode/getProjectSetupInfo",
+        "vscode/installExtension",
+        "vscode/memory",
+        "vscode/newWorkspace",
+        "vscode/resolveMemoryFileUri",
+        "vscode/runCommand",
+        "vscode/vscodeAPI",
+        "execute/getTerminalOutput",
+        "execute/killTerminal",
+        "execute/sendToTerminal",
+        "execute/createAndRunTask",
+        "execute/runNotebookCell",
+        "execute/runInTerminal",
+        "read/terminalSelection",
+        "read/terminalLastCommand",
+        "read/getNotebookSummary",
+        "read/problems",
+        "read/readFile",
+        "read/viewImage",
+        "read/readNotebookCellOutput",
+        "agent/runSubagent",
+        "browser/openBrowserPage",
+        "browser/readPage",
+        "browser/screenshotPage",
+        "browser/navigatePage",
+        "browser/clickElement",
+        "browser/dragElement",
+        "browser/hoverElement",
+        "browser/typeInPage",
+        "browser/runPlaywrightCode",
+        "browser/handleDialog",
+        "edit/createDirectory",
+        "edit/createFile",
+        "edit/createJupyterNotebook",
+        "edit/editFiles",
+        "edit/editNotebook",
+        "edit/rename",
+        "search/changes",
+        "search/codebase",
+        "search/fileSearch",
+        "search/listDirectory",
+        "search/textSearch",
+        "search/usages",
+        "web/fetch",
+        "web/githubRepo",
+        "web/githubTextSearch",
+        "todo"
+      ],
+      "childAgents": [
+        "FERROS Prompt Architect Agent",
+        "FERROS Coding Continuity Agent",
+        "FERROS Coding Packet Validator Agent",
+        "FERROS Coding Malformed Response Agent",
+        "FERROS Core Lane Architect Agent",
+        "FERROS SubCore Lane Architect Agent",
+        "FERROS Audit Recovery Officer Agent",
+        "FERROS Backup Officer Agent"
+      ]
+    },
+    {
+      "id": "ferros-coding-continuity",
+      "displayName": "FERROS Coding Continuity Agent",
+      "description": "Incubation helper for compact baton packets and continuity-state normalization between Coding, Core, and SubCore.",
+      "family": "software",
+      "role": "incubation",
+      "lane": "incubation",
+      "sourcePath": "agents/source/coding/incubation/ferros-coding-continuity.agent.md",
+      "mirrorPath": ".github/agents/ferros-coding-continuity.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": [],
+      "runtime": "subprocess",
+      "command": "npm",
+      "args": [
+        "--prefix",
+        "coordinator",
+        "run",
+        "subprocess-runtime",
+        "--",
+        "--agent",
+        "ferros-coding-continuity"
+      ],
+      "env": {
+        "FERROS_COMMAND_RUNTIME_TIMEOUT_MS": "30000"
+      },
+      "planTemplate": "continuity-runtime",
+      "routeTargetFamily": "coding",
+      "lifecycleTargetAgentId": "ferros-coding-continuity",
+      "selectionTokens": [
+        "continuity",
+        "baton"
+      ]
+    },
+    {
+      "id": "ferros-coding-malformed-response",
+      "displayName": "FERROS Coding Malformed Response Agent",
+      "description": "Incubation helper that returns correction-only skeletons for malformed coding-family packets or responses.",
+      "family": "software",
+      "role": "incubation",
+      "lane": "incubation",
+      "sourcePath": "agents/source/coding/incubation/ferros-coding-malformed-response.agent.md",
+      "mirrorPath": ".github/agents/ferros-coding-malformed-response.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": []
+    },
+    {
+      "id": "ferros-coding-packet-validator",
+      "displayName": "FERROS Coding Packet Validator Agent",
+      "description": "Incubation helper for validating coding kickoff and continuation packets before relay or execution handoff.",
+      "family": "software",
+      "role": "incubation",
+      "lane": "incubation",
+      "sourcePath": "agents/source/coding/incubation/ferros-coding-packet-validator.agent.md",
+      "mirrorPath": ".github/agents/ferros-coding-packet-validator.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": []
+    },
+    {
+      "id": "ferros-core",
+      "displayName": "FERROS Core Agent",
+      "description": "Stream execution agent for the main FERROS package across platform-neutral and cross-platform runtime surfaces.",
+      "family": "software",
+      "role": "execution",
+      "lane": "execution",
+      "sourcePath": "agents/source/coding/execution/ferros-core.agent.md",
+      "mirrorPath": ".github/agents/ferros-core.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "vscode/extensions",
+        "vscode/askQuestions",
+        "vscode/getProjectSetupInfo",
+        "vscode/installExtension",
+        "vscode/memory",
+        "vscode/newWorkspace",
+        "vscode/resolveMemoryFileUri",
+        "vscode/runCommand",
+        "vscode/vscodeAPI",
+        "execute/getTerminalOutput",
+        "execute/killTerminal",
+        "execute/sendToTerminal",
+        "execute/createAndRunTask",
+        "execute/runTests",
+        "execute/runNotebookCell",
+        "execute/runInTerminal",
+        "read/terminalSelection",
+        "read/terminalLastCommand",
+        "read/getNotebookSummary",
+        "read/problems",
+        "read/readFile",
+        "read/viewImage",
+        "read/readNotebookCellOutput",
+        "agent/runSubagent",
+        "browser/openBrowserPage",
+        "browser/readPage",
+        "browser/screenshotPage",
+        "browser/navigatePage",
+        "browser/clickElement",
+        "browser/dragElement",
+        "browser/hoverElement",
+        "browser/typeInPage",
+        "browser/runPlaywrightCode",
+        "browser/handleDialog",
+        "edit/createDirectory",
+        "edit/createFile",
+        "edit/createJupyterNotebook",
+        "edit/editFiles",
+        "edit/editNotebook",
+        "edit/rename",
+        "search/changes",
+        "search/codebase",
+        "search/fileSearch",
+        "search/listDirectory",
+        "search/textSearch",
+        "search/usages",
+        "web/fetch",
+        "web/githubRepo",
+        "web/githubTextSearch",
+        "todo"
+      ],
+      "childAgents": [
+        "FERROS Core Lane Architect Agent",
+        "FERROS Audit Recovery Officer Agent",
+        "FERROS Backup Officer Agent"
+      ],
+      "runtime": "coordinator_sdk",
+      "command": "npm",
+      "args": [
+        "--prefix",
+        "coordinator",
+        "run",
+        "handoff",
+        "--",
+        "--target",
+        "core"
+      ],
+      "env": {
+        "FERROS_COMMAND_RUNTIME_TIMEOUT_MS": "30000",
+        "FERROS_COORDINATOR_CAPTURE_EVENTS": "false",
+        "FERROS_COORDINATOR_LOG_LEVEL": "error"
+      },
+      "planTemplate": "core-runtime"
+    },
+    {
+      "id": "ferros-core-lane-architect",
+      "displayName": "FERROS Core Lane Architect Agent",
+      "description": "\"Plans next Core lane seeds with anti-narrowing safeguards so execution does not tunnel into only the most recent seam.\"",
+      "family": "software",
+      "role": "architect",
+      "lane": "architect",
+      "sourcePath": "agents/source/coding/architects/ferros-core-lane-architect.agent.md",
+      "mirrorPath": ".github/agents/ferros-core-lane-architect.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search"
+      ],
+      "childAgents": [
+        "FERROS Agent Architect Agent",
+        "FERROS Audit Recovery Officer Agent",
+        "FERROS Backup Officer Agent"
+      ]
+    },
+    {
+      "id": "ferros-documentation-architect",
+      "displayName": "FERROS Documentation Architect Agent",
+      "description": "Maintains canonical FERROS docs, authority maps, and agent charters with truth-sync discipline.",
+      "family": "architect",
+      "role": "architect",
+      "lane": "architect",
+      "sourcePath": "agents/source/ferros/architects/ferros-documentation-architect.agent.md",
+      "mirrorPath": ".github/agents/ferros-documentation-architect.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": []
+    },
+    {
+      "id": "ferros-orchestration-architect",
+      "displayName": "FERROS Orchestration Architect Agent",
+      "description": "Designs and maintains the orchestration and control-plane governance system, including canonical orchestration doc sign-off, orchestration ADR authorship, invocation gates, and control-plane lifecycle rules.",
+      "family": "architect",
+      "role": "architect",
+      "lane": "architect",
+      "sourcePath": "agents/source/ferros/architects/ferros-orchestration-architect.agent.md",
+      "mirrorPath": ".github/agents/ferros-orchestration-architect.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": [
+        "FERROS Prompt Architect Agent",
+        "FERROS Documentation Architect Agent",
+        "FERROS Audit Recovery Officer Agent",
+        "FERROS Backup Officer Agent"
+      ]
+    },
+    {
+      "id": "ferros-prompt-architect",
+      "displayName": "FERROS Prompt Architect Agent",
+      "description": "Creates strict, execution-ready FERROS kickoff prompts with authority/version-lock checks and anti-narrowed seed planning.",
+      "family": "architect",
+      "role": "architect",
+      "lane": "architect",
+      "sourcePath": "agents/source/ferros/architects/ferros-prompt-architect.agent.md",
+      "mirrorPath": ".github/agents/ferros-prompt-architect.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": [
+        "FERROS Coding Agent Architect",
+        "FERROS Business Agent Architect",
+        "FERROS Core Lane Architect Agent",
+        "FERROS SubCore Lane Architect Agent",
+        "FERROS Documentation Architect Agent",
+        "FERROS Audit Recovery Officer Agent",
+        "FERROS Backup Officer Agent"
+      ]
+    },
+    {
+      "id": "ferros-subcore",
+      "displayName": "FERROS SubCore Agent",
+      "description": "Stream execution agent for ADR-025 x86_64 FERROS-root incubation, runtime seam rehearsal, and scaffold contract evolution.",
+      "family": "software",
+      "role": "execution",
+      "lane": "execution",
+      "sourcePath": "agents/source/coding/execution/ferros-subcore.agent.md",
+      "mirrorPath": ".github/agents/ferros-subcore.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "vscode/extensions",
+        "vscode/askQuestions",
+        "vscode/getProjectSetupInfo",
+        "vscode/installExtension",
+        "vscode/memory",
+        "vscode/newWorkspace",
+        "vscode/resolveMemoryFileUri",
+        "vscode/runCommand",
+        "vscode/vscodeAPI",
+        "execute/getTerminalOutput",
+        "execute/killTerminal",
+        "execute/sendToTerminal",
+        "execute/createAndRunTask",
+        "execute/runTests",
+        "execute/runNotebookCell",
+        "execute/runInTerminal",
+        "read/terminalSelection",
+        "read/terminalLastCommand",
+        "read/getNotebookSummary",
+        "read/problems",
+        "read/readFile",
+        "read/viewImage",
+        "read/readNotebookCellOutput",
+        "agent/runSubagent",
+        "browser/openBrowserPage",
+        "browser/readPage",
+        "browser/screenshotPage",
+        "browser/navigatePage",
+        "browser/clickElement",
+        "browser/dragElement",
+        "browser/hoverElement",
+        "browser/typeInPage",
+        "browser/runPlaywrightCode",
+        "browser/handleDialog",
+        "edit/createDirectory",
+        "edit/createFile",
+        "edit/createJupyterNotebook",
+        "edit/editFiles",
+        "edit/editNotebook",
+        "edit/rename",
+        "search/changes",
+        "search/codebase",
+        "search/fileSearch",
+        "search/listDirectory",
+        "search/textSearch",
+        "search/usages",
+        "web/fetch",
+        "web/githubRepo",
+        "web/githubTextSearch",
+        "todo"
+      ],
+      "childAgents": [
+        "FERROS SubCore Lane Architect Agent",
+        "FERROS Audit Recovery Officer Agent",
+        "FERROS Backup Officer Agent"
+      ],
+      "runtime": "coordinator_sdk",
+      "command": "npm",
+      "args": [
+        "--prefix",
+        "coordinator",
+        "run",
+        "handoff",
+        "--",
+        "--target",
+        "subcore"
+      ],
+      "env": {
+        "FERROS_COMMAND_RUNTIME_TIMEOUT_MS": "30000",
+        "FERROS_COORDINATOR_CAPTURE_EVENTS": "false",
+        "FERROS_COORDINATOR_LOG_LEVEL": "error"
+      },
+      "planTemplate": "subcore-runtime"
+    },
+    {
+      "id": "ferros-subcore-lane-architect",
+      "displayName": "FERROS SubCore Lane Architect Agent",
+      "description": "\"Plans next SubCore lane seeds with anti-narrowing safeguards while preserving ADR-025 non-claim boundaries.\"",
+      "family": "software",
+      "role": "architect",
+      "lane": "architect",
+      "sourcePath": "agents/source/coding/architects/ferros-subcore-lane-architect.agent.md",
+      "mirrorPath": ".github/agents/ferros-subcore-lane-architect.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search"
+      ],
+      "childAgents": [
+        "FERROS Agent Architect Agent",
+        "FERROS Audit Recovery Officer Agent",
+        "FERROS Backup Officer Agent"
+      ]
+    },
+    {
+      "id": "ferros-software-architect",
+      "displayName": "Software Architect",
+      "description": "Domain owner for repo-facing coding execution. Routes coding packets to Core, SubCore, and coding specialists under bounded scope.",
+      "family": "software",
+      "role": "architect",
+      "lane": "architect",
+      "sourcePath": "agents/source/coding/ferros-software-architect.agent.md",
+      "mirrorPath": ".github/agents/ferros-software-architect.agent.md",
+      "syncState": "mirrored",
+      "userInvocable": false,
+      "tools": [
+        "agent",
+        "read",
+        "search",
+        "todo"
+      ],
+      "childAgents": [
+        "FERROS Prompt Architect Agent",
+        "FERROS Coding Continuity Agent",
+        "FERROS Coding Packet Validator Agent",
+        "FERROS Coding Malformed Response Agent",
+        "FERROS Core Agent",
+        "FERROS SubCore Agent",
+        "FERROS Coding Agent Architect",
+        "FERROS Core Lane Architect Agent",
+        "FERROS SubCore Lane Architect Agent",
+        "FERROS Audit Recovery Officer Agent",
+        "FERROS Backup Officer Agent"
+      ]
+    }
+  ],
+  "agentSourceTree": {
+    "manifestPath": "agents/manifest.json",
+    "canonicalRoot": "agents/source",
+    "mirrorRoot": ".github/agents",
+    "syncState": "mirrored",
+    "entryCount": 18
+  },
+  "selectedChatId": "chat-1",
+  "selectedLifecycleThreadId": "thr-208",
+  "nextId": 245
+}

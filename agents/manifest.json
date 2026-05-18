@@ -36,7 +36,7 @@
       "family": "architect",
       "role": "architect",
       "lane": "architect",
-      "source_path": "agents/source/ferros/architects/ferros-agent-architect.agent.md",
+      "source_path": "agents/source/agent_architect/ferros-agent-architect.agent.md",
       "mirror_path": ".github/agents/ferros-agent-architect.agent.md",
       "user_invocable": false,
       "tools": [
@@ -213,6 +213,27 @@
       "family": "software",
       "role": "incubation",
       "lane": "incubation",
+      "runtime": "subprocess",
+      "command": "npm",
+      "args": [
+        "--prefix",
+        "coordinator",
+        "run",
+        "subprocess-runtime",
+        "--",
+        "--agent",
+        "ferros-coding-continuity"
+      ],
+      "env": {
+        "FERROS_COMMAND_RUNTIME_TIMEOUT_MS": "30000"
+      },
+      "plan_template": "continuity-runtime",
+      "selection_tokens": [
+        "continuity",
+        "baton"
+      ],
+      "route_target_family": "coding",
+      "lifecycle_target_agent_id": "ferros-coding-continuity",
       "source_path": "agents/source/coding/incubation/ferros-coding-continuity.agent.md",
       "mirror_path": ".github/agents/ferros-coding-continuity.agent.md",
       "user_invocable": false,
@@ -267,6 +288,23 @@
       "family": "software",
       "role": "execution",
       "lane": "execution",
+      "runtime": "coordinator_sdk",
+      "command": "npm",
+      "args": [
+        "--prefix",
+        "coordinator",
+        "run",
+        "handoff",
+        "--",
+        "--target",
+        "core"
+      ],
+      "env": {
+        "FERROS_COORDINATOR_LOG_LEVEL": "error",
+        "FERROS_COORDINATOR_CAPTURE_EVENTS": "false",
+        "FERROS_COMMAND_RUNTIME_TIMEOUT_MS": "30000"
+      },
+      "plan_template": "core-runtime",
       "source_path": "agents/source/coding/execution/ferros-core.agent.md",
       "mirror_path": ".github/agents/ferros-core.agent.md",
       "user_invocable": false,
@@ -422,6 +460,23 @@
       "family": "software",
       "role": "execution",
       "lane": "execution",
+      "runtime": "coordinator_sdk",
+      "command": "npm",
+      "args": [
+        "--prefix",
+        "coordinator",
+        "run",
+        "handoff",
+        "--",
+        "--target",
+        "subcore"
+      ],
+      "env": {
+        "FERROS_COORDINATOR_LOG_LEVEL": "error",
+        "FERROS_COORDINATOR_CAPTURE_EVENTS": "false",
+        "FERROS_COMMAND_RUNTIME_TIMEOUT_MS": "30000"
+      },
+      "plan_template": "subcore-runtime",
       "source_path": "agents/source/coding/execution/ferros-subcore.agent.md",
       "mirror_path": ".github/agents/ferros-subcore.agent.md",
       "user_invocable": false,

@@ -40,7 +40,11 @@ export class OrchestrationCoordinator {
       ...options
     };
 
-    this.sessionManager = getSessionManager({ sdk_client: this.options.sdk_client });
+    this.sessionManager = getSessionManager({
+      sdk_client: this.options.sdk_client,
+      session_model: this.options.session_model,
+      session_reasoning_effort: this.options.session_reasoning_effort,
+    });
     this.eventTracer = getEventTracer();
 
     this.log('info', `[Coordinator] Initialized with timeout=${this.options.timeout_ms}ms`);
@@ -96,7 +100,7 @@ export class OrchestrationCoordinator {
 
       // Step 3: Create SDK session
       this.log('info', `[${handoffId}] Creating session...`);
-      const session = await this.sessionManager.createSession(targetAgent);
+      const session = await this.sessionManager.createSession(targetAgent, packet);
       sessionId = session.id;
 
       // Setup event listeners
@@ -155,6 +159,8 @@ export class OrchestrationCoordinator {
       if (sessionId) {
         await this.sessionManager.cleanupSession(sessionId);
       }
+
+      await this.sessionManager.shutdownIfIdle();
     }
   }
 

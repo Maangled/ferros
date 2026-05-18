@@ -2,6 +2,7 @@
 
 pub mod agent;
 pub mod bus;
+pub mod execution;
 pub mod manifest;
 pub mod reference;
 pub mod registry;
@@ -11,8 +12,14 @@ pub use agent::{Agent, AgentStatus};
 pub use bus::{
     BusChannel, BusEndpoint, BusEndpointError, BusListener, BusTransport, BusTransportKind,
 };
+pub use execution::{
+    InProcessWorkerDriver, InProcessWorkerDriverError, PacketExecutableAgent,
+    PacketExecutionDisposition, PacketExecutionLifecycleOutcome, PacketExecutionReport,
+    PacketExecutionRequest, WorkerDriver,
+};
 pub use manifest::{
-    AgentManifest, AgentName, AgentNameError, AuthorizationDecision, CapabilityRequirement,
+    AgentManifest, AgentName, AgentNameError, AgentRuntime, AuthorizationDecision,
+    CapabilityRequirement,
 };
 pub use reference::{EchoAgent, ReferenceAgentError, TimerAgent};
 pub use registry::{AgentRegistry, AgentSummary, InMemoryAgentRegistry, RegistryError};
