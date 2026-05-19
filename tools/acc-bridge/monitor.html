@@ -40,6 +40,15 @@
       --shadow: 0 16px 44px rgba(0, 0, 0, 0.4);
       --font-ui: "Aptos", "Trebuchet MS", "Segoe UI", sans-serif;
       --font-mono: "Cascadia Code", "Consolas", monospace;
+      --field-alpha: 0.22;
+      --field-pulse: 0.16;
+      --field-progress: 0.08;
+      --field-chat: 0.1;
+      --field-waiting: 0.08;
+      --field-loop-density: 0.12;
+      --field-drift-duration: 13s;
+      --field-breath-duration: 10s;
+      --field-orbit-duration: 18s;
     }
 
     * {
@@ -117,11 +126,14 @@
     }
 
     .mars-stage {
+      --stage-x: clamp(20px, 4.6vw, 72px);
+      --stage-top: clamp(92px, 11vh, 104px);
+      --stage-bottom: clamp(44px, 7vh, 72px);
       position: relative;
       min-height: 0;
       height: 100%;
       overflow: visible;
-      padding: 104px 72px 128px;
+      padding: var(--stage-top) var(--stage-x) var(--stage-bottom);
     }
 
     .mars-stage::before,
@@ -154,6 +166,174 @@
       filter: blur(3px);
     }
 
+    .force-field {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      opacity: calc(0.24 + var(--field-alpha) * 0.78);
+      overflow: hidden;
+    }
+
+    .force-field-svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .force-field path,
+    .force-field circle,
+    .force-field ellipse {
+      vector-effect: non-scaling-stroke;
+    }
+
+    .force-field-backdrop {
+      opacity: calc(0.12 + var(--field-alpha) * 0.24);
+    }
+
+    .force-field-side,
+    .force-field-axis,
+    .force-field-stream,
+    .force-field-ring,
+    .force-field-progress-track,
+    .force-field-progress-ring,
+    .force-field-node,
+    .force-field-chord {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .force-field-side {
+      stroke-width: 4px;
+      opacity: calc(0.18 + var(--field-alpha) * 0.34 + var(--field-chat) * 0.08);
+      filter: drop-shadow(0 0 10px rgba(74, 144, 217, 0.24));
+    }
+
+    .force-field-axis {
+      stroke-width: 3px;
+      opacity: calc(0.1 + var(--field-progress) * 0.38);
+    }
+
+    .force-field-stream,
+    .force-field-chord {
+      stroke: rgba(216, 241, 255, 0.86);
+      stroke-width: 2.5px;
+      stroke-dasharray: 14 18;
+      stroke-dashoffset: 0;
+      opacity: calc(0.14 + var(--field-waiting) * 0.46 + var(--field-chat) * 0.12);
+      animation: forceFieldDrift var(--field-drift-duration) linear infinite;
+    }
+
+    .force-field-stream-secondary,
+    .force-field-chord-secondary {
+      animation-direction: reverse;
+      opacity: calc(0.1 + var(--field-loop-density) * 0.34 + var(--field-progress) * 0.16);
+    }
+
+    .force-field-ring {
+      stroke: rgba(149, 205, 255, 0.32);
+      stroke-width: 2px;
+      stroke-dasharray: 10 18;
+      stroke-dashoffset: 0;
+      opacity: calc(0.12 + var(--field-progress) * 0.18 + var(--field-alpha) * 0.2);
+      animation: forceFieldOrbit var(--field-orbit-duration) linear infinite;
+    }
+
+    .force-field-ring-secondary {
+      stroke-dasharray: 8 16;
+      animation-direction: reverse;
+      opacity: calc(0.1 + var(--field-loop-density) * 0.16 + var(--field-chat) * 0.12);
+    }
+
+    .force-field-progress-track {
+      stroke: rgba(159, 200, 236, 0.16);
+      stroke-width: 10px;
+      stroke-dasharray: 1 6;
+      opacity: 0.34;
+    }
+
+    .force-field-progress-ring {
+      stroke: url(#forceFieldRingStroke);
+      stroke-width: 8px;
+      stroke-dasharray: 0 100;
+      opacity: calc(0.18 + var(--field-progress) * 0.58 + var(--field-pulse) * 0.12);
+      filter: drop-shadow(0 0 12px rgba(103, 232, 249, 0.26));
+    }
+
+    .force-field-core-haze {
+      fill: url(#forceFieldCoreGlow);
+      opacity: calc(0.12 + var(--field-alpha) * 0.32 + var(--field-waiting) * 0.08);
+      animation: forceFieldBreath var(--field-breath-duration) ease-in-out infinite;
+      transform-origin: center center;
+      transform-box: fill-box;
+    }
+
+    .force-field-core {
+      fill: rgba(122, 213, 255, 0.08);
+      stroke: rgba(180, 228, 255, 0.44);
+      stroke-width: 2.5px;
+      opacity: calc(0.18 + var(--field-alpha) * 0.32 + var(--field-progress) * 0.12);
+      filter: drop-shadow(0 0 16px rgba(125, 211, 252, 0.24));
+    }
+
+    .force-field-node {
+      stroke-width: 2.5px;
+      opacity: calc(0.16 + var(--field-alpha) * 0.24 + var(--field-loop-density) * 0.26);
+    }
+
+    .force-field-label-group {
+      opacity: 0;
+      transition: opacity 160ms ease;
+    }
+
+    body[data-force-debug="true"] .force-field-label-group {
+      opacity: 1;
+    }
+
+    .force-field-label {
+      fill: rgba(219, 234, 254, 0.88);
+      font-family: var(--font-mono);
+      font-size: 18px;
+      letter-spacing: 0.12em;
+      paint-order: stroke fill;
+      stroke: rgba(9, 15, 26, 0.78);
+      stroke-width: 6px;
+    }
+
+    @keyframes forceFieldDrift {
+      from {
+        stroke-dashoffset: 0;
+      }
+
+      to {
+        stroke-dashoffset: -64;
+      }
+    }
+
+    @keyframes forceFieldOrbit {
+      from {
+        stroke-dashoffset: 0;
+      }
+
+      to {
+        stroke-dashoffset: -160;
+      }
+    }
+
+    @keyframes forceFieldBreath {
+      0%,
+      100% {
+        transform: scale(0.985);
+      }
+
+      50% {
+        transform: scale(1.018);
+      }
+    }
+
     .mars-panel {
       min-height: 0;
       height: 100%;
@@ -174,11 +354,11 @@
     .hud-center-beacon {
       position: absolute;
       z-index: 52;
-      top: 84px;
+      top: calc(var(--stage-top) - 17px);
       left: 50%;
       transform: translateX(-50%);
-      width: 208px;
-      min-height: 40px;
+      width: 194px;
+      min-height: 34px;
       padding: 0;
       border: none;
       background: none;
@@ -203,7 +383,7 @@
       height: 100%;
       min-height: inherit;
       border: var(--frame-placeholder-width) dashed rgba(120, 168, 210, 0.38);
-      border-radius: 14px;
+      border-radius: 12px;
       background: rgba(8, 12, 20, 0.46);
       backdrop-filter: blur(16px);
       box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28), 0 0 22px rgba(74, 144, 217, 0.08);
@@ -220,12 +400,12 @@
     .hud-center-beacon-collapsed {
       display: grid;
       place-items: center;
-      padding: 0 10px;
+      padding: 0 8px;
       color: #dbeafe;
       font-family: var(--font-mono);
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 700;
-      letter-spacing: 0.14em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       white-space: nowrap;
     }
@@ -611,47 +791,214 @@
 
     .quick-action-bar {
       position: absolute;
-      left: 72px;
-      right: 72px;
-      bottom: 10px;
+      left: calc(var(--stage-x) + clamp(28px, 4vw, 56px));
+      right: calc(var(--stage-x) + clamp(28px, 4vw, 56px));
+      bottom: 8px;
       z-index: 26;
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      align-items: end;
-      gap: 16px;
+      height: 164px;
+      perspective: 1800px;
+      transform-style: preserve-3d;
+      overflow: visible;
+      isolation: isolate;
+      pointer-events: none;
+      --deck-hover-factor: 0;
+    }
+
+    .quick-action-bar:hover,
+    .quick-action-bar:focus-within {
+      --deck-hover-factor: 1;
+    }
+
+    .quick-action-bar.hand-expanded {
+      pointer-events: auto;
+      --deck-hover-factor: 1;
+    }
+
+    .quick-action-hand {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .quick-action-bar::before {
+      content: '';
+      position: absolute;
+      left: 18%;
+      right: 18%;
+      bottom: 30px;
+      height: 118px;
+      border-radius: 999px;
+      background:
+        radial-gradient(ellipse at center bottom, rgba(125, 211, 252, 0.34) 0, rgba(45, 212, 191, 0.18) 34%, rgba(15, 23, 42, 0) 72%),
+        radial-gradient(ellipse at center bottom, rgba(99, 102, 241, 0.16) 0, rgba(99, 102, 241, 0) 68%),
+        radial-gradient(ellipse at center bottom, rgba(251, 191, 36, 0.08) 0, rgba(251, 191, 36, 0) 62%);
+      filter: blur(20px);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .quick-action-bar::after {
+      content: '';
+      position: absolute;
+      left: -4%;
+      right: -4%;
+      bottom: -12px;
+      height: 122px;
+      background: linear-gradient(180deg, rgba(12, 18, 29, 0) 0%, rgba(12, 18, 29, 0.18) 28%, rgba(12, 18, 29, 0.62) 72%, rgba(12, 18, 29, 0.92) 100%);
+      pointer-events: none;
+      z-index: 18;
+      opacity: 0.92;
+      transition: opacity 180ms ease;
+    }
+
+    .quick-action-bar.hand-expanded::after {
+      opacity: 0.16;
+    }
+
+    .quick-action-hand-toggle {
+      position: absolute;
+      top: auto;
+      bottom: calc(100% + 12px);
+      left: 50%;
+      z-index: 34;
+      min-width: 0;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.26);
+      background: linear-gradient(180deg, rgba(24, 33, 49, 0.42), rgba(12, 18, 30, 0.26));
+      backdrop-filter: blur(18px) saturate(1.2);
+      color: #dbeafe;
+      font-size: 15px;
+      line-height: 1;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 10px);
+      transition: opacity 160ms ease, transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+      box-shadow: 0 12px 28px rgba(2, 6, 23, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    .quick-action-bar:hover .quick-action-hand-toggle,
+    .quick-action-bar:focus-within .quick-action-hand-toggle,
+    .quick-action-bar.hand-expanded .quick-action-hand-toggle {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, 0);
+    }
+
+    .quick-action-hand-toggle:hover,
+    .quick-action-hand-toggle:focus-visible {
+      border-color: rgba(125, 211, 252, 0.44);
+      background: linear-gradient(180deg, rgba(28, 39, 58, 0.6), rgba(14, 20, 34, 0.42));
+      box-shadow: 0 14px 34px rgba(2, 6, 23, 0.32), 0 0 24px rgba(125, 211, 252, 0.08);
     }
 
     .quick-action-card {
-      min-height: 0;
-      max-height: 56px;
-      align-self: end;
+      position: absolute;
+      left: 50%;
+      bottom: -118px;
+      width: var(--deck-width, 182px);
+      min-height: 246px;
+      max-height: none;
       border-radius: 18px;
       border: var(--frame-outer-width) dashed rgba(120, 168, 210, 0.42);
-      background: linear-gradient(180deg, rgba(14, 22, 35, 0.74), rgba(10, 16, 26, 0.54));
-      backdrop-filter: blur(12px);
-      padding: 12px 14px;
+      background: linear-gradient(180deg, rgba(17, 26, 39, 0.78), rgba(10, 16, 26, 0.52));
+      backdrop-filter: blur(12px) saturate(1.08);
+      padding: 12px 13px 14px;
       display: grid;
+      align-content: start;
       justify-items: start;
-      gap: 10px;
+      gap: 8px;
       text-align: left;
       color: var(--text);
-      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.24);
       overflow: hidden;
-      cursor: default;
-      transition: max-height 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+      cursor: pointer;
+      pointer-events: auto;
+      transform-origin: center bottom;
+      transform:
+        translate3d(
+          calc(-50% + var(--deck-base-shift, 0px) + (var(--deck-hover-shift, 0px) * var(--deck-hover-factor))),
+          calc(var(--deck-base-lift, 0px) + (var(--deck-hover-lift, 0px) * var(--deck-hover-factor)) + var(--deck-card-hover-lift, 0px)),
+          0
+        )
+        scale(calc(var(--deck-scale, 1) + var(--deck-scale-adjust, 0)))
+        rotate(calc(var(--deck-rotate, 0deg) + var(--deck-rotate-adjust, 0deg)));
+      opacity: var(--deck-opacity, 1);
+      z-index: var(--deck-z, 3);
+      filter: saturate(var(--deck-saturate, 0.92)) brightness(var(--deck-brightness, 0.92));
+      transition: transform 240ms ease, opacity 200ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease, filter 220ms ease, z-index 0s linear 120ms;
     }
 
     .quick-action-card:hover,
     .quick-action-card:focus-visible {
-      max-height: 132px;
+      --deck-card-hover-lift: -18px;
+      --deck-scale-adjust: 0.06;
       border-color: rgba(45, 212, 191, 0.44);
-      box-shadow: 0 18px 36px rgba(0, 0, 0, 0.32), 0 0 28px rgba(45, 212, 191, 0.08);
+      box-shadow: 0 22px 44px rgba(0, 0, 0, 0.34), 0 0 28px rgba(45, 212, 191, 0.08);
       background: linear-gradient(180deg, rgba(18, 29, 44, 0.86), rgba(10, 16, 26, 0.72));
+      z-index: 34;
+      transition-delay: 0s;
+    }
+
+    .quick-action-card.is-active {
+      border-color: rgba(125, 211, 252, 0.48);
+      background: linear-gradient(180deg, rgba(21, 34, 52, 0.94), rgba(10, 16, 26, 0.8));
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.34), 0 0 32px rgba(125, 211, 252, 0.1);
+      filter: saturate(1) brightness(1);
+    }
+
+    .quick-action-card.is-hover-preview:not(.is-active) {
+      --deck-card-hover-lift: -18px;
+      --deck-scale-adjust: 0.05;
+      z-index: 34;
+      border-color: rgba(125, 211, 252, 0.34);
+      background: linear-gradient(180deg, rgba(20, 31, 47, 0.9), rgba(11, 17, 28, 0.76));
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.32), 0 0 24px rgba(125, 211, 252, 0.08);
+    }
+
+    .quick-action-card[data-deck-offset='2'],
+    .quick-action-card[data-deck-offset='-2'] {
+      border-style: solid;
+    }
+
+    .quick-action-head {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 10px;
+    }
+
+    .quick-action-title-group {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
     }
 
     .quick-action-label {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .quick-action-subtitle {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.32;
+    }
+
+    .quick-action-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: inline-grid;
+      place-items: center;
+      background: radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.12), rgba(12, 20, 32, 0.94));
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.22);
+      font-size: 18px;
     }
 
     .quick-action-energy {
@@ -659,7 +1006,7 @@
       align-items: center;
       gap: 6px;
       font-family: var(--font-mono);
-      font-size: 10px;
+      font-size: 9px;
       padding: 2px 8px;
       border-radius: 999px;
       border: 1px solid rgba(45, 212, 191, 0.34);
@@ -672,9 +1019,47 @@
       transition: opacity 160ms ease, transform 160ms ease;
     }
 
+    .quick-action-links {
+      width: 100%;
+      display: grid;
+      gap: 5px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .quick-action-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: #dbeafe;
+      font-size: 10px;
+      line-height: 1.3;
+    }
+
+    .quick-action-link-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 7px;
+      display: inline-grid;
+      place-items: center;
+      background: rgba(16, 24, 38, 0.82);
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.18);
+      font-size: 10px;
+      flex: 0 0 auto;
+    }
+
+    .quick-action-link-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .quick-action-note {
-      font-size: 11px;
-      line-height: 1.45;
+      font-size: 10px;
+      line-height: 1.4;
       color: var(--muted);
       opacity: 0;
       transform: translateY(8px);
@@ -683,10 +1068,375 @@
 
     .quick-action-card:hover .quick-action-energy,
     .quick-action-card:hover .quick-action-note,
+    .quick-action-card:hover .quick-action-links,
+    .quick-action-card.is-hover-preview .quick-action-energy,
+    .quick-action-card.is-hover-preview .quick-action-note,
+    .quick-action-card.is-hover-preview .quick-action-links,
+    .quick-action-card.is-active .quick-action-energy,
+    .quick-action-card.is-active .quick-action-note,
+    .quick-action-card.is-active .quick-action-links,
     .quick-action-card:focus-visible .quick-action-energy,
-    .quick-action-card:focus-visible .quick-action-note {
+    .quick-action-card:focus-visible .quick-action-note,
+    .quick-action-card:focus-visible .quick-action-links {
       opacity: 1;
       transform: translateY(0);
+    }
+
+    .quick-action-bar.hand-expanded {
+      bottom: 14px;
+      height: 320px;
+    }
+
+    .quick-action-bar.hand-expanded .quick-action-hand {
+      display: flex;
+      align-items: flex-end;
+      gap: 18px;
+      height: 100%;
+      overflow-x: auto;
+      overflow-y: visible;
+      padding: 52px 18px 16px;
+      scrollbar-gutter: stable both-edges;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
+    }
+
+    .quick-action-bar.hand-expanded .quick-action-card {
+      position: relative;
+      left: auto;
+      bottom: auto;
+      flex: 0 0 188px;
+      width: 188px;
+      min-height: 256px;
+      opacity: 1 !important;
+      z-index: auto;
+      filter: none !important;
+      transform: none !important;
+      scroll-snap-align: center;
+    }
+
+    .quick-action-bar.hand-expanded .quick-action-card.is-active {
+      transform: translateY(-10px) !important;
+    }
+
+    .quick-action-viewer {
+      position: absolute;
+      inset: 104px clamp(86px, 10vw, 132px) 94px;
+      z-index: 31;
+      display: grid;
+      place-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 220ms ease;
+    }
+
+    .quick-action-viewer.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .quick-action-viewer.page-mode {
+      z-index: 32;
+    }
+
+    .quick-action-viewer-backdrop {
+      position: absolute;
+      inset: 0;
+      border-radius: 30px;
+      background:
+        radial-gradient(circle at 50% 38%, rgba(125, 211, 252, 0.12), rgba(125, 211, 252, 0) 46%),
+        linear-gradient(180deg, rgba(10, 15, 24, 0.42), rgba(7, 11, 19, 0.74));
+      backdrop-filter: blur(12px);
+      opacity: 0;
+      transition: opacity 220ms ease;
+    }
+
+    .quick-action-viewer.page-mode .quick-action-viewer-backdrop {
+      opacity: 1;
+    }
+
+    .quick-action-viewer-card {
+      position: relative;
+      width: min(408px, calc((min(80vh, 100%) - 12px) * 0.714));
+      height: min(80vh, calc(100% - 12px));
+      max-height: 100%;
+      aspect-ratio: 5 / 7;
+      overflow-y: auto;
+      padding: 18px 18px 20px;
+      border-radius: 24px;
+      border: 1px solid rgba(120, 168, 210, 0.26);
+      background: linear-gradient(180deg, rgba(18, 28, 43, 0.94), rgba(9, 14, 24, 0.9));
+      box-shadow: 0 34px 76px rgba(0, 0, 0, 0.48), 0 0 34px rgba(125, 211, 252, 0.08);
+      transform: translateY(24px) scale(0.88);
+      transform-origin: center bottom;
+      opacity: 0;
+      transition: transform 240ms ease, opacity 180ms ease;
+    }
+
+    .quick-action-viewer.page-mode .quick-action-viewer-card {
+      width: min(1040px, calc(100% - 18px));
+      height: min(84vh, calc(100% - 18px));
+      aspect-ratio: auto;
+      padding: 18px 20px 20px;
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at 18% 14%, rgba(125, 211, 252, 0.12), rgba(125, 211, 252, 0) 34%),
+        linear-gradient(180deg, rgba(20, 29, 43, 0.94), rgba(9, 14, 24, 0.92)),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0, rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 18px),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 18px);
+    }
+
+    .quick-action-viewer.open .quick-action-viewer-card {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+
+    .quick-action-viewer-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      min-width: 0;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 168, 210, 0.22);
+      background: rgba(15, 23, 38, 0.72);
+      color: #dbeafe;
+      font-size: 11px;
+      backdrop-filter: blur(12px);
+    }
+
+    .quick-action-viewer-kicker {
+      color: #99f6e4;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .quick-action-viewer-focus {
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto auto auto 1fr auto auto;
+      gap: 12px;
+    }
+
+    .quick-action-viewer-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 16px;
+      margin-bottom: 2px;
+      padding-right: 62px;
+    }
+
+    .quick-action-viewer-title {
+      color: #f8fbff;
+      font-size: 18px;
+      line-height: 1.08;
+      font-weight: 800;
+      margin-top: 6px;
+    }
+
+    .quick-action-viewer-subtitle {
+      color: #d7e7f8;
+      font-size: 11px;
+      line-height: 1.42;
+      margin-top: 8px;
+      max-width: 19ch;
+    }
+
+    .quick-action-viewer-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      display: inline-grid;
+      place-items: center;
+      background: radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.16), rgba(12, 20, 32, 0.96));
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.22);
+      font-size: 24px;
+    }
+
+    .quick-action-viewer-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+
+    .quick-action-viewer-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 168, 210, 0.22);
+      background: rgba(13, 20, 32, 0.78);
+      color: #dbeafe;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .quick-action-viewer-story {
+      color: #dbeafe;
+      font-size: 14px;
+      line-height: 1.62;
+    }
+
+    .quick-action-viewer-section {
+      display: block;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .quick-action-viewer-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: 1.1fr 0.9fr;
+    }
+
+    .quick-action-viewer-panel {
+      padding: 14px 15px;
+      border-radius: 16px;
+      border: 1px solid rgba(120, 168, 210, 0.16);
+      background: rgba(9, 14, 24, 0.74);
+    }
+
+    .quick-action-viewer-panel-title {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .quick-action-viewer-copy {
+      color: #dbeafe;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .quick-action-viewer-link-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .quick-action-viewer-link-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #e0f2fe;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .quick-action-viewer-link-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 9px;
+      display: inline-grid;
+      place-items: center;
+      background: rgba(15, 23, 38, 0.78);
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.18);
+      font-size: 13px;
+      flex: 0 0 auto;
+    }
+
+    .quick-action-viewer-footnote {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .quick-action-viewer.page-mode .quick-action-viewer-head,
+    .quick-action-viewer.page-mode .quick-action-viewer-pill-row,
+    .quick-action-viewer.page-mode .quick-action-viewer-footnote {
+      display: none;
+    }
+
+    .quick-action-viewer-page {
+      min-height: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 232px;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .quick-action-viewer-page-main {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+      padding-right: 8px;
+    }
+
+    .quick-action-viewer-page-title {
+      color: #f8fbff;
+      font-size: 34px;
+      line-height: 1.04;
+      font-weight: 800;
+      max-width: 14ch;
+    }
+
+    .quick-action-viewer-page-subtitle {
+      color: #d7e7f8;
+      font-size: 16px;
+      line-height: 1.5;
+      max-width: 40ch;
+      margin-top: 8px;
+    }
+
+    .quick-action-viewer-page-preview {
+      align-self: start;
+      justify-self: end;
+      width: 100%;
+      aspect-ratio: 5 / 7;
+      padding: 14px 14px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(120, 168, 210, 0.24);
+      background: linear-gradient(180deg, rgba(18, 28, 43, 0.96), rgba(8, 13, 22, 0.94));
+      box-shadow: 0 20px 42px rgba(0, 0, 0, 0.34);
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      text-align: left;
+    }
+
+    .quick-action-viewer-page-preview:hover,
+    .quick-action-viewer-page-preview:focus-visible {
+      border-color: rgba(125, 211, 252, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .quick-action-viewer-page-preview .quick-action-viewer-icon {
+      width: 48px;
+      height: 48px;
+      font-size: 22px;
+    }
+
+    .quick-action-viewer-page-preview-title {
+      color: #f8fbff;
+      font-size: 20px;
+      line-height: 1.15;
+      font-weight: 800;
+    }
+
+    .quick-action-viewer-page-preview-copy {
+      color: #d7e7f8;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .quick-action-viewer-page-preview-note {
+      margin-top: auto;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
     }
 
     .edge-hotbar {
@@ -838,9 +1588,14 @@
         padding: 12px 14px;
       }
 
+      .status-docked-line {
+        display: none;
+      }
+
       .status-row,
       .status-bar:hover .status-row,
       .status-bar:focus-within .status-row {
+        display: grid;
         grid-template-columns: 1fr;
       }
 
@@ -854,6 +1609,9 @@
         transform: none;
       }
 
+    }
+
+    @media (max-width: 760px) {
       .utility-dock,
       .edge-hotbar {
         position: static;
@@ -898,19 +1656,85 @@
         position: static;
         left: auto;
         right: auto;
+        bottom: auto;
+        height: auto;
+        pointer-events: auto;
+        --deck-hover-factor: 1;
         margin-top: 14px;
+        display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        perspective: none;
+      }
+
+      .quick-action-bar.hand-expanded {
+        bottom: auto;
+        height: auto;
+      }
+
+      .quick-action-hand {
+        display: contents;
+      }
+
+      .quick-action-bar.hand-expanded .quick-action-hand {
+        display: contents;
+        overflow: visible;
+        padding: 0;
+      }
+
+      .quick-action-hand-toggle {
+        display: none;
+      }
+
+      .quick-action-bar::after {
+        display: none;
       }
 
       .quick-action-card {
-        max-height: 132px;
-        transform: none;
+        position: relative;
+        left: auto;
+        bottom: auto;
+        width: auto;
+        min-height: 188px;
+        transform: none !important;
+        opacity: 1 !important;
+        z-index: auto;
+        filter: none !important;
+      }
+
+      .quick-action-bar.hand-expanded .quick-action-card.is-active {
+        transform: none !important;
       }
 
       .quick-action-energy,
-      .quick-action-note {
+      .quick-action-note,
+      .quick-action-links {
         opacity: 1;
         transform: none;
+      }
+
+      .quick-action-viewer {
+        position: fixed;
+        inset: 24px 16px;
+      }
+
+      .quick-action-viewer-card {
+        width: 100%;
+        height: auto;
+        aspect-ratio: auto;
+      }
+
+      .quick-action-viewer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .quick-action-viewer-page {
+        grid-template-columns: 1fr;
+      }
+
+      .quick-action-viewer-page-preview {
+        justify-self: stretch;
+        width: auto;
       }
     }
 
@@ -1023,8 +1847,37 @@
       padding: 6px 10px;
     }
 
+    .status-docked-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 30px;
+      padding: 2px 6px;
+    }
+
+    .status-docked-summary {
+      min-width: 0;
+      color: #dbeafe;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .status-docked-time {
+      flex: 0 0 auto;
+      color: rgba(219, 234, 254, 0.8);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
     .status-row {
-      display: grid;
+      display: none;
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: stretch;
       gap: 8px;
@@ -1033,8 +1886,14 @@
 
     .status-bar:hover .status-row,
     .status-bar:focus-within .status-row {
+      display: grid;
       grid-template-columns: minmax(260px, 1.15fr) minmax(0, 2fr) auto;
       gap: 14px;
+    }
+
+    .status-bar:hover .status-docked-line,
+    .status-bar:focus-within .status-docked-line {
+      display: none;
     }
 
     .status-hero {
@@ -1597,10 +2456,10 @@
     .loop-control-grid {
       position: relative;
       display: block;
-      margin-bottom: 12px;
-      min-height: 126px;
+      margin-bottom: 10px;
+      min-height: 136px;
       overflow: hidden;
-      padding: 0 22px 4px;
+      padding: 0 10px 6px;
       isolation: isolate;
       cursor: grab;
       user-select: none;
@@ -1617,7 +2476,7 @@
       position: absolute;
       top: 0;
       bottom: 0;
-      width: 72px;
+      width: 82px;
       z-index: 6;
       pointer-events: none;
     }
@@ -1638,16 +2497,20 @@
       top: 0;
       border-radius: 12px;
       border: 0;
-      padding: 13px 10px;
-      text-align: center;
-      width: 138px;
-      min-width: 138px;
-      min-height: 118px;
+      padding: 10px 11px 10px;
+      text-align: left;
+      width: 168px;
+      min-width: 168px;
+      min-height: 112px;
       background: linear-gradient(180deg, rgba(12, 18, 30, 0.98), rgba(10, 15, 25, 0.98));
       overflow: hidden;
       isolation: isolate;
-      transform: scale(0.82);
-      opacity: 0.48;
+      display: grid;
+      justify-items: start;
+      align-content: start;
+      gap: 5px;
+      transform: scale(0.84);
+      opacity: 0.42;
       z-index: 1;
       clip-path: inset(0 0 0 0 round 12px);
       filter: saturate(0.72) brightness(0.82);
@@ -1665,7 +2528,7 @@
     }
 
     .loop-control-card.is-centered {
-      box-shadow: 0 0 0 1px rgba(232, 237, 245, 0.18), 0 0 24px rgba(45, 212, 191, 0.18);
+      box-shadow: 0 0 0 1px rgba(232, 237, 245, 0.18), 0 0 24px rgba(45, 212, 191, 0.18), inset 0 0 0 1px rgba(120, 168, 210, 0.08);
     }
 
     .loop-control-card::before {
@@ -1723,15 +2586,23 @@
     }
 
     .lane-title {
-      font-size: 15px;
+      width: 100%;
+      min-width: 0;
+      font-size: 12px;
       font-family: var(--font-mono);
       font-weight: 700;
-      margin-bottom: 9px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-      line-height: 1.1;
+      margin-bottom: 1px;
+      display: block;
+      line-height: 1.15;
+      text-align: left;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .lane-title .clip-marquee-track {
+      display: inline-flex;
+      gap: 4px;
+      align-items: baseline;
     }
 
     .word {
@@ -1746,17 +2617,22 @@
 
     .lane-icons {
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: center;
-      gap: 7px;
-      min-height: 30px;
+      gap: 6px;
+      min-height: 22px;
     }
 
     .lane-icon {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 23px;
+      width: 22px;
+      height: 22px;
+      border-radius: 8px;
+      background: rgba(16, 24, 38, 0.84);
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.18);
+      font-size: 14px;
       line-height: 1;
       filter: saturate(1.1);
       transition: 0.2s ease;
@@ -1807,12 +2683,128 @@
 
     .lane-sub,
     .lane-meta {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .lane-sub {
       display: none;
     }
 
     .lane-meta {
-      margin-top: 6px;
+      display: block;
+      margin-top: auto;
       font-family: var(--font-mono);
+      font-size: 8px;
+      line-height: 1.25;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #laneOperatorBacklogCount {
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      width: auto;
+      margin-top: 0;
+      padding: 2px 5px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 168, 210, 0.18);
+      background: rgba(9, 14, 24, 0.86);
+      color: #dbeafe;
+    }
+
+    .clip-marquee {
+      position: relative;
+      display: block;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .clip-marquee-track {
+      display: inline-block;
+      min-width: max-content;
+      transform: translateX(0);
+      will-change: transform;
+    }
+
+    .clip-marquee.is-overflowing {
+      mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 14px), transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 14px), transparent 100%);
+    }
+
+    .clip-marquee.is-overflowing::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 20px;
+      background: linear-gradient(90deg, rgba(8, 13, 22, 0), var(--overflow-fade-color, rgba(8, 13, 22, 0.96)) 78%);
+      pointer-events: none;
+    }
+
+    .clip-block {
+      position: relative;
+      display: block;
+      min-width: 0;
+      max-height: var(--block-clamp-height, none);
+      overflow: hidden;
+    }
+
+    .clip-block-track {
+      display: block;
+      transform: translateY(0);
+      will-change: transform;
+    }
+
+    .clip-block.is-overflowing::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 18px;
+      background: linear-gradient(180deg, rgba(8, 13, 22, 0), var(--block-fade-color, rgba(8, 13, 22, 0.96)) 82%);
+      pointer-events: none;
+    }
+
+    .clip-block.auto-scroll-y.is-overflowing:hover .clip-block-track,
+    .clip-block.auto-scroll-y.is-overflowing:focus-within .clip-block-track {
+      animation: overflow-block var(--block-duration, 4.8s) ease-in-out infinite alternate;
+    }
+
+    @keyframes overflow-block {
+      from {
+        transform: translateY(0);
+      }
+
+      to {
+        transform: translateY(calc(var(--block-shift, 0px) * -1));
+      }
+    }
+
+    .clip-marquee.is-overflowing:hover .clip-marquee-track,
+    .loop-control-card:hover .clip-marquee.lane-marquee.is-overflowing .clip-marquee-track,
+    .loop-control-card:focus-visible .clip-marquee.lane-marquee.is-overflowing .clip-marquee-track,
+    .agent-play-card:hover .clip-marquee.card-marquee.is-overflowing .clip-marquee-track,
+    .agent-play-card:focus-within .clip-marquee.card-marquee.is-overflowing .clip-marquee-track {
+      animation: overflow-marquee var(--marquee-duration, 4.6s) ease-in-out infinite alternate;
+    }
+
+    @keyframes overflow-marquee {
+      from {
+        transform: translateX(0);
+      }
+
+      to {
+        transform: translateX(calc(var(--marquee-shift, 0px) * -1));
+      }
     }
 
     .loop-card {
@@ -1831,6 +2823,14 @@
 
     .loop-card.flipped .loop-card-inner {
       transform: rotateY(180deg);
+    }
+
+    .loop-card.expanded {
+      z-index: 12;
+    }
+
+    .loop-card.expanded .loop-card-inner {
+      min-height: 468px;
     }
 
     .loop-face {
@@ -1876,14 +2876,18 @@
 
     .agent-card-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+      gap: 12px;
+      grid-auto-rows: 1fr;
       align-items: stretch;
     }
 
     .agent-play-card {
-      min-height: 236px;
-      border-radius: 8px;
+      min-height: 336px;
+      border-radius: 16px;
+      border: 1px solid rgba(120, 168, 210, 0.22);
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(12, 18, 30, 0.98), rgba(9, 15, 25, 0.98));
     }
 
     .agent-play-card.notification-glow-low {
@@ -1899,7 +2903,8 @@
     }
 
     .agent-play-card .loop-card-inner {
-      min-height: 236px;
+      min-height: 336px;
+      height: 100%;
     }
 
     .agent-card-front,
@@ -1908,18 +2913,92 @@
       flex-direction: column;
       gap: 8px;
       height: 100%;
+      padding: 12px;
+      background: linear-gradient(180deg, rgba(10, 17, 28, 0.96), rgba(7, 11, 19, 0.96));
+    }
+
+    .agent-card-back {
+      background: linear-gradient(180deg, rgba(8, 13, 22, 0.98), rgba(5, 9, 16, 0.98));
+      overflow: hidden;
+      scrollbar-gutter: stable;
+    }
+
+    .loop-card.expanded .agent-card-back {
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding-right: 8px;
+    }
+
+    .loop-card.expanded .clip-block {
+      max-height: none;
+      overflow: visible;
+    }
+
+    .loop-card.expanded .clip-block::after {
+      display: none;
+    }
+
+    .loop-card.expanded .clip-block-track {
+      animation: none !important;
     }
 
     .agent-card-topline {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      gap: 8px;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .agent-card-role {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 9px;
+      align-items: start;
+      flex: 1 1 auto;
+    }
+
+    .agent-card-icon-badge {
+      display: grid;
+      justify-items: center;
+      gap: 4px;
+      flex: 0 0 auto;
     }
 
     .agent-card-icon {
-      font-size: 28px;
+      display: inline-grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.12), rgba(12, 20, 32, 0.96));
+      box-shadow: inset 0 0 0 1px rgba(120, 168, 210, 0.22);
+      font-size: 21px;
       line-height: 1;
+    }
+
+    .agent-card-icon-label {
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 8px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .agent-card-heading {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+      --overflow-fade-color: rgba(10, 17, 28, 0.96);
+    }
+
+    .agent-card-name-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
     }
 
     .status-dot {
@@ -1937,36 +3016,413 @@
     .status-dot.stopped { background: var(--accent-red); box-shadow: 0 0 10px rgba(248, 113, 113, 0.8); }
 
     .agent-card-name {
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.2;
+      display: block;
+      min-width: 0;
+      max-width: 100%;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.15;
     }
 
-    .agent-card-subtitle {
+    .agent-card-purpose {
+      display: block;
+      min-width: 0;
+      max-width: 100%;
+      color: #d8e4f5;
+      font-size: 12px;
+      line-height: 1.32;
+    }
+
+    .agent-card-meta-line {
+      display: block;
+      min-width: 0;
+      max-width: 100%;
+      color: var(--dim);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      line-height: 1.3;
+    }
+
+    .agent-card-head-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      --overflow-fade-color: rgba(10, 17, 28, 0.96);
+    }
+
+    .agent-card-inline-section {
+      display: grid;
+      gap: 5px;
+    }
+
+    .mission-status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 168, 210, 0.28);
+      background: rgba(10, 16, 26, 0.88);
+      color: #dbeafe;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .mission-status-chip::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #64748b;
+      box-shadow: 0 0 8px rgba(100, 116, 139, 0.45);
+      flex: 0 0 auto;
+    }
+
+    .mission-status-chip.state-healthy {
+      border-color: rgba(52, 211, 153, 0.48);
+      color: #bbf7d0;
+      box-shadow: 0 0 20px rgba(52, 211, 153, 0.1);
+    }
+
+    .mission-status-chip.state-healthy::before {
+      background: var(--accent-green);
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.65);
+    }
+
+    .mission-status-chip.state-watching {
+      border-color: rgba(120, 168, 210, 0.42);
+      color: #bfdbfe;
+      box-shadow: 0 0 18px rgba(74, 144, 217, 0.08);
+    }
+
+    .mission-status-chip.state-watching::before {
+      background: #7dd3fc;
+      box-shadow: 0 0 9px rgba(74, 144, 217, 0.5);
+    }
+
+    .mission-status-chip.state-attention,
+    .mission-status-chip.state-escalating,
+    .mission-status-chip.state-recovering,
+    .mission-status-chip.state-resolved {
+      box-shadow: 0 0 18px rgba(255, 255, 255, 0.04);
+    }
+
+    .mission-status-chip.state-attention {
+      border-color: rgba(248, 113, 113, 0.58);
+      color: #fecaca;
+    }
+
+    .mission-status-chip.state-attention::before {
+      background: var(--accent-red);
+      box-shadow: 0 0 10px rgba(248, 113, 113, 0.7);
+    }
+
+    .mission-status-chip.state-escalating {
+      border-color: rgba(245, 158, 11, 0.54);
+      color: #fde68a;
+    }
+
+    .mission-status-chip.state-escalating::before {
+      background: var(--accent-amber);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.68);
+    }
+
+    .mission-status-chip.state-recovering {
+      border-color: rgba(45, 212, 191, 0.5);
+      color: #99f6e4;
+    }
+
+    .mission-status-chip.state-recovering::before {
+      background: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(45, 212, 191, 0.65);
+    }
+
+    .mission-status-chip.state-resolved {
+      border-color: rgba(148, 163, 184, 0.4);
+      color: #cbd5f5;
+    }
+
+    .mission-status-chip.state-resolved::before {
+      background: #94a3b8;
+      box-shadow: 0 0 8px rgba(148, 163, 184, 0.55);
+    }
+
+    .mission-panel {
+      padding: 8px 9px;
+      border-radius: 12px;
+      border: 1px solid rgba(120, 168, 210, 0.14);
+      background: rgba(9, 14, 24, 0.76);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+      --block-fade-color: rgba(9, 14, 24, 0.94);
+    }
+
+    .mission-panel.card-expand-target {
+      cursor: zoom-in;
+      transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+
+    .mission-panel.card-expand-target:hover {
+      border-color: rgba(125, 211, 252, 0.28);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(125, 211, 252, 0.04);
+      transform: translateY(-1px);
+    }
+
+    .loop-card.expanded .mission-panel.card-expand-target {
+      cursor: default;
+      transform: none;
+      border-color: rgba(125, 211, 252, 0.22);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(125, 211, 252, 0.05);
+    }
+
+    .mission-panel-body {
+      display: block;
+      min-width: 0;
+    }
+
+    .mission-brief {
+      display: grid;
+      border-radius: 14px;
+      border: 1px solid rgba(120, 168, 210, 0.16);
+      background: rgba(8, 13, 22, 0.84);
+      overflow: hidden;
+      --block-fade-color: rgba(8, 13, 22, 0.96);
+    }
+
+    .mission-brief-row {
+      display: grid;
+      gap: 4px;
+      padding: 8px 10px;
+    }
+
+    .mission-brief-row + .mission-brief-row {
+      border-top: 1px solid rgba(120, 168, 210, 0.12);
+    }
+
+    .mission-brief-label {
       color: var(--muted);
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .mission-brief-text {
+      color: var(--text);
+      font-size: 12px;
       line-height: 1.35;
     }
 
-    .progress-shell {
-      height: 7px;
-      border-radius: 999px;
-      border: 1px solid rgba(120, 168, 210, 0.22);
-      background: rgba(7, 11, 19, 0.9);
-      overflow: hidden;
+    .mission-lower {
+      display: grid;
+      gap: 7px;
     }
 
-    .progress-fill {
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+    .mission-section-label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      --overflow-fade-color: rgba(9, 14, 24, 0.94);
     }
 
     .agent-card-description {
       color: var(--text);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .agent-team-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .agent-team-chip,
+    .agent-team-more {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 168, 210, 0.24);
+      background: rgba(16, 24, 38, 0.88);
+      color: #dbeafe;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .agent-team-more {
+      border-style: dashed;
+      color: var(--muted);
+    }
+
+    .mission-phase {
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(120, 168, 210, 0.14);
+      background: rgba(7, 11, 19, 0.86);
+    }
+
+    .mission-phase-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .mission-phase-track {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 4px;
+      align-items: start;
+    }
+
+    .mission-phase-step {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .mission-phase-line {
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(51, 65, 85, 0.88);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mission-phase-step.is-active .mission-phase-line {
+      background: linear-gradient(90deg, rgba(74, 144, 217, 0.92), rgba(45, 212, 191, 0.92));
+    }
+
+    .mission-phase-step.is-current .mission-phase-line {
+      box-shadow: 0 0 0 1px rgba(232, 237, 245, 0.16), 0 0 12px rgba(74, 144, 217, 0.18);
+    }
+
+    .mission-phase-label {
+      color: var(--dim);
+      font-family: var(--font-mono);
+      font-size: 8px;
+      line-height: 1.2;
+      text-transform: uppercase;
+      word-break: break-word;
+    }
+
+    .mission-phase-step.is-current .mission-phase-label {
+      color: #dbeafe;
+    }
+
+    .mission-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .mission-metric {
+      min-width: 0;
+      padding: 6px 0 0;
+    }
+
+    .mission-metric-label {
+      display: block;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 8px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .mission-metric-value {
+      display: block;
+      margin-top: 4px;
+      color: #f8fbff;
       font-size: 12px;
-      line-height: 1.4;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .mission-metric-bar {
+      display: block;
+      margin-top: 3px;
+      color: #bfdbfe;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.03em;
+    }
+
+    .mission-activity-list {
+      list-style: none;
+      display: grid;
+      gap: 4px;
+    }
+
+    .mission-activity-list li {
+      position: relative;
+      padding-left: 11px;
+      color: var(--text);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .mission-activity-list li::before {
+      content: '•';
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: #7dd3fc;
+    }
+
+    .diagnostics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .diagnostic-item {
+      min-width: 0;
+      padding: 7px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(120, 168, 210, 0.16);
+      background: rgba(8, 13, 22, 0.82);
+    }
+
+    .diagnostic-label {
+      display: block;
+      color: var(--dim);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .diagnostic-value {
+      display: block;
+      margin-top: 4px;
+      color: #dbeafe;
+      font-size: 10px;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .agent-card-footer {
+      margin-top: auto;
+      display: grid;
+      gap: 6px;
     }
 
     .agent-card-notice {
@@ -1974,12 +3430,12 @@
       align-items: center;
       gap: 6px;
       align-self: flex-start;
-      padding: 3px 8px;
+      padding: 3px 7px;
       border-radius: 999px;
       border: 1px solid rgba(120, 168, 210, 0.28);
       font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.04em;
+      font-size: 9px;
+      letter-spacing: 0.03em;
       text-transform: uppercase;
       background: rgba(9, 14, 24, 0.78);
       color: var(--muted);
@@ -2001,30 +3457,72 @@
       color: #fde68a;
     }
 
+    .agent-play-card .loop-actions {
+      gap: 6px;
+      margin-top: 0;
+    }
+
+    .agent-play-card .loop-actions button {
+      padding: 5px 8px;
+      font-size: 10px;
+    }
+
     .agent-card-notice.notification-glow-high {
       border-color: rgba(248, 113, 113, 0.5);
       color: #fecaca;
     }
 
     .flip-note {
-      margin-top: auto;
       color: var(--dim);
       font-family: var(--font-mono);
-      font-size: 10px;
-      writing-mode: vertical-rl;
-      align-self: flex-end;
+      font-size: 9px;
+      line-height: 1.25;
+      align-self: flex-start;
       opacity: 0.72;
     }
 
     .notification-card .flip-note {
-      writing-mode: horizontal-tb;
-      align-self: flex-start;
       color: #bfdbfe;
       opacity: 0.92;
     }
 
     .agent-card-back .agent-card-description {
       color: var(--muted);
+    }
+
+    .agent-card-back .mission-panel:last-of-type {
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 1260px) {
+      .agent-card-grid {
+        grid-template-columns: repeat(auto-fit, minmax(228px, 1fr));
+      }
+
+      .mission-metrics,
+      .diagnostics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 900px) {
+      .agent-card-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .agent-play-card,
+      .agent-play-card .loop-card-inner {
+        min-height: 320px;
+      }
+
+      .loop-card.expanded .loop-card-inner {
+        min-height: 420px;
+      }
+
+      .mission-metrics,
+      .diagnostics-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     @keyframes spin-border {
@@ -2572,6 +4070,10 @@
     <div class="panel status-bar">
       <div class="panel-body">
         <div class="error-banner" id="errorBanner"></div>
+        <div class="status-docked-line">
+          <span class="status-docked-summary" id="statusDockedSummary">Loading overview...</span>
+          <span class="status-docked-time" id="statusDockedTime"></span>
+        </div>
         <div class="status-row">
           <div class="status-hero">
             <span class="status-indicator unknown" id="statusIndicator"></span>
@@ -2620,6 +4122,73 @@
     </div>
 
     <div class="mars-stage">
+      <div class="force-field" id="forceField" aria-hidden="true">
+        <svg class="force-field-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none" focusable="false">
+          <defs>
+            <linearGradient id="forceFieldLeftStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.82"></stop>
+              <stop offset="65%" stop-color="#67e8f9" stop-opacity="0.28"></stop>
+              <stop offset="100%" stop-color="#67e8f9" stop-opacity="0"></stop>
+            </linearGradient>
+            <linearGradient id="forceFieldRightStroke" x1="100%" y1="0%" x2="0%" y2="0%">
+              <stop offset="0%" stop-color="#c084fc" stop-opacity="0.82"></stop>
+              <stop offset="65%" stop-color="#c4b5fd" stop-opacity="0.28"></stop>
+              <stop offset="100%" stop-color="#c4b5fd" stop-opacity="0"></stop>
+            </linearGradient>
+            <linearGradient id="forceFieldTopStroke" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stop-color="#67e8f9" stop-opacity="0.76"></stop>
+              <stop offset="100%" stop-color="#67e8f9" stop-opacity="0"></stop>
+            </linearGradient>
+            <linearGradient id="forceFieldBottomStroke" x1="50%" y1="100%" x2="50%" y2="0%">
+              <stop offset="0%" stop-color="#fb923c" stop-opacity="0.54"></stop>
+              <stop offset="100%" stop-color="#fdba74" stop-opacity="0"></stop>
+            </linearGradient>
+            <linearGradient id="forceFieldRingStroke" x1="0%" y1="50%" x2="100%" y2="50%">
+              <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.72"></stop>
+              <stop offset="50%" stop-color="#e0f2fe" stop-opacity="0.95"></stop>
+              <stop offset="100%" stop-color="#c084fc" stop-opacity="0.72"></stop>
+            </linearGradient>
+            <radialGradient id="forceFieldCoreGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#e0f2fe" stop-opacity="0.4"></stop>
+              <stop offset="48%" stop-color="#67e8f9" stop-opacity="0.16"></stop>
+              <stop offset="100%" stop-color="#67e8f9" stop-opacity="0"></stop>
+            </radialGradient>
+          </defs>
+
+          <g class="force-field-backdrop">
+            <ellipse class="force-field-core-haze" cx="500" cy="500" rx="264" ry="232"></ellipse>
+            <ellipse class="force-field-ring" cx="500" cy="500" rx="390" ry="330"></ellipse>
+            <ellipse class="force-field-ring force-field-ring-secondary" cx="500" cy="500" rx="320" ry="270"></ellipse>
+            <path class="force-field-side" d="M 22 162 C 172 220 238 364 252 500 C 238 636 172 780 22 838" stroke="url(#forceFieldLeftStroke)"></path>
+            <path class="force-field-side" d="M 978 162 C 828 220 762 364 748 500 C 762 636 828 780 978 838" stroke="url(#forceFieldRightStroke)"></path>
+            <path class="force-field-axis" d="M 140 112 C 300 150 700 150 860 112" stroke="url(#forceFieldTopStroke)"></path>
+            <path class="force-field-axis" d="M 140 888 C 300 850 700 850 860 888" stroke="url(#forceFieldBottomStroke)"></path>
+            <path class="force-field-chord" d="M 124 140 C 270 218 376 332 474 452" stroke="url(#forceFieldLeftStroke)"></path>
+            <path class="force-field-chord force-field-chord-secondary" d="M 876 140 C 730 218 624 332 526 452" stroke="url(#forceFieldRightStroke)"></path>
+            <path class="force-field-chord" d="M 124 860 C 270 782 376 668 474 548" stroke="url(#forceFieldBottomStroke)"></path>
+            <path class="force-field-chord force-field-chord-secondary" d="M 876 860 C 730 782 624 668 526 548" stroke="url(#forceFieldBottomStroke)"></path>
+            <path class="force-field-stream" d="M 72 246 C 278 266 352 424 456 500"></path>
+            <path class="force-field-stream force-field-stream-secondary" d="M 928 246 C 722 266 648 424 544 500"></path>
+            <path class="force-field-stream force-field-stream-secondary" d="M 112 792 C 292 744 372 616 456 548"></path>
+            <path class="force-field-stream" d="M 888 792 C 708 744 628 616 544 548"></path>
+            <circle class="force-field-progress-track" cx="500" cy="500" r="238" pathLength="100"></circle>
+            <circle class="force-field-progress-ring" id="forceFieldProgressRing" cx="500" cy="500" r="238" pathLength="100"></circle>
+            <circle class="force-field-core" cx="500" cy="500" r="132"></circle>
+            <circle class="force-field-node" cx="132" cy="140" r="14" stroke="url(#forceFieldLeftStroke)"></circle>
+            <circle class="force-field-node" cx="868" cy="140" r="14" stroke="url(#forceFieldRightStroke)"></circle>
+            <circle class="force-field-node" cx="132" cy="860" r="14" stroke="url(#forceFieldBottomStroke)"></circle>
+            <circle class="force-field-node" cx="868" cy="860" r="14" stroke="url(#forceFieldBottomStroke)"></circle>
+          </g>
+
+          <g class="force-field-label-group">
+            <text class="force-field-label" id="forceFieldRunwayLabel" x="500" y="132" text-anchor="middle">RUNWAY 0%</text>
+            <text class="force-field-label" id="forceFieldWaitingLabel" x="108" y="324">WAIT 0</text>
+            <text class="force-field-label" id="forceFieldChatLabel" x="892" y="324" text-anchor="end">CHAT 0</text>
+            <text class="force-field-label" id="forceFieldLoopLabel" x="500" y="890" text-anchor="middle">LOOPS 0</text>
+          </g>
+        </svg>
+      </div>
+
       <button type="button" class="corner-hud-card corner-hud-card-top-left corner-hud-card-nav" aria-label="Navigation wheel placeholder" title="Navigation wheel placeholder">
         <span class="corner-card-shell">
           <span class="corner-card-collapsed">
@@ -2688,25 +4257,25 @@
               <div class="subheader">Agent Arena</div>
               <div class="loop-control-grid">
                 <button id="laneAgentArchitectBtn" class="loop-control-card status-idle">
-                  <div class="lane-title"><span class="word word-a">Agent</span><span class="word word-b">Architect</span></div>
+                  <div class="lane-title clip-marquee lane-marquee" data-overflow-marquee data-marquee-label="Agent Architect"><span class="clip-marquee-track"><span class="word word-a">Agent</span><span class="word word-b">Architect</span></span></div>
                   <div class="lane-icons"><span class="lane-icon">🤖</span><span class="lane-icon">👨🏻‍💼</span></div>
                   <div class="lane-sub">Software Agent Architect + Business Agent Architect</div>
                   <div class="lane-meta" id="laneAgentArchitectMeta">idle</div>
                 </button>
                 <button id="laneSoftwareArchitectBtn" class="loop-control-card status-idle">
-                  <div class="lane-title"><span class="word word-c">Software</span><span class="word word-d">Architect</span></div>
+                  <div class="lane-title clip-marquee lane-marquee" data-overflow-marquee data-marquee-label="Software Architect"><span class="clip-marquee-track"><span class="word word-c">Software</span><span class="word word-d">Architect</span></span></div>
                   <div class="lane-icons"><span class="lane-icon">💻</span><span class="lane-icon">🧰</span></div>
                   <div class="lane-sub">Core Programmer + SubCore Programmer loop</div>
                   <div class="lane-meta" id="laneSoftwareArchitectMeta">idle</div>
                 </button>
                 <button id="laneBusinessManagerBtn" class="loop-control-card status-idle">
-                  <div class="lane-title"><span class="word word-b">Business</span><span class="word word-c">Manager</span></div>
+                  <div class="lane-title clip-marquee lane-marquee" data-overflow-marquee data-marquee-label="Business Manager"><span class="clip-marquee-track"><span class="word word-b">Business</span><span class="word word-c">Manager</span></span></div>
                   <div class="lane-icons"><span class="lane-icon">📄</span><span class="lane-icon">💰</span><span class="lane-icon">👥</span></div>
                   <div class="lane-sub">Operations + Sales + Finance + HR</div>
                   <div class="lane-meta" id="laneBusinessManagerMeta">idle</div>
                 </button>
                 <button id="laneOperatorBacklogBtn" class="loop-control-card status-idle">
-                  <div class="lane-title"><span class="word word-d">Administration</span></div>
+                  <div class="lane-title clip-marquee lane-marquee" data-overflow-marquee data-marquee-label="Administration"><span class="clip-marquee-track"><span class="word word-d">Administration</span></span></div>
                   <div class="lane-icons"><span class="lane-icon">🛡️</span><span class="lane-icon">💬</span><span class="lane-icon">🚨</span></div>
                   <div class="lane-sub">Open escalations requiring operator visibility</div>
                   <div class="lane-meta" id="laneOperatorBacklogMeta">no waiting issues</div>
@@ -2905,27 +4474,82 @@
         </div>
       </div>
 
-      <div class="quick-action-bar" aria-label="Quick action deck placeholders">
-        <button type="button" class="quick-action-card" aria-disabled="true" title="Placeholder quick action card">
-          <span class="quick-action-label">Coding Card</span>
-          <span class="quick-action-energy">56 energy</span>
-          <span class="quick-action-note">Drag-to-play placeholder for loop budget and premium-token limits.</span>
-        </button>
-        <button type="button" class="quick-action-card" aria-disabled="true" title="Placeholder quick action card">
-          <span class="quick-action-label">Research Card</span>
-          <span class="quick-action-energy">34 energy</span>
-          <span class="quick-action-note">Reserved for evidence collection, search depth, and model attention budget.</span>
-        </button>
-        <button type="button" class="quick-action-card" aria-disabled="true" title="Placeholder quick action card">
-          <span class="quick-action-label">Operator Card</span>
-          <span class="quick-action-energy">21 energy</span>
-          <span class="quick-action-note">Future manual intervention card for escalation, review, and human gates.</span>
-        </button>
-        <button type="button" class="quick-action-card" aria-disabled="true" title="Placeholder quick action card">
-          <span class="quick-action-label">Business Card</span>
-          <span class="quick-action-energy">13 energy</span>
-          <span class="quick-action-note">Placeholder for commercial, ops, and planning cards you pull from the deck.</span>
-        </button>
+      <div id="quickActionBar" class="quick-action-bar" aria-label="Quick action deck">
+        <button type="button" id="quickActionHandToggle" class="quick-action-hand-toggle" aria-expanded="false" aria-label="Expand hand">← 🂠 • 🂠 • 🂠 →</button>
+        <div id="quickActionHand" class="quick-action-hand">
+          <button type="button" class="quick-action-card" data-quick-action="coding" aria-pressed="false" title="Focus coding deck">
+            <span class="quick-action-head">
+              <span class="quick-action-title-group">
+                <span class="quick-action-label">Coding Card</span>
+                <span class="quick-action-subtitle">Core execution lanes and specialist handoffs.</span>
+              </span>
+              <span class="quick-action-icon">💻</span>
+            </span>
+            <span class="quick-action-energy">56 energy</span>
+            <span class="quick-action-note">Shows the active software stack beneath this lane so you can see what is available before you pull deeper into the deck.</span>
+            <span class="quick-action-links">
+              <span class="quick-action-link"><span class="quick-action-link-icon">🧰</span><span class="quick-action-link-name">Software Architect</span></span>
+              <span class="quick-action-link"><span class="quick-action-link-icon">🛠</span><span class="quick-action-link-name">Core Agent</span></span>
+              <span class="quick-action-link"><span class="quick-action-link-icon">🧪</span><span class="quick-action-link-name">SubCore Agent</span></span>
+            </span>
+          </button>
+          <button type="button" class="quick-action-card" data-quick-action="research" aria-pressed="false" title="Focus research deck">
+            <span class="quick-action-head">
+              <span class="quick-action-title-group">
+                <span class="quick-action-label">Research Card</span>
+                <span class="quick-action-subtitle">Evidence gathering, prompts, and audit support.</span>
+              </span>
+              <span class="quick-action-icon">🔎</span>
+            </span>
+            <span class="quick-action-energy">34 energy</span>
+            <span class="quick-action-note">Reserved for evidence collection, search depth, and the prompt or documentation specialists that backstop the current lane.</span>
+            <span class="quick-action-links">
+              <span class="quick-action-link"><span class="quick-action-link-icon">📚</span><span class="quick-action-link-name">Documentation Architect</span></span>
+              <span class="quick-action-link"><span class="quick-action-link-icon">🧭</span><span class="quick-action-link-name">Prompt Architect</span></span>
+              <span class="quick-action-link"><span class="quick-action-link-icon">🩺</span><span class="quick-action-link-name">Audit Recovery Officer</span></span>
+            </span>
+          </button>
+          <button type="button" class="quick-action-card" data-quick-action="operator" aria-pressed="false" title="Focus operator deck">
+            <span class="quick-action-head">
+              <span class="quick-action-title-group">
+                <span class="quick-action-label">Operator Card</span>
+                <span class="quick-action-subtitle">Escalations, lifecycle surfaces, and manual gates.</span>
+              </span>
+              <span class="quick-action-icon">🛡️</span>
+            </span>
+            <span class="quick-action-energy">21 energy</span>
+            <span class="quick-action-note">Keeps the human-facing gates visible so manual review, lifecycle context, and alert cleanup stay within reach.</span>
+            <span class="quick-action-links">
+              <span class="quick-action-link"><span class="quick-action-link-icon">💬</span><span class="quick-action-link-name">Lifecycle Chat</span></span>
+              <span class="quick-action-link"><span class="quick-action-link-icon">🚨</span><span class="quick-action-link-name">Administration Alerts</span></span>
+              <span class="quick-action-link"><span class="quick-action-link-icon">🧾</span><span class="quick-action-link-name">Runway Mindmap</span></span>
+            </span>
+          </button>
+          <button type="button" class="quick-action-card" data-quick-action="business" aria-pressed="false" title="Focus business deck">
+            <span class="quick-action-head">
+              <span class="quick-action-title-group">
+                <span class="quick-action-label">Business Card</span>
+                <span class="quick-action-subtitle">Commercial, ops, planning, and company-facing loops.</span>
+              </span>
+              <span class="quick-action-icon">📈</span>
+            </span>
+            <span class="quick-action-energy">13 energy</span>
+            <span class="quick-action-note">Surfaces the company-side stack that sits beneath the manager lane before those cards are pulled into the center flow.</span>
+            <span class="quick-action-links">
+              <span class="quick-action-link"><span class="quick-action-link-icon">💼</span><span class="quick-action-link-name">Business Agent</span></span>
+              <span class="quick-action-link"><span class="quick-action-link-icon">🧮</span><span class="quick-action-link-name">Finance and Ops</span></span>
+              <span class="quick-action-link"><span class="quick-action-link-icon">🧑‍🤝‍🧑</span><span class="quick-action-link-name">HR and Planning</span></span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div id="quickActionViewer" class="quick-action-viewer" aria-hidden="true">
+        <div class="quick-action-viewer-backdrop" data-quick-action-viewer-close></div>
+        <div id="quickActionViewerCard" class="quick-action-viewer-card" role="dialog" aria-modal="false" aria-labelledby="quickActionViewerTitle">
+          <button type="button" id="quickActionViewerCloseBtn" class="quick-action-viewer-close" aria-label="Close deck card viewer">Close</button>
+          <div id="quickActionViewerBody"></div>
+        </div>
       </div>
 
       <button type="button" class="corner-hud-card corner-hud-card-bottom-left corner-hud-card-deck" aria-label="FERROS deck placeholder" title="FERROS deck placeholder">
@@ -3001,6 +4625,11 @@
       selectedLifecycleCardId: null,
       nextId: 1,
       flippedLoopIds: {},
+      expandedLoopId: null,
+      selectedQuickAction: 'coding',
+      quickActionHandExpanded: false,
+      quickActionViewerAction: null,
+      quickActionViewerMode: null,
       selectedCategory: null,
       centeredCategory: null,
       surfaceDrawer: null,
@@ -3062,6 +4691,14 @@
 
     const elements = {
       errorBanner: document.getElementById('errorBanner'),
+      forceField: document.getElementById('forceField'),
+      forceFieldProgressRing: document.getElementById('forceFieldProgressRing'),
+      forceFieldRunwayLabel: document.getElementById('forceFieldRunwayLabel'),
+      forceFieldWaitingLabel: document.getElementById('forceFieldWaitingLabel'),
+      forceFieldChatLabel: document.getElementById('forceFieldChatLabel'),
+      forceFieldLoopLabel: document.getElementById('forceFieldLoopLabel'),
+      statusDockedSummary: document.getElementById('statusDockedSummary'),
+      statusDockedTime: document.getElementById('statusDockedTime'),
       statusIndicator: document.getElementById('statusIndicator'),
       statusText: document.getElementById('statusText'),
       statusMeta: document.getElementById('statusMeta'),
@@ -3091,6 +4728,13 @@
       laneOperatorBacklogCount: document.getElementById('laneOperatorBacklogCount'),
       categoryViewTitle: document.getElementById('categoryViewTitle'),
       loopList: document.getElementById('loopList'),
+      quickActionBar: document.getElementById('quickActionBar'),
+      quickActionHand: document.getElementById('quickActionHand'),
+      quickActionHandToggle: document.getElementById('quickActionHandToggle'),
+      quickActionViewer: document.getElementById('quickActionViewer'),
+      quickActionViewerCard: document.getElementById('quickActionViewerCard'),
+      quickActionViewerBody: document.getElementById('quickActionViewerBody'),
+      quickActionViewerCloseBtn: document.getElementById('quickActionViewerCloseBtn'),
       surfaceLifecycleBtn: document.getElementById('surfaceLifecycleBtn'),
       surfaceDirectoryBtn: document.getElementById('surfaceDirectoryBtn'),
       surfaceServicesBtn: document.getElementById('surfaceServicesBtn'),
@@ -3143,6 +4787,69 @@
       software: 'laneSoftwareArchitectBtn',
       business: 'laneBusinessManagerBtn',
       administration: 'laneOperatorBacklogBtn',
+    };
+
+    const quickActionDefinitions = {
+      coding: {
+        kicker: 'Loop Template Placeholder',
+        title: 'Coding Card',
+        subtitle: 'Core execution lanes and specialist handoffs.',
+        icon: '💻',
+        energy: '56 energy',
+        summary: 'Prebuilt execution loop placeholder for recodes, patches, and runtime work when you do not want to retype the full concept by hand.',
+        playHint: 'Best play when the job is already clear: drop it into Administration to launch a full coding loop, or later drag it onto Chat Board to seed the brief.',
+        footnote: 'Later this becomes a saved template card for repeatable engineering loops and smoke-test style operations.',
+        links: [
+          { icon: '🧰', name: 'Software Architect' },
+          { icon: '🛠', name: 'Core Agent' },
+          { icon: '🧪', name: 'SubCore Agent' },
+        ],
+      },
+      research: {
+        kicker: 'Evidence Packet Placeholder',
+        title: 'Research Card',
+        subtitle: 'Evidence gathering, prompts, and audit support.',
+        icon: '🔎',
+        energy: '34 energy',
+        summary: 'Prebuilt evidence loop placeholder for reading, documenting, and assembling context before a larger routing decision is made.',
+        playHint: 'Use this when you want FERROS to gather documentation, prompt work, or audit context before the execution lane starts.',
+        footnote: 'Later this becomes a searchable deck of concept cards, packet readers, and evidence kits that can be replayed across sessions.',
+        links: [
+          { icon: '📚', name: 'Documentation Architect' },
+          { icon: '🧭', name: 'Prompt Architect' },
+          { icon: '🩺', name: 'Audit Recovery Officer' },
+        ],
+      },
+      operator: {
+        kicker: 'Human Gate Placeholder',
+        title: 'Operator Card',
+        subtitle: 'Escalations, lifecycle surfaces, and manual gates.',
+        icon: '🛡️',
+        energy: '21 energy',
+        summary: 'Prebuilt manual intervention loop placeholder for lifecycle triage, alert cleanup, and operator-facing routing without rewriting the same admin asks.',
+        playHint: 'Use it when the work needs a visible human checkpoint, a lifecycle note, or a reusable escalation pattern instead of a fresh prompt.',
+        footnote: 'Later this becomes the reusable hand for approvals, attention sweeps, and human-in-the-loop administration cards.',
+        links: [
+          { icon: '💬', name: 'Lifecycle Chat' },
+          { icon: '🚨', name: 'Administration Alerts' },
+          { icon: '🧾', name: 'Runway Mindmap' },
+        ],
+      },
+      business: {
+        kicker: 'Company Loop Placeholder',
+        title: 'Business Card',
+        subtitle: 'Commercial, ops, planning, and company-facing loops.',
+        icon: '📈',
+        energy: '13 energy',
+        summary: 'Prebuilt business loop placeholder for planning, operations, and commercial routing when the work belongs on the company side of FERROS.',
+        playHint: 'Use it when you want to slot a repeatable business process into the queue without typing the same planning or ops context again.',
+        footnote: 'Later this becomes a real deck of business templates, discard piles, and inspiration cards you can draw back into the center flow.',
+        links: [
+          { icon: '💼', name: 'Business Agent' },
+          { icon: '🧮', name: 'Finance and Ops' },
+          { icon: '🧑‍🤝‍🧑', name: 'HR and Planning' },
+        ],
+      },
     };
 
     let lastRankedKeys = [];
@@ -3270,12 +4977,657 @@
       ],
     };
 
+    const operatorMissionProfiles = {
+      'FERROS Agent': {
+        roleTitle: 'Coordinator',
+        purpose: 'Keeps work moving across teams',
+        teamTags: ['Architecture', 'Business', 'Software'],
+        iconLabel: 'Safety',
+        phaseLabels: ['Review', 'Route', 'Sync', 'Clear'],
+        defaultFocus: 'Routing work between software and business teams.',
+        defaultImpact: 'A decision is needed before the next handoff can continue.',
+        defaultWaitingOn: 'Software Architect response.',
+        defaultNextStep: 'Review the active handoff and confirm the next routing step.',
+        coverage: 'Cross-team routing, escalation moderation, operator follow-up.',
+      },
+      'FERROS Agent Architect Agent': {
+        roleTitle: 'Architecture Coordinator',
+        purpose: 'Shapes agent lanes and routing rules',
+        teamTags: ['Architecture', 'Software', 'Business'],
+        iconLabel: 'Automation',
+        phaseLabels: ['Brief', 'Design', 'Validate', 'Release'],
+        defaultFocus: 'Reviewing agent topology and route changes.',
+        defaultImpact: 'Architecture rules may need to change before work continues.',
+        defaultNextStep: 'Confirm the design update and hand the next action to the right architect.',
+        coverage: 'Agent topology, route rules, lifecycle guards.',
+      },
+      'Coding Agent Architect': {
+        roleTitle: 'Software Design Lead',
+        purpose: 'Designs coding agents and implementation guardrails',
+        teamTags: ['Architecture', 'Software'],
+        iconLabel: 'Software',
+        phaseLabels: ['Brief', 'Design', 'Check', 'Release'],
+        defaultFocus: 'Reviewing coding-lane design and tool routing.',
+        defaultImpact: 'Coding plans may shift before implementation starts.',
+        defaultNextStep: 'Validate the design update and publish the next implementation route.',
+        coverage: 'Coding agents, route rules, packet templates.',
+      },
+      'Business Agent Architect': {
+        roleTitle: 'Business Design Lead',
+        purpose: 'Designs business roles, templates, and escalation boundaries',
+        teamTags: ['Business', 'Architecture'],
+        iconLabel: 'Business',
+        phaseLabels: ['Brief', 'Design', 'Check', 'Release'],
+        defaultFocus: 'Reviewing business-lane structures and escalation rules.',
+        defaultImpact: 'Business routing may change before departments continue.',
+        defaultNextStep: 'Confirm the business design update and route the next packet.',
+        coverage: 'Operating-company roles, templates, escalation boundaries.',
+      },
+      'Software Architect': {
+        roleTitle: 'Software Architect',
+        purpose: 'Reviews plans and routes implementation work',
+        teamTags: ['Software', 'Architecture'],
+        iconLabel: 'Software',
+        phaseLabels: ['Triage', 'Plan', 'Implement', 'Verify'],
+        defaultFocus: 'Reviewing the active software plan.',
+        defaultImpact: 'The software plan may need to change before implementation continues.',
+        defaultNextStep: 'Review correction and approve the updated plan.',
+        coverage: 'Planning, work-order routing, implementation review.',
+      },
+      'Core Agent': {
+        roleTitle: 'Core Programmer',
+        purpose: 'Implements main FERROS package changes',
+        teamTags: ['Software', 'Runtime'],
+        iconLabel: 'Software',
+        phaseLabels: ['Triage', 'Edit', 'Validate', 'Report'],
+        defaultFocus: 'Applying scoped changes in the main runtime.',
+        defaultImpact: 'Core delivery may slip until validation clears.',
+        defaultNextStep: 'Finish validation and report the result back to Software Architect.',
+        coverage: 'Runtime edits, focused validation, implementation reports.',
+      },
+      'SubCore Agent': {
+        roleTitle: 'SubCore Programmer',
+        purpose: 'Rehearses runtime seams and scaffold contracts',
+        teamTags: ['Software', 'Scaffold'],
+        iconLabel: 'Automation',
+        phaseLabels: ['Scope', 'Incubate', 'Rehearse', 'Report'],
+        defaultFocus: 'Rehearsing scaffold contracts and runtime seams.',
+        defaultImpact: 'Scaffold delivery may pause until the seam report is ready.',
+        defaultNextStep: 'Complete the rehearsal and hand the report back to Software Architect.',
+        coverage: 'Runtime seam rehearsal, scaffold contracts, incubation reports.',
+      },
+      'Business Agent': {
+        roleTitle: 'Business Manager',
+        purpose: 'Routes work across operating teams',
+        teamTags: ['Operations', 'Sales', 'Finance', 'People'],
+        iconLabel: 'Business',
+        phaseLabels: ['Review', 'Route', 'Execute', 'Confirm'],
+        defaultFocus: 'Routing business work across departments.',
+        defaultImpact: 'A business decision is blocking the next handoff.',
+        defaultNextStep: 'Review the packet and confirm the next department response.',
+        coverage: 'Department routing, business review, operator escalation.',
+      },
+      'Operations Department': {
+        roleTitle: 'Operations Lead',
+        purpose: 'Turns direction into operating process',
+        teamTags: ['Operations', 'Business'],
+        iconLabel: 'Business',
+        phaseLabels: ['Review', 'Plan', 'Run', 'Confirm'],
+        defaultFocus: 'Updating process, SOP, and operating cadence work.',
+        defaultImpact: 'Execution cadence may drift until the process update is ready.',
+        defaultNextStep: 'Confirm the next operating change and hand it back to Business Manager.',
+        coverage: 'Process, SOPs, operating cadence.',
+      },
+      'Sales Department': {
+        roleTitle: 'Sales Lead',
+        purpose: 'Builds offers and customer-facing business packets',
+        teamTags: ['Sales', 'Business'],
+        iconLabel: 'Business',
+        phaseLabels: ['Review', 'Draft', 'Align', 'Send'],
+        defaultFocus: 'Preparing the next offer or market-facing packet.',
+        defaultImpact: 'Revenue-facing work may pause until the offer is aligned.',
+        defaultNextStep: 'Refine the draft and return the offer path to Business Manager.',
+        coverage: 'Pipeline, offers, customer-facing materials.',
+      },
+      'Finance Department': {
+        roleTitle: 'Finance Lead',
+        purpose: 'Protects runway, pricing, and budget assumptions',
+        teamTags: ['Finance', 'Business'],
+        iconLabel: 'Budget',
+        phaseLabels: ['Review', 'Model', 'Check', 'Confirm'],
+        defaultFocus: 'Reviewing pricing, runway, and budget assumptions.',
+        defaultImpact: 'Financial planning may block the next handoff until assumptions are reviewed.',
+        defaultNextStep: 'Confirm the latest model and publish the next finance recommendation.',
+        coverage: 'Runway, pricing, budget models.',
+      },
+      'HR Department': {
+        roleTitle: 'People Ops',
+        purpose: 'Maintains role design and people operations',
+        teamTags: ['People', 'Business'],
+        iconLabel: 'Business',
+        phaseLabels: ['Review', 'Design', 'Align', 'Confirm'],
+        defaultFocus: 'Reviewing role and staffing operations work.',
+        defaultImpact: 'People operations may stall until ownership and scope are confirmed.',
+        defaultNextStep: 'Confirm the staffing path and report the next action back to Business Manager.',
+        coverage: 'Roles, hiring packets, people operations.',
+      },
+    };
+
     function titleCase(value) {
       return String(value || '')
         .split(/[_\s-]+/)
         .filter(Boolean)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ');
+    }
+
+    function uniqueValues(values) {
+      return Array.from(new Set((values || [])
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)));
+    }
+
+    function normalizeSentence(value, fallback = '') {
+      const text = String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return text || fallback;
+    }
+
+    function compactMissionCopy(value, maxLength = 96) {
+      const text = normalizeSentence(value);
+      if (!text || text.length <= maxLength) {
+        return text;
+      }
+      const trimmed = text.slice(0, maxLength - 1).trim();
+      const lastBreak = trimmed.lastIndexOf(' ');
+      const compact = lastBreak > Math.floor(maxLength * 0.55)
+        ? trimmed.slice(0, lastBreak)
+        : trimmed;
+      return `${compact.replace(/[\s.,;:!?-]+$/, '')}.`;
+    }
+
+    let overflowMarqueeFrame = null;
+  let overflowBlockFrame = null;
+
+    function syncOverflowMarquees(root = document) {
+      root.querySelectorAll('[data-overflow-marquee]').forEach((element) => {
+        const track = element.querySelector('.clip-marquee-track');
+        if (!track) {
+          return;
+        }
+
+        element.classList.remove('is-overflowing');
+        element.style.removeProperty('--marquee-shift');
+        element.style.removeProperty('--marquee-duration');
+
+        const overflow = Math.max(0, Math.ceil(track.scrollWidth - element.clientWidth));
+        if (overflow <= 6) {
+          return;
+        }
+
+        element.classList.add('is-overflowing');
+        element.style.setProperty('--marquee-shift', `${overflow + 12}px`);
+        element.style.setProperty('--marquee-duration', `${Math.max(4.2, Math.min(9.5, overflow / 18 + 3.8)).toFixed(2)}s`);
+        element.title = element.getAttribute('data-marquee-label') || normalizeSentence(track.textContent, element.title || '');
+      });
+    }
+
+    function scheduleOverflowMarqueeSync(root = document) {
+      if (overflowMarqueeFrame !== null) {
+        cancelAnimationFrame(overflowMarqueeFrame);
+      }
+
+      overflowMarqueeFrame = requestAnimationFrame(() => {
+        overflowMarqueeFrame = null;
+        syncOverflowMarquees(root);
+      });
+    }
+
+    function syncOverflowBlocks(root = document) {
+      root.querySelectorAll('[data-overflow-block]').forEach((element) => {
+        const track = element.querySelector('.clip-block-track');
+        if (!track) {
+          return;
+        }
+
+        element.classList.remove('is-overflowing');
+        element.style.removeProperty('--block-shift');
+        element.style.removeProperty('--block-duration');
+
+        const lines = Math.max(1, Number(element.getAttribute('data-block-lines') || '2'));
+        const computed = window.getComputedStyle(track);
+        let lineHeight = parseFloat(computed.lineHeight);
+        if (!Number.isFinite(lineHeight)) {
+          const fontSize = parseFloat(computed.fontSize) || 12;
+          lineHeight = fontSize * 1.35;
+        }
+
+        const clampHeight = Math.ceil(lineHeight * lines);
+        element.style.setProperty('--block-clamp-height', `${clampHeight}px`);
+
+        const overflow = Math.max(0, Math.ceil(track.scrollHeight - clampHeight));
+        if (overflow <= 4) {
+          return;
+        }
+
+        element.classList.add('is-overflowing');
+        element.style.setProperty('--block-shift', `${overflow + 8}px`);
+        element.style.setProperty('--block-duration', `${Math.max(4.6, Math.min(11.2, overflow / 15 + 3.9)).toFixed(2)}s`);
+      });
+    }
+
+    function scheduleOverflowBlockSync(root = document) {
+      if (overflowBlockFrame !== null) {
+        cancelAnimationFrame(overflowBlockFrame);
+      }
+
+      overflowBlockFrame = requestAnimationFrame(() => {
+        overflowBlockFrame = null;
+        syncOverflowBlocks(root);
+      });
+    }
+
+    function scheduleOverflowSync(root = document) {
+      scheduleOverflowMarqueeSync(root);
+      scheduleOverflowBlockSync(root);
+    }
+
+    function humanizeAgentReference(value) {
+      const text = String(value || '').trim();
+      if (!text) {
+        return '';
+      }
+      if (/^[a-z0-9-]+$/.test(text)) {
+        return titleCase(text);
+      }
+      return text;
+    }
+
+    function relativeTimeLabel(timestamp) {
+      if (!timestamp) {
+        return 'n/a';
+      }
+      const time = new Date(timestamp).getTime();
+      if (!Number.isFinite(time)) {
+        return 'n/a';
+      }
+      const elapsedMs = Math.max(0, Date.now() - time);
+      const minutes = Math.max(1, Math.round(elapsedMs / 60000));
+      if (minutes < 60) {
+        return `${minutes}m`;
+      }
+      const hours = Math.round(minutes / 60);
+      if (hours < 48) {
+        return `${hours}h`;
+      }
+      return `${Math.round(hours / 24)}d`;
+    }
+
+    function missionProfileForDefinition(definition) {
+      const agentId = normalizeAgentName(definition.agentId || definition.sourceNames?.[0] || definition.name || definition.id || 'Unknown Agent');
+      const mapped = operatorMissionProfiles[agentId];
+      if (mapped) {
+        return {
+          agentId,
+          ...mapped,
+        };
+      }
+
+      const lower = agentId.toLowerCase();
+      if (lower.includes('backup')) {
+        return {
+          agentId,
+          roleTitle: 'Backup Officer',
+          purpose: 'Protects restore points and rollback readiness',
+          teamTags: ['Safety', 'Runtime'],
+          iconLabel: 'Safety',
+          phaseLabels: ['Triage', 'Secure', 'Rollback', 'Verify'],
+          defaultFocus: 'Protecting the rollback path for recent changes.',
+          defaultImpact: 'Recovery readiness may drop if the restore path is stale.',
+          defaultNextStep: 'Verify the latest safe restore point.',
+          coverage: 'Restore points, rollback readiness, recovery checks.',
+        };
+      }
+
+      if (lower.includes('recovery')) {
+        return {
+          agentId,
+          roleTitle: 'Recovery Lead',
+          purpose: 'Investigates incidents and plans rollback',
+          teamTags: ['Safety', 'Audit', 'Runtime'],
+          iconLabel: 'Safety',
+          phaseLabels: ['Triage', 'Contain', 'Rollback', 'Verify'],
+          defaultFocus: 'Preparing recovery plan for the current incident.',
+          defaultImpact: 'Recovery work may delay release validation until the path is clear.',
+          defaultNextStep: 'Confirm whether rollback is required.',
+          coverage: 'Triage, containment, rollback, verification.',
+        };
+      }
+
+      if (lower.includes('audit')) {
+        return {
+          agentId,
+          roleTitle: 'Audit Officer',
+          purpose: 'Reviews evidence and operator-impacting risks',
+          teamTags: ['Safety', 'Audit'],
+          iconLabel: 'Safety',
+          phaseLabels: ['Review', 'Assess', 'Escalate', 'Close'],
+          defaultFocus: 'Reviewing audit evidence and current risk signals.',
+          defaultImpact: 'Audit findings may block the next handoff until reviewed.',
+          defaultNextStep: 'Review the evidence and confirm whether escalation is required.',
+          coverage: 'Audit review, evidence checks, incident escalation.',
+        };
+      }
+
+      const categoryKey = categoryForAgentName(agentId);
+      const defaultTeamsByCategory = {
+        architect: ['Architecture'],
+        software: ['Software'],
+        business: ['Business'],
+        administration: ['Operations'],
+      };
+      return {
+        agentId,
+        roleTitle: humanizeAgentReference(definition.name || agentId),
+        purpose: normalizeSentence(definition.description, 'Tracks the current mission and reports the next operator step.'),
+        teamTags: defaultTeamsByCategory[categoryKey] || ['Operations'],
+        iconLabel: categoryKey === 'software' ? 'Software' : categoryKey === 'business' ? 'Business' : categoryKey === 'architect' ? 'Automation' : 'Routing',
+        phaseLabels: categoryKey === 'architect'
+          ? ['Brief', 'Design', 'Check', 'Release']
+          : categoryKey === 'business'
+            ? ['Review', 'Route', 'Execute', 'Confirm']
+            : ['Triage', 'Plan', 'Execute', 'Verify'],
+        defaultFocus: normalizeSentence(definition.description, 'Monitoring current mission state.'),
+        defaultImpact: 'The next handoff may pause until this work is reviewed.',
+        defaultNextStep: 'Review the latest context and confirm the next step.',
+        coverage: normalizeSentence(definition.detail, 'Diagnostics are available on the back of the card.'),
+      };
+    }
+
+    function operatorStateForCard(rawStatus, definition, latestNotification) {
+      if (latestNotification?.status === 'resolved') {
+        return { key: 'resolved', label: 'Resolved' };
+      }
+
+      const agentContext = `${definition.name || ''} ${definition.agentId || ''} ${definition.description || ''} ${definition.detail || ''}`.toLowerCase();
+      const safetyFlow = /backup|recovery|audit|rollback/.test(agentContext);
+      const value = String(rawStatus || 'idle').toLowerCase();
+      if (value === 'running') {
+        return safetyFlow ? { key: 'recovering', label: 'Recovering' } : { key: 'healthy', label: 'Healthy' };
+      }
+      if (value === 'idle') {
+        return { key: 'watching', label: 'Watching' };
+      }
+      if (value === 'escalating') {
+        return { key: 'escalating', label: 'Escalating' };
+      }
+      if (value === 'stalled') {
+        return safetyFlow ? { key: 'recovering', label: 'Recovering' } : { key: 'attention', label: 'Needs attention' };
+      }
+      if (value === 'stopped') {
+        return safetyFlow ? { key: 'recovering', label: 'Recovering' } : { key: 'resolved', label: 'Resolved' };
+      }
+      return { key: 'attention', label: 'Needs attention' };
+    }
+
+    function phaseTrackForCard(definition, profile, state) {
+      const phases = (definition.notification
+        ? ['Issue', 'Review', 'Approve', 'Clear']
+        : (profile.phaseLabels || ['Triage', 'Plan', 'Execute', 'Verify']))
+        .slice(0, 4);
+      const indexByState = {
+        healthy: 2,
+        watching: 1,
+        attention: 1,
+        escalating: 2,
+        recovering: 2,
+        resolved: 3,
+      };
+      const currentIndex = Math.max(0, Math.min(phases.length - 1, indexByState[state.key] ?? 1));
+      return {
+        phases,
+        currentIndex,
+        label: phases[currentIndex],
+        progressText: `${currentIndex + 1} of ${phases.length} steps`,
+      };
+    }
+
+    function metricLevelForState(stateKey, metric) {
+      const levels = {
+        confidence: {
+          healthy: 4,
+          watching: 3,
+          attention: 2,
+          escalating: 2,
+          recovering: 3,
+          resolved: 5,
+        },
+        risk: {
+          healthy: 2,
+          watching: 2,
+          attention: 4,
+          escalating: 4,
+          recovering: 3,
+          resolved: 1,
+        },
+      };
+      return levels[metric]?.[stateKey] || 3;
+    }
+
+    function metricLabel(level, metric) {
+      const confidenceLabels = ['Low', 'Guarded', 'Medium', 'High', 'Strong'];
+      const riskLabels = ['Low', 'Medium', 'Elevated', 'High', 'Critical'];
+      return metric === 'confidence'
+        ? confidenceLabels[Math.max(0, Math.min(confidenceLabels.length - 1, level - 1))]
+        : riskLabels[Math.max(0, Math.min(riskLabels.length - 1, level - 1))];
+    }
+
+    function levelBar(level) {
+      return `${'▰'.repeat(level)}${'▱'.repeat(Math.max(0, 5 - level))}`;
+    }
+
+    function activityLineFromNotification(notification) {
+      const title = normalizeSentence(notification?.title, 'New operator alert');
+      const lower = title.toLowerCase();
+      if (lower.includes('watchdog')) {
+        return 'Received correction from Watchdog';
+      }
+      if (lower.includes('human intervention')) {
+        return 'Flagged for operator review';
+      }
+      if (lower.includes('manager transition')) {
+        return 'Queued a manager transition review';
+      }
+      if (lower.includes('next action')) {
+        return 'Requested confirmation for the next action';
+      }
+      return title;
+    }
+
+    function buildMissionCardModel(definition, rawStatus, latestNotification, loop, relatedChats) {
+      const profile = missionProfileForDefinition(definition);
+      const state = operatorStateForCard(rawStatus, definition, latestNotification);
+      const phaseTrack = phaseTrackForCard(definition, profile, state);
+      const teamTags = uniqueValues([...(profile.teamTags || []), ...(definition.teamTags || [])]);
+      const supportingAgents = uniqueValues((definition.supportingAgents || []).map(humanizeAgentReference));
+      const packetId = latestNotification?.packetId || definition.packet?.id || loop?.currentPacketId || loop?.workOrderId || 'not linked';
+      const threadId = latestNotification?.lifecycleThreadId || definition.thread?.id || preferredThreadIdForLoop(definition.loop || loop) || 'not linked';
+      const updatedAt = latestNotification?.updatedAt || latestNotification?.createdAt || latestNotification?.at || loop?.updatedAt || loop?.startedAt || definition.updatedAt || definition.startedAt || null;
+      const waitLabel = relativeTimeLabel(updatedAt);
+      const watchContext = `${latestNotification?.title || ''} ${latestNotification?.summary || ''}`.toLowerCase();
+      let title = profile.roleTitle;
+      if (definition.notification && state.key === 'attention') {
+        title = `${profile.roleTitle} needs review`;
+      } else if (definition.notification && state.key === 'escalating') {
+        title = `${profile.roleTitle} needs follow-up`;
+      }
+
+      let primaryLabel = definition.notification ? 'Issue' : 'Current focus';
+      let primaryText = definition.notification
+        ? normalizeSentence(latestNotification?.summary || latestNotification?.title, profile.defaultFocus || 'Operator review is required.')
+        : normalizeSentence(latestNotification?.summary || loop?.statusDetail || loop?.description, profile.defaultFocus || definition.description || 'Monitoring current mission state.');
+
+      let impactText = normalizeSentence(profile.defaultImpact, 'The next handoff may pause until this work is reviewed.');
+      if (definition.notification && watchContext.includes('watchdog')) {
+        primaryText = 'A corrective instruction was added by the Watchdog.';
+        impactText = normalizeSentence(profile.defaultImpact, 'The current plan may need to change before work continues.');
+      } else if (definition.notification && watchContext.includes('human intervention')) {
+        primaryText = 'The current work is waiting for operator review.';
+        impactText = normalizeSentence(profile.defaultImpact, 'The next handoff cannot continue until someone reviews the current issue.');
+      } else if (!definition.notification && state.key === 'healthy') {
+        impactText = normalizeSentence(profile.defaultImpact, 'Work is moving normally with no immediate operator action needed.');
+      } else if (!definition.notification && state.key === 'watching') {
+        impactText = normalizeSentence(profile.defaultImpact, 'This agent is monitoring the situation for a change in state.');
+      } else if (!definition.notification && state.key === 'recovering') {
+        impactText = normalizeSentence(profile.defaultImpact, 'Recovery work is protecting the rollback path before changes resume.');
+      }
+
+      let nextLabel = definition.notification ? 'Recommended action' : (state.key === 'escalating' ? 'Waiting on' : 'Next step');
+      let nextText = normalizeSentence(profile.defaultNextStep, 'Review the latest context and confirm the next step.');
+      if (definition.notification) {
+        if (watchContext.includes('watchdog')) {
+          nextText = 'Review correction and approve the updated plan.';
+        } else {
+          nextText = normalizeSentence(profile.defaultNextStep, 'Open the linked context and confirm the next operator step.');
+        }
+      } else if (state.key === 'escalating') {
+        nextText = normalizeSentence(profile.defaultWaitingOn, supportingAgents[0] ? `${supportingAgents[0]} response.` : 'the next handoff owner.');
+      } else if (state.key === 'attention') {
+        nextText = normalizeSentence(profile.defaultNextStep, 'Review the blocker and choose the next operator action.');
+      } else if (state.key === 'recovering') {
+        nextText = normalizeSentence(profile.defaultNextStep, 'Verify the latest safe restore point before reopening work.');
+      } else if (state.key === 'healthy') {
+        nextText = normalizeSentence(profile.defaultNextStep, 'Continue current work and watch the next checkpoint.');
+      } else if (state.key === 'watching') {
+        nextText = normalizeSentence(profile.defaultNextStep, 'Monitor for new packets or operator follow-up.');
+      } else if (state.key === 'resolved') {
+        nextText = 'Archive when the handoff is no longer needed.';
+      }
+
+      const recentActivity = uniqueValues([
+        latestNotification ? activityLineFromNotification(latestNotification) : '',
+        loop ? `Current status: ${state.label}${loop.statusDetail ? ` — ${normalizeSentence(loop.statusDetail)}` : ''}` : '',
+        relatedChats.length > 0 ? `Conversation ready in Chat Board (${relatedChats.length})` : '',
+        supportingAgents.length > 0 ? `Supporting agents: ${supportingAgents.slice(0, 2).join(', ')}` : profile.coverage,
+      ]).slice(0, 3);
+
+      const supportList = supportingAgents.length > 0
+        ? supportingAgents.slice(0, 4)
+        : uniqueValues([...(teamTags.slice(0, 3).map((tag) => `${tag} lane coverage`)), profile.coverage]).slice(0, 4);
+
+      return {
+        title,
+        purpose: compactMissionCopy(normalizeSentence(profile.purpose, 'Tracks the current mission and reports the next operator step.'), 54),
+        iconLabel: profile.iconLabel || 'Routing',
+        state,
+        currentLabel: primaryLabel,
+        currentText: compactMissionCopy(primaryText, 104),
+        impactText: compactMissionCopy(impactText, 94),
+        nextLabel,
+        nextText: compactMissionCopy(nextText, 90),
+        teamTags,
+        supportingAgents: supportList,
+        teamExtraCount: Math.max(0, supportingAgents.length),
+        phaseTrack,
+        confidenceLevel: metricLevelForState(state.key, 'confidence'),
+        confidenceLabel: metricLabel(metricLevelForState(state.key, 'confidence'), 'confidence'),
+        riskLevel: metricLevelForState(state.key, 'risk'),
+        riskLabel: metricLabel(metricLevelForState(state.key, 'risk'), 'risk'),
+        waitLabel,
+        recentActivity: recentActivity.map((item) => compactMissionCopy(item, 74)),
+        coverage: compactMissionCopy(normalizeSentence(profile.coverage, normalizeSentence(definition.detail, 'Diagnostics are available on the back of the card.')), 122),
+        agentId: profile.agentId,
+        packetId,
+        threadId,
+        sourcePath: normalizeSentence(definition.sourcePath, 'Embedded monitor fallback'),
+      };
+    }
+
+    function renderTeamStack(tags, extraCount) {
+      const visibleTags = (tags || []).slice(0, 3);
+      if (visibleTags.length === 0 && !extraCount) {
+        return '<div class="minor">No supporting team tags available.</div>';
+      }
+      return `
+        <div class="agent-team-stack">
+          ${visibleTags.map((tag) => `<span class="agent-team-chip">${escapeHtml(tag)}</span>`).join('')}
+          ${extraCount > 0 ? `<span class="agent-team-more">+${escapeHtml(String(extraCount))}</span>` : ''}
+        </div>
+      `;
+    }
+
+    function renderMissionPhase(phaseTrack) {
+      return `
+        <div class="mission-phase">
+          <div class="mission-phase-head">
+            <span>Phase: ${escapeHtml(phaseTrack.label)}</span>
+            <span>${escapeHtml(phaseTrack.progressText)}</span>
+          </div>
+          <div class="mission-phase-track">
+            ${phaseTrack.phases.map((phase, index) => `
+              <div class="mission-phase-step ${index <= phaseTrack.currentIndex ? 'is-active' : ''} ${index === phaseTrack.currentIndex ? 'is-current' : ''}">
+                <span class="mission-phase-line"></span>
+                <span class="mission-phase-label">${escapeHtml(phase)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMissionMetrics(model) {
+      return `
+        <div class="mission-metrics">
+          <div class="mission-metric">
+            <span class="mission-metric-label">Confidence</span>
+            <strong class="mission-metric-value">${escapeHtml(model.confidenceLabel)}</strong>
+            <span class="mission-metric-bar">${escapeHtml(levelBar(model.confidenceLevel))}</span>
+          </div>
+          <div class="mission-metric">
+            <span class="mission-metric-label">Risk</span>
+            <strong class="mission-metric-value">${escapeHtml(model.riskLabel)}</strong>
+            <span class="mission-metric-bar">${escapeHtml(levelBar(model.riskLevel))}</span>
+          </div>
+          <div class="mission-metric">
+            <span class="mission-metric-label">Waiting</span>
+            <strong class="mission-metric-value">${escapeHtml(model.waitLabel)}</strong>
+            <span class="mission-metric-bar">latest touch</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderActionButtons(buttons) {
+      const validButtons = (buttons || []).filter(Boolean);
+      if (validButtons.length === 0) {
+        return '';
+      }
+      return `
+        <div class="loop-actions">
+          ${validButtons.map((button) => `<button ${button.attrs}>${escapeHtml(button.label)}</button>`).join('')}
+        </div>
+      `;
+    }
+
+    function renderOverflowMarquee(tagName, className, text, extraClasses = 'card-marquee') {
+      return `<${tagName} class="${className} clip-marquee ${extraClasses}" data-overflow-marquee><span class="clip-marquee-track">${escapeHtml(normalizeSentence(text))}</span></${tagName}>`;
+    }
+
+    function renderOverflowBlock(tagName, className, content, options = {}) {
+      const {
+        lines = 2,
+        html = false,
+        extraClasses = '',
+        trackTag = 'span',
+        normalizeText = true,
+      } = options;
+
+      const rendered = html
+        ? content
+        : escapeHtml(normalizeText ? normalizeSentence(content) : String(content || ''));
+
+      return `<${tagName} class="${className} clip-block ${extraClasses}" data-overflow-block data-block-lines="${String(lines)}"><${trackTag} class="clip-block-track">${rendered}</${trackTag}></${tagName}>`;
     }
 
     function registryCardPriority(entry) {
@@ -3352,11 +5704,16 @@
           grouped[categoryKey].push({
             id: entry.id,
             name: entry.displayName,
+            agentId: entry.displayName,
             subtitle: registryCardSubtitle(entry),
             icon: iconForAgentName(entry.displayName),
             sourceNames: [entry.displayName],
             description: entry.description || 'No description available.',
             detail: registryCardDetail(entry),
+            sourcePath: entry.sourcePath || '',
+            supportingAgents: entry.childAgents || [],
+            toolNames: entry.tools || [],
+            teamTags: [],
           });
         });
 
@@ -3784,6 +6141,12 @@
     }
 
     function statusForNotificationCard(notification) {
+      if (notification.status === 'opened') {
+        return 'idle';
+      }
+      if (notification.status === 'resolved') {
+        return 'stopped';
+      }
       if (notification.severity === 'high') {
         return 'attention';
       }
@@ -3896,10 +6259,91 @@
       updateFlowMap();
     }
 
+    function clamp01(value) {
+      if (!Number.isFinite(value)) {
+        return 0;
+      }
+      return Math.max(0, Math.min(1, value));
+    }
+
+    function renderDockedStatus() {
+      const openConversationCount = marsOpenConversationChats().length;
+      const data = sessionStore.runwaySummary;
+      if (!data) {
+        elements.statusDockedSummary.textContent = `Overview offline • ${openConversationCount} chats open`;
+        elements.statusDockedTime.textContent = nowLabel();
+        return;
+      }
+
+      const runwayStateLabel = String(data.checkpointState || 'unknown')
+        .split('-')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+      elements.statusDockedSummary.textContent = `Runway ${runwayStateLabel} • ${data.agentCount || 0} agents • ${openConversationCount} chats • CP ${data.checkpointPosition || 0}/${data.checkpointTotal || 0}`;
+      elements.statusDockedTime.textContent = nowLabel();
+    }
+
+    function updateForceField() {
+      if (!elements.forceField) {
+        return;
+      }
+
+      const openConversationCount = marsOpenConversationChats().length;
+      const stressedLoopCount = sessionStore.runningLoops.filter((loop) => {
+        const status = normalizeLoopStatus(loop.status || loop.state);
+        return ['attention', 'escalating', 'stalled'].includes(status);
+      }).length;
+      const waitingCount = Math.max(activeNotifications().length, stressedLoopCount);
+      const loopCount = sessionStore.runningLoops.length;
+      const checkpointPosition = Number(sessionStore.runwaySummary?.checkpointPosition || 0);
+      const checkpointTotal = Number(sessionStore.runwaySummary?.checkpointTotal || 0);
+      const runwayProgress = checkpointTotal > 0
+        ? clamp01(checkpointPosition / checkpointTotal)
+        : 0;
+      const chatLoad = clamp01(openConversationCount / 6);
+      const waitingLoad = clamp01(waitingCount / 5);
+      const loopDensity = clamp01(loopCount / 8);
+      const fieldAlpha = clamp01(0.16 + chatLoad * 0.24 + waitingLoad * 0.34 + runwayProgress * 0.12);
+      const fieldPulse = clamp01(0.12 + waitingLoad * 0.46 + loopDensity * 0.22 + chatLoad * 0.12);
+      const orbitStrength = clamp01(0.1 + runwayProgress * 0.55 + loopDensity * 0.18);
+
+      elements.forceField.style.setProperty('--field-alpha', fieldAlpha.toFixed(3));
+      elements.forceField.style.setProperty('--field-pulse', fieldPulse.toFixed(3));
+      elements.forceField.style.setProperty('--field-progress', runwayProgress.toFixed(3));
+      elements.forceField.style.setProperty('--field-chat', chatLoad.toFixed(3));
+      elements.forceField.style.setProperty('--field-waiting', waitingLoad.toFixed(3));
+      elements.forceField.style.setProperty('--field-loop-density', loopDensity.toFixed(3));
+      elements.forceField.style.setProperty('--field-drift-duration', `${(13 - fieldPulse * 5).toFixed(2)}s`);
+      elements.forceField.style.setProperty('--field-breath-duration', `${(10 - fieldPulse * 3.2).toFixed(2)}s`);
+      elements.forceField.style.setProperty('--field-orbit-duration', `${(18 - orbitStrength * 7).toFixed(2)}s`);
+
+      if (elements.forceFieldProgressRing) {
+        const progressDash = checkpointTotal > 0 ? (runwayProgress * 100).toFixed(2) : '0';
+        elements.forceFieldProgressRing.style.strokeDasharray = `${progressDash} 100`;
+      }
+
+      if (elements.forceFieldRunwayLabel) {
+        elements.forceFieldRunwayLabel.textContent = checkpointTotal > 0
+          ? `RUNWAY ${Math.round(runwayProgress * 100)}%`
+          : 'RUNWAY --';
+      }
+      if (elements.forceFieldWaitingLabel) {
+        elements.forceFieldWaitingLabel.textContent = `WAIT ${waitingCount}`;
+      }
+      if (elements.forceFieldChatLabel) {
+        elements.forceFieldChatLabel.textContent = `CHAT ${openConversationCount}`;
+      }
+      if (elements.forceFieldLoopLabel) {
+        elements.forceFieldLoopLabel.textContent = `LOOPS ${loopCount}`;
+      }
+    }
+
     function updateFlowMap() {
       const openConversationCount = marsOpenConversationChats().length;
       elements.openChatCount.textContent = `${openConversationCount} open conversations`;
       elements.statusChatMetric.textContent = String(openConversationCount);
+      renderDockedStatus();
+      updateForceField();
     }
 
     function normalizeLoopStatus(status) {
@@ -3994,22 +6438,37 @@
       return offset;
     }
 
-    function carouselPresentationForOffset(offset) {
+    function controlCarouselMetrics(grid, cardWidth) {
+      const width = Math.max(420, grid?.clientWidth || 620);
+      const safeWidth = Math.max(360, width - 40);
+      const nearShift = Math.max(cardWidth * 0.92, Math.min(safeWidth * 0.24, cardWidth * 1.34));
+      const farShift = Math.max(cardWidth * 1.56, Math.min(safeWidth * 0.43, cardWidth * 2.02));
+
+      return {
+        nearShift: Math.round(nearShift),
+        farShift: Math.round(farShift),
+        hiddenShift: Math.round(farShift + cardWidth * 1.05),
+        farClip: width > 680 ? 18 : 28,
+        outerClip: width > 680 ? 46 : 56,
+      };
+    }
+
+    function carouselPresentationForOffset(offset, metrics) {
       const presentationByOffset = {
         0: { shift: 0, scale: 1, opacity: 1, zIndex: 5, clipLeft: 0, clipRight: 0, saturate: 1, brightness: 1 },
-        1: { shift: 106, scale: 0.88, opacity: 0.9, zIndex: 4, clipLeft: 0, clipRight: 0, saturate: 0.92, brightness: 0.94 },
-        '-1': { shift: -106, scale: 0.88, opacity: 0.9, zIndex: 4, clipLeft: 0, clipRight: 0, saturate: 0.92, brightness: 0.94 },
-        2: { shift: 192, scale: 0.72, opacity: 0.75, zIndex: 3, clipLeft: 0, clipRight: 42, saturate: 0.72, brightness: 0.82 },
-        '-2': { shift: -192, scale: 0.72, opacity: 0.75, zIndex: 3, clipLeft: 42, clipRight: 0, saturate: 0.72, brightness: 0.82 },
+        1: { shift: metrics.nearShift, scale: 0.88, opacity: 0.9, zIndex: 4, clipLeft: 0, clipRight: 0, saturate: 0.92, brightness: 0.94 },
+        '-1': { shift: -metrics.nearShift, scale: 0.88, opacity: 0.9, zIndex: 4, clipLeft: 0, clipRight: 0, saturate: 0.92, brightness: 0.94 },
+        2: { shift: metrics.farShift, scale: 0.74, opacity: 0.78, zIndex: 3, clipLeft: 0, clipRight: metrics.farClip, saturate: 0.78, brightness: 0.86 },
+        '-2': { shift: -metrics.farShift, scale: 0.74, opacity: 0.78, zIndex: 3, clipLeft: metrics.farClip, clipRight: 0, saturate: 0.78, brightness: 0.86 },
       };
 
       return presentationByOffset[offset] || {
-        shift: offset * 242,
+        shift: offset * metrics.hiddenShift,
         scale: 0.7,
         opacity: 0,
         zIndex: 1,
-        clipLeft: 60,
-        clipRight: 60,
+        clipLeft: metrics.outerClip,
+        clipRight: metrics.outerClip,
         saturate: 0.65,
         brightness: 0.78,
         hidden: true,
@@ -4030,14 +6489,14 @@
       };
     }
 
-    function carouselPresentationForFloatOffset(floatOffset) {
+    function carouselPresentationForFloatOffset(floatOffset, metrics) {
       const floor = Math.floor(floatOffset);
       const t = floatOffset - floor;
-      if (t < 0.001) return carouselPresentationForOffset(floor);
-      if (t > 0.999) return carouselPresentationForOffset(floor + 1);
+      if (t < 0.001) return carouselPresentationForOffset(floor, metrics);
+      if (t > 0.999) return carouselPresentationForOffset(floor + 1, metrics);
       return lerpPresentation(
-        carouselPresentationForOffset(floor),
-        carouselPresentationForOffset(floor + 1),
+        carouselPresentationForOffset(floor, metrics),
+        carouselPresentationForOffset(floor + 1, metrics),
         t,
       );
     }
@@ -4055,14 +6514,15 @@
       const n = orderedCategories.length;
       const centerIndex = Math.max(0, orderedCategories.indexOf(centeredCategory));
       const carouselGrid = elements.laneAgentArchitectBtn?.parentElement;
-      const cardWidth = elements.laneAgentArchitectBtn?.offsetWidth || 138;
+      const cardWidth = elements.laneAgentArchitectBtn?.offsetWidth || 168;
+      const metrics = controlCarouselMetrics(carouselGrid, cardWidth);
       const centerLeft = carouselGrid
         ? Math.max(0, Math.round((carouselGrid.clientWidth - cardWidth) / 2))
         : 0;
 
       // Convert pixel drag to fractional step offset.
-      // 126px = 1 step. Drag left = negative pixels = right card advances toward center.
-      const stepPx = 126;
+      // 1 spread step = one near-card lane in the center carousel.
+      const stepPx = metrics.nearShift;
       const fractionalDrag = dragOffset / stepPx;
 
       Object.entries(categoryButtons).forEach(([categoryKey, elementKey]) => {
@@ -4072,7 +6532,7 @@
         const categoryIndex = orderedCategories.indexOf(categoryKey);
         const baseOffset = categoryIndex === -1 ? Math.ceil(n / 2) : circularOffset(categoryIndex, centerIndex, n);
         const floatOffset = normalizeFloatOffset(baseOffset + fractionalDrag, n);
-        const presentation = carouselPresentationForFloatOffset(floatOffset);
+        const presentation = carouselPresentationForFloatOffset(floatOffset, metrics);
 
         button.dataset.carouselHidden = presentation.hidden ? 'true' : 'false';
         button.classList.toggle('is-centered', Math.abs(floatOffset) < 0.5);
@@ -4094,7 +6554,7 @@
             // Sync visual state from real button (status classes etc).
             ghost.className = button.className + ' carousel-ghost';
             ghost.innerHTML = button.innerHTML;
-            const gPres = carouselPresentationForFloatOffset(mirrorOffset);
+            const gPres = carouselPresentationForFloatOffset(mirrorOffset, metrics);
             ghost.style.display = '';
             ghost.style.left = `${centerLeft + gPres.shift}px`;
             ghost.style.transform = `scale(${gPres.scale})`;
@@ -4118,11 +6578,13 @@
       let currentDelta = 0;
       let wheelAccum = 0;
 
-      // 1 step = shift distance for offset ±1.
-      const stepPx = 106;
+      function dragStepPx() {
+        const cardWidth = elements.laneAgentArchitectBtn?.offsetWidth || 168;
+        return controlCarouselMetrics(grid, cardWidth).nearShift;
+      }
 
       function snapIndexDelta(delta) {
-        const steps = -delta / stepPx;
+        const steps = -delta / dragStepPx();
         return Math.max(-2, Math.min(2, Math.round(steps)));
       }
 
@@ -4281,6 +6743,413 @@
       });
     }
 
+    function quickActionCards() {
+      return Array.from(elements.quickActionBar?.querySelectorAll('.quick-action-card[data-quick-action]') || []);
+    }
+
+    function quickActionDefinition(actionKey) {
+      return quickActionDefinitions[actionKey] || quickActionDefinitions.coding;
+    }
+
+    function quickActionDeckPresentationForOffset(offset) {
+      const distance = Math.abs(offset);
+      const cappedDistance = Math.min(distance, 8);
+      const direction = offset === 0 ? 0 : (offset > 0 ? 1 : -1);
+
+      return {
+        baseShift: direction * (distance === 0 ? 0 : 32 + Math.min(56, (cappedDistance - 1) * 18)),
+        hoverShift: direction * (distance === 0 ? 0 : 40 + ((cappedDistance - 1) * 44)),
+        baseLift: distance === 0 ? 0 : Math.min(14, cappedDistance * 4),
+        hoverLift: distance === 0 ? -76 : -50 - Math.min(18, cappedDistance * 4),
+        scale: Math.max(0.78, 1 - cappedDistance * 0.055),
+        opacity: Math.max(0.18, 1 - cappedDistance * 0.12),
+        zIndex: Math.max(2, 14 - cappedDistance),
+        width: `${Math.max(136, 174 - cappedDistance * 8)}px`,
+        rotate: direction * Math.min(18, cappedDistance * 4.5),
+        saturate: Math.max(0.6, 1 - cappedDistance * 0.08),
+        brightness: Math.max(0.74, 1 - cappedDistance * 0.06),
+      };
+    }
+
+    function clearQuickActionCardPresentation(card) {
+      card.removeAttribute('data-deck-offset');
+      card.classList.remove('is-hover-preview');
+      card.style.removeProperty('--deck-base-shift');
+      card.style.removeProperty('--deck-hover-shift');
+      card.style.removeProperty('--deck-base-lift');
+      card.style.removeProperty('--deck-hover-lift');
+      card.style.removeProperty('--deck-scale');
+      card.style.removeProperty('--deck-opacity');
+      card.style.removeProperty('--deck-z');
+      card.style.removeProperty('--deck-width');
+      card.style.removeProperty('--deck-rotate');
+      card.style.removeProperty('--deck-saturate');
+      card.style.removeProperty('--deck-brightness');
+    }
+
+    function scrollQuickActionIntoView(actionKey, behavior = 'smooth') {
+      if (!sessionStore.quickActionHandExpanded) {
+        return;
+      }
+
+      const card = elements.quickActionHand?.querySelector(`.quick-action-card[data-quick-action="${actionKey}"]`);
+      if (!card) {
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        card.scrollIntoView({ block: 'nearest', inline: 'center', behavior });
+      });
+    }
+
+    function renderQuickActionViewer() {
+      const actionKey = sessionStore.quickActionViewerAction;
+      const isOpen = Boolean(actionKey);
+      const mode = sessionStore.quickActionViewerMode || 'card';
+      const isPageMode = isOpen && mode === 'page';
+      elements.quickActionViewer.classList.toggle('open', isOpen);
+      elements.quickActionViewer.classList.toggle('page-mode', isPageMode);
+      elements.quickActionViewerCard.classList.toggle('page-mode', isPageMode);
+      elements.quickActionViewer.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+
+      if (!isOpen) {
+        elements.quickActionViewerBody.innerHTML = '';
+        return;
+      }
+
+      const definition = quickActionDefinition(actionKey);
+      if (!isPageMode) {
+        elements.quickActionViewerBody.innerHTML = `
+          <div class="quick-action-viewer-focus" data-quick-action-viewer-promote>
+            <span class="quick-action-viewer-kicker">${escapeHtml(definition.kicker)}</span>
+            <div class="quick-action-viewer-head">
+              <div>
+                <div id="quickActionViewerTitle" class="quick-action-viewer-title">${escapeHtml(definition.title)}</div>
+                <div class="quick-action-viewer-subtitle">${escapeHtml(definition.subtitle)}</div>
+              </div>
+              <span class="quick-action-viewer-icon">${escapeHtml(definition.icon)}</span>
+            </div>
+            <div class="quick-action-viewer-pill-row">
+              <span class="quick-action-viewer-pill">${escapeHtml(definition.energy)}</span>
+              <span class="quick-action-viewer-pill">selected hand card</span>
+              <span class="quick-action-viewer-pill">click again for page</span>
+            </div>
+            <div class="quick-action-viewer-story">${escapeHtml(definition.summary)}</div>
+            <span class="quick-action-viewer-section">Linked cards</span>
+            <div class="quick-action-viewer-link-list">
+              ${definition.links.map((link) => `
+                <div class="quick-action-viewer-link-item">
+                  <span class="quick-action-viewer-link-badge">${escapeHtml(link.icon)}</span>
+                  <span>${escapeHtml(link.name)}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div class="quick-action-viewer-footnote">${escapeHtml(definition.playHint)}</div>
+          </div>
+        `;
+        return;
+      }
+
+      elements.quickActionViewerBody.innerHTML = `
+        <div class="quick-action-viewer-page">
+          <div class="quick-action-viewer-page-main">
+            <span class="quick-action-viewer-kicker">${escapeHtml(definition.kicker)}</span>
+            <div>
+              <div id="quickActionViewerTitle" class="quick-action-viewer-page-title">${escapeHtml(definition.title)}</div>
+              <div class="quick-action-viewer-page-subtitle">${escapeHtml(definition.subtitle)}</div>
+            </div>
+            <div class="quick-action-viewer-pill-row" style="display:flex;">
+              <span class="quick-action-viewer-pill">${escapeHtml(definition.energy)}</span>
+              <span class="quick-action-viewer-pill">card page</span>
+              <span class="quick-action-viewer-pill">template placeholder</span>
+            </div>
+            <div class="quick-action-viewer-grid">
+              <div class="quick-action-viewer-panel">
+                <span class="quick-action-viewer-panel-title">What it gives you</span>
+                <div class="quick-action-viewer-copy">${escapeHtml(definition.summary)}</div>
+              </div>
+              <div class="quick-action-viewer-panel">
+                <span class="quick-action-viewer-panel-title">Linked cards</span>
+                <div class="quick-action-viewer-link-list">
+                  ${definition.links.map((link) => `
+                    <div class="quick-action-viewer-link-item">
+                      <span class="quick-action-viewer-link-badge">${escapeHtml(link.icon)}</span>
+                      <span>${escapeHtml(link.name)}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+            <div class="quick-action-viewer-panel">
+              <span class="quick-action-viewer-panel-title">How you will use it</span>
+              <div class="quick-action-viewer-copy">${escapeHtml(definition.playHint)}</div>
+            </div>
+            <div class="quick-action-viewer-panel">
+              <span class="quick-action-viewer-panel-title">Deck note</span>
+              <div class="quick-action-viewer-copy">${escapeHtml(definition.footnote)}</div>
+            </div>
+          </div>
+          <button type="button" class="quick-action-viewer-page-preview" data-quick-action-viewer-demote aria-label="Return to focused card view">
+            <span class="quick-action-viewer-icon">${escapeHtml(definition.icon)}</span>
+            <span class="quick-action-viewer-page-preview-title">${escapeHtml(definition.title)}</span>
+            <span class="quick-action-viewer-page-preview-copy">${escapeHtml(definition.subtitle)}</span>
+            <span class="quick-action-viewer-pill">${escapeHtml(definition.energy)}</span>
+            <span class="quick-action-viewer-page-preview-note">click card preview to return to the centered card view</span>
+          </button>
+        </div>
+      `;
+    }
+
+    function closeQuickActionViewer() {
+      if (!sessionStore.quickActionViewerAction) {
+        return;
+      }
+      sessionStore.quickActionViewerAction = null;
+      sessionStore.quickActionViewerMode = null;
+      renderQuickActionViewer();
+    }
+
+    function openQuickActionViewer(actionKey, mode = 'card') {
+      sessionStore.selectedQuickAction = actionKey;
+      sessionStore.quickActionViewerAction = actionKey;
+      sessionStore.quickActionViewerMode = mode;
+      applyQuickActionCarouselLayout();
+      renderQuickActionViewer();
+    }
+
+    function promoteQuickActionViewerToPage() {
+      if (!sessionStore.quickActionViewerAction) {
+        return;
+      }
+      sessionStore.quickActionViewerMode = 'page';
+      renderQuickActionViewer();
+    }
+
+    function demoteQuickActionViewerToCard() {
+      if (!sessionStore.quickActionViewerAction) {
+        return;
+      }
+      sessionStore.quickActionViewerMode = 'card';
+      renderQuickActionViewer();
+    }
+
+    function toggleQuickActionHand(forceExpanded) {
+      const nextExpanded = typeof forceExpanded === 'boolean'
+        ? forceExpanded
+        : !sessionStore.quickActionHandExpanded;
+      sessionStore.quickActionHandExpanded = nextExpanded;
+      if (nextExpanded) {
+        sessionStore.quickActionViewerAction = null;
+        sessionStore.quickActionViewerMode = null;
+      }
+      applyQuickActionCarouselLayout();
+      renderQuickActionViewer();
+      if (nextExpanded && sessionStore.selectedQuickAction) {
+        scrollQuickActionIntoView(sessionStore.selectedQuickAction, 'smooth');
+      }
+    }
+
+    function applyQuickActionCarouselLayout() {
+      const cards = quickActionCards();
+      if (cards.length === 0) {
+        return;
+      }
+
+      elements.quickActionBar.classList.toggle('hand-expanded', sessionStore.quickActionHandExpanded);
+      elements.quickActionHandToggle.textContent = '← 🂠 • 🂠 • 🂠 →';
+      elements.quickActionHandToggle.setAttribute('aria-expanded', sessionStore.quickActionHandExpanded ? 'true' : 'false');
+      elements.quickActionHandToggle.setAttribute('aria-label', sessionStore.quickActionHandExpanded ? 'Collapse hand' : 'Expand hand');
+      elements.quickActionHandToggle.title = sessionStore.quickActionHandExpanded ? 'Collapse hand' : 'Expand hand';
+
+      const orderedActions = cards.map((card) => card.getAttribute('data-quick-action')).filter(Boolean);
+      if (!orderedActions.includes(sessionStore.selectedQuickAction)) {
+        sessionStore.selectedQuickAction = orderedActions[0] || null;
+      }
+
+      if (window.innerWidth <= 760) {
+        cards.forEach((card) => {
+          const actionKey = card.getAttribute('data-quick-action');
+          card.classList.toggle('is-active', actionKey === sessionStore.selectedQuickAction);
+          card.setAttribute('aria-pressed', actionKey === sessionStore.selectedQuickAction ? 'true' : 'false');
+          clearQuickActionCardPresentation(card);
+        });
+        return;
+      }
+
+      const centerIndex = Math.max(0, orderedActions.indexOf(sessionStore.selectedQuickAction));
+      cards.forEach((card, index) => {
+        const actionKey = card.getAttribute('data-quick-action');
+        const offset = circularOffset(index, centerIndex, cards.length);
+        const presentation = quickActionDeckPresentationForOffset(offset);
+        const isActive = offset === 0;
+
+        card.classList.toggle('is-active', isActive);
+        card.classList.remove('is-hover-preview');
+        card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        card.setAttribute('data-deck-offset', String(offset));
+        card.style.setProperty('--deck-base-shift', `${presentation.baseShift}px`);
+        card.style.setProperty('--deck-hover-shift', `${presentation.hoverShift}px`);
+        card.style.setProperty('--deck-base-lift', `${presentation.baseLift}px`);
+        card.style.setProperty('--deck-hover-lift', `${presentation.hoverLift}px`);
+        card.style.setProperty('--deck-scale', String(presentation.scale));
+        card.style.setProperty('--deck-opacity', String(presentation.opacity));
+        card.style.setProperty('--deck-z', String(presentation.zIndex));
+        card.style.setProperty('--deck-width', presentation.width);
+        card.style.setProperty('--deck-rotate', `${presentation.rotate}deg`);
+        card.style.setProperty('--deck-saturate', String(presentation.saturate));
+        card.style.setProperty('--deck-brightness', String(presentation.brightness));
+
+        if (sessionStore.quickActionHandExpanded && actionKey === sessionStore.selectedQuickAction) {
+          card.setAttribute('aria-current', 'true');
+        } else {
+          card.removeAttribute('aria-current');
+        }
+      });
+    }
+
+    function cycleQuickAction(direction) {
+      const orderedActions = quickActionCards()
+        .map((card) => card.getAttribute('data-quick-action'))
+        .filter(Boolean);
+      if (orderedActions.length === 0) {
+        return;
+      }
+
+      const currentIndex = Math.max(0, orderedActions.indexOf(sessionStore.selectedQuickAction));
+      const nextIndex = (currentIndex + direction + orderedActions.length) % orderedActions.length;
+      sessionStore.selectedQuickAction = orderedActions[nextIndex];
+      sessionStore.quickActionViewerAction = null;
+      sessionStore.quickActionViewerMode = null;
+      applyQuickActionCarouselLayout();
+      renderQuickActionViewer();
+      scrollQuickActionIntoView(sessionStore.selectedQuickAction);
+    }
+
+    function initQuickActionCarousel() {
+      const bar = elements.quickActionBar;
+      if (!bar) {
+        return;
+      }
+
+      let wheelAccum = 0;
+
+      bar.addEventListener('click', (event) => {
+        const handToggle = event.target.closest('#quickActionHandToggle');
+        if (handToggle) {
+          toggleQuickActionHand();
+          return;
+        }
+
+        const card = event.target.closest('.quick-action-card[data-quick-action]');
+        if (!card) {
+          return;
+        }
+
+        const actionKey = card.getAttribute('data-quick-action');
+        if (!actionKey) {
+          return;
+        }
+
+        const wasSelected = sessionStore.selectedQuickAction === actionKey;
+        sessionStore.selectedQuickAction = actionKey;
+        if (wasSelected) {
+          if (sessionStore.quickActionViewerAction === actionKey && sessionStore.quickActionViewerMode === 'card') {
+            promoteQuickActionViewerToPage();
+          } else {
+            openQuickActionViewer(actionKey, 'card');
+          }
+          return;
+        }
+
+        sessionStore.quickActionViewerAction = null;
+        sessionStore.quickActionViewerMode = null;
+        applyQuickActionCarouselLayout();
+        renderQuickActionViewer();
+        scrollQuickActionIntoView(actionKey);
+      });
+
+      bar.addEventListener('dblclick', (event) => {
+        const card = event.target.closest('.quick-action-card[data-quick-action]');
+        if (!card) {
+          return;
+        }
+
+        const actionKey = card.getAttribute('data-quick-action');
+        if (!actionKey) {
+          return;
+        }
+
+        openQuickActionViewer(actionKey, 'card');
+      });
+
+      bar.addEventListener('wheel', (event) => {
+        if (window.innerWidth <= 760) {
+          return;
+        }
+
+        event.preventDefault();
+        const raw = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+        wheelAccum += raw;
+        if (Math.abs(wheelAccum) < 34) {
+          return;
+        }
+
+        cycleQuickAction(wheelAccum > 0 ? 1 : -1);
+        wheelAccum = 0;
+      }, { passive: false });
+
+      bar.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          cycleQuickAction(1);
+          return;
+        }
+
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          cycleQuickAction(-1);
+        }
+      });
+
+      elements.quickActionViewer.addEventListener('click', (event) => {
+        if (event.target.closest('[data-quick-action-viewer-close]')) {
+          closeQuickActionViewer();
+          return;
+        }
+
+        if (event.target.closest('[data-quick-action-viewer-demote]')) {
+          demoteQuickActionViewerToCard();
+          return;
+        }
+
+        if (event.target.closest('[data-quick-action-viewer-promote]') && sessionStore.quickActionViewerMode === 'card') {
+          promoteQuickActionViewerToPage();
+        }
+      });
+
+      elements.quickActionViewerCloseBtn.addEventListener('click', () => {
+        closeQuickActionViewer();
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') {
+          return;
+        }
+
+        if (sessionStore.quickActionViewerAction) {
+          closeQuickActionViewer();
+          return;
+        }
+
+        if (sessionStore.quickActionHandExpanded) {
+          toggleQuickActionHand(false);
+        }
+      });
+
+      applyQuickActionCarouselLayout();
+      renderQuickActionViewer();
+    }
+
     function getOperatorBacklogItems() {
       const byAgent = new Map();
       for (const loop of sessionStore.runningLoops) {
@@ -4391,93 +7260,234 @@
       const status = definition.notification
         ? baseStatus
         : (derivedLifecycleStatus !== 'idle' ? derivedLifecycleStatus : (!definition.status && baseStatus === 'idle' && linkedNotifications.length > 0 ? 'attention' : baseStatus));
-      const description = latestNotification?.summary || loop?.statusDetail || loop?.description || definition.description;
-      const detailParts = [];
-      if (latestNotification && !definition.notification) {
-        detailParts.push(`${latestNotification.title}: ${latestNotification.summary}`);
-      }
-      if (definition.notification) {
-        detailParts.push(definition.detail || description);
-      } else if (loop) {
-        detailParts.push(`${loop.statusReason || status}: ${loop.statusDetail || loop.description}`);
-      } else if (definition.detail || description) {
-        detailParts.push(definition.detail || description);
-      }
-      const detail = detailParts.join(' • ');
       const flipped = definition.notification ? false : Boolean(sessionStore.flippedLoopIds[definition.id]);
-      const progress = definition.notification ? 100 : (loop?.progress ?? progressForStatus(status));
+      const expanded = !definition.notification && flipped && sessionStore.expandedLoopId === definition.id;
       const actionTargetId = definition.loop?.id || loop?.id || definition.id;
       const relatedChats = findRelatedOpenChatsForLoop(definition.loop || loop);
-      const sessionButtonLabel = relatedChats.length > 1 ? 'View Sessions' : 'View Session';
+      const sessionButtonLabel = relatedChats.length > 1 ? 'View sessions' : 'View session';
       const glowClass = notificationGlowClass(linkedNotifications);
+      const model = buildMissionCardModel(definition, status, latestNotification, loop, relatedChats);
       const noticeMarkup = linkedNotifications.length > 0
-        ? `<div class="agent-card-notice ${glowClass}">${linkedNotifications.length} alert${linkedNotifications.length === 1 ? '' : 's'} waiting</div>`
+        ? `<div class="agent-card-notice ${glowClass}">Alert waiting: ${escapeHtml(String(linkedNotifications.length))}</div>`
         : '';
       const isFerrosAdminCard = definition.id === 'admin-ferros-agent';
-      const adminMeta = `open chats ${sessionStore.openChats.length} • active alerts ${activeNotifications().length}`;
-      let actionMarkup = '';
-      let frontActionMarkup = '';
+      let frontButtons = [];
+      let backButtons = [];
 
       if (definition.notification) {
-        frontActionMarkup = `
-          <div class="loop-actions">
-            <button data-notification-action="resolve" data-notification-id="${escapeHtml(definition.notification.id)}">Resolve</button>
-          </div>
-        `;
+        frontButtons = [
+          {
+            label: 'Review correction',
+            attrs: `data-notification-context-id="${escapeHtml(definition.notification.id)}"`,
+          },
+          {
+            label: 'Approve next step',
+            attrs: `data-notification-action="resolve" data-notification-id="${escapeHtml(definition.notification.id)}"`,
+          },
+          {
+            label: 'Dismiss',
+            attrs: `data-notification-action="opened" data-notification-id="${escapeHtml(definition.notification.id)}"`,
+          },
+        ];
+        backButtons = [
+          {
+            label: 'Open chat context',
+            attrs: `data-notification-context-id="${escapeHtml(definition.notification.id)}"`,
+          },
+          {
+            label: 'Clear alert',
+            attrs: `data-notification-action="resolve" data-notification-id="${escapeHtml(definition.notification.id)}"`,
+          },
+        ];
       } else if (isFerrosAdminCard) {
-        actionMarkup = `
-          <div class="loop-actions">
-            <button data-ferros-action="new-chat">New FERROS Chat</button>
-            <button data-ferros-action="latest-chat">Latest Chat</button>
-            <button data-ferros-action="status-update">Status Update</button>
-            <button data-ferros-action="software-test">Software Test</button>
-            <button data-ferros-action="operator-alert-test">Alert Test</button>
-          </div>
-        `;
+        frontButtons = [
+          {
+            label: 'Open coordination chat',
+            attrs: 'data-ferros-action="new-chat"',
+          },
+          {
+            label: 'Status update',
+            attrs: 'data-ferros-action="status-update"',
+          },
+        ];
+        backButtons = [
+          {
+            label: 'Review latest chat',
+            attrs: 'data-ferros-action="latest-chat"',
+          },
+          {
+            label: 'Run software test',
+            attrs: 'data-ferros-action="software-test"',
+          },
+          {
+            label: 'Trigger alert test',
+            attrs: 'data-ferros-action="operator-alert-test"',
+          },
+        ];
       } else if (definition.loop?.sourceLoopId) {
-        actionMarkup = `
-          <div class="loop-actions">
-            <button data-loop-action="view-session" data-loop-id="${escapeHtml(actionTargetId)}">${escapeHtml(sessionButtonLabel)}</button>
-            <button data-loop-action="open" data-loop-id="${escapeHtml(actionTargetId)}">Open</button>
-            <button data-loop-action="explain" data-loop-id="${escapeHtml(actionTargetId)}">Explain</button>
-          </div>
-        `;
+        frontButtons = [
+          {
+            label: 'View handoff',
+            attrs: `data-loop-action="view-session" data-loop-id="${escapeHtml(actionTargetId)}"`,
+          },
+          {
+            label: 'Explain issue',
+            attrs: `data-loop-action="explain" data-loop-id="${escapeHtml(actionTargetId)}"`,
+          },
+        ];
+        backButtons = [
+          {
+            label: 'View handoff',
+            attrs: `data-loop-action="view-session" data-loop-id="${escapeHtml(actionTargetId)}"`,
+          },
+          {
+            label: 'Open follow-up',
+            attrs: `data-loop-action="open" data-loop-id="${escapeHtml(actionTargetId)}"`,
+          },
+          {
+            label: 'Explain issue',
+            attrs: `data-loop-action="explain" data-loop-id="${escapeHtml(actionTargetId)}"`,
+          },
+        ];
       } else if (loop) {
-        actionMarkup = `
-          <div class="loop-actions">
-            <button data-loop-action="view-session" data-loop-id="${escapeHtml(actionTargetId)}">${escapeHtml(sessionButtonLabel)}</button>
-            <button data-loop-action="stop-chat" data-loop-id="${escapeHtml(actionTargetId)}">Stop</button>
-            <button data-loop-action="chat" data-loop-id="${escapeHtml(actionTargetId)}">Ask FERROS</button>
-          </div>
-        `;
+        frontButtons = [
+          {
+            label: sessionButtonLabel,
+            attrs: `data-loop-action="view-session" data-loop-id="${escapeHtml(actionTargetId)}"`,
+          },
+          {
+            label: 'Ask FERROS',
+            attrs: `data-loop-action="chat" data-loop-id="${escapeHtml(actionTargetId)}"`,
+          },
+        ];
+        backButtons = [
+          {
+            label: sessionButtonLabel,
+            attrs: `data-loop-action="view-session" data-loop-id="${escapeHtml(actionTargetId)}"`,
+          },
+          {
+            label: 'Pause agent',
+            attrs: `data-loop-action="stop-chat" data-loop-id="${escapeHtml(actionTargetId)}"`,
+          },
+          {
+            label: 'Ask FERROS',
+            attrs: `data-loop-action="chat" data-loop-id="${escapeHtml(actionTargetId)}"`,
+          },
+        ];
       }
 
-      const flipNote = definition.notification ? 'click to open attention chat' : 'click to flip';
+      const flipNote = definition.notification ? 'click card to review context' : 'click card for diagnostics';
+      const recentActivityMarkup = model.recentActivity.length > 0
+        ? renderOverflowBlock(
+          'div',
+          'mission-panel-body',
+          `<ul class="mission-activity-list">${model.recentActivity.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`,
+          { lines: 4, html: true, extraClasses: 'auto-scroll-y panel-copy-block', trackTag: 'div' }
+        )
+        : '<div class="minor">No recent activity yet.</div>';
+      const supportingMarkup = model.supportingAgents.length > 0
+        ? renderOverflowBlock(
+          'div',
+          'mission-panel-body',
+          `<ul class="mission-activity-list">${model.supportingAgents.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`,
+          { lines: 4, html: true, extraClasses: 'auto-scroll-y panel-copy-block', trackTag: 'div' }
+        )
+        : '<div class="minor">No supporting agent list available.</div>';
 
       return `
-        <div class="loop-card agent-play-card ${definition.notification ? 'notification-card' : ''} status-${escapeHtml(status)} ${escapeHtml(glowClass)} ${flipped ? 'flipped' : ''}" data-loop-id="${escapeHtml(definition.id)}"${definition.notification ? ` data-card-behavior="notification" data-notification-id="${escapeHtml(definition.notification.id)}"` : ''}>
+        <div class="loop-card agent-play-card ${definition.notification ? 'notification-card' : ''} status-${escapeHtml(status)} ${escapeHtml(glowClass)} ${flipped ? 'flipped' : ''} ${expanded ? 'expanded' : ''}" data-loop-id="${escapeHtml(definition.id)}" title="${escapeHtml(`Agent ID: ${model.agentId}`)}"${definition.notification ? ` data-card-behavior="notification" data-notification-id="${escapeHtml(definition.notification.id)}"` : ''}>
           <div class="loop-card-inner">
             <div class="loop-face front agent-card-front">
               <div class="agent-card-topline">
-                <span class="agent-card-icon ${glowClass ? 'notification-hit' : ''}">${escapeHtml(definition.icon || '◆')}</span>
-                <span class="status-dot ${escapeHtml(status)}"></span>
+                <div class="agent-card-role">
+                  <div class="agent-card-icon-badge">
+                    <span class="agent-card-icon ${glowClass ? 'notification-hit' : ''}">${escapeHtml(definition.icon || '◆')}</span>
+                    <span class="agent-card-icon-label">${escapeHtml(model.iconLabel)}</span>
+                  </div>
+                  <div class="agent-card-heading">
+                    <div class="agent-card-name-row">
+                      ${renderOverflowMarquee('span', 'agent-card-name', model.title)}
+                    </div>
+                    ${renderOverflowBlock('span', 'agent-card-purpose', model.purpose, { lines: 2, extraClasses: 'auto-scroll-y card-copy-block' })}
+                  </div>
+                </div>
+                <span class="mission-status-chip state-${escapeHtml(model.state.key)}">${escapeHtml(model.state.label)}</span>
               </div>
-              <div class="agent-card-name">${escapeHtml(definition.name)}</div>
-              <div class="agent-card-subtitle">${escapeHtml(definition.subtitle)}</div>
-              ${noticeMarkup}
-              <div class="progress-shell"><div class="progress-fill" style="width: ${progress}%;"></div></div>
-              <div class="agent-card-description">${escapeHtml(description)}</div>
-              ${frontActionMarkup}
-              <div class="flip-note">${flipNote}</div>
+              <div class="agent-card-head-meta">
+                ${renderOverflowMarquee('span', 'agent-card-meta-line', `Agent ID: ${model.agentId} • Wait ${model.waitLabel}`)}
+                ${noticeMarkup}
+              </div>
+              <div class="agent-card-inline-section">
+                <span class="mission-section-label">Team</span>
+                ${renderTeamStack(model.teamTags, model.teamExtraCount)}
+              </div>
+              <div class="mission-brief">
+                <div class="mission-brief-row">
+                  <span class="mission-brief-label">${escapeHtml(model.currentLabel)}</span>
+                  ${renderOverflowBlock('div', 'mission-brief-text', model.currentText, { lines: 2, extraClasses: 'auto-scroll-y brief-copy-block', trackTag: 'span' })}
+                </div>
+                <div class="mission-brief-row">
+                  <span class="mission-brief-label">${definition.notification ? 'Why it matters' : 'Impact'}</span>
+                  ${renderOverflowBlock('div', 'mission-brief-text', model.impactText, { lines: 2, extraClasses: 'auto-scroll-y brief-copy-block', trackTag: 'span' })}
+                </div>
+                <div class="mission-brief-row">
+                  <span class="mission-brief-label">${escapeHtml(model.nextLabel)}</span>
+                  ${renderOverflowBlock('div', 'mission-brief-text', model.nextText, { lines: 2, extraClasses: 'auto-scroll-y brief-copy-block', trackTag: 'span' })}
+                </div>
+              </div>
+              <div class="mission-lower">
+                ${renderMissionPhase(model.phaseTrack)}
+                ${renderMissionMetrics(model)}
+              </div>
+              <div class="agent-card-footer">
+                ${renderActionButtons(frontButtons)}
+                <div class="flip-note">${escapeHtml(flipNote)}</div>
+              </div>
             </div>
             <div class="loop-face back agent-card-back">
               <div class="agent-card-topline">
-                <strong>${escapeHtml(definition.name)}</strong>
-                <span class="pill ${status === 'attention' ? 'waiting' : status}">${escapeHtml(status)}</span>
+                <div class="agent-card-heading">
+                  <div class="agent-card-name-row">
+                    ${renderOverflowMarquee('strong', 'agent-card-name', model.title)}
+                  </div>
+                  ${renderOverflowMarquee('span', 'agent-card-meta-line', `Agent ID: ${model.agentId} • Wait ${model.waitLabel}`)}
+                </div>
+                <span class="mission-status-chip state-${escapeHtml(model.state.key)}">${escapeHtml(model.state.label)}</span>
               </div>
-              <div class="agent-card-description">${escapeHtml(detail)}</div>
-              <div class="minor">${escapeHtml(isFerrosAdminCard ? adminMeta : (loop?.workOrderId || definition.loop?.threadId || 'no packet id yet'))}</div>
-              ${actionMarkup}
+              <div class="mission-panel card-expand-target" data-card-expand-target>
+                ${renderOverflowMarquee('span', 'mission-section-label', 'Recent activity', 'section-marquee')}
+                ${recentActivityMarkup}
+              </div>
+              <div class="mission-panel card-expand-target" data-card-expand-target>
+                ${renderOverflowMarquee('span', 'mission-section-label', 'Supporting agents', 'section-marquee')}
+                ${supportingMarkup}
+              </div>
+              <div class="mission-panel card-expand-target" data-card-expand-target>
+                ${renderOverflowMarquee('span', 'mission-section-label', 'Diagnostics', 'section-marquee')}
+                <div class="diagnostics-grid">
+                  <div class="diagnostic-item">
+                    <span class="diagnostic-label">Packet</span>
+                    ${renderOverflowBlock('span', 'diagnostic-value', model.packetId, { lines: 2, extraClasses: 'auto-scroll-y', normalizeText: false })}
+                  </div>
+                  <div class="diagnostic-item">
+                    <span class="diagnostic-label">Thread</span>
+                    ${renderOverflowBlock('span', 'diagnostic-value', model.threadId, { lines: 2, extraClasses: 'auto-scroll-y', normalizeText: false })}
+                  </div>
+                  <div class="diagnostic-item">
+                    <span class="diagnostic-label">Source</span>
+                    ${renderOverflowBlock('span', 'diagnostic-value', model.sourcePath, { lines: 2, extraClasses: 'auto-scroll-y', normalizeText: false })}
+                  </div>
+                  <div class="diagnostic-item">
+                    <span class="diagnostic-label">Waiting</span>
+                    ${renderOverflowBlock('span', 'diagnostic-value', model.waitLabel, { lines: 2, extraClasses: 'auto-scroll-y', normalizeText: false })}
+                  </div>
+                </div>
+              </div>
+              ${renderOverflowBlock('div', 'minor', model.coverage, { lines: 2, extraClasses: 'auto-scroll-y', trackTag: 'span' })}
+              <div class="agent-card-footer">
+                ${renderActionButtons(backButtons)}
+                <div class="flip-note">${escapeHtml(expanded ? 'click card frame to return' : 'click a panel to expand, or click card frame to return')}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -4494,12 +7504,15 @@
           definitions.unshift({
             id: notification.id,
             name: source.agentName,
+            agentId: source.agentName,
             subtitle: `${notification.title} • ${notification.severity}`,
             icon: source.icon,
             description: notification.summary,
             detail: `${notification.title} • packet ${notification.packetId || source.packet?.id || 'n/a'} • action ${notification.action} • status ${notification.status}`,
             status: statusForNotificationCard(notification),
             sourceNames: [source.agentName],
+            packet: source.packet,
+            thread: source.thread,
             notification,
           });
         }
@@ -4508,6 +7521,7 @@
           definitions.push({
             id: item.id,
             name: `${item.agent} Escalation`,
+            agentId: item.agent,
             subtitle: 'Operator attention required',
             icon: item.status === 'stalled' ? '🧯' : '🚨',
             status: item.status === 'stopped' ? 'stopped' : item.status,
@@ -4760,6 +7774,8 @@
     function renderLoops() {
       renderLoopControlCards();
       elements.loopList.innerHTML = renderCategoryDeck(sessionStore.selectedCategory || sessionStore.centeredCategory || 'administration');
+      updateForceField();
+      scheduleOverflowSync();
     }
 
     function getSelectedLifecycleThread() {
@@ -5611,6 +8627,8 @@
         elements.statusCheckpointMetric.textContent = `${data.checkpointPosition || 0}/${data.checkpointTotal || 0}`;
         elements.statusDenyMetric.textContent = String(data.denyCount || 0);
         elements.timestamp.textContent = `Synced ${nowLabel()}`;
+        renderDockedStatus();
+        updateForceField();
         renderRunwayMindmap();
       } catch {
         sessionStore.runwaySummary = null;
@@ -5621,6 +8639,8 @@
         elements.statusCheckpointMetric.textContent = '—';
         elements.statusDenyMetric.textContent = '—';
         elements.timestamp.textContent = 'Sync unavailable';
+        renderDockedStatus();
+        updateForceField();
         renderRunwayMindmap();
       }
     }
@@ -5807,10 +8827,27 @@
       setSelectedCategory('administration');
     });
 
+    window.addEventListener('resize', () => {
+      scheduleOverflowSync();
+      applyQuickActionCarouselLayout();
+    });
+
     initCarouselDrag();
     initCarouselGhosts();
+    initQuickActionCarousel();
 
     elements.loopList.addEventListener('click', async (event) => {
+      const notificationContextButton = event.target.closest('button[data-notification-context-id]');
+      if (notificationContextButton) {
+        const notificationId = notificationContextButton.getAttribute('data-notification-context-id');
+        try {
+          await openNotificationContext(notificationId);
+        } catch (error) {
+          showError(`Notification context failed: ${error.message}`);
+        }
+        return;
+      }
+
       const notificationActionButton = event.target.closest('button[data-notification-action]');
       if (notificationActionButton) {
         const action = notificationActionButton.getAttribute('data-notification-action');
@@ -5870,6 +8907,17 @@
       if (!loopId) {
         return;
       }
+
+      const expandTarget = event.target.closest('[data-card-expand-target]');
+      if (expandTarget && card.classList.contains('flipped')) {
+        if (sessionStore.expandedLoopId !== loopId) {
+          sessionStore.expandedLoopId = loopId;
+          renderLoops();
+        }
+        return;
+      }
+
+      sessionStore.expandedLoopId = null;
       sessionStore.flippedLoopIds[loopId] = !sessionStore.flippedLoopIds[loopId];
       renderLoops();
     });
@@ -5975,6 +9023,8 @@
 
     async function bootstrap() {
       await updateAll();
+      scheduleOverflowSync();
+      applyQuickActionCarouselLayout();
     }
 
     bootstrap();
